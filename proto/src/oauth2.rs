@@ -225,6 +225,11 @@ pub enum SubjectType {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum PkceAlg {
+    S256,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
 // WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
 pub enum IdTokenSignAlg {
@@ -341,6 +346,52 @@ pub struct OidcDiscoveryResponse {
     pub request_uri_parameter_supported: bool,
     #[serde(default = "require_request_uri_parameter_supported_default")]
     pub require_request_uri_registration: bool,
+}
+
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug)]
+// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
+pub struct Oauth2Rfc8414MetadataResponse {
+    pub issuer: Url,
+    pub authorization_endpoint: Url,
+    pub token_endpoint: Url,
+
+    pub jwks_uri: Option<Url>,
+
+    // rfc7591 reg endpoint.
+    pub registration_endpoint: Option<Url>,
+
+    pub scopes_supported: Option<Vec<String>>,
+
+    // For Oauth2 should be Code, Token.
+    pub response_types_supported: Vec<ResponseType>,
+    #[serde(default = "response_modes_supported_default")]
+    pub response_modes_supported: Vec<ResponseMode>,
+    #[serde(default = "grant_types_supported_default")]
+    pub grant_types_supported: Vec<GrantType>,
+
+    #[serde(default = "token_endpoint_auth_methods_supported_default")]
+    pub token_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+
+    pub token_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
+
+    pub service_documentation: Option<Url>,
+    pub ui_locales_supported: Option<Vec<String>>,
+
+    pub op_policy_uri: Option<Url>,
+    pub op_tos_uri: Option<Url>,
+
+    // rfc7009
+    pub revocation_endpoint: Option<Url>,
+    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+
+    // rfc7662
+    pub introspection_endpoint: Option<Url>,
+    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
+
+    // RFC7636
+    pub code_challenge_methods_supported: Vec<PkceAlg>,
 }
 
 #[skip_serializing_none]

@@ -24,7 +24,7 @@ use kanidm_proto::constants::*;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
-    OidcDiscoveryResponse, TokenRevokeRequest,
+    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
@@ -283,6 +283,8 @@ pub struct Oauth2RS {
     // For discovery we need to build and keep a number of values.
     authorization_endpoint: Url,
     token_endpoint: Url,
+    revocation_endpoint: Url,
+    introspection_endpoint: Url,
     userinfo_endpoint: Url,
     jwks_uri: Url,
     scopes_supported: BTreeSet<String>,
@@ -533,6 +535,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let mut token_endpoint = self.inner.origin.clone();
                 token_endpoint.set_path("/oauth2/token");
 
+                let mut revocation_endpoint = self.inner.origin.clone();
+                revocation_endpoint.set_path("/oauth2/token/revoke");
+
+                let mut introspection_endpoint = self.inner.origin.clone();
+                introspection_endpoint.set_path("/oauth2/token/introspect");
+
                 let mut userinfo_endpoint = self.inner.origin.clone();
                 userinfo_endpoint.set_path(&format!("/oauth2/openid/{name}/userinfo"));
 
@@ -571,6 +579,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     iss,
                     authorization_endpoint,
                     token_endpoint,
+                    revocation_endpoint,
+                    introspection_endpoint,
                     userinfo_endpoint,
                     jwks_uri,
                     scopes_supported,
@@ -1934,6 +1944,82 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
             Oauth2TokenType::Refresh { .. } => Err(Oauth2Error::InvalidToken),
         }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn oauth2_rfc8414_metadata(
+        &self,
+        client_id: &str,
+    ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let issuer = o2rs.iss.clone();
+        let authorization_endpoint = o2rs.authorization_endpoint.clone();
+        let token_endpoint = o2rs.token_endpoint.clone();
+        let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
+        let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
+        let jwks_uri = Some(o2rs.jwks_uri.clone());
+        let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
+        let response_types_supported = vec![ResponseType::Code];
+        let response_modes_supported = vec![ResponseMode::Query];
+        let grant_types_supported = vec![GrantType::AuthorisationCode];
+
+        let token_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let revocation_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let introspection_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
+
+        let require_pkce = match &o2rs.type_ {
+            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
+            OauthRSType::Public { .. } => true,
+        };
+
+        let code_challenge_methods_supported = if require_pkce {
+            vec![PkceAlg::S256]
+        } else {
+            Vec::with_capacity(0)
+        };
+
+        Ok(Oauth2Rfc8414MetadataResponse {
+            issuer,
+            authorization_endpoint,
+            token_endpoint,
+            jwks_uri,
+            registration_endpoint: None,
+            scopes_supported,
+            response_types_supported,
+            response_modes_supported,
+            grant_types_supported,
+            token_endpoint_auth_methods_supported,
+            token_endpoint_auth_signing_alg_values_supported: None,
+            service_documentation,
+            ui_locales_supported: None,
+            op_policy_uri: None,
+            op_tos_uri: None,
+            revocation_endpoint,
+            revocation_endpoint_auth_methods_supported,
+            introspection_endpoint,
+            introspection_endpoint_auth_methods_supported,
+            introspection_endpoint_auth_signing_alg_values_supported: None,
+            code_challenge_methods_supported,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -3528,6 +3614,114 @@ mod tests {
     }
 
     #[idm_test]
+    async fn test_idm_oauth2_rfc8414_metadata(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // check the discovery end point works as we expect
+        assert!(
+            idms_prox_read
+                .oauth2_rfc8414_metadata("nosuchclient")
+                .unwrap_err()
+                == OperationError::NoMatchingEntries
+        );
+
+        let discovery = idms_prox_read
+            .oauth2_rfc8414_metadata("test_resource_server")
+            .expect("Failed to get discovery");
+
+        assert!(
+            discovery.issuer
+                == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                    .unwrap()
+        );
+
+        assert!(
+            discovery.authorization_endpoint
+                == Url::parse("https://idm.example.com/ui/oauth2").unwrap()
+        );
+
+        assert!(
+            discovery.token_endpoint == Url::parse("https://idm.example.com/oauth2/token").unwrap()
+        );
+
+        assert!(
+            discovery.jwks_uri
+                == Some(
+                    Url::parse(
+                        "https://idm.example.com/oauth2/openid/test_resource_server/public_key.jwk"
+                    )
+                    .unwrap()
+                )
+        );
+
+        assert!(discovery.registration_endpoint.is_none());
+
+        assert!(
+            discovery.scopes_supported
+                == Some(vec![
+                    "groups".to_string(),
+                    OAUTH2_SCOPE_OPENID.to_string(),
+                    "supplement".to_string(),
+                ])
+        );
+
+        assert!(discovery.response_types_supported == vec![ResponseType::Code]);
+        assert!(discovery.response_modes_supported == vec![ResponseMode::Query]);
+        assert!(discovery.grant_types_supported == vec![GrantType::AuthorisationCode]);
+        assert!(
+            discovery.token_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery.service_documentation.is_some());
+
+        assert!(discovery.ui_locales_supported.is_none());
+        assert!(discovery.op_policy_uri.is_none());
+        assert!(discovery.op_tos_uri.is_none());
+
+        assert!(
+            discovery.revocation_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+        );
+        assert!(
+            discovery.revocation_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+
+        assert!(
+            discovery.introspection_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+        );
+        assert!(
+            discovery.introspection_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery
+            .introspection_endpoint_auth_signing_alg_values_supported
+            .is_none());
+
+        assert_eq!(
+            discovery.code_challenge_methods_supported,
+            vec![PkceAlg::S256]
+        )
+    }
+
+    #[idm_test]
     async fn test_idm_oauth2_openid_discovery(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
@@ -3611,7 +3805,6 @@ mod tests {
                 .unwrap()
         );
 
-        eprintln!("{:?}", discovery.scopes_supported);
         assert!(
             discovery.scopes_supported
                 == Some(vec![
