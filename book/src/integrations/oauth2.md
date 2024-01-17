@@ -60,6 +60,12 @@ Kanidm will expose its OAuth2 APIs at the following URLs:
 - rfc7662 token introspection url: `https://idm.example.com/oauth2/token/introspect`
 - rfc7009 token revoke url: `https://idm.example.com/oauth2/token/revoke`
 
+Oauth2 Server Metadata - you need to substitute your OAuth2 `:client_id:` in the following urls:
+
+- Oauth2 issuer uri: `https://idm.example.com/oauth2/openid/:client_id:/`
+- Oauth2 rfc8414 discovery:
+  `https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+
 OpenID Connect discovery - you need to substitute your OAuth2 `:client_id:` in the following urls:
 
 - OpenID connect issuer uri: `https://idm.example.com/oauth2/openid/:client_id:/`
