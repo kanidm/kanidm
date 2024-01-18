@@ -85,38 +85,3 @@ kanidm group list --name idm_admin
 kanidm group get <name>
 ```
 
-## Why Can't I Change admin With idm\_admin?
-
-As a security mechanism there is a distinction between "accounts" and "high permission accounts".
-This is to help prevent elevation attacks, where a member of a service desk could attempt to reset
-the password of idm\_admin or admin, or even a member of HR or System Admin teams to move laterally.
-
-Generally, membership of a "privilege" group that ships with Kanidm, such as:
-
-- idm\_account\_manage\_priv
-- idm\_people\_read\_priv
-- idm\_schema\_manage\_priv
-- many more ...
-
-...indirectly grants you membership to "idm\_high\_privilege". If you are a member of this group,
-the standard "account" and "people" rights groups are NOT able to alter, read or manage these
-accounts. To manage these accounts higher rights are required, such as those held by the admin
-account.
-
-Further, groups that are considered "idm\_high\_privilege" can NOT be managed by the standard
-"idm\_group\_manage\_priv" group.
-
-Management of high privilege accounts and groups is granted through the the "hp" variants of all
-privileges. A non-conclusive list:
-
-- idm\_hp\_account\_read\_priv
-- idm\_hp\_account\_manage\_priv
-- idm\_hp\_account\_write\_priv
-- idm\_hp\_group\_manage\_priv
-- idm\_hp\_group\_write\_priv
-
-Membership of any of these groups should be considered to be equivalent to system administration
-rights in the directory, and by extension, over all network resources that trust Kanidm.
-
-All groups that are flagged as "idm\_high\_privilege" should be audited and monitored to ensure that
-they are not altered.
