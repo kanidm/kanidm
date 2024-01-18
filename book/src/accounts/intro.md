@@ -84,4 +84,3 @@ permissions. Each group has a description to explain its purpose. These can be v
 kanidm group list --name idm_admin
 kanidm group get <name>
 ```
-
