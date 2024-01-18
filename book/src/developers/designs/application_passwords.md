@@ -26,21 +26,20 @@ ability to bind with the UNIX password.
 
 The administrator configures two applications on their Kanidm instance. One is
 "mail" for a generic SMTP+IMAP service. The other is HTTP basic auth to a legacy
-web server. Once applications are added, the administrator adds the allowed
-users to the applications as if they were regular groups.
+web server. Then the administrator configures which users will be able to use
+application passwords for each application.
 
 The mail services and web services are configured to point to Kanidm's LDAP
 gateway with a customized search base DN.
 
-The user can login to the webui or command line and list what linked
-applications exist on their account that require application passwords.
+The users can login to the webui or command line and list what linked
+applications exist on their accounts that require application passwords.
 
-The user can then request a new "application password" for the mail server for
-their laptop. They can copy-paste the generated password to their mail client
-which uses this password on their behalf. Similarly, they can request a new
-application password to access the web server basic auth.
-
-As a user can request several application passwords for each application.
+The users can then request a new "application password" for the mail server for
+their laptop and another one for their phone. They can copy-paste the generated
+passwords to their mail clients which uses this password on their behalf.
+Similarly, they can request a new application password to access the web server
+basic auth.
 
 # Technical Details
 
@@ -49,7 +48,7 @@ As a user can request several application passwords for each application.
 Currently the LDAP basedn is configurable by an admin, or generated from domain.
 For example, example.com <http://example.com/> becomes dc=example,dc=com.
 
-Each configured application has a new container such as
+Each configured application will define a new naming context, like
 app=mail,dc=example,dc=com or app=httpd,dc=example,dc=com
 
 (NOTE: Should this be app=? Some broken clients could try to validate this rdn
@@ -68,7 +67,7 @@ case the application needs to make it's own authorisation decisions to an
 extend. Kanidm can limit which users are members of the access allowed group as
 only they can bind still as an extra layer of defence)
 
-The application must bind with its token if it wishes to read extended user
+The application must bind with its api-token if it wishes to read extended user
 information. With this, only basic info limited to anonymous rights are granted.
 
 (NOTE: We can't assume these DNs are private - I did consider making these
@@ -84,19 +83,18 @@ the UNIX one.
 
 ### Application Entries
 
-A new class for applications will be added that has an associated reference to a
-set of groups that are allowed access.
+A new class for applications will be added. Each application will have a single
+associated group so only members of this group will be able to bind with the
+application password for the associated application.
 
-(NOTE: It could be good to make this a group such that members of the group
-inherit "memberof=application X". This would make presentation of application
-password links in the UI easier since we can then do a search on (memberof &&
-class = application). Alternately we don't need this since we can in-memory
-cache applications and just compare their member sets to the user sessions
-memberof)
+(NOTE: Should we also disallow the creation of application passwords for an
+application if the user is not a member of the associated group? This will
+complicate reference integrity, as removing a member will require to remove the
+application password.)
 
 Applications need to have service-account like properties where tokens can be
 generated for them. These are optional since an anonymous bind to kanidm and
-searching under the basedn will continue to work.
+searching under the basedn or application base dn will continue to work.
 
 Application should have a URL reference to help admins identify where the
 application may be located or accessed.
@@ -144,11 +142,6 @@ Each value in the set is queried by its UUID. This defines the value as
 `ApplicationPassword` type implements `PartialEq` so two application passwords
 are equal if their label is equal and they refer to the same application.
 
-(NOTE: We could consider extending the `CredentialType` to add
-`CredentialType::ApplicationPassword<Map<Uuid, ApplicationPassword>>`. Then we
-wouldn't need `Attribute::ApplicationPassword`, nor `Value::ApplicationPassword`,
-neither `ValueSetApplicationPassword`).
-
 The user must be able to delete credentials individually. The generated password
 is only displayed once when the user creates it and it is not possible to
 recover the clear-text form, only hashed form is stored. It is not allowed to
@@ -161,55 +154,61 @@ needed.
 
 Since application passwords are related to applications, on delete of an
 application all entries that have a bound application password should be removed
-from user accounts.
+from user accounts. The associated group will be automatically deleted too.
 
 ### Access controls
 
-The IDM administrators group can manage the applications and user's application
-passwords.
+The "Application administrators" group will manage the applications, and
+applications will allow "managed by" so that they can have delegated
+administration.
 
-Users can manage their own application passwords.
+The "Application user passwords administrators" group will be able to list the
+users's application passwords and delete them but only the users will be able
+to, additionally to listing and deleting, self-create their own application
+passwords.
 
 ### LDAP
 
-The bind DN regular expression needs to adjusted to detect and determine the
-bind dn if it is related to an application or not. The application bind dn
-regular expression will capture the user name, the label and the application
-name.
+As application passwords will replace binding with UNIX passwords, the
+set-ldap-allow-unix-password-bind domain setting will be removed.
 
 The rootdse needs to be extended to include the applications as additional
 naming contexts.
 
+The bind DN regular expression needs to adjusted to detect and determine the
+bind dn if it is related to an application or not. The application bind dn
+regular expression will capture the user name, and the application name.
+
 If the session is related to an application we should only accept application
-passwords in the bind. The user needs to be a member of the application. Binds
-to an application password must be limited by account validity and expiration.
+passwords in the bind. The user needs to be a member of the associated
+application group. Binds to an application password must be limited by account
+validity and expiration.
 
 We need to add a cache of available applications for lookup.
 
 (NOTE: Caching and reload needs more explanation)
 
+An application can bind with its api-token because the application may need to
+search LDAP with elevated read permissions.
+
 ### kanidm CLI
 
-The `kanidm` command line tool will be extended with the following commands to
-manage the applications:
+The `kanidm` command line tool will be extended to satisfy the following
+configuration requirements:
 
-* kanidm application create <NAME>
-* kanidm application delete <NAME>
-* kanidm application list
-* kanidm application get <NAME>
-* kanidm application add-members <NAME> <MEMBER> ... <MEMBER>
-* kanidm application remove-members <NAME> <MEMBER> ... <MEMBER>
-* kanidm application list-members
-* kanidm application set-members <NAME> <MEMBER> ... <MEMBER>
-* kanidm application purge-members <NAME>
+* List applications
 
-If possible, implementation will reuse group command line arguments handling.
+* Create an application
 
-The `kanidm` command line tool will be extended with the following commands to
-manage the application passwords:
+* Delete an application
 
-* kanidm person application-password create <ACCOUNT_ID> <APP_ID> <LABEL>
-* kanidm person application-password delete <ACCOUNT_ID> <UUID>
-* kanidm person application-password list <ACCOUNT_ID>
+* Manage the application api-token
 
-Same commands will be available for "self".
+* List application passwords
+
+* Create application password
+
+* Delete application password
+
+The application associated group will be managed with the existing `group`
+sub-commands.
