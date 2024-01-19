@@ -268,6 +268,7 @@ async fn run_sync(
     // Preflight check.
     //  * can we connect to ldap?
     let mut ldap_client = match LdapClientBuilder::new(&sync_config.ldap_uri)
+        .max_ber_size(sync_config.max_ber_size)
         .add_tls_ca(&sync_config.ldap_ca)
         .build()
         .await

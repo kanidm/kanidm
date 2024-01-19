@@ -322,9 +322,32 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING,
     name: Attribute::OAuth2RsOriginLanding.into(),
-    description: "The landing page of an RS, that will automatically trigger the auth process.to_string().".to_string(),
+    description: "The landing page of an RS, that will automatically trigger the auth process".to_string(),
 
     syntax: SyntaxType::Url,
+    ..Default::default()
+};
+
+// Introduced in DomainLevel4
+pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+    name: Attribute::OAuth2AllowLocalhostRedirect.into(),
+    description: "Allow public clients associated to this RS to redirect to localhost".to_string(),
+
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP,
+    name: Attribute::OAuth2RsClaimMap.into(),
+    description:
+        "A set of custom claims mapped to group memberships of accounts.".to_string(),
+
+    index: vec![IndexType::Equality],
+    multivalue: true,
+    // CHANGE ME
+    syntax: SyntaxType::OauthClaimMap,
     ..Default::default()
 };
 
@@ -828,6 +851,32 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_OAUTH2_RS_DL4: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
+    name: EntryClass::OAuth2ResourceServer.into(),
+    description: "The class representing a configured Oauth2 Resource Server".to_string(),
+
+    systemmay: vec![
+        Attribute::Description.into(),
+        Attribute::OAuth2RsScopeMap.into(),
+        Attribute::OAuth2RsSupScopeMap.into(),
+        Attribute::Rs256PrivateKeyDer.into(),
+        Attribute::OAuth2JwtLegacyCryptoEnable.into(),
+        Attribute::OAuth2PreferShortUsername.into(),
+        Attribute::OAuth2RsOriginLanding.into(),
+        Attribute::Image.into(),
+        Attribute::OAuth2RsClaimMap.into(),
+    ],
+    systemmust: vec![
+        Attribute::OAuth2RsName.into(),
+        Attribute::DisplayName.into(),
+        Attribute::OAuth2RsOrigin.into(),
+        Attribute::OAuth2RsTokenKey.into(),
+        Attribute::Es256PrivateKeyDer.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
     name: EntryClass::OAuth2ResourceServerBasic.into(),
@@ -839,12 +888,22 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-
 pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
     name: EntryClass::OAuth2ResourceServerPublic.into(),
-
     description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
+
+    systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
+    ..Default::default()
+};
+
+// Introduced in DomainLevel4
+pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
+    name: EntryClass::OAuth2ResourceServerPublic.into(),
+    description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
+
+    systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect.into()],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
     ..Default::default()
 };

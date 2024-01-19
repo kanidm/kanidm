@@ -5,6 +5,7 @@ use hashbrown::HashSet;
 use kanidm_proto::internal::ImageType;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::{BTreeMap, BTreeSet};
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -398,6 +399,28 @@ pub struct DbValueAddressV1 {
     pub country: String,
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
+pub enum DbValueOauthClaimMapJoinV1 {
+    #[serde(rename = "c")]
+    CommaSeparatedValue,
+    #[serde(rename = "s")]
+    SpaceSeparatedValue,
+    #[serde(rename = "a")]
+    JsonArray,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueOauthClaimMap {
+    V1 {
+        #[serde(rename = "n")]
+        name: String,
+        #[serde(rename = "j")]
+        join: DbValueOauthClaimMapJoinV1,
+        #[serde(rename = "d")]
+        values: BTreeMap<Uuid, BTreeSet<String>>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueOauthScopeMapV1 {
     #[serde(rename = "u")]
@@ -672,6 +695,8 @@ pub enum DbValueSetV2 {
     OauthScope(Vec<String>),
     #[serde(rename = "OM")]
     OauthScopeMap(Vec<DbValueOauthScopeMapV1>),
+    #[serde(rename = "OC")]
+    OauthClaimMap(Vec<DbValueOauthClaimMap>),
     #[serde(rename = "E2")]
     PrivateBinary(Vec<Vec<u8>>),
     #[serde(rename = "PB")]
@@ -736,6 +761,7 @@ impl DbValueSetV2 {
             DbValueSetV2::PhoneNumber(_primary, set) => set.len(),
             DbValueSetV2::Address(set) => set.len(),
             DbValueSetV2::Url(set) => set.len(),
+            DbValueSetV2::OauthClaimMap(set) => set.len(),
             DbValueSetV2::OauthScope(set) => set.len(),
             DbValueSetV2::OauthScopeMap(set) => set.len(),
             DbValueSetV2::PrivateBinary(set) => set.len(),

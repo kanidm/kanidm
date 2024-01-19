@@ -1,9 +1,10 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::{
     ATTR_DISPLAYNAME, ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_RS_NAME, ATTR_OAUTH2_RS_ORIGIN,
+    ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_NAME, ATTR_OAUTH2_RS_ORIGIN,
 };
-use kanidm_proto::internal::ImageValue;
+use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
 use reqwest::multipart;
 use std::collections::BTreeMap;
@@ -302,7 +303,7 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_prefer_short_username".to_string(),
+            ATTR_OAUTH2_PREFER_SHORT_USERNAME.to_string(),
             vec!["true".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
@@ -314,10 +315,80 @@ impl KanidmClient {
             attrs: BTreeMap::new(),
         };
         update_oauth2_rs.attrs.insert(
-            "oauth2_prefer_short_username".to_string(),
+            ATTR_OAUTH2_PREFER_SHORT_USERNAME.to_string(),
             vec!["false".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
+    }
+
+    pub async fn idm_oauth2_rs_enable_public_localhost_redirect(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
+            vec!["true".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_disable_public_localhost_redirect(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
+            vec!["false".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_update_claim_map(
+        &self,
+        id: &str,
+        claim_name: &str,
+        group_id: &str,
+        values: &[String],
+    ) -> Result<(), ClientError> {
+        let values: Vec<String> = values.to_vec();
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+            values,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_rs_update_claim_map_join(
+        &self,
+        id: &str,
+        claim_name: &str,
+        join: Oauth2ClaimMapJoin,
+    ) -> Result<(), ClientError> {
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_claimmap/{}", id, claim_name).as_str(),
+            join,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_rs_delete_claim_map(
+        &self,
+        id: &str,
+        claim_name: &str,
+        group_id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(
+            format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+        )
+        .await
     }
 }

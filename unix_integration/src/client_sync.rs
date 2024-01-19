@@ -15,7 +15,10 @@ impl DaemonClientBlocking {
 
         let stream = UnixStream::connect(path)
             .map_err(|e| {
-                error!("stream setup error -> {:?}", e);
+                error!(
+                    "Unix socket stream setup error while connecting to {} -> {:?}",
+                    path, e
+                );
                 e
             })
             .map_err(Box::new)?;
@@ -38,14 +41,20 @@ impl DaemonClientBlocking {
         match self.stream.set_read_timeout(Some(timeout)) {
             Ok(()) => {}
             Err(e) => {
-                error!("stream setup error -> {:?}", e);
+                error!(
+                    "Unix socket stream setup error while setting read timeout -> {:?}",
+                    e
+                );
                 return Err(Box::new(e));
             }
         };
         match self.stream.set_write_timeout(Some(timeout)) {
             Ok(()) => {}
             Err(e) => {
-                error!("stream setup error -> {:?}", e);
+                error!(
+                    "Unix socket stream setup error while setting write timeout -> {:?}",
+                    e
+                );
                 return Err(Box::new(e));
             }
         };

@@ -8,10 +8,11 @@ if [ -z "${ARCH}" ]; then
     ARCH="$(dpkg --print-architecture)"
 fi
 
-if [ "${ARCH}" -ne "$(dpkg --print-architecture)" ]; then
-    echo "${ARCH} -ne $(dpkg --print-architecture), cross-compiling!"
+if [ "${ARCH}" != "$(dpkg --print-architecture)" ]; then
+    echo "${ARCH} != $(dpkg --print-architecture), cross-compiling!"
     export PKG_CONFIG_ALLOW_CROSS=1
-
+else
+    echo "Building for ${ARCH}"
 fi
 
 
@@ -29,12 +30,16 @@ fi
 echo "Building ${PACKAGE}"
 
 
-if [ -n "${GITHUB_WORKSPACE}" ]; then
-    SOURCE_DIR="${GITHUB_WORKSPACE}"
-else
-    SOURCE_DIR="${HOME}/kanidm"
+SOURCE_DIR="$(cargo metadata --format-version 1 | jq -r .workspace_root)"
+
+echo "Source dir ${SOURCE_DIR}"
+
+if [ ! -d "${SOURCE_DIR}" ]; then
+    echo "Can't find source dir ${SOURCE_DIR}!"
+    exit 1
 fi
-BUILD_DIR="$HOME/build"
+
+BUILD_DIR="$(mktemp -d)"
 
 if [ -z "${SKIP_DEPS}" ]; then
     PACKAGING=1 ./scripts/install_ubuntu_dependencies.sh
@@ -42,14 +47,22 @@ else
     echo "SKIP_DEPS configured, skipping install of rust and packages"
 fi
 
-#shellcheck disable=SC1091
-source "$HOME/.cargo/env"
+if [ -f "${HOME}/.cargo/env" ]; then
+    # shellcheck disable=SC1091
+    source "${HOME}/.cargo/env"
+else
+    echo "Couldn't find cargo env in ${HOME}/.cargo/env that seems weird?"
+fi
 
 # if we can't find cargo then need to update the path
 if [ "$(which cargo | wc -l)" -eq 0 ]; then
     if echo "$PATH" | grep -q '.cargo/bin'; then
         echo "Updating path to include local cargo dir"
         export PATH="$HOME/.cargo/bin:$PATH"
+        if [ "$(which cargo | wc -l)" -eq 0 ]; then
+            echo "Still couldn't find cargo, bailing!"
+            exit 1
+        fi
     fi
 fi
 
@@ -73,14 +86,16 @@ echo "Package Version: ${PACKAGE_VERSION}"
 echo "Updating package dir"
 rm -rf "${BUILD_DIR:?}/*"
 
-echo "Copying source files to ${BUILD_DIR}"
+echo "Copying source files from ${SOURCE_DIR} to ${BUILD_DIR}"
 rsync -a \
     --exclude target \
-    "${SOURCE_DIR}" \
+    "${SOURCE_DIR}/" \
     "${BUILD_DIR}/"
 
 echo "Copying the debian-specific build files"
-cd "${BUILD_DIR}/kanidm"
+cd "${BUILD_DIR}"
+pwd
+ls -la
 rm -rf debian && mkdir -p debian
 cp -R platform/debian/packaging/* debian/
 
