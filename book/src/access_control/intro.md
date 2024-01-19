@@ -1,10 +1,9 @@
 # Access Control
 
 While Kanidm exists to make authorisation decisions on behalf of other services, internally Kanidm
-must make decisions about writes operations to the user and group's within it's database.
-
-To make these choices, Kanidm has an internal set of access controls which are the rules describing
-who may perform which actions.
+must make decisions about writes operations to the entries within it's database. To make these
+choices, Kanidm has an internal set of access controls which are the rules describing who may
+perform what actions.
 
 ## Default Permissions
 
@@ -24,7 +23,8 @@ entities of the same class.
 
 ## High Privilege Groups
 
-Kanidm has a special group called `idm_high_privilege`. This acts as a "taint" on it's members
+Kanidm has a special group called `idm_high_privilege`. This acts as a "taint" on it's members to
+indicate that they have an elevated level of access within Kanidm or other systems.
 
 This taint flag exists to prevent lateral movement from other roles that have higher levels of
 privilege.
@@ -35,6 +35,9 @@ able to modify the credentials of their peers, nor should they be able to escala
 credentials of users in a role such as `idm_admins`. Since `idm_service_desk` and `idm_admins` are
 both tainted with `idm_high_privilege` then this lateral movement is not possible. Only high
 privileged roles are able to then reset the accounts of high privilege users.
+
+You may add other groups to `idm_high_privilege` to achieve the same taint effect for other
+services.
 
 ## Default Permission Groups
 

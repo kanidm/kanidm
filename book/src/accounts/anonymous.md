@@ -19,8 +19,8 @@ applications.
 
 ## Access
 
-By default anonymous has extremely limited access to information in Kanidm. Anonymous may read the
-following data.
+By default anonymous has limited access to information in Kanidm. Anonymous may read the following
+data.
 
 > NOTE: The `Name` attribute is the users public username. This is different to their private and
 > sensitive `LegalName` attribute.
