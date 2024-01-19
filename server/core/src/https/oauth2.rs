@@ -519,11 +519,33 @@ pub async fn oauth2_openid_discovery_get(
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    // let client_id = req.get_url_param("client_id")?;
-
     let res = state
         .qe_r_ref
         .handle_oauth2_openid_discovery(client_id, kopid.eventid)
+        .await;
+
+    match res {
+        Ok(dsc) => (
+            StatusCode::OK,
+            [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+            Json(dsc),
+        )
+            .into_response(),
+        Err(e) => {
+            error!(err = ?e, "Unable to access discovery info");
+            WebError::from(e).response_with_access_control_origin_header()
+        }
+    }
+}
+
+pub async fn oauth2_rfc8414_metadata_get(
+    State(state): State<ServerState>,
+    Path(client_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let res = state
+        .qe_r_ref
+        .handle_oauth2_rfc8414_metadata(client_id, kopid.eventid)
         .await;
 
     match res {
@@ -757,6 +779,12 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/oauth2/openid/:client_id/public_key.jwk",
             get(oauth2_openid_publickey_get),
+        )
+        // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OAUTH2 DISCOVERY URLS
+        .route(
+            "/oauth2/openid/:client_id/.well-known/oauth-authorization-server",
+            get(oauth2_rfc8414_metadata_get).options(oauth2_preflight_options),
         )
         .with_state(state.clone());
 
