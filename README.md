@@ -84,7 +84,7 @@ Kanidm they are "built in". However that is also a strength of LLDAP is that is 
 may make it easier to administer and deploy for you.
 
 While LLDAP offers a simple Web UI as the primary user management frontend, Kanidm currently only
-offers user management via its CLI.
+offers administration functionality via its CLI.
 
 If Kanidm is too complex for your needs, you should check out LLDAP as a smaller alternative. If you
 want a project which has a broader feature set out of the box, then Kanidm might be a better fit.
