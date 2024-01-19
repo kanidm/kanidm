@@ -861,9 +861,60 @@ mod tests {
     // Delete of something that is referenced - must remove ref in other (unless would make inconsistent)
     //
     // this is the invalid case, where the reference is MUST.
+    //
+    // There are very few types in the server where this condition exists. The primary example
+    // is access controls, where a target group is a must condition referencing the
+    // group that the access control applies to.
+    //
+    // This means that the delete of the group will be blocked because it would make the access control
+    // structurally invalid.
     #[test]
     fn test_delete_remove_referent_invalid() {
-        // TODO: uh.. wot
+        let target_uuid = Uuid::new_v4();
+
+        let e_group: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(target_uuid))
+        );
+
+        let e_acp: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlProfile.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlReceiverGroup.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::AccessControlTargetScope.to_value()
+            ),
+            (Attribute::Name, Value::new_iname("acp_referer")),
+            (Attribute::AcpReceiverGroup, Value::Refer(target_uuid)),
+            (
+                Attribute::AcpTargetScope,
+                Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+            )
+        );
+
+        let preload = vec![e_group, e_acp];
+
+        run_delete_test!(
+            Err(OperationError::SchemaViolation(
+                SchemaError::MissingMustAttribute(vec!["acp_receiver_group".to_string()])
+            )),
+            preload,
+            filter!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testgroup_a")
+            )),
+            None,
+            |_qs: &mut QueryServerWriteTransaction| {}
+        );
     }
 
     // Delete of something that holds references.
