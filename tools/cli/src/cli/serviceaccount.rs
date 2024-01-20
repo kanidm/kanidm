@@ -1,5 +1,5 @@
 use crate::common::{try_expire_at_from_string, OpType};
-use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_SSH_PUBLICKEY};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
@@ -254,10 +254,13 @@ impl ServiceAccountOpt {
                     let client = aopt.copt.to_client(OpType::Read).await;
 
                     match client
-                        .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
+                        .idm_service_account_get_attr(
+                            aopt.aopts.account_id.as_str(),
+                            ATTR_SSH_PUBLICKEY,
+                        )
                         .await
                     {
-                        Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
+                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{}", pkey)),
                         Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }
