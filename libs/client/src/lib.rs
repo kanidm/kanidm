@@ -1871,6 +1871,8 @@ impl KanidmClient {
     }
 
     // == generic ssh key handlers
+    // These return the ssh keys in their "authorized keys" form rather than a format that
+    // shows labels and can be easily updated.
     pub async fn idm_account_get_ssh_pubkey(
         &self,
         id: &str,

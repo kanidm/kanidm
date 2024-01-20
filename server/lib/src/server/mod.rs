@@ -781,13 +781,11 @@ pub trait QueryServerTransaction<'a> {
                 })
                 .collect();
             v
-        /*
-        // We previously special cased sshkeys here, but proto string now yields
-        // these as the proper string keys that ldap expects.
-        } else if let Some(k_set) = value.as_sshkey_map() {
-            let v: Vec<_> = k_set.values().cloned().map(|s| s.into_bytes()).collect();
+        // We have to special case ssh keys here as the proto form isn't valid for
+        // sss_ssh_authorized_keys to consume.
+        } else if let Some(key_iter) = value.as_sshpubkey_string_iter() {
+            let v: Vec<_> = key_iter.map(|s| s.into_bytes()).collect();
             Ok(v)
-        */
         } else {
             let v: Vec<_> = value
                 .to_proto_string_clone_iter()

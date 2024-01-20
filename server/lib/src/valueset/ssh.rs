@@ -138,7 +138,11 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.map.values().map(|pk| pk.to_string()))
+        Box::new(
+            self.map
+                .iter()
+                .map(|(tag, pk)| format!("{}: {}", tag, pk.to_string())),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
