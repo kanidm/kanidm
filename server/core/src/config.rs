@@ -7,7 +7,7 @@
 use std::fmt;
 use std::fs::File;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
@@ -75,9 +75,9 @@ fn default_online_backup_versions() -> usize {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct TlsConfiguration {
-    pub chain: String,
-    pub key: String,
-    pub client_ca: Option<String>,
+    pub chain: PathBuf,
+    pub key: PathBuf,
+    pub client_ca: Option<PathBuf>,
 }
 
 /// This is the Server Configuration as read from `server.toml`.
@@ -648,9 +648,9 @@ impl Configuration {
         match (chain, key) {
             (None, None) => {}
             (Some(chainp), Some(keyp)) => {
-                let chain = chainp.to_string();
-                let key = keyp.to_string();
-                let client_ca = client_ca.clone();
+                let chain = PathBuf::from(keyp.clone());
+                let key = PathBuf::from(chainp.clone());
+                let client_ca = client_ca.clone().map(PathBuf::from);
                 self.tls_config = Some(TlsConfiguration {
                     chain,
                     key,
