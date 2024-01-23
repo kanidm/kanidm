@@ -36,7 +36,6 @@ mod repl;
 mod utils;
 
 use std::fmt::{Display, Formatter};
-use std::path::Path;
 use std::sync::Arc;
 
 use crate::utils::touch_file_or_quit;
@@ -628,10 +627,7 @@ pub fn cert_generate_core(config: &Configuration) {
     // Get the cert root
 
     let (tls_key_path, tls_chain_path) = match &config.tls_config {
-        Some(tls_config) => (
-            Path::new(tls_config.key.as_str()),
-            Path::new(tls_config.chain.as_str()),
-        ),
+        Some(tls_config) => (tls_config.key.as_path(), tls_config.chain.as_path()),
         None => {
             error!("Unable to find tls configuration");
             std::process::exit(1);
@@ -820,8 +816,8 @@ pub async fn create_server_core(
     // Setup TLS (if any)
     let _opt_tls_params = match crypto::setup_tls(&config) {
         Ok(opt_tls_params) => opt_tls_params,
-        Err(e) => {
-            error!("Failed to configure TLS parameters -> {:?}", e);
+        Err(()) => {
+            error!("Failed to configure TLS parameters");
             return Err(());
         }
     };
@@ -1017,8 +1013,8 @@ pub async fn create_server_core(
         Some(la) => {
             let opt_ldap_ssl_acceptor = match crypto::setup_tls(&config) {
                 Ok(t) => t,
-                Err(e) => {
-                    error!("Failed to configure LDAP TLS parameters -> {:?}", e);
+                Err(()) => {
+                    error!("Failed to configure LDAP TLS parameters");
                     return Err(());
                 }
             };

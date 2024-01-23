@@ -397,7 +397,10 @@ async fn server_loop(
 
     // If configured, setup TLS client authentication.
     if let Some(client_ca) = tls_param.client_ca.as_ref() {
-        debug!("Configuring client certificates from {}", client_ca);
+        debug!(
+            "Configuring client certificates from {}",
+            client_ca.display()
+        );
 
         let verify = SslVerifyMode::PEER;
         // In future we may add a "require mTLS option" which would necesitate this.
