@@ -93,30 +93,49 @@ pub fn check_privkey_minimums(privkey: &PKeyRef<Private>) -> Result<(), String> 
 
 /// From the server configuration, generate an OpenSSL acceptor that we can use
 /// to build our sockets for HTTPS/LDAPS.
-pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, ErrorStack> {
+pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, ()> {
     match &config.tls_config {
         Some(tls_config) => {
             // Signing algorithm minimums are enforced by the SSLAcceptor - it won't start up with a sha1-signed cert.
-            let mut ssl_builder = SslAcceptor::mozilla_modern(SslMethod::tls())?;
-            ssl_builder.set_certificate_chain_file(&tls_config.chain)?;
+            // https://wiki.mozilla.org/Security/Server_Side_TLS
+            let mut ssl_builder =
+                SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).map_err(|openssl_err| {
+                    error!("Failed to access certificate chain file");
+                    error!(?openssl_err);
+                })?;
 
-            ssl_builder.set_private_key_file(&tls_config.key, SslFiletype::PEM)?;
-            ssl_builder.check_private_key()?;
+            ssl_builder
+                .set_certificate_chain_file(&tls_config.chain)
+                .map_err(|openssl_err| {
+                    error!("Failed to access certificate chain file");
+                    error!(?openssl_err);
+                    let diag = kanidm_lib_file_permissions::diagnose_path(&tls_config.chain);
+                    info!(%diag);
+                })?;
+
+            ssl_builder
+                .set_private_key_file(&tls_config.key, SslFiletype::PEM)
+                .map_err(|openssl_err| {
+                    error!("Failed to access private key file");
+                    error!(?openssl_err);
+                    let diag = kanidm_lib_file_permissions::diagnose_path(&tls_config.chain);
+                    info!(%diag);
+                })?;
+
+            ssl_builder.check_private_key().map_err(|openssl_err| {
+                error!("Failed to validate private key");
+                error!(?openssl_err);
+            })?;
 
             let acceptor = ssl_builder.build();
 
             // let's enforce some TLS minimums!
-            #[allow(clippy::expect_used)]
-            let privkey = acceptor
-                .context()
-                .private_key()
-                .expect("Couldn't pull TLS key after configuring one!");
+            let privkey = acceptor.context().private_key().ok_or_else(|| {
+                error!("Failed to access acceptor private key");
+            })?;
 
             check_privkey_minimums(privkey).map_err(|err| {
-                #[cfg(any(test, debug_assertions))]
-                println!("{}", err);
-                admin_error!("{}", err);
-                ErrorStack::get() // this probably should be a real errorstack but... how?
+                error!("{}", err);
             })?;
 
             Ok(Some(acceptor))
