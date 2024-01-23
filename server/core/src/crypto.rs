@@ -100,7 +100,7 @@ pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, ()> {
             // https://wiki.mozilla.org/Security/Server_Side_TLS
             let mut ssl_builder =
                 SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).map_err(|openssl_err| {
-                    error!("Failed to access certificate chain file");
+                    error!("Failed to start TLS builder");
                     error!(?openssl_err);
                 })?;
 
