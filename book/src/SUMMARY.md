@@ -26,6 +26,7 @@
   - [Authentication and Credentials](accounts/authentication.md)
   - [Groups](accounts/groups.md)
   - [Service Accounts](accounts/service.md)
+  - [Anonymous](accounts/anonymous.md)
   - [Account Policy](accounts/policy.md)
   - [POSIX Accounts and Groups](accounts/posix.md)
 
@@ -52,6 +53,8 @@
 - [Synchronisation](sync/concepts.md)
   - [FreeIPA](sync/freeipa.md)
   - [LDAP](sync/ldap.md)
+
+- [Access Control](access_control/intro.md)
 
 ## Support
 
