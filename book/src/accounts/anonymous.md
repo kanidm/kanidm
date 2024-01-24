@@ -22,7 +22,7 @@ applications.
 By default anonymous has limited access to information in Kanidm. Anonymous may read the following
 data.
 
-> NOTE: The `Name` attribute is the users public username. This is different to their private and
+> NOTE: The `Name` attribute is the user's public username. This is different to their private and
 > sensitive `LegalName` attribute.
 
 ### People
@@ -44,5 +44,7 @@ data.
 
 ## Disabling the Anonymous Account
 
-The anonymous is like any other and can be expired to prevent it's use. See the
+The anonymous is like any other and can be expired to prevent its use. See the
 [account validity section](./people#account-validity)
+
+When disabled, this will prevent stateless unix clients from authenticating to Kanidm.
