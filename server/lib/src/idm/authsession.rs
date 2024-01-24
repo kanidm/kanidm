@@ -3,7 +3,6 @@
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
 use std::collections::BTreeMap;
-pub use std::collections::BTreeSet as Set;
 use std::convert::TryFrom;
 use std::fmt;
 use std::time::Duration;
