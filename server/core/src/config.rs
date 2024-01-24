@@ -648,8 +648,8 @@ impl Configuration {
         match (chain, key) {
             (None, None) => {}
             (Some(chainp), Some(keyp)) => {
-                let chain = PathBuf::from(keyp.clone());
-                let key = PathBuf::from(chainp.clone());
+                let chain = PathBuf::from(chainp.clone());
+                let key = PathBuf::from(keyp.clone());
                 let client_ca = client_ca.clone().map(PathBuf::from);
                 self.tls_config = Some(TlsConfiguration {
                     chain,
