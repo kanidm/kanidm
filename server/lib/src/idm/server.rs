@@ -628,7 +628,7 @@ pub trait IdmServerTransaction<'a> {
         &mut self,
         uuid: Uuid,
         session_id: Uuid,
-        parent_session_id: Uuid,
+        parent_session_id: Option<Uuid>,
         iat: i64,
         ct: Duration,
     ) -> Result<Option<Arc<Entry<EntrySealed, EntryCommitted>>>, OperationError> {
@@ -661,9 +661,6 @@ pub trait IdmServerTransaction<'a> {
         let oauth2_session = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id));
-        let uat_session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
-            .and_then(|sessions| sessions.get(&parent_session_id));
 
         if let Some(oauth2_session) = oauth2_session {
             // We have the oauth2 session, lets check it.
@@ -674,24 +671,35 @@ pub trait IdmServerTransaction<'a> {
                 return Ok(None);
             }
 
-            if let Some(uat_session) = uat_session {
-                let parent_session_valid = !matches!(uat_session.state, SessionState::RevokedAt(_));
-                if parent_session_valid {
-                    security_info!("A valid parent and oauth2 session value exists for this token");
-                } else {
+            // Do we have a parent session? If yes, we need to enforce it's presence.
+            if let Some(parent_session_id) = parent_session_id {
+                let uat_session = entry
+                    .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+                    .and_then(|sessions| sessions.get(&parent_session_id));
+
+                if let Some(uat_session) = uat_session {
+                    let parent_session_valid =
+                        !matches!(uat_session.state, SessionState::RevokedAt(_));
+                    if parent_session_valid {
+                        security_info!(
+                            "A valid parent and oauth2 session value exists for this token"
+                        );
+                    } else {
+                        security_info!(
+                            "The parent oauth2 session associated to this token is revoked."
+                        );
+                        return Ok(None);
+                    }
+                } else if grace_valid {
                     security_info!(
-                        "The parent oauth2 session associated to this token is revoked."
+                        "The token grace window is in effect. Assuming parent session valid."
                     );
+                } else {
+                    security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
                     return Ok(None);
                 }
-            } else if grace_valid {
-                security_info!(
-                    "The token grace window is in effect. Assuming parent session valid."
-                );
-            } else {
-                security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
-                return Ok(None);
             }
+            // If we don't have a parent session id, we are good to proceed.
         } else if grace_valid {
             security_info!("The token grace window is in effect. Assuming valid.");
         } else {

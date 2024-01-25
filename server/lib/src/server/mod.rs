@@ -1630,6 +1630,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_3_to_4()?;
         }
 
+        if previous_version <= DOMAIN_LEVEL_4 && domain_info_version >= DOMAIN_LEVEL_5 {
+            self.migrate_domain_4_to_5()?;
+        }
+
         Ok(())
     }
 

@@ -9,6 +9,7 @@ use crate::schema::{SchemaReadTransaction, SchemaTransaction};
 use crate::valueset;
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
 
 use webauthn_rs::prelude::{
@@ -261,10 +262,11 @@ pub struct ReplOauthClaimMapV1 {
     pub values: BTreeMap<Uuid, BTreeSet<String>>,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplOauth2SessionV1 {
     pub refer: Uuid,
-    pub parent: Uuid,
+    pub parent: Option<Uuid>,
     pub state: ReplSessionStateV1,
     // pub expiry: Option<String>,
     pub issued_at: String,

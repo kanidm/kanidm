@@ -544,6 +544,7 @@ pub enum DbValueApiToken {
     },
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueOauth2Session {
     V1 {
@@ -563,6 +564,18 @@ pub enum DbValueOauth2Session {
         refer: Uuid,
         #[serde(rename = "p")]
         parent: Uuid,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "r")]
+        rs_uuid: Uuid,
+    },
+    V3 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "p")]
+        parent: Option<Uuid>,
         #[serde(rename = "e")]
         state: DbValueSessionStateV1,
         #[serde(rename = "i")]

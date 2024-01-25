@@ -154,6 +154,14 @@ pub(crate) enum Oauth2TokenType {
         // We stash some details here for oidc.
         nonce: Option<String>,
     },
+    ClientAccess {
+        scopes: BTreeSet<String>,
+        session_id: Uuid,
+        uuid: Uuid,
+        expiry: time::OffsetDateTime,
+        iat: i64,
+        nbf: i64,
+    },
 }
 
 impl fmt::Display for Oauth2TokenType {
@@ -164,6 +172,9 @@ impl fmt::Display for Oauth2TokenType {
             }
             Oauth2TokenType::Refresh { session_id, .. } => {
                 write!(f, "refresh_token ({session_id}) ")
+            }
+            Oauth2TokenType::ClientAccess { session_id, .. } => {
+                write!(f, "client_access_token ({session_id})")
             }
         }
     }
@@ -409,7 +420,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 
                 // Now we know we can load the shared attrs.
                 let name = ent
-                    .get_ava_single_iname(Attribute::OAuth2RsName)
+                    .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
@@ -660,6 +671,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 uuid,
                 ..
             }
+            | Oauth2TokenType::ClientAccess {
+                session_id,
+                expiry,
+                uuid,
+                ..
+            }
             | Oauth2TokenType::Refresh {
                 session_id,
                 expiry,
@@ -738,11 +755,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // check the secret.
-        match &o2rs.type_ {
+        let client_authentication_valid = match &o2rs.type_ {
             OauthRSType::Basic { authz_secret, .. } => {
                 match secret {
                     Some(secret) => {
-                        if authz_secret != &secret {
+                        if authz_secret == &secret {
+                            true
+                        } else {
                             security_info!("Invalid OAuth2 client_id secret");
                             return Err(Oauth2Error::AuthenticationRequired);
                         }
@@ -757,14 +776,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid - no further action needed.
-            OauthRSType::Public { .. } => {}
+            OauthRSType::Public { .. } => false,
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
-
-        // TODO: add refresh token grant type.
-        //  If it's a refresh token grant, are the consent permissions the same?
-
         match &token_req.grant_type {
             GrantTypeReq::AuthorizationCode {
                 code,
@@ -777,6 +792,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 code_verifier.as_deref(),
                 ct,
             ),
+            GrantTypeReq::ClientCredentials { scope } => {
+                if client_authentication_valid {
+                    self.check_oauth2_token_client_credentials(o2rs, scope.as_ref(), ct)
+                } else {
+                    security_info!(
+                        "Unable to proceed with client credentials grant unless client authentication is provided and valid"
+                    );
+                    Err(Oauth2Error::AuthenticationRequired)
+                }
+            }
             GrantTypeReq::RefreshToken {
                 refresh_token,
                 scope,
@@ -1011,8 +1036,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })?;
 
         match token {
-            Oauth2TokenType::Access { .. } => {
-                admin_error!("attempt to refresh with access token");
+            Oauth2TokenType::Access { .. } | Oauth2TokenType::ClientAccess { .. } => {
+                admin_error!("attempt to refresh with an access token");
                 Err(Oauth2Error::InvalidToken)
             }
             Oauth2TokenType::Refresh {
@@ -1035,7 +1060,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Check the session is still valid. This call checks the parent session
                 // and the OAuth2 session.
                 let valid = self
-                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
+                    .check_oauth2_account_uuid_valid(
+                        uuid,
+                        session_id,
+                        Some(parent_session_id),
+                        iat,
+                        ct,
+                    )
                     .map_err(|_| admin_error!("Account is not valid"));
 
                 let Ok(Some(entry)) = valid else {
@@ -1115,6 +1146,93 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 )
             }
         }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn check_oauth2_token_client_credentials(
+        &mut self,
+        o2rs: &Oauth2RS,
+        req_scopes: Option<&BTreeSet<String>>,
+        ct: Duration,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        let scopes = req_scopes.cloned().unwrap_or_default();
+
+        // Validate all request scopes have valid syntax.
+        validate_scopes(&scopes)?;
+
+        // Of these scopes, which do we have available?
+        // TODO
+
+        // == ready to build the access token ==
+
+        let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
+        let iat = ct.as_secs() as i64;
+        let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
+        let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
+
+        let session_id = Uuid::new_v4();
+
+        let scope = if scopes.is_empty() {
+            None
+        } else {
+            Some(str_join(&scopes))
+        };
+
+        let uuid = o2rs.uuid;
+
+        let access_token_raw = Oauth2TokenType::ClientAccess {
+            scopes,
+            session_id,
+            uuid,
+            expiry,
+            iat,
+            nbf: iat,
+        };
+
+        let access_token_data = serde_json::to_vec(&access_token_raw).map_err(|e| {
+            admin_error!(err = ?e, "Unable to encode token data");
+            Oauth2Error::ServerError(OperationError::SerdeJsonError)
+        })?;
+
+        let access_token = o2rs
+            .token_fernet
+            .encrypt_at_time(&access_token_data, ct.as_secs());
+
+        // Write the session to the db
+        let session = Value::Oauth2Session(
+            session_id,
+            Oauth2Session {
+                parent: None,
+                state: SessionState::ExpiresAt(expiry),
+                issued_at: odt_ct,
+                rs_uuid: o2rs.uuid,
+            },
+        );
+
+        // We need to create this session on the o2rs
+        let modlist = ModifyList::new_list(vec![Modify::Present(
+            Attribute::OAuth2Session.into(),
+            session,
+        )]);
+
+        self.qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                admin_error!("Failed to persist OAuth2 session record {:?}", e);
+                Oauth2Error::ServerError(e)
+            })?;
+
+        Ok(AccessTokenResponse {
+            access_token,
+            token_type: "Bearer".to_string(),
+            expires_in,
+            refresh_token: None,
+            scope,
+            id_token: None,
+        })
     }
 
     fn generate_access_token_response(
@@ -1271,7 +1389,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let session = Value::Oauth2Session(
             session_id,
             Oauth2Session {
-                parent: parent_session_id,
+                parent: Some(parent_session_id),
                 state: SessionState::ExpiresAt(refresh_expiry),
                 issued_at: odt_ct,
                 rs_uuid: o2rs.uuid,
@@ -1495,25 +1613,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        let failed_scopes = req_scopes
-            .iter()
-            .filter(|&s| !OAUTHSCOPE_RE.is_match(s))
-            .cloned()
-            .collect::<Vec<String>>();
-        if !failed_scopes.is_empty() {
-            let requested_scopes_string = req_scopes
-                .iter()
-                .cloned()
-                .collect::<Vec<String>>()
-                .join(",");
-            admin_error!(
-                "Invalid OAuth2 request - requested scopes ({}) but ({}) failed to pass validation rules - all must match the regex {}",
-                    requested_scopes_string,
-                    failed_scopes.join(","),
-                    OAUTHSCOPE_RE.as_str()
-            );
-            return Err(Oauth2Error::InvalidScope);
-        }
+        // Validate all request scopes have valid syntax.
+        validate_scopes(&req_scopes)?;
 
         let uat_scopes: BTreeSet<String> = o2rs
             .scope_maps
@@ -1758,6 +1859,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // We are authenticated! Yay! Now we can actually check things ...
 
+        let prefer_short_username = o2rs.prefer_short_username;
+
         let token: Oauth2TokenType = o2rs
             .token_fernet
             .decrypt(&intr_req.token)
@@ -1793,7 +1896,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
                 // Is the user expired, or the OAuth2 session invalid?
                 let valid = self
-                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
+                    .check_oauth2_account_uuid_valid(
+                        uuid,
+                        session_id,
+                        Some(parent_session_id),
+                        iat,
+                        ct,
+                    )
                     .map_err(|_| admin_error!("Account is not valid"));
 
                 let Ok(Some(entry)) = valid else {
@@ -1819,12 +1928,73 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
                 let exp = expiry.unix_timestamp();
 
+                let preferred_username = if prefer_short_username {
+                    Some(account.name.clone())
+                } else {
+                    Some(account.spn.clone())
+                };
+
                 let token_type = Some("access_token".to_string());
                 Ok(AccessTokenIntrospectResponse {
                     active: true,
                     scope,
                     client_id: Some(client_id.clone()),
-                    username: Some(account.spn),
+                    username: preferred_username,
+                    token_type,
+                    iat: Some(iat),
+                    exp: Some(exp),
+                    nbf: Some(nbf),
+                    sub: Some(uuid.to_string()),
+                    aud: Some(client_id),
+                    iss: None,
+                    jti: None,
+                })
+            }
+            Oauth2TokenType::ClientAccess {
+                scopes,
+                session_id,
+                uuid,
+                expiry,
+                iat,
+                nbf,
+            } => {
+                // Has this token expired?
+                let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
+                if expiry <= odt_ct {
+                    security_info!(?uuid, "access token has expired, returning inactive");
+                    return Ok(AccessTokenIntrospectResponse::inactive());
+                }
+
+                let username = Some(o2rs.name.clone());
+
+                // We can't do the same validity check for the client as we do with an account
+                let valid = self
+                    .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
+                    .map_err(|_| admin_error!("Account is not valid"));
+
+                if !matches!(valid, Ok(Some(_))) {
+                    security_info!(
+                        ?uuid,
+                        "access token has account not valid, returning inactive"
+                    );
+                    return Ok(AccessTokenIntrospectResponse::inactive());
+                };
+
+                let scope = if scopes.is_empty() {
+                    None
+                } else {
+                    Some(str_join(&scopes))
+                };
+
+                let exp = expiry.unix_timestamp();
+
+                let token_type = Some("access_token".to_string());
+
+                Ok(AccessTokenIntrospectResponse {
+                    active: true,
+                    scope,
+                    client_id: Some(client_id.clone()),
+                    username,
                     token_type,
                     iat: Some(iat),
                     exp: Some(exp),
@@ -1897,7 +2067,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
                 // Is the user expired, or the OAuth2 session invalid?
                 let valid = self
-                    .check_oauth2_account_uuid_valid(uuid, session_id, parent_session_id, iat, ct)
+                    .check_oauth2_account_uuid_valid(
+                        uuid,
+                        session_id,
+                        Some(parent_session_id),
+                        iat,
+                        ct,
+                    )
                     .map_err(|_| admin_error!("Account is not valid"));
 
                 let Ok(Some(entry)) = valid else {
@@ -1942,6 +2118,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 })
             }
             // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
+            Oauth2TokenType::ClientAccess { .. } => {
+                warn!("OpenID userinfo introspection of client access tokens is not currently supported.");
+                Err(Oauth2Error::InvalidToken)
+            }
             Oauth2TokenType::Refresh { .. } => Err(Oauth2Error::InvalidToken),
         }
     }
@@ -2252,6 +2432,30 @@ fn str_join(set: &BTreeSet<String>) -> String {
     buf
 }
 
+fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
+    let failed_scopes = req_scopes
+        .iter()
+        .filter(|&s| !OAUTHSCOPE_RE.is_match(s))
+        .cloned()
+        .collect::<Vec<String>>();
+
+    if !failed_scopes.is_empty() {
+        let requested_scopes_string = req_scopes
+            .iter()
+            .cloned()
+            .collect::<Vec<String>>()
+            .join(",");
+        admin_error!(
+                "Invalid OAuth2 request - requested scopes ({}) but ({}) failed to pass validation rules - all must match the regex {}",
+                    requested_scopes_string,
+                    failed_scopes.join(","),
+                    OAUTHSCOPE_RE.as_str()
+            );
+        return Err(Oauth2Error::InvalidScope);
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
@@ -2346,10 +2550,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -2492,10 +2693,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -3486,8 +3684,10 @@ mod tests {
             .expect("Failed to access internals of the refresh token");
 
         let session_id = match reflected_token {
-            Oauth2TokenType::Refresh { session_id, .. } => session_id,
             Oauth2TokenType::Access { session_id, .. } => session_id,
+            Oauth2TokenType::Refresh { .. } | Oauth2TokenType::ClientAccess { .. } => {
+                unreachable!()
+            }
         };
 
         assert!(idms_prox_write.commit().is_ok());
@@ -3509,7 +3709,7 @@ mod tests {
         // Delete the resource server.
 
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            Attribute::OAuth2RsName,
+            Attribute::Name,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -4439,7 +4639,7 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                Attribute::OAuth2RsName,
+                Attribute::Name,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -4505,7 +4705,7 @@ mod tests {
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
-                Attribute::OAuth2RsName,
+                Attribute::Name,
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
@@ -4617,7 +4817,7 @@ mod tests {
 
         // Now trigger the delete of the RS
         let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
-            Attribute::OAuth2RsName,
+            Attribute::Name,
             PartialValue::new_iname("test_resource_server")
         )));
 
@@ -4935,7 +5135,7 @@ mod tests {
 
         let refresh_exp = match reflected_token {
             Oauth2TokenType::Refresh { expiry, .. } => expiry.unix_timestamp(),
-            Oauth2TokenType::Access { .. } => unreachable!(),
+            Oauth2TokenType::Access { .. } | Oauth2TokenType::ClientAccess { .. } => unreachable!(),
         };
 
         let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
@@ -5593,6 +5793,132 @@ mod tests {
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
         assert!(token_response.token_type == "Bearer");
+
+        assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_basic_client_credentials_grant_valid(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+        let client_authz =
+            Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
+
+        // scope: Some(btreeset!["invalid_scope".to_string()]),
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::ClientCredentials { scope: None },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: Some(secret),
+        };
+
+        let oauth2_token = idms_prox_write
+            .check_oauth2_token_exchange(None, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(oauth2_token.token_type == "Bearer");
+
+        // Check Oauth2 Token Introspection
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let intr_request = AccessTokenIntrospectRequest {
+            token: oauth2_token.access_token.clone(),
+            token_type_hint: None,
+        };
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+
+        eprintln!("👉  {intr_response:?}");
+        assert!(intr_response.active);
+        assert!(intr_response.scope.as_deref() == None);
+        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
+        assert!(intr_response.username.as_deref() == Some("test_resource_server"));
+        assert!(intr_response.token_type.as_deref() == Some("access_token"));
+        assert!(intr_response.iat == Some(ct.as_secs() as i64));
+        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+
+        drop(idms_prox_read);
+
+        // Assert we can revoke.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let revoke_request = TokenRevokeRequest {
+            token: oauth2_token.access_token.clone(),
+            token_type_hint: None,
+        };
+        assert!(idms_prox_write
+            .oauth2_token_revoke(client_authz.as_deref().unwrap(), &revoke_request, ct,)
+            .is_ok());
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now must be invalid.
+        let ct = ct + GRACE_WINDOW;
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let intr_request = AccessTokenIntrospectRequest {
+            token: oauth2_token.access_token.clone(),
+            token_type_hint: None,
+        };
+
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+        assert!(!intr_response.active);
+
+        drop(idms_prox_read);
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_basic_client_credentials_grant_invalid(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        // Public Client
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::ClientCredentials { scope: None },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: None,
+        };
+
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(None, &token_req, ct)
+                .unwrap_err(),
+            Oauth2Error::AuthenticationRequired
+        );
+
+        // Incorrect Password
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::ClientCredentials { scope: None },
+            client_id: Some("invalid_resource_server".to_string()),
+            client_secret: Some("wrong password".to_string()),
+        };
+
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(None, &token_req, ct)
+                .unwrap_err(),
+            Oauth2Error::AuthenticationRequired
+        );
+
+        // Invalid scopes
+        // scope: Some(btreeset!["invalid_scope".to_string()]),
+
+        // Scopes we aren't a member-of
 
         assert!(idms_prox_write.commit().is_ok());
     }

@@ -85,6 +85,10 @@ pub enum GrantTypeReq {
         redirect_uri: Url,
         code_verifier: Option<String>,
     },
+    ClientCredentials {
+        #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
+        scope: Option<BTreeSet<String>>,
+    },
     RefreshToken {
         refresh_token: String,
         #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]

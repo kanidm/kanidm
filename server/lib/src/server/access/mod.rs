@@ -2719,10 +2719,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -2764,10 +2761,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -2790,10 +2784,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(Uuid::new_v4())),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("second_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("second_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("second_resource_server")
@@ -2832,14 +2823,14 @@ mod tests {
 
         let se_a = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
-            filter_all!(f_pres(Attribute::OAuth2RsName)),
+            filter_all!(f_pres(Attribute::Name)),
         );
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
-            filter_all!(f_pres(Attribute::OAuth2RsName)),
+            filter_all!(f_pres(Attribute::Name)),
         );
         let ex_b = vec![];
 

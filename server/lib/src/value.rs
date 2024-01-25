@@ -1030,8 +1030,7 @@ impl From<OauthClaimMapJoin> for DbValueOauthClaimMapJoinV1 {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Oauth2Session {
-    pub parent: Uuid,
-    // pub expiry: Option<OffsetDateTime>,
+    pub parent: Option<Uuid>,
     pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub rs_uuid: Uuid,

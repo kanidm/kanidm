@@ -127,10 +127,7 @@ mod tests {
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -177,10 +174,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")

@@ -49,7 +49,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .cloned()?;
 
                 let name = entry
-                    .get_ava_single_iname(Attribute::OAuth2RsName)
+                    .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)?;
 
                 Some(AppLink::Oauth2 {
@@ -92,10 +92,7 @@ mod tests {
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")

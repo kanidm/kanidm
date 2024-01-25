@@ -47,12 +47,13 @@ pub const DOMAIN_LEVEL_1: DomainVersion = 1;
 pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
+pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_4;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_4;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 
 // On test builds, define to 60 seconds
 #[cfg(test)]

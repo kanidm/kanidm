@@ -877,12 +877,53 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL4: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_OAUTH2_RS_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
+    name: EntryClass::OAuth2ResourceServer.into(),
+    description: "The class representing a configured Oauth2 Resource Server".to_string(),
+
+    systemmay: vec![
+        Attribute::Description.into(),
+        Attribute::OAuth2RsScopeMap.into(),
+        Attribute::OAuth2RsSupScopeMap.into(),
+        Attribute::Rs256PrivateKeyDer.into(),
+        Attribute::OAuth2JwtLegacyCryptoEnable.into(),
+        Attribute::OAuth2PreferShortUsername.into(),
+        Attribute::OAuth2RsOriginLanding.into(),
+        Attribute::Image.into(),
+        Attribute::OAuth2RsClaimMap.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::Spn.into(),
+        Attribute::DisplayName.into(),
+        Attribute::OAuth2RsOrigin.into(),
+        Attribute::OAuth2RsTokenKey.into(),
+        Attribute::Es256PrivateKeyDer.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
     name: EntryClass::OAuth2ResourceServerBasic.into(),
     description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
 
     systemmay: vec![ Attribute::OAuth2AllowInsecureClientDisablePkce.into()],
+    systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
+    systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
+    name: EntryClass::OAuth2ResourceServerBasic.into(),
+    description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
+
+    systemmay: vec![
+        Attribute::OAuth2AllowInsecureClientDisablePkce.into(),
+        Attribute::OAuth2Session.into(),
+    ],
     systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
     systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
     ..Default::default()

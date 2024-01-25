@@ -131,12 +131,19 @@ impl SessionConsistency {
                         _ => {
                             // Okay, now check the issued / grace time for parent enforcement.
                                 if sessions.map(|session_map| {
-                                    if let Some(parent_session) = session_map.get(&session.parent) {
-                                        // Only match non-revoked sessions
-                                        !matches!(parent_session.state, SessionState::RevokedAt(_))
+                                    if let Some(parent_session_id) = session.parent.as_ref() {
+                                        // A parent session id exists - validate it exists in the account.
+                                        if let Some(parent_session) = session_map.get(parent_session_id) {
+                                            // Only match non-revoked sessions
+                                            !matches!(parent_session.state, SessionState::RevokedAt(_))
+                                        } else {
+                                            // not found
+                                            false
+                                        }
                                     } else {
-                                        // not found
-                                        false
+                                        // The session specifically has no parent session and so is
+                                        // not bounded by it's presence.
+                                        true
                                     }
                                 }).unwrap_or(false) {
                                     // The parent exists and is still valid, go ahead
@@ -145,7 +152,7 @@ impl SessionConsistency {
                                 } else {
                                     // Can't find the parent. Are we within grace window
                                     if session.issued_at + GRACE_WINDOW <= curtime_odt {
-                                        info!(%o2_session_id, parent_id = %session.parent, "Removing orphaned oauth2 session");
+                                        info!(%o2_session_id, parent_id = ?session.parent, "Removing orphaned oauth2 session");
                                         Some(PartialValue::Refer(*o2_session_id))
                                     } else {
                                         // Grace window is still in effect
@@ -339,10 +346,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -381,7 +385,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent: parent_id,
+                        parent: Some(parent_id),
                         // Set to the exp window.
                         state,
                         issued_at,
@@ -514,10 +518,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -555,7 +556,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent: parent_id,
+                        parent: Some(parent_id),
                         // Note we set the exp to None so we are not removing based on exp
                         state: SessionState::NeverExpires,
                         issued_at,
@@ -682,10 +683,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -716,7 +714,7 @@ mod tests {
         let session = Value::Oauth2Session(
             session_id,
             Oauth2Session {
-                parent,
+                parent: Some(parent),
                 // Note we set the exp to None so we are asserting the removal is due to the lack
                 // of the parent session.
                 state: SessionState::NeverExpires,

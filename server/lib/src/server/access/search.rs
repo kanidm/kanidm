@@ -191,7 +191,7 @@ fn search_oauth2_filter_entry<'a>(
                     Attribute::Class.as_ref(),
                     Attribute::DisplayName.as_ref(),
                     Attribute::Uuid.as_ref(),
-                    Attribute::OAuth2RsName.as_ref(),
+                    Attribute::Name.as_ref(),
                     Attribute::OAuth2RsOrigin.as_ref(),
                     Attribute::OAuth2RsOriginLanding.as_ref(),
                     Attribute::Image.as_ref()
