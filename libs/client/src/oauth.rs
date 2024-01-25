@@ -2,7 +2,7 @@ use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::{
     ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
     ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_NAME,
+    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_NAME,
     ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING, ATTR_OAUTH2_RS_TOKEN_KEY,
     ATTR_RS256_PRIVATE_KEY_DER,
 };
@@ -27,7 +27,7 @@ impl KanidmClient {
         let mut new_oauth2_rs = Entry::default();
         new_oauth2_rs
             .attrs
-            .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
@@ -47,7 +47,7 @@ impl KanidmClient {
         let mut new_oauth2_rs = Entry::default();
         new_oauth2_rs
             .attrs
-            .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![name.to_string()]);
+            .insert(ATTR_NAME.to_string(), vec![name.to_string()]);
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
@@ -91,7 +91,7 @@ impl KanidmClient {
         if let Some(newname) = name {
             update_oauth2_rs
                 .attrs
-                .insert(ATTR_OAUTH2_RS_NAME.to_string(), vec![newname.to_string()]);
+                .insert(ATTR_NAME.to_string(), vec![newname.to_string()]);
         }
         if let Some(newdisplayname) = displayname {
             update_oauth2_rs.attrs.insert(
