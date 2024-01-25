@@ -652,7 +652,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .token_fernet
             .decrypt(&revoke_req.token)
             .map_err(|_| {
-                admin_error!("Failed to decrypt token introspection request");
+                admin_error!("Failed to decrypt token revoke request");
                 Oauth2Error::InvalidRequest
             })
             .and_then(|data| {
@@ -1175,7 +1175,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let scope = if scopes.is_empty() {
             None
         } else {
-            Some(str_join(&scopes))
+            warn!("client credentials may not request scopes");
+            return Err(Oauth2Error::InvalidScope);
+            // Some(str_join(&scopes))
         };
 
         let uuid = o2rs.uuid;
@@ -1456,7 +1458,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         o2rs.token_fernet
             .decrypt(token)
             .map_err(|_| {
-                admin_error!("Failed to decrypt token introspection request");
+                admin_error!("Failed to decrypt token reflection request");
                 OperationError::CryptographyError
             })
             .and_then(|data| {
@@ -1908,7 +1910,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 let Ok(Some(entry)) = valid else {
                     security_info!(
                         ?uuid,
-                        "access token has no account not valid, returning inactive"
+                        "access token account is not valid, returning inactive"
                     );
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 };
@@ -1965,17 +1967,15 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 }
 
-                let username = Some(o2rs.name.clone());
-
                 // We can't do the same validity check for the client as we do with an account
                 let valid = self
                     .check_oauth2_account_uuid_valid(uuid, session_id, None, iat, ct)
                     .map_err(|_| admin_error!("Account is not valid"));
 
-                if !matches!(valid, Ok(Some(_))) {
+                let Ok(Some(entry)) = valid else {
                     security_info!(
                         ?uuid,
-                        "access token has account not valid, returning inactive"
+                        "access token account is not valid, returning inactive"
                     );
                     return Ok(AccessTokenIntrospectResponse::inactive());
                 };
@@ -1989,6 +1989,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 let exp = expiry.unix_timestamp();
 
                 let token_type = Some("access_token".to_string());
+
+                let username = if prefer_short_username {
+                    entry
+                        .get_ava_single_iname(Attribute::Name)
+                        .map(|s| s.to_string())
+                } else {
+                    entry.get_ava_single_proto_string(Attribute::Spn)
+                };
 
                 Ok(AccessTokenIntrospectResponse {
                     active: true,
@@ -5841,7 +5849,7 @@ mod tests {
         assert!(intr_response.active);
         assert!(intr_response.scope.as_deref() == None);
         assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("test_resource_server"));
+        assert!(intr_response.username.as_deref() == Some("test_resource_server@example.com"));
         assert!(intr_response.token_type.as_deref() == Some("access_token"));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));
