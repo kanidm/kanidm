@@ -87,10 +87,14 @@ A new class for applications will be added. Each application will have a single
 associated group so only members of this group will be able to bind with the
 application password for the associated application.
 
-(NOTE: Should we also disallow the creation of application passwords for an
-application if the user is not a member of the associated group? This will
-complicate reference integrity, as removing a member will require to remove the
-application password.)
+Creating a new application will not create an associated group automatically. It
+will be the administrator who will configure the association after creating the
+application and optionally a new group. It will be possible to associate
+`idm_all_persons` to an application. Removing an application will not delete the
+associated group nor its members.
+
+When users are removed from a group associated to an application all of their
+application passwords for the application will be disabled.
 
 Applications need to have service-account like properties where tokens can be
 generated for them. These are optional since an anonymous bind to kanidm and
@@ -108,8 +112,9 @@ and allows adding tokens to future types).
 
 ### Accounts
 
-The user may wish to have multiple passwords per application. Each password may
-have a label to identify it. For example:
+The user may wish to have multiple passwords per application. Each password must
+have a label to identify it, a enabled/disabled flag and a last used timestamp.
+For example:
 
 ```
   MAIL
@@ -124,10 +129,17 @@ Person accounts will need a new `Attribute::ApplicationPassword` that stores a
 secrets and their labeling and the references to the applications.
 
 ```
-type ApplicationPasswords = BTreeMap<Uuid, (String, Password)>;
-                                     ^        ^         ^
-                                     |        |         +-> The hashed password
-                                     |        +-> Application password label
+struct ApplicationPAssword {
+    label: String,
+    enabled: bool,
+    last_used: Duration,
+    password: Password,
+}
+
+type ApplicationPasswords = BTreeMap<Uuid, ApplicationPassword>;
+                                     ^        ^
+                                     |        |
+                                     |        +-> Application password
                                      +-> Application password UUID
 
 type ApplicationUuid = Uuid;
@@ -147,14 +159,19 @@ is only displayed once when the user creates it and it is not possible to
 recover the clear-text form, only hashed form is stored. It is not allowed to
 store duplicated application passwords (same app refer and label).
 
+Modifying the enabled/disabled flag will update the last_used field.
+
 We do not need temporary locks or holds - users can delete and recreate as
 needed.
+
+There will be a system-level cleanup task to delete disabled application
+passwords after a configurable time since last used.
 
 ### Reference integrity
 
 Since application passwords are related to applications, on delete of an
 application all entries that have a bound application password should be removed
-from user accounts. The associated group will be automatically deleted too.
+from user accounts.
 
 ### Access controls
 
@@ -168,9 +185,6 @@ to, additionally to listing and deleting, self-create their own application
 passwords.
 
 ### LDAP
-
-As application passwords will replace binding with UNIX passwords, the
-set-ldap-allow-unix-password-bind domain setting will be removed.
 
 The rootdse needs to be extended to include the applications as additional
 naming contexts.
@@ -202,6 +216,8 @@ configuration requirements:
 
 * Delete an application
 
+* Manage application - group association
+
 * Manage the application api-token
 
 * List application passwords
@@ -210,5 +226,4 @@ configuration requirements:
 
 * Delete application password
 
-The application associated group will be managed with the existing `group`
-sub-commands.
+* Enable or disable application password
