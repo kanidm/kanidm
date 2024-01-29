@@ -1202,6 +1202,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.remove_ava(Attribute::Class, &EntryClass::Recycled.into());
         self.remove_ava(Attribute::Class, &EntryClass::Conflict.into());
         self.purge_ava(Attribute::SourceUuid);
+        self.purge_ava(Attribute::RecycledDirectMemberOf);
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);

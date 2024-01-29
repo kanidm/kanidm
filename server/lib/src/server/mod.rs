@@ -1857,6 +1857,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname("testperson1")),
                 (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1987,6 +1988,7 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (

@@ -397,6 +397,7 @@ mod tests {
                 Attribute::PrivateCookieKey.to_value()
             ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
+            (Attribute::AcpCreateClass, EntryClass::Account.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
             (Attribute::AcpCreateClass, EntryClass::System.to_value()),
             (Attribute::AcpCreateClass, EntryClass::DomainInfo.to_value()),
@@ -438,7 +439,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person", "system"],
+                "class": ["account", "person", "system"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
@@ -464,7 +465,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person", "system"],
+                "class": ["account", "person", "system"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
@@ -526,7 +527,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person", "system"],
+                "class": ["account", "person", "system"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]

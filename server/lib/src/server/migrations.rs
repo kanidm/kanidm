@@ -742,9 +742,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     /// Migrations for Oauth to move rs name from a dedicated type to name
     /// and to allow oauth2 sessions on resource servers for client credentials
-    /// grants.
+    /// grants. Accounts, persons and service accounts have some attributes
+    /// relocated to allow oauth2 rs to become accounts.
     pub fn migrate_domain_4_to_5(&mut self) -> Result<(), OperationError> {
         let idm_schema_classes = [
+            SCHEMA_CLASS_PERSON_DL5.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL5.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
             IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
@@ -757,6 +761,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(?err, "migrate_domain_4_to_5 -> Error");
                 err
             })?;
+
+        // Now we remove attributes from service accounts that have been unable to be set
+        // via a user interface for more than a year.
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Account.into()),
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+        ]));
+        let modlist = ModifyList::new_list(vec![
+            Modify::Purged(Attribute::PassKeys.into()),
+            Modify::Purged(Attribute::AttestedPasskeys.into()),
+            Modify::Purged(Attribute::CredentialUpdateIntentToken.into()),
+            Modify::Purged(Attribute::RadiusSecret.into()),
+        ]);
+        self.internal_modify(&filter, &modlist)?;
 
         // Now move all oauth2 rs name.
         let filter = filter!(f_eq(

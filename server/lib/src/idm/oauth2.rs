@@ -2496,6 +2496,8 @@ mod tests {
     const UAT_EXPIRE: u64 = 5;
     const TOKEN_EXPIRE: u64 = 900;
 
+    const UUID_TESTGROUP: Uuid = uuid!("a3028223-bf20-47d5-8b65-967b5d2bb3eb");
+
     macro_rules! create_code_verifier {
         ($key:expr) => {{
             let code_verifier = $key.to_string();
@@ -2545,10 +2547,19 @@ mod tests {
     ) -> (String, UserAuthToken, Identity, Uuid) {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let uuid = Uuid::new_v4();
+        let rs_uuid = Uuid::new_v4();
 
-        let e: Entry<EntryInit, EntryNew> = entry_init!(
+        let entry_group: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
+            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+        );
+
+        let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -2557,7 +2568,7 @@ mod tests {
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
-            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
@@ -2571,7 +2582,7 @@ mod tests {
             (
                 Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
-                    UUID_SYSTEM_ADMINS,
+                    UUID_TESTGROUP,
                     btreeset![OAUTH2_SCOPE_GROUPS.to_string()]
                 )
                 .expect("invalid oauthscope")
@@ -2605,12 +2616,12 @@ mod tests {
                 Value::new_bool(prefer_short_username)
             )
         );
-        let ce = CreateEvent::new_internal(vec![e]);
+        let ce = CreateEvent::new_internal(vec![entry_rs, entry_group, E_TESTPERSON_1.clone()]);
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(uuid)
+            .internal_search_uuid(rs_uuid)
             .expect("Failed to retrieve OAuth2 resource entry ");
         let secret = entry
             .get_ava_single_secret(Attribute::OAuth2RsBasicSecret)
@@ -2619,12 +2630,12 @@ mod tests {
 
         // Setup the uat we'll be using - note for these tests they *require*
         // the parent session to be valid and present!
-
         let session_id = uuid::Uuid::new_v4();
 
         let account = idms_prox_write
-            .target_to_account(UUID_ADMIN)
+            .target_to_account(UUID_TESTPERSON_1)
             .expect("account must exist");
+
         let uat = account
             .to_userauthtoken(
                 session_id,
@@ -2668,7 +2679,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2679,7 +2690,7 @@ mod tests {
 
         idms_prox_write.commit().expect("failed to commit");
 
-        (secret, uat, ident, uuid)
+        (secret, uat, ident, rs_uuid)
     }
 
     async fn setup_oauth2_resource_server_public(
@@ -2688,10 +2699,19 @@ mod tests {
     ) -> (UserAuthToken, Identity, Uuid) {
         let mut idms_prox_write = idms.proxy_write(ct).await;
 
-        let uuid = Uuid::new_v4();
+        let rs_uuid = Uuid::new_v4();
 
-        let e: Entry<EntryInit, EntryNew> = entry_init!(
+        let entry_group: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Description, Value::new_utf8s("testgroup")),
+            (Attribute::Uuid, Value::Uuid(UUID_TESTGROUP)),
+            (Attribute::Member, Value::Refer(UUID_TESTPERSON_1),)
+        );
+
+        let entry_rs: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -2700,7 +2720,7 @@ mod tests {
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
-            (Attribute::Uuid, Value::Uuid(uuid)),
+            (Attribute::Uuid, Value::Uuid(rs_uuid)),
             (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
@@ -2713,7 +2733,7 @@ mod tests {
             // System admins
             (
                 Attribute::OAuth2RsScopeMap,
-                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["groups".to_string()])
+                Value::new_oauthscopemap(UUID_TESTGROUP, btreeset!["groups".to_string()])
                     .expect("invalid oauthscope")
             ),
             (
@@ -2733,7 +2753,7 @@ mod tests {
                 .expect("invalid oauthscope")
             )
         );
-        let ce = CreateEvent::new_internal(vec![e]);
+        let ce = CreateEvent::new_internal(vec![entry_rs, entry_group, E_TESTPERSON_1.clone()]);
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
         // Setup the uat we'll be using - note for these tests they *require*
@@ -2742,7 +2762,7 @@ mod tests {
         let session_id = uuid::Uuid::new_v4();
 
         let account = idms_prox_write
-            .target_to_account(UUID_ADMIN)
+            .target_to_account(UUID_TESTPERSON_1)
             .expect("account must exist");
         let uat = account
             .to_userauthtoken(
@@ -2787,7 +2807,7 @@ mod tests {
         idms_prox_write
             .qs_write
             .internal_modify(
-                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN))),
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
                 &modlist,
             )
             .expect("Failed to modify user");
@@ -2798,7 +2818,7 @@ mod tests {
 
         idms_prox_write.commit().expect("failed to commit");
 
-        (uat, ident, uuid)
+        (uat, ident, rs_uuid)
     }
 
     async fn setup_idm_admin(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
@@ -3439,7 +3459,7 @@ mod tests {
         assert!(intr_response.active);
         assert!(intr_response.scope.as_deref() == Some("openid supplement"));
         assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+        assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
         assert!(intr_response.token_type.as_deref() == Some("access_token"));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));
@@ -3451,7 +3471,7 @@ mod tests {
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::AccountExpire.into(),
                 v_expire,
@@ -3706,7 +3726,7 @@ mod tests {
         // Check it is now there
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let valid = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
@@ -3728,7 +3748,7 @@ mod tests {
         // revoked.
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let revoked = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
@@ -4161,7 +4181,7 @@ mod tests {
                 == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
                     .unwrap()
         );
-        assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
+        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
         assert!(oidc.aud == "test_resource_server");
         assert!(oidc.iat == iat);
         assert!(oidc.nbf == Some(iat));
@@ -4175,8 +4195,8 @@ mod tests {
         assert!(oidc.amr.is_none());
         assert!(oidc.azp == Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
-        assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
-        assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+        assert!(oidc.s_claims.name == Some("Test Person 1".to_string()));
+        assert!(oidc.s_claims.preferred_username == Some("testperson1@example.com".to_string()));
         assert!(
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
@@ -4327,7 +4347,7 @@ mod tests {
             .expect("Failed to verify oidc");
 
         // Do we have the short username in the token claims?
-        assert!(oidc.s_claims.preferred_username == Some("admin".to_string()));
+        assert!(oidc.s_claims.preferred_username == Some("testperson1".to_string()));
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
             .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
@@ -4572,7 +4592,7 @@ mod tests {
             .verify_exp(iat)
             .expect("Failed to verify oidc");
 
-        assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
+        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5384,7 +5404,7 @@ mod tests {
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let valid = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
@@ -5503,7 +5523,7 @@ mod tests {
                 Attribute::OAuth2RsClaimMap.into(),
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
-                    UUID_SYSTEM_ADMINS,
+                    UUID_TESTGROUP,
                     btreeset!["value_a".to_string()],
                 ),
             ),
@@ -5528,7 +5548,7 @@ mod tests {
                 Attribute::OAuth2RsClaimMap.into(),
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
-                    UUID_SYSTEM_ADMINS,
+                    UUID_TESTGROUP,
                     btreeset!["value_a".to_string()],
                 ),
             ),
@@ -5642,7 +5662,7 @@ mod tests {
                 == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
                     .unwrap()
         );
-        assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
+        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
         assert!(oidc.aud == "test_resource_server");
         assert!(oidc.iat == iat);
         assert!(oidc.nbf == Some(iat));
@@ -5656,8 +5676,8 @@ mod tests {
         assert!(oidc.amr.is_none());
         assert!(oidc.azp == Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
-        assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
-        assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+        assert!(oidc.s_claims.name == Some("Test Person 1".to_string()));
+        assert!(oidc.s_claims.preferred_username == Some("testperson1@example.com".to_string()));
         assert!(
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
@@ -5706,7 +5726,7 @@ mod tests {
         assert!(intr_response.active);
         assert!(intr_response.scope.as_deref() == Some("openid supplement"));
         assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+        assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
         assert!(intr_response.token_type.as_deref() == Some("access_token"));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));

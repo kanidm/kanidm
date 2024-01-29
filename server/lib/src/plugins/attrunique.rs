@@ -500,6 +500,7 @@ mod tests {
     fn test_pre_create_name_unique() {
         let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Description, Value::new_utf8s("testperson")),
             (Attribute::DisplayName, Value::new_utf8s("testperson"))
@@ -524,6 +525,7 @@ mod tests {
     fn test_pre_create_name_unique_2() {
         let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Description, Value::new_utf8s("testperson")),
             (Attribute::DisplayName, Value::new_utf8s("testperson"))

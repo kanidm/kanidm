@@ -990,6 +990,7 @@ mod tests {
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -1077,6 +1078,7 @@ mod tests {
 
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -1303,6 +1305,7 @@ mod tests {
     fn test_delete_remove_reference_oauth2_claim_map() {
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()

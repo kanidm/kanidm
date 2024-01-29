@@ -184,10 +184,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid
             .into_iter()
+            // We previously excluded this to avoid doing unnecesary work on entries that
+            // were moving to a conflict state, and the survivor was staying "as is" on this
+            // node. However, this gets messy with dyngroups and memberof, where on a conflict
+            // the memberships are deleted across the replication boundary. In these cases
+            // we need dyngroups to see the valid entries, even if they are "identical to before"
+            // to re-assert all their memberships are valid.
+            /*
             .filter(|(cand, _)| {
                 // Exclude anything that is conflicted as a result of the conflict plugins.
                 !conflict_uuids.contains(&cand.get_uuid())
             })
+            */
             .unzip();
 
         // We don't need to process conflict_creates here, since they are all conflicting

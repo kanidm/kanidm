@@ -2008,8 +2008,8 @@ mod tests {
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (
                 Attribute::Uuid,
@@ -2021,7 +2021,8 @@ mod tests {
 
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson2")),
             (
                 Attribute::Uuid,
@@ -2034,7 +2035,8 @@ mod tests {
         // We need to add these and then push through the state machine.
         let e_ts = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value().clone()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson3")),
             (
                 Attribute::Uuid,
@@ -2082,7 +2084,7 @@ mod tests {
         let t_uuid = vs_refer![uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27")] as _;
         let r_uuid = server_txn.resolve_valueset(&t_uuid);
         debug!("{:?}", r_uuid);
-        assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
+        assert!(r_uuid == Ok(vec!["testperson2@example.com".to_string()]));
 
         // Resolve UUID non-exist
         let t_uuid_non = vs_refer![uuid!("b83e98f0-3d2e-41d2-9796-d8d993289c86")] as _;

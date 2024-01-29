@@ -84,6 +84,7 @@ mod tests {
 
         let e_rs: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()

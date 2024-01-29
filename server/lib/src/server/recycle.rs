@@ -148,7 +148,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Get this entries uuid.
             let u: Uuid = e.get_uuid();
 
-            if let Some(riter) = e.get_ava_as_refuuid(Attribute::DirectMemberOf) {
+            if let Some(riter) = e.get_ava_as_refuuid(Attribute::RecycledDirectMemberOf) {
                 for g_uuid in riter {
                     dm_mods
                         .entry(g_uuid)
@@ -291,6 +291,7 @@ mod tests {
         // Create some recycled objects
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (
@@ -303,6 +304,7 @@ mod tests {
 
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson2")),
             (
@@ -397,6 +399,7 @@ mod tests {
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (
@@ -532,6 +535,7 @@ mod tests {
         // First, create an entry, then push it through the lifecycle.
         let e_ts = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (
@@ -610,6 +614,7 @@ mod tests {
     fn create_user(name: &str, uuid: &str) -> Entry<EntryInit, EntryNew> {
         entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname(name)),
             (
@@ -639,7 +644,7 @@ mod tests {
     }
 
     fn check_entry_has_mo(qs: &mut QueryServerWriteTransaction, name: &str, mo: &str) -> bool {
-        let e = qs
+        let entry = qs
             .internal_search(filter!(f_eq(
                 Attribute::Name,
                 PartialValue::new_iname(name)
@@ -648,7 +653,9 @@ mod tests {
             .pop()
             .unwrap();
 
-        e.attribute_equality(Attribute::MemberOf, &PartialValue::new_refer_s(mo).unwrap())
+        trace!(?entry);
+
+        entry.attribute_equality(Attribute::MemberOf, &PartialValue::new_refer_s(mo).unwrap())
     }
 
     #[qs_test]

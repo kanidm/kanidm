@@ -141,6 +141,7 @@ pub enum Attribute {
     PrivateCookieKey,
     PrivilegeExpiry,
     RadiusSecret,
+    RecycledDirectMemberOf,
     Replicated,
     Rs256PrivateKeyDer,
     Scope,
@@ -329,6 +330,7 @@ impl TryFrom<String> for Attribute {
             ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
             ATTR_PRIVILEGE_EXPIRY => Attribute::PrivilegeExpiry,
             ATTR_RADIUS_SECRET => Attribute::RadiusSecret,
+            ATTR_RECYCLEDDIRECTMEMBEROF => Attribute::RecycledDirectMemberOf,
             ATTR_REPLICATED => Attribute::Replicated,
             ATTR_RS256_PRIVATE_KEY_DER => Attribute::Rs256PrivateKeyDer,
             ATTR_SCOPE => Attribute::Scope,
@@ -492,6 +494,7 @@ impl From<Attribute> for &'static str {
             Attribute::PrivateCookieKey => ATTR_PRIVATE_COOKIE_KEY,
             Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
             Attribute::RadiusSecret => ATTR_RADIUS_SECRET,
+            Attribute::RecycledDirectMemberOf => ATTR_RECYCLEDDIRECTMEMBEROF,
             Attribute::Replicated => ATTR_REPLICATED,
             Attribute::Rs256PrivateKeyDer => ATTR_RS256_PRIVATE_KEY_DER,
             Attribute::Scope => ATTR_SCOPE,
@@ -826,7 +829,6 @@ impl From<BuiltinAccount> for EntryInitNew {
 }
 
 lazy_static! {
-
     /// Builtin System Admin account.
     pub static ref BUILTIN_ACCOUNT_ADMIN: BuiltinAccount = BuiltinAccount {
         account_type: AccountType::ServiceAccount,
@@ -863,12 +865,18 @@ pub const UUID_TESTPERSON_2: Uuid = uuid!("538faac7-4d29-473b-a59d-23023ac19955"
 lazy_static! {
     pub static ref E_TESTPERSON_1: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson1")),
+        (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
         (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_1))
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
+        (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson2")),
+        (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
         (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_2))
     );
 }

@@ -96,7 +96,6 @@ impl Plugin for Spn {
         let filt_in = filter!(f_or!([
             f_eq(Attribute::Class, EntryClass::Group.into()),
             f_eq(Attribute::Class, EntryClass::Account.into()),
-            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
         ]));
 
         let all_cand = match qs
@@ -153,8 +152,6 @@ impl Spn {
         for ent in cand.iter_mut() {
             if ent.attribute_equality(Attribute::Class, &EntryClass::Group.into())
                 || ent.attribute_equality(Attribute::Class, &EntryClass::Account.into())
-                || ent
-                    .attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
             {
                 let spn = ent
                     .generate_spn(domain_name)
@@ -217,7 +214,6 @@ impl Spn {
             &filter!(f_or!([
                 f_eq(Attribute::Class, EntryClass::Group.into()),
                 f_eq(Attribute::Class, EntryClass::Account.into()),
-                f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
             ])),
             &modlist!([m_purge(Attribute::Spn)]),
         )

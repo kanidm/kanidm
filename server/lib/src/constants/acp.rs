@@ -813,6 +813,7 @@ lazy_static! {
         ],
         create_classes: vec![
             EntryClass::Object,
+            EntryClass::Account,
             EntryClass::OAuth2ResourceServer,
             EntryClass::OAuth2ResourceServerBasic,
             EntryClass::OAuth2ResourceServerPublic,
