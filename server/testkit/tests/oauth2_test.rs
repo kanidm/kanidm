@@ -1,5 +1,5 @@
 #![deny(warnings)]
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::convert::TryFrom;
 use std::str::FromStr;
 
@@ -346,7 +346,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let response = client
         .post(rsclient.make_url("/oauth2/token/introspect"))
-        .basic_auth("test_integration", Some(client_secret))
+        .basic_auth("test_integration", Some(client_secret.clone()))
         .form(&intr_request)
         .send()
         .await
@@ -414,6 +414,59 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     eprintln!("oidc {oidc:?}");
 
     assert!(userinfo == oidc);
+
+    // Step 6 - Show that our client can perform a client credentials grant
+
+    let form_req: AccessTokenRequest = GrantTypeReq::ClientCredentials {
+        scope: Some(BTreeSet::from([
+            "email".to_string(),
+            "read".to_string(),
+            "openid".to_string(),
+        ])),
+    }
+    .into();
+
+    let response = client
+        .post(rsclient.make_url("/oauth2/token"))
+        .basic_auth("test_integration", Some(client_secret.clone()))
+        .form(&form_req)
+        .send()
+        .await
+        .expect("Failed to send client credentials request.");
+
+    assert!(response.status() == reqwest::StatusCode::OK);
+
+    let atr = response
+        .json::<AccessTokenResponse>()
+        .await
+        .expect("Unable to decode AccessTokenResponse");
+
+    // Step 7 - inspect the granted client credentials token.
+    let intr_request = AccessTokenIntrospectRequest {
+        token: atr.access_token.clone(),
+        token_type_hint: None,
+    };
+
+    let response = client
+        .post(rsclient.make_url("/oauth2/token/introspect"))
+        .basic_auth("test_integration", Some(client_secret))
+        .form(&intr_request)
+        .send()
+        .await
+        .expect("Failed to send token introspect request.");
+
+    assert!(response.status() == reqwest::StatusCode::OK);
+
+    let tir = response
+        .json::<AccessTokenIntrospectResponse>()
+        .await
+        .expect("Unable to decode AccessTokenIntrospectResponse");
+
+    assert!(tir.active);
+    assert!(tir.scope.is_some());
+    assert!(tir.client_id.as_deref() == Some("test_integration"));
+    assert!(tir.username.as_deref() == Some("test_integration@localhost"));
+    assert!(tir.token_type.as_deref() == Some("access_token"));
 
     // auth back with admin so we can test deleting things
     let res = rsclient
