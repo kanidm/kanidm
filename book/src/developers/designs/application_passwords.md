@@ -96,19 +96,15 @@ associated group nor its members.
 When users are removed from a group associated to an application all of their
 application passwords for the application will be disabled.
 
-Applications need to have service-account like properties where tokens can be
-generated for them. These are optional since an anonymous bind to kanidm and
-searching under the basedn or application base dn will continue to work.
+Application schema class will supplement service account class to allow
+generating tokens for them. These are optional since an anonymous bind to kanidm
+and searching under the basedn or application base dn will continue to work.
 
 Application should have a URL reference to help admins identify where the
 application may be located or accessed.
 
 (NOTE: Future, it could be good to allow customisable instructions for users on
 where to go to use their app password?)
-
-(NOTE: To make it easier to manage tokens, it could be good to have a
-"token-capable" class type to prevent duplication this with service-accounts,
-and allows adding tokens to future types).
 
 ### Accounts
 
