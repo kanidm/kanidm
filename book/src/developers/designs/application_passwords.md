@@ -174,9 +174,6 @@ passwords.
 
 ### LDAP
 
-The rootdse needs to be extended to include the applications as additional
-naming contexts.
-
 The bind DN regular expression needs to adjusted to detect and determine the
 bind dn if it is related to an application or not. The application bind dn
 regular expression will capture the user name, and the application name.
