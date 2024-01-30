@@ -109,8 +109,7 @@ where to go to use their app password?)
 ### Accounts
 
 The user may wish to have multiple passwords per application. Each password must
-have a label to identify it, a enabled/disabled flag and a last used timestamp.
-For example:
+have, at minimum, a label to identify it. For example:
 
 ```
   MAIL
@@ -127,8 +126,6 @@ secrets and their labeling and the references to the applications.
 ```
 struct ApplicationPAssword {
     label: String,
-    enabled: bool,
-    last_used: Duration,
     password: Password,
 }
 
@@ -155,13 +152,8 @@ is only displayed once when the user creates it and it is not possible to
 recover the clear-text form, only hashed form is stored. It is not allowed to
 store duplicated application passwords (same app refer and label).
 
-Modifying the enabled/disabled flag will update the last_used field.
-
 We do not need temporary locks or holds - users can delete and recreate as
 needed.
-
-There will be a system-level cleanup task to delete disabled application
-passwords after a configurable time since last used.
 
 ### Reference integrity
 
@@ -221,5 +213,3 @@ configuration requirements:
 * Create application password
 
 * Delete application password
-
-* Enable or disable application password
