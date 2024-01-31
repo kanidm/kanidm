@@ -56,13 +56,13 @@
 
 - [Access Control](access_control/intro.md)
 
-## Support
+# Support
 
 - [Troubleshooting](troubleshooting.md)
 - [Frequently Asked Questions](frequently_asked_questions.md)
 - [Glossary of Technical Terms](glossary.md)
 
-## For Developers
+# For Developers
 
 - [Developer Guide](DEVELOPER_README.md)
 - [FAQ](developers/faq.md)
