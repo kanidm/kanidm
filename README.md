@@ -56,10 +56,10 @@ When we develop features we follow our projects guidelines on [rights and ethics
 
 ## Getting in Contact / Questions
 
-We have a [gitter community channel] where project members are always happy to answer questions.
+We have a Matrix-powered [gitter community channel] where project members are always happy to chat and answer questions.
 Alternately you can open a new [github discussion].
 
-[gitter community channel]: https://gitter.im/kanidm/community
+[gitter community channel]: https://app.gitter.im/#/room/#kanidm_community:gitter.im
 [github discussion]: https://github.com/kanidm/kanidm/discussions
 
 ## What does Kanidm mean?
