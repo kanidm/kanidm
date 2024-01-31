@@ -43,6 +43,7 @@ pub const SYSTEM_INDEX_VERSION: i64 = 30;
  */
 pub type DomainVersion = u32;
 
+pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 pub const DOMAIN_LEVEL_1: DomainVersion = 1;
 pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;

@@ -1159,9 +1159,9 @@ impl QueryServer {
 
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
-            // Start with our minimum supported level.
+            // Start with our level as zero.
             // This will be reloaded from the DB shortly :)
-            d_vers: DOMAIN_MIN_LEVEL,
+            d_vers: DOMAIN_LEVEL_0,
             d_name: domain_name.clone(),
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.

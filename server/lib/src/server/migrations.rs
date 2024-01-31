@@ -797,6 +797,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 ent.get_ava_single_iname(Attribute::OAuth2RsName)
                     .map(|rs_name| {
                         let modlist = vec![
+                            Modify::Present(Attribute::Class.into(), EntryClass::Account.into()),
                             Modify::Present(Attribute::Name.into(), Value::new_iname(rs_name)),
                             m_purge(Attribute::OAuth2RsName),
                         ];
