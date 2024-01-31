@@ -144,7 +144,10 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
     match reqs.next().await {
         Some(Ok(AdminTaskResponse::RecoverAccount { password })) => match output_mode {
             ConsoleOutputMode::JSON => {
-                eprintln!("{{\"password\":\"{}\"}}", password)
+                let json_output = serde_json::json!({
+                    "password": password
+                });
+                println!("{}", json_output);
             }
             ConsoleOutputMode::Text => {
                 info!(new_password = ?password)

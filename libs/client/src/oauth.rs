@@ -1,8 +1,10 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME, ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
+    ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
     ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT, ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_NAME, ATTR_OAUTH2_RS_ORIGIN,
+    ATTR_OAUTH2_PREFER_SHORT_USERNAME, ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_NAME,
+    ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING, ATTR_OAUTH2_RS_TOKEN_KEY,
+    ATTR_RS256_PRIVATE_KEY_DER,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
@@ -105,27 +107,27 @@ impl KanidmClient {
         }
         if let Some(newlanding) = landing {
             update_oauth2_rs.attrs.insert(
-                "oauth2_rs_origin_landing".to_string(),
+                ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
                 vec![newlanding.to_string()],
             );
         }
         if reset_secret {
             update_oauth2_rs
                 .attrs
-                .insert("oauth2_rs_basic_secret".to_string(), Vec::new());
+                .insert(ATTR_OAUTH2_RS_BASIC_SECRET.to_string(), Vec::new());
         }
         if reset_token_key {
             update_oauth2_rs
                 .attrs
-                .insert("oauth2_rs_token_key".to_string(), Vec::new());
+                .insert(ATTR_OAUTH2_RS_TOKEN_KEY.to_string(), Vec::new());
         }
         if reset_sign_key {
             update_oauth2_rs
                 .attrs
-                .insert("es256_private_key_der".to_string(), Vec::new());
+                .insert(ATTR_ES256_PRIVATE_KEY_DER.to_string(), Vec::new());
             update_oauth2_rs
                 .attrs
-                .insert("rs256_private_key_der".to_string(), Vec::new());
+                .insert(ATTR_RS256_PRIVATE_KEY_DER.to_string(), Vec::new());
         }
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await

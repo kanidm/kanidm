@@ -13,7 +13,7 @@ from kanidm.utils import load_config
 
 logging.basicConfig(level=logging.DEBUG)
 
-EXAMPLE_CONFIG_FILE = "../examples/config_localhost"
+EXAMPLE_CONFIG_FILE = str(Path(__file__).parent.parent.parent / "examples/config_localhost")
 
 
 @pytest.fixture(scope="function")

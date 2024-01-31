@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "kanidm"
-version = "0.0.3"
+version = "1.0.0"
 description = "Kanidm client library"
 license = "MPL-2.0"
 

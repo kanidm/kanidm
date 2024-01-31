@@ -74,12 +74,14 @@ pub struct ServerState {
 impl ServerState {
     fn reinflate_uuid_from_bytes(&self, input: &str) -> Option<Uuid> {
         match JwsCompact::from_str(input) {
-            Ok(val) => self
-                .jws_signer
-                .verify(&val)
-                .ok()
-                .and_then(|jws| jws.from_json::<SessionId>().ok())
-                .map(|inner| inner.sessionid),
+            Ok(val) => match self.jws_signer.verify(&val) {
+                Ok(val) => val.from_json::<SessionId>().ok(),
+                Err(err) => {
+                    error!("Failed to unmarshal JWT from headers: {:?}", err);
+                    None
+                }
+            }
+            .map(|inner| inner.sessionid),
             Err(_) => None,
         }
     }
