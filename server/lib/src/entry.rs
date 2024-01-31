@@ -2313,6 +2313,25 @@ where
         &self.valid.ecstate
     }
 
+    /// Determine if any attribute of this entry changed excluding the attribute named.
+    /// This allows for detection of entry changes unless the change was to a specific
+    /// attribute.
+    pub(crate) fn entry_changed_excluding_attribute(&self, attr: Attribute, cid: &Cid) -> bool {
+        use crate::repl::entry::State;
+
+        match self.get_changestate().current() {
+            State::Live { at: _, changes } => {
+                changes.iter().any(|(change_attr, change_id)| {
+                    change_id >= cid &&
+                    change_attr != attr.as_ref() &&
+                    // This always changes, and could throw off other detections.
+                    change_attr != Attribute::LastModifiedCid.as_ref()
+                })
+            }
+            State::Tombstone { at } => at == cid,
+        }
+    }
+
     /// ⚠️  - Invalidate an entry by resetting it's change state to time-zero. This entry
     /// can never be replicated after this.
     /// This is a TEST ONLY method and will never be exposed in production.

@@ -286,6 +286,8 @@ pub struct Oauth2RS {
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
+    client_scopes: BTreeSet<String>,
+    client_sup_scopes: BTreeSet<String>,
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
     jws_signer: Oauth2JwsSigner,
@@ -460,6 +462,41 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .unwrap_or_default();
 
+                // From our scope maps we can now determine what scopes would be granted to our
+                // client during a client credentials authentication.
+                let (client_scopes, client_sup_scopes) = if let Some(client_member_of) = ent.get_ava_refer(Attribute::MemberOf) {
+                    let client_scopes =
+                        scope_maps
+                        .iter()
+                        .filter_map(|(u, m)| {
+                            if client_member_of.contains(u) {
+                                Some(m.iter())
+                            } else {
+                                None
+                            }
+                        })
+                        .flatten()
+                        .cloned()
+                        .collect::<BTreeSet<_>>();
+
+                    let client_sup_scopes = sup_scope_maps
+                        .iter()
+                        .filter_map(|(u, m)| {
+                            if client_member_of.contains(u) {
+                                Some(m.iter())
+                            } else {
+                                None
+                            }
+                        })
+                        .flatten()
+                        .cloned()
+                        .collect::<BTreeSet<_>>();
+
+                    (client_scopes, client_sup_scopes)
+                } else {
+                    (BTreeSet::default(), BTreeSet::default())
+                };
+
                 let e_claim_maps = ent
                     .get_ava_set(Attribute::OAuth2RsClaimMap)
                     .and_then(|vs| vs.as_oauthclaim_map());
@@ -584,6 +621,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     origin_https,
                     scope_maps,
                     sup_scope_maps,
+                    client_scopes,
+                    client_sup_scopes,
                     claim_map,
                     token_fernet,
                     jws_signer,
@@ -1155,15 +1194,33 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         req_scopes: Option<&BTreeSet<String>>,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let scopes = req_scopes.cloned().unwrap_or_default();
+        let req_scopes = req_scopes.cloned().unwrap_or_default();
 
         // Validate all request scopes have valid syntax.
-        validate_scopes(&scopes)?;
+        validate_scopes(&req_scopes)?;
 
         // Of these scopes, which do we have available?
-        // TODO
+        let avail_scopes: Vec<String> = req_scopes
+            .intersection(&o2rs.client_scopes)
+            .map(|s| s.to_string())
+            .collect();
+
+        if avail_scopes.len() != req_scopes.len() {
+            admin_warn!(
+                ident = %o2rs.name,
+                requested_scopes = ?req_scopes,
+                available_scopes = ?o2rs.client_scopes,
+                "Client does not have access to the requested scopes"
+            );
+            return Err(Oauth2Error::AccessDenied);
+        }
 
         // == ready to build the access token ==
+
+        let granted_scopes = avail_scopes
+            .into_iter()
+            .chain(o2rs.client_sup_scopes.iter().cloned())
+            .collect::<BTreeSet<_>>();
 
         let odt_ct = OffsetDateTime::UNIX_EPOCH + ct;
         let iat = ct.as_secs() as i64;
@@ -1172,18 +1229,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let session_id = Uuid::new_v4();
 
-        let scope = if scopes.is_empty() {
+        let scope = if granted_scopes.is_empty() {
             None
         } else {
-            warn!("client credentials may not request scopes");
-            return Err(Oauth2Error::InvalidScope);
-            // Some(str_join(&scopes))
+            Some(str_join(&granted_scopes))
         };
 
         let uuid = o2rs.uuid;
 
         let access_token_raw = Oauth2TokenType::ClientAccess {
-            scopes,
+            scopes: granted_scopes,
             session_id,
             uuid,
             expiry,
@@ -5867,12 +5922,18 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert!(intr_response.scope.as_deref() == None);
-        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("test_resource_server@example.com"));
-        assert!(intr_response.token_type.as_deref() == Some("access_token"));
-        assert!(intr_response.iat == Some(ct.as_secs() as i64));
-        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.scope.as_deref(), Some("supplement"));
+        assert_eq!(
+            intr_response.client_id.as_deref(),
+            Some("test_resource_server")
+        );
+        assert_eq!(
+            intr_response.username.as_deref(),
+            Some("test_resource_server@example.com")
+        );
+        assert_eq!(intr_response.token_type.as_deref(), Some("access_token"));
+        assert_eq!(intr_response.iat, Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.nbf, Some(ct.as_secs() as i64));
 
         drop(idms_prox_read);
 
@@ -5910,7 +5971,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let (_secret, _uat, _ident, _) =
+        let (secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -5932,7 +5993,7 @@ mod tests {
         // Incorrect Password
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope: None },
-            client_id: Some("invalid_resource_server".to_string()),
+            client_id: Some("test_resource_server".to_string()),
             client_secret: Some("wrong password".to_string()),
         };
 
@@ -5943,10 +6004,35 @@ mod tests {
             Oauth2Error::AuthenticationRequired
         );
 
-        // Invalid scopes
-        // scope: Some(btreeset!["invalid_scope".to_string()]),
+        // Invalid scope
+        let scope = Some(btreeset!["💅".to_string()]);
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::ClientCredentials { scope },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: Some(secret.clone()),
+        };
+
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(None, &token_req, ct)
+                .unwrap_err(),
+            Oauth2Error::InvalidScope
+        );
 
         // Scopes we aren't a member-of
+        let scope = Some(btreeset!["invalid_scope".to_string()]);
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::ClientCredentials { scope },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: Some(secret.clone()),
+        };
+
+        assert_eq!(
+            idms_prox_write
+                .check_oauth2_token_exchange(None, &token_req, ct)
+                .unwrap_err(),
+            Oauth2Error::AccessDenied
+        );
 
         assert!(idms_prox_write.commit().is_ok());
     }
