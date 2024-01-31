@@ -148,9 +148,13 @@ impl<'a> QueryServerReadTransaction<'a> {
             }
         };
 
-        debug!(?ranges, "these ranges will be supplied");
+        debug!("these ranges will be supplied");
+        debug!(supply_ranges = ?ranges);
+        debug!(consumer_ranges = ?ctx_ranges);
+        debug!(supplier_ranges = ?our_ranges);
 
         if ranges.is_empty() {
+            debug!("No Changes Available");
             return Ok(ReplIncrementalContext::NoChangesAvailable);
         }
 

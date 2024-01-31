@@ -762,6 +762,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
+        // Reload mid txn so that the next modification works.
+        self.force_schema_reload();
+        self.reload()?;
+
         // Now we remove attributes from service accounts that have been unable to be set
         // via a user interface for more than a year.
         let filter = filter!(f_and!([
