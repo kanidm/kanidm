@@ -16,7 +16,7 @@ pub async fn setup_test() -> QueryServer {
         Backend::new(BackendConfig::new_test("main"), idxmeta, false).expect("Failed to init BE");
 
     // Init is called via the proc macro
-    QueryServer::new(be, schema_outer, "example.com".to_string())
+    QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
         .expect("Failed to setup Query Server")
 }
 
@@ -35,7 +35,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
             .expect("Failed to init BE");
 
         // Init is called via the proc macro
-        QueryServer::new(be, schema_outer, "example.com".to_string())
+        QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
             .expect("Failed to setup Query Server")
     };
 
@@ -50,7 +50,7 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
             .expect("Failed to init BE");
 
         // Init is called via the proc macro
-        QueryServer::new(be, schema_outer, "example.com".to_string())
+        QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
             .expect("Failed to setup Query Server")
     };
 

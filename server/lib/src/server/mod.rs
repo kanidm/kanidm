@@ -78,7 +78,6 @@ pub struct SystemConfig {
 #[derive(Clone)]
 pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
-    s_uuid: Uuid,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
     system_config: Arc<CowCell<SystemConfig>>,
     be: Backend,
@@ -89,6 +88,7 @@ pub struct QueryServer {
     resolve_filter_cache:
         Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
+    cid_max: Arc<CowCell<Cid>>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -102,6 +102,9 @@ pub struct QueryServerReadTransaction<'a> {
     _db_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    // Future we may need this.
+    // cid_max: CowCellReadTxn<Cid>,
+    trim_cid: Cid,
 }
 
 unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
@@ -114,7 +117,7 @@ pub struct QueryServerWriteTransaction<'a> {
     d_info: CowCellWriteTxn<'a, DomainInfo>,
     system_config: CowCellWriteTxn<'a, SystemConfig>,
     curtime: Duration,
-    cid: Cid,
+    cid: CowCellWriteTxn<'a, Cid>,
     trim_cid: Cid,
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
@@ -1014,6 +1017,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
+    pub(crate) fn trim_cid(&self) -> &Cid {
+        &self.trim_cid
+    }
+
     // Verify the data content of the server is as expected. This will probably
     // call various functions for validation, including possibly plugin
     // verifications.
@@ -1140,15 +1147,21 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema, domain_name: String) -> Result<Self, OperationError> {
-        let (s_uuid, d_uuid) = {
+    pub fn new(
+        be: Backend,
+        schema: Schema,
+        domain_name: String,
+        curtime: Duration,
+    ) -> Result<Self, OperationError> {
+        let (s_uuid, d_uuid, ts_max) = {
             let mut wr = be.write()?;
             let s_uuid = wr.get_db_s_uuid()?;
             let d_uuid = wr.get_db_d_uuid()?;
+            let ts_max = wr.get_db_ts_max(curtime)?;
             #[allow(clippy::expect_used)]
             wr.commit()
                 .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
-            (s_uuid, d_uuid)
+            (s_uuid, d_uuid, ts_max)
         };
 
         let pool_size = be.get_pool_size();
@@ -1169,6 +1182,9 @@ impl QueryServer {
             d_ldap_allow_unix_pw_bind: false,
         }));
 
+        let cid = Cid::new_lamport(s_uuid, curtime, &ts_max);
+        let cid_max = Arc::new(CowCell::new(cid));
+
         // These default to empty, but they'll be populated shortly.
         let system_config = Arc::new(CowCell::new(SystemConfig::default()));
 
@@ -1187,7 +1203,6 @@ impl QueryServer {
 
         Ok(QueryServer {
             phase,
-            s_uuid,
             d_info,
             system_config,
             be,
@@ -1197,6 +1212,7 @@ impl QueryServer {
             write_ticket: Arc::new(Semaphore::new(1)),
             resolve_filter_cache,
             dyngroup_cache,
+            cid_max,
         })
     }
 
@@ -1221,18 +1237,27 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsr")
         };
 
+        let schema = self.schema.read();
+
+        let cid_max = self.cid_max.read();
+        #[allow(clippy::expect_used)]
+        let trim_cid = cid_max
+            .sub_secs(CHANGELOG_MAX_AGE)
+            .expect("unable to generate trim cid");
+
         #[allow(clippy::expect_used)]
         QueryServerReadTransaction {
             be_txn: self
                 .be
                 .read()
                 .expect("unable to create backend read transaction"),
-            schema: self.schema.read(),
+            schema,
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
+            trim_cid,
         }
     }
 
@@ -1265,7 +1290,7 @@ impl QueryServer {
         };
 
         #[allow(clippy::expect_used)]
-        let mut be_txn = self
+        let be_txn = self
             .be
             .write()
             .expect("unable to create backend write transaction");
@@ -1275,11 +1300,10 @@ impl QueryServer {
         let system_config = self.system_config.write();
         let phase = self.phase.write();
 
-        #[allow(clippy::expect_used)]
-        let ts_max = be_txn
-            .get_db_ts_max(curtime)
-            .expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, curtime, &ts_max);
+        let mut cid = self.cid_max.write();
+        // Update the cid now.
+        *cid = Cid::new_lamport(cid.s_uuid, curtime, &cid.ts);
+
         #[allow(clippy::expect_used)]
         let trim_cid = cid
             .sub_secs(CHANGELOG_MAX_AGE)
@@ -1334,6 +1358,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn get_server_uuid(&self) -> Uuid {
         // Cid has our server id within
         self.cid.s_uuid
+    }
+
+    pub(crate) fn reset_server_uuid(&mut self) -> Result<(), OperationError> {
+        let s_uuid = self.be_txn.reset_db_s_uuid().map_err(|err| {
+            error!(?err, "Failed to reset server replication uuid");
+            err
+        })?;
+
+        debug!(?s_uuid, "reset server replication uuid");
+
+        self.cid.s_uuid = s_uuid;
+
+        Ok(())
     }
 
     pub(crate) fn get_curtime(&self) -> Duration {
@@ -1825,6 +1862,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Write the cid to the db. If this fails, we can't assume replication
         // will be stable, so return if it fails.
         be_txn.set_db_ts_max(cid.ts)?;
+        cid.commit();
 
         // Point of no return - everything has been validated and reloaded.
         //

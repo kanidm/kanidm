@@ -1518,7 +1518,7 @@ async fn test_repl_increment_create_tombstone_conflict(
     server_b_txn.commit().expect("Failed to commit");
 
     // Get a new time.
-    let ct = duration_from_epoch_now();
+    let ct = ct + Duration::from_secs(1);
     let mut server_a_txn = server_a.write(ct).await;
     assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
     // Immediately send it to the shadow realm
@@ -1531,7 +1531,7 @@ async fn test_repl_increment_create_tombstone_conflict(
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
-    let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 2);
+    let ct = ct + Duration::from_secs(1);
     let mut server_a_txn = server_a.write(ct).await;
     assert!(server_a_txn.purge_recycled().is_ok());
     server_a_txn.commit().expect("Failed to commit");
@@ -1539,8 +1539,9 @@ async fn test_repl_increment_create_tombstone_conflict(
     // Since B was tombstoned first, it is the tombstone that should persist.
 
     // This means A -> B - no change on B, it's the persisting tombstone.
+    let ct = ct + Duration::from_secs(1);
     let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(ct).await;
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1913,13 +1914,15 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
         .supplier_provide_changes(a_ruv_range)
         .expect("Unable to generate supplier changes");
 
-    assert!(matches!(changes, ReplIncrementalContext::RefreshRequired));
+    trace!(?changes);
+
+    assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
 
     let result = server_a_txn
         .consumer_apply_changes(&changes)
         .expect("Unable to apply changes to consumer.");
 
-    assert!(matches!(result, ConsumerState::RefreshRequired));
+    assert!(matches!(result, ConsumerState::Ok));
 
     drop(server_a_txn);
     drop(server_b_txn);
@@ -1937,6 +1940,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     let changes = server_a_txn
         .supplier_provide_changes(b_ruv_range)
         .expect("Unable to generate supplier changes");
+
+    trace!(?changes);
 
     assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
 
@@ -3372,6 +3377,354 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
+}
+
+/// Test the process of refreshing a consumer once it has entered a lag state.
+///
+/// It was noticed in a production instance that it was possible for a consumer
+/// to enter an unrecoverable state where replication could no longer proceed.
+///
+/// We have server A and B. We will focus on A and it's RUV state.
+///
+/// - A accepts a change setting it's RUV to A: 1
+/// - A replicates to B, setting B ruv to A: 1
+/// - Now A begins to lag and exceeds the changelog max age.
+/// - At this point incremental replication will cease to function.
+/// - The correct response (and automatically occurs) is that A would be
+///   refreshed from B. This then sets A ruv to A:1 - which is significantly
+///   behind the changelog max age.
+/// - Then A does a RUV trim. This set's it's RUV to A: X where X is > 1 + CL max.
+/// - On next replication to B, the replication stops as now "B" appears to be
+///   lagging since there is no overlap of it's RUV window to A.
+///
+/// The resolution in this case is two-fold.
+/// On a server refresh, the server-replication-id must be reset and regenerated. This
+/// ensures that any RUV state to a server is now fresh and unique
+///
+/// Second, to prevent tainting the RUV with outdated information, we need to stop it
+/// propogating when consumed. At the end of each consumption, the RUV should be trimmed
+/// if and only if entries exist in it that exceed the CL max. It is only trimmed conditionally
+/// to prevent infinite replication loops since a trim implies the creation of a new anchor.
+
+#[qs_pair_test]
+async fn test_repl_increment_consumer_lagging_refresh(
+    server_a: &QueryServer,
+    server_b: &QueryServer,
+) {
+    let ct = duration_from_epoch_now();
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+    drop(server_b_txn);
+
+    // - A accepts a change setting it's RUV to A: 1
+    let mut server_a_txn = server_a.write(ct).await;
+    let t_uuid = Uuid::new_v4();
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+
+    // Take a copy of the CID here for it's s_uuid - this allows us to
+    // validate later that the s_uuid is rotated, and trimmed from the
+    // RUV.
+    let server_a_initial_uuid = server_a_txn.get_server_uuid();
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // - A replicates to B, setting B ruv to A: 1
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.get_last_changed() == e2.get_last_changed());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // - B working properly, creates an update within the max win
+    let ct_half = ct + Duration::from_secs(CHANGELOG_MAX_AGE / 2);
+
+    let mut server_b_txn = server_b.write(ct_half).await;
+    assert!(server_b_txn.purge_tombstones().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // - Now A begins to lag and exceeds the changelog max age.
+    let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE + 1);
+
+    trace!("========================================");
+    // Purge tombstones - this triggers a write anchor to be created
+    // on both servers, and it will also trim the old values from the ruv.
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_tombstones().is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    let mut server_b_txn = server_b.write(ct).await;
+    assert!(server_b_txn.purge_tombstones().is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    // - At this point incremental replication will cease to function in either
+    //   direction.
+    let ct = ct + Duration::from_secs(1);
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    // The ruvs must be different
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range != b_ruv_range);
+
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    trace!(?changes);
+    assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
+
+    drop(server_a_txn);
+    drop(server_b_txn);
+
+    // - The correct response (and automatically occurs) is that A would be
+    //   refreshed from B. This then sets A ruv to A:1 - which is significantly
+    //   behind the changelog max age.
+    let ct = ct + Duration::from_secs(1);
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    // First, build the refresh context.
+    let refresh_context = server_b_txn
+        .supplier_provide_refresh()
+        .expect("Unable to supply refresh");
+
+    // Apply it to the server
+    server_a_txn
+        .consumer_apply_refresh(&refresh_context)
+        .expect("Unable to apply refresh");
+
+    // Need same d_uuid
+    assert_eq!(
+        server_b_txn.get_domain_uuid(),
+        server_a_txn.get_domain_uuid()
+    );
+
+    // Assert that the server's repl uuid was rotated as part of the refresh.
+    let server_a_rotated_uuid = server_a_txn.get_server_uuid();
+    assert_ne!(server_a_initial_uuid, server_a_rotated_uuid);
+
+    // Ruvs are the same now
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+
+    assert!(server_a_txn.commit().is_ok());
+    drop(server_b_txn);
+
+    // - Then A does a RUV trim. This set's it's RUV to A: X where X is > 1 + CL max.
+
+    let mut server_a_txn = server_a.write(ct).await;
+    assert!(server_a_txn.purge_tombstones().is_ok());
+
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    trace!(?a_ruv_range);
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // ERROR CASE: On next replication to B, the replication stops as now "B"
+    //             appears to be lagging since there is no overlap of it's RUV
+    //             window to A.
+    // EXPECTED: replication proceeds as usual as consumer was refreshed and should
+    //           be in sync now!
+
+    let ct = ct + Duration::from_secs(1);
+
+    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await;
+
+    repl_incremental(&mut server_b_txn, &mut server_a_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.get_last_changed() == e2.get_last_changed());
+
+    server_a_txn.commit().expect("Failed to commit");
+    drop(server_b_txn);
+
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.write(ct).await;
+
+    repl_incremental(&mut server_a_txn, &mut server_b_txn);
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    assert!(e1.get_last_changed() == e2.get_last_changed());
+
+    server_b_txn.commit().expect("Failed to commit");
+    drop(server_a_txn);
+
+    // Now we run the incremental replication in a loop to trim out the initial server uuid.
+
+    let mut ct = ct;
+    let changelog_quarter_life = Duration::from_secs(CHANGELOG_MAX_AGE / 4);
+    let one_second = Duration::from_secs(1);
+
+    for i in 0..8 {
+        trace!("========================================");
+        trace!("repl iteration {}", i);
+        // Purge tombstones.
+        let mut server_a_txn = server_a.write(ct).await;
+        assert!(server_a_txn.purge_tombstones().is_ok());
+        server_a_txn.commit().expect("Failed to commit");
+
+        ct += one_second;
+
+        let mut server_b_txn = server_b.write(ct).await;
+        assert!(server_b_txn.purge_tombstones().is_ok());
+        server_b_txn.commit().expect("Failed to commit");
+
+        ct += one_second;
+
+        // Now check incremental in both directions. Should show *no* changes
+        // needed (rather than an error/lagging).
+        let mut server_a_txn = server_a.write(ct).await;
+        let mut server_b_txn = server_b.read().await;
+
+        let a_ruv_range = server_a_txn
+            .consumer_get_state()
+            .expect("Unable to access RUV range");
+
+        trace!(?a_ruv_range);
+
+        let changes = server_b_txn
+            .supplier_provide_changes(a_ruv_range)
+            .expect("Unable to generate supplier changes");
+
+        assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
+
+        let result = server_a_txn
+            .consumer_apply_changes(&changes)
+            .expect("Unable to apply changes to consumer.");
+
+        assert!(matches!(result, ConsumerState::Ok));
+
+        server_a_txn.commit().expect("Failed to commit");
+        drop(server_b_txn);
+
+        ct += one_second;
+
+        // Reverse it!
+        let mut server_a_txn = server_a.read().await;
+        let mut server_b_txn = server_b.write(ct).await;
+
+        let b_ruv_range = server_b_txn
+            .consumer_get_state()
+            .expect("Unable to access RUV range");
+
+        trace!(?b_ruv_range);
+
+        let changes = server_a_txn
+            .supplier_provide_changes(b_ruv_range)
+            .expect("Unable to generate supplier changes");
+
+        assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
+
+        let result = server_b_txn
+            .consumer_apply_changes(&changes)
+            .expect("Unable to apply changes to consumer.");
+
+        assert!(matches!(result, ConsumerState::Ok));
+
+        drop(server_a_txn);
+        server_b_txn.commit().expect("Failed to commit");
+
+        ct += changelog_quarter_life;
+    }
+
+    // Finally, verify that the former server RUV has been trimmed out.
+    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.read().await;
+
+    assert_ne!(server_a_initial_uuid, server_a_rotated_uuid);
+
+    // Ruvs are the same now
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!("TRACE MARKER");
+    trace!(?server_a_initial_uuid, ?server_a_rotated_uuid);
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+
+    assert!(!a_ruv_range.contains_key(&server_a_initial_uuid));
+    assert!(!b_ruv_range.contains_key(&server_a_initial_uuid));
 }
 
 // Test change of domain version over incremental.
