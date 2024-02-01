@@ -333,7 +333,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"]
@@ -369,7 +369,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],
@@ -399,7 +399,7 @@ mod tests {
         let mut e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],
@@ -432,7 +432,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["person", "account"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],
@@ -506,7 +506,7 @@ mod tests {
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
-                "class": ["person"],
+                "class": ["account", "person"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],

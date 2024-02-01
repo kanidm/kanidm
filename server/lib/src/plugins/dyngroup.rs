@@ -244,6 +244,7 @@ impl DynGroup {
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ident: &Identity,
+        force_cand_updates: bool,
     ) -> Result<Vec<Uuid>, OperationError> {
         let mut affected_uuids = Vec::with_capacity(cand.len());
 
@@ -290,8 +291,7 @@ impl DynGroup {
 
         // If we modified anything else, check if a dyngroup is affected by it's change
         // if it was a member.
-
-        trace!(?dyn_groups.insts);
+        trace!(?force_cand_updates, ?dyn_groups.insts);
 
         for (dg_uuid, dg_filter) in dyn_groups.insts.iter() {
             let dg_filter_valid = dg_filter
@@ -308,15 +308,25 @@ impl DynGroup {
                     let pre_t = pre.entry_match_no_index(&dg_filter_valid);
                     let post_t = post.entry_match_no_index(&dg_filter_valid);
 
-                    if pre_t && !post_t {
-                        Some(Err(post.get_uuid()))
-                    } else if !pre_t && post_t {
+                    trace!(?post_t, ?force_cand_updates, ?pre_t);
+
+                    // There are some cases where rather than the optimisation to skip
+                    // asserting membership, we need to always assert that membership. Generally
+                    // this occurs in replication where if a candidate was conflicted it can
+                    // trigger a membership delete, but we need to ensure it's still re-added.
+                    if post_t && (force_cand_updates || !pre_t) {
+                        // The entry was added
                         Some(Ok(post.get_uuid()))
+                    } else if pre_t && !post_t {
+                        // The entry was deleted
+                        Some(Err(post.get_uuid()))
                     } else {
                         None
                     }
                 })
                 .collect();
+
+            trace!(?matches);
 
             if !matches.is_empty() {
                 let filt = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(*dg_uuid)));
@@ -347,6 +357,8 @@ impl DynGroup {
                 e
             })?;
         }
+
+        trace!(?affected_uuids);
 
         Ok(affected_uuids)
     }

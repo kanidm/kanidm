@@ -235,12 +235,26 @@ impl Plugin for MemberOf {
         qs: &mut QueryServerWriteTransaction,
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
-        _conflict_uuids: &BTreeSet<Uuid>,
+        conflict_uuids: &BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
+        // If a uuid was in a conflict state, it will be present in the cand/pre_cand set,
+        // but it *may not* trigger dyn groups as the conflict before and after may satisfy
+        // the filter as it exists.
+        //
+        // In these cases we need to force dynmembers to be reloaded if any conflict occurs
+        // to ensure that all our memberships are accurate.
+        let force_dyngroup_cand_update = !conflict_uuids.is_empty();
+
         // IMPORTANT - we need this for now so that dyngroup doesn't error on us, since
         // repl is internal and dyngroup has a safety check to prevent external triggers.
         let ident_internal = Identity::from_internal();
-        Self::post_modify_inner(qs, pre_cand, cand, &ident_internal)
+        Self::post_modify_inner(
+            qs,
+            pre_cand,
+            cand,
+            &ident_internal,
+            force_dyngroup_cand_update,
+        )
     }
 
     #[instrument(level = "debug", name = "memberof_post_modify", skip_all)]
@@ -250,7 +264,7 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, pre_cand, cand, &me.ident)
+        Self::post_modify_inner(qs, pre_cand, cand, &me.ident, false)
     }
 
     #[instrument(level = "debug", name = "memberof_post_batch_modify", skip_all)]
@@ -260,7 +274,29 @@ impl Plugin for MemberOf {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, pre_cand, cand, &me.ident)
+        Self::post_modify_inner(qs, pre_cand, cand, &me.ident, false)
+    }
+
+    #[instrument(level = "debug", name = "memberof_pre_delete", skip_all)]
+    fn pre_delete(
+        _qs: &mut QueryServerWriteTransaction,
+        cand: &mut Vec<EntryInvalidCommitted>,
+        _de: &DeleteEvent,
+    ) -> Result<(), OperationError> {
+        // Ensure that when an entry is deleted, that we remove its memberof values,
+        // and convert direct memberof to recycled direct memberof.
+
+        for entry in cand.iter_mut() {
+            if let Some(direct_mo_vs) = entry.pop_ava(Attribute::DirectMemberOf) {
+                entry.set_ava_set(Attribute::RecycledDirectMemberOf, direct_mo_vs);
+            } else {
+                // Ensure it's empty
+                entry.purge_ava(Attribute::RecycledDirectMemberOf);
+            }
+            entry.purge_ava(Attribute::MemberOf);
+        }
+
+        Ok(())
     }
 
     #[instrument(level = "debug", name = "memberof_post_delete", skip_all)]
@@ -368,11 +404,14 @@ impl Plugin for MemberOf {
                 (None, None) => {
                     // Ok
                 }
-                _ => {
+                (entry_dmo, d_groups) => {
                     admin_error!(
                         "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
                         e.get_uuid()
                     );
+                    trace!(?e);
+                    trace!(?entry_dmo);
+                    trace!(?d_groups);
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                 }
             }
@@ -429,8 +468,15 @@ impl MemberOf {
         pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[EntrySealedCommitted],
         ident: &Identity,
+        force_dyngroup_cand_update: bool,
     ) -> Result<(), OperationError> {
-        let dyngroup_change = super::dyngroup::DynGroup::post_modify(qs, pre_cand, cand, ident)?;
+        let dyngroup_change = super::dyngroup::DynGroup::post_modify(
+            qs,
+            pre_cand,
+            cand,
+            ident,
+            force_dyngroup_cand_update,
+        )?;
 
         // TODO: Limit this to when it's a class, member, mo, dmo change instead.
         let group_affect = cand

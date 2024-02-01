@@ -628,7 +628,7 @@ pub trait IdmServerTransaction<'a> {
         &mut self,
         uuid: Uuid,
         session_id: Uuid,
-        parent_session_id: Uuid,
+        parent_session_id: Option<Uuid>,
         iat: i64,
         ct: Duration,
     ) -> Result<Option<Arc<Entry<EntrySealed, EntryCommitted>>>, OperationError> {
@@ -661,9 +661,6 @@ pub trait IdmServerTransaction<'a> {
         let oauth2_session = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id));
-        let uat_session = entry
-            .get_ava_as_session_map(Attribute::UserAuthTokenSession)
-            .and_then(|sessions| sessions.get(&parent_session_id));
 
         if let Some(oauth2_session) = oauth2_session {
             // We have the oauth2 session, lets check it.
@@ -674,24 +671,35 @@ pub trait IdmServerTransaction<'a> {
                 return Ok(None);
             }
 
-            if let Some(uat_session) = uat_session {
-                let parent_session_valid = !matches!(uat_session.state, SessionState::RevokedAt(_));
-                if parent_session_valid {
-                    security_info!("A valid parent and oauth2 session value exists for this token");
-                } else {
+            // Do we have a parent session? If yes, we need to enforce it's presence.
+            if let Some(parent_session_id) = parent_session_id {
+                let uat_session = entry
+                    .get_ava_as_session_map(Attribute::UserAuthTokenSession)
+                    .and_then(|sessions| sessions.get(&parent_session_id));
+
+                if let Some(uat_session) = uat_session {
+                    let parent_session_valid =
+                        !matches!(uat_session.state, SessionState::RevokedAt(_));
+                    if parent_session_valid {
+                        security_info!(
+                            "A valid parent and oauth2 session value exists for this token"
+                        );
+                    } else {
+                        security_info!(
+                            "The parent oauth2 session associated to this token is revoked."
+                        );
+                        return Ok(None);
+                    }
+                } else if grace_valid {
                     security_info!(
-                        "The parent oauth2 session associated to this token is revoked."
+                        "The token grace window is in effect. Assuming parent session valid."
                     );
+                } else {
+                    security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
                     return Ok(None);
                 }
-            } else if grace_valid {
-                security_info!(
-                    "The token grace window is in effect. Assuming parent session valid."
-                );
-            } else {
-                security_info!("The token grace window has passed and no entry parent sessions exist. Assuming invalid.");
-                return Ok(None);
             }
+            // If we don't have a parent session id, we are good to proceed.
         } else if grace_valid {
             security_info!("The token grace window is in effect. Assuming valid.");
         } else {
@@ -2332,16 +2340,24 @@ mod tests {
         }
     }
 
-    async fn init_admin_w_password(idms: &IdmServer, pw: &str) -> Result<Uuid, OperationError> {
+    async fn init_testperson_w_password(
+        idms: &IdmServer,
+        pw: &str,
+    ) -> Result<Uuid, OperationError> {
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, pw)?;
         let cred_id = cred.uuid;
         let v_cred = Value::new_credential("primary", cred);
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
+        idms_write
+            .qs_write
+            .internal_create(vec![E_TESTPERSON_1.clone()])
+            .expect("Failed to create test person");
+
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![Modify::Present(
                 Attribute::PrimaryCredential.into(),
                 v_cred,
@@ -2353,7 +2369,7 @@ mod tests {
         idms_write.commit().map(|()| cred_id)
     }
 
-    async fn init_admin_authsession_sid(idms: &IdmServer, ct: Duration, name: &str) -> Uuid {
+    async fn init_authsession_sid(idms: &IdmServer, ct: Duration, name: &str) -> Uuid {
         let mut idms_auth = idms.auth().await;
         let admin_init = AuthEvent::named_init(name);
 
@@ -2387,9 +2403,9 @@ mod tests {
         sessionid
     }
 
-    async fn check_admin_password(idms: &IdmServer, pw: &str) -> String {
+    async fn check_testperson_password(idms: &IdmServer, pw: &str) -> String {
         let sid =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
 
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, pw);
@@ -2436,10 +2452,10 @@ mod tests {
 
     #[idm_test]
     async fn test_idm_simple_password_auth(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        check_admin_password(idms, TEST_PASSWORD).await;
+        check_testperson_password(idms, TEST_PASSWORD).await;
 
         // Clear our the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -2452,14 +2468,14 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
 
-        let sid = init_admin_authsession_sid(
+        let sid = init_authsession_sid(
             idms,
             Duration::from_secs(TEST_CURRENT_TIME),
-            "admin@example.com",
+            "testperson1@example.com",
         )
         .await;
 
@@ -2513,11 +2529,11 @@ mod tests {
         _idms_delayed: &IdmServerDelayed,
         idms_audit: &mut IdmServerAudit,
     ) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
         let sid =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
@@ -2588,7 +2604,13 @@ mod tests {
     #[idm_test]
     async fn test_idm_regenerate_radius_secret(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![E_TESTPERSON_1.clone()])
+            .expect("unable to create test person");
+
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_TESTPERSON_1);
 
         // Generates a new credential when none exists
         let r1 = idms_prox_write
@@ -2604,19 +2626,25 @@ mod tests {
     #[idm_test]
     async fn test_idm_radiusauthtoken(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![E_TESTPERSON_1.clone()])
+            .expect("unable to create test person");
+
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_TESTPERSON_1);
         let r1 = idms_prox_write
             .regenerate_radius_secret(&rrse)
             .expect("Failed to reset radius credential 1");
         idms_prox_write.commit().expect("failed to commit");
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let admin_entry = idms_prox_read
+        let person_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("Can't access admin entry.");
 
-        let rate = RadiusAuthTokenEvent::new_impersonate(admin_entry, UUID_ADMIN);
+        let rate = RadiusAuthTokenEvent::new_impersonate(person_entry, UUID_TESTPERSON_1);
         let tok_r = idms_prox_read
             .get_radiusauthtoken(&rate, duration_from_epoch_now())
             .expect("Failed to generate radius auth token");
@@ -2780,9 +2808,15 @@ mod tests {
         {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
             // now modify and provide a primary credential.
+
+            idms_prox_write
+                .qs_write
+                .internal_create(vec![E_TESTPERSON_1.clone()])
+                .expect("Failed to create test person");
+
             let me_inv_m =
                 ModifyEvent::new_internal_invalid(
-                        filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+                        filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
                         ModifyList::new_list(vec![Modify::Present(
                             Attribute::PasswordImport.into(),
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
@@ -2796,18 +2830,18 @@ mod tests {
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let admin_entry = idms_prox_read
+        let person_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("Can't access admin entry.");
-        let cred_before = admin_entry
+        let cred_before = person_entry
             .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
         drop(idms_prox_read);
 
         // Do an auth, this will trigger the action to send.
-        check_admin_password(idms, "password").await;
+        check_testperson_password(idms, "password").await;
 
         // ⚠️  We have to be careful here. Between these two actions, it's possible
         // that on the pw upgrade that the credential uuid changes. This immediately
@@ -2827,11 +2861,11 @@ mod tests {
         assert!(Ok(true) == r);
 
         let mut idms_prox_read = idms.proxy_read().await;
-        let admin_entry = idms_prox_read
+        let person_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("Can't access admin entry.");
-        let cred_after = admin_entry
+        let cred_after = person_entry
             .get_ava_single_credential(Attribute::PrimaryCredential)
             .expect("No credential present")
             .clone();
@@ -2840,7 +2874,7 @@ mod tests {
         assert_eq!(cred_before.uuid, cred_after.uuid);
 
         // Check the admin pw still matches
-        check_admin_password(idms, "password").await;
+        check_testperson_password(idms, "password").await;
         // Clear the next auth session record
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
@@ -2909,7 +2943,7 @@ mod tests {
     const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
     const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
 
-    async fn set_admin_valid_time(idms: &IdmServer) {
+    async fn set_testperson_valid_time(idms: &IdmServer) {
         let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
 
         let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
@@ -2917,7 +2951,7 @@ mod tests {
 
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::AccountExpire.into(), v_expire),
                 Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
@@ -2936,12 +2970,12 @@ mod tests {
     ) {
         // Any account that is not yet valrid / expired can't auth.
 
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
         // Set the valid bounds high/low
         // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
-        set_admin_valid_time(idms).await;
+        set_testperson_valid_time(idms).await;
 
         let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
@@ -2996,10 +3030,10 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         // Any account that is expired can't unix auth.
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        set_admin_valid_time(idms).await;
+        set_testperson_valid_time(idms).await;
 
         let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
@@ -3007,7 +3041,7 @@ mod tests {
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
                 Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
@@ -3015,14 +3049,14 @@ mod tests {
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_TESTPERSON_1, TEST_PASSWORD);
 
         assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
         // Now check auth when the time is too high or too low.
         let mut idms_auth = idms.auth().await;
-        let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let uuae_good = UnixUserAuthEvent::new_internal(UUID_TESTPERSON_1, TEST_PASSWORD);
 
         let a1 = idms_auth.auth_unix(&uuae_good, time_low).await;
         // Should this actually send an error with the details? Or just silently act as
@@ -3041,20 +3075,20 @@ mod tests {
         idms_auth.commit().expect("Must not fail");
         // Also check the generated unix tokens are invalid.
         let mut idms_prox_read = idms.proxy_read().await;
-        let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
+        let uute = UnixUserTokenEvent::new_internal(UUID_TESTPERSON_1);
 
         let tok_r = idms_prox_read
             .get_unixusertoken(&uute, time_low)
             .expect("Failed to generate unix user token");
 
-        assert!(tok_r.name == "admin");
+        assert!(tok_r.name == "testperson1");
         assert!(!tok_r.valid);
 
         let tok_r = idms_prox_read
             .get_unixusertoken(&uute, time_high)
             .expect("Failed to generate unix user token");
 
-        assert!(tok_r.name == "admin");
+        assert!(tok_r.name == "testperson1");
         assert!(!tok_r.valid);
     }
 
@@ -3065,16 +3099,16 @@ mod tests {
     ) {
         // Any account not valid/expiry should not return
         // a radius packet.
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        set_admin_valid_time(idms).await;
+        set_testperson_valid_time(idms).await;
 
         let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN);
+        let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_TESTPERSON_1);
         let _r1 = idms_prox_write
             .regenerate_radius_secret(&rrse)
             .expect("Failed to reset radius credential 1");
@@ -3110,13 +3144,13 @@ mod tests {
         idms_delayed: &mut IdmServerDelayed,
         idms_audit: &mut IdmServerAudit,
     ) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
 
         // Auth invalid, no softlock present.
         let sid =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
@@ -3163,7 +3197,7 @@ mod tests {
         // aka Auth valid immediate, (ct < exp), autofail
         // aka Auth invalid immediate, (ct < exp), autofail
         let mut idms_auth = idms.auth().await;
-        let admin_init = AuthEvent::named_init("admin");
+        let admin_init = AuthEvent::named_init("testperson1");
 
         let r1 = idms_auth
             .auth(
@@ -3208,9 +3242,12 @@ mod tests {
         // Tested in the softlock state machine.
 
         // Auth valid once softlock pass, valid. Count remains.
-        let sid =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME + 2), "admin")
-                .await;
+        let sid = init_authsession_sid(
+            idms,
+            Duration::from_secs(TEST_CURRENT_TIME + 2),
+            "testperson1",
+        )
+        .await;
 
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
@@ -3269,17 +3306,17 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
         idms_audit: &mut IdmServerAudit,
     ) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
 
         // Start an *early* auth session.
         let sid_early =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
 
         // Start a second auth session
         let sid_later =
-            init_admin_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "admin").await;
+            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
         // Get the detail wrong in sid_later.
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
@@ -3364,13 +3401,13 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
         // make the admin a valid posix account
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
         let me_posix = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
                 Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
                 Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
@@ -3378,13 +3415,13 @@ mod tests {
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
 
-        let pce = UnixPasswordChangeEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
+        let pce = UnixPasswordChangeEvent::new_internal(UUID_TESTPERSON_1, TEST_PASSWORD);
         assert!(idms_prox_write.set_unix_account_password(&pce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
         let mut idms_auth = idms.auth().await;
-        let uuae_good = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD);
-        let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
+        let uuae_good = UnixUserAuthEvent::new_internal(UUID_TESTPERSON_1, TEST_PASSWORD);
+        let uuae_bad = UnixUserAuthEvent::new_internal(UUID_TESTPERSON_1, TEST_PASSWORD_INC);
 
         let a2 = idms_auth
             .auth_unix(&uuae_bad, Duration::from_secs(TEST_CURRENT_TIME))
@@ -3420,10 +3457,10 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let expiry = ct + Duration::from_secs((DEFAULT_AUTH_SESSION_EXPIRY + 1).into());
         // Do an authenticate
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_admin_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD).await;
 
         // Clear out the queued session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3460,7 +3497,7 @@ mod tests {
         let session_b = Uuid::new_v4();
 
         // We need to put the credential on the admin.
-        let cred_id = init_admin_w_password(idms, TEST_PASSWORD)
+        let cred_id = init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
 
@@ -3468,14 +3505,14 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
         let admin = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let sessions = admin.get_ava_as_session_map(Attribute::UserAuthTokenSession);
         assert!(sessions.is_none());
         drop(idms_prox_read);
 
         let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-            target_uuid: UUID_ADMIN,
+            target_uuid: UUID_TESTPERSON_1,
             session_id: session_a,
             cred_id,
             label: "Test Session A".to_string(),
@@ -3492,7 +3529,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
         let admin = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let sessions = admin
             .get_ava_as_session_map(Attribute::UserAuthTokenSession)
@@ -3506,7 +3543,7 @@ mod tests {
         // When we re-auth, this is what triggers the session revoke via the delayed action.
 
         let da = DelayedAction::AuthSessionRecord(AuthSessionRecord {
-            target_uuid: UUID_ADMIN,
+            target_uuid: UUID_TESTPERSON_1,
             session_id: session_b,
             cred_id,
             label: "Test Session B".to_string(),
@@ -3522,7 +3559,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
         let admin = idms_prox_read
             .qs_read
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(UUID_TESTPERSON_1)
             .expect("failed");
         let sessions = admin
             .get_ava_as_session_map(Attribute::UserAuthTokenSession)
@@ -3556,10 +3593,10 @@ mod tests {
         assert!(post_grace < expiry);
 
         // Do an authenticate
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_admin_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD).await;
 
         // Process the session info.
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3922,10 +3959,10 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        init_admin_w_password(idms, TEST_PASSWORD)
+        init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_admin_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3958,7 +3995,7 @@ mod tests {
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
         assert!(idms_prox_write.commit().is_ok());
         // Check the old token is invalid, due to reload.
-        let new_token = check_admin_password(idms, TEST_PASSWORD).await;
+        let new_token = check_testperson_password(idms, TEST_PASSWORD).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");

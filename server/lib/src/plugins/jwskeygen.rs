@@ -114,6 +114,7 @@ mod tests {
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -127,10 +128,7 @@ mod tests {
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
             ),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://demo.example.com").unwrap()
@@ -168,6 +166,7 @@ mod tests {
 
         let e: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -177,10 +176,7 @@ mod tests {
                 EntryClass::OAuth2ResourceServerBasic.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")

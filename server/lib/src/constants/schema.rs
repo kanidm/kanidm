@@ -637,6 +637,32 @@ pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_PERSON_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_PERSON,
+    name: EntryClass::Person.into(),
+    description: "Object representation of a person".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::PrimaryCredential.into(),
+        Attribute::PassKeys.into(),
+        Attribute::AttestedPasskeys.into(),
+        Attribute::CredentialUpdateIntentToken.into(),
+        Attribute::SshPublicKey.into(),
+        Attribute::RadiusSecret.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::Mail.into(),
+        Attribute::LegalName.into(),
+    ],
+    systemmust: vec![
+        Attribute::IdVerificationEcKey.into()
+    ],
+    systemexcludes: vec![EntryClass::ServiceAccount.into()],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_ORGPERSON: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ORGPERSON,
     name: EntryClass::OrgPerson.into(),
@@ -725,7 +751,32 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
             ],
     systemsupplements: vec![
         EntryClass::Person.into(),
-        EntryClass::ServiceAccount.into()],
+        EntryClass::ServiceAccount.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ACCOUNT,
+    name: EntryClass::Account.into(),
+    description: "Object representation of an account".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::AccountExpire.into(),
+        Attribute::AccountValidFrom.into(),
+        Attribute::NameHistory.into(),
+    ],
+    systemmust: vec![
+        Attribute::DisplayName.into(),
+        Attribute::Name.into(),
+        Attribute::Spn.into()
+    ],
+    systemsupplements: vec![
+        EntryClass::Person.into(),
+        EntryClass::ServiceAccount.into(),
+        EntryClass::OAuth2ResourceServer.into(),
+    ],
     ..Default::default()
 };
 
@@ -736,6 +787,27 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
 
     sync_allowed: true,
     systemmay: vec![
+        Attribute::Mail.into(),
+        Attribute::PrimaryCredential.into(),
+        Attribute::JwsEs256PrivateKey.into(),
+        Attribute::ApiTokenSession.into(),
+    ],
+    systemexcludes: vec![EntryClass::Person.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
+    name: EntryClass::ServiceAccount.into(),
+    description: "Object representation of service account".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::SshPublicKey.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::Description.into(),
+
         Attribute::Mail.into(),
         Attribute::PrimaryCredential.into(),
         Attribute::JwsEs256PrivateKey.into(),
@@ -877,12 +949,50 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL4: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_OAUTH2_RS_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
+    name: EntryClass::OAuth2ResourceServer.into(),
+    description: "The class representing a configured Oauth2 Resource Server".to_string(),
+
+    systemmay: vec![
+        Attribute::Description.into(),
+        Attribute::OAuth2RsScopeMap.into(),
+        Attribute::OAuth2RsSupScopeMap.into(),
+        Attribute::Rs256PrivateKeyDer.into(),
+        Attribute::OAuth2JwtLegacyCryptoEnable.into(),
+        Attribute::OAuth2PreferShortUsername.into(),
+        Attribute::OAuth2RsOriginLanding.into(),
+        Attribute::Image.into(),
+        Attribute::OAuth2RsClaimMap.into(),
+        Attribute::OAuth2Session.into(),
+    ],
+    systemmust: vec![
+        Attribute::OAuth2RsOrigin.into(),
+        Attribute::OAuth2RsTokenKey.into(),
+        Attribute::Es256PrivateKeyDer.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
     name: EntryClass::OAuth2ResourceServerBasic.into(),
     description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
 
     systemmay: vec![ Attribute::OAuth2AllowInsecureClientDisablePkce.into()],
+    systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
+    systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
+    name: EntryClass::OAuth2ResourceServerBasic.into(),
+    description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
+
+    systemmay: vec![
+        Attribute::OAuth2AllowInsecureClientDisablePkce.into(),
+    ],
     systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
     systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
     ..Default::default()

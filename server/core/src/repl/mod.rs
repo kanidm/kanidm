@@ -617,7 +617,7 @@ async fn repl_acceptor(
     };
 
     // Setup a broadcast to control our tasks.
-    let (task_tx, task_rx1) = broadcast::channel(2);
+    let (task_tx, task_rx1) = broadcast::channel(1);
     // Note, we drop this task here since each task will re-subscribe. That way the
     // broadcast doesn't jam up because we aren't draining this task.
     drop(task_rx1);

@@ -104,7 +104,7 @@ impl Domain {
 
                 // Setup the minimum functional level if one is not set already.
                 if !e.attribute_pres(Attribute::Version) {
-                    let n = Value::Uint32(DOMAIN_MIN_LEVEL);
+                    let n = Value::Uint32(DOMAIN_LEVEL_0);
                     e.set_ava(Attribute::Version, once(n));
                     warn!("plugin_domain: Applying domain version transform");
                 } else {

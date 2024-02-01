@@ -43,16 +43,18 @@ pub const SYSTEM_INDEX_VERSION: i64 = 30;
  */
 pub type DomainVersion = u32;
 
+pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 pub const DOMAIN_LEVEL_1: DomainVersion = 1;
 pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
+pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 // The minimum supported domain functional level
-pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
+pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_4;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_4;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 
 // On test builds, define to 60 seconds
 #[cfg(test)]
@@ -65,15 +67,15 @@ pub const PURGE_FREQUENCY: u64 = 600;
 /// In test, we limit the changelog to 10 minutes.
 pub const CHANGELOG_MAX_AGE: u64 = 600;
 #[cfg(not(test))]
-/// A replica may be less than 1 day out of sync and catch up.
-pub const CHANGELOG_MAX_AGE: u64 = 86400;
+/// A replica may be up to 7 days out of sync before being denied updates.
+pub const CHANGELOG_MAX_AGE: u64 = 7 * 86400;
 
 #[cfg(test)]
 /// In test, we limit the recyclebin to 5 minutes.
 pub const RECYCLEBIN_MAX_AGE: u64 = 300;
 #[cfg(not(test))]
 /// In production we allow 1 week
-pub const RECYCLEBIN_MAX_AGE: u64 = 604_800;
+pub const RECYCLEBIN_MAX_AGE: u64 = 7 * 86400;
 
 // 5 minute auth session window.
 pub const AUTH_SESSION_TIMEOUT: u64 = 300;

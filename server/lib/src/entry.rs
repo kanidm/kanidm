@@ -1202,6 +1202,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         self.remove_ava(Attribute::Class, &EntryClass::Recycled.into());
         self.remove_ava(Attribute::Class, &EntryClass::Conflict.into());
         self.purge_ava(Attribute::SourceUuid);
+        self.purge_ava(Attribute::RecycledDirectMemberOf);
 
         // Change state repl doesn't need this flag
         // self.valid.ecstate.revive(&self.valid.cid);
@@ -2310,6 +2311,25 @@ where
 
     pub fn get_changestate(&self) -> &EntryChangeState {
         &self.valid.ecstate
+    }
+
+    /// Determine if any attribute of this entry changed excluding the attribute named.
+    /// This allows for detection of entry changes unless the change was to a specific
+    /// attribute.
+    pub(crate) fn entry_changed_excluding_attribute(&self, attr: Attribute, cid: &Cid) -> bool {
+        use crate::repl::entry::State;
+
+        match self.get_changestate().current() {
+            State::Live { at: _, changes } => {
+                changes.iter().any(|(change_attr, change_id)| {
+                    change_id >= cid &&
+                    change_attr != attr.as_ref() &&
+                    // This always changes, and could throw off other detections.
+                    change_attr != Attribute::LastModifiedCid.as_ref()
+                })
+            }
+            State::Tombstone { at } => at == cid,
+        }
     }
 
     /// ⚠️  - Invalidate an entry by resetting it's change state to time-zero. This entry

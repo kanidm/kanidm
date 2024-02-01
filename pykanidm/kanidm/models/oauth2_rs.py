@@ -10,8 +10,8 @@ class OAuth2Rs(BaseModel):
     classes: List[str]
     displayname: str
     es256_private_key_der: str
+    name: str
     oauth2_rs_basic_secret: str
-    oauth2_rs_name: str
     oauth2_rs_origin: str
     oauth2_rs_token_key: str
     oauth2_rs_sup_scope_map: List[str]
@@ -27,8 +27,8 @@ class RawOAuth2Rs(BaseModel):
         required_fields = (
             "displayname",
             "es256_private_key_der",
+            "name",
             "oauth2_rs_basic_secret",
-            "oauth2_rs_name",
             "oauth2_rs_origin",
             "oauth2_rs_token_key",
         )
@@ -42,8 +42,8 @@ class RawOAuth2Rs(BaseModel):
             classes=self.attrs["class"],
             displayname=self.attrs["displayname"][0],
             es256_private_key_der=self.attrs["es256_private_key_der"][0],
+            name=self.attrs["name"][0],
             oauth2_rs_basic_secret=self.attrs["oauth2_rs_basic_secret"][0],
-            oauth2_rs_name=self.attrs["oauth2_rs_name"][0],
             oauth2_rs_origin=self.attrs["oauth2_rs_origin"][0],
             oauth2_rs_token_key=self.attrs["oauth2_rs_token_key"][0],
             oauth2_rs_sup_scope_map=self.attrs.get("oauth2_rs_sup_scope_map", []),

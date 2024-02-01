@@ -338,7 +338,8 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        protected::Protected::pre_delete(qs, cand, de)
+        protected::Protected::pre_delete(qs, cand, de)?;
+        memberof::MemberOf::pre_delete(qs, cand, de)
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_delete", skip_all)]

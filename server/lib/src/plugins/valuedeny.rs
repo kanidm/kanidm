@@ -136,6 +136,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname("tobias")),
                 (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -154,6 +155,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname("newname")),
                 (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -181,6 +183,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname("newname")),
                 (Attribute::Uuid, Value::Uuid(t_uuid)),

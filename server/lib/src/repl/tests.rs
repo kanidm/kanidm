@@ -250,6 +250,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -353,6 +354,7 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -411,6 +413,7 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -481,6 +484,7 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -584,6 +588,7 @@ async fn test_repl_increment_basic_bidirectional_write(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -664,6 +669,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -731,6 +737,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -842,6 +849,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -983,6 +991,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1109,6 +1118,7 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1213,6 +1223,7 @@ async fn test_repl_increment_creation_uuid_conflict(
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson1")),
         (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1243,6 +1254,19 @@ async fn test_repl_increment_creation_uuid_conflict(
     let e2 = server_b_txn
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
+
+    let e1_acc = server_a_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access new entry.");
+    let e2_acc = server_b_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access entry.");
+
+    trace!("TESTMARKER 0");
+    trace!(?e1);
+    trace!(?e2);
+    trace!(?e1_acc);
+    trace!(?e2_acc);
 
     trace!("{:?}", e1.get_last_changed());
     trace!("{:?}", e2.get_last_changed());
@@ -1277,6 +1301,19 @@ async fn test_repl_increment_creation_uuid_conflict(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
+    let e1_acc = server_a_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access new entry.");
+    let e2_acc = server_b_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access entry.");
+
+    trace!("TESTMARKER 1");
+    trace!(?e1);
+    trace!(?e2);
+    trace!(?e1_acc);
+    trace!(?e2_acc);
+
     assert!(e1.get_last_changed() == e2.get_last_changed());
 
     let cnf_a = server_a_txn
@@ -1291,6 +1328,10 @@ async fn test_repl_increment_creation_uuid_conflict(
         .internal_search_conflict_uuid(t_uuid)
         .expect("Unable to conflict entries.");
     assert!(cnf_b.is_empty());
+
+    trace!("TESTMARKER 2");
+    trace!(?cnf_a);
+    trace!(?cnf_b);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1319,7 +1360,31 @@ async fn test_repl_increment_creation_uuid_conflict(
         .pop()
         .expect("No conflict entries present");
 
+    trace!("TESTMARKER 3");
+    trace!(?cnf_a);
+    trace!(?cnf_b);
+
     assert!(cnf_a.get_last_changed() == cnf_b.get_last_changed());
+
+    let e1 = server_a_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access new entry.");
+    let e2 = server_b_txn
+        .internal_search_all_uuid(t_uuid)
+        .expect("Unable to access entry.");
+
+    let e1_acc = server_a_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access new entry.");
+    let e2_acc = server_b_txn
+        .internal_search_all_uuid(UUID_IDM_ALL_ACCOUNTS)
+        .expect("Unable to access entry.");
+
+    trace!("TESTMARKER 4");
+    trace!(?e1);
+    trace!(?e2);
+    trace!(?e1_acc);
+    trace!(?e2_acc);
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1344,6 +1409,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson1")),
         (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1437,6 +1503,7 @@ async fn test_repl_increment_create_tombstone_conflict(
     let t_uuid = Uuid::new_v4();
     let e_init = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::Account.to_value()),
         (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson1")),
         (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1533,6 +1600,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1570,8 +1638,10 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let mut server_b_txn = server_b.write(ct).await;
     let modlist = ModifyList::new_list(vec![
         Modify::Removed(Attribute::Class.into(), EntryClass::Person.into()),
+        Modify::Removed(Attribute::Class.into(), EntryClass::Account.into()),
         Modify::Present(Attribute::Class.into(), EntryClass::Group.into()),
         Modify::Purged(Attribute::IdVerificationEcKey.into()),
+        Modify::Purged(Attribute::NameHistory.into()),
         Modify::Purged(Attribute::DisplayName.into()),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
@@ -1650,6 +1720,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1775,6 +1846,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1905,6 +1977,7 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (Attribute::Uuid, Value::Uuid(t_uuid)),

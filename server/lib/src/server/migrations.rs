@@ -740,6 +740,84 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "info", skip_all)]
+    /// Migrations for Oauth to move rs name from a dedicated type to name
+    /// and to allow oauth2 sessions on resource servers for client credentials
+    /// grants. Accounts, persons and service accounts have some attributes
+    /// relocated to allow oauth2 rs to become accounts.
+    pub fn migrate_domain_4_to_5(&mut self) -> Result<(), OperationError> {
+        let idm_schema_classes = [
+            SCHEMA_CLASS_PERSON_DL5.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL5.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_4_to_5 -> Error");
+                err
+            })?;
+
+        // Reload mid txn so that the next modification works.
+        self.force_schema_reload();
+        self.reload()?;
+
+        // Now we remove attributes from service accounts that have been unable to be set
+        // via a user interface for more than a year.
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Account.into()),
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+        ]));
+        let modlist = ModifyList::new_list(vec![
+            Modify::Purged(Attribute::PassKeys.into()),
+            Modify::Purged(Attribute::AttestedPasskeys.into()),
+            Modify::Purged(Attribute::CredentialUpdateIntentToken.into()),
+            Modify::Purged(Attribute::RadiusSecret.into()),
+        ]);
+        self.internal_modify(&filter, &modlist)?;
+
+        // Now move all oauth2 rs name.
+        let filter = filter!(f_eq(
+            Attribute::Class,
+            EntryClass::OAuth2ResourceServer.into()
+        ));
+
+        let pre_candidates = self.internal_search(filter).map_err(|err| {
+            admin_error!(?err, "migrate_domain_4_to_5 internal search failure");
+            err
+        })?;
+
+        let modset: Vec<_> = pre_candidates
+            .into_iter()
+            .filter_map(|ent| {
+                ent.get_ava_single_iname(Attribute::OAuth2RsName)
+                    .map(|rs_name| {
+                        let modlist = vec![
+                            Modify::Present(Attribute::Class.into(), EntryClass::Account.into()),
+                            Modify::Present(Attribute::Name.into(), Value::new_iname(rs_name)),
+                            m_purge(Attribute::OAuth2RsName),
+                        ];
+
+                        (ent.get_uuid(), ModifyList::new_list(modlist))
+                    })
+            })
+            .collect();
+
+        // If there is nothing, we don't need to do anything.
+        if modset.is_empty() {
+            admin_info!("migrate_domain_4_to_5 no entries to migrate, complete");
+            return Ok(());
+        }
+
+        // Apply the batch mod.
+        self.internal_batch_modify(modset.into_iter())
+    }
+
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".

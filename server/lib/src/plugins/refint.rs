@@ -990,15 +990,13 @@ mod tests {
         // scope map is also appropriately affected.
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             // (Attribute::Class, EntryClass::OAuth2ResourceServerBasic.into()),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -1037,7 +1035,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        Attribute::OAuth2RsName,
+                        Attribute::Name,
                         PartialValue::new_iname("test_resource_server")
                     )))
                     .expect("Internal search failure");
@@ -1080,15 +1078,13 @@ mod tests {
 
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
             ),
             (Attribute::Uuid, Value::Uuid(rs_uuid)),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -1129,7 +1125,7 @@ mod tests {
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
-                        parent: parent_id,
+                        parent: Some(parent_id),
                         // Note we set the exp to None so we are not removing based on exp
                         state: SessionState::NeverExpires,
                         issued_at,
@@ -1309,6 +1305,7 @@ mod tests {
     fn test_delete_remove_reference_oauth2_claim_map() {
         let ea: Entry<EntryInit, EntryNew> = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServer.to_value()
@@ -1317,10 +1314,7 @@ mod tests {
                 Attribute::Class,
                 EntryClass::OAuth2ResourceServerPublic.to_value()
             ),
-            (
-                Attribute::OAuth2RsName,
-                Value::new_iname("test_resource_server")
-            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
             (
                 Attribute::DisplayName,
                 Value::new_utf8s("test_resource_server")
@@ -1366,7 +1360,7 @@ mod tests {
             |qs: &mut QueryServerWriteTransaction| {
                 let cands = qs
                     .internal_search(filter!(f_eq(
-                        Attribute::OAuth2RsName,
+                        Attribute::Name,
                         PartialValue::new_iname("test_resource_server")
                     )))
                     .expect("Internal search failure");

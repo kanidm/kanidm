@@ -145,6 +145,7 @@ pub const ATTR_PRIVATE_COOKIE_KEY: &str = "private_cookie_key";
 pub const ATTR_PRIVILEGE_EXPIRY: &str = "privilege_expiry";
 pub const ATTR_RADIUS_SECRET: &str = "radius_secret";
 pub const ATTR_RECYCLED: &str = "recycled";
+pub const ATTR_RECYCLEDDIRECTMEMBEROF: &str = "recycled_directmemberof";
 pub const ATTR_REPLICATED: &str = "replicated";
 pub const ATTR_RS256_PRIVATE_KEY_DER: &str = "rs256_private_key_der";
 pub const ATTR_SCOPE: &str = "scope";

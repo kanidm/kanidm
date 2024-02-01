@@ -1434,6 +1434,25 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            Attribute::RecycledDirectMemberOf.into(),
+            SchemaAttribute {
+                name: Attribute::RecycledDirectMemberOf.into(),
+                uuid: UUID_SCHEMA_ATTR_RECYCLEDDIRECTMEMBEROF,
+                description: String::from("recycled reverse direct group membership of the object to assist in revive operations."),
+                multivalue: true,
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                // Unlike DMO this must be replicated so that on a recycle event, these groups
+                //  "at delete" are replicated to partners. This avoids us having to replicate
+                // DMO which is very costly, while still retaining our ability to revive entries
+                // and their group memberships as a best effort.
+                replicated: true,
+                index: vec![],
+                syntax: SyntaxType::ReferenceUuid,
+            },
+        );
+        self.attributes.insert(
             Attribute::Member.into(),
             SchemaAttribute {
                 name: Attribute::Member.into(),
@@ -1974,6 +1993,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: EntryClass::Recycled.into(),
                     uuid: UUID_SCHEMA_CLASS_RECYCLED,
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
+                    systemmay: vec![Attribute::RecycledDirectMemberOf.into()],
                     .. Default::default()
                 },
             );

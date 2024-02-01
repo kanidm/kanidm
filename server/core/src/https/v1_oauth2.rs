@@ -57,6 +57,7 @@ pub(crate) async fn oauth2_basic_post(
     let classes = vec![
         EntryClass::OAuth2ResourceServer.to_string(),
         EntryClass::OAuth2ResourceServerBasic.to_string(),
+        EntryClass::Account.to_string(),
         EntryClass::Object.to_string(),
     ];
     json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
@@ -82,6 +83,7 @@ pub(crate) async fn oauth2_public_post(
     let classes = vec![
         EntryClass::OAuth2ResourceServer.to_string(),
         EntryClass::OAuth2ResourceServerPublic.to_string(),
+        EntryClass::Account.to_string(),
         EntryClass::Object.to_string(),
     ];
     json_rest_event_post(state, classes, obj, kopid, client_auth_info).await

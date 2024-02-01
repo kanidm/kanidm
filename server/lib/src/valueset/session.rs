@@ -779,6 +779,8 @@ impl ValueSetOauth2Session {
                             .map(SessionState::ExpiresAt)
                             .unwrap_or(SessionState::NeverExpires);
 
+                        let parent = Some(parent);
+
                         // Insert to the rs_filter.
                         rs_filter |= rs_uuid.as_u128();
                         Some((
@@ -833,6 +835,8 @@ impl ValueSetOauth2Session {
 
                         rs_filter |= rs_uuid.as_u128();
 
+                        let parent = Some(parent);
+
                         Some((
                             refer,
                             Oauth2Session {
@@ -842,7 +846,59 @@ impl ValueSetOauth2Session {
                                 rs_uuid,
                             },
                         ))
-                    }
+                    } // End V2
+                    DbValueOauth2Session::V3 {
+                        refer,
+                        parent,
+                        state,
+                        issued_at,
+                        rs_uuid,
+                    } => {
+                        // Convert things.
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?;
+
+                        let state = match state {
+                            DbValueSessionStateV1::ExpiresAt(e_inner) => {
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    .map(SessionState::ExpiresAt)
+                                    .map_err(|e| {
+                                        admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid expiry timestamp",
+                                    refer
+                                )
+                                    })
+                                    .ok()?
+                            }
+                            DbValueSessionStateV1::Never => SessionState::NeverExpires,
+                            DbValueSessionStateV1::RevokedAt(dc) => SessionState::RevokedAt(Cid {
+                                s_uuid: dc.server_id,
+                                ts: dc.timestamp,
+                            }),
+                        };
+
+                        rs_filter |= rs_uuid.as_u128();
+
+                        Some((
+                            refer,
+                            Oauth2Session {
+                                parent,
+                                state,
+                                issued_at,
+                                rs_uuid,
+                            },
+                        ))
+                    } // End V3
                 }
             })
             .collect();
@@ -1096,7 +1152,7 @@ impl ValueSetT for ValueSetOauth2Session {
         DbValueSetV2::Oauth2Session(
             self.map
                 .iter()
-                .map(|(u, m)| DbValueOauth2Session::V2 {
+                .map(|(u, m)| DbValueOauth2Session::V3 {
                     refer: *u,
                     parent: m.parent,
                     state: match &m.state {
@@ -1936,7 +1992,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -1966,7 +2022,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -1976,7 +2032,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -2001,7 +2057,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -2011,7 +2067,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::RevokedAt(zero_cid.clone()),
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -2039,7 +2095,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -2050,7 +2106,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2059,7 +2115,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2093,7 +2149,7 @@ mod tests {
             Oauth2Session {
                 state: SessionState::NeverExpires,
                 issued_at: OffsetDateTime::now_utc(),
-                parent: Uuid::new_v4(),
+                parent: Some(Uuid::new_v4()),
                 rs_uuid: Uuid::new_v4(),
             },
         );
@@ -2104,7 +2160,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2113,7 +2169,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2151,7 +2207,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(zero_cid),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2160,7 +2216,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(one_cid),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),
@@ -2169,7 +2225,7 @@ mod tests {
                 Oauth2Session {
                     state: SessionState::RevokedAt(two_cid.clone()),
                     issued_at: OffsetDateTime::now_utc(),
-                    parent: Uuid::new_v4(),
+                    parent: Some(Uuid::new_v4()),
                     rs_uuid: Uuid::new_v4(),
                 },
             ),

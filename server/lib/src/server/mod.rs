@@ -1159,9 +1159,9 @@ impl QueryServer {
 
         let d_info = Arc::new(CowCell::new(DomainInfo {
             d_uuid,
-            // Start with our minimum supported level.
+            // Start with our level as zero.
             // This will be reloaded from the DB shortly :)
-            d_vers: DOMAIN_MIN_LEVEL,
+            d_vers: DOMAIN_LEVEL_0,
             d_name: domain_name.clone(),
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
@@ -1630,6 +1630,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_3_to_4()?;
         }
 
+        if previous_version <= DOMAIN_LEVEL_4 && domain_info_version >= DOMAIN_LEVEL_5 {
+            self.migrate_domain_4_to_5()?;
+        }
+
         Ok(())
     }
 
@@ -1853,6 +1857,7 @@ mod tests {
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
                 (Attribute::Name, Value::new_iname("testperson1")),
                 (Attribute::Uuid, Value::Uuid(t_uuid)),
@@ -1983,6 +1988,7 @@ mod tests {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson1")),
             (

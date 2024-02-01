@@ -75,7 +75,7 @@ impl IntoResponse for HTTPOauth2Error {
 pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     filter_all!(f_and!([
         f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
-        f_eq(Attribute::OAuth2RsName, PartialValue::new_iname(rs_name))
+        f_eq(Attribute::Name, PartialValue::new_iname(rs_name))
     ]))
 }
 
