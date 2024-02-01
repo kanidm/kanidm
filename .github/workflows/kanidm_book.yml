@@ -95,18 +95,23 @@ jobs:
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
-      - name: Download individual artifact
+      - name: Download master artifact
         uses: actions/download-artifact@v4
         with:
-          name: "individual${{ needs.pre_deploy.outputs.latest}}"
+          name: individualmaster
+          path: ./docs/
+        env:
+          ACTIONS_RUNNER_DEBUG: true
+      - name: Download stble artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: "individual${{ needs.pre_deploy.outputs.latest }}"
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
       - name: Extract the files
         run: |
           pwd
-          echo "doing find $(pwd) -ls maxdepth 2"
-          find $(pwd) -ls -maxdepth 2
           echo "doing find tar.gz ls"
           find $(pwd) -name '*.tar.gz' -ls
           echo "extracting"
