@@ -118,10 +118,12 @@ pub enum Attribute {
     NsUniqueId,
     NsAccountLock,
     OAuth2AllowInsecureClientDisablePkce,
+    OAuth2AllowLocalhostRedirect,
     OAuth2ConsentScopeMap,
     OAuth2JwtLegacyCryptoEnable,
     OAuth2PreferShortUsername,
     OAuth2RsBasicSecret,
+    OAuth2RsClaimMap,
     OAuth2RsImplicitScopes,
     OAuth2RsName,
     OAuth2RsOrigin,
@@ -304,10 +306,12 @@ impl TryFrom<String> for Attribute {
             ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => {
                 Attribute::OAuth2AllowInsecureClientDisablePkce
             }
+            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT => Attribute::OAuth2AllowLocalhostRedirect,
             ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
             ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
             ATTR_OAUTH2_RS_BASIC_SECRET => Attribute::OAuth2RsBasicSecret,
+            ATTR_OAUTH2_RS_CLAIM_MAP => Attribute::OAuth2RsClaimMap,
             ATTR_OAUTH2_RS_IMPLICIT_SCOPES => Attribute::OAuth2RsImplicitScopes,
             ATTR_OAUTH2_RS_NAME => Attribute::OAuth2RsName,
             ATTR_OAUTH2_RS_ORIGIN => Attribute::OAuth2RsOrigin,
@@ -465,10 +469,12 @@ impl From<Attribute> for &'static str {
             Attribute::OAuth2AllowInsecureClientDisablePkce => {
                 ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
             }
+            Attribute::OAuth2AllowLocalhostRedirect => ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
             Attribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
             Attribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
             Attribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             Attribute::OAuth2RsBasicSecret => ATTR_OAUTH2_RS_BASIC_SECRET,
+            Attribute::OAuth2RsClaimMap => ATTR_OAUTH2_RS_CLAIM_MAP,
             Attribute::OAuth2RsImplicitScopes => ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
             Attribute::OAuth2RsName => ATTR_OAUTH2_RS_NAME,
             Attribute::OAuth2RsOrigin => ATTR_OAUTH2_RS_ORIGIN,

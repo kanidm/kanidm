@@ -447,6 +447,9 @@ impl KanidmClientBuilder {
 
         let client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
+            // We don't directly use cookies, but it may be required for load balancers that
+            // implement sticky sessions with cookies.
+            .cookie_store(true)
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
@@ -1868,6 +1871,8 @@ impl KanidmClient {
     }
 
     // == generic ssh key handlers
+    // These return the ssh keys in their "authorized keys" form rather than a format that
+    // shows labels and can be easily updated.
     pub async fn idm_account_get_ssh_pubkey(
         &self,
         id: &str,

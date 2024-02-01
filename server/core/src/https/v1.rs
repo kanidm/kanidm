@@ -2856,6 +2856,15 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             post(super::v1_oauth2::oauth2_id_sup_scopemap_post)
                 .delete(super::v1_oauth2::oauth2_id_sup_scopemap_delete),
         )
+        .route(
+            "/v1/oauth2/:rs_name/_claimmap/:claim_name/:group",
+            post(super::v1_oauth2::oauth2_id_claimmap_post)
+                .delete(super::v1_oauth2::oauth2_id_claimmap_delete),
+        )
+        .route(
+            "/v1/oauth2/:rs_name/_claimmap/:claim_name",
+            post(super::v1_oauth2::oauth2_id_claimmap_join_post),
+        )
         .route("/v1/raw/create", post(raw_create))
         .route("/v1/raw/modify", post(raw_modify))
         .route("/v1/raw/delete", post(raw_delete))

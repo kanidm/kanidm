@@ -707,6 +707,39 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "info", skip_all)]
+    /// Migrations for Oauth to support multiple origins, and custom claims.
+    pub fn migrate_domain_3_to_4(&mut self) -> Result<(), OperationError> {
+        let idm_schema_attrs = [
+            SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
+            SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
+                .clone()
+                .into(),
+        ];
+
+        idm_schema_attrs
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_3_to_4 -> Error");
+                err
+            })?;
+
+        let idm_schema_classes = [
+            SCHEMA_CLASS_OAUTH2_RS_DL4.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL4.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_3_to_4 -> Error");
+                err
+            })
+    }
+
+    #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
         // Load in all the "core" schema, that we already have in "memory".

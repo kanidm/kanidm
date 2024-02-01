@@ -26,6 +26,7 @@
   - [Authentication and Credentials](accounts/authentication.md)
   - [Groups](accounts/groups.md)
   - [Service Accounts](accounts/service.md)
+  - [Anonymous](accounts/anonymous.md)
   - [Account Policy](accounts/policy.md)
   - [POSIX Accounts and Groups](accounts/posix.md)
 
@@ -53,13 +54,15 @@
   - [FreeIPA](sync/freeipa.md)
   - [LDAP](sync/ldap.md)
 
-## Support
+- [Access Control](access_control/intro.md)
+
+# Support
 
 - [Troubleshooting](troubleshooting.md)
 - [Frequently Asked Questions](frequently_asked_questions.md)
 - [Glossary of Technical Terms](glossary.md)
 
-## For Developers
+# For Developers
 
 - [Developer Guide](DEVELOPER_README.md)
 - [FAQ](developers/faq.md)

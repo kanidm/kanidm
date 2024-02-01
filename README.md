@@ -31,7 +31,7 @@ Kanidm supports:
 - RADIUS for network and VPN authentication
 - Read only LDAPS gateway for Legacy Systems
 - Complete CLI tooling for Administration
-- User Self Service the WebUI
+- A WebUI for User Self Service
 
 </details>
 
@@ -56,10 +56,10 @@ When we develop features we follow our projects guidelines on [rights and ethics
 
 ## Getting in Contact / Questions
 
-We have a [gitter community channel] where project members are always happy to answer questions.
+We have a Matrix-powered [gitter community channel] where project members are always happy to chat and answer questions.
 Alternately you can open a new [github discussion].
 
-[gitter community channel]: https://gitter.im/kanidm/community
+[gitter community channel]: https://app.gitter.im/#/room/#kanidm_community:gitter.im
 [github discussion]: https://github.com/kanidm/kanidm/discussions
 
 ## What does Kanidm mean?
@@ -82,6 +82,9 @@ The primary benefit of Kanidm over LLDAP is that Kanidm offers a broader set of 
 like Oauth2 and OIDC. To use these from LLDAP you need an external portal like Keycloak, where in
 Kanidm they are "built in". However that is also a strength of LLDAP is that is offers "less" which
 may make it easier to administer and deploy for you.
+
+While LLDAP offers a simple Web UI as the primary user management frontend, Kanidm currently only
+offers administration functionality via its CLI.
 
 If Kanidm is too complex for your needs, you should check out LLDAP as a smaller alternative. If you
 want a project which has a broader feature set out of the box, then Kanidm might be a better fit.

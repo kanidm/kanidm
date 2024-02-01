@@ -1,4 +1,5 @@
 # This should be at /etc/kanidm/config or ~/.config/kanidm, and configures the kanidm command line tool
 # to point at the local dev server and trust the CA security.
 uri="https://localhost:8443"
-verify_ca="/tmp/kanidm/ca.pem"
+verify_ca=true
+ca_path="/tmp/kanidm/ca.pem"

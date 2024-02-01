@@ -28,4 +28,4 @@ async def test_radius_call(client_configfile: KanidmClient) -> None:
     result = await client_configfile.get_radius_token(RADIUS_TEST_USER)
 
     print(f"{result=}")
-    print(json.dumps(result.dict(), indent=4, default=str))
+    print(json.dumps(result.model_dump_json(), indent=4, default=str))

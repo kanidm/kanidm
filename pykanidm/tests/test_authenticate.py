@@ -29,7 +29,7 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
         pytest.skip("Can't run auth test without a username/password")
     result = await client_configfile.auth_init(client_configfile.config.username)
     print(f"{result=}")
-    print(result.dict())
+    print(result.model_dump_json())
     assert result.sessionid
 
 
@@ -44,7 +44,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     result = await client_configfile.auth_init(client_configfile.config.username)
     print(f"{result=}")
     print("Result dict:")
-    print(result.dict())
+    print(result.model_dump_json())
     assert result.sessionid
 
     print(f"Doing auth_begin for {client_configfile.config.username}")
@@ -62,7 +62,7 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
     if retval is None:
         raise pytest.fail("Failed to do begin_result")
 
-    retval["response"] = begin_result
+    retval["response"] = begin_result.model_dump()
 
     assert AuthBeginResponse.model_validate(retval)
 
@@ -91,7 +91,7 @@ async def test_authenticate_anonymous(client_configfile: KanidmClient) -> None:
     """tests the authenticate() flow"""
 
     client_configfile.config.auth_token = None
-    print(f"Doing client.authenticate for {client_configfile.config.username}")
+    print("Doing anonymous auth")
     await client_configfile.auth_as_anonymous()
     assert client_configfile.config.auth_token is not None
 

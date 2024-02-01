@@ -6,7 +6,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM};
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_SSH_PUBLICKEY};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{
@@ -215,10 +215,13 @@ impl PersonOpt {
                     let client = aopt.copt.to_client(OpType::Read).await;
 
                     match client
-                        .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
+                        .idm_person_account_get_attr(
+                            aopt.aopts.account_id.as_str(),
+                            ATTR_SSH_PUBLICKEY,
+                        )
                         .await
                     {
-                        Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
+                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{}", pkey)),
                         Err(e) => handle_client_error(e, aopt.copt.output_mode),
                     }
                 }

@@ -32,7 +32,8 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseResponse, JwkKeySet, Oauth2Error, OidcDiscoveryResponse, OidcToken,
+        AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
+        OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{IdmServer, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
@@ -1430,6 +1431,20 @@ impl QueryServerReadV1 {
     ) -> Result<OidcDiscoveryResponse, OperationError> {
         let idms_prox_read = self.idms.proxy_read().await;
         idms_prox_read.oauth2_openid_discovery(&client_id)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_rfc8414_metadata(
+        &self,
+        client_id: String,
+        eventid: Uuid,
+    ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
+        let idms_prox_read = self.idms.proxy_read().await;
+        idms_prox_read.oauth2_rfc8414_metadata(&client_id)
     }
 
     #[instrument(

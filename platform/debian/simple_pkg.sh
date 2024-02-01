@@ -16,7 +16,7 @@ mkdir -p "$pkgdir"
 make release/kanidm release/kanidm-unixd release/kanidm-ssh
 
 # enable the following block to include deployment specific configuration files
-if [ 1 -eq 0 ]; then
+if [ "${INCLUDE_CONFIG}" -eq 1 ]; then
   mkdir -p deployment-config
 
   # Customize the following heredocs according to the deployment

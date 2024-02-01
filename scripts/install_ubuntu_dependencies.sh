@@ -18,6 +18,7 @@ ${SUDOCMD} apt-get install -y \
     rsync \
     git \
     build-essential \
+    jq
 
 if [ -z "${PACKAGING}" ]; then
     PACKAGING=0

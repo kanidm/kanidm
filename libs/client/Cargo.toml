@@ -18,6 +18,7 @@ doctest = false
 [dependencies]
 tracing = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = [
+    "cookies",
     "multipart",
 ] }
 kanidm_proto = { workspace = true }

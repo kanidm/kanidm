@@ -4,6 +4,7 @@
 //! integrations, which are then able to be used an accessed from the IDM layer
 //! for operations involving OAuth2 authentication processing.
 
+use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
 use std::fmt;
@@ -23,7 +24,7 @@ use kanidm_proto::constants::*;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
-    OidcDiscoveryResponse, TokenRevokeRequest,
+    Oauth2Rfc8414MetadataResponse, OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
@@ -40,7 +41,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::value::{Oauth2Session, SessionState, OAUTHSCOPE_RE};
+use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -202,7 +203,9 @@ enum OauthRSType {
         enable_pkce: bool,
     },
     // Public clients must have pkce.
-    Public,
+    Public {
+        allow_localhost_redirect: bool,
+    },
 }
 
 impl std::fmt::Debug for OauthRSType {
@@ -212,7 +215,11 @@ impl std::fmt::Debug for OauthRSType {
             OauthRSType::Basic { enable_pkce, .. } => {
                 ds.field("type", &"basic").field("pkce", enable_pkce)
             }
-            OauthRSType::Public => ds.field("type", &"public"),
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => ds
+                .field("type", &"public")
+                .field("allow_localhost_redirect", allow_localhost_redirect),
         };
         ds.finish()
     }
@@ -224,6 +231,40 @@ enum Oauth2JwsSigner {
     RS256 { signer: JwsRs256Signer },
 }
 
+#[derive(Clone, Debug)]
+struct ClaimValue {
+    join: OauthClaimMapJoin,
+    values: BTreeSet<String>,
+}
+
+impl ClaimValue {
+    fn merge(&mut self, other: &Self) {
+        self.values.extend(other.values.iter().cloned())
+    }
+
+    fn to_json_value(&self) -> serde_json::Value {
+        let join_char = match self.join {
+            OauthClaimMapJoin::CommaSeparatedValue => ',',
+            OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+            OauthClaimMapJoin::JsonArray => {
+                let arr: Vec<_> = self
+                    .values
+                    .iter()
+                    .cloned()
+                    .map(serde_json::Value::String)
+                    .collect();
+
+                // This shortcuts out.
+                return serde_json::Value::Array(arr);
+            }
+        };
+
+        let joined = str_concat!(&self.values, join_char);
+
+        serde_json::Value::String(joined)
+    }
+}
+
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
@@ -231,18 +272,19 @@ pub struct Oauth2RS {
     uuid: Uuid,
     origin: Origin,
     origin_https: bool,
+    claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
-
     jws_signer: Oauth2JwsSigner,
-
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.
     authorization_endpoint: Url,
     token_endpoint: Url,
+    revocation_endpoint: Url,
+    introspection_endpoint: Url,
     userinfo_endpoint: Url,
     jwks_uri: Url,
     scopes_supported: BTreeSet<String>,
@@ -262,6 +304,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
+            .field("claim_map", &self.claim_map)
             .field("has_custom_image", &self.has_custom_image)
             .finish()
     }
@@ -352,7 +395,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         enable_pkce,
                     }
                 } else if ent.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerPublic.into()) {
-                    OauthRSType::Public
+                    let allow_localhost_redirect = ent
+                        .get_ava_single_bool(Attribute::OAuth2AllowLocalhostRedirect)
+                        .unwrap_or(false);
+
+                    OauthRSType::Public {
+                        allow_localhost_redirect
+                    }
                 } else {
                     error!("Missing class determining OAuth2 rs type");
                     return Err(OperationError::InvalidEntryState);
@@ -400,6 +449,51 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .unwrap_or_default();
 
+                let e_claim_maps = ent
+                    .get_ava_set(Attribute::OAuth2RsClaimMap)
+                    .and_then(|vs| vs.as_oauthclaim_map());
+
+                // ⚠️  Claim Maps as they are stored in the DB are optimised
+                // for referential integrity and user interaction. However we
+                // need to "invert" these for fast lookups during actual
+                // operation of the oauth2 client.
+                let claim_map = if let Some(e_claim_maps) = e_claim_maps {
+                    let mut claim_map = BTreeMap::default();
+
+                    for (claim_name, claim_mapping) in e_claim_maps.iter() {
+                        for (group_uuid, claim_values) in claim_mapping.values().iter() {
+                            // We always insert/append here because the outer claim_name has
+                            // to be unique.
+                            match claim_map.entry(*group_uuid) {
+                                BTreeEntry::Vacant(e) => {
+                                    e.insert(
+                                        vec![
+                                            (
+                                            claim_name.clone(), ClaimValue {
+                                                join: claim_mapping.join(),
+                                                values: claim_values.clone()
+                                            }
+                                            )
+                                        ]
+                                    );
+                                }
+                                BTreeEntry::Occupied(mut e) => {
+                                    e.get_mut().push((
+                                            claim_name.clone(), ClaimValue {
+                                                join: claim_mapping.join(),
+                                                values: claim_values.clone()
+                                            }
+                                    ));
+                                }
+                            }
+                        }
+                    }
+
+                    claim_map
+                } else {
+                    BTreeMap::default()
+                };
+
                 trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
                     trace!("{}", Attribute::Rs256PrivateKeyDer);
@@ -441,6 +535,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let mut token_endpoint = self.inner.origin.clone();
                 token_endpoint.set_path("/oauth2/token");
 
+                let mut revocation_endpoint = self.inner.origin.clone();
+                revocation_endpoint.set_path("/oauth2/token/revoke");
+
+                let mut introspection_endpoint = self.inner.origin.clone();
+                introspection_endpoint.set_path("/oauth2/token/introspect");
+
                 let mut userinfo_endpoint = self.inner.origin.clone();
                 userinfo_endpoint.set_path(&format!("/oauth2/openid/{name}/userinfo"));
 
@@ -473,11 +573,14 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     origin_https,
                     scope_maps,
                     sup_scope_maps,
+                    claim_map,
                     token_fernet,
                     jws_signer,
                     iss,
                     authorization_endpoint,
                     token_endpoint,
+                    revocation_endpoint,
+                    introspection_endpoint,
                     userinfo_endpoint,
                     jwks_uri,
                     scopes_supported,
@@ -528,7 +631,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -654,7 +757,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid - no further action needed.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -807,7 +910,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let require_pkce = match &o2rs.type_ {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public => true,
+            OauthRSType::Public { .. } => true,
         };
 
         // If we have a verifier present, we MUST assert that a code challenge is present!
@@ -1083,7 +1186,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             let s_claims = s_claims_for_account(o2rs, &account, &scopes);
-            let extra_claims = extra_claims_for_account(&account, &scopes);
+            let extra_claims = extra_claims_for_account(&account, &o2rs.claim_map, &scopes);
 
             let oidc = OidcToken {
                 iss,
@@ -1229,7 +1332,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         o2rs.token_fernet
@@ -1289,8 +1392,24 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Oauth2Error::InvalidClientId
             })?;
 
-        // redirect_uri must be part of the client_id origin.
-        if auth_req.redirect_uri.origin() != o2rs.origin {
+        let allow_localhost_redirect = match &o2rs.type_ {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => *allow_localhost_redirect,
+        };
+
+        let localhost_redirect = auth_req
+            .redirect_uri
+            .domain()
+            .map(|domain| domain == "localhost")
+            .unwrap_or_default();
+
+        // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
+        // be localhost.
+        if !(auth_req.redirect_uri.origin() == o2rs.origin
+            || (allow_localhost_redirect && localhost_redirect))
+        {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid OAuth2 redirect_uri (must be related to origin {:?}) - got {:?}",
@@ -1300,7 +1419,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             return Err(Oauth2Error::InvalidOrigin);
         }
 
-        if o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
+        if !localhost_redirect && o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
@@ -1310,7 +1429,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let require_pkce = match &o2rs.type_ {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public => true,
+            OauthRSType::Public { .. } => true,
         };
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
@@ -1634,7 +1753,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 }
             }
             // Relies on the token to be valid.
-            OauthRSType::Public => {}
+            OauthRSType::Public { .. } => {}
         };
 
         // We are authenticated! Yay! Now we can actually check things ...
@@ -1799,7 +1918,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 let iss = o2rs.iss.clone();
 
                 let s_claims = s_claims_for_account(o2rs, &account, &scopes);
-                let extra_claims = extra_claims_for_account(&account, &scopes);
+                let extra_claims = extra_claims_for_account(&account, &o2rs.claim_map, &scopes);
                 let exp = expiry.unix_timestamp();
 
                 // ==== good to generate response ====
@@ -1825,6 +1944,82 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
             Oauth2TokenType::Refresh { .. } => Err(Oauth2Error::InvalidToken),
         }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn oauth2_rfc8414_metadata(
+        &self,
+        client_id: &str,
+    ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let issuer = o2rs.iss.clone();
+        let authorization_endpoint = o2rs.authorization_endpoint.clone();
+        let token_endpoint = o2rs.token_endpoint.clone();
+        let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
+        let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
+        let jwks_uri = Some(o2rs.jwks_uri.clone());
+        let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
+        let response_types_supported = vec![ResponseType::Code];
+        let response_modes_supported = vec![ResponseMode::Query];
+        let grant_types_supported = vec![GrantType::AuthorisationCode];
+
+        let token_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let revocation_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let introspection_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
+
+        let require_pkce = match &o2rs.type_ {
+            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
+            OauthRSType::Public { .. } => true,
+        };
+
+        let code_challenge_methods_supported = if require_pkce {
+            vec![PkceAlg::S256]
+        } else {
+            Vec::with_capacity(0)
+        };
+
+        Ok(Oauth2Rfc8414MetadataResponse {
+            issuer,
+            authorization_endpoint,
+            token_endpoint,
+            jwks_uri,
+            registration_endpoint: None,
+            scopes_supported,
+            response_types_supported,
+            response_modes_supported,
+            grant_types_supported,
+            token_endpoint_auth_methods_supported,
+            token_endpoint_auth_signing_alg_values_supported: None,
+            service_documentation,
+            ui_locales_supported: None,
+            op_policy_uri: None,
+            op_tos_uri: None,
+            revocation_endpoint,
+            revocation_endpoint_auth_methods_supported,
+            introspection_endpoint,
+            introspection_endpoint_auth_methods_supported,
+            introspection_endpoint_auth_signing_alg_values_supported: None,
+            code_challenge_methods_supported,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1993,17 +2188,53 @@ fn s_claims_for_account(
         ..Default::default()
     }
 }
+
 fn extra_claims_for_account(
     account: &Account,
+
+    claim_map: &BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
+
     scopes: &BTreeSet<String>,
 ) -> BTreeMap<String, serde_json::Value> {
     let mut extra_claims = BTreeMap::new();
+
+    let mut account_claims: BTreeMap<&str, ClaimValue> = BTreeMap::new();
+
+    // for each group
+    for group_uuid in account.groups.iter().map(|g| g.uuid()) {
+        // Does this group have any custom claims?
+        if let Some(claim) = claim_map.get(&group_uuid) {
+            // If so, iterate over the set of claims and values.
+            for (claim_name, claim_value) in claim.iter() {
+                // Does this claim name already exist in our in-progress map?
+                match account_claims.entry(claim_name.as_str()) {
+                    BTreeEntry::Vacant(e) => {
+                        e.insert(claim_value.clone());
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        let mut_claim_value = e.get_mut();
+                        // Merge the extra details into this.
+                        mut_claim_value.merge(claim_value);
+                    }
+                }
+            }
+        }
+    }
+
+    // Now, flatten all these into the final structure.
+    for (claim_name, claim_value) in account_claims {
+        extra_claims.insert(claim_name.to_string(), claim_value.to_json_value());
+    }
+
     if scopes.contains(&"groups".to_string()) {
         extra_claims.insert(
             "groups".to_string(),
             account.groups.iter().map(|x| x.to_proto().uuid).collect(),
         );
     }
+
+    trace!(?extra_claims);
+
     extra_claims
 }
 
@@ -2041,6 +2272,7 @@ mod tests {
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
+    use crate::value::OauthClaimMapJoin;
     use crate::value::SessionState;
 
     use crate::credential::Credential;
@@ -2396,8 +2628,6 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let idms_prox_read = idms.proxy_read().await;
-
-        // Get an ident/uat for now.
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3384,6 +3614,114 @@ mod tests {
     }
 
     #[idm_test]
+    async fn test_idm_oauth2_rfc8414_metadata(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // check the discovery end point works as we expect
+        assert!(
+            idms_prox_read
+                .oauth2_rfc8414_metadata("nosuchclient")
+                .unwrap_err()
+                == OperationError::NoMatchingEntries
+        );
+
+        let discovery = idms_prox_read
+            .oauth2_rfc8414_metadata("test_resource_server")
+            .expect("Failed to get discovery");
+
+        assert!(
+            discovery.issuer
+                == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                    .unwrap()
+        );
+
+        assert!(
+            discovery.authorization_endpoint
+                == Url::parse("https://idm.example.com/ui/oauth2").unwrap()
+        );
+
+        assert!(
+            discovery.token_endpoint == Url::parse("https://idm.example.com/oauth2/token").unwrap()
+        );
+
+        assert!(
+            discovery.jwks_uri
+                == Some(
+                    Url::parse(
+                        "https://idm.example.com/oauth2/openid/test_resource_server/public_key.jwk"
+                    )
+                    .unwrap()
+                )
+        );
+
+        assert!(discovery.registration_endpoint.is_none());
+
+        assert!(
+            discovery.scopes_supported
+                == Some(vec![
+                    "groups".to_string(),
+                    OAUTH2_SCOPE_OPENID.to_string(),
+                    "supplement".to_string(),
+                ])
+        );
+
+        assert!(discovery.response_types_supported == vec![ResponseType::Code]);
+        assert!(discovery.response_modes_supported == vec![ResponseMode::Query]);
+        assert!(discovery.grant_types_supported == vec![GrantType::AuthorisationCode]);
+        assert!(
+            discovery.token_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery.service_documentation.is_some());
+
+        assert!(discovery.ui_locales_supported.is_none());
+        assert!(discovery.op_policy_uri.is_none());
+        assert!(discovery.op_tos_uri.is_none());
+
+        assert!(
+            discovery.revocation_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+        );
+        assert!(
+            discovery.revocation_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+
+        assert!(
+            discovery.introspection_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+        );
+        assert!(
+            discovery.introspection_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery
+            .introspection_endpoint_auth_signing_alg_values_supported
+            .is_none());
+
+        assert_eq!(
+            discovery.code_challenge_methods_supported,
+            vec![PkceAlg::S256]
+        )
+    }
+
+    #[idm_test]
     async fn test_idm_oauth2_openid_discovery(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
@@ -3467,7 +3805,6 @@ mod tests {
                 .unwrap()
         );
 
-        eprintln!("{:?}", discovery.scopes_supported);
         assert!(
             discovery.scopes_supported
                 == Some(vec![
@@ -4298,7 +4635,6 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
     }
 
-    #[idm_test]
     // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.8
     //
     // It was reported we were vulnerable to this attack, but that isn't the case. First
@@ -4318,6 +4654,7 @@ mod tests {
     // exchange that code exchange with out the verifier, but I'm not sure what damage that would
     // lead to? Regardless, we test for and close off that possible hole in this test.
     //
+    #[idm_test]
     async fn test_idm_oauth2_1076_pkce_downgrade(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
@@ -4934,5 +5271,329 @@ mod tests {
         "#,
         );
         assert!(token_req.is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_custom_claims(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, ident, oauth2_rs_uuid) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        // Setup custom claim maps here.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_list(vec![
+            // Member of a claim map.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimMap(
+                    "custom_a".to_string(),
+                    OauthClaimMapJoin::CommaSeparatedValue,
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_a".to_string(),
+                    UUID_SYSTEM_ADMINS,
+                    btreeset!["value_a".to_string()],
+                ),
+            ),
+            // If you are a member of two groups, the claim maps merge.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_a".to_string(),
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset!["value_b".to_string()],
+                ),
+            ),
+            // Map with a different seperator
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimMap(
+                    "custom_b".to_string(),
+                    OauthClaimMapJoin::SpaceSeparatedValue,
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_SYSTEM_ADMINS,
+                    btreeset!["value_a".to_string()],
+                ),
+            ),
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_IDM_ALL_ACCOUNTS,
+                    btreeset!["value_b".to_string()],
+                ),
+            ),
+            // Not a member of the claim map.
+            Modify::Present(
+                Attribute::OAuth2RsClaimMap.into(),
+                Value::OauthClaimValue(
+                    "custom_b".to_string(),
+                    UUID_IDM_ADMINS,
+                    btreeset!["value_c".to_string()],
+                ),
+            ),
+        ]);
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Claim maps setup, lets go.
+        let client_authz =
+            Some(general_purpose::STANDARD.encode(format!("test_resource_server:{secret}")));
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            code_challenge,
+            OAUTH2_SCOPE_OPENID.to_string()
+        );
+
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token!
+        assert!(token_response.token_type == "Bearer");
+
+        let id_token = token_response.id_token.expect("No id_token in response!");
+        let access_token = token_response.access_token;
+
+        // Get the read txn for inspecting the tokens
+        assert!(idms_prox_write.commit().is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc");
+
+        // Are the id_token values what we expect?
+        assert!(
+            oidc.iss
+                == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                    .unwrap()
+        );
+        assert!(oidc.sub == OidcSubject::U(UUID_ADMIN));
+        assert!(oidc.aud == "test_resource_server");
+        assert!(oidc.iat == iat);
+        assert!(oidc.nbf == Some(iat));
+        // Previously this was the auth session but it's now inline with the access token expiry.
+        assert!(oidc.exp == iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
+        assert!(oidc.auth_time.is_none());
+        // Is nonce correctly passed through?
+        assert!(oidc.nonce == Some("abcdef".to_string()));
+        assert!(oidc.at_hash.is_none());
+        assert!(oidc.acr.is_none());
+        assert!(oidc.amr.is_none());
+        assert!(oidc.azp == Some("test_resource_server".to_string()));
+        assert!(oidc.jti.is_none());
+        assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
+        assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+        assert!(
+            oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
+        );
+
+        assert_eq!(
+            oidc.claims.get("custom_a").and_then(|v| v.as_str()),
+            Some("value_a,value_b")
+        );
+        assert_eq!(
+            oidc.claims.get("custom_b").and_then(|v| v.as_str()),
+            Some("value_a value_b")
+        );
+
+        // Does our access token work with the userinfo endpoint?
+        // Do the id_token details line up to the userinfo?
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+            .expect("failed to get userinfo");
+
+        assert!(oidc.iss == userinfo.iss);
+        assert!(oidc.sub == userinfo.sub);
+        assert!(oidc.aud == userinfo.aud);
+        assert!(oidc.iat == userinfo.iat);
+        assert!(oidc.nbf == userinfo.nbf);
+        assert!(oidc.exp == userinfo.exp);
+        assert!(userinfo.auth_time.is_none());
+        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert!(userinfo.at_hash.is_none());
+        assert!(userinfo.acr.is_none());
+        assert!(oidc.amr == userinfo.amr);
+        assert!(oidc.azp == userinfo.azp);
+        assert!(userinfo.jti.is_none());
+        assert!(oidc.s_claims == userinfo.s_claims);
+        assert_eq!(oidc.claims, userinfo.claims);
+
+        // Check the oauth2 introspect bits.
+        let intr_request = AccessTokenIntrospectRequest {
+            token: access_token,
+            token_type_hint: None,
+        };
+        let intr_response = idms_prox_read
+            .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
+            .expect("Failed to inspect token");
+
+        eprintln!("👉  {intr_response:?}");
+        assert!(intr_response.active);
+        assert!(intr_response.scope.as_deref() == Some("openid supplement"));
+        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
+        assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+        assert!(intr_response.token_type.as_deref() == Some("access_token"));
+        assert!(intr_response.iat == Some(ct.as_secs() as i64));
+        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+        // Introspect doesn't have custom claims.
+
+        drop(idms_prox_read);
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_public_allow_localhost_redirect(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_uat, ident, oauth2_rs_uuid) = setup_oauth2_resource_server_public(idms, ct).await;
+
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let modlist = ModifyList::new_list(vec![Modify::Present(
+            Attribute::OAuth2AllowLocalhostRedirect.into(),
+            Value::Bool(true),
+        )]);
+
+        assert!(idms_prox_write
+            .qs_write
+            .internal_modify(
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(oauth2_rs_uuid))),
+                &modlist,
+            )
+            .is_ok());
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // == Setup the authorisation request
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: Some(PkceRequest {
+                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge_method: CodeChallengeMethod::S256,
+            }),
+            redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        let consent_request = idms_prox_read
+            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .expect("OAuth2 authorisation failed");
+
+        // Should be in the consent phase;
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // Check we are reflecting the CSRF properly.
+        assert!(permit_success.state == "123");
+
+        // == Submit the token exchange code.
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: None,
+        };
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(None, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(token_response.token_type == "Bearer");
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 }

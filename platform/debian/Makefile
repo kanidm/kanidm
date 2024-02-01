@@ -1,4 +1,4 @@
-ARCH ?= $(dpkg --print-architecture)
+ARCH ?= $(shell dpkg --print-architecture)
 
 
 .DEFAULT: help

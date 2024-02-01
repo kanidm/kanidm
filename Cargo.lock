@@ -1152,6 +1152,7 @@ dependencies = [
  "reqwest",
  "sd-notify",
  "serde",
+ "serde_json",
  "sketching",
  "tikv-jemallocator",
  "tokio",
@@ -3523,9 +3524,9 @@ dependencies = [
 
 [[package]]
 name = "ldap3_client"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bec3fe7dd2cd58ea17bf49e794dd89b7773bff180300fc8667a8ca8f38e4aed0"
+checksum = "4f294d8b0c3a0906caca55d2004f1192e174b895afa3f0f177ead05f314544d2"
 dependencies = [
  "base64 0.21.5",
  "base64urlsafedata",
@@ -3543,9 +3544,9 @@ dependencies = [
 
 [[package]]
 name = "ldap3_proto"
-version = "0.4.2"
+version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4598dd32dbd16d4fd06a1eb423bf569563d7c65e808ceae5ef3c12179134bc36"
+checksum = "a29eca0a9fef365d6d376a1b262e269a17b1c8c6de2cee76618642cd3c923506"
 dependencies = [
  "base64 0.21.5",
  "bytes",
@@ -5452,9 +5453,9 @@ dependencies = [
 
 [[package]]
 name = "shlex"
-version = "1.2.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a7cee0529a6d40f580e7a5e6c495c8fbfe21b7b52795ed4bb5e62cdf92bc6380"
+checksum = "0fda2ff0d084019ba4d7c6f371c95d8fd75ce3524c3cb8fb653a3023f6323e64"
 
 [[package]]
 name = "signal-hook"

@@ -1,11 +1,11 @@
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::be::dbvalue::DbValueOauthScopeMapV1;
+use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
-use crate::repl::proto::{ReplAttrV1, ReplOauthScopeMapV1};
+use crate::repl::proto::{ReplAttrV1, ReplOauthClaimMapV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
-use crate::value::OAUTHSCOPE_RE;
+use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -363,5 +363,370 @@ impl ValueSetT for ValueSetOauthScopeMap {
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OauthClaimMapping {
+    join: OauthClaimMapJoin,
+    values: BTreeMap<Uuid, BTreeSet<String>>,
+}
+
+impl OauthClaimMapping {
+    pub(crate) fn join(&self) -> OauthClaimMapJoin {
+        self.join
+    }
+
+    pub(crate) fn values(&self) -> &BTreeMap<Uuid, BTreeSet<String>> {
+        &self.values
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ValueSetOauthClaimMap {
+    //            Claim Name
+    map: BTreeMap<String, OauthClaimMapping>,
+}
+
+impl ValueSetOauthClaimMap {
+    pub(crate) fn new(claim: String, join: OauthClaimMapJoin) -> Box<Self> {
+        let mapping = OauthClaimMapping {
+            join,
+            values: BTreeMap::default(),
+        };
+        let mut map = BTreeMap::new();
+        map.insert(claim, mapping);
+        Box::new(ValueSetOauthClaimMap { map })
+    }
+
+    pub(crate) fn new_value(claim: String, group: Uuid, claims: BTreeSet<String>) -> Box<Self> {
+        let mut values = BTreeMap::default();
+        values.insert(group, claims);
+
+        let mapping = OauthClaimMapping {
+            join: OauthClaimMapJoin::default(),
+            values,
+        };
+
+        let mut map = BTreeMap::new();
+        map.insert(claim, mapping);
+        Box::new(ValueSetOauthClaimMap { map })
+    }
+
+    /*
+    pub(crate) fn push(&mut self, claim: String, mapping: OauthClaimMapping) -> bool {
+        self.map.insert(claim, mapping).is_none()
+    }
+    */
+
+    pub(crate) fn from_dbvs2(data: Vec<DbValueOauthClaimMap>) -> Result<ValueSet, OperationError> {
+        let map = data
+            .into_iter()
+            .map(|db_claim_map| match db_claim_map {
+                DbValueOauthClaimMap::V1 { name, join, values } => (
+                    name.clone(),
+                    OauthClaimMapping {
+                        join: join.into(),
+                        values: values.clone(),
+                    },
+                ),
+            })
+            .collect();
+        Ok(Box::new(ValueSetOauthClaimMap { map }))
+    }
+
+    pub(crate) fn from_repl_v1(data: &[ReplOauthClaimMapV1]) -> Result<ValueSet, OperationError> {
+        let map = data
+            .iter()
+            .map(|ReplOauthClaimMapV1 { name, join, values }| {
+                (
+                    name.clone(),
+                    OauthClaimMapping {
+                        join: (*join).into(),
+                        values: values.clone(),
+                    },
+                )
+            })
+            .collect();
+        Ok(Box::new(ValueSetOauthClaimMap { map }))
+    }
+
+    /*
+    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
+    // types, and tuples are always foreign.
+    #[allow(clippy::should_implement_trait)]
+    pub(crate) fn from_iter<T>(iter: T) -> Option<Box<Self>>
+    where
+        T: IntoIterator<Item = (String, OauthClaimMapping)>,
+    {
+        let map = iter.into_iter().collect();
+        Some(Box::new(ValueSetOauthClaimMap { map }))
+    }
+    */
+}
+
+impl ValueSetT for ValueSetOauthClaimMap {
+    fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
+        match value {
+            Value::OauthClaimValue(name, uuid, claims) => {
+                // Add a value to this group associated to this claim.
+                match self.map.entry(name) {
+                    BTreeEntry::Vacant(e) => {
+                        // New map/value. Use a default joiner.
+                        let mut values = BTreeMap::default();
+                        values.insert(uuid, claims);
+
+                        let claim_map = OauthClaimMapping {
+                            join: OauthClaimMapJoin::default(),
+                            values,
+                        };
+                        e.insert(claim_map);
+                        Ok(true)
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        // Just add the uuid/value, this claim name already exists.
+                        let mapping_mut = e.get_mut();
+                        match mapping_mut.values.entry(uuid) {
+                            BTreeEntry::Vacant(e) => {
+                                e.insert(claims);
+                                Ok(true)
+                            }
+                            BTreeEntry::Occupied(mut e) => {
+                                e.insert(claims);
+                                Ok(true)
+                            }
+                        }
+                    }
+                }
+            }
+            Value::OauthClaimMap(name, join) => {
+                match self.map.entry(name) {
+                    BTreeEntry::Vacant(e) => {
+                        // Create a new empty claim mapping.
+                        let claim_map = OauthClaimMapping {
+                            join,
+                            values: BTreeMap::default(),
+                        };
+                        e.insert(claim_map);
+                        Ok(true)
+                    }
+                    BTreeEntry::Occupied(mut e) => {
+                        // Just update the join strategy.
+                        e.get_mut().join = join;
+                        Ok(true)
+                    }
+                }
+            }
+            _ => Err(OperationError::InvalidValueState),
+        }
+    }
+
+    fn clear(&mut self) {
+        self.map.clear();
+    }
+
+    fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
+        let res = match pv {
+            // Remove this claim as a whole
+            PartialValue::Iutf8(s) => self.map.remove(s).is_some(),
+            // Remove all references to this group from this claim map.
+            PartialValue::Refer(u) => {
+                let mut contained = false;
+                for mapping_mut in self.map.values_mut() {
+                    contained |= mapping_mut.values.remove(u).is_some();
+                }
+                contained
+            }
+            PartialValue::OauthClaim(s, u) => {
+                // Remove a uuid from this claim type.
+                if let Some(mapping_mut) = self.map.get_mut(s) {
+                    mapping_mut.values.remove(u).is_some()
+                } else {
+                    false
+                }
+            }
+            PartialValue::OauthClaimValue(s, u, v) => {
+                // Remove a value from this uuid, associated to this claim name.
+                if let Some(mapping_mut) = self.map.get_mut(s) {
+                    if let Some(claim_mut) = mapping_mut.values.get_mut(u) {
+                        claim_mut.remove(v)
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        };
+
+        // Trim anything that is now empty.
+        self.map
+            .values_mut()
+            .for_each(|mapping_mut| mapping_mut.values.retain(|_k, v| !v.is_empty()));
+
+        self.map.retain(|_k, v| !v.values.is_empty());
+
+        res
+    }
+
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Iutf8(s) => self.map.contains_key(s),
+            PartialValue::Refer(u) => {
+                let mut contained = false;
+                for mapping in self.map.values() {
+                    contained |= mapping.values.contains_key(u);
+                }
+                contained
+            }
+            _ => false,
+        }
+    }
+
+    fn substring(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn startswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn endswith(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn lessthan(&self, _pv: &PartialValue) -> bool {
+        false
+    }
+
+    fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    fn generate_idx_eq_keys(&self) -> Vec<String> {
+        self.map
+            .keys()
+            .cloned()
+            .chain(
+                self.map.values().flat_map(|mapping| {
+                    mapping.values.keys().map(|u| u.as_hyphenated().to_string())
+                }),
+            )
+            .collect()
+    }
+
+    fn syntax(&self) -> SyntaxType {
+        SyntaxType::OauthClaimMap
+    }
+
+    fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
+        self.map.keys().all(|s| OAUTHSCOPE_RE.is_match(s))
+            && self
+                .map
+                .values()
+                .flat_map(|mapping| {
+                    mapping
+                        .values
+                        .values()
+                        .flat_map(|claim_values| claim_values.iter())
+                })
+                .all(|s| OAUTHSCOPE_RE.is_match(s))
+    }
+
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+        Box::new(self.map.iter().flat_map(|(name, mapping)| {
+            mapping.values.iter().map(move |(group, claims)| {
+                let join_char = match mapping.join {
+                    OauthClaimMapJoin::CommaSeparatedValue => ',',
+                    OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+                    // Should this be something else?
+                    OauthClaimMapJoin::JsonArray => ';',
+                };
+
+                let joined = str_concat!(claims, join_char);
+
+                format!(
+                    "{}: {} \"{:?}\"",
+                    name,
+                    uuid_to_proto_string(*group),
+                    joined
+                )
+            })
+        }))
+    }
+
+    fn to_db_valueset_v2(&self) -> DbValueSetV2 {
+        DbValueSetV2::OauthClaimMap(
+            self.map
+                .iter()
+                .map(|(name, mapping)| DbValueOauthClaimMap::V1 {
+                    name: name.clone(),
+                    join: mapping.join.into(),
+                    values: mapping.values.clone(),
+                })
+                .collect(),
+        )
+    }
+
+    fn to_repl_v1(&self) -> ReplAttrV1 {
+        ReplAttrV1::OauthClaimMap {
+            set: self
+                .map
+                .iter()
+                .map(|(name, mapping)| ReplOauthClaimMapV1 {
+                    name: name.clone(),
+                    join: mapping.join.into(),
+                    values: mapping.values.clone(),
+                })
+                .collect(),
+        }
+    }
+
+    fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
+        Box::new(self.map.keys().cloned().map(PartialValue::Iutf8))
+    }
+
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+        debug_assert!(false);
+        Box::new(
+            std::iter::empty(), /*
+                                self.map
+                                    .iter()
+                                    .map(|(u, m)| Value::OauthScopeMap(*u, m.clone())),
+                                */
+        )
+    }
+
+    fn equal(&self, other: &ValueSet) -> bool {
+        if let Some(other) = other.as_oauthclaim_map() {
+            &self.map == other
+        } else {
+            debug_assert!(false);
+            false
+        }
+    }
+
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
+        if let Some(b) = other.as_oauthclaim_map() {
+            mergemaps!(self.map, b)
+        } else {
+            debug_assert!(false);
+            Err(OperationError::InvalidValueState)
+        }
+    }
+
+    fn as_oauthclaim_map(&self) -> Option<&BTreeMap<String, OauthClaimMapping>> {
+        Some(&self.map)
+    }
+
+    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
+        // This is what ties us as a type that can be refint checked.
+        Some(Box::new(
+            self.map
+                .values()
+                .flat_map(|mapping| mapping.values.keys())
+                .copied(),
+        ))
     }
 }

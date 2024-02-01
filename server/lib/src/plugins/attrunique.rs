@@ -177,7 +177,7 @@ fn enforce_unique<VALID, STATE>(
                 })?;
 
                 // A conflict was found!
-                if let Some(conflict_cand_zero) = conflict_cand.get(0) {
+                if let Some(conflict_cand_zero) = conflict_cand.first() {
                     if cand_query.len() >= 2 {
                         // Continue to split to isolate.
                         let mid = cand_query.len() / 2;

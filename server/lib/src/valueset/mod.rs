@@ -42,7 +42,9 @@ pub use self::iutf8::ValueSetIutf8;
 pub use self::json::ValueSetJsonFilter;
 pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
 pub use self::nsuniqueid::ValueSetNsUniqueId;
-pub use self::oauth::{ValueSetOauthScope, ValueSetOauthScopeMap};
+pub use self::oauth::{
+    OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
+};
 pub use self::restricted::ValueSetRestricted;
 pub use self::secret::ValueSetSecret;
 pub use self::session::{ValueSetApiToken, ValueSetOauth2Session, ValueSetSession};
@@ -365,6 +367,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_oauthclaim_map(&self) -> Option<&BTreeMap<String, OauthClaimMapping>> {
+        debug_assert!(false);
+        None
+    }
+
     fn to_value_single(&self) -> Option<Value> {
         if self.len() != 1 {
             None
@@ -676,6 +683,8 @@ pub fn from_result_value_iter(
         | Value::Session(_, _)
         | Value::ApiToken(_, _)
         | Value::Oauth2Session(_, _)
+        | Value::OauthClaimMap(_, _)
+        | Value::OauthClaimValue(_, _, _)
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_) => {
             debug_assert!(false);
@@ -740,6 +749,10 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::WebauthnAttestationCaList(ca_list) => {
             ValueSetWebauthnAttestationCaList::new(ca_list)
         }
+        Value::OauthClaimMap(name, join) => ValueSetOauthClaimMap::new(name, join),
+        Value::OauthClaimValue(name, group, claims) => {
+            ValueSetOauthClaimMap::new_value(name, group, claims)
+        }
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -800,6 +813,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::WebauthnAttestationCaList { ca_list } => {
             ValueSetWebauthnAttestationCaList::from_dbvs2(ca_list)
         }
+        DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
     }
 }
 
@@ -849,5 +863,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::WebauthnAttestationCaList { ca_list } => {
             ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
         }
+        ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
     }
 }

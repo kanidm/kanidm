@@ -74,12 +74,14 @@ pub struct ServerState {
 impl ServerState {
     fn reinflate_uuid_from_bytes(&self, input: &str) -> Option<Uuid> {
         match JwsCompact::from_str(input) {
-            Ok(val) => self
-                .jws_signer
-                .verify(&val)
-                .ok()
-                .and_then(|jws| jws.from_json::<SessionId>().ok())
-                .map(|inner| inner.sessionid),
+            Ok(val) => match self.jws_signer.verify(&val) {
+                Ok(val) => val.from_json::<SessionId>().ok(),
+                Err(err) => {
+                    error!("Failed to unmarshal JWT from headers: {:?}", err);
+                    None
+                }
+            }
+            .map(|inner| inner.sessionid),
             Err(_) => None,
         }
     }
@@ -397,7 +399,10 @@ async fn server_loop(
 
     // If configured, setup TLS client authentication.
     if let Some(client_ca) = tls_param.client_ca.as_ref() {
-        debug!("Configuring client certificates from {}", client_ca);
+        debug!(
+            "Configuring client certificates from {}",
+            client_ca.display()
+        );
 
         let verify = SslVerifyMode::PEER;
         // In future we may add a "require mTLS option" which would necesitate this.

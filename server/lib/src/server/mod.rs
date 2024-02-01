@@ -583,6 +583,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Value::new_webauthn_attestation_ca_list(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Webauthn Attestation CA List".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::OauthClaimMap => Err(OperationError::InvalidAttribute("Oauth Claim Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                     SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
                     SyntaxType::Passkey => Err(OperationError::InvalidAttribute("Passkey Values can not be supplied through modification".to_string())),
@@ -657,6 +658,11 @@ pub trait QueryServerTransaction<'a> {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }
+                    SyntaxType::OauthClaimMap => self
+                        .name_to_uuid(value)
+                        .map(PartialValue::Refer)
+                        .or_else(|_| Ok(PartialValue::new_iutf8(value))),
+
                     SyntaxType::JsonFilter => {
                         PartialValue::new_json_filter_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
@@ -775,13 +781,11 @@ pub trait QueryServerTransaction<'a> {
                 })
                 .collect();
             v
-        /*
-        // We previously special cased sshkeys here, but proto string now yields
-        // these as the proper string keys that ldap expects.
-        } else if let Some(k_set) = value.as_sshkey_map() {
-            let v: Vec<_> = k_set.values().cloned().map(|s| s.into_bytes()).collect();
+        // We have to special case ssh keys here as the proto form isn't valid for
+        // sss_ssh_authorized_keys to consume.
+        } else if let Some(key_iter) = value.as_sshpubkey_string_iter() {
+            let v: Vec<_> = key_iter.map(|s| s.into_bytes()).collect();
             Ok(v)
-        */
         } else {
             let v: Vec<_> = value
                 .to_proto_string_clone_iter()
@@ -1620,6 +1624,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
             // 2 -> 3 Migration
             self.migrate_domain_2_to_3()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_3 && domain_info_version >= DOMAIN_LEVEL_4 {
+            self.migrate_domain_3_to_4()?;
         }
 
         Ok(())
