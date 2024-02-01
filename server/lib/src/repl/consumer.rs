@@ -332,10 +332,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
         // == ⚠️  Below this point we begin to make changes! ==
-        debug!(
+        info!(
             "Proceeding to apply incremental from domain {:?} at level {}",
             ctx_domain_uuid, ctx_domain_version
         );
+
+        debug!(?ctx_ranges);
 
         debug!("Applying schema entries");
         // Apply the schema entries first.

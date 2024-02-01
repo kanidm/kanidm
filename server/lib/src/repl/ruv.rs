@@ -681,6 +681,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                 self.insert_change(&cid, IDLBitRange::default())?;
             }
         }
+
         Ok(())
     }
 
@@ -973,7 +974,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // Starting from the previous max, iterate through our data to find what
         // has been added.
         self.data.range((prev_bound, Unbounded)).map(|(cid, _)| {
-            trace!(added_cid = ?cid);
+            debug!(added_cid = ?cid);
             cid.clone()
         })
     }
@@ -995,7 +996,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         self.data_pre
             .range((Unbounded, prev_bound))
             .map(|(cid, _)| {
-                trace!(removed_cid = ?cid);
+                debug!(removed_cid = ?cid);
                 cid.clone()
             })
     }
