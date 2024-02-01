@@ -67,7 +67,7 @@ pub const PURGE_FREQUENCY: u64 = 600;
 /// In test, we limit the changelog to 10 minutes.
 pub const CHANGELOG_MAX_AGE: u64 = 600;
 #[cfg(not(test))]
-/// A replica may be less up to 7 days out of sync and catch up.
+/// A replica may be up to 7 days out of sync before being denied updates.
 pub const CHANGELOG_MAX_AGE: u64 = 7 * 86400;
 
 #[cfg(test)]

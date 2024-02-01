@@ -803,11 +803,6 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL5: SchemaClass = SchemaClass {
 
     sync_allowed: true,
     systemmay: vec![
-        // Attribute::PassKeys.into(),
-        // Attribute::AttestedPasskeys.into(),
-        // Attribute::CredentialUpdateIntentToken.into(),
-        // Attribute::RadiusSecret.into(),
-
         Attribute::SshPublicKey.into(),
         Attribute::UserAuthTokenSession.into(),
         Attribute::OAuth2Session.into(),

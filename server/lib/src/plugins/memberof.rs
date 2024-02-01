@@ -283,7 +283,7 @@ impl Plugin for MemberOf {
         cand: &mut Vec<EntryInvalidCommitted>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        // Ensure that when an entry is deleted, that we remove it's memberof values,
+        // Ensure that when an entry is deleted, that we remove its memberof values,
         // and convert direct memberof to recycled direct memberof.
 
         for entry in cand.iter_mut() {
