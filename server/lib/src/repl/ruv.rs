@@ -68,8 +68,8 @@ pub(crate) enum RangeDiffStatus {
 impl ReplicationUpdateVector {
     pub fn write(&self) -> ReplicationUpdateVectorWriteTransaction<'_> {
         ReplicationUpdateVectorWriteTransaction {
-            // Need to take the write first.
-            cleared: false,
+            // Need to take the write first, then the read to guarantee ordering.
+            added: Some(BTreeSet::default()),
             data: self.data.write(),
             data_pre: self.data.read(),
             ranged: self.ranged.write(),
@@ -231,7 +231,7 @@ impl ReplicationUpdateVector {
 }
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
-    cleared: bool,
+    added: Option<BTreeSet<Cid>>,
     data: BptreeMapWriteTxn<'a, Cid, IDLBitRange>,
     data_pre: BptreeMapReadTxn<'a, Cid, IDLBitRange>,
     ranged: BptreeMapWriteTxn<'a, Uuid, BTreeSet<Duration>>,
@@ -563,7 +563,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTrans
 
 impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn clear(&mut self) {
-        self.cleared = true;
+        self.added = None;
         self.data.clear();
         self.ranged.clear();
     }
@@ -803,6 +803,10 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             self.ranged.insert(cid.s_uuid, range);
         }
 
+        if let Some(added) = &mut self.added {
+            added.insert(cid.clone());
+        }
+
         Ok(())
     }
 
@@ -958,36 +962,35 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         Ok(idl)
     }
 
-    pub fn added(&self) -> impl Iterator<Item = Cid> + '_ {
-        // Find the max from the previous dataset.
-        let prev_bound = if self.cleared {
+    pub fn added(&self) -> Box<dyn Iterator<Item = Cid> + '_> {
+        if let Some(added) = self.added.as_ref() {
+            // return what was added this txn. We previously would iterate
+            // from data_pre.max() with data, but if an anchor was added that
+            // pre-dated data_pre.max() it wouldn't be committed to the db ruv
+            // (even though it was in the in memory ruv).
+            Box::new(added.iter().map(|cid| {
+                debug!(added_cid = ?cid);
+                cid.clone()
+            }))
+        } else {
             // We have been cleared during this txn, so everything in data is
             // added.
-            Unbounded
-        } else if let Some((max, _)) = self.data_pre.last_key_value() {
-            Excluded(max.clone())
-        } else {
-            // If empty, assume everything is new.
-            Unbounded
-        };
-
-        // Starting from the previous max, iterate through our data to find what
-        // has been added.
-        self.data.range((prev_bound, Unbounded)).map(|(cid, _)| {
-            debug!(added_cid = ?cid);
-            cid.clone()
-        })
+            Box::new(self.data.iter().map(|(cid, _)| {
+                debug!(added_cid = ?cid);
+                cid.clone()
+            }))
+        }
     }
 
     pub fn removed(&self) -> impl Iterator<Item = Cid> + '_ {
-        let prev_bound = if self.cleared {
+        let prev_bound = if self.added.is_none() {
             // We have been cleared during this txn, so everything in pre is
             // removed.
             Unbounded
         } else if let Some((min, _)) = self.data.first_key_value() {
             Excluded(min.clone())
         } else {
-            // If empty, assume everything is new.
+            // If empty, assume everything is removed.
             Unbounded
         };
 

@@ -56,10 +56,10 @@ pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The maximum supported domain functional level
 pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 
-// On test builds, define to 60 seconds
+// On test builds define to 60 seconds
 #[cfg(test)]
 pub const PURGE_FREQUENCY: u64 = 60;
-// For production, 10 minutes.
+// For production 10 minutes.
 #[cfg(not(test))]
 pub const PURGE_FREQUENCY: u64 = 600;
 
