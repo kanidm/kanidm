@@ -87,7 +87,11 @@ DATESTR="$(date +%Y%m%d%H%M)"
 # to supercede old versions before the change.
 EPOCH=1
 
-PACKAGE_VERSION="${EPOCH}:${KANIDM_VERSION}~${DATESTR}+${GIT_COMMIT}"
+# GitHub Actions forces NTFS compatibility which disallows colons in filenames
+# ergo, we do not include the epoch in the filename.
+FILENAME="${KANIDM_VERSION}~${DATESTR}+${GIT_COMMIT}"
+PACKAGE_VERSION="${EPOCH}:${FILENAME}"
+
 echo "Deb package Version: ${PACKAGE_VERSION}"
 
 echo "Updating package dir"
