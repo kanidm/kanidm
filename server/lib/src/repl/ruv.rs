@@ -57,13 +57,19 @@ pub(crate) enum RangeDiffStatus {
         lag_range: BTreeMap<Uuid, ReplCidRange>,
         adv_range: BTreeMap<Uuid, ReplCidRange>,
     },
+    /// No RUV Overlap - The consumer has likely desynchronised and no longer has
+    /// common overlap with it's RUV to ours. This can indicate it has trimmed
+    /// content we may have, or may have become part of a split brain situation.
+    /// For replication to proceed, there must be *at least* one common overlapping
+    /// point in the RUV.
+    NoRUVOverlap,
 }
 
 impl ReplicationUpdateVector {
     pub fn write(&self) -> ReplicationUpdateVectorWriteTransaction<'_> {
         ReplicationUpdateVectorWriteTransaction {
-            // Need to take the write first.
-            cleared: false,
+            // Need to take the write first, then the read to guarantee ordering.
+            added: Some(BTreeSet::default()),
             data: self.data.write(),
             data_pre: self.data.read(),
             ranged: self.ranged.write(),
@@ -89,6 +95,7 @@ impl ReplicationUpdateVector {
 
         let mut consumer_lagging = false;
         let mut supplier_lagging = false;
+        let mut valid_content_overlap = false;
 
         // We need to look at each uuid in the *supplier* and assert if they are present
         // on the *consumer*.
@@ -99,6 +106,10 @@ impl ReplicationUpdateVector {
         for (supplier_s_uuid, supplier_cid_range) in supplier_range.iter() {
             match consumer_range.get(supplier_s_uuid) {
                 Some(consumer_cid_range) => {
+                    // We have the same server uuid in our RUV's so some content overlap
+                    // must exist (or has existed);
+                    valid_content_overlap = true;
+
                     // The two windows just have to overlap. If they over lap
                     // meaning that consumer max > supplier min, then if supplier
                     // max > consumer max, then the range between consumer max
@@ -169,7 +180,6 @@ impl ReplicationUpdateVector {
                             },
                         );
                     }
-                    // else ...
                     //
                     //                                       /-- The consumer has changes we don't have.
                     //                                       |   So we don't need to supply
@@ -204,6 +214,10 @@ impl ReplicationUpdateVector {
             }
         }
 
+        if !valid_content_overlap {
+            return RangeDiffStatus::NoRUVOverlap;
+        }
+
         match (consumer_lagging, supplier_lagging) {
             (false, false) => RangeDiffStatus::Ok(diff_range),
             (true, false) => RangeDiffStatus::Refresh { lag_range },
@@ -217,7 +231,7 @@ impl ReplicationUpdateVector {
 }
 
 pub struct ReplicationUpdateVectorWriteTransaction<'a> {
-    cleared: bool,
+    added: Option<BTreeSet<Cid>>,
     data: BptreeMapWriteTxn<'a, Cid, IDLBitRange>,
     data_pre: BptreeMapReadTxn<'a, Cid, IDLBitRange>,
     ranged: BptreeMapWriteTxn<'a, Uuid, BTreeSet<Duration>>,
@@ -266,6 +280,40 @@ pub trait ReplicationUpdateVectorTransaction {
         }
     }
 
+    /// Return a filtered view of our RUV ranges. This acts similar to "trim" where any s_uuid
+    /// where the max cid is less than trim_cid will be excluded from the view.
+    fn filter_ruv_range(
+        &self,
+        trim_cid: &Cid,
+    ) -> Result<BTreeMap<Uuid, ReplCidRange>, OperationError> {
+        self.range_snapshot()
+            .iter()
+            .filter_map(|(s_uuid, range)| match (range.first(), range.last()) {
+                (Some(first), Some(last)) => {
+                    if last < &trim_cid.ts {
+                        None
+                    } else {
+                        Some(Ok((
+                            *s_uuid,
+                            ReplCidRange {
+                                ts_min: *first,
+                                ts_max: *last,
+                            },
+                        )))
+                    }
+                }
+                _ => {
+                    error!(
+                        "invalid state for server uuid {:?}, no ranges present",
+                        s_uuid
+                    );
+                    Some(Err(OperationError::InvalidState))
+                }
+            })
+            .collect::<Result<BTreeMap<_, _>, _>>()
+    }
+
+    /// Return the complete set of RUV ranges present on this replica
     fn current_ruv_range(&self) -> Result<BTreeMap<Uuid, ReplCidRange>, OperationError> {
         self.range_snapshot()
             .iter()
@@ -515,7 +563,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTrans
 
 impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn clear(&mut self) {
-        self.cleared = true;
+        self.added = None;
         self.data.clear();
         self.ranged.clear();
     }
@@ -633,6 +681,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                 self.insert_change(&cid, IDLBitRange::default())?;
             }
         }
+
         Ok(())
     }
 
@@ -676,8 +725,11 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // Entries and their internal changestates are the "source of truth" for all changes
         // that have ever occurred and are stored on this server. So we use them to rebuild our RUV
         // here!
-        let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
-        let mut rebuild_range: BTreeMap<Uuid, BTreeSet<Duration>> = BTreeMap::default();
+        //
+        // We only update RUV items where an anchor exists.
+
+        // let mut rebuild_ruv: BTreeMap<Cid, IDLBitRange> = BTreeMap::new();
+        // let mut rebuild_range: BTreeMap<Uuid, BTreeSet<Duration>> = BTreeMap::default();
 
         for entry in entries {
             // The DB id we need.
@@ -686,15 +738,19 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             // We don't need the details of the change - only the cid of the
             // change that this entry was involved in.
             for cid in ecstate.cid_iter() {
-                if let Some(idl) = rebuild_ruv.get_mut(cid) {
+                // if let Some(idl) = rebuild_ruv.get_mut(cid) {
+                if let Some(idl) = self.data.get_mut(cid) {
                     // We can't guarantee id order, so we have to do this properly.
                     idl.insert_id(eid);
-                } else {
-                    let mut idl = IDLBitRange::new();
-                    idl.insert_id(eid);
-                    rebuild_ruv.insert(cid.clone(), idl);
+                    /*
+                    } else {
+                        let mut idl = IDLBitRange::new();
+                        idl.insert_id(eid);
+                        rebuild_ruv.insert(cid.clone(), idl);
+                    */
                 }
 
+                /*
                 if let Some(server_range) = rebuild_range.get_mut(&cid.s_uuid) {
                     server_range.insert(cid.ts);
                 } else {
@@ -702,18 +758,21 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                     ts_range.insert(cid.ts);
                     rebuild_range.insert(cid.s_uuid, ts_range);
                 }
+                */
             }
         }
 
         // Finally, we need to do a cleanup/compact of the IDL's if possible.
-        rebuild_ruv.iter_mut().for_each(|(_k, idl)| {
+        self.data.range_mut(..).for_each(|(_k, idl)| {
             idl.maybe_compress();
         });
 
-        self.data.extend(rebuild_ruv);
+        // self.data.extend(rebuild_ruv);
 
         // Warning - you can't extend here because this is keyed by UUID. You need
         // to go through each key and then merge the sets.
+
+        /*
         rebuild_range.into_iter().for_each(|(s_uuid, ts_set)| {
             if let Some(ex_ts_set) = self.ranged.get_mut(&s_uuid) {
                 ex_ts_set.extend(ts_set)
@@ -721,6 +780,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
                 self.ranged.insert(s_uuid, ts_set);
             }
         });
+        */
 
         Ok(())
     }
@@ -741,6 +801,10 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             let mut range = BTreeSet::default();
             range.insert(cid.ts);
             self.ranged.insert(cid.s_uuid, range);
+        }
+
+        if let Some(added) = &mut self.added {
+            added.insert(cid.clone());
         }
 
         Ok(())
@@ -859,30 +923,18 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
             match self.ranged.get_mut(&cid.s_uuid) {
                 Some(server_range) => {
                     // Remove returns a bool if the element WAS present.
-                    let last = match server_range.last() {
-                        Some(l) => *l,
-                        None => {
-                            error!("Impossible State - The RUV should not be empty");
-                            error!(ruv = ?self);
-                            error!(?cid);
-                            return Err(OperationError::InvalidState);
-                        }
-                    };
-
-                    if cid.ts != last {
-                        if !server_range.remove(&cid.ts) {
-                            error!("Impossible State - The RUV is corrupted due to missing sid:ts pair in ranged index");
-                            error!(ruv = ?self);
-                            error!(?cid);
-                            return Err(OperationError::InvalidState);
-                        }
-                    } else {
-                        debug!("skip trimming maximum cid for s_uuid {}", cid.s_uuid);
+                    if !server_range.remove(&cid.ts) {
+                        error!("Impossible State - The RUV is corrupted due to missing sid:ts pair in ranged index");
+                        error!(ruv = ?self);
+                        error!(?cid);
+                        return Err(OperationError::InvalidState);
                     }
 
                     if server_range.is_empty() {
                         remove_suuid.push(cid.s_uuid);
                         warn!(s_uuid = ?cid.s_uuid, "disconnected server detected - this will be removed!");
+                    } else {
+                        trace!(?server_range, "retaining server");
                     }
                 }
                 None => {
@@ -910,36 +962,35 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         Ok(idl)
     }
 
-    pub fn added(&self) -> impl Iterator<Item = Cid> + '_ {
-        // Find the max from the previous dataset.
-        let prev_bound = if self.cleared {
+    pub fn added(&self) -> Box<dyn Iterator<Item = Cid> + '_> {
+        if let Some(added) = self.added.as_ref() {
+            // return what was added this txn. We previously would iterate
+            // from data_pre.max() with data, but if an anchor was added that
+            // pre-dated data_pre.max() it wouldn't be committed to the db ruv
+            // (even though it was in the in memory ruv).
+            Box::new(added.iter().map(|cid| {
+                debug!(added_cid = ?cid);
+                cid.clone()
+            }))
+        } else {
             // We have been cleared during this txn, so everything in data is
             // added.
-            Unbounded
-        } else if let Some((max, _)) = self.data_pre.last_key_value() {
-            Excluded(max.clone())
-        } else {
-            // If empty, assume everything is new.
-            Unbounded
-        };
-
-        // Starting from the previous max, iterate through our data to find what
-        // has been added.
-        self.data.range((prev_bound, Unbounded)).map(|(cid, _)| {
-            trace!(added_cid = ?cid);
-            cid.clone()
-        })
+            Box::new(self.data.iter().map(|(cid, _)| {
+                debug!(added_cid = ?cid);
+                cid.clone()
+            }))
+        }
     }
 
     pub fn removed(&self) -> impl Iterator<Item = Cid> + '_ {
-        let prev_bound = if self.cleared {
+        let prev_bound = if self.added.is_none() {
             // We have been cleared during this txn, so everything in pre is
             // removed.
             Unbounded
         } else if let Some((min, _)) = self.data.first_key_value() {
             Excluded(min.clone())
         } else {
-            // If empty, assume everything is new.
+            // If empty, assume everything is removed.
             Unbounded
         };
 
@@ -948,7 +999,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         self.data_pre
             .range((Unbounded, prev_bound))
             .map(|(cid, _)| {
-                trace!(removed_cid = ?cid);
+                debug!(removed_cid = ?cid);
                 cid.clone()
             })
     }
@@ -977,12 +1028,12 @@ mod tests {
         let ctx_b = BTreeMap::default();
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = RangeDiffStatus::Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::NoRUVOverlap;
         assert_eq!(result, expect);
 
         // Test the inverse.
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = RangeDiffStatus::Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::NoRUVOverlap;
         assert_eq!(result, expect);
     }
 
@@ -998,17 +1049,11 @@ mod tests {
         let ctx_b = BTreeMap::default();
 
         let result = ReplicationUpdateVector::range_diff(&ctx_a, &ctx_b);
-        let expect = RangeDiffStatus::Ok(BTreeMap::default());
+        let expect = RangeDiffStatus::NoRUVOverlap;
         assert_eq!(result, expect);
 
         let result = ReplicationUpdateVector::range_diff(&ctx_b, &ctx_a);
-        let expect = RangeDiffStatus::Ok(btreemap!((
-            UUID_A,
-            ReplCidRange {
-                ts_min: Duration::ZERO,
-                ts_max: Duration::from_secs(3),
-            }
-        )));
+        let expect = RangeDiffStatus::NoRUVOverlap;
         assert_eq!(result, expect);
     }
 

@@ -105,9 +105,32 @@ impl<'a> QueryServerReadTransaction<'a> {
             return Ok(ReplIncrementalContext::DomainMismatch);
         }
 
+        // This is a reasonably tricky part of the code, because we are attempting to do a
+        // distributed and async liveness check. What content has the consumer seen? What
+        // could they have trimmed from their own RUV?
+        //
+        // Since tombstone purging always creates an anchor, then there are always "pings"
+        // effectively going out of "empty" changes that drive the RUV forward. This assists us
+        // to detect this situation.
+        //
+        // If a server has been replicating correctly, then it should have at least *some* overlap
+        // with us since content has always advanced.
+        //
+        // If a server has "stalled" then it will have *no* overlap. This can manifest as a need
+        // to supply all ranges as though they were new because the lagging consumer has trimmed out
+        // all the old content.
+        //
+        // When a server is newly added it will have overlap because it will have refreshed from
+        // another server.
+        //
+        // When a server is "trimmed" from the RUV, it no longer influences the overlap decision
+        // because the other servers will have continued to advance.
+
+        let trim_cid = self.trim_cid().clone();
+
         let supplier_ruv = self.get_be_txn().get_ruv();
 
-        let our_ranges = supplier_ruv.current_ruv_range().map_err(|e| {
+        let our_ranges = supplier_ruv.filter_ruv_range(&trim_cid).map_err(|e| {
             error!(err = ?e, "Unable to access supplier RUV range");
             e
         })?;
@@ -142,6 +165,12 @@ impl<'a> QueryServerReadTransaction<'a> {
                 error!("Replication Critical - Consumers are advanced of us, and also lagging! This must be immediately investigated!");
                 info!(?lag_range);
                 info!(?adv_range);
+                debug!(consumer_ranges = ?ctx_ranges);
+                debug!(supplier_ranges = ?our_ranges);
+                return Ok(ReplIncrementalContext::UnwillingToSupply);
+            }
+            RangeDiffStatus::NoRUVOverlap => {
+                error!("Replication Critical - Consumers RUV has desynchronsied and diverged! This must be immediately investigated!");
                 debug!(consumer_ranges = ?ctx_ranges);
                 debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
@@ -238,11 +267,13 @@ impl<'a> QueryServerReadTransaction<'a> {
         let domain_version = self.d_info.d_vers;
         let domain_uuid = self.d_info.d_uuid;
 
+        let trim_cid = self.trim_cid().clone();
+
         // What is the set of data we are providing?
         let ranges = self
             .get_be_txn()
             .get_ruv()
-            .current_ruv_range()
+            .filter_ruv_range(&trim_cid)
             .map_err(|e| {
                 error!(err = ?e, "Unable to access supplier RUV range");
                 e

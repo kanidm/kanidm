@@ -96,8 +96,9 @@ async fn setup_qs_idms(
     schema: Schema,
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
+    let curtime = duration_from_epoch_now();
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
+    let query_server = QueryServer::new(be, schema, config.domain.clone(), curtime)?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -107,9 +108,7 @@ async fn setup_qs_idms(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server
-        .initialise_helper(duration_from_epoch_now())
-        .await?;
+    query_server.initialise_helper(curtime).await?;
 
     // We generate a SINGLE idms only!
 
@@ -124,8 +123,9 @@ async fn setup_qs(
     schema: Schema,
     config: &Configuration,
 ) -> Result<QueryServer, OperationError> {
+    let curtime = duration_from_epoch_now();
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema, config.domain.clone())?;
+    let query_server = QueryServer::new(be, schema, config.domain.clone(), curtime)?;
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -135,9 +135,7 @@ async fn setup_qs(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server
-        .initialise_helper(duration_from_epoch_now())
-        .await?;
+    query_server.initialise_helper(curtime).await?;
 
     Ok(query_server)
 }
@@ -582,6 +580,7 @@ pub async fn domain_rename_core(config: &Configuration) {
 }
 
 pub async fn verify_server_core(config: &Configuration) {
+    let curtime = duration_from_epoch_now();
     // setup the qs - without initialise!
     let schema_mem = match Schema::new() {
         Ok(sc) => sc,
@@ -599,7 +598,7 @@ pub async fn verify_server_core(config: &Configuration) {
         }
     };
 
-    let server = match QueryServer::new(be, schema_mem, config.domain.clone()) {
+    let server = match QueryServer::new(be, schema_mem, config.domain.clone(), curtime) {
         Ok(qs) => qs,
         Err(err) => {
             error!(?err, "Failed to setup query server");

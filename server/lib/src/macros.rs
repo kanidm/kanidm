@@ -12,7 +12,7 @@ macro_rules! setup_test {
         let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer, "example.com".to_string())
+        let qs = QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
             .expect("Failed to setup Query Server");
         tokio::runtime::Builder::new_current_thread()
             .enable_all()
@@ -38,7 +38,7 @@ macro_rules! setup_test {
         let be = Backend::new(BackendConfig::new_test("main"), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer, "example.com".to_string())
+        let qs = QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
             .expect("Failed to setup Query Server");
         tokio::runtime::Builder::new_current_thread()
             .enable_all()

@@ -9,7 +9,7 @@ use chrono::Utc;
 use cron::Schedule;
 
 use tokio::sync::broadcast;
-use tokio::time::{interval, sleep, Duration};
+use tokio::time::{interval, sleep, Duration, MissedTickBehavior};
 
 use crate::config::OnlineBackup;
 use crate::CoreAction;
@@ -28,8 +28,16 @@ impl IntervalActor {
     ) -> tokio::task::JoinHandle<()> {
         tokio::spawn(async move {
             let mut inter = interval(Duration::from_secs(PURGE_FREQUENCY));
+            inter.set_missed_tick_behavior(MissedTickBehavior::Skip);
 
             loop {
+                server
+                    .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
+                    .await;
+                server
+                    .handle_purgerecycledevent(PurgeRecycledEvent::new())
+                    .await;
+
                 tokio::select! {
                     Ok(action) = rx.recv() => {
                         match action {
@@ -37,12 +45,8 @@ impl IntervalActor {
                         }
                     }
                     _ = inter.tick() => {
-                        server
-                            .handle_purgetombstoneevent(PurgeTombstoneEvent::new())
-                            .await;
-                        server
-                            .handle_purgerecycledevent(PurgeRecycledEvent::new())
-                            .await;
+                        // Next iter.
+                        continue
                     }
                 }
             }

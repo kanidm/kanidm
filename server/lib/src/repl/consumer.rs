@@ -10,13 +10,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn consumer_incremental_apply_entries(
         &mut self,
         ctx_entries: &[ReplIncrementalEntryV1],
-    ) -> Result<(), OperationError> {
+    ) -> Result<bool, OperationError> {
         // trace!(?ctx_entries);
 
         // No action needed for this if the entries are empty.
         if ctx_entries.is_empty() {
             debug!("No entries to act upon");
-            return Ok(());
+            return Ok(false);
         }
 
         /*
@@ -250,7 +250,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             changed_sync_agreement = ?self.changed_sync_agreement
         );
 
-        Ok(())
+        Ok(true)
     }
 
     pub fn consumer_apply_changes(
@@ -332,43 +332,46 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
         // == ⚠️  Below this point we begin to make changes! ==
-        debug!(
+        info!(
             "Proceeding to apply incremental from domain {:?} at level {}",
             ctx_domain_uuid, ctx_domain_version
         );
 
+        debug!(?ctx_ranges);
+
         debug!("Applying schema entries");
         // Apply the schema entries first.
-        self.consumer_incremental_apply_entries(ctx_schema_entries)
+        let schema_changed = self
+            .consumer_incremental_apply_entries(ctx_schema_entries)
             .map_err(|e| {
                 error!("Failed to apply incremental schema entries");
                 e
             })?;
 
-        // We need to reload schema now!
-        self.reload_schema().map_err(|e| {
-            error!("Failed to reload schema");
-            e
-        })?;
+        if schema_changed {
+            // We need to reload schema now!
+            self.reload_schema().map_err(|e| {
+                error!("Failed to reload schema");
+                e
+            })?;
+        }
 
         debug!("Applying meta entries");
         // Apply meta entries now.
-        self.consumer_incremental_apply_entries(ctx_meta_entries)
+        let meta_changed = self
+            .consumer_incremental_apply_entries(ctx_meta_entries)
             .map_err(|e| {
                 error!("Failed to apply incremental schema entries");
                 e
             })?;
 
         // This is re-loaded in case the domain name changed on the remote
-        self.reload_domain_info().map_err(|e| {
-            error!("Failed to reload domain info");
-            e
-        })?;
-
-        // Trigger for post commit hooks. Should we detect better in the entry
-        // apply phases?
-        // self.changed_schema = true;
-        // self.changed_domain = true;
+        if meta_changed {
+            self.reload_domain_info().map_err(|e| {
+                error!("Failed to reload domain info");
+                e
+            })?;
+        }
 
         debug!("Applying all context entries");
         // Update all other entries now.
@@ -384,10 +387,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // this is because the supplier will already be sending us everything that
         // was just migrated. As a result, we only need to apply the migrations to entries
         // that were not on the supplier, and therefore need updates here.
-        self.reload_domain_info_version().map_err(|e| {
-            error!("Failed to reload domain info version");
-            e
-        })?;
+        if meta_changed {
+            self.reload_domain_info_version().map_err(|e| {
+                error!("Failed to reload domain info version");
+                e
+            })?;
+        }
 
         // Finally, confirm that the ranges that we have added match the ranges from our
         // context. Note that we get this in a writeable form!
@@ -519,9 +524,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        // Do we need to reset our s_uuid to avoid potential RUV conflicts?
-        //   - I don't think so, since the refresh is supplying and rebuilding
-        //     our local state.
+        // We need to reset our server uuid now. This is so that any other servers
+        // which had our former server_uuid in their RUV, is able to start to age it
+        // out and trim it.
+        self.reset_server_uuid()?;
 
         // Delete all entries - *proper delete, not just tombstone!*
 

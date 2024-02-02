@@ -1914,7 +1914,7 @@ impl<'a> BackendWriteTransaction<'a> {
         })
     }
 
-    fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+    pub(crate) fn reset_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
         // The value is missing. Generate a new one and store it.
         let nsid = Uuid::new_v4();
         self.get_idlayer().write_db_s_uuid(nsid).map_err(|err| {
