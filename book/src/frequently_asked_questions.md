@@ -79,7 +79,7 @@ provides defense in depth to known and exploited authorisation code interception
 
 ### Why is RSA considered legacy
 
-While RSA is cryptographically sound, to achieve the same level as securite as ECDSA it requires
+While RSA is cryptographically sound, to achieve the same level as security as ECDSA it requires
 signatures and keys that are significantly larger. This has costs for network transmission and CPU
 time to verify these signatures. At this time (2024) to achieve the same level of security as a 256
 bit ECDSA, RSA requires a 3072 bit key. Similar a 384 bit ECDSA key requires a 8192 bit RSA for
