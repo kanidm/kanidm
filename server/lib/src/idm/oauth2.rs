@@ -2472,7 +2472,14 @@ fn extra_claims_for_account(
     if scopes.contains(&"groups".to_string()) {
         extra_claims.insert(
             "groups".to_string(),
-            account.groups.iter().map(|x| x.to_proto().uuid).collect(),
+            account
+                .groups
+                .iter()
+                .flat_map(|x| {
+                    let proto_group = x.to_proto();
+                    [proto_group.spn, proto_group.uuid]
+                })
+                .collect(),
         );
     }
 
