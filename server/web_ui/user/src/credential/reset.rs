@@ -646,7 +646,7 @@ impl CredentialResetApp {
             CUCredState::Modifiable => {
                 html! {
                   <>
-                    <p>{ "If possible, passkeys should be used instead as they are phishing and exploit resistant." }</p>
+                    <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
                   </>
                 }
             }
@@ -661,7 +661,7 @@ impl CredentialResetApp {
             CUCredState::AccessDeny => {
                 html! {
                     <>
-                        <p>{ "If possible, passkeys should be used instead as they are phishing and exploit resistant." }</p>
+                        <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
                         <p>{ "You do not have access to modify these credentials." }</p>
                     </>
                 }
