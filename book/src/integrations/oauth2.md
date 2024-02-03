@@ -282,7 +282,8 @@ kanidm system oauth2 enable-localhost-redirects mywebapp
 
 Not all resource servers support modern standards like PKCE or ECDSA. In these situations it may be
 necessary to disable these on a per-resource server basis. Disabling these on one resource server
-will not affect others.
+will not affect others. These settings are explained in detail in
+[our FAQ](../frequently_asked_questions.html#oauth2)
 
 <!-- deno-fmt-ignore-start -->
 

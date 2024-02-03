@@ -77,6 +77,32 @@ of the `nonce` value.
 We would strongly encourage OAuth2 client implementations to implement and support PKCE, as it
 provides defense in depth to known and exploited authorisation code interception attacks.
 
+### Why is RSA considered legacy
+
+While RSA is cryptographically sound, to achieve the same level as securite as ECDSA it requires
+signatures and keys that are significantly larger. This has costs for network transmission and CPU
+time to verify these signatures. At this time (2024) to achieve the same level of security as a 256
+bit ECDSA, RSA requires a 3072 bit key. Similar a 384 bit ECDSA key requires a 8192 bit RSA for
+equivalent cryptographic strength, and a 521 bit ECDSA key would likely require a 16884 bit RSA key
+(or greater).
+
+This means that going forward more applications will require ECDSA over RSA due to it's increased
+strength for significantly faster and smaller key sizes.
+
+Where this has more serious costs is our future desire to add support for Hardware Security Modules.
+Since RSA keys are much larger on these devices it may significantly impact performance of the HSM
+and may also limit the amount of keys we can store on the device. In the case of some HSM models,
+they do not even support RSA keys up to 8192 bits (but they do support ECDSA 384 and 521). An
+example of this is TPMs, which only support up to 4096 bit RSA keys at this time.
+
+As a result, we want to "guide" people toward smaller, faster and more secure cryptographic
+standards like ECDSA. We want to encourage application developers to implement ECDSA in their OAuth2
+applications as it is likely that limitations of RSA will be hit in the future.
+
+Generally, it's also positive to encourage applications to review and update their cryptographic
+implementations over time too. Cryptography and security is not stangnant, it requires continual
+review, assessment and improvement.
+
 ## Can I change the database backend from SQLite to - name of favourite database here -
 
 No, it is not possible swap out the SQLite database for any other type of SQL server.
