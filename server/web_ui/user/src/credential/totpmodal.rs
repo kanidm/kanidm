@@ -357,6 +357,35 @@ impl Component for TotpModalApp {
                       </div>
                     </div>
 
+                    <p> { "An authentication app is needed to generate TOTP codes"}
+                      <ul>
+                        <li>
+                          <a target="_blank" href="https://support.apple.com/en-in/guide/iphone/ipha6173c19f/ios">{ "Built-in iOS TOTP generator" }</a>
+                        </li>
+                        <li>{ "Google Authenticator" }
+                          { " (" }
+                            <a target="_blank" href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2">{ "Android" }</a>
+                            { " / " }
+                            <a target="_blank" href="https://apps.apple.com/app/google-authenticator/id388497605">{ "iOS" }</a>
+                          { ")" }
+                        </li>
+                        <li>{ "Microsoft Authenticator"}
+                          { " (" }
+                            <a target="_blank" href="https://play.google.com/store/apps/details?id=com.azure.authenticator">{ "Android" }</a>
+                            { " / " }
+                            <a target="_blank" href="https://apps.apple.com/us/app/microsoft-authenticator/id983156458">{ "iOS" }</a>
+                          { ")" }
+                        </li>
+                        <li>{ "FreeOTP"}
+                          { " (" }
+                            <a target="_blank" href="https://play.google.com/store/apps/details?id=org.fedorahosted.freeotp">{ "Android" }</a>
+                            { " / " }
+                            <a target="_blank" href="https://apps.apple.com/us/app/freeotp-authenticator/id872559395">{ "iOS" }</a>
+                          { ")" }
+                        </li>
+                      </ul>
+                    </p>
+
                     {
                     match &self.secret {
                         TotpValue::Secret(secret)  => {
