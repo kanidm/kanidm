@@ -9,26 +9,15 @@ You may have noticed that Kanidm requires you to configure TLS in your container
 We are a secure-by-design rather than secure-by-configuration system, so TLS for all connections is
 considered mandatory and a default rather than an optional feature you add later.
 
-### Why disallow HTTP (without TLS) between my load balancer and Kanidm?
+### Can Kanidm work without TLS?
 
-Because Kanidm is one of the keys to a secure network, and insecure connections to them are not best
-practice. This can allow account hijacking, privilege escalation, credential disclosures, personal
-information leaks and more.
-
-### What are Secure Cookies?
-
-`secure-cookies` is a flag set in cookies that asks a client to transmit them back to the origin
-site if and only if the client sees HTTPS is present in the URL.
-
-Certificate authority (CA) verification is _not_ checked - you can use invalid, out of date
-certificates, or even certificates where the `subjectAltName` does not match, but the client must
-see https:// as the destination else it _will not_ send the cookies.
-
-### How Does That Affect Kanidm?
+No, it can not. TLS is required due to our use of `secure-cookies`. `secure-cookies` is a flag set
+in cookies that asks a client to transmit them back to the origin site if and only if the client
+sees HTTPS is present in the URL.
 
 Kanidm's authentication system is a stepped challenge response design, where you initially request
 an "intent" to authenticate. Once you establish this intent, the server sets up a session-id into a
-cookie, and informs the client of what authentication methods can proceed.
+secure cookie, and informs the client of what authentication methods can proceed.
 
 If you do NOT have a HTTPS URL, the cookie with the session-id is not transmitted. The server
 detects this as an invalid-state request in the authentication design, and immediately breaks the
@@ -38,6 +27,55 @@ authentication session was not able to be established due to the lost session-id
 Simply put, we are trying to use settings like `secure_cookies` to add constraints to the server so
 that you _must_ perform and adhere to best practices - such as having TLS present on your
 communication channels.
+
+This is also why we do not allow the server to start without a TLS certificate being configured.
+
+### Why disallow HTTP (without TLS) between my load balancer and Kanidm?
+
+Because Kanidm is one of the keys to a secure network, and insecure connections to them are not best
+practice. This can allow account hijacking, privilege escalation, credential disclosures, personal
+information leaks and more. The entire path between a client and the server must be protected at all
+times.
+
+## OAuth2
+
+[RFC6819 - OAuth2 Threat Model and Security Considerations](https://www.rfc-editor.org/rfc/rfc6819)
+is a comprehensive and valuable resource discussing the security of OAuth2 and influences OpenID
+Connect as well. In general Kanidm follows and implements many of the recommendations in this
+document, as well as choosing not to implement certain known insecure OAuth2 features.
+
+### Why is disabling PKCE considered insecure?
+
+[RFC7636 - Proof Key for Code Exchange by OAuth Public Clients](https://www.rfc-editor.org/rfc/rfc7636)
+exists to prevent authorisation code interception attacks. This is where an attacker can retrieve
+the authorisation code and then perform the code exchange without the user being aware. A successful
+code exchange issues the attacker with an `access_token` and optionally a `refresh_token`. The RFC
+has an excellent explanation of the attack. Additionally, this threat is discussed in
+[RFC6819 Section 4.4.1](https://www.rfc-editor.org/rfc/rfc6819#section-4.4.1).
+
+As Kanidm aims for "secure by default" design, even with _confidential_ clients, we deem it
+important to raise the bar for attackers. For example an attacker may have access to the `client_id`
+and `client_secret` of a confidential client as it was mishandled by a system administrator. While
+they may not have direct access to the client/application systems, they could still use this
+`client_id+secret` to then carry out the authorisation code interception attack listed.
+
+For confidential clients (refered to as a `basic` client in Kanidm due to the use of HTTP Basic for
+`client_id+secret` presentation) PKCE may optionally be disabled. This can allow authorisation code
+attacks to be carried out - however _if_ TLS is used and the `client_secret` never leaks, then these
+attacks will not be possible. Since there are many public references to system administrators
+mishandling secrets such as these so we should not rely on this as our sole defence.
+
+For public clients (which have no `client_id` authentication) we strictly enforce PKCE since
+disclosure of the authorisation code to an attacker will allow them to perform the code exchange.
+
+OpenID connect internally has a `nonce` parameter in it's operations. Commonly it is argued that
+this value removes the need for OpenID connect clients to implement PKCE. It does not. This
+parameter is not equivalent or a replacement for PKCE. While the `nonce` can assist with certain
+attack mitigations, authorisation code interception is not prevented by the presence or validation
+of the `nonce` value.
+
+We would strongly encourage OAuth2 client implementations to implement and support PKCE, as it
+provides defense in depth to known and exploited authorisation code interception attacks.
 
 ## Can I change the database backend from SQLite to - name of favourite database here -
 
@@ -58,6 +96,19 @@ store, as each server has it's own cache layer and they are not in contact, it i
 writes on one server to never be observed by the second, and if the second were to then write over
 those entries it will cause loss of the changes from the first server.
 
+Kanidm now implements it's own eventually consistent distributed replication which also removes the
+need for external databases to be considered.
+
+## Why aren't snaps launching with `home_alias` set?
+
+Snaps rely on AppArmor and
+[AppArmor doesn't follow symlinks](https://bugs.launchpad.net/apparmor/+bug/1485055). When
+`home_alias` is any value other than `none` a symlink will be created and pointing to `home_attr`.
+It is recommended to use alternative software packages to snaps.
+
+All users in Kanidm can change their name (and their spn) at any time. If you change `home_attr`
+from `uuid` you must have a plan on how to manage these directory renames in your system.
+
 ## Why so many crabs?
 
 It's [a rust thing](https://rustacean.net).
@@ -71,16 +122,6 @@ discussion!
 
 Don't [ask](https://www.youtube.com/watch?v=0QaAKi0NFkA). They just
 [do](https://www.youtube.com/shorts/WizH5ae9ozw).
-
-## Why aren't snaps launching with `home_alias` set?
-
-Snaps rely on AppArmor and
-[AppArmor doesn't follow symlinks](https://bugs.launchpad.net/apparmor/+bug/1485055). When
-`home_alias` is any value other than `none` a symlink will be created and pointing to `home_attr`.
-It is recommended to use alternative software packages to snaps.
-
-All users in Kanidm can change their name (and their spn) at any time. If you change `home_attr`
-from `uuid` you must have a plan on how to manage these directory renames in your system.
 
 ## Why won't you take this FAQ thing seriously?
 
