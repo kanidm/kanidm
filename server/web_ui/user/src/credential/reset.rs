@@ -661,7 +661,6 @@ impl CredentialResetApp {
             CUCredState::AccessDeny => {
                 html! {
                     <>
-                        <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
                         <p>{ "You do not have access to modify these credentials." }</p>
                     </>
                 }
@@ -669,7 +668,6 @@ impl CredentialResetApp {
             CUCredState::PolicyDeny => {
                 html! {
                     <>
-                        <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
                         <p>{ "Account policy prevents you from setting these credentials" }</p>
                     </>
                 }
