@@ -14,4 +14,5 @@ docker run --rm -it \
     -e "PACKAGING=1" \
     -v "$(pwd):/root/kanidm/" \
     --workdir "/root/kanidm/" \
+    --entrypoint "/root/kanidm/platform/debian/interactive_entrypoint.sh" \
     ubuntu:latest "$@"

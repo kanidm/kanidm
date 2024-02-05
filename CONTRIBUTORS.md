@@ -33,6 +33,7 @@
 - philipcristiano
 - Jianchen Zhao (bolu61)
 - Allan Zhang (allan2)
+- Jinna Kiisuo (jinnatar)
 
 ## Acknowledgements
 
