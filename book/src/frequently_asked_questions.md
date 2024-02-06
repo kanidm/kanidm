@@ -68,7 +68,7 @@ mishandling secrets such as these so we should not rely on this as our sole defe
 For public clients (which have no `client_id` authentication) we strictly enforce PKCE since
 disclosure of the authorisation code to an attacker will allow them to perform the code exchange.
 
-OpenID connect internally has a `nonce` parameter in it's operations. Commonly it is argued that
+OpenID connect internally has a `nonce` parameter in its operations. Commonly it is argued that
 this value removes the need for OpenID connect clients to implement PKCE. It does not. This
 parameter is not equivalent or a replacement for PKCE. While the `nonce` can assist with certain
 attack mitigations, authorisation code interception is not prevented by the presence or validation
@@ -82,11 +82,11 @@ provides defense in depth to known and exploited authorisation code interception
 While RSA is cryptographically sound, to achieve the same level as security as ECDSA it requires
 signatures and keys that are significantly larger. This has costs for network transmission and CPU
 time to verify these signatures. At this time (2024) to achieve the same level of security as a 256
-bit ECDSA, RSA requires a 3072 bit key. Similar a 384 bit ECDSA key requires a 8192 bit RSA for
+bit ECDSA, RSA requires a 3072 bit key. Similarly a 384 bit ECDSA key requires a 8192 bit RSA for
 equivalent cryptographic strength, and a 521 bit ECDSA key would likely require a 16884 bit RSA key
 (or greater).
 
-This means that going forward more applications will require ECDSA over RSA due to it's increased
+This means that going forward more applications will require ECDSA over RSA due to its increased
 strength for significantly faster and smaller key sizes.
 
 Where this has more serious costs is our future desire to add support for Hardware Security Modules.
@@ -95,7 +95,7 @@ and may also limit the amount of keys we can store on the device. In the case of
 they do not even support RSA keys up to 8192 bits (but they do support ECDSA 384 and 521). An
 example of this is TPMs, which only support up to 4096 bit RSA keys at this time.
 
-As a result, we want to "guide" people toward smaller, faster and more secure cryptographic
+As a result, we want to guide people toward smaller, faster and more secure cryptographic
 standards like ECDSA. We want to encourage application developers to implement ECDSA in their OAuth2
 applications as it is likely that limitations of RSA will be hit in the future.
 
