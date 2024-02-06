@@ -1,4 +1,6 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
+# ARG BASE_IMAGE=opensuse/leap:15.5
+
 # FROM ${BASE_IMAGE} as repos
 FROM ${BASE_IMAGE}
 

@@ -173,6 +173,14 @@ pub enum Oauth2ClaimMapJoin {
     Array,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DomainInfo {
+    pub name: String,
+    pub displayname: String,
+    pub uuid: Uuid,
+    pub level: u32,
+}
+
 #[test]
 fn test_fstype_deser() {
     assert_eq!(FsType::try_from("zfs"), Ok(FsType::Zfs));

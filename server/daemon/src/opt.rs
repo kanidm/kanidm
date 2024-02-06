@@ -28,9 +28,32 @@ struct RestoreOpt {
 
 #[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
+    #[clap(name = "show")]
+    /// Show the current domain
+    Show {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
     #[clap(name = "rename")]
-    /// Change the IDM domain name
-    DomainChange(CommonOpt),
+    /// Change the IDM domain name based on the values in the configuration
+    Change {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "raise")]
+    /// Raise the functional level of this domain to the maximum available.
+    Raise {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    #[clap(name = "remigrate")]
+    /// Rerun migrations of this domains database, optionally nominating the level
+    /// to start from.
+    Remigrate {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        level: Option<u32>,
+    },
 }
 
 #[derive(Debug, Subcommand)]

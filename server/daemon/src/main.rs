@@ -30,7 +30,7 @@ use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
 #[cfg(not(target_family = "windows"))] // not needed for windows builds
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-use kanidmd_core::admin::{AdminTaskRequest, AdminTaskResponse, ClientCodec};
+use kanidmd_core::admin::{AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo};
 use kanidmd_core::config::{Configuration, ServerConfig};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
@@ -89,8 +89,17 @@ impl KanidmdOpt {
                 commands: DbScanOpt::GetId2Entry(dopt),
             } => &dopt.commonopts,
             KanidmdOpt::DomainSettings {
-                commands: DomainSettingsCmds::DomainChange(sopt),
-            } => sopt,
+                commands: DomainSettingsCmds::Show { commonopts },
+            }
+            | KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::Change { commonopts },
+            }
+            | KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::Raise { commonopts },
+            }
+            | KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::Remigrate { commonopts, .. },
+            } => commonopts,
             KanidmdOpt::Database {
                 commands: DbCommands::Verify(sopt),
             }
@@ -159,6 +168,36 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
+            }
+        },
+
+        Some(Ok(AdminTaskResponse::DomainRaise { level })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                eprintln!("{{\"success\":\"{}\"}}", level)
+            }
+            ConsoleOutputMode::Text => {
+                info!("success - raised domain level to {}", level)
+            }
+        },
+        Some(Ok(AdminTaskResponse::DomainShow { domain_info })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                let json_output = serde_json::json!({
+                    "domain_info": domain_info
+                });
+                println!("{}", json_output);
+            }
+            ConsoleOutputMode::Text => {
+                let ProtoDomainInfo {
+                    name,
+                    displayname,
+                    uuid,
+                    level,
+                } = domain_info;
+
+                info!("domain_name   : {}", name);
+                info!("domain_display: {}", displayname);
+                info!("domain_uuid   : {}", uuid);
+                info!("domain_level  : {}", level);
             }
         },
         Some(Ok(AdminTaskResponse::Success)) => match output_mode {
@@ -717,11 +756,49 @@ async fn kanidm_main() -> ExitCode {
         }
 
         KanidmdOpt::DomainSettings {
-            commands: DomainSettingsCmds::DomainChange(_dopt),
+            commands: DomainSettingsCmds::Change { .. },
         } => {
             info!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config).await;
         }
+
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::Show { commonopts },
+        } => {
+            info!("Running domain show ...");
+            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            submit_admin_req(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainShow,
+                output_mode,
+            )
+            .await;
+        }
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::Raise { commonopts },
+        } => {
+            info!("Running domain raise ...");
+            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            submit_admin_req(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainRaise,
+                output_mode,
+            )
+            .await;
+        }
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::Remigrate { commonopts, level },
+        } => {
+            info!("Running domain remigrate ...");
+            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            submit_admin_req(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainRemigrate { level: *level },
+                output_mode,
+            )
+            .await;
+        }
+
         KanidmdOpt::Database {
             commands: DbCommands::Vacuum(_copt),
         } => {

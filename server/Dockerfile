@@ -1,5 +1,6 @@
 # Build the main Kanidmd server
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
+# ARG BASE_IMAGE=opensuse/leap:15.5
 
 FROM ${BASE_IMAGE} AS repos
 ADD scripts/zypper_fixing.sh /zypper_fixing.sh

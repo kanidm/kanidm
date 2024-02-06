@@ -1,5 +1,6 @@
 use std::{iter, sync::Arc};
 
+use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin;
 use kanidm_proto::v1::{
@@ -1819,5 +1820,58 @@ impl QueryServerWriteV1 {
         let pw = idms_prox_write.recover_account(name.as_str(), None)?;
 
         idms_prox_write.commit().map(|()| pw)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_domain_show(
+        &self,
+        eventid: Uuid,
+    ) -> Result<ProtoDomainInfo, OperationError> {
+        trace!("Begin domain show event");
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+
+        let domain_info = idms_prox_write.qs_write.domain_info()?;
+
+        idms_prox_write.commit().map(|()| domain_info)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_domain_raise(&self, eventid: Uuid) -> Result<u32, OperationError> {
+        trace!("Begin domain raise event");
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+
+        idms_prox_write.qs_write.domain_raise(DOMAIN_MAX_LEVEL)?;
+
+        idms_prox_write.commit().map(|()| DOMAIN_MAX_LEVEL)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub(crate) async fn handle_domain_remigrate(
+        &self,
+        level: Option<u32>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let level = level.unwrap_or(DOMAIN_MIN_REMIGRATION_LEVEL);
+        trace!(%level, "Begin domain remigrate event");
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await;
+
+        idms_prox_write.qs_write.domain_remigrate(level)?;
+
+        idms_prox_write.commit()
     }
 }
