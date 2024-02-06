@@ -16,7 +16,9 @@ SHARED_DIR=${PKGDIR}/usr/share/${PACKAGE}
 DISTRIBUTOR_ID=$(shell lsb_release -is)
 DISTRIBUTOR_RELEASE=$(shell lsb_release -rs)
 DISTRIBUTOR=$(DISTRIBUTOR_ID)_$(DISTRIBUTOR_RELEASE)
-DEB_VERSION_FULL=$(shell dpkg-parsechangelog --show-field Version)
+
+#GitHub enforces NTFS compatible filenames for artifacts so we need to drop the EPOCH field
+DEB_VERSION_FULL=$(shell dpkg-parsechangelog --show-field Version | sed -E 's/^[0-9]+://')
 
 %:
 	dh $@ --with systemd
