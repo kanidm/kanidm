@@ -178,7 +178,7 @@ impl Component for CreateResetCode {
                       })
               }
             >
-              { "Update your Authentication Settings on Another Device" }
+              { "Add another device to your account" }
             </button>
             <div class="modal" tabindex="-1" role="dialog" id={ID_CRED_RESET_CODE}>
               <div class="modal-dialog modal-lg" role="document">

@@ -227,7 +227,7 @@ impl ProfileApp {
                           })
                        }
                      >
-                       { "Password and Authentication Settings" }
+                       { "Authentication Settings" }
                      </button>
                   </p>
                 </div>

@@ -376,8 +376,8 @@ impl CredentialResetApp {
             attested_passkeys_allowed_devices,
         } = status;
 
-        let displayname = displayname.clone();
-        let spn = spn.clone();
+        let (username, domain) = spn.split_once('@').unwrap_or(("", &spn));
+        let names = format!("{} ({})", displayname, username);
         let cb = self.cb.clone();
 
         let ext_cred_portal_html = match ext_cred_portal {
@@ -421,7 +421,7 @@ impl CredentialResetApp {
                             match warning {
                                 CURegWarning::MfaRequired => html! {
                                     <div class="alert alert-warning" role="alert">
-                                        <p>{ "MFA is required for your account. Add TOTP or remove your password in favour of Passkeys." }</p>
+                                        <p>{ "Multi-Factor Authentication is required for your account. Either add TOTP or remove your password in favour of passkeys to submit." }</p>
                                     </div>
                                 },
                                 CURegWarning::PasskeyRequired => html! {
@@ -464,8 +464,8 @@ impl CredentialResetApp {
             <main class="w-100">
               <div class="py-3 text-center">
                 <h3>{ "Updating Credentials" }</h3>
-                <p>{ displayname }</p>
-                <p>{ spn }</p>
+                <p>{ names }</p>
+                <p>{ domain }</p>
               </div>
 
               <div class="row g-3">
@@ -524,7 +524,7 @@ impl CredentialResetApp {
         let cb = self.cb.clone();
 
         // match on primary, get type_.
-        let pw_html_inner = if matches!(primary_state, CUCredState::Modifiable) {
+        let alt_auth_method_inner = if matches!(primary_state, CUCredState::Modifiable) {
             match primary {
                 Some(CredentialDetail {
                     uuid: _,
@@ -532,21 +532,21 @@ impl CredentialResetApp {
                 }) => {
                     html! {
                         <>
-                          <p>{ "✅ Password Set" }</p>
+                          <h6> <b>{ "Password" }</b> </h6>
                           <p>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
                               { "Change Password" }
                             </button>
                           </p>
-
-                          <p>{ "❌ MFA Disabled" }</p>
+                          <h6> <b>{ "Time-based One Time Password (TOTP)" }</b> </h6>
+                          <p>{ "TOTPs are 6 digit codes generated on-demand as a second authentication factor."}</p>
                           <p>
                             <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                           </p>
-
+                          <br/>
                           <p>
                             <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                              { "Delete this Insecure Password" }
+                              { "Delete Alternative Credentials" }
                             </button>
                           </p>
                         </>
@@ -566,15 +566,15 @@ impl CredentialResetApp {
                 }) => {
                     html! {
                         <>
-                          <p>{ "✅ Password Set" }</p>
+                          <h6> <b>{ "Password" }</b> </h6>
                           <p>
                             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticPassword">
                               { "Change Password" }
                             </button>
                           </p>
-
-                          <p>{ "✅ MFA Enabled" }</p>
-
+                          <br/>
+                          <h6> <b>{ "Time-based One Time Password (TOTP)" }</b></h6>
+                          <p>{ "TOTPs are 6 digit codes generated on-demand as a second authentication factor."}</p>
                           <>
                           { for totp_set.iter()
                               .map(|detail| html! { <TotpRemoveComp token={ token.clone() } label={ detail.clone() } cb={ cb.clone() } /> })
@@ -584,10 +584,11 @@ impl CredentialResetApp {
                           <p>
                             <TotpModalApp token={ token.clone() } cb={ cb.clone() }/>
                           </p>
-
+                          <br/>
+                          <br/>
                           <p>
                             <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                              { "Delete this Legacy MFA Credential" }
+                              { "Delete Alternative Credentials" }
                             </button>
                           </p>
 
@@ -600,9 +601,10 @@ impl CredentialResetApp {
                 }) => {
                     html! {
                       <>
-                        <p>{ "Generated Password" }</p>
+                        <h6> <b>{ "Password" }</b> </h6>
+                        <p>{ "In order to set up alternative authentication methods, you must delete the generated password." }</p>
                         <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                          { "Delete this Password" }
+                          { "Delete Generated Password" }
                         </button>
                       </>
                     }
@@ -613,9 +615,9 @@ impl CredentialResetApp {
                 }) => {
                     html! {
                       <>
-                        <p>{ "Webauthn Only - Will migrate to Passkeys in a future update" }</p>
+                        <p>{ "Webauthn Only - Will migrate to passkeys in a future update" }</p>
                         <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                          { "Delete this Credential" }
+                          { "Delete Alternative Credentials" }
                         </button>
                       </>
                     }
@@ -632,7 +634,7 @@ impl CredentialResetApp {
             html! {
               <p>
                 <button type="button" class="btn btn-warning" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                  { "Delete this Legacy Credential" }
+                  { "Delete Legacy Credentials" }
                 </button>
               </p>
             }
@@ -640,38 +642,44 @@ impl CredentialResetApp {
             html! {<></>}
         };
 
-        let pw_warn = match primary_state {
+        let alt_auth_method_warning = match primary_state {
             CUCredState::Modifiable => {
                 html! {
                   <>
-                    <p>{ "Legacy password paired with other authentication factors." }</p>
-                    <p>{ "It is recommended you avoid setting these if possible, as these can be phished or exploited." }</p>
+                    <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
                   </>
                 }
             }
             CUCredState::DeleteOnly => {
                 html! {
                   <>
-                    <p>{ "Legacy password paired with other authentication factors." }</p>
-                    <p>{ "Account policy prevents you modifying this credential, but you may remove it." }</p>
+                    <p>{ "If possible, passkeys should be used instead, as they are phishing and exploit resistant." }</p>
+                    <p>{ "Account policy prevents you modifying these credentials, but you may remove them." }</p>
                   </>
                 }
             }
             CUCredState::AccessDeny => {
-                html! { <><p> { "You do not have access to modify the Password or TOTP tokens of this account" }</p></> }
+                html! {
+                    <>
+                        <p>{ "You do not have access to modify these credentials." }</p>
+                    </>
+                }
             }
             CUCredState::PolicyDeny => {
-                html! { <><p> { "Account policy prevents you setting the Password or TOTP tokens of this account" }</p></> }
+                html! {
+                    <>
+                        <p>{ "Account policy prevents you from setting these credentials" }</p>
+                    </>
+                }
             }
         };
 
         html! {
            <>
             <hr class="my-4" />
-
-            <h4>{"Password / TOTP"}</h4>
-            { pw_warn }
-            { pw_html_inner }
+            <h4>{"Alternative Authentication Methods" }</h4>
+            { alt_auth_method_warning }
+            { alt_auth_method_inner }
 
             <PwModalApp token={ token.clone() } cb={ cb } />
            </>
@@ -693,13 +701,17 @@ impl CredentialResetApp {
                     <hr class="my-4" />
                     <h4>{"Passkeys"}</h4>
 
-                    <p>{ "Strong cryptographic authenticators with self contained multi-factor authentication." }</p>
-
-                    { if passkeys.is_empty() {
-                        html! { <p>{ "No Passkeys Registered" }</p> }
-                    } else {
-                        html! { <></> }
-                    } }
+                    <p>{ "Easy to use digital credentials with self-contained multi-factor authentication designed to replace passwords." }</p>
+                    <p>
+                      <a target="_blank" href="https://support.microsoft.com/en-us/windows/passkeys-in-windows-301c8944-5ea2-452b-9886-97e4d2ef4422">{ "Windows" }</a>
+                      { ", " }
+                      <a target="_blank" href="https://support.apple.com/guide/mac-help/create-a-passkey-mchl4af65d1a/mac">{ "MacOS" }</a>
+                      { ", " }
+                      <a target="_blank" href="https://support.google.com/android/answer/14124480?hl=en">{ "Android" }</a>
+                      { ", and " }
+                      <a target="_blank" href="https://support.apple.com/guide/iphone/use-passkeys-to-sign-in-to-apps-and-websites-iphf538ea8d0/ios">{ "iOS" }</a>
+                      { " have built-in support for passkeys."}
+                    </p>
 
                     { for passkeys.iter()
                         .map(|detail|
@@ -744,8 +756,6 @@ impl CredentialResetApp {
                   <>
                     <hr class="my-4" />
                     <h4>{"Attested Passkeys"}</h4>
-                    { if attested_passkeys.is_empty() { html! { <p> { "No Passkeys Registered" } </p> } } else { html! {<></>} } }
-
                     { for attested_passkeys.iter()
                         .map(|detail|
                             PasskeyRemoveModalApp::render_button(&detail.tag, detail.uuid)
