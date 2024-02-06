@@ -67,7 +67,9 @@ if [ "$(which cargo | wc -l)" -eq 0 ]; then
 fi
 
 # this assumes the versions are in lock-step, which is fine at the moment.
-KANIDM_VERSION="$(grep -ioE 'version.*' Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"')"
+# Debian is picky abour dashes in version strings, so a bit of conversion
+# is needed for the first one to prevent interference.
+KANIDM_VERSION="$(grep -ioE 'version.*' Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"' | sed -e 's/-/~/')"
 
 # if we're in a github action, then it's easy to get the commit
 if [ -n "${GITHUB_SHA}" ]; then
@@ -80,8 +82,17 @@ fi
 GIT_COMMIT="${GIT_HEAD:0:7}"
 DATESTR="$(date +%Y%m%d%H%M)"
 
-PACKAGE_VERSION="${KANIDM_VERSION}-${DATESTR}${GIT_COMMIT}"
-echo "Package Version: ${PACKAGE_VERSION}"
+
+# Due to previous version schemes we need to increment epoch above the default 0,
+# to supercede old versions before the change.
+EPOCH=1
+
+# GitHub Actions forces NTFS compatibility which disallows colons in filenames
+# ergo, we do not include the epoch in the filename.
+FILENAME="${KANIDM_VERSION}~${DATESTR}+${GIT_COMMIT}"
+PACKAGE_VERSION="${EPOCH}:${FILENAME}"
+
+echo "Deb package Version: ${PACKAGE_VERSION}"
 
 echo "Updating package dir"
 rm -rf "${BUILD_DIR:?}/*"
