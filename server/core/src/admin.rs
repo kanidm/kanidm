@@ -17,18 +17,25 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 use tracing::{span, Instrument, Level};
 use uuid::Uuid;
 
+pub use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskRequest {
     RecoverAccount { name: String },
     ShowReplicationCertificate,
     RenewReplicationCertificate,
     RefreshReplicationConsumer,
+    DomainShow,
+    DomainRaise,
+    DomainRemigrate { level: Option<u32> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskResponse {
     RecoverAccount { password: String },
     ShowReplicationCertificate { cert: String },
+    DomainRaise { level: u32 },
+    DomainShow { domain_info: ProtoDomainInfo },
     Success,
     Error,
 }
@@ -315,6 +322,30 @@ async fn handle_client(
                         AdminTaskResponse::Error
                     }
                 },
+
+                AdminTaskRequest::DomainShow => match server.handle_domain_show(eventid).await {
+                    Ok(domain_info) => AdminTaskResponse::DomainShow { domain_info },
+                    Err(e) => {
+                        error!(err = ?e, "error during domain show");
+                        AdminTaskResponse::Error
+                    }
+                },
+                AdminTaskRequest::DomainRaise => match server.handle_domain_raise(eventid).await {
+                    Ok(level) => AdminTaskResponse::DomainRaise { level },
+                    Err(e) => {
+                        error!(err = ?e, "error during domain raise");
+                        AdminTaskResponse::Error
+                    }
+                },
+                AdminTaskRequest::DomainRemigrate { level } => {
+                    match server.handle_domain_remigrate(level, eventid).await {
+                        Ok(()) => AdminTaskResponse::Success,
+                        Err(e) => {
+                            error!(err = ?e, "error during domain remigrate");
+                            AdminTaskResponse::Error
+                        }
+                    }
+                }
             }
         }
         .instrument(nspan)

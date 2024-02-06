@@ -49,6 +49,8 @@ pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
+// The minimum level that we can re-migrate from
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The target supported domain functional level

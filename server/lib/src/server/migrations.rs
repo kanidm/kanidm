@@ -781,10 +781,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(&filter, &modlist)?;
 
         // Now move all oauth2 rs name.
-        let filter = filter!(f_eq(
-            Attribute::Class,
-            EntryClass::OAuth2ResourceServer.into()
-        ));
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_pres(Attribute::OAuth2RsName),
+        ]));
 
         let pre_candidates = self.internal_search(filter).map_err(|err| {
             admin_error!(?err, "migrate_domain_4_to_5 internal search failure");

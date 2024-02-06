@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
+use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
 use kanidm_proto::v1::{ConsistencyError, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
@@ -1383,6 +1384,48 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
         &mut self.dyngroup_cache
+    }
+
+    pub fn domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
+        let d_info = &self.d_info;
+
+        Ok(ProtoDomainInfo {
+            name: d_info.d_name.clone(),
+            displayname: d_info.d_display.clone(),
+            uuid: d_info.d_uuid,
+            level: d_info.d_vers,
+        })
+    }
+
+    pub fn domain_raise(&mut self, level: u32) -> Result<(), OperationError> {
+        if level > DOMAIN_MAX_LEVEL {
+            return Err(OperationError::MG0002RaiseDomainLevelExceedsMaximum);
+        }
+
+        let modl = ModifyList::new_purge_and_set(Attribute::Version, Value::Uint32(level));
+        let udi = PVUUID_DOMAIN_INFO.clone();
+        let filt = filter_all!(f_eq(Attribute::Uuid, udi));
+        self.internal_modify(&filt, &modl)
+    }
+
+    pub fn domain_remigrate(&mut self, level: u32) -> Result<(), OperationError> {
+        let mut_d_info = self.d_info.get_mut();
+
+        if level > mut_d_info.d_vers {
+            // Nothing to do.
+            return Ok(());
+        } else if level < DOMAIN_MIN_REMIGRATION_LEVEL {
+            return Err(OperationError::MG0001InvalidReMigrationLevel);
+        };
+
+        debug!(
+            "Prepare to re-migrate from {} -> {}",
+            level, mut_d_info.d_vers
+        );
+        mut_d_info.d_vers = level;
+        self.changed_domain = true;
+
+        Ok(())
     }
 
     #[instrument(level = "debug", skip_all)]

@@ -296,7 +296,11 @@ pub enum OperationError {
     VS0001IncomingReplSshPublicKey,
     // Value Errors
     VL0001ValueSshPublicKeyString,
+    // SCIM
     SC0001IncomingSshPublicKey,
+    // Migration
+    MG0001InvalidReMigrationLevel,
+    MG0002RaiseDomainLevelExceedsMaximum,
 }
 
 impl PartialEq for OperationError {
