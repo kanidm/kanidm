@@ -6,12 +6,11 @@ This happens in Docker currently, and here's some instructions for doing it for 
 
 1. Start in the root directory of the repository.
 2. Run `./platform/debian/ubuntu_docker_builder.sh` This'll start a container, mounting the
-   repository in `~/kanidm/`.
-3. Install the required dependencies by running `./scripts/install_ubuntu_dependencies.sh`.
-4. Building packages uses make, get a list by running `make -f ./platform/debian/Makefile help`
-5. So if you wanted to build the package for the Kanidm CLI, run
+   repository in `~/kanidm/` and installing dependencies via `./scripts/install_ubuntu_dependencies.sh`.
+3. Building packages uses make, get a list by running `make -f ./platform/debian/Makefile help`
+4. So if you wanted to build the package for the Kanidm CLI, run
    `make -f ./platform/debian/Makefile debs/kanidm`.
-6. The package will be copied into the `target` directory of the repository on the docker host - not
+5. The package will be copied into the `target` directory of the repository on the docker host - not
    just in the container.
 
 ## Adding a package

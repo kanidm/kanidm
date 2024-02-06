@@ -34,6 +34,8 @@
 - Jianchen Zhao (bolu61)
 - Allan Zhang (allan2)
 - illode
+- Jinna Kiisuo (jinnatar)
+
 
 ## Acknowledgements
 
