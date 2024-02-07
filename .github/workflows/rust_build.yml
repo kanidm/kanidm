@@ -41,8 +41,6 @@ jobs:
 
       - name: "Build the workspace"
         run: cargo build --workspace
-      - name: "Build the idv-tui feature kanidm binary"
-        run: cargo build --bin kanidm --features idv-tui
       - name: "Check disk space and size of target, then clean it"
         run: |
           df -h

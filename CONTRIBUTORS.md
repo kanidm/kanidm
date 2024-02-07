@@ -36,7 +36,6 @@
 - illode
 - Jinna Kiisuo (jinnatar)
 
-
 ## Acknowledgements
 
 - M. Gerstner

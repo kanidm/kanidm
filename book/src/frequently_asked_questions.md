@@ -68,11 +68,11 @@ mishandling secrets such as these so we should not rely on this as our sole defe
 For public clients (which have no `client_id` authentication) we strictly enforce PKCE since
 disclosure of the authorisation code to an attacker will allow them to perform the code exchange.
 
-OpenID connect internally has a `nonce` parameter in its operations. Commonly it is argued that
-this value removes the need for OpenID connect clients to implement PKCE. It does not. This
-parameter is not equivalent or a replacement for PKCE. While the `nonce` can assist with certain
-attack mitigations, authorisation code interception is not prevented by the presence or validation
-of the `nonce` value.
+OpenID connect internally has a `nonce` parameter in its operations. Commonly it is argued that this
+value removes the need for OpenID connect clients to implement PKCE. It does not. This parameter is
+not equivalent or a replacement for PKCE. While the `nonce` can assist with certain attack
+mitigations, authorisation code interception is not prevented by the presence or validation of the
+`nonce` value.
 
 We would strongly encourage OAuth2 client implementations to implement and support PKCE, as it
 provides defense in depth to known and exploited authorisation code interception attacks.
@@ -95,8 +95,8 @@ and may also limit the amount of keys we can store on the device. In the case of
 they do not even support RSA keys up to 8192 bits (but they do support ECDSA 384 and 521). An
 example of this is TPMs, which only support up to 4096 bit RSA keys at this time.
 
-As a result, we want to guide people toward smaller, faster and more secure cryptographic
-standards like ECDSA. We want to encourage application developers to implement ECDSA in their OAuth2
+As a result, we want to guide people toward smaller, faster and more secure cryptographic standards
+like ECDSA. We want to encourage application developers to implement ECDSA in their OAuth2
 applications as it is likely that limitations of RSA will be hit in the future.
 
 Generally, it's also positive to encourage applications to review and update their cryptographic
