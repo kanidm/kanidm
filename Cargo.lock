@@ -1079,7 +1079,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2931,7 +2931,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2956,7 +2956,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "base64urlsafedata",
  "chrono",
@@ -2982,7 +2982,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_build_profiles"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "base64 0.21.7",
  "gix",
@@ -2992,7 +2992,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "hyper",
  "kanidm_lib_file_permissions",
@@ -3011,7 +3011,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_crypto"
-version = "1.1.0-rc.15-dev"
+version = "1.2.0-dev"
 dependencies = [
  "argon2",
  "base64 0.21.7",
@@ -3030,7 +3030,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_file_permissions"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "kanidm_utils_users",
  "whoami",
@@ -3038,7 +3038,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "base32",
  "base64urlsafedata",
@@ -3058,7 +3058,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "async-recursion",
  "clap",
@@ -3090,7 +3090,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "async-trait",
  "base64urlsafedata",
@@ -3129,14 +3129,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "async-trait",
  "axum",
@@ -3189,7 +3189,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "base64 0.21.7",
  "base64urlsafedata",
@@ -3246,7 +3246,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib_macros"
-version = "1.1.0-rc.15-dev"
+version = "1.2.0-dev"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3255,7 +3255,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "assert_cmd",
  "compact_jwt 0.3.3",
@@ -3293,7 +3293,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui_admin"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "gloo",
  "gloo-utils 0.2.0",
@@ -3314,7 +3314,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui_login_flows"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "gloo",
  "gloo-utils 0.2.0",
@@ -3335,7 +3335,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui_shared"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "gloo",
  "js-sys",
@@ -3354,7 +3354,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui_user"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "gloo",
  "gloo-timers 0.3.0",
@@ -3771,7 +3771,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -4170,7 +4170,7 @@ checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
 
 [[package]]
 name = "orca"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "clap",
  "crossbeam",
@@ -4214,7 +4214,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "kanidm_unix_int",
  "libc",
@@ -5352,7 +5352,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 dependencies = [
  "gethostname",
  "num_enum",

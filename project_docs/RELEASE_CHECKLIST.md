@@ -62,16 +62,16 @@ cargo install wasm-bindgen-cli
 - [ ] publish `sketching`
 - [ ] publish `kanidm_utils_users`
 - [ ] publish `kanidm_lib_file_permissions`
-- [ ] publish `kanidm_client`
 - [ ] publish `kanidm_lib_crypto`
 - [ ] publish `kanidm_build_profiles`
+- [ ] publish `kanidm_client`
 - [ ] publish `kanidm_tools`
 
 ### Docker
 
 - [ ] docker buildx use cluster
 - [ ] `make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
-- [ ] `IMAGE_VERSION=latest make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
+- [ ] `IMAGE_VERSION=latest make buildx`
 - [ ] Update the readme on docker <https://hub.docker.com/repository/docker/kanidm/server>
 
 ### Distro
