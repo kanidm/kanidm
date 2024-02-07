@@ -16,10 +16,7 @@ extern crate tracing;
 use crate::common::OpType;
 use std::path::PathBuf;
 
-#[cfg(not(feature = "idv-tui"))]
 use identify_user_no_tui::{run_identity_verification_no_tui, IdentifyUserState};
-#[cfg(feature = "idv-tui")]
-use identify_user_tui::run_identity_verification_tui;
 
 use kanidm_client::{ClientError, StatusCode};
 use url::Url;
@@ -129,9 +126,6 @@ impl SelfOpt {
                         }
                     };
 
-                #[cfg(feature = "idv-tui")]
-                run_identity_verification_tui(spn, client).await;
-                #[cfg(not(feature = "idv-tui"))]
                 run_identity_verification_no_tui(IdentifyUserState::Start, client, spn, None).await;
             } // end PersonOpt::Validity
         }
@@ -224,7 +218,6 @@ pub const INVALID_USER_ID_ERROR_MESSAGE: &str =
 pub const INVALID_STATE_ERROR_MESSAGE: &str =
     "The user identification flow is in an invalid state 😵😵";
 
-#[cfg(not(feature = "idv-tui"))]
 mod identify_user_no_tui {
     use crate::{
         CODE_FAILURE_ERROR_MESSAGE, IDENTITY_UNAVAILABLE_ERROR_MESSAGE,
