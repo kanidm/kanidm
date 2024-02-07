@@ -301,6 +301,7 @@ pub enum OperationError {
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
+    MG0003ServerPhaseInvalidForMigration,
 }
 
 impl PartialEq for OperationError {
