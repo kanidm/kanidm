@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.1.0-rc.16"
+version = "1.2.0-dev"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -78,19 +78,19 @@ sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4d
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
 [workspace.dependencies]
-kanidmd_core = { path = "./server/core", version = "=1.1.0-rc.16" }
-kanidmd_lib = { path = "./server/lib", version = "=1.1.0-rc.16" }
-kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.1.0-rc.16" }
-kanidmd_testkit = { path = "./server/testkit", version = "=1.1.0-rc.16" }
-kanidm_build_profiles = { path = "./libs/profiles", version = "=1.1.0-rc.16" }
-kanidm_client = { path = "./libs/client", version = "=1.1.0-rc.16" }
+kanidmd_core = { path = "./server/core", version = "=1.2.0-dev" }
+kanidmd_lib = { path = "./server/lib", version = "=1.2.0-dev" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.2.0-dev" }
+kanidmd_testkit = { path = "./server/testkit", version = "=1.2.0-dev" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "=1.2.0-dev" }
+kanidm_client = { path = "./libs/client", version = "=1.2.0-dev" }
 kanidm-hsm-crypto = "^0.1.5"
-kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.1.0-rc.16" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.1.0-rc.16" }
-kanidm_proto = { path = "./proto", version = "=1.1.0-rc.16" }
-kanidm_unix_int = { path = "./unix_integration", version = "=1.1.0-rc.16" }
-kanidm_utils_users = { path = "./libs/users", version = "=1.1.0-rc.16" }
-sketching = { path = "./libs/sketching", version = "=1.1.0-rc.16" }
+kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.2.0-dev" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.2.0-dev" }
+kanidm_proto = { path = "./proto", version = "=1.2.0-dev" }
+kanidm_unix_int = { path = "./unix_integration", version = "=1.2.0-dev" }
+kanidm_utils_users = { path = "./libs/users", version = "=1.2.0-dev" }
+sketching = { path = "./libs/sketching", version = "=1.2.0-dev" }
 
 serde_with = "3.4.0"
 argon2 = { version = "0.5.2", features = ["alloc"] }
