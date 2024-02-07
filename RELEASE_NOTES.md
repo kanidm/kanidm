@@ -20,8 +20,8 @@ This is the sixteenth pre-release of the Kanidm Identity Management project. Pre
 help get feedback and ideas from the community on how we can continue to make this project better.
 
 This is the final release candidate before we publish a release version. We believe that the API and
-server interfaces are stable and reliable enough for people to depend on for external tools to
-interact with.
+server interfaces are stable and reliable enough for people to depend on, and to develop external
+tools to interact with Kanidm.
 
 ### 1.1.0-rc.16 Release Highlights
 
