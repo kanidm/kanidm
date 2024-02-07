@@ -5,6 +5,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 
 use crate::filter::FilterInvalid;
 use crate::prelude::*;
+use crate::server::ServerPhase;
 
 #[derive(Clone, Default)]
 pub struct DynGroupCache {
@@ -34,6 +35,11 @@ impl DynGroup {
             return Err(OperationError::SystemProtectedObject);
         }
         */
+
+        if qs.get_phase() < ServerPhase::SchemaReady {
+            trace!("Server is not ready to load dyngroups");
+            return Ok(());
+        }
 
         // Search all the new groups first.
         let filt = filter!(FC::Or(

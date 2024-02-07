@@ -53,8 +53,8 @@ const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 pub type ResolveFilterCacheReadTxn<'a> =
     ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
 
-#[derive(Debug, Clone, PartialOrd, PartialEq, Eq)]
-enum ServerPhase {
+#[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq)]
+pub(crate) enum ServerPhase {
     Bootstrap,
     SchemaReady,
     DomainInfoReady,
@@ -1823,6 +1823,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     fn set_phase(&mut self, phase: ServerPhase) {
         *self.phase = phase
+    }
+
+    pub(crate) fn get_phase(&mut self) -> ServerPhase {
+        *self.phase
     }
 
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {

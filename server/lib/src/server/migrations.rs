@@ -99,6 +99,10 @@ impl QueryServer {
             }
 
             if system_info_version < 17 {
+                write_txn.initialise_schema_idm()?;
+
+                write_txn.reload()?;
+
                 write_txn.migrate_16_to_17()?;
             }
 
@@ -132,9 +136,7 @@ impl QueryServer {
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base-schema here.
         if db_domain_version == 0 {
-            write_txn
-                .initialise_schema_idm()
-                .and_then(|_| write_txn.reload())?;
+            write_txn.initialise_schema_idm()?;
 
             write_txn.reload()?;
         }
