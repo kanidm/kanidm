@@ -6,6 +6,7 @@
 cargo install cargo-audit
 cargo install cargo-outdated
 cargo install cargo-udeps
+cargo install wasm-bindgen-cli
 ```
 
 ## Check List
@@ -34,6 +35,7 @@ cargo install cargo-udeps
 - [ ] cargo test
 - [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
+- [ ] Update `README.md`
 - [ ] git commit
 - [ ] git push origin YYYYMMDD-release
 - [ ] Merge PR

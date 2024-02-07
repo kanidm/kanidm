@@ -96,9 +96,6 @@ svg = { workspace = true }
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }
 
-[target.'cfg(not(target_family = "windows"))'.dependencies]
-kanidm_utils_users = { workspace = true }
-
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 

@@ -14,8 +14,8 @@ of requirements and integrations. You should not need any other components (like
 use Kanidm - we already have everything you need!
 
 To achieve this we rely heavily on strict defaults, simple configuration, and self-healing
-components. This allows Kanidm to run from small home labs, for families, small business, and all
-the way to the largest enterprise needs.
+components. This allows Kanidm to run from small home labs, families, small business, and all the
+way to the largest enterprise needs.
 
 If you want to host your own authentication service, then Kanidm is for you!
 
@@ -23,15 +23,17 @@ If you want to host your own authentication service, then Kanidm is for you!
 
 Kanidm supports:
 
-- Webauthn (passkeys) for secure cryptographic authentication
+- Passkeys (webauthn) for secure cryptographic authentication
+- Attested Passkeys for high assurance environments
 - Oauth2/OIDC Authentication provider for web SSO
-- Oauth Application Portal/Gateway allowing easy access to linked applications
-- Linux/Unix integration with offline authentication
+- Application Portal allowing easy access to linked applications
+- Linux/Unix integration with TPM secured offline authentication
 - SSH key distribution to Linux/Unix systems
 - RADIUS for network and VPN authentication
 - Read only LDAPS gateway for Legacy Systems
 - Complete CLI tooling for Administration
 - A WebUI for User Self Service
+- Two node high availability using database replication
 
 </details>
 
@@ -65,29 +67,28 @@ and answer questions. Alternately you can open a new [github discussion].
 ## What does Kanidm mean?
 
 Kanidm is a portmanteau of 'kani' and 'idm'. Kani is Japanese for crab, related to Rust's mascot
-ferris the crab. identity management is often abbreviated to 'idm', and is a common industry term
-for these services.
+ferris the crab. Identity management is often abbreviated to 'idm', and is a common industry term
+for authentication providers.
 
 Kanidm is pronounced as "kar - nee - dee - em".
 
 ## Comparison with other services
 
 <details><summary>LLDAP</summary>
-
 [LLDAP](https://github.com/nitnelave/lldap) is a similar project aiming for a small and easy to
 administer LDAP server with a web administration portal. Both projects use the
 [Kanidm LDAP bindings](https://github.com/kanidm/ldap3), and have many similar ideas.
 
 The primary benefit of Kanidm over LLDAP is that Kanidm offers a broader set of "built in" features
-like Oauth2 and OIDC. To use these from LLDAP you need an external portal like Keycloak, where in
-Kanidm they are "built in". However that is also a strength of LLDAP is that is offers "less" which
-may make it easier to administer and deploy for you.
+like Oauth2 and OIDC. To use these from LLDAP you need an external portal like Keycloak. However
+that is also a strength of LLDAP is that is offers "less" which may make it easier to administer and
+deploy for you.
 
 While LLDAP offers a simple Web UI as the primary user management frontend, Kanidm currently only
-offers administration functionality via its CLI.
+offers administration functionality via its CLI. The Kanidm Web UI is tailored to user interactions.
 
 If Kanidm is too complex for your needs, you should check out LLDAP as a smaller alternative. If you
-want a project which has a broader feature set out of the box, then Kanidm might be a better fit.
+want a project which has a broader feature set out of the box, then Kanidm will be a better fit.
 
 </details>
 
@@ -101,7 +102,8 @@ probably better alternatives. If you want a service that is easy to setup and fo
 Kanidm is a better choice.
 
 Kanidm was originally inspired by many elements of both 389-ds and OpenLDAP. Already Kanidm is as
-fast as (or faster than) 389-ds for performance and scaling as a directory service.
+fast as (or faster than) 389-ds for performance and scaling as a directory service while having a
+richer feature set.
 
 </details>
 
@@ -110,7 +112,7 @@ FreeIPA is another identity management service for Linux/Unix, and ships a huge 
 from LDAP, Kerberos, DNS, Certificate Authority, and more.
 
 FreeIPA however is a complex system, with a huge amount of parts and configuration. This adds a lot
-of resource overhead and difficulty for administration.
+of resource overhead and difficulty for administration and upgrades.
 
 Kanidm aims to have the features richness of FreeIPA, but without the resource and administration
 overheads. If you want a complete IDM package, but in a lighter footprint and easier to manage, then

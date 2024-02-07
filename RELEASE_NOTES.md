@@ -14,6 +14,34 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2024-02-07 - Kanidm 1.1.0-rc.16
+
+This is the sixteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
+help get feedback and ideas from the community on how we can continue to make this project better.
+
+This is the final release candidate before we publish a release version. We believe that the API and
+server interfaces are stable and reliable enough for people to depend on for external tools to
+interact with.
+
+### 1.1.0-rc.16 Release Highlights
+
+- Replication for two node environments is now supported
+- Account policy supports password minimum length
+- Improve performance of webui
+- Add transitional compatability with SSSD
+- Improve TPM interfaces in unix clients
+- Allow importing more weak password schemes from FreeIPA
+- Support Attestation of Passkeys/Webauthn - this makes us the first IDM to support this!
+- Add entry-managed-by and hierarchial access control profiles
+- Rework and improve default access controls to further restrict default privileges
+- New replicated domain migration framework for distributed updates
+- Start to add PIV/Smartcard authentication groundwork
+- Allow changes to OAuth2 RS origin
+- Support RFC8414 OAuth2 metadata
+- Improve TLS error dialogs to assist administrators
+- Support RFC6749 Client Credentials Grant
+- Support custom claim maps in OIDC
+
 ## 2023-10-31 - Kanidm 1.1.0-beta14
 
 This is the fourteenth pre-release of the Kanidm Identity Management project. Pre-releases are to

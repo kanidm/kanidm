@@ -689,7 +689,7 @@ impl CredentialResetApp {
     fn view_passkeys(
         &self,
         token: &CUSessionToken,
-        passkeys: &Vec<PasskeyDetail>,
+        passkeys: &[PasskeyDetail],
         passkeys_state: CUCredState,
     ) -> Html {
         let cb = self.cb.clone();

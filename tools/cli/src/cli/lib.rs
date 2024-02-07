@@ -30,8 +30,6 @@ include!("../opt/kanidm.rs");
 mod common;
 mod domain;
 mod group;
-#[cfg(feature = "idv-tui")]
-mod identify_user_tui;
 mod oauth2;
 mod person;
 mod raw;
