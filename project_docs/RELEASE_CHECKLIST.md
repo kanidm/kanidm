@@ -62,9 +62,9 @@ cargo install wasm-bindgen-cli
 - [ ] publish `sketching`
 - [ ] publish `kanidm_utils_users`
 - [ ] publish `kanidm_lib_file_permissions`
-- [ ] publish `kanidm_client`
 - [ ] publish `kanidm_lib_crypto`
 - [ ] publish `kanidm_build_profiles`
+- [ ] publish `kanidm_client`
 - [ ] publish `kanidm_tools`
 
 ### Docker
