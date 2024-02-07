@@ -38,25 +38,6 @@ impl QueryServer {
             .initialise_schema_core()
             .and_then(|_| write_txn.reload())?;
 
-        write_txn
-            .initialise_schema_idm()
-            .and_then(|_| write_txn.reload())?;
-
-        // reindex and set to version + 1, this way when we bump the version
-        // we are essetially pushing this version id back up to step write_1
-        write_txn
-            .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
-            .and_then(|_| write_txn.reload())?;
-
-        // Force the schema to reload - this is so that any changes to index slope
-        // analysis that was performed during the reindex are now reflected correctly
-        // in the in-memory schema cache.
-        //
-        // A side effect of these reloads is that other plugins or elements that reload
-        // on schema change are now setup.
-
-        write_txn.set_phase(ServerPhase::SchemaReady);
-        write_txn.force_schema_reload();
         write_txn.reload()?;
 
         // Now, based on the system version apply migrations. You may ask "should you not
@@ -130,9 +111,13 @@ impl QueryServer {
                 // the domain migrations kick in again.
                 write_txn.initialise_idm()?;
             }
+
+            if system_info_version < 19 {
+                write_txn.migrate_18_to_19()?;
+            }
         }
 
-        // Reload if anything in migrations requires it.
+        // Reload if anything in the (older) system migrations requires it.
         write_txn.reload()?;
 
         // This is what tells us if the domain entry existed before or not.
@@ -144,11 +129,25 @@ impl QueryServer {
 
         info!(?db_domain_version, "Before setting internal domain info");
 
-        // Migrations complete. Init idm will now set the system config version and minimum domain
+        // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
+        // the base-schema here.
+        if db_domain_version == 0 {
+            write_txn
+                .initialise_schema_idm()
+                .and_then(|_| write_txn.reload())?;
+
+            write_txn.reload()?;
+        }
+
+        // Indicate the schema is now ready, which allows dyngroups to work.
+        write_txn.set_phase(ServerPhase::SchemaReady);
+
+        // Init idm will now set the system config version and minimum domain
         // level if none was present
         write_txn.initialise_domain_info()?;
 
-        // No domain info was present, so neither was the rest of the IDM.
+        // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
+        // the base entries here.
         if db_domain_version == 0 {
             write_txn.initialise_idm()?;
         }
@@ -185,6 +184,20 @@ impl QueryServer {
 
         // Reload if anything in migrations requires it - this triggers the domain migrations.
         write_txn.reload()?;
+
+        // reindex and set to version + 1, this way when we bump the version
+        // we are essetially pushing this version id back up to step write_1
+        write_txn
+            .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
+            .and_then(|_| write_txn.reload())?;
+
+        // Force the schema to reload - this is so that any changes to index slope
+        // analysis that was performed during the reindex are now reflected correctly
+        // in the in-memory schema cache.
+        //
+        // A side effect of these reloads is that other plugins or elements that reload
+        // on schema change are now setup.
+        write_txn.force_schema_reload();
 
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
@@ -674,6 +687,34 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_acp = true;
 
         Ok(())
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// Automate fix for #2470 - force the domain version to be lowered, to allow
+    /// it to re-raise and force re-run migrations. This is because we accidentally
+    /// were "overwriting" the changes from domain migrations on startup due to
+    /// a logic error. At this point in the startup, the server phase is lower than
+    /// domain info ready, so the change won't immediately trigger remigrations. Rather
+    /// it will force them later in the startup.
+    pub fn migrate_18_to_19(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 18 to 19 migration.");
+
+        debug_assert!(*self.phase < ServerPhase::DomainInfoReady);
+        if *self.phase >= ServerPhase::DomainInfoReady {
+            error!("Unable to perform system migration as server phase is greater or equal to domain info ready");
+            return Err(OperationError::MG0003ServerPhaseInvalidForMigration);
+        };
+
+        self.internal_modify_uuid(
+            UUID_DOMAIN_INFO,
+            &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(DOMAIN_LEVEL_2)),
+        )
+        .map(|()| {
+            warn!(
+                "Domain level has been temporarily lowered to {}",
+                DOMAIN_LEVEL_2
+            );
+        })
     }
 
     #[instrument(level = "info", skip_all)]
