@@ -5,8 +5,7 @@ authentication and authorisation within a technical environment.
 
 The intent of the Kanidm project is to:
 
-- Provide a single truth source for accounts, groups and privileges.
-- Enable integrations to systems and services so they can trust Kanidm to authenticate accounts.
+- Provide a single source of truth for authorisation and authentication.
 - Make system, network, application and web authentication easy and accessible.
 - Secure and reliable by default, aiming for the highest levels of quality and stability.
 
@@ -32,7 +31,7 @@ example of how this looks:
 
 A key design goal is that you authenticate with your device in some manner, and then your device
 will continue to authenticate you in the future. Each of these different types of credentials, from
-SSH keys, application passwords, to RADIUS passwords and others, are "things your device knows" or
+SSH keys, application passwords, RADIUS passwords and others, are "things your device knows" or
 "things your device has". Each credential has limited capability and scope, and can only access that
 exact service or resource.
 
