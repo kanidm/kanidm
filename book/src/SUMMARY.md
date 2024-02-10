@@ -1,6 +1,7 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
+- [Supported Features](features.md)
 
 - [Evaluation Quickstart](quickstart.md)
 
