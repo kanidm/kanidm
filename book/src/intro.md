@@ -5,7 +5,7 @@ authentication and authorisation within a technical environment.
 
 The intent of the Kanidm project is to:
 
-- Provide a single truth source for authorisation and authentication.
+- Provide a single source of truth for authorisation and authentication.
 - Make system, network, application and web authentication easy and accessible.
 - Secure and reliable by default, aiming for the highest levels of quality and stability.
 
