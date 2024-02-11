@@ -3372,6 +3372,7 @@ dependencies = [
 name = "kanidmd_web_ui_user"
 version = "1.2.0-dev"
 dependencies = [
+ "enum-iterator",
  "gloo",
  "gloo-timers 0.3.0",
  "gloo-utils 0.2.0",

@@ -1,3 +1,5 @@
+#![feature(future_join)]
+
 mod components;
 mod credential;
 mod manager;

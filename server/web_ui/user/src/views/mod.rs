@@ -20,8 +20,10 @@ use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 
 mod apps;
 pub mod identityverification;
+pub mod objectgraph;
 
 use apps::AppsApp;
+use objectgraph::ObjectGraphApp;
 use identityverification::IdentityVerificationApp;
 
 #[derive(Routable, PartialEq, Eq, Clone, Debug, Serialize, Deserialize)]
@@ -32,6 +34,8 @@ pub enum ViewRoute {
     Profile,
     #[at("/ui/identity-verification")]
     IdentityVerification,
+    #[at("/ui/object-graph")]
+    ObjectGraph,
     #[not_found]
     #[at("/ui/404")]
     NotFound,
@@ -270,6 +274,14 @@ impl ViewsApp {
             ])
         };
 
+        links.push(html! {
+              <Link<ViewRoute> classes={CSS_NAV_LINK} to={ViewRoute::ObjectGraph}>
+                <span data-feather="file"></span>
+                { "ObjectGraph" }
+              </Link<ViewRoute>>
+
+            });
+
         links.push(signout_link());
         html! {
           <>
@@ -286,6 +298,7 @@ impl ViewsApp {
                         #[allow(clippy::let_unit_value)]
                         ViewRoute::IdentityVerification => html! { <IdentityVerificationApp current_user_uat={ current_user_uat.clone() } />},
                         ViewRoute::Apps => html! { <AppsApp /> },
+                        ViewRoute::ObjectGraph => html! { <ObjectGraphApp /> },
                         ViewRoute::Profile => html! { <ProfileApp current_user_uat={ current_user_uat.clone() } /> },
                         ViewRoute::NotFound => html! {
                             <Redirect<Route> to={Route::NotFound}/>

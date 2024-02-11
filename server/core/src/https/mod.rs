@@ -144,6 +144,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
         for (filepath, filetype) in [
             ("shared.js", Some("module".to_string())),
             ("external/bootstrap.bundle.min.js", None),
+            ("external/viz.js", None),
         ] {
             // let's set up the list of non-wasm-module js files we want to serve
             // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
