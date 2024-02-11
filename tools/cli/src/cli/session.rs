@@ -264,16 +264,18 @@ async fn process_auth_state(
             }
             _ => {
                 let mut options = Vec::new();
+                // because we want them in "most secure to least secure" order.
+                allowed.reverse();
                 for val in allowed.iter() {
                     options.push(val.to_string());
                 }
-                let msg = "Please choose what credential to provide:";
+                let msg = "Please choose which credential to provide:";
                 let selection = get_index_choice_dialoguer(msg, &options);
 
                 #[allow(clippy::expect_used)]
                 allowed
                     .get(selection)
-                    .expect("can not fail - bounds already checked.")
+                    .expect("Failed to select an authentication option!")
             }
         };
 
