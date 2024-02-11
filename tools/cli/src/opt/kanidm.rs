@@ -236,6 +236,9 @@ pub enum GroupOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Prints graphviz dot file of all groups
+    #[clap(name = "graph")]
+    Graph(GraphCommonOpt),
     /// Delete a group
     #[clap(name = "delete")]
     Delete(Named),
@@ -277,6 +280,28 @@ pub enum GroupOpt {
         #[clap(subcommand)]
         commands: GroupAccountPolicyOpt,
     },
+}
+
+#[derive(Clone, Debug, ValueEnum)]
+pub enum GraphType {
+    Graphviz,
+    Mermaid
+}
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, ValueEnum)]
+pub enum ObjectType {
+    Group,
+    BuiltinGroup,
+    ServiceAccount,
+    Person
+}
+#[derive(Debug, Args)]
+pub struct GraphCommonOpt {
+    #[arg(value_enum)]
+    pub graph_type: GraphType,
+    #[clap()]
+    pub filter: Vec<ObjectType>,
+    #[clap(flatten)]
+    pub copt: CommonOpt,
 }
 
 #[derive(Debug, Args)]
