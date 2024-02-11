@@ -1012,30 +1012,26 @@ impl PartialEq for AuthAllowed {
     }
 }
 
+impl From<&AuthAllowed> for u8 {
+    fn from(a: &AuthAllowed) -> u8 {
+        match a {
+            AuthAllowed::Anonymous => 0,
+            AuthAllowed::Password => 1,
+            AuthAllowed::BackupCode => 2,
+            AuthAllowed::Totp => 3,
+            AuthAllowed::Passkey(_) => 4,
+            AuthAllowed::SecurityKey(_) => 5,
+        }
+    }
+}
+
 impl Eq for AuthAllowed {}
 
 impl Ord for AuthAllowed {
     fn cmp(&self, other: &Self) -> Ordering {
-        if self.eq(other) {
-            Ordering::Equal
-        } else {
-            // Relies on the fact that match is executed in order!
-            match (self, other) {
-                (AuthAllowed::Anonymous, _) => Ordering::Less,
-                (_, AuthAllowed::Anonymous) => Ordering::Greater,
-                (AuthAllowed::Password, _) => Ordering::Less,
-                (_, AuthAllowed::Password) => Ordering::Greater,
-                (AuthAllowed::BackupCode, _) => Ordering::Less,
-                (_, AuthAllowed::BackupCode) => Ordering::Greater,
-                (AuthAllowed::Totp, _) => Ordering::Less,
-                (_, AuthAllowed::Totp) => Ordering::Greater,
-                (AuthAllowed::SecurityKey(_), _) => Ordering::Less,
-                (_, AuthAllowed::SecurityKey(_)) => Ordering::Greater,
-                (AuthAllowed::Passkey(_), _) => Ordering::Less,
-                // Unreachable
-                // (_, AuthAllowed::Passkey(_)) => Ordering::Greater,
-            }
-        }
+        let self_ord: u8 = self.into();
+        let other_ord: u8 = other.into();
+        self_ord.cmp(&other_ord)
     }
 }
 
