@@ -10,10 +10,12 @@ use kanidmd_web_ui_shared::constants::{
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlSelectElement};
+use web_sys::{HtmlInputElement};
+use yew_router::Routable;
 
 use kanidm_proto::v1::Entry;
-use kanidmd_web_ui_shared::utils::{init_graphviz};
+use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank, window};
+use crate::router::AdminRoute;
 
 pub enum Msg {
     NewFilters { filters: Vec<ObjectType> },
@@ -67,12 +69,12 @@ pub enum State {
     Error { emsg: String, kopid: Option<String> },
 }
 
-pub struct ObjectGraphApp {
+pub struct AdminObjectGraph {
     state: State,
     filters: Vec<ObjectType>,
 }
 
-impl Component for ObjectGraphApp {
+impl Component for AdminObjectGraph {
     type Message = Msg;
     type Properties = ();
 
@@ -86,7 +88,7 @@ impl Component for ObjectGraphApp {
 
         let state = State::Waiting;
 
-        ObjectGraphApp { state, filters: vec![] }
+        AdminObjectGraph { state, filters: vec![] }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -128,7 +130,7 @@ impl Component for ObjectGraphApp {
     }
 }
 
-impl ObjectGraphApp {
+impl AdminObjectGraph {
     fn view_waiting(&self) -> Html {
         html! {
             <>
@@ -146,12 +148,10 @@ impl ObjectGraphApp {
         let typed_entries = entries.iter()
             .filter_map(|entry| {
                 let classes = entry.attrs.get("class")?;
+                let uuid = entry.attrs.get("uuid")?.first()?;
 
                 // Logic to decide the type of each entry
                 let obj_type = if classes.contains(&"group".to_string()) {
-                    let uuid = entry.attrs.get("uuid")?.first()?;
-                    // let description = entry.attrs.get("description").first();
-
                     if uuid.starts_with("00000000-0000-0000-0000-") {
                         ObjectType::BuiltinGroup
                     } else {
@@ -173,63 +173,73 @@ impl ObjectGraphApp {
                 }
 
                 let name = entry.attrs.get("name")?.first()?;
-                Some((name.clone(), obj_type))
-            }).collect::<HashSet<(String, ObjectType)>>();
+                Some((name.clone(), uuid.clone(), obj_type))
+            }).collect::<HashSet<(String, String, ObjectType)>>();
 
         // Vec<obj, obj's members>
         let members_of = entries.into_iter().filter_map(|entry| {
             let name = entry.attrs.get("name")?.first()?.clone();
-
-            Some((name, entry.attrs.get("member")?.clone()))
+            let uuid = entry.attrs.get("uuid")?.first()?.clone();
+            let keep = typed_entries.iter().any(|(_, filtered_uuid, _)| { &uuid == filtered_uuid });
+            if keep {
+                Some((name, uuid, entry.attrs.get("member")?.clone()))
+            } else {
+                None
+            }
         }).collect::<Vec<_>>();
 
         // Printing of the graph
         let mut sb = String::new();
         sb.push_str("digraph {\n  rankdir=\"RL\"\n");
-        for (name, members) in members_of {
+        for (name, uuid, members) in members_of {
             members.iter()
                 .map(|member| member.trim_end_matches("@localhost"))
-                .filter(|member| typed_entries.iter().any(|(name, ot)| name == member))
+                .filter(|member| typed_entries.iter().any(|(name, uuid, ot)| name == member))
                 .for_each(|member| {
                     sb.push_str(format!("  {name} -> {member}\n").as_str());
                 });
         }
-        //
-        // println!("  classDef groupClass fill:#f9f,stroke:#333,stroke-width:4px,stroke-dasharray: 5 5");
-        // println!("  classDef builtInGroupClass fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5");
-        // println!("  classDef serviceAccountClass fill:#f9f,stroke:#333,stroke-width:4px");
-        // println!("  classDef personClass fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff");
 
-        for (name, obj_type) in typed_entries {
-            let attrs = match obj_type {
-                ObjectType::Group => "color = \"#b86367\", shape = box",
-                ObjectType::BuiltinGroup => "color = \"#8bc1d6\", shape = component",
-                ObjectType::ServiceAccount => "color = \"#77c98d\", shape = parallelogram",
-                ObjectType::Person => "color = \"#af8bd6\"",
+        for (name, uuid, obj_type) in typed_entries {
+            let (color, shape, route) = match obj_type {
+                ObjectType::Group => ("#b86367", "box", AdminRoute::ViewGroup { uuid }),
+                ObjectType::BuiltinGroup => ("#8bc1d6", "component", AdminRoute::ViewGroup { uuid }),
+                ObjectType::ServiceAccount => ("#77c98d", "parallelogram", AdminRoute::ViewServiceAccount { uuid }),
+                ObjectType::Person => ("#af8bd6", "ellipse", AdminRoute::ViewPerson { uuid }),
             };
-            sb.push_str(format!("  {name} [{attrs}]\n").as_str());
+            let url = route.to_path();
+            sb.push_str(format!(r#"  {name} [color = "{color}", shape = {shape}, URL = "{url}"]{}"#, "\n").as_str());
         }
         sb.push_str("}");
-        init_graphviz(sb.as_str());
+        init_graphviz(&sb.as_str());
 
         let filter_selector_ref = NodeRef::default();
 
-        let on_select_click = {
-            let ref_clone = filter_selector_ref.clone();
+        let on_checkbox_click = {
+            let scope = ctx.link().clone();
             move |event: Event| {
-                let selection = ref_clone.cast::<HtmlSelectElement>()
-                    .expect("filter_selector_ref not bound to the select html elem")
-                    .selected_options();
-                console::debug!(&selection);
+                let coll = document().get_elements_by_class_name("obj-graph-filter-cb");
                 let mut filters = vec![];
-                for i in 0..*&selection.length() {
-                    let option = selection.get_with_index(i)
+
+                for i in 0..*&coll.length() {
+                    let option = coll.get_with_index(i)
                         .expect("couldnt get elem between 0 and selection length ???");
-                    let attr = option.get_attribute("value").expect("Option missing an attribute named: value");
-                    filters.push(ObjectType::try_from(attr).expect("Option attribute —value— is not a valid ObjectType"));
+                    let input_el = option.unchecked_into::<HtmlInputElement>();
+                    let checked = input_el.checked();
+
+                    if checked {
+                        let value = input_el.id();
+                        let obj_type = ObjectType::try_from(value).expect("Option attribute —value— is not a valid ObjectType");
+                        filters.push(obj_type);
+                    }
                 }
-                // console::debug!(&filters);
-                ctx.link().send_message(Msg::NewFilters { filters });
+                scope.send_message(Msg::NewFilters { filters });
+            }
+        };
+
+        let view_graph_source = {
+            move |e: MouseEvent| {
+                open_blank(sb.as_str());
             }
         };
 
@@ -244,22 +254,28 @@ impl ObjectGraphApp {
                 </div>
             } else {
                 <div class="column">
-                    <select class="custom-select" ref={filter_selector_ref} multiple=true onchange={on_select_click}>
-                        {
-                            all::<ObjectType>().map(|ot| {
-                                let str = format!("{:?}", ot);
-                                let selected = filters.contains(&ot);
-                                html! {
-                                    <option value={ str.clone() } selected={ selected }>{ str }</option>
+                    <div class="hstack gap-3">
+                    {
+                        all::<ObjectType>().map(|ot| {
+                            let str = format!("{:?}", ot);
+                            let selected = filters.contains(&ot);
+                            html! {
+                                <>
+                                <div class="form-check">
+                                  <input class="form-check-input obj-graph-filter-cb" type="checkbox" id={str.clone()} onchange={on_checkbox_click.clone()} checked={selected}/>
+                                  <label class="form-check-label" for={str.clone()}>{str.clone()}</label>
+                                </div>
+                                if ot != ObjectType::last().unwrap() {
+                                    <div class="vr"></div>
                                 }
-                            }).collect::<Html>()
-                        }
-                    </select>
-                    <pre class="codeblock">
-                        <div id="graphsource"></div>
-                    </pre>
+                                </>
+                            }
+                        }).collect::<Html>()
+                    }
+                    </div>
+                    <button class="btn btn-primary" onclick={view_graph_source}>{ "View graph source" }</button>
                 </div>
-                <div id="graph-container"></div>
+                <div id="graph-container" class="mt-3"></div>
             }
             </>
         }

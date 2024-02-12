@@ -268,3 +268,24 @@ body {
 .copy__btn:hover {
   opacity: 90%;
 }
+
+.hstack {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-self: stretch;
+}
+
+.vr {
+  display: inline-block;
+  align-self: stretch;
+  width: 0.063rem;
+  min-height: 1em;
+  background-color: currentcolor;
+  opacity: .25;
+}
+
+#graph-container svg {
+  max-width: 100%;
+  height: fit-content;
+}

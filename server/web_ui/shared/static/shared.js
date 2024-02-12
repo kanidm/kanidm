@@ -12,3 +12,10 @@ export function init_graphviz(m) {
             graphContainer.replaceChildren(viz.renderSVGElement(m))
     });
 };
+
+export function open_blank(content) {
+    const windowDocument = window.open("", "_blank").document;
+    const pre2 = windowDocument.createElement("pre");
+    pre2.innerText = content;
+    windowDocument.body.appendChild(pre2);
+}

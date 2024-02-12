@@ -84,6 +84,7 @@ pub fn get_value_from_element_id(id: &str) -> Option<String> {
 extern "C" {
     pub fn modal_hide_by_id(m: &str);
     pub fn init_graphviz(m: &str);
+    pub fn open_blank(content: &str);
 }
 
 /// Returns the footer node for the UI
