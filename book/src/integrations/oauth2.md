@@ -315,7 +315,8 @@ Add the following to a `mod_auth_openidc.conf`. It should be included in a `mods
 with an appropriate include.
 
 ```conf
-OIDCRedirectURI /protected/redirect_uri
+# NB: may be just path, reduces copy-paste
+OIDCRedirectURI /oauth2/callback
 OIDCCryptoPassphrase <random password here>
 OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
 OIDCScope "openid"
@@ -332,13 +333,29 @@ OIDCCookieSameSite On
 Other scopes can be added as required to the `OIDCScope` line, eg:
 `OIDCScope "openid scope2 scope3"`
 
-In the virtual host, to protect a location:
+In the virtual host, to handle OIDC redirect, a special location _must_ be defined:
 
 ```apache
-<Location />
+# NB: you must allocate this virtual location matching OIDCRedirectURI and allow it for _any valid user_
+<Location /oauth2/callback>
     AuthType openid-connect
     Require valid-user
 </Location>
+```
+
+In the virtual host, to protect a location/directory [see wiki](https://github.com/OpenIDC/mod_auth_openidc/wiki/Authorization):
+
+```apache
+<Directory /foo>
+    AuthType openid-connect
+
+    # you can authorize by the groups if you requested OIDCScope "openid groups"
+    # Require claim groups:<spn | uuid>
+    Require claim groups:apache_access_allowed@example.com
+
+    # or authorize by exact preferred_username
+    # Require user john.doe
+</Directory>
 ```
 
 ### Miniflux
