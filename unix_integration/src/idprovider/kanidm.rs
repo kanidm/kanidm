@@ -131,6 +131,7 @@ impl IdProvider for KanidmProvider {
         id: &Id,
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
+        _machine_key: &tpm::MachineKey,
     ) -> Result<UserToken, IdpError> {
         match self
             .client

@@ -477,7 +477,12 @@ where
 
         let user_get_result = self
             .client
-            .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut())
+            .unix_user_get(
+                account_id,
+                token.as_ref(),
+                hsm_lock.deref_mut(),
+                &self.machine_key,
+            )
             .await;
 
         drop(hsm_lock);
