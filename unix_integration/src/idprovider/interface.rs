@@ -124,6 +124,7 @@ pub trait IdProvider {
         _id: &Id,
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
+        _machine_key: &tpm::MachineKey,
     ) -> Result<UserToken, IdpError>;
 
     async fn unix_user_online_auth_init(
