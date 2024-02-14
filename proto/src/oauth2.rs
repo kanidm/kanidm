@@ -350,6 +350,8 @@ pub struct OidcDiscoveryResponse {
     pub request_uri_parameter_supported: bool,
     #[serde(default = "require_request_uri_parameter_supported_default")]
     pub require_request_uri_registration: bool,
+
+    pub code_challenge_methods_supported: Vec<PkceAlg>,
 }
 
 #[skip_serializing_none]
