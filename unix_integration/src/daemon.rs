@@ -480,7 +480,7 @@ fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
 }
 
 #[cfg(not(feature = "tpm"))]
-fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
+fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
     error!("Hardware TPM supported was not enabled in this build. Unable to proceed");
     None
 }
