@@ -991,10 +991,22 @@ mod tests {
     // use std::assert_matches::assert_matches;
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
-    use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
+    use kanidm_hsm_crypto::{AuthValue, Tpm};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
+
+    #[cfg(feature = "tpm")]
+    fn setup_tpm() -> Box<dyn Tpm> {
+        use kanidm_hsm_crypto::tpm::TpmTss;
+        Box::new(TpmTss::new("device:/dev/tpmrm0").expect("Unable to build Tpm Context"))
+    }
+
+    #[cfg(not(feature = "tpm"))]
+    fn setup_tpm() -> Box<dyn Tpm> {
+        use kanidm_hsm_crypto::soft::SoftTpm;
+        Box::new(SoftTpm::new())
+    }
 
     #[tokio::test]
     async fn test_cache_db_account_basic() {
@@ -1232,11 +1244,7 @@ mod tests {
         let mut dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        // Setup the hsm
-        // #[cfg(feature = "tpm")]
-
-        #[cfg(not(feature = "tpm"))]
-        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
+        let mut hsm = setup_tpm();
 
         let auth_value = AuthValue::ephemeral().unwrap();
 

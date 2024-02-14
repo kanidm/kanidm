@@ -467,6 +467,24 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(feature = "tpm")]
+fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
+    use kanidm_hsm_crypto::tpm::TpmTss;
+    match TpmTss::new(tcti_name) {
+        Ok(tpm) => Some(BoxedDynTpm::new(tpm)),
+        Err(tpm_err) => {
+            error!(?tpm_err, "Unable to open requested tpm device");
+            None
+        }
+    }
+}
+
+#[cfg(not(feature = "tpm"))]
+fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
+    error!("Hardware TPM supported was not enabled in this build. Unable to proceed");
+    None
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     // On linux when debug assertions are disabled, prevent ptrace
@@ -801,8 +819,10 @@ async fn main() -> ExitCode {
                     BoxedDynTpm::new(SoftTpm::new())
                 }
                 HsmType::Tpm => {
-                    error!("TPM not supported ... yet");
-                    return ExitCode::FAILURE
+                    match open_tpm(&cfg.tpm_tcti_name) {
+                        Some(hsm) => hsm,
+                        None => return ExitCode::FAILURE,
+                    }
                 }
             };
 
