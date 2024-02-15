@@ -19,12 +19,14 @@ pub enum RepNodeConfig {
     Pull {
         #[serde(with = "x509b64")]
         supplier_cert: X509,
+        #[serde(default)]
         automatic_refresh: bool,
     },
     #[serde(rename = "mutual-pull")]
     MutualPull {
         #[serde(with = "x509b64")]
         partner_cert: X509,
+        #[serde(default)]
         automatic_refresh: bool,
     },
     /*
