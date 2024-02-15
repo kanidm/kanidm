@@ -134,9 +134,6 @@ pub struct ServerConfig {
     #[allow(dead_code)]
     db_arc_size: Option<usize>,
     #[serde(default)]
-
-    /// Enable replication, this is a development feature and not yet ready for production use.
-    pub i_acknowledge_that_replication_is_in_development: bool,
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
     pub repl_config: Option<ReplicationConfiguration>,
@@ -307,13 +304,6 @@ impl ServerConfig {
                             ..Default::default()
                         });
                     }
-                }
-                "I_ACKNOWLEDGE_THAT_REPLICATION_IS_IN_DEVELOPMENT" => {
-                    self.i_acknowledge_that_replication_is_in_development =
-                        value.parse().map_err(|_| {
-                            "Failed to parse terribly long confirmation of replication beta-ness!"
-                                .to_string()
-                        })?;
                 }
                 "REPLICATION_BINDADDRESS" => {
                     let repl_bind_address = value
