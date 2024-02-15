@@ -104,4 +104,3 @@ cargo install wasm-bindgen-cli
 ### Distro
 
 - [ ] vendor and release to build.opensuse.org
-
