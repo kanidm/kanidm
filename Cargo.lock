@@ -3141,6 +3141,7 @@ dependencies = [
  "prctl",
  "rpassword 7.3.1",
  "rusqlite",
+ "sd-notify",
  "selinux",
  "serde",
  "serde_json",

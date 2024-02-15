@@ -90,6 +90,9 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 walkdir = { workspace = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+sd-notify.workspace = true
+
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
 
