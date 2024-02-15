@@ -2305,6 +2305,17 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let claims_supported = None;
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
+        let require_pkce = match &o2rs.type_ {
+            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
+            OauthRSType::Public { .. } => true,
+        };
+
+        let code_challenge_methods_supported = if require_pkce {
+            vec![PkceAlg::S256]
+        } else {
+            Vec::with_capacity(0)
+        };
+
         Ok(OidcDiscoveryResponse {
             issuer,
             authorization_endpoint,
@@ -2344,6 +2355,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             require_request_uri_registration: false,
             op_policy_uri: None,
             op_tos_uri: None,
+            code_challenge_methods_supported,
         })
     }
 
@@ -4148,6 +4160,10 @@ mod tests {
         assert!(!discovery.request_uri_parameter_supported);
         assert!(!discovery.require_request_uri_registration);
         assert!(!discovery.request_parameter_supported);
+        assert_eq!(
+            discovery.code_challenge_methods_supported,
+            vec![PkceAlg::S256]
+        )
     }
 
     #[idm_test]
