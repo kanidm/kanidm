@@ -406,41 +406,8 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
+        let target = self.bind_target_from_bind_dn(idms, dn, pw).await?;
         let mut idm_auth = idms.auth().await;
-
-        let target: LdapBindTarget = if dn.is_empty() {
-            if pw.is_empty() {
-                LdapBindTarget::Account(UUID_ANONYMOUS)
-            } else {
-                // This is the path to access api-token logins.
-                LdapBindTarget::ApiToken
-            }
-        } else if dn == "dn=token" {
-            // Is the passed dn requesting token auth?
-            // We use dn= here since these are attr=value, and dn is a phantom so it will
-            // never be present or match a real value. We also make it an ava so that clients
-            // that over-zealously validate dn syntax are happy.
-            LdapBindTarget::ApiToken
-        } else {
-            let rdn = self
-                .binddnre
-                .captures(dn)
-                .and_then(|caps| caps.name("val"))
-                .map(|v| v.as_str().to_string())
-                .ok_or(OperationError::NoMatchingEntries)?;
-
-            if rdn.is_empty() {
-                // That's weird ...
-                return Err(OperationError::NoMatchingEntries);
-            }
-
-            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
-                request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
-                e
-            })?;
-
-            LdapBindTarget::Account(uuid)
-        };
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
@@ -697,6 +664,54 @@ impl LdapServer {
                 )),
             },
         } // end match server op
+    }
+
+    async fn bind_target_from_bind_dn(
+        &self,
+        idms: &IdmServer,
+        dn: &str,
+        pw: &str,
+    ) -> Result<LdapBindTarget, OperationError> {
+        if dn.is_empty() {
+            if pw.is_empty() {
+                return Ok(LdapBindTarget::Account(UUID_ANONYMOUS));
+            } else {
+                // This is the path to access api-token logins.
+                return Ok(LdapBindTarget::ApiToken);
+            }
+        } else if dn == "dn=token" {
+            // Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            return Ok(LdapBindTarget::ApiToken);
+        }
+
+        if let Some(rdn) = self
+            .binddnre
+            .captures(dn)
+            .and_then(|caps| caps.name("val"))
+            .map(|v| v.as_str().to_string())
+        {
+            if rdn.is_empty() {
+                // That's weird ...
+                return Err(OperationError::NoMatchingEntries);
+            }
+
+            let mut idm_auth = idms.auth().await;
+            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
+                error!(err = ?e, ?rdn, "Error resolving rdn to target");
+                e
+            })?;
+
+            return Ok(LdapBindTarget::Account(uuid));
+        }
+
+        error!(
+            "Failed to parse bind DN, no captures. Bind DN was {:?})",
+            dn
+        );
+        Err(OperationError::NoMatchingEntries)
     }
 }
 
