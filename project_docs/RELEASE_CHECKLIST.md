@@ -9,14 +9,15 @@ cargo install cargo-udeps
 cargo install wasm-bindgen-cli
 ```
 
-## Check List
+## Pre Release Check List
 
 ### Start a release
 
-- [ ] git checkout -b YYYYMMDD-release
+- [ ] git checkout -b YYYYMMDD-pre-release
 
 ### Cargo Tasks
 
+- [ ] Update MSRV if applicable
 - [ ] RUSTC\_BOOTSTRAP=1 cargo udeps
 - [ ] cargo outdated -R
 - [ ] cargo audit
@@ -24,20 +25,18 @@ cargo install wasm-bindgen-cli
 
 ### Code Changes
 
-- [ ] upgrade crypto policy values if requires
+- [ ] upgrade crypto policy values if required
 - [ ] bump index version in constants
 - [ ] check for breaking db entry changes.
 
 ### Administration
 
-- [ ] update version to remove dev tag in ./Cargo.toml
-- [ ] update version to remove dev tag in ./Makefile
 - [ ] cargo test
 - [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
 - [ ] git commit
-- [ ] git push origin YYYYMMDD-release
+- [ ] git push origin YYYYMMDD-pre-release
 - [ ] Merge PR
 
 ### Git Management
@@ -45,7 +44,10 @@ cargo install wasm-bindgen-cli
 - [ ] git checkout master
 - [ ] git pull
 - [ ] git checkout -b 1.1.x (Note no v to prevent ref conflict)
-- [ ] git tag v1.1.x
+- [ ] update version to set pre tag in ./Cargo.toml
+- [ ] update version to set pre tag in ./Makefile
+- [ ] git commit
+- [ ] git tag v1.1.x-pre
 
 - [ ] Final inspect of the branch
 
@@ -53,8 +55,33 @@ cargo install wasm-bindgen-cli
 - [ ] git push origin 1.1.x --tags
 
 - [ ] github -> Ensure release branch is protected
+
+### Follow up
+
+- [ ] git checkout master
+- [ ] git pull
+- [ ] git checkout -b YYYYMMDD-dev-version
+- [ ] update version to +1 and add dev tag in ./Cargo.toml
+- [ ] update version to +1 and add dev tag in ./Makefile
+
+## Final Release Check List
+
+### Git Management
+
+- [ ] git checkout 1.1.x
+- [ ] git pull origin 1.1.x
+
+- [ ] update version to remove pre tag in ./Cargo.toml
+- [ ] update version to remove pre tag in ./Makefile
+- [ ] git tag v1.1.x
+- [ ] git push origin 1.1.x --tags
+
 - [ ] github -> create new release based on tag (not branch) - use tag because then tools will get
       the tag + patches we apply.
+
+### Community
+
+- [ ] Publish release announcement
 
 ### Cargo publish
 
@@ -78,10 +105,3 @@ cargo install wasm-bindgen-cli
 
 - [ ] vendor and release to build.opensuse.org
 
-### Follow up
-
-- [ ] git checkout master
-- [ ] git pull
-- [ ] git checkout -b YYYYMMDD-dev-version
-- [ ] update version to +1 and add dev tag in ./Cargo.toml
-- [ ] update version to +1 and add dev tag in ./Makefile
