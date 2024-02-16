@@ -748,7 +748,7 @@ impl Display for TaskName {
 
 pub struct CoreHandle {
     clean_shutdown: bool,
-    tx: broadcast::Sender<CoreAction>,
+    pub tx: broadcast::Sender<CoreAction>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
     handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
 }
@@ -1068,6 +1068,7 @@ pub async fn create_server_core(
             server_write_ref,
             server_read_ref,
             broadcast_tx.subscribe(),
+            broadcast_tx.clone(),
         )
         .await
         {
