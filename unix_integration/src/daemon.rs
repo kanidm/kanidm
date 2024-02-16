@@ -501,7 +501,7 @@ fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
 }
 
 #[cfg(not(feature = "tpm"))]
-fn open_tpm_if_possible(_tcti_name: &str) -> Option<BoxedDynTpm> {
+fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
     BoxedDynTpm::new(SoftTpm::new())
 }
 
