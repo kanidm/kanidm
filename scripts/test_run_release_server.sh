@@ -25,7 +25,7 @@ if [ ! -f "run_insecure_dev_server.sh" ]; then
     exit 1
 fi
 
-mkdir -p /tmp/kanidm/
+mkdir -p /tmp/kanidm/client_ca
 
 echo "Generating certificates..."
 cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
