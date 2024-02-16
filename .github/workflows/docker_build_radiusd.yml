@@ -12,17 +12,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   set_lower_case_name:
+    runs-on: ubuntu-latest
     name: set lower case owner name
-    run: |
-      echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-    env:
-      OWNER: '${{ github.repository_owner }}'
+    steps:
+    - run: |
+        echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
+      env:
+        OWNER: '${{ github.repository_owner }}'
 
   radius_build:
     name: Build radius Docker image
     runs-on: ubuntu-latest
+    needs: set_lower_case_name
     steps:
       - uses: actions/checkout@v4
       - name: Set up QEMU
