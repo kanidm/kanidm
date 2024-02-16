@@ -1,4 +1,5 @@
 use crate::common::OpType;
+use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
 use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
@@ -264,16 +265,18 @@ async fn process_auth_state(
             }
             _ => {
                 let mut options = Vec::new();
+                // because we want them in "most secure to least secure" order.
+                allowed.sort_unstable_by(|a, b| Reverse(a).cmp(&Reverse(b)));
                 for val in allowed.iter() {
                     options.push(val.to_string());
                 }
-                let msg = "Please choose what credential to provide:";
+                let msg = "Please choose which credential to provide:";
                 let selection = get_index_choice_dialoguer(msg, &options);
 
                 #[allow(clippy::expect_used)]
                 allowed
                     .get(selection)
-                    .expect("can not fail - bounds already checked.")
+                    .expect("Failed to select an authentication option!")
             }
         };
 
@@ -391,7 +394,7 @@ impl LoginOpt {
         };
 
         // What auth mechanisms exist?
-        let mechs: Vec<_> = client
+        let mut mechs: Vec<_> = client
             .auth_step_init(username)
             .await
             .unwrap_or_else(|e| {
@@ -400,6 +403,8 @@ impl LoginOpt {
             })
             .into_iter()
             .collect();
+
+        mechs.sort_unstable_by(|a, b| Reverse(a).cmp(&Reverse(b)));
 
         let mech = match mechs.len() {
             0 => {
