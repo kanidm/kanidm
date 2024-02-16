@@ -12,14 +12,24 @@ assigned to `idm_admin` by default.
 
 ## Default Account Policy
 
-A default Account Policy is applied to `idm_all_accounts`. This provides the defaults that influence
-all accounts in Kanidm. This policy can be modified the same as any other group's policy.
+A default Account Policy is applied to `idm_all_persons`. This provides the defaults that influence
+all people in Kanidm. This policy can be modified the same as any other group's policy.
 
 ## Enforced Attributes
 
 ### Auth Expiry
 
 The maximum length in seconds that an authentication session may exist for.
+
+### Credential Type Minimum
+
+The minimum security strength of credentials that may be assigned to this account. In order from
+weakest to strongest:
+
+* `any`
+* `mfa`
+* `passkey`
+* `attested_passkey`
 
 ### Password Minimum Length
 
@@ -46,6 +56,7 @@ parts.
 | value                        | ordering                     |
 | ---------------------------- | ---------------------------- |
 | auth-expiry                  | smallest value               |
+| credential-type-minimum      | largest value                |
 | password-minimum-length      | largest value                |
 | privilege-expiry             | smallest value               |
 | webauthn-attestation-ca-list | intersection of equal values |
