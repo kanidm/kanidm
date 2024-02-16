@@ -12,17 +12,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-
   set_lower_case_name:
+    runs-on: ubuntu-latest
     name: set lower case owner name
-    run: |
-      echo "OWNER_LC=${OWNER,,}" >>${GITHUB_ENV}
-    env:
-      OWNER: '${{ github.repository_owner }}'
+    steps:
+    - id: step1
+      run: |
+        echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_OUTPUT}"
+      env:
+        OWNER: '${{ github.repository_owner }}'
+    outputs:
+      owner_lc: ${{ steps.step1.outputs.OWNER_LC }}
 
   radius_build:
     name: Build radius Docker image
     runs-on: ubuntu-latest
+    needs: set_lower_case_name
     steps:
       - uses: actions/checkout@v4
       - name: Set up QEMU
@@ -33,7 +38,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           platforms: linux/arm64,linux/amd64
-          tags: ghcr.io/${{ env.OWNER_LC }}/radius:devel
+          tags: ghcr.io/${{ needs.set_lower_case_name.outputs.owner_lc }}/radius:devel
           file: rlm_python/Dockerfile
           # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
           outputs: type=oci,dest=/tmp/radius-docker.tar
