@@ -1,6 +1,6 @@
 //! The V1 API things!
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use axum::http::{HeaderMap, HeaderValue};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
@@ -1108,7 +1108,7 @@ pub async fn person_id_credential_update_get(
 
 #[utoipa::path(
     get,
-    path = "/v1/person/{id}/_credential/_update_intent/?ttl={ttl}",
+    path = "/v1/person/{id}/_credential/_update_intent/{ttl}",
     params(
         ("ttl" = u64, description="The new TTL for the credential?")
     ),
@@ -1125,8 +1125,7 @@ pub async fn person_id_credential_update_intent_ttl_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Path(id): Path<String>,
-    Query(ttl): Query<u64>,
+    Path((id, ttl)): Path<(String, u64)>,
 ) -> Result<Json<CUIntentToken>, WebError> {
     state
         .qe_w_ref
@@ -2937,7 +2936,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
             get(person_id_credential_update_get),
         )
         .route(
-            "/v1/person/:id/_credential/_update_intent/:ttl", // TODO: I'm pretty sure this route is wrong, because we match the query not the path
+            "/v1/person/:id/_credential/_update_intent/:ttl",
             get(person_id_credential_update_intent_ttl_get),
         )
         .route(
