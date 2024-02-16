@@ -357,12 +357,6 @@ async fn kanidm_main() -> ExitCode {
         }
     };
 
-    // Stop early if replication was found
-    if sconfig.repl_config.is_some() && !sconfig.i_acknowledge_that_replication_is_in_development {
-        error!("Unable to proceed. Replication should not be configured manually.");
-        return ExitCode::FAILURE;
-    }
-
     #[cfg(target_family = "unix")]
     {
         let cfg_meta = match metadata(&cfg_path) {
