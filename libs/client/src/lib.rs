@@ -1665,7 +1665,7 @@ impl KanidmClient {
     ) -> Result<CUIntentToken, ClientError> {
         if let Some(ttl) = ttl {
             self.perform_get_request(&format!(
-                "/v1/person/{}/_credential/_update_intent?ttl={}",
+                "/v1/person/{}/_credential/_update_intent/{}",
                 id, ttl
             ))
             .await
