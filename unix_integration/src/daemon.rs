@@ -469,6 +469,11 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    prctl::set_dumpable(false);
+
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
