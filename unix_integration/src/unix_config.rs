@@ -81,6 +81,7 @@ pub enum HsmType {
     #[cfg_attr(not(feature = "tpm"), default)]
     Soft,
     #[cfg_attr(feature = "tpm", default)]
+    TpmIfPossible,
     Tpm,
 }
 
@@ -88,6 +89,7 @@ impl Display for HsmType {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             HsmType::Soft => write!(f, "Soft"),
+            HsmType::TpmIfPossible => write!(f, "Tpm if possible"),
             HsmType::Tpm => write!(f, "Tpm"),
         }
     }
@@ -309,6 +311,7 @@ impl KanidmUnixdConfig {
                 .hsm_type
                 .and_then(|v| match v.as_str() {
                     "soft" => Some(HsmType::Soft),
+                    "tpm_if_possible" => Some(HsmType::TpmIfPossible),
                     "tpm" => Some(HsmType::Tpm),
                     _ => {
                         warn!("Invalid hsm_type configured, using default ...");

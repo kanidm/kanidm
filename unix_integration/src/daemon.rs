@@ -485,6 +485,26 @@ fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
     None
 }
 
+#[cfg(feature = "tpm")]
+fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
+    use kanidm_hsm_crypto::tpm::TpmTss;
+    match TpmTss::new(tcti_name) {
+        Ok(tpm) => BoxedDynTpm::new(tpm),
+        Err(tpm_err) => {
+            warn!(
+                ?tpm_err,
+                "Unable to open requested tpm device, falling back to soft tpm"
+            );
+            BoxedDynTpm::new(SoftTpm::new())
+        }
+    }
+}
+
+#[cfg(not(feature = "tpm"))]
+fn open_tpm_if_possible(_tcti_name: &str) -> Option<BoxedDynTpm> {
+    BoxedDynTpm::new(SoftTpm::new())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
     // On linux when debug assertions are disabled, prevent ptrace
@@ -817,6 +837,9 @@ async fn main() -> ExitCode {
             let mut hsm: BoxedDynTpm = match cfg.hsm_type {
                 HsmType::Soft => {
                     BoxedDynTpm::new(SoftTpm::new())
+                }
+                HsmType::TpmIfPossible => {
+                    open_tpm_if_possible(&cfg.tpm_tcti_name)
                 }
                 HsmType::Tpm => {
                     match open_tpm(&cfg.tpm_tcti_name) {
