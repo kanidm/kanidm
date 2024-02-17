@@ -5,8 +5,8 @@ export function modal_hide_by_id(m) {
     modal.hide();
 }
 
-function changeTag(node, newTag) {
-    const newNode = document.createElement(newTag);
+function replace_tag(node, new_tag) {
+    const newNode = document.createElement(new_tag);
 
     [...node.attributes].map(({ name, value }) => {
         newNode.setAttribute(name, value);
@@ -26,7 +26,7 @@ export function init_graphviz(graph_src) {
     } else {
         let meta = document.querySelector("meta[src='/pkg/external/viz.js']");
         if (meta) {
-            let script = changeTag(meta, "script");
+            let script = replace_tag(meta, "script");
             script.addEventListener('load', () => {
                 start_graphviz(graph_src);
             });
@@ -44,6 +44,10 @@ function start_graphviz(graph_src) {
     });
 }
 
+/**
+ * Opens a popup window `target=_blank` filled with `content`
+ * @param content string that shown in the <pre>
+ */
 export function open_blank(content) {
     const windowDocument = window.open("", "_blank").document;
     const pre2 = windowDocument.createElement("pre");
