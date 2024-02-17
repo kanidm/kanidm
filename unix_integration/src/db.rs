@@ -16,6 +16,8 @@ use serde::{de::DeserializeOwned, Serialize};
 
 use kanidm_hsm_crypto::{HmacKey, LoadableHmacKey, LoadableMachineKey, Tpm};
 
+const DBV_MAIN: &str = "main";
+
 #[async_trait]
 pub trait Cache {
     type Txn<'db>
@@ -53,6 +55,8 @@ pub trait CacheTxn {
     fn invalidate(&mut self) -> Result<(), CacheError>;
 
     fn clear(&mut self) -> Result<(), CacheError>;
+
+    fn clear_hsm(&mut self) -> Result<(), CacheError>;
 
     fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError>;
 
@@ -208,6 +212,32 @@ impl<'a> DbTxn<'a> {
         CacheError::Sqlite
     }
 
+    fn get_db_version(&self, key: &str) -> i64 {
+        self.conn
+            .query_row(
+                "SELECT version FROM db_version_t WHERE id = :id",
+                &[(":id", key)],
+                |row| row.get(0),
+            )
+            .unwrap_or({
+                // The value is missing, default to 0.
+                0
+            })
+    }
+
+    fn set_db_version(&self, key: &str, v: i64) -> Result<(), CacheError> {
+        self.conn
+            .execute(
+                "INSERT OR REPLACE INTO db_version_t (id, version) VALUES(:id, :dbv)",
+                named_params! {
+                    ":id": &key,
+                    ":dbv": v,
+                },
+            )
+            .map(|_| ())
+            .map_err(|e| self.sqlite_error("set db_version_t", &e))
+    }
+
     fn get_account_data_name(
         &mut self,
         account_id: &str,
@@ -358,82 +388,102 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .and_then(|mut wal_stmt| wal_stmt.query([]).map(|_| ()))
             .map_err(|e| self.sqlite_error("account_t create", &e))?;
 
-        // Setup two tables - one for accounts, one for groups.
-        // correctly index the columns.
-        // Optional pw hash field
+        // This definition can never change.
         self.conn
             .execute(
-                "CREATE TABLE IF NOT EXISTS account_t (
-                uuid TEXT PRIMARY KEY,
-                name TEXT NOT NULL UNIQUE,
-                spn TEXT NOT NULL UNIQUE,
-                gidnumber INTEGER NOT NULL UNIQUE,
-                password BLOB,
-                token BLOB NOT NULL,
-                expiry NUMERIC NOT NULL
-            )
-            ",
+                "CREATE TABLE IF NOT EXISTS db_version_t (
+                    id TEXT PRIMARY KEY,
+                    version INTEGER
+                )",
                 [],
             )
-            .map_err(|e| self.sqlite_error("account_t create", &e))?;
+            .map_err(|e| self.sqlite_error("db_version_t create", &e))?;
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS group_t (
-                uuid TEXT PRIMARY KEY,
-                name TEXT NOT NULL UNIQUE,
-                spn TEXT NOT NULL UNIQUE,
-                gidnumber INTEGER NOT NULL UNIQUE,
-                token BLOB NOT NULL,
-                expiry NUMERIC NOT NULL
-            )
-            ",
-                [],
-            )
-            .map_err(|e| self.sqlite_error("group_t create", &e))?;
+        let db_version = self.get_db_version(DBV_MAIN);
 
-        // We defer group foreign keys here because we now manually cascade delete these when
-        // required. This is because insert or replace into will always delete then add
-        // which triggers this. So instead we defer and manually cascade.
-        //
-        // However, on accounts, we CAN delete cascade because accounts will always redefine
-        // their memberships on updates so this is safe to cascade on this direction.
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS memberof_t (
-                g_uuid TEXT,
-                a_uuid TEXT,
-                FOREIGN KEY(g_uuid) REFERENCES group_t(uuid) DEFERRABLE INITIALLY DEFERRED,
-                FOREIGN KEY(a_uuid) REFERENCES account_t(uuid) ON DELETE CASCADE
-            )
-            ",
-                [],
-            )
-            .map_err(|e| self.sqlite_error("memberof_t create error", &e))?;
-
-        // Create the hsm_data store. These are all generally encrypted private
-        // keys, and the hsm structures will decrypt these as required.
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS hsm_int_t (
-                    key TEXT PRIMARY KEY,
-                    value BLOB NOT NULL
+        if db_version < 1 {
+            // Setup two tables - one for accounts, one for groups.
+            // correctly index the columns.
+            // Optional pw hash field
+            self.conn
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS account_t (
+                    uuid TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    spn TEXT NOT NULL UNIQUE,
+                    gidnumber INTEGER NOT NULL UNIQUE,
+                    password BLOB,
+                    token BLOB NOT NULL,
+                    expiry NUMERIC NOT NULL
                 )
                 ",
-                [],
-            )
-            .map_err(|e| self.sqlite_error("hsm_int_t create error", &e))?;
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("account_t create", &e))?;
 
-        self.conn
-            .execute(
-                "CREATE TABLE IF NOT EXISTS hsm_data_t (
-                    key TEXT PRIMARY KEY,
-                    value BLOB NOT NULL
+            self.conn
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS group_t (
+                    uuid TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    spn TEXT NOT NULL UNIQUE,
+                    gidnumber INTEGER NOT NULL UNIQUE,
+                    token BLOB NOT NULL,
+                    expiry NUMERIC NOT NULL
                 )
                 ",
-                [],
-            )
-            .map_err(|e| self.sqlite_error("hsm_data_t create error", &e))?;
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("group_t create", &e))?;
+
+            // We defer group foreign keys here because we now manually cascade delete these when
+            // required. This is because insert or replace into will always delete then add
+            // which triggers this. So instead we defer and manually cascade.
+            //
+            // However, on accounts, we CAN delete cascade because accounts will always redefine
+            // their memberships on updates so this is safe to cascade on this direction.
+            self.conn
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS memberof_t (
+                    g_uuid TEXT,
+                    a_uuid TEXT,
+                    FOREIGN KEY(g_uuid) REFERENCES group_t(uuid) DEFERRABLE INITIALLY DEFERRED,
+                    FOREIGN KEY(a_uuid) REFERENCES account_t(uuid) ON DELETE CASCADE
+                )
+                ",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("memberof_t create error", &e))?;
+
+            // Create the hsm_data store. These are all generally encrypted private
+            // keys, and the hsm structures will decrypt these as required.
+            self.conn
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS hsm_int_t (
+                        key TEXT PRIMARY KEY,
+                        value BLOB NOT NULL
+                    )
+                    ",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("hsm_int_t create error", &e))?;
+
+            self.conn
+                .execute(
+                    "CREATE TABLE IF NOT EXISTS hsm_data_t (
+                        key TEXT PRIMARY KEY,
+                        value BLOB NOT NULL
+                    )
+                    ",
+                    [],
+                )
+                .map_err(|e| self.sqlite_error("hsm_data_t create error", &e))?;
+
+            // Since this is the 0th migration, we have to reset the HSM here.
+            self.clear_hsm()?;
+        }
+
+        self.set_db_version(DBV_MAIN, 1)?;
 
         Ok(())
     }
@@ -476,6 +526,20 @@ impl<'a> CacheTxn for DbTxn<'a> {
         self.conn
             .execute("DELETE FROM account_t", [])
             .map_err(|e| self.sqlite_error("delete group_t", &e))?;
+
+        Ok(())
+    }
+
+    fn clear_hsm(&mut self) -> Result<(), CacheError> {
+        self.clear()?;
+
+        self.conn
+            .execute("DELETE FROM hsm_int_t", [])
+            .map_err(|e| self.sqlite_error("delete hsm_int_t", &e))?;
+
+        self.conn
+            .execute("DELETE FROM hsm_data_t", [])
+            .map_err(|e| self.sqlite_error("delete hsm_data_t", &e))?;
 
         Ok(())
     }
@@ -991,10 +1055,22 @@ mod tests {
     // use std::assert_matches::assert_matches;
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
-    use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, Tpm};
+    use kanidm_hsm_crypto::{AuthValue, Tpm};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
+
+    #[cfg(feature = "tpm")]
+    fn setup_tpm() -> Box<dyn Tpm> {
+        use kanidm_hsm_crypto::tpm::TpmTss;
+        Box::new(TpmTss::new("device:/dev/tpmrm0").expect("Unable to build Tpm Context"))
+    }
+
+    #[cfg(not(feature = "tpm"))]
+    fn setup_tpm() -> Box<dyn Tpm> {
+        use kanidm_hsm_crypto::soft::SoftTpm;
+        Box::new(SoftTpm::new())
+    }
 
     #[tokio::test]
     async fn test_cache_db_account_basic() {
@@ -1232,11 +1308,7 @@ mod tests {
         let mut dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
-        // Setup the hsm
-        // #[cfg(feature = "tpm")]
-
-        #[cfg(not(feature = "tpm"))]
-        let mut hsm: Box<dyn Tpm> = Box::new(SoftTpm::new());
+        let mut hsm = setup_tpm();
 
         let auth_value = AuthValue::ephemeral().unwrap();
 

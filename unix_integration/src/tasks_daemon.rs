@@ -363,6 +363,10 @@ async fn main() -> ExitCode {
 
             info!("Server started ...");
 
+            // On linux, notify systemd.
+            #[cfg(target_os = "linux")]
+            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+
             loop {
                 tokio::select! {
                     Ok(()) = tokio::signal::ctrl_c() => {
