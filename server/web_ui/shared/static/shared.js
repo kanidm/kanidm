@@ -3,7 +3,7 @@ export function modal_hide_by_id(m) {
     const elem = document.getElementById(m);
     const modal = bootstrap.Modal.getInstance(elem);
     modal.hide();
-};
+}
 
 function changeTag(node, newTag) {
     const newNode = document.createElement(newTag);
@@ -34,7 +34,7 @@ export function init_graphviz(graph_src) {
             console.error("viz.js not found");
         }
     }
-};
+}
 
 function start_graphviz(graph_src) {
     Viz.instance().then(function(viz) {

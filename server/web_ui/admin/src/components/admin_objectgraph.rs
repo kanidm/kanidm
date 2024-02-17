@@ -14,7 +14,7 @@ use web_sys::{HtmlInputElement};
 use yew_router::Routable;
 
 use kanidm_proto::v1::Entry;
-use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank, window};
+use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank};
 use crate::router::AdminRoute;
 
 pub enum Msg {
@@ -31,12 +31,6 @@ impl From<FetchError> for Msg {
             kopid: None,
         }
     }
-}
-
-#[derive(Clone, Debug)]
-pub enum GraphType {
-    Graphviz,
-    Mermaid,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Sequence)]
@@ -56,15 +50,8 @@ impl TryFrom<String> for ObjectType {
     }
 }
 
-impl ObjectType {
-    fn ui_str(self: Self) -> String {
-        format!("{:?}", self)
-    }
-}
-
 pub enum State {
     Waiting,
-    Rendering,
     Ready { entries: Vec<Entry> },
     Error { emsg: String, kopid: Option<String> },
 }
@@ -119,8 +106,7 @@ impl Component for AdminObjectGraph {
         match &self.state {
             State::Waiting => self.view_waiting(),
             State::Ready { entries } => self.view_ready(ctx, &self.filters, entries),
-            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref()),
-            State::Rendering => self.view_waiting()
+            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref())
         }
     }
 
@@ -144,7 +130,6 @@ impl AdminObjectGraph {
     }
 
     fn view_ready(&self, ctx: &Context<Self>, filters: &Vec<ObjectType>, entries: &Vec<Entry>) -> Html {
-        // Please help me, I don't know how to make a grid look nice 🥺
         let typed_entries = entries.iter()
             .filter_map(|entry| {
                 let classes = entry.attrs.get("class")?;
@@ -167,40 +152,40 @@ impl AdminObjectGraph {
                     return None;
                 };
 
-                // filter out the things we want to keep, if the filter is empty we assume we want all.
+                // Filter out the things we want to keep, if the filter is empty we assume we want all.
                 if !filters.contains(&obj_type) && !filters.is_empty() {
                     return None;
                 }
 
-                let name = entry.attrs.get("name")?.first()?;
-                Some((name.clone(), uuid.clone(), obj_type))
+                let spn = entry.attrs.get("spn")?.first()?;
+                Some((spn.clone(), uuid.clone(), obj_type))
             }).collect::<HashSet<(String, String, ObjectType)>>();
 
-        // Vec<obj, obj's members>
+
+        // Vec<obj, uuid, obj's members>
         let members_of = entries.into_iter().filter_map(|entry| {
-            let name = entry.attrs.get("name")?.first()?.clone();
+            let spn = entry.attrs.get("spn")?.first()?.clone();
             let uuid = entry.attrs.get("uuid")?.first()?.clone();
             let keep = typed_entries.iter().any(|(_, filtered_uuid, _)| { &uuid == filtered_uuid });
             if keep {
-                Some((name, uuid, entry.attrs.get("member")?.clone()))
+                Some((spn, uuid, entry.attrs.get("member")?.clone()))
             } else {
                 None
             }
         }).collect::<Vec<_>>();
 
-        // Printing of the graph
+        // Constructing graph source
         let mut sb = String::new();
         sb.push_str("digraph {\n  rankdir=\"RL\"\n");
-        for (name, uuid, members) in members_of {
+        for (spn, _, members) in members_of {
             members.iter()
-                .map(|member| member.trim_end_matches("@localhost"))
-                .filter(|member| typed_entries.iter().any(|(name, uuid, ot)| name == member))
+                .filter(|member| typed_entries.iter().any(|(spn, _, _)| spn == *member))
                 .for_each(|member| {
-                    sb.push_str(format!("  {name} -> {member}\n").as_str());
+                    sb.push_str(format!(r#"  "{spn}" -> "{member}"{}"#, "\n").as_str());
                 });
         }
 
-        for (name, uuid, obj_type) in typed_entries {
+        for (spn, uuid, obj_type) in typed_entries {
             let (color, shape, route) = match obj_type {
                 ObjectType::Group => ("#b86367", "box", AdminRoute::ViewGroup { uuid }),
                 ObjectType::BuiltinGroup => ("#8bc1d6", "component", AdminRoute::ViewGroup { uuid }),
@@ -208,16 +193,14 @@ impl AdminObjectGraph {
                 ObjectType::Person => ("#af8bd6", "ellipse", AdminRoute::ViewPerson { uuid }),
             };
             let url = route.to_path();
-            sb.push_str(format!(r#"  {name} [color = "{color}", shape = {shape}, URL = "{url}"]{}"#, "\n").as_str());
+            sb.push_str(format!(r#"  "{spn}" [color = "{color}", shape = {shape}, URL = "{url}"]{}"#, "\n").as_str());
         }
         sb.push_str("}");
         init_graphviz(&sb.as_str());
 
-        let filter_selector_ref = NodeRef::default();
-
         let on_checkbox_click = {
             let scope = ctx.link().clone();
-            move |event: Event| {
+            move |_: Event| {
                 let coll = document().get_elements_by_class_name("obj-graph-filter-cb");
                 let mut filters = vec![];
 
@@ -238,7 +221,7 @@ impl AdminObjectGraph {
         };
 
         let view_graph_source = {
-            move |e: MouseEvent| {
+            move |_: MouseEvent| {
                 open_blank(sb.as_str());
             }
         };
@@ -273,7 +256,7 @@ impl AdminObjectGraph {
                         }).collect::<Html>()
                     }
                     </div>
-                    <button class="btn btn-primary" onclick={view_graph_source}>{ "View graph source" }</button>
+                    <button class="btn btn-primary mt-2" onclick={view_graph_source}>{ "View graph source" }</button>
                 </div>
                 <div id="graph-container" class="mt-3"></div>
             }
