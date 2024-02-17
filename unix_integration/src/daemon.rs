@@ -510,7 +510,10 @@ async fn main() -> ExitCode {
     // On linux when debug assertions are disabled, prevent ptrace
     // from attaching to us.
     #[cfg(all(target_os = "linux", not(debug_assertions)))]
-    prctl::set_dumpable(false);
+    if let Err(code) = prctl::set_dumpable(false) {
+        eprintln!(?code, "CRITICAL: Unable to set prctl flags");
+        return ExitCode::FAILURE;
+    }
 
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
