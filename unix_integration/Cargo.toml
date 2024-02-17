@@ -93,6 +93,9 @@ walkdir = { workspace = true }
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
 
+[target.'cfg(target_os = "linux")'.dependencies]
+prctl.workspace = true
+
 [dev-dependencies]
 kanidmd_core = { workspace = true }
 kanidmd_testkit = { workspace = true }

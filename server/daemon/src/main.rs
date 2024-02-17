@@ -226,6 +226,11 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
 }
 
 fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    prctl::set_dumpable(false);
+
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("kanidmd-thread-pool")
