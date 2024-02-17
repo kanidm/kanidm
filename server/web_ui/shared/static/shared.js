@@ -5,13 +5,44 @@ export function modal_hide_by_id(m) {
     modal.hide();
 };
 
-export function init_graphviz(m) {
+function changeTag(node, newTag) {
+    const newNode = document.createElement(newTag);
+
+    [...node.attributes].map(({ name, value }) => {
+        newNode.setAttribute(name, value);
+    });
+
+    while (node.firstChild) {
+        newNode.appendChild(node.firstChild);
+    }
+
+    node.parentNode.replaceChild(newNode, node);
+    return newNode;
+}
+
+export function init_graphviz(graph_src) {
+    if (typeof Viz !== 'undefined') {
+        start_graphviz(graph_src);
+    } else {
+        let meta = document.querySelector("meta[src='/pkg/external/viz.js']");
+        if (meta) {
+            let script = changeTag(meta, "script");
+            script.addEventListener('load', () => {
+                start_graphviz(graph_src);
+            });
+        } else {
+            console.error("viz.js not found");
+        }
+    }
+};
+
+function start_graphviz(graph_src) {
     Viz.instance().then(function(viz) {
         const graphContainer = document.getElementById("graph-container");
         if (graphContainer)
-            graphContainer.replaceChildren(viz.renderSVGElement(m))
+            graphContainer.replaceChildren(viz.renderSVGElement(graph_src))
     });
-};
+}
 
 export function open_blank(content) {
     const windowDocument = window.open("", "_blank").document;
