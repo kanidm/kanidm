@@ -21,6 +21,7 @@ use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use super::totpremove::TotpRemoveComp;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
+use kanidmd_web_ui_shared::ui::error_page;
 
 // use std::rc::Rc;
 
@@ -805,25 +806,7 @@ impl CredentialResetApp {
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
         html! {
           <main class="form-signin">
-            <p class="text-center">
-                {logo_img()}
-            </p>
-            <div class={CSS_ALERT_DANGER} role="alert">
-              <h2>{ "An Error Occurred 🥺" }</h2>
-            <p>{ msg.to_string() }</p>
-            <p>
-                {
-                    if let Some(opid) = kopid.as_ref() {
-                        format!("Operation ID: {}", opid)
-                    } else {
-                        "Local Error".to_string()
-                    }
-                }
-            </p>
-            </div>
-            <p class="text-center">
-              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
-            </p>
+            { error_page(msg, kopid) }
           </main>
         }
     }

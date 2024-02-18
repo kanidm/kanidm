@@ -5,9 +5,9 @@ use gloo::console;
 use wasm_bindgen::JsValue;
 use yew::{html, BaseComponent, Context, Html};
 
-use crate::constants::{CSS_NAV_LINK, ID_SIGNOUTMODAL};
+use crate::constants::{CSS_ALERT_DANGER, CSS_NAV_LINK, ID_SIGNOUTMODAL, URL_USER_HOME};
 use crate::models::clear_bearer_token;
-use crate::{do_request, RequestMethod};
+use crate::{do_request, logo_img, RequestMethod};
 
 /// returns an a-href link which can trigger the signout flow
 pub fn signout_link() -> Html {
@@ -41,10 +41,10 @@ pub async fn ui_logout() -> Result<(), (String, Option<String>)> {
 
 /// Builds the signout modal dialogue box - the "target" is the Message to send when clicked.
 pub fn signout_modal<T, U>(ctx: &Context<T>, target: U) -> Html
-where
-    T: BaseComponent,
-    U: Clone + 'static,
-    <T as BaseComponent>::Message: From<U>,
+    where
+        T: BaseComponent,
+        U: Clone + 'static,
+        <T as BaseComponent>::Message: From<U>,
 {
     html! {<div class="modal" tabindex="-1" role="dialog" id={ID_SIGNOUTMODAL}>
         <div class="modal-dialog" role="document">
@@ -68,4 +68,43 @@ where
         </div>
         </div>
     </div>}
+}
+
+/// generic view_error modal to show when errors occur
+pub fn error_page(err_msg: &str, kopid: Option<&str>) -> Html {
+    html! {
+      <>
+        <p class="text-center">
+            {logo_img()}
+        </p>
+        <div class={CSS_ALERT_DANGER} role="alert">
+          <h2>{ "An Error Occurred 🥺" }</h2>
+        <p>{ err_msg.to_string() }</p>
+        <p>
+            {
+                if let Some(opid) = kopid.as_ref() {
+                    format!("Operation ID: {}", opid)
+                } else {
+                    "Local Error".to_string()
+                }
+            }
+        </p>
+        </div>
+        <p class="text-center">
+          <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
+        </p>
+      </>
+    }
+}
+
+pub fn loading_spinner() -> Html {
+    html! {
+      <>
+        <div class="vert-center">
+          <div class="spinner-border text-dark" role="status">
+            <span class="visually-hidden">{ "Loading..." }</span>
+          </div>
+        </div>
+      </>
+    }
 }

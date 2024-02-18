@@ -33,3 +33,5 @@ urlencoding = { workspace = true }
 utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
+enum-iterator = { workspace = true}
+clap = { workspace = true, features = ["derive"] }

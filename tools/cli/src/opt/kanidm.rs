@@ -1,5 +1,6 @@
 use clap::{Args, Subcommand, ValueEnum, builder::PossibleValue};
 use std::fmt;
+use kanidm_proto::v1::ObjectType;
 
 #[derive(Debug, Args)]
 pub struct Named {
@@ -285,13 +286,7 @@ pub enum GraphType {
     Mermaid,
     MermaidElk
 }
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, ValueEnum)]
-pub enum ObjectType {
-    Group,
-    BuiltinGroup,
-    ServiceAccount,
-    Person
-}
+
 #[derive(Debug, Args)]
 pub struct GraphCommonOpt {
     #[arg(value_enum)]

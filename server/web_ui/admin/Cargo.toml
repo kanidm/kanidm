@@ -31,7 +31,6 @@ wasm-bindgen-futures = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 gloo-utils = { workspace = true }
-enum-iterator = { workspace = true}
 
 [dependencies.web-sys]
 workspace = true
