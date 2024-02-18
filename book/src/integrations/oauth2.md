@@ -343,7 +343,8 @@ In the virtual host, to handle OIDC redirect, a special location _must_ be defin
 </Location>
 ```
 
-In the virtual host, to protect a location/directory [see wiki](https://github.com/OpenIDC/mod_auth_openidc/wiki/Authorization):
+In the virtual host, to protect a location/directory
+[see wiki](https://github.com/OpenIDC/mod_auth_openidc/wiki/Authorization):
 
 ```apache
 <Directory /foo>
