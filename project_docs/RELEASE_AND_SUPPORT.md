@@ -68,7 +68,7 @@ All nodes must be the same version. A topology may contain up to a maximum of 2 
 
 ### Upgrade Policy
 
-Upgrades are supported from 1 version previous to the current stable release.
+Upgrades are supported from 1 release before the current stable release.
 
 ### Tool Versions
 
