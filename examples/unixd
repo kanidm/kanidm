@@ -15,8 +15,10 @@ pam_allowed_login_groups = ["posix_group"]
 #
 # * soft: A software hsm that encrypts all local key material
 # * tpm: Use a tpm for all key storage and binding
+# * tpm_if_possible: If a hardware tpm exists it is used, otherwise fall back to the software tpm.
+#                    If the hardware tpm has previously been used, software tpm will not be used.
 #
-# Default: soft
+# Default: tpm_if_possible
 
 # hsm_type = "tpm"
 

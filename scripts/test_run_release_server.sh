@@ -9,6 +9,7 @@ set -e
 
 WAIT_TIMER=5
 
+
 echo "Building release binaries..."
 cargo build --release --bin kanidm --bin kanidmd
 
@@ -18,23 +19,25 @@ if [ -d '.git' ]; then
     cd server/daemon/ || exit 1
 fi
 
+
 if [ ! -f "run_insecure_dev_server.sh" ]; then
     echo "I'm not sure where you are, please run this from the root of the repository or the server/daemon directory"
     exit 1
 fi
 
-mkdir -p /tmp/kanidm/
+mkdir -p /tmp/kanidm/client_ca
 
 echo "Generating certificates..."
 cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
 
 echo "Making sure it runs with the DB..."
-cargo run --bin kanidmd --release recover-account idm_admin -o json
+cargo run --bin kanidmd --release recover-account idm_admin -o json --config ../../examples/insecure_server.toml
 
 echo "Running the server..."
 cargo run --bin kanidmd --release server --config ../../examples/insecure_server.toml &
 KANIDMD_PID=$!
-echo "${KANIDMD_PID}"
+echo "Kanidm PID: ${KANIDMD_PID}"
+
 
 if [ "$(jobs -p | wc -l)" -eq 0 ]; then
     echo "Kanidmd failed to start!"
@@ -48,8 +51,8 @@ KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
 while true; do
-    echo "Waiting the server to start... testing ${KANIDM_URL}"
-    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}" >/dev/null && break
+    echo "Waiting for the server to start... testing ${KANIDM_URL}"
+    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}/status" >/dev/null && break
     sleep 2
     ATTEMPT="$((ATTEMPT + 1))"
     if [ "${ATTEMPT}" -gt 3 ]; then

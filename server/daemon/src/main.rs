@@ -226,6 +226,14 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
 }
 
 fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    if let Err(code) = prctl::set_dumpable(false) {
+        eprintln!(?code, "CRITICAL: Unable to set prctl flags");
+        return ExitCode::FAILURE;
+    }
+
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .thread_name("kanidmd-thread-pool")
@@ -356,12 +364,6 @@ async fn kanidm_main() -> ExitCode {
             return ExitCode::FAILURE;
         }
     };
-
-    // Stop early if replication was found
-    if sconfig.repl_config.is_some() && !sconfig.i_acknowledge_that_replication_is_in_development {
-        error!("Unable to proceed. Replication should not be configured manually.");
-        return ExitCode::FAILURE;
-    }
 
     #[cfg(target_family = "unix")]
     {
@@ -536,6 +538,43 @@ async fn kanidm_main() -> ExitCode {
                 }
             }
 
+            if let Some(ca_dir) = &(sconfig.tls_client_ca) {
+                // check that the TLS client CA config option is what we expect
+                let ca_dir_path = PathBuf::from(&ca_dir);
+                if !ca_dir_path.exists() {
+                    error!(
+                        "TLS CA folder {} does not exist, server startup will FAIL!",
+                        ca_dir
+                    );
+                    let diag = kanidm_lib_file_permissions::diagnose_path(&ca_dir_path);
+                    info!(%diag);
+                }
+
+                let i_meta = match metadata(&ca_dir_path) {
+                    Ok(m) => m,
+                    Err(e) => {
+                        error!("Unable to read metadata for '{}' - {:?}", ca_dir, e);
+                        let diag = kanidm_lib_file_permissions::diagnose_path(&ca_dir_path);
+                        info!(%diag);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                if !i_meta.is_dir() {
+                    error!(
+                        "ERROR: Refusing to run - TLS Client CA folder {} may not be a directory",
+                        ca_dir
+                    );
+                    return ExitCode::FAILURE;
+                }
+                if kanidm_lib_file_permissions::readonly(&i_meta) {
+                    warn!("WARNING: TLS Client CA folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", ca_dir);
+                }
+                #[cfg(not(target_os = "windows"))]
+                if i_meta.mode() & 0o007 != 0 {
+                    warn!("WARNING: TLS Client CA folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", ca_dir);
+                }
+            }
+
             let sctx = create_server_core(config, config_test).await;
             if !config_test {
                 // On linux, notify systemd.
@@ -547,46 +586,54 @@ async fn kanidm_main() -> ExitCode {
                         loop {
                             #[cfg(target_family = "unix")]
                             {
+                                let mut listener = sctx.tx.subscribe();
                                 tokio::select! {
-                                                                Ok(()) = tokio::signal::ctrl_c() => {
-                                                                    break
-                                                                }
-                                                                Some(()) = async move {
-                                                                    let sigterm = tokio::signal::unix::SignalKind::terminate();
-                                #[allow(clippy::unwrap_used)]
-                                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                                                } => {
-                                                                    break
-                                                                }
-                                                                Some(()) = async move {
-                                                                    let sigterm = tokio::signal::unix::SignalKind::alarm();
-                                #[allow(clippy::unwrap_used)]
-                                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                                                } => {
-                                                                    // Ignore
-                                                                }
-                                                                Some(()) = async move {
-                                                                    let sigterm = tokio::signal::unix::SignalKind::hangup();
-                                #[allow(clippy::unwrap_used)]
-                                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                                                } => {
-                                                                    // Ignore
-                                                                }
-                                                                Some(()) = async move {
-                                                                    let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                                #[allow(clippy::unwrap_used)]
-                                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                                                } => {
-                                                                    // Ignore
-                                                                }
-                                                                Some(()) = async move {
-                                                                    let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                                #[allow(clippy::unwrap_used)]
-                                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                                                } => {
-                                                                    // Ignore
-                                                                }
-                                                            }
+                                    Ok(()) = tokio::signal::ctrl_c() => {
+                                        break
+                                    }
+                                    Some(()) = async move {
+                                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                                        #[allow(clippy::unwrap_used)]
+                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                    } => {
+                                        break
+                                    }
+                                    Some(()) = async move {
+                                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                                        #[allow(clippy::unwrap_used)]
+                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                    } => {
+                                        // Ignore
+                                    }
+                                    Some(()) = async move {
+                                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                                        #[allow(clippy::unwrap_used)]
+                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                    } => {
+                                        // Ignore
+                                    }
+                                    Some(()) = async move {
+                                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                                        #[allow(clippy::unwrap_used)]
+                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                    } => {
+                                        // Ignore
+                                    }
+                                    Some(()) = async move {
+                                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                                        #[allow(clippy::unwrap_used)]
+                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                    } => {
+                                        // Ignore
+                                    }
+                                    // we got a message on thr broadcast from somewhere else
+                                    Ok(msg) = async move {
+                                        listener.recv().await
+                                    } => {
+                                        debug!("Main loop received message: {:?}", msg);
+                                        break
+                                    }
+                                }
                             }
                             #[cfg(target_family = "windows")]
                             {

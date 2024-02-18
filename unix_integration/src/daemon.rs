@@ -467,8 +467,54 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
+#[cfg(feature = "tpm")]
+fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
+    use kanidm_hsm_crypto::tpm::TpmTss;
+    match TpmTss::new(tcti_name) {
+        Ok(tpm) => Some(BoxedDynTpm::new(tpm)),
+        Err(tpm_err) => {
+            error!(?tpm_err, "Unable to open requested tpm device");
+            None
+        }
+    }
+}
+
+#[cfg(not(feature = "tpm"))]
+fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
+    error!("Hardware TPM supported was not enabled in this build. Unable to proceed");
+    None
+}
+
+#[cfg(feature = "tpm")]
+fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
+    use kanidm_hsm_crypto::tpm::TpmTss;
+    match TpmTss::new(tcti_name) {
+        Ok(tpm) => BoxedDynTpm::new(tpm),
+        Err(tpm_err) => {
+            warn!(
+                ?tpm_err,
+                "Unable to open requested tpm device, falling back to soft tpm"
+            );
+            BoxedDynTpm::new(SoftTpm::new())
+        }
+    }
+}
+
+#[cfg(not(feature = "tpm"))]
+fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
+    BoxedDynTpm::new(SoftTpm::new())
+}
+
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    if let Err(code) = prctl::set_dumpable(false) {
+        eprintln!(?code, "CRITICAL: Unable to set prctl flags");
+        return ExitCode::FAILURE;
+    }
+
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();
     let cgid = get_current_gid();
@@ -795,9 +841,14 @@ async fn main() -> ExitCode {
                 HsmType::Soft => {
                     BoxedDynTpm::new(SoftTpm::new())
                 }
+                HsmType::TpmIfPossible => {
+                    open_tpm_if_possible(&cfg.tpm_tcti_name)
+                }
                 HsmType::Tpm => {
-                    error!("TPM not supported ... yet");
-                    return ExitCode::FAILURE
+                    match open_tpm(&cfg.tpm_tcti_name) {
+                        Some(hsm) => hsm,
+                        None => return ExitCode::FAILURE,
+                    }
                 }
             };
 
@@ -1042,6 +1093,10 @@ async fn main() -> ExitCode {
             });
 
             info!("Server started ...");
+
+            // On linux, notify systemd.
+            #[cfg(target_os = "linux")]
+            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
 
             loop {
                 tokio::select! {

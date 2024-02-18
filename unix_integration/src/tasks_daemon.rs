@@ -261,6 +261,11 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    prctl::set_dumpable(false);
+
     // let cuid = get_current_uid();
     // let cgid = get_current_gid();
     // We only need to check effective id
@@ -357,6 +362,10 @@ async fn main() -> ExitCode {
             });
 
             info!("Server started ...");
+
+            // On linux, notify systemd.
+            #[cfg(target_os = "linux")]
+            let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
 
             loop {
                 tokio::select! {

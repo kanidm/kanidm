@@ -181,6 +181,7 @@ pub async fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
+    server_message_tx: broadcast::Sender<CoreAction>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     let js_files = get_js_files(config.role)?;
     // set up the CSP headers
@@ -354,10 +355,26 @@ pub async fn create_https_server(
                     tokio::spawn(axum_server::bind(addr).serve(app))
                 }
             } => {
-                if let Err(err) = res {
-                    error!("Web server exited with {:?}", err);
-                }
+                match res {
+                    Ok(res_inner) => {
+                        match res_inner {
+                            Ok(_) => debug!("Web server exited OK"),
+                            Err(err) => {
+                                error!("Web server exited with {:?}", err);
+                            }
+                        }
+
+                    },
+                    Err(err) => {
+                        error!("Web server exited with {:?}", err);
+                    }
+                };
+                if let Err(err) = server_message_tx.send(CoreAction::Shutdown) {
+                    error!("Web server failed to send shutdown message! {:?}", err)
+                };
             }
+
+
         };
         #[cfg(feature = "otel")]
         opentelemetry::global::shutdown_tracer_provider();
@@ -399,10 +416,7 @@ async fn server_loop(
 
     // If configured, setup TLS client authentication.
     if let Some(client_ca) = tls_param.client_ca.as_ref() {
-        debug!(
-            "Configuring client certificates from {}",
-            client_ca.display()
-        );
+        info!("Loading client certificates from {}", client_ca.display());
 
         let verify = SslVerifyMode::PEER;
         // In future we may add a "require mTLS option" which would necesitate this.
@@ -425,7 +439,11 @@ async fn server_loop(
         let read_dir = fs::read_dir(client_ca).map_err(|err| {
             std::io::Error::new(
                 ErrorKind::Other,
-                format!("Failed to create TLS listener: {:?}", err),
+                format!(
+                    "Failed to create TLS listener while loading client ca from {}: {:?}",
+                    client_ca.display(),
+                    err
+                ),
             )
         })?;
 
@@ -458,7 +476,10 @@ async fn server_loop(
             cert_store.add_cert(cert.clone()).map_err(|err| {
                 std::io::Error::new(
                     ErrorKind::Other,
-                    format!("Failed to create TLS listener: {:?}", err),
+                    format!(
+                        "Failed to load cert store while creating TLS listener: {:?}",
+                        err
+                    ),
                 )
             })?;
             // This tells the client what CA's they should use. It DOES NOT

@@ -3,9 +3,12 @@
 
 [Unit]
 Description=Kanidm Local Client Resolver
-After=chronyd.service ntpd.service network-online.target
-Before=systemd-user-sessions.service nss-user-lookup.target
+After=chronyd.service nscd.service ntpd.service network-online.target
+Before=systemd-user-sessions.service sshd.service nss-user-lookup.target
 Wants=nss-user-lookup.target
+# While it seems confusing, we need to be after nscd.service so that the
+# Conflicts will triger and then automatically stop it.
+Conflicts=nscd.service
 
 [Service]
 DynamicUser=yes
@@ -15,7 +18,7 @@ CacheDirectory=kanidm-unixd
 RuntimeDirectory=kanidm-unixd
 StateDirectory=kanidm-unixd
 
-Type=simple
+Type=notify
 ExecStart=/usr/sbin/kanidm_unixd
 
 ## If you wish to setup an external HSM pin you should set:
