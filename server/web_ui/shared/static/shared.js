@@ -48,6 +48,9 @@ function start_graphviz(graph_src) {
  * Opens a popup window `target=_blank` filled with `content`
  * @param content string that shown in the <pre>
  */
+/** Opens a popup window `target=_blank` filled with `content`
+* @param string content
+*/
 export function open_blank(content) {
     const windowDocument = window.open("", "_blank").document;
     const pre2 = windowDocument.createElement("pre");
