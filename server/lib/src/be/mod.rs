@@ -1923,8 +1923,8 @@ impl<'a> BackendWriteTransaction<'a> {
         })?;
         Ok(nsid)
     }
-
     pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
+        #[allow(clippy::blocks_in_conditions)]
         match self.get_idlayer().get_db_s_uuid().map_err(|err| {
             error!(?err, "Failed to read server uuid");
             err
@@ -1953,6 +1953,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
     /// This pulls the domain UUID from the database
     pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
+        #[allow(clippy::blocks_in_conditions)]
         match self.get_idlayer().get_db_d_uuid().map_err(|err| {
             error!(?err, "Failed to read domain uuid");
             err
