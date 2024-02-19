@@ -1033,6 +1033,76 @@ mod tests {
         assert!(ldaps.do_bind(idms, "claire", "test").await.is_err());
     }
 
+    #[idm_test]
+    async fn test_ldap_application_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
+        let app_uuid = Uuid::new_v4();
+
+        // Setup person, group and application
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup1")),
+                (Attribute::Uuid, Value::Uuid(grp_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname("testapp1")),
+                (Attribute::Uuid, Value::Uuid(app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // No session, user not member of linked group
+        let res = ldaps
+            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        {
+            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_prox_write
+                .qs_write
+                .internal_modify_uuid(grp_uuid, &ml)
+                .is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // No session, user does not have app password for testapp1
+        let res = ldaps
+            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+    }
+
     macro_rules! assert_entry_contains {
         (
             $entry:expr,
