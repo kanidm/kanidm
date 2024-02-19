@@ -1447,6 +1447,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Do the delete
+        #[allow(clippy::blocks_in_conditions)]
         match self.qs_write.internal_delete(&delete_filter).map_err(|e| {
             error!(?e, "Failed to delete uuids");
             e
