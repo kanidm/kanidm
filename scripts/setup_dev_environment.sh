@@ -87,7 +87,7 @@ IDM_ADMIN_USER="idm_admin@localhost"
 
 
 echo "Resetting the idm_admin user..."
-IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | rg password | jq -r .password)
+IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | grep password | jq -r .password)
 if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
     echo "Failed to reset idm_admin password!"
     exit 1
@@ -129,7 +129,7 @@ ${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" a
 echo "Creating the OAuth2 RP Secondary Supplemental Crab-baite Scope Map.... wait, no that's not a thing."
 
 echo "Checking the OAuth2 RP Exists"
-${KANIDM} system oauth2 list -D "${IDM_ADMIN_USER}" | rg -A10 "${OAUTH2_RP_ID}"
+${KANIDM} system oauth2 list -D "${IDM_ADMIN_USER}" | grep -A10 "${OAUTH2_RP_ID}"
 
 # config auth2
 echo "Pulling secret for the ${OAUTH2_RP_ID} OAuth2 RP"
