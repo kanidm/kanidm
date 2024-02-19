@@ -1052,7 +1052,9 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(test)]
 mod tests {
-    // use std::assert_matches::assert_matches;
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
+
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
     use kanidm_hsm_crypto::{AuthValue, Tpm};
