@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use enum_iterator::{all, Sequence};
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidmd_web_ui_shared::logo_img;
@@ -12,7 +13,7 @@ use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement};
 use yew_router::Routable;
 
-use kanidm_proto::v1::{Entry, ObjectType};
+use kanidm_proto::v1::{Entry};
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank};
 use crate::router::AdminRoute;
@@ -30,6 +31,23 @@ impl From<FetchError> for Msg {
             emsg: fe.as_string(),
             kopid: None,
         }
+    }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, Sequence)]
+pub enum ObjectType {
+    Group,
+    BuiltinGroup,
+    ServiceAccount,
+    Person,
+}
+
+impl TryFrom<String> for ObjectType {
+
+    type Error = ();
+
+    fn try_from(value: String) -> Result<Self, Self::Error> {
+        return all::<ObjectType>().find(|x| format!("{x:?}") == value).ok_or(())
     }
 }
 

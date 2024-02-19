@@ -3,7 +3,7 @@ use std::future::join;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::Entry;
 use crate::common::OpType;
-use crate::{GraphType, handle_client_error, ObjectType, OutputMode, GraphCommonOpt};
+use crate::{GraphType, handle_client_error, OutputMode, GraphCommonOpt, ObjectType};
 
 impl GraphCommonOpt {
 
