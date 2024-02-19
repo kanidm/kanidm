@@ -5,6 +5,12 @@ export function modal_hide_by_id(m) {
     modal.hide();
 }
 
+/**
+ * Replaces the node with a new node using new_tag, and copies all other attributes from node onto new node
+ * @param {Element} node
+ * @param {string} new_tag
+ * @return the new node
+ */
 function replace_tag(node, new_tag) {
     const newNode = document.createElement(new_tag);
 
@@ -20,6 +26,10 @@ function replace_tag(node, new_tag) {
     return newNode;
 }
 
+/**
+ * Loads graphviz and then renders the graph
+ * @param {string} graph_src dot language graph source
+ */
 export function init_graphviz(graph_src) {
     if (typeof Viz !== 'undefined') {
         start_graphviz(graph_src);
@@ -36,6 +46,10 @@ export function init_graphviz(graph_src) {
     }
 }
 
+/**
+ * Uses the graphviz library to show a graph
+ * @param {string} graph_src dot language graph source
+ */
 function start_graphviz(graph_src) {
     Viz.instance().then(function(viz) {
         const graphContainer = document.getElementById("graph-container");
@@ -46,11 +60,8 @@ function start_graphviz(graph_src) {
 
 /**
  * Opens a popup window `target=_blank` filled with `content`
- * @param content string that shown in the <pre>
+ * @param {string} content shown in the pre block
  */
-/** Opens a popup window `target=_blank` filled with `content`
-* @param string content
-*/
 export function open_blank(content) {
     const windowDocument = window.open("", "_blank").document;
     const pre2 = windowDocument.createElement("pre");
