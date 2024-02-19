@@ -110,7 +110,9 @@ pub struct ServerConfig {
     pub bindaddress: Option<String>,
     /// The listener address for the LDAP server.
     ///
-    /// eg. `[::]:3636` or `127.0.0.1:3636`. Defaults to [kanidm_proto::constants::DEFAULT_LDAP_ADDRESS]
+    /// eg. `[::]:3636` or `127.0.0.1:3636`.
+    ///
+    /// If unset, the LDAP server will be disabled.
     pub ldapbindaddress: Option<String>,
 
     /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica

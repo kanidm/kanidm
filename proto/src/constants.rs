@@ -30,8 +30,7 @@ pub const DEFAULT_CLIENT_CONFIG_PATH_HOME: &str = "~/.config/kanidm";
 /// The default HTTPS bind address for the Kanidm server
 pub const DEFAULT_SERVER_ADDRESS: &str = "127.0.0.1:8443";
 pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
-/// The default LDAP bind address for the Kanidm server
-pub const DEFAULT_LDAP_ADDRESS: &str = "127.0.0.1:636";
+/// The default LDAP bind address for the Kanidm client
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 /// Default replication configuration
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
