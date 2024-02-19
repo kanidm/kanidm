@@ -27,7 +27,7 @@ find ./pkg/ -name 'kanidmd*' -exec rm "{}" \;
 
 # we can disable this since we want it to expand
 # shellcheck disable=SC2086
-wasm-pack build ${BUILD_FLAGS} --no-typescript --target web --mode no-install --no-pack
+wasm-pack build ${BUILD_FLAGS} --no-typescript --target web --no-pack
 
 echo "######################"
 echo "Moving files around..."
