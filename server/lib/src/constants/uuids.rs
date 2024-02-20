@@ -284,6 +284,8 @@ pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST: Uuid =
 pub const UUID_SCHEMA_CLASS_BUILTIN: Uuid = uuid!("00000000-0000-0000-0000-ffff00000163");
 pub const UUID_SCHEMA_CLASS_APPLICATION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000164");
 pub const UUID_SCHEMA_ATTR_LINKED_GROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000165");
+pub const UUID_SCHEMA_ATTR_APPLICATION_PASSWORD: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000166");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

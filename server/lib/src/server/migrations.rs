@@ -873,9 +873,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
             SCHEMA_ATTR_LINKED_GROUP_DL6.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_APPLICATION_DL6.clone().into(),
+            SCHEMA_CLASS_PERSON_DL6.clone().into(),
         ];
 
         idm_schema_classes
