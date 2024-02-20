@@ -70,16 +70,21 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::ApplicationPassword(_, ap) => {
-                if self.map.values().any(|x| x.into_iter().any(|x| *x == ap)) {
-                    // Don't allow duplicated labels for the same application.
+                if let Some(e) = self
+                    .map
+                    .entry(ap.application)
+                    .or_default()
+                    .into_iter()
+                    .find(|x| **x == ap)
+                {
+                    // Overwrite on duplicated labels for the same application.
                     // ApplicationPassword implements PartialEq to compare on
                     // uuid, label and application uuid.
-                    Ok(false)
+                    e.password = ap.password;
                 } else {
-                    let v = self.map.entry(ap.application);
-                    v.or_default().push(ap);
-                    Ok(true)
+                    self.map.entry(ap.application).or_default().push(ap);
                 }
+                Ok(true)
             }
             _ => Err(OperationError::InvalidValueState),
         }

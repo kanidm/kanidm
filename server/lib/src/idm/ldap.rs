@@ -836,6 +836,7 @@ mod tests {
     use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
+    use crate::idm::application::GenerateApplicationPasswordEvent;
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
 
@@ -1098,6 +1099,89 @@ mod tests {
         // No session, user does not have app password for testapp1
         let res = ldaps
             .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        let pass1: String;
+        let pass2: String;
+        let pass3: String;
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd1".to_string(),
+            );
+            pass1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd2".to_string(),
+            );
+            pass2 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Application password overwritten on duplicated label
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd2".to_string(),
+            );
+            pass3 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, app password overwritten
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Got session, app password overwritten
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass3.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, invalid app password
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                "FOO",
+            )
             .await;
         assert!(res.is_ok());
         assert!(res.unwrap().is_none());
