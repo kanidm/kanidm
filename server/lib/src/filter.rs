@@ -32,8 +32,6 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
 
-const FILTER_DEPTH_MAX: usize = 16;
-
 // Default filter is safe, ignores all hidden types!
 
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
@@ -666,7 +664,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let depth = FILTER_DEPTH_MAX;
+        let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
         let mut elems = ev.limits.filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
@@ -681,7 +679,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let depth = FILTER_DEPTH_MAX;
+        let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
         let mut elems = ev.limits.filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
@@ -696,7 +694,7 @@ impl Filter<FilterInvalid> {
         f: &LdapFilter,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let depth = FILTER_DEPTH_MAX;
+        let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
         let mut elems = ev.limits.filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
@@ -1580,7 +1578,7 @@ mod tests {
     use ldap3_proto::simple::LdapFilter;
 
     use crate::event::{CreateEvent, DeleteEvent};
-    use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
+    use crate::filter::{Filter, FilterInvalid, DEFAULT_LIMIT_FILTER_DEPTH_MAX};
     use crate::prelude::*;
 
     #[test]
@@ -2104,12 +2102,12 @@ mod tests {
         let mut r_txn = server.read().await;
 
         let mut inv_proto = ProtoFilter::Pres(Attribute::Class.to_string());
-        for _i in 0..(FILTER_DEPTH_MAX + 1) {
+        for _i in 0..(DEFAULT_LIMIT_FILTER_DEPTH_MAX + 1) {
             inv_proto = ProtoFilter::And(vec![inv_proto]);
         }
 
         let mut inv_ldap = LdapFilter::Present(Attribute::Class.to_string());
-        for _i in 0..(FILTER_DEPTH_MAX + 1) {
+        for _i in 0..(DEFAULT_LIMIT_FILTER_DEPTH_MAX + 1) {
             inv_ldap = LdapFilter::And(vec![inv_ldap]);
         }
 

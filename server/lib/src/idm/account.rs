@@ -273,7 +273,7 @@ impl Account {
         session_id: Uuid,
         scope: SessionScope,
         ct: Duration,
-        auth_session_expiry: u32,
+        account_policy: &ResolvedAccountPolicy,
     ) -> Option<UserAuthToken> {
         // TODO: Apply policy to this expiry time.
         // We have to remove the nanoseconds because when we transmit this / serialise it we drop
@@ -281,10 +281,17 @@ impl Account {
         // ns value which breaks some checks.
         let ct = ct - Duration::from_nanos(ct.subsec_nanos() as u64);
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+
+        let limit_search_max_results = account_policy.limit_search_max_results();
+        let limit_search_max_filter_test = account_policy.limit_search_max_filter_test();
+
         // Note that currently the auth_session time comes from policy, but the already-privileged
         // session bound is hardcoded.
-        let expiry =
-            Some(OffsetDateTime::UNIX_EPOCH + ct + Duration::from_secs(auth_session_expiry as u64));
+        let expiry = Some(
+            OffsetDateTime::UNIX_EPOCH
+                + ct
+                + Duration::from_secs(account_policy.authsession_expiry() as u64),
+        );
         let limited_expiry = Some(
             OffsetDateTime::UNIX_EPOCH
                 + ct
@@ -319,6 +326,8 @@ impl Account {
             ui_hints: self.ui_hints.clone(),
             // application: None,
             // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            limit_search_max_results,
+            limit_search_max_filter_test,
         })
     }
 
@@ -331,9 +340,12 @@ impl Account {
         session_expiry: Option<OffsetDateTime>,
         scope: SessionScope,
         ct: Duration,
-        auth_privilege_expiry: u32,
+        account_policy: &ResolvedAccountPolicy,
     ) -> Option<UserAuthToken> {
         let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+
+        let limit_search_max_results = account_policy.limit_search_max_results();
+        let limit_search_max_filter_test = account_policy.limit_search_max_filter_test();
 
         let (purpose, expiry) = match scope {
             SessionScope::Synchronise | SessionScope::ReadOnly | SessionScope::ReadWrite => {
@@ -349,7 +361,7 @@ impl Account {
                 let expiry = Some(
                     OffsetDateTime::UNIX_EPOCH
                         + ct
-                        + Duration::from_secs(auth_privilege_expiry.into()),
+                        + Duration::from_secs(account_policy.privilege_expiry().into()),
                 );
                 (
                     UatPurpose::ReadWrite { expiry },
@@ -373,6 +385,8 @@ impl Account {
             ui_hints: self.ui_hints.clone(),
             // application: None,
             // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            limit_search_max_results,
+            limit_search_max_filter_test,
         })
     }
 
@@ -909,6 +923,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::idm::account::Account;
+    use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::prelude::*;
     use kanidm_proto::v1::UiHint;
 
@@ -950,7 +965,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
 
@@ -981,7 +996,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
 
@@ -1014,7 +1029,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
 

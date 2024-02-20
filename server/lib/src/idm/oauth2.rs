@@ -2555,6 +2555,7 @@ mod tests {
     use kanidm_proto::v1::UserAuthToken;
     use openssl::sha;
 
+    use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
@@ -2715,7 +2716,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
 
@@ -2843,7 +2844,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
 
@@ -2906,7 +2907,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3238,7 +3239,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident2 = idms_prox_write
@@ -3854,7 +3855,7 @@ mod tests {
                     session_id,
                     SessionScope::ReadWrite,
                     ct,
-                    DEFAULT_AUTH_SESSION_EXPIRY,
+                    &ResolvedAccountPolicy::test_policy(),
                 )
                 .expect("Unable to create uat");
             let ident2 = idms_prox_write
