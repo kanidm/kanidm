@@ -93,8 +93,6 @@ impl DefaultValues {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::prelude::*;
 
     // test we can create and generate the id

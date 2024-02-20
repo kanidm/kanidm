@@ -194,8 +194,6 @@ impl ValueSetT for ValueSetAuditLogString {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use super::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
     use crate::repl::cid::Cid;
     use crate::value::Value;

@@ -1052,8 +1052,6 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
 
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};

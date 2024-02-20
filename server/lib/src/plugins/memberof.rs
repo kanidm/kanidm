@@ -514,8 +514,6 @@ impl MemberOf {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::prelude::*;
 
     const UUID_A: &str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";

@@ -449,8 +449,6 @@ impl ReferentialIntegrity {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use kanidm_proto::v1::Filter as ProtoFilter;
     use kanidm_proto::v1::PluginError;
 

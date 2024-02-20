@@ -3447,8 +3447,6 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::prelude::*;
     use std::collections::BTreeSet as Set;
 

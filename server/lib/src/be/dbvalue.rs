@@ -807,8 +807,6 @@ impl DbValueSetV2 {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use base64::{engine::general_purpose, Engine as _};
     use serde::{Deserialize, Serialize};
     use serde_with::skip_serializing_none;

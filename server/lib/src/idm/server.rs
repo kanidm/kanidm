@@ -2151,8 +2151,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use std::convert::TryFrom;
     use std::time::Duration;
 

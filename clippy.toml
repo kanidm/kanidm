@@ -13,3 +13,7 @@ too-many-arguments-threshold = 8
 type-complexity-threshold = 300
 
 disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]
+
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-dbg-in-tests = true

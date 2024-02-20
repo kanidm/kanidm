@@ -1447,11 +1447,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Do the delete
-        #[allow(clippy::blocks_in_conditions)]
-        match self.qs_write.internal_delete(&delete_filter).map_err(|e| {
+        let res = self.qs_write.internal_delete(&delete_filter).map_err(|e| {
             error!(?e, "Failed to delete uuids");
             e
-        }) {
+        });
+        match res {
             Ok(()) => Ok(()),
             Err(OperationError::NoMatchingEntries) => {
                 debug!("No deletes required");
@@ -1533,8 +1533,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;

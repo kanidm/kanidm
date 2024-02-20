@@ -1928,8 +1928,6 @@ impl IdlSqlite {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::be::idl_sqlite::{IdlSqlite, IdlSqliteTransaction};
     use crate::be::BackendConfig;
 

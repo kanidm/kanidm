@@ -101,8 +101,6 @@ impl Plugin for GidNumber {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::prelude::*;
 
     fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {

@@ -131,8 +131,6 @@ impl ResolvedAccountPolicy {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use super::{AccountPolicy, CredentialType, ResolvedAccountPolicy};
     use crate::prelude::*;
     use webauthn_rs_core::proto::AttestationCaListBuilder;

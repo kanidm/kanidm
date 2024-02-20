@@ -1379,8 +1379,6 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use kanidm_hsm_crypto::soft::SoftTpm;
     use kanidm_hsm_crypto::AuthValue;
     use std::convert::TryFrom;
@@ -1575,7 +1573,7 @@ mod tests {
                 if cfg!(openssl3) {
                     warn!("To run this test, enable the legacy provider.");
                 } else {
-                    assert!(false);
+                    panic!("openssl3 not enabled");
                 }
             }
         }

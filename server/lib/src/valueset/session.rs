@@ -1695,8 +1695,6 @@ impl ValueSetT for ValueSetApiToken {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use super::{ValueSetOauth2Session, ValueSetSession};
     use crate::prelude::{IdentityId, SessionScope, Uuid};
     use crate::repl::cid::Cid;

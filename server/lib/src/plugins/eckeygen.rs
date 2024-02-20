@@ -83,8 +83,6 @@ impl Plugin for EcdhKeyGen {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use openssl::ec::EcKey;
     use uuid::Uuid;
 

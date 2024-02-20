@@ -2294,8 +2294,6 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use std::time::Duration;
 
     use kanidm_proto::v1::{

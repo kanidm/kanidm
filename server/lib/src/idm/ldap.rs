@@ -616,8 +616,6 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::prelude::*;
     use std::str::FromStr;
 

@@ -512,8 +512,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::credential::Credential;
     use crate::prelude::*;
     use kanidm_lib_crypto::CryptoPolicy;

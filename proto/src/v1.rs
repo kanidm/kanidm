@@ -1278,8 +1278,6 @@ impl SingleStringRequest {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use crate::constants::ATTR_CLASS;
     use crate::v1::{Filter as ProtoFilter, TotpAlgo, TotpSecret};
 

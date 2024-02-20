@@ -2540,8 +2540,6 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use base64::{engine::general_purpose, Engine as _};
     use std::convert::TryFrom;
     use std::str::FromStr;

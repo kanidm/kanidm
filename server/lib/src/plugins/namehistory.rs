@@ -130,8 +130,6 @@ impl Plugin for NameHistory {
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::expect_used)]
     use std::time::Duration;
 
     use crate::entry::{Entry, EntryInit, EntryNew};
