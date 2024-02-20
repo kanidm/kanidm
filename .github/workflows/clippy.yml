@@ -31,8 +31,9 @@ jobs:
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
-            pkg-config
+            pkg-config \
+            tpm-udev
 
       - name: "Run clippy (ignores errors, this is just a check)"
-        run: cargo clippy
+        run: cargo clippy --all-features --all-targets
         continue-on-error: true

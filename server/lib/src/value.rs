@@ -1574,7 +1574,9 @@ impl Value {
 
     #[cfg(test)]
     pub fn new_privatebinary_base64(der: &str) -> Self {
-        let der = general_purpose::STANDARD.decode(der).unwrap();
+        let der = general_purpose::STANDARD
+            .decode(der)
+            .expect("Failed to decode base64 der value");
         Value::PrivateBinary(der)
     }
 

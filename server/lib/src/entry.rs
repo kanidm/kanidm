@@ -418,7 +418,7 @@ impl Entry<EntryInit, EntryNew> {
                     kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
                     kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
                         valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() )
+                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
                         )
                     }
                     kanidm_proto::constants::ATTR_ACP_ENABLE |
@@ -512,7 +512,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                     }
                 }
-                .unwrap();
+                .expect("Failed to convert value from string");
                 Some((attr, vv))
                 }
             })

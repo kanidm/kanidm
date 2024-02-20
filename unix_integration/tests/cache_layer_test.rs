@@ -48,6 +48,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
             break possible_port;
         }
         counter += 1;
+        #[allow(clippy::assertions_on_constants)]
         if counter >= 5 {
             eprintln!("Unable to allocate port!");
             assert!(false);

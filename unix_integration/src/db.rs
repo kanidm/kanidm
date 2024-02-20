@@ -1052,7 +1052,7 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(test)]
 mod tests {
-    // use std::assert_matches::assert_matches;
+
     use super::{Cache, CacheTxn, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
     use kanidm_hsm_crypto::{AuthValue, Tpm};

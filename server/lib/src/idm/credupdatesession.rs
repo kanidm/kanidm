@@ -470,6 +470,7 @@ impl InitCredentialUpdateEvent {
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
+
         let target = ident
             .get_uuid()
             .ok_or(OperationError::InvalidState)

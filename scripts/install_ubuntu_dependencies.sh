@@ -18,7 +18,8 @@ ${SUDOCMD} apt-get install -y \
     rsync \
     git \
     build-essential \
-    jq
+    jq \
+    tpm-udev
 
 if [ -z "${PACKAGING}" ]; then
     PACKAGING=0
