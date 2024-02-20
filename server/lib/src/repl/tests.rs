@@ -1,6 +1,3 @@
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
-
 use crate::be::BackendTransaction;
 use crate::credential::Credential;
 use crate::prelude::*;
