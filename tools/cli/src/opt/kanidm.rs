@@ -186,7 +186,7 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// The webauthn attestation ca list that should be enforced
+    /// The WebAuthn attestation CA list that should be enforced
     /// on members of this group. Prevents use of passkeys that are
     /// not in this list. To create this list, use `fido-mds-tool`
     /// from <https://crates.io/crates/fido-mds-tool>
