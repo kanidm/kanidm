@@ -39,7 +39,7 @@ pub(crate) async fn oauth2_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/oauth2/basic",
+    path = "/v1/oauth2/_basic",
     request_body=ProtoEntry,
     responses(
         DefaultApiResponse,
