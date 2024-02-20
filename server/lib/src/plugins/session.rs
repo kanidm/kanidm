@@ -179,7 +179,6 @@ impl SessionConsistency {
 
 #[cfg(test)]
 mod tests {
-    // use kanidm_proto::v1::PluginError;
     use crate::prelude::*;
 
     use crate::event::CreateEvent;

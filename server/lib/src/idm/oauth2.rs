@@ -3560,7 +3560,11 @@ mod tests {
         // check again.
         let mut idms_prox_read = idms.proxy_read().await;
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
+            .check_oauth2_token_introspect(
+                &client_authz.expect("Failed to get client_authz value"),
+                &intr_request,
+                ct,
+            )
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);
