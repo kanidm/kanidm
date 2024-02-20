@@ -511,7 +511,7 @@ async fn main() -> ExitCode {
     // from attaching to us.
     #[cfg(all(target_os = "linux", not(debug_assertions)))]
     if let Err(code) = prctl::set_dumpable(false) {
-        eprintln!(?code, "CRITICAL: Unable to set prctl flags");
+        error!(?code, "CRITICAL: Unable to set prctl flags");
         return ExitCode::FAILURE;
     }
 
