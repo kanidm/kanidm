@@ -1569,7 +1569,9 @@ mod tests {
 
         match r.verify(password) {
             Ok(r) => assert!(r),
-            Err(_) => {
+            Err(_) =>
+            {
+                #[allow(clippy::panic)]
                 if cfg!(openssl3) {
                     warn!("To run this test, enable the legacy provider.");
                 } else {
@@ -1592,11 +1594,13 @@ mod tests {
         assert!(r.requires_upgrade());
         match r.verify(password) {
             Ok(r) => assert!(r),
-            Err(_) => {
+            Err(_) =>
+            {
+                #[allow(clippy::panic)]
                 if cfg!(openssl3) {
                     warn!("To run this test, enable the legacy provider.");
                 } else {
-                    assert!(false);
+                    panic!("OpenSSL3 feature not enabled")
                 }
             }
         }

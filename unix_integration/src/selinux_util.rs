@@ -20,7 +20,7 @@ pub fn supported() -> bool {
     }
 }
 
-fn do_setfscreatecon_for_path(path_raw: &String, labeler: &Labeler<File>) -> Result<(), String> {
+fn do_setfscreatecon_for_path(path_raw: &str, labeler: &Labeler<File>) -> Result<(), String> {
     match labeler.look_up(&CString::new(path_raw.to_owned()).unwrap(), 0) {
         Ok(context) => {
             if context.set_for_new_file_system_objects(true).is_err() {

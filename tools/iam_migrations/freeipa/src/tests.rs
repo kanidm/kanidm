@@ -1,6 +1,6 @@
 use crate::process_ipa_sync_result;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
 use ldap3_client::LdapSyncRepl;
 
@@ -14,7 +14,7 @@ async fn test_ldap_to_scim() {
     let expect_scim_request: ScimSyncRequest =
         serde_json::from_str(TEST_SCIM_SYNC_REPL_1).expect("failed to parse scim sync");
 
-    let entry_config_map = HashMap::default();
+    let entry_config_map = BTreeMap::default();
 
     let scim_sync_request =
         process_ipa_sync_result(ScimSyncState::Refresh, sync_request, &entry_config_map)

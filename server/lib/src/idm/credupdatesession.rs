@@ -3439,7 +3439,7 @@ mod tests {
     ) -> CredentialUpdateSessionStatus {
         // Start the registration
         let c_status = cutxn
-            .credential_passkey_init(&cust, ct)
+            .credential_passkey_init(cust, ct)
             .expect("Failed to initiate passkey registration");
 
         assert!(c_status.passkeys.is_empty());
@@ -3457,7 +3457,7 @@ mod tests {
         // Finish the registration
         let label = "softtoken".to_string();
         let c_status = cutxn
-            .credential_passkey_finish(&cust, ct, label, &passkey_resp)
+            .credential_passkey_finish(cust, ct, label, &passkey_resp)
             .expect("Failed to initiate passkey registration");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));

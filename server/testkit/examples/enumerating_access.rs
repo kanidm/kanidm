@@ -3,7 +3,7 @@
 //! - @yaleman
 //!
 
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 // use kanidm_client::KanidmClient;
 use kanidmd_lib::constants::entries::Attribute;
 use kanidmd_lib::constants::groups::{idm_builtin_admin_groups, idm_builtin_non_admin_groups};
@@ -79,14 +79,15 @@ where
     }
 
     /// The uuidmap is a map of uuids to EntryInitNew objects, which we use to get the name of the objects
-    fn as_mermaid(&mut self, uuidmap: &HashMap<T, EntryInitNew>) -> String {
+    fn as_mermaid(&mut self, uuidmap: &BTreeMap<T, EntryInitNew>) -> String {
         let mut res = format!("graph RL;\n");
         for (left, right, _weight) in self.all_edges() {
             let left = uuidmap.get(&left).unwrap();
             let right = uuidmap.get(&right).unwrap();
 
-            res += &format!(
-                "  {} --> {}\n",
+            res = format!(
+                "{}  {} --> {}\n",
+                res,
                 EntryType::from(left).as_mermaid_tag(),
                 EntryType::from(right).as_mermaid_tag(),
             );
@@ -96,7 +97,7 @@ where
 }
 
 async fn enumerate_default_groups(/*_client: KanidmClient*/) {
-    let mut uuidmap: HashMap<Uuid, EntryInitNew> = HashMap::new();
+    let mut uuidmap: BTreeMap<Uuid, EntryInitNew> = BTreeMap::new();
 
     let mut graph = Graph::new();
 

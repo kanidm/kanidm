@@ -708,7 +708,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
     assert!(e1_cs == e2_cs);
-    assert!(e1_cs.get_attr_cid(&Attribute::Description).is_some());
+    assert!(e1_cs.get_attr_cid(Attribute::Description).is_some());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -3267,7 +3267,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
         },
     );
 
-    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
     server_a_txn
         .internal_modify(
@@ -3306,7 +3306,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
         },
     );
 
-    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+    let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
     server_b_txn
         .internal_modify(

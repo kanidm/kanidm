@@ -3698,7 +3698,7 @@ mod tests {
             .internal_search_writeable(&filt)
             .expect("Failed to perform internal search writeable");
         for (_, entry) in work_set.iter_mut() {
-            let _ = entry.force_trim_ava(Attribute::OAuth2Session.into());
+            let _ = entry.force_trim_ava(Attribute::OAuth2Session);
         }
         assert!(idms_prox_write
             .qs_write
@@ -5152,12 +5152,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);

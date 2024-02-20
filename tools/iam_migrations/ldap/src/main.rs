@@ -57,7 +57,7 @@ use ldap3_client::{proto, LdapClientBuilder, LdapSyncRepl, LdapSyncReplEntry, Ld
 
 include!("./opt.rs");
 
-async fn driver_main(opt: Opt) {
+async fn driver_main(opt: Opt) -> Result<(), ()> {
     debug!("Starting kanidm ldap sync driver.");
 
     let mut f = match File::open(&opt.ldap_sync_config) {
@@ -68,7 +68,7 @@ async fn driver_main(opt: Opt) {
                 &opt.ldap_sync_config.display(),
                 e
             );
-            return;
+            return Err(());
         }
     };
 
@@ -79,7 +79,7 @@ async fn driver_main(opt: Opt) {
             &opt.ldap_sync_config.display(),
             e
         );
-        return;
+        return Err(());
     };
 
     let sync_config: Config = match toml::from_str(contents.as_str()) {
@@ -90,7 +90,7 @@ async fn driver_main(opt: Opt) {
                 &opt.ldap_sync_config.display(),
                 e
             );
-            return;
+            return Err(());
         }
     };
 
@@ -101,7 +101,7 @@ async fn driver_main(opt: Opt) {
         Ok(v) => v,
         Err(_) => {
             error!("Failed to parse {}", opt.client_config.to_string_lossy());
-            return;
+            return Err(());
         }
     };
 
@@ -111,7 +111,7 @@ async fn driver_main(opt: Opt) {
         Ok(s) => s,
         Err(_) => {
             error!("Failed to parse cron schedule expression");
-            return;
+            return Err(());
         }
     };
 
@@ -129,7 +129,7 @@ async fn driver_main(opt: Opt) {
                 Ok(l) => l,
                 Err(e) => {
                     error!(?e, "Failed to bind status socket");
-                    return;
+                    return Err(());
                 }
             };
 
@@ -248,6 +248,7 @@ async fn driver_main(opt: Opt) {
     } else if let Err(e) = run_sync(cb, &sync_config, &opt).await {
         error!(?e, "Sync completed with error");
     }
+    Ok(())
 }
 
 async fn run_sync(
@@ -821,7 +822,9 @@ fn main() {
 
     tracing::debug!("Using {} worker threads", par_count);
 
-    rt.block_on(async move { driver_main(opt).await });
+    if rt.block_on(async move { driver_main(opt).await }).is_err() {
+        std::process::exit(1);
+    };
 }
 
 #[tokio::test]
@@ -835,11 +838,11 @@ async fn test_driver_main() {
         dry_run: false,
         skip_root_check: true,
     };
-    let _ = sketching::test_init();
+    sketching::test_init();
 
     println!("testing config");
     // because it can't find the profile file it'll just stop
-    assert_eq!(driver_main(testopt.clone()).await, ());
+    assert!(driver_main(testopt.clone()).await.is_err());
     println!("done testing missing config");
 
     let testopt = Opt {
@@ -847,10 +850,10 @@ async fn test_driver_main() {
         ldap_sync_config: PathBuf::from(format!("{}/Cargo.toml", env!("CARGO_MANIFEST_DIR"))),
         ..testopt
     };
-
     println!("valid file path, invalid contents");
-    assert_eq!(driver_main(testopt.clone()).await, ());
+    assert!(driver_main(testopt.clone()).await.is_err());
     println!("done with valid file path, invalid contents");
+
     let testopt = Opt {
         client_config: PathBuf::from(format!(
             "{}/../../../examples/iam_migration_ldap.toml",
@@ -864,6 +867,6 @@ async fn test_driver_main() {
     };
 
     println!("valid file path, invalid contents");
-    assert_eq!(driver_main(testopt).await, ());
+    assert!(driver_main(testopt).await.is_err());
     println!("done with valid file path, valid contents");
 }

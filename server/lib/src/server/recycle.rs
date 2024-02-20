@@ -619,7 +619,9 @@ mod tests {
             (Attribute::Name, Value::new_iname(name)),
             (
                 Attribute::Uuid,
-                Value::new_uuid_s(uuid).expect(Attribute::Uuid.as_ref())
+                #[allow(clippy::panic)]
+                Value::new_uuid_s(uuid)
+                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid.as_ref().to_string()) })
             ),
             (Attribute::Description, Value::new_utf8s("testperson-entry")),
             (Attribute::DisplayName, Value::new_utf8s(name))
@@ -627,13 +629,15 @@ mod tests {
     }
 
     fn create_group(name: &str, uuid: &str, members: &[&str]) -> Entry<EntryInit, EntryNew> {
+        #[allow(clippy::panic)]
         let mut e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname(name)),
             (
                 Attribute::Uuid,
-                Value::new_uuid_s(uuid).expect(Attribute::Uuid.as_ref())
+                Value::new_uuid_s(uuid)
+                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid.as_ref().to_string()) })
             ),
             (Attribute::Description, Value::new_utf8s("testgroup-entry"))
         );

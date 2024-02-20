@@ -252,7 +252,7 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         server_txn
             .internal_modify(
@@ -726,7 +726,7 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append(Attribute::OAuth2Session.into(), session);
+        let modlist = ModifyList::new_append(Attribute::OAuth2Session, session);
 
         server_txn
             .internal_modify(
@@ -833,7 +833,7 @@ mod tests {
         );
 
         // Mod the user
-        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession.into(), session);
+        let modlist = ModifyList::new_append(Attribute::UserAuthTokenSession, session);
 
         server_txn
             .internal_modify(

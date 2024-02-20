@@ -270,12 +270,12 @@ impl ValueSetEmailAddress {
         }
     }
 
-    pub fn from_repl_v1(primary: &String, data: &[String]) -> Result<ValueSet, OperationError> {
+    pub fn from_repl_v1(primary: &str, data: &[String]) -> Result<ValueSet, OperationError> {
         let set: BTreeSet<_> = data.iter().cloned().collect();
 
         if set.contains(primary) {
             Ok(Box::new(ValueSetEmailAddress {
-                primary: primary.clone(),
+                primary: primary.to_string(),
                 set,
             }))
         } else {

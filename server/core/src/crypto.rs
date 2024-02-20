@@ -551,8 +551,8 @@ fn test_ca_loader() {
 
     let ca_config = CAConfig::default();
     if let Ok(ca) = build_ca(Some(ca_config)) {
-        write_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path(), &ca).unwrap();
-        assert!(load_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path()).is_ok());
+        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
+        assert!(load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path()).is_ok());
     };
 
     let good_ca_configs = vec![
@@ -567,8 +567,8 @@ fn test_ca_loader() {
         println!("testing good config {:?}", config);
         let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
         let ca = build_ca(Some(ca_config)).unwrap();
-        write_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path(), &ca).unwrap();
-        let ca_result = load_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path());
+        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
+        let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
         println!("result: {:?}", ca_result);
         assert!(ca_result.is_ok());
     });
@@ -583,8 +583,8 @@ fn test_ca_loader() {
         );
         let ca_config = CAConfig::new(config.0, config.1, config.2).unwrap();
         let ca = build_ca(Some(ca_config)).unwrap();
-        write_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path(), &ca).unwrap();
-        let ca_result = load_ca(&ca_key_tempfile.path(), &ca_cert_tempfile.path());
+        write_ca(ca_key_tempfile.path(), ca_cert_tempfile.path(), &ca).unwrap();
+        let ca_result = load_ca(ca_key_tempfile.path(), ca_cert_tempfile.path());
         println!("result: {:?}", ca_result);
         assert!(ca_result.is_err());
     });

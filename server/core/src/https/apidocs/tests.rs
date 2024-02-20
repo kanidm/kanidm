@@ -3,7 +3,7 @@
 ///
 /// It's not perfect, but it's a start!
 fn figure_out_if_we_have_all_the_routes() {
-    use std::collections::HashMap;
+    use std::collections::BTreeMap;
 
     // load this file
     let module_filename = format!("{}/src/https/apidocs/mod.rs", env!("CARGO_MANIFEST_DIR"));
@@ -12,7 +12,7 @@ fn figure_out_if_we_have_all_the_routes() {
 
     // find all the lines that start with super::v1:: and end with a comma
     let apidocs_function_finder = regex::Regex::new(r#"super::([a-zA-Z0-9_:]+),"#).unwrap();
-    let mut apidocs_routes: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    let mut apidocs_routes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
     for line in file.lines() {
         if let Some(caps) = apidocs_function_finder.captures(line) {
             let route = caps.get(1).unwrap().as_str();
@@ -42,7 +42,7 @@ fn figure_out_if_we_have_all_the_routes() {
         regex::Regex::new(r#"(any|delete|get|head|options|patch|post|put|trace)\(([a-z:_]+)\)"#)
             .unwrap();
     // work our way through the source files in this package looking for routedefs
-    let mut found_routes: HashMap<String, Vec<(String, String)>> = HashMap::new();
+    let mut found_routes: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
     let walker = walkdir::WalkDir::new(format!("{}/src", env!("CARGO_MANIFEST_DIR")))
         .follow_links(false)
         .into_iter();
@@ -63,7 +63,7 @@ fn figure_out_if_we_have_all_the_routes() {
         let source_module = relative_filename.split("/").last().unwrap();
         let source_module = source_module.split(".").next().unwrap();
 
-        let file = std::fs::read_to_string(&entry.path()).unwrap();
+        let file = std::fs::read_to_string(entry.path()).unwrap();
         for line in file.lines() {
             if line.contains("skip_route_check") {
                 println!("Skipping this line because it contains skip_route_check");

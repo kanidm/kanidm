@@ -1,5 +1,5 @@
 #![deny(warnings)]
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::convert::TryFrom;
 use std::str::FromStr;
 
@@ -290,7 +290,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let redir_url = Url::parse(&redir_str).expect("Url parse failure");
 
     // We should have state and code.
-    let pairs: HashMap<_, _> = redir_url.query_pairs().collect();
+    let pairs: BTreeMap<_, _> = redir_url.query_pairs().collect();
 
     let code = pairs.get("code").expect("code not found!");
 
@@ -669,7 +669,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let redir_url = Url::parse(&redir_str).expect("Url parse failure");
 
     // We should have state and code.
-    let pairs: HashMap<_, _> = redir_url.query_pairs().collect();
+    let pairs: BTreeMap<_, _> = redir_url.query_pairs().collect();
 
     let code = pairs.get("code").expect("code not found!");
 

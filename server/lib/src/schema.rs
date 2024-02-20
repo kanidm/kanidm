@@ -2688,10 +2688,7 @@ mod tests {
         )
         .into_invalid_new();
         let res = e_attr_invalid.validate(&schema);
-        assert!(match res {
-            Err(SchemaError::MissingMustAttribute(_)) => true,
-            _ => false,
-        });
+        matches!(res, Err(SchemaError::MissingMustAttribute(_)));
 
         let e_attr_invalid_may = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),

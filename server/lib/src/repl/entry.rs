@@ -219,7 +219,7 @@ impl EntryChangeState {
     }
 
     #[cfg(test)]
-    pub(crate) fn get_attr_cid(&self, attr: &Attribute) -> Option<&Cid> {
+    pub(crate) fn get_attr_cid(&self, attr: Attribute) -> Option<&Cid> {
         match &self.st {
             State::Live { at: _, changes } => changes.get(attr.as_ref()),
             State::Tombstone { at: _ } => None,

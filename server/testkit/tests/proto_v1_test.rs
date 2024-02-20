@@ -504,7 +504,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
         dlocal
             .attrs
             .get(Attribute::DomainDisplayName.as_ref())
-            .and_then(|v| v.get(0))
+            .and_then(|v| v.first())
             == Some(&"Super Cool Crabz".to_string())
     );
 }
