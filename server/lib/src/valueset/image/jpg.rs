@@ -108,8 +108,6 @@ pub fn validate_decoding(
 
 #[test]
 fn test_jpg_has_trailer() {
-    #![allow(clippy::expect_used)]
-
     let file_contents = std::fs::read(format!(
         "{}/src/valueset/image/test_images/oversize_dimensions.jpg",
         env!("CARGO_MANIFEST_DIR")

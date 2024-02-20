@@ -358,8 +358,6 @@ impl Entry<EntryInit, EntryNew> {
     pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
         // Just use log directly here, it's testing
         // str -> proto entry
-
-        #[allow(clippy::expect_used)]
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
         let x: Eattrs = pe.attrs.into_iter()
@@ -369,7 +367,6 @@ impl Entry<EntryInit, EntryNew> {
                 } else {
                     // TODO: this should be an "Attribute::from(k)"
                 let attr = AttrString::from(k.to_lowercase());
-                #[allow(clippy::expect_used)]
                 let vv: ValueSet = match attr.as_str() {
                     kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
                         valueset::from_value_iter(
@@ -420,7 +417,6 @@ impl Entry<EntryInit, EntryNew> {
                     kanidm_proto::constants::ATTR_MEMBEROF |
                     kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
                     kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
-                        #[allow(clippy::expect_used)]
                         valueset::from_value_iter(
                             vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
                         )
@@ -585,7 +581,6 @@ impl Entry<EntryInit, EntryNew> {
         self.set_last_changed(cid.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
-        #[allow(clippy::expect_used)]
         Entry {
             valid: EntryValid {
                 ecstate,

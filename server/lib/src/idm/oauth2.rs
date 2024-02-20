@@ -3560,7 +3560,6 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(
-                #[allow(clippy::expect_used)]
                 &client_authz.expect("Failed to get client_authz value"),
                 &intr_request,
                 ct,

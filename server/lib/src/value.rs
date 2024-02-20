@@ -1574,7 +1574,6 @@ impl Value {
 
     #[cfg(test)]
     pub fn new_privatebinary_base64(der: &str) -> Self {
-        #[allow(clippy::expect_used)]
         let der = general_purpose::STANDARD
             .decode(der)
             .expect("Failed to decode base64 der value");
