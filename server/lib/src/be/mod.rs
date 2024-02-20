@@ -1923,12 +1923,12 @@ impl<'a> BackendWriteTransaction<'a> {
         })?;
         Ok(nsid)
     }
-
     pub fn get_db_s_uuid(&mut self) -> Result<Uuid, OperationError> {
-        match self.get_idlayer().get_db_s_uuid().map_err(|err| {
+        let res = self.get_idlayer().get_db_s_uuid().map_err(|err| {
             error!(?err, "Failed to read server uuid");
             err
-        })? {
+        })?;
+        match res {
             Some(s_uuid) => Ok(s_uuid),
             None => self.reset_db_s_uuid(),
         }
@@ -1953,10 +1953,11 @@ impl<'a> BackendWriteTransaction<'a> {
 
     /// This pulls the domain UUID from the database
     pub fn get_db_d_uuid(&mut self) -> Result<Uuid, OperationError> {
-        match self.get_idlayer().get_db_d_uuid().map_err(|err| {
+        let res = self.get_idlayer().get_db_d_uuid().map_err(|err| {
             error!(?err, "Failed to read domain uuid");
             err
-        })? {
+        })?;
+        match res {
             Some(d_uuid) => Ok(d_uuid),
             None => self.reset_db_d_uuid(),
         }

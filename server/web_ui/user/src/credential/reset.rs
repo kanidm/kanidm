@@ -744,7 +744,7 @@ impl CredentialResetApp {
     fn view_attested_passkeys(
         &self,
         token: &CUSessionToken,
-        attested_passkeys: &Vec<PasskeyDetail>,
+        attested_passkeys: &[PasskeyDetail],
         attested_passkeys_state: CUCredState,
         attested_passkeys_allowed_devices: &[String],
     ) -> Html {

@@ -1573,7 +1573,7 @@ mod tests {
                 if cfg!(openssl3) {
                     warn!("To run this test, enable the legacy provider.");
                 } else {
-                    assert!(false);
+                    panic!("openssl3 not enabled");
                 }
             }
         }
@@ -1647,6 +1647,7 @@ mod tests {
                     key: key.clone(),
                 },
             },
+            #[allow(clippy::unreachable)]
             _ => unreachable!(),
         };
 

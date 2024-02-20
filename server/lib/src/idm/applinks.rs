@@ -186,7 +186,9 @@ mod tests {
             } => {
                 name == "test_resource_server"
                     && display_name == "test_resource_server"
-                    && redirect_url == &Url::parse("https://demo.example.com/landing").unwrap()
+                    && redirect_url
+                        == &Url::parse("https://demo.example.com/landing")
+                            .expect("Failed to parse URL")
                     && icon.is_none()
             } // _ => false,
         })

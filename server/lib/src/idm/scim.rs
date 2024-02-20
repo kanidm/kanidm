@@ -1447,10 +1447,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Do the delete
-        match self.qs_write.internal_delete(&delete_filter).map_err(|e| {
+        let res = self.qs_write.internal_delete(&delete_filter).map_err(|e| {
             error!(?e, "Failed to delete uuids");
             e
-        }) {
+        });
+        match res {
             Ok(()) => Ok(()),
             Err(OperationError::NoMatchingEntries) => {
                 debug!("No deletes required");

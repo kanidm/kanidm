@@ -1,7 +1,5 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::expect_used)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]

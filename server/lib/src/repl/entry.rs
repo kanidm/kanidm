@@ -211,7 +211,11 @@ impl EntryChangeState {
 
     #[cfg(test)]
     pub(crate) fn get_tail_cid(&self) -> Cid {
-        self.cid_iter().pop().cloned().unwrap()
+        #![allow(clippy::expect_used)]
+        self.cid_iter()
+            .pop()
+            .cloned()
+            .expect("Failed to get tail cid")
     }
 
     #[cfg(test)]

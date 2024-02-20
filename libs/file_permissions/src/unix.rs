@@ -295,5 +295,5 @@ fn mode_to_string(mode: u32) -> String {
 fn test_readonly() {
     let meta = std::fs::metadata("Cargo.toml").expect("Can't find Cargo.toml");
     println!("meta={:?} -> readonly={:?}", meta, readonly(&meta));
-    assert!(readonly(&meta) == false);
+    assert!(!readonly(&meta));
 }
