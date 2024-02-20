@@ -636,7 +636,6 @@ impl Filter<FilterInvalid> {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn from_str(fc: &str) -> Self {
-        #[allow(clippy::expect_used)]
         let f: FC = serde_json::from_str(fc).expect("Failure parsing filter!");
         Filter {
             state: FilterInvalid {

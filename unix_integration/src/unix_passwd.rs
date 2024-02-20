@@ -99,7 +99,6 @@ wheel:x:481:admin,testuser
 
     #[test]
     fn test_parse_passwd() {
-        #[allow(clippy::expect_used)]
         for record in
             parse_etc_passwd(EXAMPLE_PASSWD.as_bytes()).expect("Failed to parse passwd data")
         {
@@ -109,7 +108,6 @@ wheel:x:481:admin,testuser
 
     #[test]
     fn test_parse_group() {
-        #[allow(clippy::expect_used)]
         for record in parse_etc_group(EXAMPLE_GROUP.as_bytes()).expect("Failed to parse group") {
             println!("{:?}", record);
         }

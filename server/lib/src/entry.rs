@@ -616,7 +616,6 @@ impl Entry<EntryInit, EntryNew> {
         self.set_last_changed(cid.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
-        #[allow(clippy::expect_used)]
         Entry {
             valid: EntrySealed {
                 uuid: self.get_uuid().expect("Invalid uuid"),
@@ -1158,7 +1157,6 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
-        #[allow(clippy::expect_used)]
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
@@ -1224,7 +1222,6 @@ impl Entry<EntryInvalid, EntryNew> {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
-        #[allow(clippy::expect_used)]
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
