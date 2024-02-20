@@ -2099,6 +2099,8 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use std::fs;
     use std::iter::FromIterator;
     use std::sync::Arc;

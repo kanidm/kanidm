@@ -1486,6 +1486,8 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use std::str::FromStr;
     use std::time::Duration;
 

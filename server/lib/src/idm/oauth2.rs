@@ -2540,6 +2540,8 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use base64::{engine::general_purpose, Engine as _};
     use std::convert::TryFrom;
     use std::str::FromStr;
@@ -3559,7 +3561,12 @@ mod tests {
         // check again.
         let mut idms_prox_read = idms.proxy_read().await;
         let intr_response = idms_prox_read
-            .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
+            .check_oauth2_token_introspect(
+                #[allow(clippy::expect_used)]
+                &client_authz.expect("Failed to get client_authz value"),
+                &intr_request,
+                ct,
+            )
             .expect("Failed to inspect token");
 
         assert!(!intr_response.active);

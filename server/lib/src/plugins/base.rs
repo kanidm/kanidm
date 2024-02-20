@@ -240,6 +240,8 @@ impl Plugin for Base {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
     use std::sync::Arc;

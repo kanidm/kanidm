@@ -470,6 +470,8 @@ impl InitCredentialUpdateEvent {
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry_readwrite(e);
+
+        #[allow(clippy::expect_used)]
         let target = ident
             .get_uuid()
             .ok_or(OperationError::InvalidState)
@@ -2292,6 +2294,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use std::time::Duration;
 
     use kanidm_proto::v1::{

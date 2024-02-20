@@ -179,7 +179,8 @@ impl SessionConsistency {
 
 #[cfg(test)]
 mod tests {
-    // use kanidm_proto::v1::PluginError;
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use crate::prelude::*;
 
     use crate::event::CreateEvent;

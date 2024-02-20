@@ -486,6 +486,8 @@ impl ValueSetT for ValueSetImage {
 #[test]
 /// tests that we can load a bunch of test images and it'll throw errors in a way we expect
 fn test_imagevalue_things() {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     ["gif", "png", "jpg", "webp"]
         .into_iter()
         .for_each(|extension| {

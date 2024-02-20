@@ -1379,6 +1379,8 @@ impl Password {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use kanidm_hsm_crypto::soft::SoftTpm;
     use kanidm_hsm_crypto::AuthValue;
     use std::convert::TryFrom;
@@ -1647,6 +1649,7 @@ mod tests {
                     key: key.clone(),
                 },
             },
+            #[allow(clippy::unreachable)]
             _ => unreachable!(),
         };
 

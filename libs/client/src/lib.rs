@@ -500,6 +500,8 @@ impl KanidmClientBuilder {
 
 #[test]
 fn test_make_url() {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
     let client: KanidmClient = KanidmClientBuilder::new()
         .address(format!("https://{}", DEFAULT_SERVER_ADDRESS))

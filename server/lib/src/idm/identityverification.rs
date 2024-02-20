@@ -310,6 +310,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod test {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use kanidm_proto::internal::IdentifyUserResponse;
 
     use crate::idm::identityverification::{

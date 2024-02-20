@@ -29,6 +29,7 @@ fn test_valueattribute_round_trip() {
     let the_list = all::<Attribute>().collect::<Vec<_>>();
     for attr in the_list {
         let s: &'static str = attr.into();
+        #[allow(clippy::unwrap_used)]
         let attr2 = Attribute::try_from(s.to_string()).unwrap();
         assert!(attr == attr2);
     }

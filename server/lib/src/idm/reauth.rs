@@ -167,6 +167,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use crate::credential::totp::Totp;
     use crate::idm::audit::AuditEvent;
     use crate::idm::credupdatesession::{InitCredentialUpdateEvent, MfaRegStateStatus};

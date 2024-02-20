@@ -908,6 +908,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use crate::idm::account::Account;
     use crate::prelude::*;
     use kanidm_proto::v1::UiHint;

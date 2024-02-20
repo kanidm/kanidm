@@ -1071,6 +1071,8 @@ impl AccessControls {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use hashbrown::HashMap;
     use std::collections::BTreeSet;
     use std::sync::Arc;

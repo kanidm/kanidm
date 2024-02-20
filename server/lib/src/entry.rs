@@ -358,6 +358,8 @@ impl Entry<EntryInit, EntryNew> {
     pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
         // Just use log directly here, it's testing
         // str -> proto entry
+
+        #[allow(clippy::expect_used)]
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
         let x: Eattrs = pe.attrs.into_iter()
@@ -367,6 +369,7 @@ impl Entry<EntryInit, EntryNew> {
                 } else {
                     // TODO: this should be an "Attribute::from(k)"
                 let attr = AttrString::from(k.to_lowercase());
+                #[allow(clippy::expect_used)]
                 let vv: ValueSet = match attr.as_str() {
                     kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
                         valueset::from_value_iter(
@@ -417,8 +420,9 @@ impl Entry<EntryInit, EntryNew> {
                     kanidm_proto::constants::ATTR_MEMBEROF |
                     kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
                     kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
+                        #[allow(clippy::expect_used)]
                         valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() )
+                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
                         )
                     }
                     kanidm_proto::constants::ATTR_ACP_ENABLE |
@@ -512,7 +516,7 @@ impl Entry<EntryInit, EntryNew> {
                         )
                     }
                 }
-                .unwrap();
+                .expect("Failed to convert value from string");
                 Some((attr, vv))
                 }
             })
@@ -581,6 +585,7 @@ impl Entry<EntryInit, EntryNew> {
         self.set_last_changed(cid.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
+        #[allow(clippy::expect_used)]
         Entry {
             valid: EntryValid {
                 ecstate,
@@ -616,6 +621,7 @@ impl Entry<EntryInit, EntryNew> {
         self.set_last_changed(cid.clone());
         let ecstate = EntryChangeState::new_without_schema(&cid, &self.attrs);
 
+        #[allow(clippy::expect_used)]
         Entry {
             valid: EntrySealed {
                 uuid: self.get_uuid().expect("Invalid uuid"),
@@ -1157,6 +1163,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        #[allow(clippy::expect_used)]
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
@@ -1222,6 +1229,7 @@ impl Entry<EntryInvalid, EntryNew> {
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
     pub fn into_valid_new(self) -> Entry<EntryValid, EntryNew> {
+        #[allow(clippy::expect_used)]
         let uuid = self.get_uuid().expect("Invalid uuid");
         Entry {
             valid: EntryValid {
@@ -3439,6 +3447,8 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+    #![allow(clippy::expect_used)]
     use crate::prelude::*;
     use std::collections::BTreeSet as Set;
 

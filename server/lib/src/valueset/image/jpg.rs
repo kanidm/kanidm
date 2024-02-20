@@ -108,19 +108,22 @@ pub fn validate_decoding(
 
 #[test]
 fn test_jpg_has_trailer() {
+    #![allow(clippy::expect_used)]
+
     let file_contents = std::fs::read(format!(
         "{}/src/valueset/image/test_images/oversize_dimensions.jpg",
         env!("CARGO_MANIFEST_DIR")
     ))
-    .unwrap();
-    assert!(!has_trailer(&file_contents).unwrap());
+    .expect("Failed to read file");
+    assert!(!has_trailer(&file_contents).expect("Failed to check for JPEG trailer"));
 
     // checking a known bad imagee
     let file_contents = std::fs::read(format!(
         "{}/src/valueset/image/test_images/windows11_3_cropped.jpg",
         env!("CARGO_MANIFEST_DIR")
     ))
-    .unwrap();
+    .expect("Failed to read file");
     // let test_bytes = vec![0xff, 0xd8, 0xff, 0xda, 0xff, 0xd9];
-    assert!(has_trailer(&file_contents).unwrap());
+
+    assert!(has_trailer(&file_contents).expect("Failed to check for JPEG trailer"));
 }
