@@ -1133,6 +1133,7 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -1160,6 +1161,7 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
         ],
         modify_present_attrs: vec![
             Attribute::DisplayName,
@@ -1170,6 +1172,7 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
