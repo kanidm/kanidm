@@ -14,7 +14,7 @@ use webauthn_rs::prelude::{
 use super::accountpolicy::ResolvedAccountPolicy;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
-use crate::credential::Credential;
+use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
 use crate::idm::group::Group;
@@ -66,6 +66,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
+    pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
 }
 
 macro_rules! try_from_entry {
@@ -198,6 +199,11 @@ macro_rules! try_from_entry {
             None
         };
 
+        let apps_pwds = $value
+            .get_ava_application_password(Attribute::ApplicationPassword)
+            .cloned()
+            .unwrap_or_default();
+
         Ok(Account {
             uuid,
             name,
@@ -216,6 +222,7 @@ macro_rules! try_from_entry {
             mail,
             credential_update_intent_tokens,
             unix_extn,
+            apps_pwds,
         })
     }};
 }
