@@ -279,7 +279,7 @@ pub const UUID_SCHEMA_ATTR_RECYCLEDDIRECTMEMBEROF: Uuid =
 pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000161");
 pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST: Uuid =
-    uuid!("00000000-0000-0000-0000-ffff00000161");
+    uuid!("00000000-0000-0000-0000-ffff00000162");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
