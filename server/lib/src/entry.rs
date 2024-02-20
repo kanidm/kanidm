@@ -50,6 +50,7 @@ use webauthn_rs::prelude::{
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
+use crate::credential::apppwd::ApplicationPassword;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::idm::ldap::ldap_vattr_map;
@@ -2894,6 +2895,15 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr.as_ref())
             .and_then(|vs| vs.as_webauthn_attestation_ca_list())
+    }
+
+    pub fn get_ava_application_password(
+        &self,
+        attr: Attribute,
+    ) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
+        self.attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_application_password_map())
     }
 
     #[inline(always)]
