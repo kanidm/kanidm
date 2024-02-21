@@ -1,4 +1,3 @@
-#![feature(future_join)]
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]

@@ -1,5 +1,5 @@
 use std::collections::HashSet;
-use std::future::join;
+use tokio::join;
 use kanidm_client::ClientError;
 use kanidm_proto::v1::Entry;
 use crate::common::OpType;
@@ -18,7 +18,7 @@ impl GraphCommonOpt {
         let graph_type = &gopt.graph_type;
         let filters = &gopt.filter;
 
-        let arr_result: [Result<Vec<Entry>, ClientError>; 3] = join!(client.idm_group_list(), client.idm_service_account_list(), client.idm_person_account_list()).await
+        let arr_result: [Result<Vec<Entry>, ClientError>; 3] = join!(client.idm_group_list(), client.idm_service_account_list(), client.idm_person_account_list())
             .into();
         let list_result: Result<Vec<Entry>, ClientError> = arr_result
             .into_iter()
