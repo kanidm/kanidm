@@ -152,7 +152,7 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Set the maximum time for session expiry
+    /// Set the maximum time for session expiry in seconds.
     #[clap(name = "auth-expiry")]
     AuthSessionExpiry {
         name: String,
@@ -161,7 +161,7 @@ pub enum GroupAccountPolicyOpt {
         copt: CommonOpt,
     },
     /// Set the minimum credential class that members may authenticate with. Valid values
-    /// in order of weakest to strongest are: "any" "mfa" "passkey" "attested_passkey"
+    /// in order of weakest to strongest are: "any" "mfa" "passkey" "attested_passkey".
     #[clap(name = "credential-type-minimum")]
     CredentialTypeMinimum {
         name: String,
@@ -170,7 +170,7 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Set the minimum length of passwords for accounts
+    /// Set the minimum character length of passwords for accounts.
     #[clap(name = "password-minimum-length")]
     PasswordMinimumLength {
         name: String,
@@ -178,7 +178,7 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Set the maximum time for privilege session expiry
+    /// Set the maximum time for privilege session expiry in seconds.
     #[clap(name = "privilege-expiry")]
     PrivilegedSessionExpiry {
         name: String,
@@ -186,14 +186,33 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// The the webauthn attestation ca list that should be enforced
+    /// The WebAuthn attestation CA list that should be enforced
     /// on members of this group. Prevents use of passkeys that are
-    /// in this list. To create this list, use `fido-mds-tool`
+    /// not in this list. To create this list, use `fido-mds-tool`
     /// from <https://crates.io/crates/fido-mds-tool>
     #[clap(name = "webauthn-attestation-ca-list")]
     WebauthnAttestationCaList {
         name: String,
         attestation_ca_list_json: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Sets the maximum number of entries that may be returned in a
+    /// search operation.
+    #[clap(name = "limit-search-max-results")]
+    LimitSearchMaxResults {
+        name: String,
+        maximum: u32,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Sets the maximum number of entries that are examined during
+    /// a partially indexed search. This does not affect fully
+    /// indexed searches. If in doubt, set this to 1.5x limit-search-max-results
+    #[clap(name = "limit-search-max-filter-test")]
+    LimitSearchMaxFilterTest {
+        name: String,
+        maximum: u32,
         #[clap(flatten)]
         copt: CommonOpt,
     },

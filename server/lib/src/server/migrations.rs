@@ -860,6 +860,32 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_batch_modify(modset.into_iter())
     }
 
+    /// Migration domain level 5 to 6 - support query limits in account policy.
+    pub fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
+        let idm_schema_classes = [
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        // Update access controls.
+        self.internal_migrate_or_create(IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into())
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })
+    }
+
     #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");

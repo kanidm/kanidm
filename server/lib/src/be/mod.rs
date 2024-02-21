@@ -66,9 +66,9 @@ impl Default for Limits {
     fn default() -> Self {
         Limits {
             unindexed_allow: false,
-            search_max_results: 256,
-            search_max_filter_test: 512,
-            filter_max_elements: 32,
+            search_max_results: DEFAULT_LIMIT_SEARCH_MAX_RESULTS as usize,
+            search_max_filter_test: DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST as usize,
+            filter_max_elements: DEFAULT_LIMIT_FILTER_MAX_ELEMENTS as usize,
         }
     }
 }
@@ -77,9 +77,18 @@ impl Limits {
     pub fn unlimited() -> Self {
         Limits {
             unindexed_allow: true,
-            search_max_results: usize::MAX,
-            search_max_filter_test: usize::MAX,
+            search_max_results: usize::MAX >> 1,
+            search_max_filter_test: usize::MAX >> 1,
             filter_max_elements: usize::MAX,
+        }
+    }
+
+    pub fn api_token() -> Self {
+        Limits {
+            unindexed_allow: false,
+            search_max_results: DEFAULT_LIMIT_API_SEARCH_MAX_RESULTS as usize,
+            search_max_filter_test: DEFAULT_LIMIT_API_SEARCH_MAX_FILTER_TEST as usize,
+            filter_max_elements: DEFAULT_LIMIT_FILTER_MAX_ELEMENTS as usize,
         }
     }
 }
