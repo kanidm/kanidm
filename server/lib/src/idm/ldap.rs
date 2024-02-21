@@ -1308,6 +1308,184 @@ mod tests {
         assert!(res.unwrap().is_none());
     }
 
+    #[idm_test]
+    async fn test_ldap_application_linked_group(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let usr_name = "testuser1";
+
+        let grp1_uuid = Uuid::new_v4();
+        let grp1_name = "testgroup1";
+        let grp2_uuid = Uuid::new_v4();
+        let grp2_name = "testgroup2";
+
+        let app1_uuid = Uuid::new_v4();
+        let app1_name = "testapp1";
+        let app2_uuid = Uuid::new_v4();
+        let app2_name = "testapp2";
+
+        // Setup person, groups and applications
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(usr_name)),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s(usr_name)),
+                (Attribute::DisplayName, Value::new_utf8s(usr_name))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp1_name)),
+                (Attribute::Uuid, Value::Uuid(grp1_uuid)),
+                (Attribute::Member, Value::Refer(usr_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp2_name)),
+                (Attribute::Uuid, Value::Uuid(grp2_uuid))
+            );
+
+            let e4 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app1_name)),
+                (Attribute::Uuid, Value::Uuid(app1_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
+            );
+
+            let e5 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app2_name)),
+                (Attribute::Uuid, Value::Uuid(app2_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp2_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3, e4, e5])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        let pass_app1: String;
+        let pass_app2: String;
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app1_uuid,
+                "label".to_string(),
+            );
+            pass_app1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            // It is possible to generate an application password even if the
+            // user is not member of the linked group
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app2_uuid,
+                "label".to_string(),
+            );
+            pass_app2 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, not member
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Add user to grp2
+        {
+            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_prox_write
+                .qs_write
+                .internal_modify_uuid(grp2_uuid, &ml)
+                .is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, wrong app
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Bind error, app not exists
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(app2_uuid)
+            )));
+            assert!(idms_prox_write.qs_write.delete(&de).is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_err());
+    }
+
     macro_rules! assert_entry_contains {
         (
             $entry:expr,
