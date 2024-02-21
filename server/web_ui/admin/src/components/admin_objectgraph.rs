@@ -84,11 +84,13 @@ impl Component for AdminObjectGraph {
         console::debug!("views::objectgraph::update");
         match msg {
             Msg::NewObjects { entries } => {
-                console::debug!("Waiter waiter new objects arriveth");
+                #[cfg(debug_assertions)]
+                console::debug!("Received new objects");
                 self.state = State::Ready { entries }
             }
             Msg::NewFilters { filters } => {
-                console::debug!("Waiter waiter new filters arriveth");
+                #[cfg(debug_assertions)]
+                console::debug!("Received new filters");
                 self.filters = filters;
             }
             Msg::Error { emsg, kopid } => self.state = State::Error { emsg, kopid },
