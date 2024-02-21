@@ -1,7 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
-use kanidmd_web_ui_shared::logo_img;
 use regex::Regex;
 use serde::Serialize;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
@@ -9,7 +8,7 @@ use yew::prelude::*;
 
 use crate::components::totpdisplay::TotpDisplayApp;
 use kanidmd_web_ui_shared::constants::{
-    CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, CSS_ALERT_DANGER, URL_USER_HOME,
+    CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, URL_USER_HOME,
 };
 
 use crate::views::ViewProps;

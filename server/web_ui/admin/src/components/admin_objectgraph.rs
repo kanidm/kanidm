@@ -1,13 +1,11 @@
 use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use enum_iterator::{all, Sequence};
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidmd_web_ui_shared::logo_img;
 use yew::prelude::*;
 
-use kanidmd_web_ui_shared::constants::{
-    CSS_ALERT_DANGER, CSS_PAGE_HEADER, URL_USER_HOME,
-};
+use kanidmd_web_ui_shared::constants::CSS_PAGE_HEADER;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 use web_sys::{HtmlInputElement};
@@ -42,12 +40,25 @@ pub enum ObjectType {
     Person,
 }
 
+impl Display for ObjectType {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        let str = match self {
+            ObjectType::Group => "Group",
+            ObjectType::BuiltinGroup => "Built In Group",
+            ObjectType::ServiceAccount => "Service Account",
+            ObjectType::Person => "Person"
+        };
+
+        write!(f, "{str}")
+    }
+}
+
 impl TryFrom<String> for ObjectType {
 
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        return all::<ObjectType>().find(|x| format!("{x:?}") == value).ok_or(())
+        return all::<ObjectType>().find(|x| format!("{x}") == value).ok_or(())
     }
 }
 
@@ -235,7 +246,7 @@ impl AdminObjectGraph {
                     <div class="hstack gap-3">
                     {
                         all::<ObjectType>().map(|ot| {
-                            let str = format!("{:?}", ot);
+                            let str = format!("{}", ot);
                             let selected = filters.contains(&ot);
                             html! {
                                 <>

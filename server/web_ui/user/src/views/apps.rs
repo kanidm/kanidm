@@ -1,16 +1,15 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidmd_web_ui_shared::logo_img;
 use yew::prelude::*;
 
 use kanidmd_web_ui_shared::constants::{
-    CSS_ALERT_DANGER, CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER, URL_USER_HOME,
+    CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 
 use kanidm_proto::internal::AppLink;
-use kanidmd_web_ui_shared::ui::error_page;
+use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 
 pub enum Msg {
     Ready { apps: Vec<AppLink> },
@@ -101,9 +100,7 @@ impl Component for AppsApp {
 
 impl AppsApp {
     fn view_waiting(&self) -> Html {
-        html! {
-
-        }
+        loading_spinner()
     }
 
     fn view_ready(&self, _ctx: &Context<Self>, apps: &[AppLink]) -> Html {

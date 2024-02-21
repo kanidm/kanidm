@@ -4,7 +4,7 @@ use kanidm_proto::internal::{
     CredentialDetail, CredentialDetailType, PasskeyDetail,
 };
 
-use kanidmd_web_ui_shared::constants::{CSS_ALERT_DANGER, URL_USER_HOME};
+use kanidmd_web_ui_shared::constants::URL_USER_HOME;
 use kanidmd_web_ui_shared::models::{get_cred_update_session, pop_return_location};
 use kanidmd_web_ui_shared::utils::{autofocus, do_footer};
 use kanidmd_web_ui_shared::{add_body_form_classes, logo_img, remove_body_form_classes};
