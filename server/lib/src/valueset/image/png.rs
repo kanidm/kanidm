@@ -94,7 +94,7 @@ pub fn png_has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError>
 // needs to be pub for bench things
 pub fn png_lodepng_validate(
     contents: &Vec<u8>,
-    filename: &String,
+    filename: &str,
 ) -> Result<(), ImageValidationError> {
     match lodepng::decode32(contents) {
         Ok(val) => {
@@ -126,14 +126,14 @@ pub fn png_lodepng_validate(
 #[test]
 /// this tests a variety of input options for `png_consume_chunks_until_iend`
 fn test_png_consume_chunks_until_iend() {
-    let mut foo = vec![0, 0, 0, 1]; // the length
+    let mut testchunks = vec![0, 0, 0, 1]; // the length
 
-    foo.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
-    foo.push(1); // the data
-    foo.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
+    testchunks.extend(PNG_CHUNK_END); // ... the type of chunk we're looking at!
+    testchunks.push(1); // the data
+    testchunks.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
     let expected: [u8; 0] = [];
-    let foo = foo.as_slice();
-    let res = png_consume_chunks_until_iend(&foo);
+    let testchunks_slice = testchunks.as_slice();
+    let res = png_consume_chunks_until_iend(&testchunks_slice);
 
     // simple, valid image works
     match res {
@@ -149,10 +149,10 @@ fn test_png_consume_chunks_until_iend() {
     // let's make sure it works with a bunch of different length inputs
     let mut x = 11;
     while x > 0 {
-        let foo = &foo[0..=x];
-        let res = png_consume_chunks_until_iend(&foo);
+        let newslice = &testchunks_slice[0..=x];
+        let res = png_consume_chunks_until_iend(&newslice);
         trace!("chunkstatus at size {} {:?}", x, &res);
         assert!(res.is_err());
-        x = x - 1;
+        x -= 1;
     }
 }

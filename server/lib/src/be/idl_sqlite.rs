@@ -631,7 +631,7 @@ pub(crate) trait IdlSqliteTransaction {
                 Ok(Some(v)) => {
                     let r: Result<String, _> = v.get(0);
                     match r {
-                        Ok(t) if t == "ok" => vec![],
+                        Ok(t) if t == "ok" => Vec::new(),
                         _ => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
                     }
                 }

@@ -1,7 +1,7 @@
 #[cfg(test)]
 macro_rules! setup_test {
     () => {{
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         // Create an in memory BE
         let schema_outer = Schema::new().expect("Failed to init schema");
@@ -27,7 +27,7 @@ macro_rules! setup_test {
     ) => {{
         use crate::prelude::duration_from_epoch_now;
 
-        let _ = sketching::test_init();
+        sketching::test_init();
 
         // Create an in memory BE
         let schema_outer = Schema::new().expect("Failed to init schema");

@@ -360,6 +360,7 @@ impl IdmServerDelayed {
             Err(TryRecvError::Disconnected) => {
                 panic!("Task queue disconnected");
             }
+            #[allow(clippy::panic)]
             Ok(m) => {
                 trace!(?m);
                 panic!("Task queue not empty");
@@ -3665,7 +3666,7 @@ mod tests {
             .internal_search_writeable(&filt)
             .expect("Failed to perform internal search writeable");
         for (_, entry) in work_set.iter_mut() {
-            let _ = entry.force_trim_ava(Attribute::UserAuthTokenSession.into());
+            let _ = entry.force_trim_ava(Attribute::UserAuthTokenSession);
         }
         assert!(idms_prox_write
             .qs_write

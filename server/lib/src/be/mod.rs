@@ -1707,9 +1707,9 @@ impl<'a> BackendWriteTransaction<'a> {
     #[cfg(test)]
     pub fn load_test_idl(
         &mut self,
-        attr: &String,
+        attr: &str,
         itype: IndexType,
-        idx_key: &String,
+        idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
         self.get_idlayer().get_idl(attr, itype, idx_key)
     }
@@ -2135,7 +2135,7 @@ mod tests {
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
-            let _ = sketching::test_init();
+            sketching::test_init();
 
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![

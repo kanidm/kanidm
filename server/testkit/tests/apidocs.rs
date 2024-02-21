@@ -12,13 +12,13 @@ async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient)
     rsclient.set_token("".into()).await;
     info!("Running test: check_that_the_swagger_api_loads");
     let url = rsclient.make_url("/docs/v1/openapi.json");
-    let foo: OpenAPIResponse = reqwest::get(url.clone())
+    let openapi_response: OpenAPIResponse = reqwest::get(url.clone())
         .await
         .expect("Failed to get openapi.json")
         .json()
         .await
         .unwrap();
-    assert!(foo.openapi != "1.2.3");
+    assert!(openapi_response.openapi != "1.2.3");
 
     // this validates that it's valid JSON schema, but not that it's valid openapi... but it's a start.
     let schema: serde_json::Value = reqwest::get(url)

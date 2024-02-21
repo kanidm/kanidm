@@ -143,9 +143,9 @@ impl Display for KanidmClientBuilder {
 
 #[test]
 fn test_kanidmclientbuilder_display() {
-    let foo = KanidmClientBuilder::default();
-    println!("{}", foo);
-    assert!(foo.to_string().contains("verify_ca"));
+    let defaultclient = KanidmClientBuilder::default();
+    println!("{}", defaultclient);
+    assert!(defaultclient.to_string().contains("verify_ca"));
 
     let testclient = KanidmClientBuilder {
         address: Some("https://example.com".to_string()),
@@ -156,7 +156,7 @@ fn test_kanidmclientbuilder_display() {
         use_system_proxies: true,
         token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
     };
-    println!("foo {}", testclient);
+    println!("testclient {}", testclient);
     assert!(testclient.to_string().contains("verify_ca: true"));
     assert!(testclient.to_string().contains("verify_hostnames: true"));
 
