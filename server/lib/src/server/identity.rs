@@ -135,6 +135,10 @@ impl Identity {
         &self.source
     }
 
+    pub fn limits(&self) -> &Limits {
+        &self.limits
+    }
+
     pub fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal,

@@ -49,14 +49,15 @@ pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
+pub const DOMAIN_LEVEL_6: DomainVersion = 6;
 // The minimum level that we can re-migrate from
 pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The minimum supported domain functional level
-pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
+pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 
 // On test builds define to 60 seconds
 #[cfg(test)]
@@ -109,3 +110,19 @@ pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
 /// The amount of time a suppliers clock can be "ahead" before
 /// we warn about possible clock synchronisation issues.
 pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);
+
+/// The default number of entries that a user may retrieve in a search
+pub const DEFAULT_LIMIT_SEARCH_MAX_RESULTS: u64 = 1024;
+/// The default number of entries than an api token may retrieve in a search;
+pub const DEFAULT_LIMIT_API_SEARCH_MAX_RESULTS: u64 = u64::MAX >> 1;
+/// the default number of entries that may be examined in a partially indexed
+/// query.
+pub const DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST: u64 = 2048;
+/// the default number of entries that may be examined in a partially indexed
+/// query by an api token.
+pub const DEFAULT_LIMIT_API_SEARCH_MAX_FILTER_TEST: u64 = 16384;
+/// The maximum number of items in a filter, regardless of nesting level.
+pub const DEFAULT_LIMIT_FILTER_MAX_ELEMENTS: u64 = 32;
+
+/// The maximum amount of recursion allowed in a filter.
+pub const DEFAULT_LIMIT_FILTER_DEPTH_MAX: u64 = 12;

@@ -451,6 +451,7 @@ pub enum UatPurpose {
 /// point onward! This means on updates, that sessions will invalidate in many
 /// cases.
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+#[skip_serializing_none]
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
@@ -466,6 +467,9 @@ pub struct UserAuthToken {
     pub spn: String,
     pub mail_primary: Option<String>,
     pub ui_hints: BTreeSet<UiHint>,
+
+    pub limit_search_max_results: Option<u64>,
+    pub limit_search_max_filter_test: Option<u64>,
 }
 
 impl fmt::Display for UserAuthToken {

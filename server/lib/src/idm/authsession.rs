@@ -1275,14 +1275,7 @@ impl AuthSession {
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(
-                            &auth_type,
-                            time,
-                            async_tx,
-                            cred_id,
-                            self.account_policy.authsession_expiry(),
-                            self.account_policy.privilege_expiry(),
-                        )?;
+                        let uat = self.issue_uat(&auth_type, time, async_tx, cred_id)?;
 
                         let jwt = Jws::into_json(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to serialise into Jws");
@@ -1357,8 +1350,6 @@ impl AuthSession {
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
-        auth_session_expiry: u32,
-        auth_privilege_expiry: u32,
     ) -> Result<UserAuthToken, OperationError> {
         security_debug!("Successful cred handling");
         match self.intent {
@@ -1392,7 +1383,7 @@ impl AuthSession {
 
                 let uat = self
                     .account
-                    .to_userauthtoken(session_id, scope, time, auth_session_expiry)
+                    .to_userauthtoken(session_id, scope, time, &self.account_policy)
                     .ok_or(OperationError::InvalidState)?;
 
                 // Queue the session info write.
@@ -1454,7 +1445,7 @@ impl AuthSession {
                         session_expiry,
                         scope,
                         time,
-                        auth_privilege_expiry,
+                        &self.account_policy,
                     )
                     .ok_or(OperationError::InvalidState)?;
 

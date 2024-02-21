@@ -9,6 +9,8 @@ impl GroupAccountPolicyOpt {
             | GroupAccountPolicyOpt::CredentialTypeMinimum { copt, .. }
             | GroupAccountPolicyOpt::PasswordMinimumLength { copt, .. }
             | GroupAccountPolicyOpt::WebauthnAttestationCaList { copt, .. }
+            | GroupAccountPolicyOpt::LimitSearchMaxResults { copt, .. }
+            | GroupAccountPolicyOpt::LimitSearchMaxFilterTest { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
     }
@@ -80,6 +82,36 @@ impl GroupAccountPolicyOpt {
                     handle_client_error(e, copt.output_mode);
                 } else {
                     println!("Updated webauthn attestation CA list.");
+                }
+            }
+            GroupAccountPolicyOpt::LimitSearchMaxResults {
+                name,
+                maximum,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_limit_search_max_results(name, *maximum)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated search maximum results limit.");
+                }
+            }
+            GroupAccountPolicyOpt::LimitSearchMaxFilterTest {
+                name,
+                maximum,
+                copt,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_limit_search_max_filter_test(name, *maximum)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated search maximum filter test limit.");
                 }
             }
         }

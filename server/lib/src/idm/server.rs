@@ -764,7 +764,17 @@ pub trait IdmServerTransaction<'a> {
             }
         };
 
-        let limits = Limits::default();
+        let mut limits = Limits::default();
+        // Apply the limits from the uat
+        if let Some(lim) = uat.limit_search_max_results.and_then(|v| v.try_into().ok()) {
+            limits.search_max_results = lim;
+        }
+        if let Some(lim) = uat
+            .limit_search_max_filter_test
+            .and_then(|v| v.try_into().ok())
+        {
+            limits.search_max_filter_test = lim;
+        }
 
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
@@ -807,7 +817,7 @@ pub trait IdmServerTransaction<'a> {
 
         let scope = (&apit.purpose).into();
 
-        let limits = Limits::default();
+        let limits = Limits::api_token();
         Ok(Identity {
             origin: IdentType::User(IdentUser { entry }),
             source,
@@ -2161,6 +2171,7 @@ mod tests {
 
     use crate::credential::{Credential, Password};
     use crate::idm::account::DestroySessionTokenEvent;
+    use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
@@ -3844,7 +3855,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3863,7 +3874,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3882,7 +3893,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3901,7 +3912,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3920,7 +3931,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3939,7 +3950,7 @@ mod tests {
                 session_id,
                 SessionScope::ReadWrite,
                 ct,
-                DEFAULT_AUTH_SESSION_EXPIRY,
+                &ResolvedAccountPolicy::test_policy(),
             )
             .expect("Unable to create uat");
         let ident = idms_prox_write
@@ -3951,6 +3962,50 @@ mod tests {
         assert!(!ident.has_claim("authclass_mfa"));
         // Does NOT have this
         assert!(!ident.has_claim("authclass_single"));
+    }
+
+    #[idm_test]
+    async fn test_idm_uat_limits_account_policy(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![E_TESTPERSON_1.clone()])
+            .expect("Failed to create test person");
+
+        // get an account.
+        let account = idms_prox_write
+            .target_to_account(UUID_TESTPERSON_1)
+            .expect("account must exist");
+
+        // Create a fake UATs
+        let session_id = uuid::Uuid::new_v4();
+
+        let uat = account
+            .to_userauthtoken(
+                session_id,
+                SessionScope::ReadWrite,
+                ct,
+                &ResolvedAccountPolicy::test_policy(),
+            )
+            .expect("Unable to create uat");
+
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct, Source::Internal)
+            .expect("Unable to process uat");
+
+        assert_eq!(
+            ident.limits().search_max_results,
+            DEFAULT_LIMIT_SEARCH_MAX_RESULTS as usize
+        );
+        assert_eq!(
+            ident.limits().search_max_filter_test,
+            DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST as usize
+        );
     }
 
     #[idm_test]

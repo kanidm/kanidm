@@ -1,15 +1,17 @@
 use crate::prelude::*;
 use crate::value::CredentialType;
 use webauthn_rs::prelude::AttestationCaList;
-// use crate::idm::server::IdmServerProxyWriteTransaction;
 
 #[derive(Clone)]
+#[cfg_attr(test, derive(Default))]
 pub(crate) struct AccountPolicy {
     privilege_expiry: u32,
     authsession_expiry: u32,
     pw_min_length: u32,
     credential_policy: CredentialType,
     webauthn_att_ca_list: Option<AttestationCaList>,
+    limit_search_max_filter_test: Option<u64>,
+    limit_search_max_results: Option<u64>,
 }
 
 impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
@@ -41,12 +43,22 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
             .get_ava_webauthn_attestation_ca_list(Attribute::WebauthnAttestationCaList)
             .cloned();
 
+        let limit_search_max_results = val
+            .get_ava_single_uint32(Attribute::LimitSearchMaxResults)
+            .map(|u| u as u64);
+
+        let limit_search_max_filter_test = val
+            .get_ava_single_uint32(Attribute::LimitSearchMaxFilterTest)
+            .map(|u| u as u64);
+
         Some(AccountPolicy {
             privilege_expiry,
             authsession_expiry,
             pw_min_length,
             credential_policy,
             webauthn_att_ca_list,
+            limit_search_max_filter_test,
+            limit_search_max_results,
         })
     }
 }
@@ -59,9 +71,24 @@ pub(crate) struct ResolvedAccountPolicy {
     pw_min_length: u32,
     credential_policy: CredentialType,
     webauthn_att_ca_list: Option<AttestationCaList>,
+    limit_search_max_filter_test: Option<u64>,
+    limit_search_max_results: Option<u64>,
 }
 
 impl ResolvedAccountPolicy {
+    #[cfg(test)]
+    pub(crate) fn test_policy() -> Self {
+        ResolvedAccountPolicy {
+            privilege_expiry: DEFAULT_AUTH_PRIVILEGE_EXPIRY,
+            authsession_expiry: DEFAULT_AUTH_SESSION_EXPIRY,
+            pw_min_length: PW_MIN_LENGTH,
+            credential_policy: CredentialType::Any,
+            webauthn_att_ca_list: None,
+            limit_search_max_filter_test: Some(DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST),
+            limit_search_max_results: Some(DEFAULT_LIMIT_SEARCH_MAX_RESULTS),
+        }
+    }
+
     pub(crate) fn fold_from<I>(iter: I) -> Self
     where
         I: Iterator<Item = AccountPolicy>,
@@ -73,6 +100,8 @@ impl ResolvedAccountPolicy {
             pw_min_length: PW_MIN_LENGTH,
             credential_policy: CredentialType::Any,
             webauthn_att_ca_list: None,
+            limit_search_max_filter_test: None,
+            limit_search_max_results: None,
         };
 
         iter.for_each(|acc_pol| {
@@ -94,6 +123,26 @@ impl ResolvedAccountPolicy {
             // Take the greater credential type policy
             if acc_pol.credential_policy > accumulate.credential_policy {
                 accumulate.credential_policy = acc_pol.credential_policy
+            }
+
+            if let Some(pol_lim) = acc_pol.limit_search_max_results {
+                if let Some(acc_lim) = accumulate.limit_search_max_results {
+                    if pol_lim > acc_lim {
+                        accumulate.limit_search_max_results = Some(pol_lim);
+                    }
+                } else {
+                    accumulate.limit_search_max_results = Some(pol_lim);
+                }
+            }
+
+            if let Some(pol_lim) = acc_pol.limit_search_max_filter_test {
+                if let Some(acc_lim) = accumulate.limit_search_max_filter_test {
+                    if pol_lim > acc_lim {
+                        accumulate.limit_search_max_filter_test = Some(pol_lim);
+                    }
+                } else {
+                    accumulate.limit_search_max_filter_test = Some(pol_lim);
+                }
             }
 
             if let Some(acc_pol_w_att_ca) = acc_pol.webauthn_att_ca_list {
@@ -126,6 +175,14 @@ impl ResolvedAccountPolicy {
 
     pub(crate) fn webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
         self.webauthn_att_ca_list.as_ref()
+    }
+
+    pub(crate) fn limit_search_max_results(&self) -> Option<u64> {
+        self.limit_search_max_results
+    }
+
+    pub(crate) fn limit_search_max_filter_test(&self) -> Option<u64> {
+        self.limit_search_max_filter_test
     }
 }
 
@@ -205,6 +262,8 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
             pw_min_length: 11,
             credential_policy: CredentialType::Mfa,
             webauthn_att_ca_list: Some(att_ca_list_a),
+            limit_search_max_filter_test: Some(10),
+            limit_search_max_results: Some(10),
         };
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -224,6 +283,8 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
             pw_min_length: 15,
             credential_policy: CredentialType::Passkey,
             webauthn_att_ca_list: Some(att_ca_list_b),
+            limit_search_max_filter_test: Some(5),
+            limit_search_max_results: Some(15),
         };
 
         let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
@@ -232,6 +293,8 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
         assert_eq!(rap.authsession_expiry(), 50);
         assert_eq!(rap.pw_min_length(), 15);
         assert_eq!(rap.credential_policy, CredentialType::Passkey);
+        assert_eq!(rap.limit_search_max_results(), Some(15));
+        assert_eq!(rap.limit_search_max_filter_test(), Some(10));
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
 

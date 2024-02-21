@@ -533,6 +533,59 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_account_policy_manage",
+        uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
+        description: "Builtin IDM Control for management of account policy on groups",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+        ],
+        modify_classes: vec![EntryClass::AccountPolicy,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_OAUTH2_MANAGE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,

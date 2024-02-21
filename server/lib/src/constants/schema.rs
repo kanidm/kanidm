@@ -618,6 +618,26 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM: SchemaAttribute = SchemaAttr
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS,
+    name: Attribute::LimitSearchMaxResults.into(),
+    description: "The maximum number of query results that may be returned in a single operation.".to_string(),
+
+    multivalue: false,
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST,
+    name: Attribute::LimitSearchMaxFilterTest.into(),
+    description: "The maximum number of entries that may be examined in a partially indexed query".to_string(),
+
+    multivalue: false,
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -717,6 +737,23 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
         Attribute::AuthPasswordMinimumLength.into(),
         Attribute::CredentialTypeMinimum.into(),
         Attribute::WebauthnAttestationCaList.into(),
+    ],
+    systemsupplements: vec![Attribute::Group.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_ACCOUNT_POLICY_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
+    name: EntryClass::AccountPolicy.into(),
+    description: "Policies applied to accounts that are members of a group".to_string(),
+    systemmay: vec![
+        Attribute::AuthSessionExpiry.into(),
+        Attribute::PrivilegeExpiry.into(),
+        Attribute::AuthPasswordMinimumLength.into(),
+        Attribute::CredentialTypeMinimum.into(),
+        Attribute::WebauthnAttestationCaList.into(),
+        Attribute::LimitSearchMaxResults.into(),
+        Attribute::LimitSearchMaxFilterTest.into(),
     ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()

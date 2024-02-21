@@ -68,4 +68,28 @@ impl KanidmClient {
         )
         .await
     }
+
+    pub async fn group_account_policy_limit_search_max_results(
+        &self,
+        id: &str,
+        maximum: u32,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/limit_search_max_results", id),
+            vec![maximum.to_string()],
+        )
+        .await
+    }
+
+    pub async fn group_account_policy_limit_search_max_filter_test(
+        &self,
+        id: &str,
+        maximum: u32,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/limit_search_max_filter_test", id),
+            vec![maximum.to_string()],
+        )
+        .await
+    }
 }
