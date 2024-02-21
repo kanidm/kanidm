@@ -9,7 +9,7 @@ use compact_jwt::JwsCompact;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use std::net::IpAddr;
 use tracing::trace;
 use uuid::Uuid;
@@ -88,8 +88,26 @@ impl LdapServer {
             })
             .ok_or(OperationError::InvalidEntryState)?;
 
-        let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{basedn}$").as_str())
-            .map_err(|_| OperationError::InvalidEntryState)?;
+        // It is necessary to swap greed to avoid the first group "<attr>=<val>" matching the
+        // next group "app=<app>", son one can use "app=app1,dc=test,dc=net" as search base:
+        // Greedy (app=app1,dc=test,dc=net):
+        //     Match 1      - app=app1,dc=test,dc=net
+        //     Group 1      - app=app1,
+        //     Group <attr> - app
+        //     Group <val>  - app1
+        //     Group 6      - dc=test,dc=net
+        // Ungreedy (app=app1,dc=test,dc=net):
+        //     Match 1      - app=app1,dc=test,dc=net
+        //     Group 4      - app=app1,
+        //     Group <app>  - app1
+        //     Group 6      - dc=test,dc=net
+        let dnre = RegexBuilder::new(
+            format!("^((?P<attr>[^=,]+)=(?P<val>[^=,]+),)?(app=(?P<app>[^=,]+),)?({basedn})$")
+                .as_str(),
+        )
+        .swap_greed(true)
+        .build()
+        .map_err(|_| OperationError::InvalidEntryState)?;
 
         let binddnre = Regex::new(
             format!("^((([^=,]+)=)?(?P<val>[^=,]+))(,app=(?P<app>[^=,]+))?(,{basedn})?$").as_str(),
@@ -1032,6 +1050,109 @@ mod tests {
             .is_err());
 
         assert!(ldaps.do_bind(idms, "claire", "test").await.is_err());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_dnre(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let testdn = format!("app=app1,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_some());
+        assert!(captures.name("attr").is_none());
+        assert!(captures.name("val").is_none());
+
+        let testdn = format!("uid=foo,app=app1,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_some());
+        assert!(captures.name("attr").is_some());
+        assert!(captures.name("val").is_some());
+
+        let testdn = format!("uid=foo,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_none());
+        assert!(captures.name("attr").is_some());
+        assert!(captures.name("val").is_some());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
+        let app_uuid = Uuid::new_v4();
+        let app_name = "testapp1";
+
+        // Setup person, group and application
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup1")),
+                (Attribute::Uuid, Value::Uuid(grp_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app_name)),
+                (Attribute::Uuid, Value::Uuid(app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // Searches under application base DN must show same content
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("app={app_name},dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["*".to_string()],
+        };
+
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["*".to_string()],
+        };
+
+        let r2 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+        assert!(r1.len() > 0);
+        assert!(r1.len() == r2.len());
     }
 
     #[idm_test]
