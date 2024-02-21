@@ -13,7 +13,7 @@ use yew_router::Routable;
 use crate::router::AdminRoute;
 use kanidm_proto::v1::Entry;
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
-use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank};
+use kanidmd_web_ui_shared::utils::{init_graphviz, open_blank};
 
 pub enum Msg {
     NewFilters { filters: Vec<ObjectType> },
@@ -230,24 +230,23 @@ impl AdminObjectGraph {
         sb.push('}');
         init_graphviz(sb.as_str());
 
+        let node_refs = all::<ObjectType>()
+            .map(|object_type: ObjectType| { (object_type, NodeRef::default()) })
+            .collect::<Vec<_>>();
+
         let on_checkbox_click = {
             let scope = ctx.link().clone();
+            let node_refs = node_refs.clone();
             move |_: Event| {
-                let coll = document().get_elements_by_class_name("obj-graph-filter-cb");
                 let mut filters = vec![];
 
-                for i in 0..coll.length() {
-                    let option = coll
-                        .get_with_index(i)
-                        .expect("couldnt get elem between 0 and selection length ???");
-                    let input_el = option.unchecked_into::<HtmlInputElement>();
-                    let checked = input_el.checked();
+                for (obj_type, node_ref) in &node_refs {
+                    if let Some(input_el) = node_ref.cast::<HtmlInputElement>() {
+                        let checked = input_el.checked();
 
-                    if checked {
-                        let value = input_el.id();
-                        let obj_type = ObjectType::try_from(value)
-                            .expect("Option attribute —value— is not a valid ObjectType");
-                        filters.push(obj_type);
+                        if checked {
+                            filters.push(*obj_type);
+                        }
                     }
                 }
                 scope.send_message(Msg::NewFilters { filters });
@@ -273,16 +272,17 @@ impl AdminObjectGraph {
                 <div class="column">
                     <div class="hstack gap-3">
                     {
-                        all::<ObjectType>().map(|ot| {
+                        node_refs.iter().map(|(ot, node_ref)| {
                             let str = format!("{}", ot);
                             let selected = filters.contains(&ot);
+
                             html! {
                                 <>
                                 <div class="form-check">
-                                  <input class="form-check-input obj-graph-filter-cb" type="checkbox" id={str.clone()} onchange={on_checkbox_click.clone()} checked={selected}/>
+                                  <input class="form-check-input obj-graph-filter-cb" type="checkbox" ref={ node_ref } id={str.clone()} onchange={on_checkbox_click.clone()} checked={selected}/>
                                   <label class="form-check-label" for={str.clone()}>{str.clone()}</label>
                                 </div>
-                                if ot != ObjectType::last().unwrap() {
+                                if *ot != ObjectType::last().unwrap() {
                                     <div class="vr"></div>
                                 }
                                 </>
