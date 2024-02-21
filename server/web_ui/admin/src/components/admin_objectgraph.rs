@@ -1,7 +1,6 @@
 use enum_iterator::{all, Sequence};
 #[cfg(debug_assertions)]
 use gloo::console;
-use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use yew::prelude::*;
 
@@ -57,9 +56,9 @@ impl TryFrom<String> for ObjectType {
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        return all::<ObjectType>()
+        all::<ObjectType>()
             .find(|x| format!("{x}") == value)
-            .ok_or(());
+            .ok_or(())
     }
 }
 
@@ -141,8 +140,8 @@ impl AdminObjectGraph {
     fn view_ready(
         &self,
         ctx: &Context<Self>,
-        filters: &Vec<ObjectType>,
-        entries: &Vec<Entry>,
+        filters: &[ObjectType],
+        entries: &[Entry],
     ) -> Html {
         let typed_entries = entries
             .iter()
@@ -175,11 +174,11 @@ impl AdminObjectGraph {
                 let spn = entry.attrs.get("spn")?.first()?;
                 Some((spn.clone(), uuid.clone(), obj_type))
             })
-            .collect::<HashSet<(String, String, ObjectType)>>();
+            .collect::<Vec<(String, String, ObjectType)>>();
 
         // Vec<obj, uuid, obj's members>
         let members_of = entries
-            .into_iter()
+            .iter()
             .filter_map(|entry| {
                 let spn = entry.attrs.get("spn")?.first()?.clone();
                 let uuid = entry.attrs.get("uuid")?.first()?.clone();
@@ -228,8 +227,8 @@ impl AdminObjectGraph {
                 .as_str(),
             );
         }
-        sb.push_str("}");
-        init_graphviz(&sb.as_str());
+        sb.push('}');
+        init_graphviz(sb.as_str());
 
         let on_checkbox_click = {
             let scope = ctx.link().clone();
@@ -237,7 +236,7 @@ impl AdminObjectGraph {
                 let coll = document().get_elements_by_class_name("obj-graph-filter-cb");
                 let mut filters = vec![];
 
-                for i in 0..*&coll.length() {
+                for i in 0..coll.length() {
                     let option = coll
                         .get_with_index(i)
                         .expect("couldnt get elem between 0 and selection length ???");

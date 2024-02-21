@@ -2,7 +2,6 @@ use crate::common::OpType;
 use crate::{handle_client_error, GraphCommonOpt, GraphType, ObjectType, OutputMode};
 use kanidm_client::ClientError;
 use kanidm_proto::v1::Entry;
-use std::collections::HashSet;
 use tokio::join;
 
 impl GraphCommonOpt {
@@ -76,7 +75,7 @@ impl GraphCommonOpt {
                         let spn = entry.attrs.get("spn")?.first()?;
                         Some((spn.clone(), uuid.clone(), obj_type))
                     })
-                    .collect::<HashSet<(String, String, ObjectType)>>();
+                    .collect::<Vec<(String, String, ObjectType)>>();
 
                 // Vec<obj, uuid, obj's members>
                 let members_of = entries
@@ -108,7 +107,7 @@ impl GraphCommonOpt {
     }
 
     fn print_graphviz_graph(
-        typed_entries: &HashSet<(String, String, ObjectType)>,
+        typed_entries: &Vec<(String, String, ObjectType)>,
         members_of: &Vec<(String, Vec<String>)>,
     ) {
         println!("digraph {{");
@@ -137,7 +136,7 @@ impl GraphCommonOpt {
     }
 
     fn print_mermaid_graph(
-        typed_entries: HashSet<(String, String, ObjectType)>,
+        typed_entries: Vec<(String, String, ObjectType)>,
         members_of: Vec<(String, Vec<String>)>,
     ) {
         println!("graph RL");
@@ -147,7 +146,7 @@ impl GraphCommonOpt {
                 .filter(|member| typed_entries.iter().any(|(spn, _, _)| spn == *member))
                 .for_each(|member| {
                     let at_less_name = Self::mermaid_id_from_spn(&spn);
-                    let at_less_member = Self::mermaid_id_from_spn(&member);
+                    let at_less_member = Self::mermaid_id_from_spn(member);
                     println!("  {at_less_name}[\"{spn}\"] --> {at_less_member}[\"{member}\"]")
                 });
         }
@@ -171,7 +170,7 @@ impl GraphCommonOpt {
         }
     }
 
-    fn mermaid_id_from_spn(spn: &String) -> String {
+    fn mermaid_id_from_spn(spn: &str) -> String {
         spn.replace('@', "_")
     }
 }

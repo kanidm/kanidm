@@ -18,7 +18,7 @@ function replace_tag(node, new_tag) {
         newNode.setAttribute(name, value);
     });
 
-    while (node.firstCdwahild) {
+    while (node.firstChild) {
         newNode.appendChild(node.firstChild);
     }
 
