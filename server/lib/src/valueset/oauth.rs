@@ -637,12 +637,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().flat_map(|(name, mapping)| {
             mapping.values.iter().map(move |(group, claims)| {
-                let join_char = match mapping.join {
-                    OauthClaimMapJoin::CommaSeparatedValue => ',',
-                    OauthClaimMapJoin::SpaceSeparatedValue => ' ',
-                    // Should this be something else?
-                    OauthClaimMapJoin::JsonArray => ';',
-                };
+                let join_char = mapping.join.to_char();
 
                 let joined = str_concat!(claims, join_char);
 
