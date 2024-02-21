@@ -2,9 +2,7 @@
 use gloo::console;
 use yew::prelude::*;
 
-use kanidmd_web_ui_shared::constants::{
-    CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER
-};
+use kanidmd_web_ui_shared::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 

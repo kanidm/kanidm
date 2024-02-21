@@ -12,8 +12,8 @@ use kanidmd_web_ui_shared::constants::{
 };
 
 use crate::views::ViewProps;
-use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum IdentifyUserState {

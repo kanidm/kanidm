@@ -1,12 +1,11 @@
-use std::collections::HashSet;
-use tokio::join;
+use crate::common::OpType;
+use crate::{handle_client_error, GraphCommonOpt, GraphType, ObjectType, OutputMode};
 use kanidm_client::ClientError;
 use kanidm_proto::v1::Entry;
-use crate::common::OpType;
-use crate::{GraphType, handle_client_error, OutputMode, GraphCommonOpt, ObjectType};
+use std::collections::HashSet;
+use tokio::join;
 
 impl GraphCommonOpt {
-
     pub fn debug(&self) -> bool {
         self.copt.debug
     }
@@ -18,12 +17,16 @@ impl GraphCommonOpt {
         let graph_type = &gopt.graph_type;
         let filters = &gopt.filter;
 
-        let arr_result: [Result<Vec<Entry>, ClientError>; 3] = join!(client.idm_group_list(), client.idm_service_account_list(), client.idm_person_account_list())
-            .into();
+        let arr_result: [Result<Vec<Entry>, ClientError>; 3] = join!(
+            client.idm_group_list(),
+            client.idm_service_account_list(),
+            client.idm_person_account_list()
+        )
+        .into();
         let list_result: Result<Vec<Entry>, ClientError> = arr_result
             .into_iter()
             .collect::<Result<Vec<_>, _>>()
-            .map(|v| { v.into_iter().flatten().collect() });
+            .map(|v| v.into_iter().flatten().collect());
         let entries = match list_result {
             Ok(entries) => entries,
             Err(e) => {
@@ -42,7 +45,8 @@ impl GraphCommonOpt {
             }
             OutputMode::Text => {
                 println!("Showing graph for type: {graph_type:?}, filters: {filters:?}\n");
-                let typed_entries = entries.iter()
+                let typed_entries = entries
+                    .iter()
                     .filter_map(|entry| {
                         let classes = entry.attrs.get("class")?;
                         let uuid = entry.attrs.get("uuid")?.first()?;
@@ -71,19 +75,25 @@ impl GraphCommonOpt {
 
                         let spn = entry.attrs.get("spn")?.first()?;
                         Some((spn.clone(), uuid.clone(), obj_type))
-                    }).collect::<HashSet<(String, String, ObjectType)>>();
+                    })
+                    .collect::<HashSet<(String, String, ObjectType)>>();
 
                 // Vec<obj, uuid, obj's members>
-                let members_of = entries.into_iter().filter_map(|entry| {
-                    let spn = entry.attrs.get("spn")?.first()?.clone();
-                    let uuid = entry.attrs.get("uuid")?.first()?.clone();
-                    let keep = typed_entries.iter().any(|(_, filtered_uuid, _)| { &uuid == filtered_uuid });
-                    if keep {
-                        Some((spn, entry.attrs.get("member")?.clone()))
-                    } else {
-                        None
-                    }
-                }).collect::<Vec<_>>();
+                let members_of = entries
+                    .into_iter()
+                    .filter_map(|entry| {
+                        let spn = entry.attrs.get("spn")?.first()?.clone();
+                        let uuid = entry.attrs.get("uuid")?.first()?.clone();
+                        let keep = typed_entries
+                            .iter()
+                            .any(|(_, filtered_uuid, _)| &uuid == filtered_uuid);
+                        if keep {
+                            Some((spn, entry.attrs.get("member")?.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect::<Vec<_>>();
 
                 match graph_type {
                     GraphType::Graphviz => Self::print_graphviz_graph(&typed_entries, &members_of),
@@ -97,12 +107,16 @@ impl GraphCommonOpt {
         }
     }
 
-    fn print_graphviz_graph(typed_entries: &HashSet<(String, String, ObjectType)>, members_of: &Vec<(String, Vec<String>)>) {
+    fn print_graphviz_graph(
+        typed_entries: &HashSet<(String, String, ObjectType)>,
+        members_of: &Vec<(String, Vec<String>)>,
+    ) {
         println!("digraph {{");
         println!(r#"  rankdir="RL""#);
 
         for (spn, members) in members_of {
-            members.iter()
+            members
+                .iter()
                 .filter(|member| typed_entries.iter().any(|(spn, _, _)| spn == *member))
                 .for_each(|member| {
                     println!(r#"  "{spn}" -> "{member}""#);
@@ -122,10 +136,14 @@ impl GraphCommonOpt {
         println!("}}");
     }
 
-    fn print_mermaid_graph(typed_entries: HashSet<(String, String, ObjectType)>, members_of: Vec<(String, Vec<String>)>) {
+    fn print_mermaid_graph(
+        typed_entries: HashSet<(String, String, ObjectType)>,
+        members_of: Vec<(String, Vec<String>)>,
+    ) {
         println!("graph RL");
         for (spn, members) in members_of {
-            members.iter()
+            members
+                .iter()
                 .filter(|member| typed_entries.iter().any(|(spn, _, _)| spn == *member))
                 .for_each(|member| {
                     let at_less_name = Self::mermaid_id_from_spn(&spn);
@@ -133,7 +151,9 @@ impl GraphCommonOpt {
                     println!("  {at_less_name}[\"{spn}\"] --> {at_less_member}[\"{member}\"]")
                 });
         }
-        println!("  classDef groupClass fill:#f9f,stroke:#333,stroke-width:4px,stroke-dasharray: 5 5");
+        println!(
+            "  classDef groupClass fill:#f9f,stroke:#333,stroke-width:4px,stroke-dasharray: 5 5"
+        );
         println!("  classDef builtInGroupClass fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff,stroke-dasharray: 5 5");
         println!("  classDef serviceAccountClass fill:#f9f,stroke:#333,stroke-width:4px");
         println!("  classDef personClass fill:#bbf,stroke:#f66,stroke-width:2px,color:#fff");

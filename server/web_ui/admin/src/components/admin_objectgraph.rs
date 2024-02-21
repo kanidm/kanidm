@@ -1,20 +1,20 @@
-use std::collections::HashSet;
-use std::fmt::{Display, Formatter};
 use enum_iterator::{all, Sequence};
 #[cfg(debug_assertions)]
 use gloo::console;
+use std::collections::HashSet;
+use std::fmt::{Display, Formatter};
 use yew::prelude::*;
 
 use kanidmd_web_ui_shared::constants::CSS_PAGE_HEADER;
 use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
-use web_sys::{HtmlInputElement};
+use web_sys::HtmlInputElement;
 use yew_router::Routable;
 
-use kanidm_proto::v1::{Entry};
+use crate::router::AdminRoute;
+use kanidm_proto::v1::Entry;
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 use kanidmd_web_ui_shared::utils::{document, init_graphviz, open_blank};
-use crate::router::AdminRoute;
 
 pub enum Msg {
     NewFilters { filters: Vec<ObjectType> },
@@ -46,7 +46,7 @@ impl Display for ObjectType {
             ObjectType::Group => "Group",
             ObjectType::BuiltinGroup => "Built In Group",
             ObjectType::ServiceAccount => "Service Account",
-            ObjectType::Person => "Person"
+            ObjectType::Person => "Person",
         };
 
         write!(f, "{str}")
@@ -54,11 +54,12 @@ impl Display for ObjectType {
 }
 
 impl TryFrom<String> for ObjectType {
-
     type Error = ();
 
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        return all::<ObjectType>().find(|x| format!("{x}") == value).ok_or(())
+        return all::<ObjectType>()
+            .find(|x| format!("{x}") == value)
+            .ok_or(());
     }
 }
 
@@ -81,13 +82,15 @@ impl Component for AdminObjectGraph {
         #[cfg(debug_assertions)]
         console::debug!("views::objectgraph::create");
 
-        ctx.link().send_future(async {
-            Self::fetch_objects().await.unwrap_or_else(|v| v.into())
-        });
+        ctx.link()
+            .send_future(async { Self::fetch_objects().await.unwrap_or_else(|v| v.into()) });
 
         let state = State::Waiting;
 
-        AdminObjectGraph { state, filters: vec![] }
+        AdminObjectGraph {
+            state,
+            filters: vec![],
+        }
     }
 
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
@@ -120,7 +123,7 @@ impl Component for AdminObjectGraph {
         match &self.state {
             State::Waiting => self.view_waiting(),
             State::Ready { entries } => self.view_ready(ctx, &self.filters, entries),
-            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref())
+            State::Error { emsg, kopid } => self.view_error(ctx, emsg, kopid.as_deref()),
         }
     }
 
@@ -135,8 +138,14 @@ impl AdminObjectGraph {
         loading_spinner()
     }
 
-    fn view_ready(&self, ctx: &Context<Self>, filters: &Vec<ObjectType>, entries: &Vec<Entry>) -> Html {
-        let typed_entries = entries.iter()
+    fn view_ready(
+        &self,
+        ctx: &Context<Self>,
+        filters: &Vec<ObjectType>,
+        entries: &Vec<Entry>,
+    ) -> Html {
+        let typed_entries = entries
+            .iter()
             .filter_map(|entry| {
                 let classes = entry.attrs.get("class")?;
                 let uuid = entry.attrs.get("uuid")?.first()?;
@@ -165,26 +174,32 @@ impl AdminObjectGraph {
 
                 let spn = entry.attrs.get("spn")?.first()?;
                 Some((spn.clone(), uuid.clone(), obj_type))
-            }).collect::<HashSet<(String, String, ObjectType)>>();
-
+            })
+            .collect::<HashSet<(String, String, ObjectType)>>();
 
         // Vec<obj, uuid, obj's members>
-        let members_of = entries.into_iter().filter_map(|entry| {
-            let spn = entry.attrs.get("spn")?.first()?.clone();
-            let uuid = entry.attrs.get("uuid")?.first()?.clone();
-            let keep = typed_entries.iter().any(|(_, filtered_uuid, _)| { &uuid == filtered_uuid });
-            if keep {
-                Some((spn, uuid, entry.attrs.get("member")?.clone()))
-            } else {
-                None
-            }
-        }).collect::<Vec<_>>();
+        let members_of = entries
+            .into_iter()
+            .filter_map(|entry| {
+                let spn = entry.attrs.get("spn")?.first()?.clone();
+                let uuid = entry.attrs.get("uuid")?.first()?.clone();
+                let keep = typed_entries
+                    .iter()
+                    .any(|(_, filtered_uuid, _)| &uuid == filtered_uuid);
+                if keep {
+                    Some((spn, uuid, entry.attrs.get("member")?.clone()))
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
 
         // Constructing graph source
         let mut sb = String::new();
         sb.push_str("digraph {\n  rankdir=\"RL\"\n");
         for (spn, _, members) in members_of {
-            members.iter()
+            members
+                .iter()
                 .filter(|member| typed_entries.iter().any(|(spn, _, _)| spn == *member))
                 .for_each(|member| {
                     sb.push_str(format!(r#"  "{spn}" -> "{member}"{}"#, "\n").as_str());
@@ -194,12 +209,24 @@ impl AdminObjectGraph {
         for (spn, uuid, obj_type) in typed_entries {
             let (color, shape, route) = match obj_type {
                 ObjectType::Group => ("#b86367", "box", AdminRoute::ViewGroup { uuid }),
-                ObjectType::BuiltinGroup => ("#8bc1d6", "component", AdminRoute::ViewGroup { uuid }),
-                ObjectType::ServiceAccount => ("#77c98d", "parallelogram", AdminRoute::ViewServiceAccount { uuid }),
+                ObjectType::BuiltinGroup => {
+                    ("#8bc1d6", "component", AdminRoute::ViewGroup { uuid })
+                }
+                ObjectType::ServiceAccount => (
+                    "#77c98d",
+                    "parallelogram",
+                    AdminRoute::ViewServiceAccount { uuid },
+                ),
                 ObjectType::Person => ("#af8bd6", "ellipse", AdminRoute::ViewPerson { uuid }),
             };
             let url = route.to_path();
-            sb.push_str(format!(r#"  "{spn}" [color = "{color}", shape = {shape}, URL = "{url}"]{}"#, "\n").as_str());
+            sb.push_str(
+                format!(
+                    r#"  "{spn}" [color = "{color}", shape = {shape}, URL = "{url}"]{}"#,
+                    "\n"
+                )
+                .as_str(),
+            );
         }
         sb.push_str("}");
         init_graphviz(&sb.as_str());
@@ -211,14 +238,16 @@ impl AdminObjectGraph {
                 let mut filters = vec![];
 
                 for i in 0..*&coll.length() {
-                    let option = coll.get_with_index(i)
+                    let option = coll
+                        .get_with_index(i)
                         .expect("couldnt get elem between 0 and selection length ???");
                     let input_el = option.unchecked_into::<HtmlInputElement>();
                     let checked = input_el.checked();
 
                     if checked {
                         let value = input_el.id();
-                        let obj_type = ObjectType::try_from(value).expect("Option attribute —value— is not a valid ObjectType");
+                        let obj_type = ObjectType::try_from(value)
+                            .expect("Option attribute —value— is not a valid ObjectType");
                         filters.push(obj_type);
                     }
                 }
@@ -279,29 +308,33 @@ impl AdminObjectGraph {
         let mut results = Vec::new();
 
         for url in urls {
-            let (kopid, status, value, _) = do_request(url, RequestMethod::GET, None::<JsValue>).await?;
+            let (kopid, status, value, _) =
+                do_request(url, RequestMethod::GET, None::<JsValue>).await?;
             results.push((kopid, status, value));
         }
 
-        let mapped: Vec<_> = results.into_iter().map(|(kopid, status, value)| {
-            if status == 200 {
-                let entries: Vec<Entry> = serde_wasm_bindgen::from_value(value)
-                    .expect_throw("Invalid response type - auth_init::AuthResponse");
-                Ok(entries)
-            } else {
-                let emsg = value.as_string().unwrap_or_default();
-                Err(Msg::Error { emsg, kopid })
-            }
-        }).collect();
+        let mapped: Vec<_> = results
+            .into_iter()
+            .map(|(kopid, status, value)| {
+                if status == 200 {
+                    let entries: Vec<Entry> = serde_wasm_bindgen::from_value(value)
+                        .expect_throw("Invalid response type - auth_init::AuthResponse");
+                    Ok(entries)
+                } else {
+                    let emsg = value.as_string().unwrap_or_default();
+                    Err(Msg::Error { emsg, kopid })
+                }
+            })
+            .collect();
 
         let list_result: Result<Vec<Entry>, Msg> = mapped
             .into_iter()
             .collect::<Result<Vec<_>, _>>()
-            .map(|v| { v.into_iter().flatten().collect() });
+            .map(|v| v.into_iter().flatten().collect());
 
         match list_result {
             Ok(entries) => Ok(Msg::NewObjects { entries }),
-            Err(e) => Ok(e)
+            Err(e) => Ok(e),
         }
     }
 }

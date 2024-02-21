@@ -26,6 +26,7 @@ include!("../opt/kanidm.rs");
 
 mod common;
 mod domain;
+mod graph;
 mod group;
 mod oauth2;
 mod person;
@@ -33,7 +34,6 @@ mod raw;
 mod recycle;
 mod serviceaccount;
 mod session;
-mod graph;
 mod synch;
 mod system_config;
 mod webauthn;

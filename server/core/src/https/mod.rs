@@ -154,14 +154,12 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
                 filepath,
             )) {
-                Ok(hash) => {
-                    all_pages.push(JavaScriptFile {
-                        filepath,
-                        dynamic,
-                        hash,
-                        filetype,
-                    })
-                }
+                Ok(hash) => all_pages.push(JavaScriptFile {
+                    filepath,
+                    dynamic,
+                    hash,
+                    filetype,
+                }),
                 Err(err) => {
                     admin_error!(
                         ?err,

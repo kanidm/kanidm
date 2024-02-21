@@ -20,8 +20,8 @@ use super::passkeyremove::PasskeyRemoveModalApp;
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
 use super::totpremove::TotpRemoveComp;
-use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 use kanidmd_web_ui_shared::ui::error_page;
+use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 // use std::rc::Rc;
 

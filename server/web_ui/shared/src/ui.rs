@@ -41,10 +41,10 @@ pub async fn ui_logout() -> Result<(), (String, Option<String>)> {
 
 /// Builds the signout modal dialogue box - the "target" is the Message to send when clicked.
 pub fn signout_modal<T, U>(ctx: &Context<T>, target: U) -> Html
-    where
-        T: BaseComponent,
-        U: Clone + 'static,
-        <T as BaseComponent>::Message: From<U>,
+where
+    T: BaseComponent,
+    U: Clone + 'static,
+    <T as BaseComponent>::Message: From<U>,
 {
     html! {<div class="modal" tabindex="-1" role="dialog" id={ID_SIGNOUTMODAL}>
         <div class="modal-dialog" role="document">
