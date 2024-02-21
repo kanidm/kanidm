@@ -8,7 +8,7 @@ if [ -z "${ARCH}" ]; then
     ARCH="$(dpkg --print-architecture)"
 fi
 
-if [ "${ARCH}" != "$(dpkg --print-architecture)" ]; then
+if [[ "${ARCH}" != "$(dpkg --print-architecture)" ]]; then
     echo "${ARCH} != $(dpkg --print-architecture), cross-compiling!"
     export PKG_CONFIG_ALLOW_CROSS=1
 else
