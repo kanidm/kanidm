@@ -2,7 +2,7 @@ use hashbrown::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 
 use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
-use kanidm_proto::v1::*;
+use kanidm_proto::internal::*;
 use uuid::Uuid;
 
 use crate::data::*;

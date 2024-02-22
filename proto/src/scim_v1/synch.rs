@@ -60,11 +60,11 @@ pub const SCIM_DIGITS: &str = "digits";
 pub const SCIM_SECRET: &str = "secret";
 pub const SCIM_STEP: &str = "step";
 
-pub const SCIM_SCHEMA_SYNC: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:";
-pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:person";
-pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:account";
+pub const SCIM_SCHEMA_SYNC_1: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:";
+pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:person";
+pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:account";
 pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
-    "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount";
+    "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimTotp {
@@ -281,3 +281,4 @@ impl Into<ScimEntry> for ScimSyncGroup {
         }
     }
 }
+

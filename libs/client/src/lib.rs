@@ -30,6 +30,7 @@ use kanidm_proto::constants::{
     KVERSION,
 };
 use kanidm_proto::v1::*;
+use kanidm_proto::internal::*;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;
 pub use reqwest::StatusCode;

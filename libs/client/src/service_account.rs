@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 
 use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME};
-use kanidm_proto::v1::{AccountUnixExtend, ApiToken, ApiTokenGenerate, CredentialStatus, Entry};
+use kanidm_proto::v1::{AccountUnixExtend, ApiTokenGenerate, Entry};
+use kanidm_proto::internal::{ApiToken, CredentialStatus};
 use time::OffsetDateTime;
 use uuid::Uuid;
 
