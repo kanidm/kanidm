@@ -25,8 +25,9 @@ impl Default for DefaultMakeSpanKanidmd {
 }
 
 impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
-    #[instrument(name = "handle_request", skip_all, fields(latency, status_code))]
     fn make_span(&mut self, request: &Request<B>) -> Span {
+        // Needs to be at info to ensure that there is always a span for each
+        // tracing event to hook into.
         tracing::span!(
             Level::INFO,
             "request",
@@ -77,7 +78,7 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
         };
         let (level, msg) =
             match response.status().is_success() || response.status().is_informational() {
-                true => (Level::INFO, "response sent"),
+                true => (Level::DEBUG, "response sent"),
                 false => {
                     if response.status().is_redirection() {
                         (Level::INFO, "client redirection sent")
