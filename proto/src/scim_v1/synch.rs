@@ -61,10 +61,13 @@ pub const SCIM_SECRET: &str = "secret";
 pub const SCIM_STEP: &str = "step";
 
 pub const SCIM_SCHEMA_SYNC_1: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:";
-pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:person";
 pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:account";
+pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:group";
+pub const SCIM_SCHEMA_SYNC_PERSON: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:person";
 pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
     "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount";
+pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str =
+    "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup";
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimTotp {
@@ -206,9 +209,6 @@ impl Into<ScimEntry> for ScimSyncPerson {
     }
 }
 
-pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:group";
-pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str = "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup";
-
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimExternalMember {
     pub external_id: String,
@@ -281,4 +281,3 @@ impl Into<ScimEntry> for ScimSyncGroup {
         }
     }
 }
-

@@ -19,10 +19,11 @@ use std::collections::BTreeSet;
 #[cfg(test)]
 use std::sync::Arc;
 
-use kanidm_proto::v1::{
-    CreateRequest, DeleteRequest, Entry as ProtoEntry, ModifyList as ProtoModifyList,
-    ModifyRequest, OperationError, SearchRequest, SearchResponse, WhoamiResponse,
+use kanidm_proto::internal::{
+    CreateRequest, DeleteRequest, ModifyList as ProtoModifyList, ModifyRequest, OperationError,
+    SearchRequest, SearchResponse,
 };
+use kanidm_proto::v1::{Entry as ProtoEntry, WhoamiResponse};
 use ldap3_proto::simple::LdapFilter;
 use uuid::Uuid;
 

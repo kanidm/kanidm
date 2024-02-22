@@ -3,9 +3,8 @@ use std::time::Duration;
 use base64urlsafedata::Base64UrlSafeData;
 
 use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
-use kanidm_proto::internal::ScimSyncToken;
+use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
-use kanidm_proto::v1::ApiTokenPurpose;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
@@ -1150,7 +1149,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // What classes did they request for this entry to sync?
         let requested_classes = scim_ent.schemas.iter()
             .map(|schema| {
-                schema.as_str().strip_prefix(SCIM_SCHEMA_SYNC)
+                schema.as_str().strip_prefix(SCIM_SCHEMA_SYNC_1)
                     .ok_or_else(|| {
                         error!(?schema, "Invalid requested schema - Not a kanidm sync schema.");
                         OperationError::InvalidEntryState
@@ -1537,8 +1536,8 @@ mod tests {
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::{Jws, JwsSigner};
+    use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
-    use kanidm_proto::v1::ApiTokenPurpose;
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -2094,7 +2093,7 @@ mod tests {
         assert!(apply_phase_3_test(
             idms,
             vec![ScimEntry {
-                schemas: vec![format!("{SCIM_SCHEMA_SYNC}system")],
+                schemas: vec![format!("{SCIM_SCHEMA_SYNC_1}system")],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
@@ -3168,9 +3167,9 @@ mod tests {
   "entries": [
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:person",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:account",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount"
       ],
       "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
       "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3194,7 +3193,7 @@ mod tests {
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group"
       ],
       "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3208,7 +3207,7 @@ mod tests {
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group"
       ],
       "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testexternal,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3216,8 +3215,8 @@ mod tests {
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup"
       ],
       "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3249,7 +3248,7 @@ mod tests {
   "entries": [
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group"
       ],
       "id": "d547c583-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testexternal2,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3262,8 +3261,8 @@ mod tests {
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixgroup"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup"
       ],
       "id": "f90b0b81-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3290,9 +3289,9 @@ mod tests {
   "entries": [
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:person",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:account",
-        "urn:ietf:params:scim:schemas:kanidm:1.0:posixaccount"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:person",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:account",
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount"
       ],
       "id": "babb8302-43a1-11ed-a50d-919b4b1a5ec0",
       "externalId": "uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",
@@ -3307,7 +3306,7 @@ mod tests {
     },
     {
       "schemas": [
-        "urn:ietf:params:scim:schemas:kanidm:1.0:group"
+        "urn:ietf:params:scim:schemas:kanidm:sync:1:group"
       ],
       "id": "d547c581-5f26-11ed-a50d-919b4b1a5ec0",
       "externalId": "cn=testgroup,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au",

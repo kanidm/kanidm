@@ -5,10 +5,15 @@ pub mod uri;
 /// The default location for the `kanidm` CLI tool's token cache.
 pub const CLIENT_TOKEN_CACHE: &str = "~/.cache/kanidm_tokens";
 
+/// Content type string for jpeg
 pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
+/// Content type string for png
 pub const CONTENT_TYPE_PNG: &str = "image/png";
+/// Content type string for gif
 pub const CONTENT_TYPE_GIF: &str = "image/gif";
+/// Content type string for svg
 pub const CONTENT_TYPE_SVG: &str = "image/svg+xml";
+/// Content type string for webp
 pub const CONTENT_TYPE_WEBP: &str = "image/webp";
 
 // For when the user uploads things to the various image endpoints, these are the valid content-types.

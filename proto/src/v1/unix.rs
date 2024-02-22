@@ -1,12 +1,13 @@
-use std::fmt;
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
+use std::fmt;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use serde_with::skip_serializing_none;
 
-use crate::constants::{ATTR_LDAP_SSHPUBLICKEY, ATTR_GROUP};
+use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
 
+/// A token representing the details of a unix group
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixGroupToken {
     pub name: String,
@@ -24,11 +25,13 @@ impl fmt::Display for UnixGroupToken {
     }
 }
 
+/// Request addition of unix attributes to a group.
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct GroupUnixExtend {
     pub gidnumber: Option<u32>,
 }
 
+/// A token representing the details of a unix user
 #[skip_serializing_none]
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 pub struct UnixUserToken {
@@ -65,6 +68,7 @@ impl fmt::Display for UnixUserToken {
     }
 }
 
+/// Request addition of unix attributes to an account
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(deny_unknown_fields)]
 pub struct AccountUnixExtend {
@@ -74,5 +78,3 @@ pub struct AccountUnixExtend {
     #[serde(alias = "loginshell")]
     pub shell: Option<String>,
 }
-
-

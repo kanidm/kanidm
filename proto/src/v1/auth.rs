@@ -1,24 +1,59 @@
+use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::fmt;
-use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use webauthn_rs_proto::PublicKeyCredential;
 use webauthn_rs_proto::RequestChallengeResponse;
 
-// Login is a multi-step process potentially. First the client says who they
-// want to request
-//
-// we respond with a set of possible authentications that can proceed, and perhaps
-// we indicate which options must/may?
-//
-// The client can then step and negotiate each.
-//
-// This continues until a LoginSuccess, or LoginFailure is returned.
-//
-// On loginSuccess, we send a cookie, and that allows the token to be
-// generated. The cookie can be shared between servers.
+/// Authentication to Kanidm is a stepped process.
+///
+/// The session is fist initialised with the requested username.
+///
+/// In response the list of supported authentication mechanisms is provided.
+///
+/// The user chooses the authentication mechanism to proceed with.
+///
+/// The server responds with a challenge that the user provides a credential
+/// to satisfy. This challenge and response process continues until a credential
+/// fails to validate, an error occurs, or successful authentication is complete.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthStep {
+    /// Initialise a new authentication session
+    Init(String),
+    /// Initialise a new authentication session with extra flags
+    /// for requesting different types of session tokens or
+    /// immediate access to privileges.
+    Init2 {
+        username: String,
+        issue: AuthIssueSession,
+        #[serde(default)]
+        /// If true, the session will have r/w access.
+        privileged: bool,
+    },
+    /// Request the named authentication mechanism to proceed
+    Begin(AuthMech),
+    /// Provide a credential in response to a challenge
+    Cred(AuthCredential),
+}
+
+/// The response to an AuthStep request.
+#[derive(Debug, Serialize, Deserialize, ToSchema)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthState {
+    /// You need to select how you want to proceed.
+    Choose(Vec<AuthMech>),
+    /// Continue to auth, allowed mechanisms/challenges listed.
+    Continue(Vec<AuthAllowed>),
+    /// Something was bad, your session is terminated and no cookie.
+    Denied(String),
+    /// Everything is good, your bearer token has been issued and is within.
+    Success(String),
+}
+
+/// The credential challenge provided by a user.
 #[derive(Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthCredential {
@@ -44,6 +79,7 @@ impl fmt::Debug for AuthCredential {
     }
 }
 
+/// The mechanisms that may proceed in this authentication
 #[derive(Clone, Debug, Serialize, Deserialize, Eq, PartialOrd, Ord, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthMech {
@@ -70,42 +106,23 @@ impl fmt::Display for AuthMech {
     }
 }
 
+/// The type of session that should be issued to the client.
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
-// TODO: what is this actually used for?
 pub enum AuthIssueSession {
+    // Previously supported other types beside token.
     Token,
 }
 
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum AuthStep {
-    /// "I want to authenticate with this username"
-    Init(String),
-    /// A new way to issue sessions. Doing this as a new init type
-    /// to prevent breaking existing clients. Allows requesting of the type
-    /// of session that will be issued at the end if successful.
-    Init2 {
-        username: String,
-        issue: AuthIssueSession,
-        #[serde(default)]
-        /// If true, the session will have r/w access.
-        privileged: bool,
-    },
-    /// We want to talk to you like this.
-    Begin(AuthMech),
-    /// Provide a response to a challenge.
-    Cred(AuthCredential),
-}
-
-// Request auth for identity X with roles Y?
+/// A request for the next step of an authentication.
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthRequest {
     pub step: AuthStep,
 }
 
-// Respond with the list of auth types and nonce, etc.
-// It can also contain a denied, or success.
+/// A challenge containing the list of allowed authentication types
+/// that can satisfy the next step. These may have inner types with
+/// required context.
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
@@ -166,21 +183,7 @@ impl fmt::Display for AuthAllowed {
 }
 
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
-#[serde(rename_all = "lowercase")]
-pub enum AuthState {
-    /// You need to select how you want to talk to me.
-    Choose(Vec<AuthMech>),
-    /// Continue to auth, allowed mechanisms/challenges listed.
-    Continue(Vec<AuthAllowed>),
-    /// Something was bad, your session is terminated and no cookie.
-    Denied(String),
-    /// Everything is good, your bearer token has been issued and is within the result.
-    Success(String),
-}
-
-#[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct AuthResponse {
     pub sessionid: Uuid,
     pub state: AuthState,
 }
-

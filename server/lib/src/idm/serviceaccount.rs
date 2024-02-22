@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::time::Duration;
 
 use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
-use kanidm_proto::v1::ApiToken as ProtoApiToken;
+use kanidm_proto::internal::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
 use crate::credential::Credential;
@@ -13,21 +13,6 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTrans
 use crate::prelude::*;
 use crate::utils::password_from_random;
 use crate::value::ApiToken;
-
-// Need to add KID to es256 der for lookups ✅
-
-// Need to generate the es256 on the account on modifies ✅
-
-// Add migration to generate the es256 on startup at least once. ✅
-
-// Create new valueset type to store sessions w_ labels ✅
-
-// Able to lookup from KID to get service account
-
-// Able to take token -> ident
-//   -- check still valid
-
-// revoke
 
 macro_rules! try_from_entry {
     ($value:expr) => {{
@@ -432,7 +417,7 @@ mod tests {
     use std::time::Duration;
 
     use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
-    use kanidm_proto::v1::ApiToken;
+    use kanidm_proto::internal::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
     use crate::event::CreateEvent;

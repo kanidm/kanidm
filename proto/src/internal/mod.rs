@@ -1,3 +1,7 @@
+//! Kanidm internal elements
+//!
+//! Items defined in this module *may* change between releases without notice.
+
 use crate::constants::{
     CONTENT_TYPE_GIF, CONTENT_TYPE_JPG, CONTENT_TYPE_PNG, CONTENT_TYPE_SVG, CONTENT_TYPE_WEBP,
 };
@@ -12,10 +16,12 @@ use num_enum::TryFromPrimitive;
 
 mod credupdate;
 mod error;
+mod raw;
 mod token;
 
 pub use self::credupdate::*;
 pub use self::error::*;
+pub use self::raw::*;
 pub use self::token::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -30,7 +36,6 @@ pub enum AppLink {
         icon: Option<Url>,
     },
 }
-
 
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]

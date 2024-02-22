@@ -1,3 +1,8 @@
+//! Kanidm Version 1
+//!
+//! Items defined in this module will remain stable, or change in ways that are forward
+//! compatible with newer releases.
+
 #![allow(non_upper_case_globals)]
 
 use serde::{Deserialize, Serialize};
@@ -12,7 +17,7 @@ mod unix;
 pub use self::auth::*;
 pub use self::unix::*;
 
-// These proto implementations are here because they have public definitions
+/// The type of Account in use.
 #[derive(Clone, Copy, Debug, ToSchema)]
 pub enum AccountType {
     Person,
@@ -34,15 +39,8 @@ impl ToString for AccountType {
 // domain specific fields for the purposes of IDM, over the normal
 // entry/ava/filter types. These related deeply to schema.
 
-#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
-pub struct Claim {
-    pub name: String,
-    pub uuid: String,
-    // These can be ephemeral, or shortlived in a session.
-    // some may even need requesting.
-    // pub expiry: DateTime
-}
-
+/// The current purpose of a User Auth Token. It may be read-only, read-write
+/// or privilige capable (able to step up to read-write after re-authentication).
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurposeStatus {
@@ -51,6 +49,7 @@ pub enum UatPurposeStatus {
     PrivilegeCapable,
 }
 
+/// The expiry of the User Auth Token.
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatStatusState {
@@ -70,6 +69,7 @@ impl fmt::Display for UatStatusState {
     }
 }
 
+/// The status of a User Auth Token
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct UatStatus {
@@ -95,6 +95,8 @@ impl fmt::Display for UatStatus {
         Ok(())
     }
 }
+
+/// A request to generate a new API token for a service account
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub struct ApiTokenGenerate {
@@ -104,18 +106,9 @@ pub struct ApiTokenGenerate {
     pub read_write: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
-pub struct BackupCodesView {
-    pub backup_codes: Vec<String>,
-}
-
 /* ===== low level proto types ===== */
 
-// ProtoEntry vs Entry
-// There is a good future reason for this separation. It allows changing
-// the in memory server core entry type, without affecting the protoEntry type
-//
-
+/// A limited view of an entry in Kanidm.
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Default, ToSchema)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
@@ -130,6 +123,7 @@ impl fmt::Display for Entry {
     }
 }
 
+/// A response to a whoami request
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, ToSchema)]
 pub struct WhoamiResponse {
     // Should we just embed the entry? Or destructure it?

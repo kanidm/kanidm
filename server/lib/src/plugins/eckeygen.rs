@@ -2,6 +2,7 @@ use openssl::ec::{EcGroup, EcKey};
 use openssl::nid::Nid;
 
 use crate::prelude::*;
+use std::sync::Arc;
 
 use super::Plugin;
 
@@ -62,21 +63,21 @@ impl Plugin for EcdhKeyGen {
 
     #[instrument(level = "debug", name = "ecdhkeygen::pre_modify", skip_all)]
     fn pre_modify(
-        _qs: &mut crate::server::QueryServerWriteTransaction,
-        _pre_cand: &[std::sync::Arc<crate::prelude::EntrySealedCommitted>],
-        cand: &mut Vec<crate::prelude::EntryInvalidCommitted>,
-        _me: &crate::event::ModifyEvent,
-    ) -> Result<(), kanidm_proto::v1::OperationError> {
+        _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &mut Vec<EntryInvalidCommitted>,
+        _me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
         Self::generate_key(cand)
     }
 
     #[instrument(level = "debug", name = "ecdhkeygen::pre_batch_modify", skip_all)]
     fn pre_batch_modify(
-        _qs: &mut crate::server::QueryServerWriteTransaction,
-        _pre_cand: &[std::sync::Arc<crate::prelude::EntrySealedCommitted>],
-        cand: &mut Vec<crate::prelude::EntryInvalidCommitted>,
-        _me: &crate::server::batch_modify::BatchModifyEvent,
-    ) -> Result<(), kanidm_proto::v1::OperationError> {
+        _qs: &mut QueryServerWriteTransaction,
+        _pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &mut Vec<EntryInvalidCommitted>,
+        _me: &BatchModifyEvent,
+    ) -> Result<(), OperationError> {
         Self::generate_key(cand)
     }
 }
@@ -86,7 +87,7 @@ mod tests {
     use openssl::ec::EcKey;
     use uuid::Uuid;
 
-    use crate::plugins::eckeygen::DEFAULT_KEY_GROUP;
+    use super::DEFAULT_KEY_GROUP;
     use crate::prelude::*;
     use crate::value::Value;
     use crate::valueset;

@@ -13,7 +13,6 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use hashbrown::HashSet;
-use kanidm_proto::v1::ConsistencyError;
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{f_eq, FC};
@@ -439,18 +438,15 @@ impl ReferentialIntegrity {
             error!(?missing);
         }
 
-        Err(OperationError::Plugin(
-            kanidm_proto::v1::PluginError::ReferentialIntegrity(
-                "Uuid referenced not found in database".to_string(),
-            ),
-        ))
+        Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
+            "Uuid referenced not found in database".to_string(),
+        )))
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::v1::Filter as ProtoFilter;
-    use kanidm_proto::v1::PluginError;
+    use kanidm_proto::internal::Filter as ProtoFilter;
 
     use crate::event::CreateEvent;
     use crate::prelude::*;

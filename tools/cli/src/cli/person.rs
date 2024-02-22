@@ -7,13 +7,13 @@ use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
 use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_SSH_PUBLICKEY};
-use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
-use kanidm_proto::v1::OperationError::PasswordQuality;
-use kanidm_proto::v1::{
+use kanidm_proto::internal::OperationError::PasswordQuality;
+use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
     TotpSecret,
 };
-use kanidm_proto::v1::{CredentialDetail, CredentialDetailType};
+use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
+use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::format_description::well_known::Rfc3339;

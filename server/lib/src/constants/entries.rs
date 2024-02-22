@@ -9,7 +9,8 @@ use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
 use kanidm_proto::constants::*;
-use kanidm_proto::v1::{AccountType, OperationError};
+use kanidm_proto::internal::OperationError;
+use kanidm_proto::v1::AccountType;
 
 #[cfg(test)]
 use uuid::uuid;

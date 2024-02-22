@@ -39,10 +39,8 @@ use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-use kanidm_proto::v1::ApiTokenPurpose;
-use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::v1::UatPurposeStatus;
-use kanidm_proto::v1::UiHint;
 use std::hash::Hash;
 
 lazy_static! {

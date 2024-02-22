@@ -33,6 +33,14 @@ fn determine_git_rev() -> Option<String> {
 }
 
 fn main() {
+    /*
+     * https://doc.rust-lang.org/cargo/reference/build-scripts.html#change-detection
+     * If the build script inherently does not need to re-run under any circumstance, then emitting
+     * cargo:rerun-if-changed=build.rs is a simple way to prevent it from being re-run (otherwise,
+     * the default if no rerun-if instructions are emitted is to scan the entire package directory
+     * for changes).
+     */
+    println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
 
     let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());

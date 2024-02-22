@@ -2,6 +2,9 @@ use base64::{engine::general_purpose, Engine as _};
 use serde::Deserialize;
 use std::env;
 
+// To debug why a rebuild is requested.
+// CARGO_LOG=cargo::core::compiler::fingerprint=info cargo ...
+
 #[derive(Debug, Deserialize)]
 #[allow(non_camel_case_types)]
 enum CpuOptLevel {
@@ -76,6 +79,9 @@ pub fn apply_profile() {
     // We have to setup for our pkg version to be passed into things correctly
     // now. This relies on the profile build.rs to get the commit rev if present, but
     // we combine it with the local package version
+    println!("cargo:rerun-if-env-changed=CARGO_PKG_VERSION");
+    println!("cargo:rerun-if-env-changed=KANIDM_PKG_COMMIT_REV");
+
     let version = env!("CARGO_PKG_VERSION");
     if let Some(commit_rev) = option_env!("KANIDM_PKG_COMMIT_REV") {
         println!(

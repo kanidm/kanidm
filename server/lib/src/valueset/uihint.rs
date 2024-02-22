@@ -5,7 +5,7 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
-use kanidm_proto::v1::UiHint;
+use kanidm_proto::internal::UiHint;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUiHint {

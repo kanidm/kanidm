@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
-use std::fmt;
 use utoipa::ToSchema;
-use uuid::Uuid;
+
+use crate::v1::Entry;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -99,11 +99,10 @@ impl ModifyRequest {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::Filter as ProtoFilter;
     use crate::constants::ATTR_CLASS;
-    use crate::v1::Filter as ProtoFilter;
 
     #[test]
     fn test_protofilter_simple() {

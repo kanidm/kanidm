@@ -7,7 +7,7 @@ use std::time::Duration;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 use hashbrown::HashSet;
-use kanidm_proto::v1::{
+use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CUStatus, CredentialDetail, PasskeyDetail,
     PasswordFeedback, TotpSecret,
 };
@@ -2295,10 +2295,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 mod tests {
     use std::time::Duration;
 
-    use kanidm_proto::v1::{
-        AuthAllowed, AuthIssueSession, AuthMech, CUExtPortal, CredentialDetailType,
-        PasswordFeedback,
-    };
+    use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};

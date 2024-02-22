@@ -1,10 +1,10 @@
-use std::fmt;
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use utoipa::ToSchema;
-use time::OffsetDateTime;
-use std::collections::BTreeSet;
 use super::UiHint;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+use std::fmt;
+use time::OffsetDateTime;
+use utoipa::ToSchema;
+use uuid::Uuid;
 
 use serde_with::skip_serializing_none;
 
@@ -151,7 +151,6 @@ impl PartialEq for ApiToken {
 }
 
 impl Eq for ApiToken {}
-
 
 // This is similar to uat, but omits claims (they have no role in radius), and adds
 // the radius secret field.

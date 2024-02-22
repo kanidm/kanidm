@@ -11,7 +11,8 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::CLIENT_TOKEN_CACHE;
-use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
+use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
 #[cfg(target_family = "unix")]
 use libc::umask;
 use webauthn_authenticator_rs::prelude::RequestChallengeResponse;

@@ -1,5 +1,5 @@
 use gloo::console;
-use kanidm_proto::v1::{
+use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegWarning, CUSessionToken, CUStatus,
     CredentialDetail, CredentialDetailType, PasskeyDetail,
 };

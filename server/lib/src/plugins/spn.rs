@@ -4,9 +4,6 @@ use std::collections::BTreeSet;
 use std::iter::once;
 use std::sync::Arc;
 
-// use crate::value::{PartialValue, Value};
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;

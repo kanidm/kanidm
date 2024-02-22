@@ -12,13 +12,15 @@ use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use uuid::Uuid;
 
-use kanidm_proto::internal::{AppLink, IdentifyUserRequest, IdentifyUserResponse};
+use kanidm_proto::internal::{
+    ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
+    CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
+    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
+};
 use kanidm_proto::v1::{
-    AccountUnixExtend, ApiToken, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
-    AuthState as ProtoAuthState, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
-    CredentialStatus, DeleteRequest, Entry as ProtoEntry, GroupUnixExtend, ModifyRequest,
-    RadiusAuthToken, SearchRequest, SearchResponse, SingleStringRequest, UatStatus, UnixGroupToken,
-    UnixUserToken, UserAuthToken, WhoamiResponse,
+    AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
+    AuthState as ProtoAuthState, Entry as ProtoEntry, GroupUnixExtend, SingleStringRequest,
+    UatStatus, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
 use kanidmd_lib::idm::event::AuthResult;
 use kanidmd_lib::idm::AuthState;

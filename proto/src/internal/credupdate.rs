@@ -1,11 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::fmt;
+use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use url::Url;
 
-use webauthn_rs_proto::RegisterPublicKeyCredential;
 use webauthn_rs_proto::CreationChallengeResponse;
+use webauthn_rs_proto::RegisterPublicKeyCredential;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -263,7 +263,10 @@ pub struct PasskeyDetail {
     pub tag: String,
 }
 
-
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
+pub struct BackupCodesView {
+    pub backup_codes: Vec<String>,
+}
 
 #[derive(Serialize, Deserialize, Debug, ToSchema, PartialEq, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "lowercase")]

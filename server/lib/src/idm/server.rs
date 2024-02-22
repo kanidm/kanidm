@@ -11,11 +11,11 @@ use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
 use concread::CowCell;
 use fernet::Fernet;
-use kanidm_proto::internal::ScimSyncToken;
-use kanidm_proto::v1::{
-    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, UatPurpose,
-    UnixGroupToken, UnixUserToken, UserAuthToken,
+use kanidm_proto::internal::{
+    ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
+    UatPurpose, UserAuthToken,
 };
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use rand::prelude::*;
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
@@ -2165,7 +2165,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::time::Duration;
 
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, OperationError};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
     use time::OffsetDateTime;
     use uuid::Uuid;
 
@@ -3592,7 +3592,7 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        use kanidm_proto::v1::UserAuthToken;
+        use kanidm_proto::internal::UserAuthToken;
         use std::str::FromStr;
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);

@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
-use kanidm_proto::v1::OperationError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, PartialEq, Clone, Eq, PartialOrd, Ord, Hash)]
