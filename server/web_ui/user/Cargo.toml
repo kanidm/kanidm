@@ -66,8 +66,7 @@ features = [
     "RequestMode",
     "RequestRedirect",
     "Response",
-    "Window",
-    "Clipboard"
+    "Window"
 ]
 
 [dev-dependencies]
