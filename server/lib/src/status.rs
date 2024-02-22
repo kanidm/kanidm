@@ -2,8 +2,6 @@
 
 use uuid::Uuid;
 
-use crate::prelude::*;
-
 // TODO: this should *totally* be running the OTEL metrics collector
 
 pub struct StatusRequestEvent {
@@ -21,7 +19,7 @@ impl StatusActor {
     }
 
     pub async fn handle_request(&self, _event: StatusRequestEvent) -> bool {
-        admin_info!("status handler complete");
+        trace!("status handler complete");
         true
     }
 }
