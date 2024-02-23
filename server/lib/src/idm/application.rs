@@ -450,52 +450,89 @@ mod tests {
         let test_grp_name = "testgroup1";
         let test_grp_uuid = Uuid::new_v4();
 
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
 
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname(test_grp_name)),
-            (Attribute::Uuid, Value::Uuid(test_grp_uuid))
-        );
-        let e2 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
-            (Attribute::Class, EntryClass::Application.to_value()),
-            (Attribute::Name, Value::new_iname(test_entry_name)),
-            (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
-            (Attribute::Description, Value::new_utf8s("test_app_desc")),
-            (
-                Attribute::DisplayName,
-                Value::new_utf8s("test_app_dispname")
-            ),
-            (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
-        );
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(test_grp_name)),
+                (Attribute::Uuid, Value::Uuid(test_grp_uuid))
+            );
 
-        let ce = CreateEvent::new_internal(vec![e1, e2]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_ok());
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(test_entry_name)),
+                (Attribute::Uuid, Value::Uuid(test_entry_uuid)),
+                (Attribute::Description, Value::new_utf8s("test_app_desc")),
+                (
+                    Attribute::DisplayName,
+                    Value::new_utf8s("test_app_dispname")
+                ),
+                (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
+            );
 
-        let cr = idms_prox_write.qs_write.commit();
-        assert!(cr.is_ok());
+            let ce = CreateEvent::new_internal(vec![e1, e2]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
-        let app = idms_prox_read
-            .qs_read
-            .internal_search_uuid(test_entry_uuid)
-            .and_then(|entry| Application::try_from_entry_ro(&entry, &mut idms_prox_read.qs_read))
-            .map_err(|e| {
-                trace!("Error: {:?}", e);
-                e
-            });
-        assert!(app.is_ok());
+            let cr = idms_prox_write.qs_write.commit();
+            assert!(cr.is_ok());
+        }
 
-        let app = app.unwrap();
-        assert!(app.name == "test_app_name");
-        assert!(app.uuid == test_entry_uuid);
-        assert!(app.linked_group.is_some_and(|u| u == test_grp_uuid));
+        {
+            let mut idms_prox_read = idms.proxy_read().await;
+            let app = idms_prox_read
+                .qs_read
+                .internal_search_uuid(test_entry_uuid)
+                .and_then(|entry| {
+                    Application::try_from_entry_ro(&entry, &mut idms_prox_read.qs_read)
+                })
+                .map_err(|e| {
+                    trace!("Error: {:?}", e);
+                    e
+                });
+            assert!(app.is_ok());
+
+            let app = app.unwrap();
+            assert!(app.name == "test_app_name");
+            assert!(app.uuid == test_entry_uuid);
+            assert!(app.linked_group.is_some_and(|u| u == test_grp_uuid));
+        }
+
+        // Test reference integrity. An attempt to remove a linked group blocks
+        // the group being deleted
+        {
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(test_grp_uuid)
+            )));
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_proxy_write.qs_write.delete(&de).is_err());
+        }
+
+        {
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(test_entry_uuid)
+            )));
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
+            assert!(idms_proxy_write.qs_write.commit().is_ok());
+        }
+
+        {
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(test_grp_uuid)
+            )));
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
+            assert!(idms_proxy_write.qs_write.commit().is_ok());
+        }
     }
 
     // Test apitoken for application entries
