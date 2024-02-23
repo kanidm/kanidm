@@ -2535,7 +2535,7 @@ mod tests {
         idms_auth.commit().expect("Must not fail");
     }
 
-    #[idm_test(audit)]
+    #[idm_test(audit = 1)]
     async fn test_idm_simple_password_invalid(
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
@@ -3150,7 +3150,7 @@ mod tests {
         }
     }
 
-    #[idm_test(audit)]
+    #[idm_test(audit = 1)]
     async fn test_idm_account_softlocking(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
@@ -3312,7 +3312,7 @@ mod tests {
         // Tested in the softlock state machine.
     }
 
-    #[idm_test(audit)]
+    #[idm_test(audit = 1)]
     async fn test_idm_account_softlocking_interleaved(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,

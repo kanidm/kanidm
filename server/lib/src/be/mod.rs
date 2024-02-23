@@ -1628,18 +1628,16 @@ impl<'a> BackendWriteTransaction<'a> {
         let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
-            limmediate_warning!(
-                "NOTICE: A system reindex is required. This may take a long time ...\n"
-            );
             self.reindex()?;
-            limmediate_warning!("NOTICE: System reindex complete\n");
             self.set_db_index_version(v)
         } else {
             Ok(())
         }
     }
 
+    #[instrument(level = "info", skip_all)]
     pub fn reindex(&mut self) -> Result<(), OperationError> {
+        limmediate_warning!("NOTICE: System reindex started\n");
         // Purge the idxs
         self.idlayer.danger_purge_idxs()?;
 
@@ -1672,7 +1670,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 admin_error!("reindex failed -> {:?}", e);
                 e
             })?;
-        limmediate_warning!(" reindexed {} entries ✅\n", count);
+        limmediate_warning!("done ✅: reindexed {} entries\n", count);
         limmediate_warning!("Optimising Indexes ... ");
         self.idlayer.optimise_dirty_idls();
         limmediate_warning!("done ✅\n");
@@ -1682,6 +1680,7 @@ impl<'a> BackendWriteTransaction<'a> {
             e
         })?;
         limmediate_warning!("done ✅\n");
+        limmediate_warning!("NOTICE: System reindex complete\n");
         Ok(())
     }
 

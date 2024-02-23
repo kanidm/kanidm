@@ -18,7 +18,9 @@ pub use crate::constants::values::*;
 
 use std::time::Duration;
 
-// Increment this as we add new schema types and values!!!
+// This value no longer requires incrementing during releases. It only
+// serves as a "once off" marker so that we know when the initial db
+// index is performed on first-run.
 pub const SYSTEM_INDEX_VERSION: i64 = 31;
 
 /*
@@ -54,6 +56,8 @@ pub const DOMAIN_LEVEL_6: DomainVersion = 6;
 pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
+// The previous releases domain functional level
+pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The target supported domain functional level
 pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The maximum supported domain functional level

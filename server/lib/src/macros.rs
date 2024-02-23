@@ -18,7 +18,7 @@ macro_rules! setup_test {
             .enable_all()
             .build()
             .unwrap()
-            .block_on(qs.initialise_helper(duration_from_epoch_now()))
+            .block_on(qs.initialise_helper(duration_from_epoch_now(), DOMAIN_TGT_LEVEL))
             .expect("init failed!");
         qs
     }};
@@ -44,7 +44,7 @@ macro_rules! setup_test {
             .enable_all()
             .build()
             .unwrap()
-            .block_on(qs.initialise_helper(duration_from_epoch_now()))
+            .block_on(qs.initialise_helper(duration_from_epoch_now(), DOMAIN_TGT_LEVEL))
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {

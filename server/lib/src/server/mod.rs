@@ -1439,7 +1439,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::MG0001InvalidReMigrationLevel);
         };
 
-        debug!(
+        info!(
             "Prepare to re-migrate from {} -> {}",
             level, mut_d_info.d_vers
         );
@@ -1723,7 +1723,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
 
         if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
-            // 2 -> 3 Migration
             self.migrate_domain_2_to_3()?;
         }
 
@@ -1733,6 +1732,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if previous_version <= DOMAIN_LEVEL_4 && domain_info_version >= DOMAIN_LEVEL_5 {
             self.migrate_domain_4_to_5()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_5 && domain_info_version >= DOMAIN_LEVEL_6 {
+            self.migrate_domain_5_to_6()?;
         }
 
         Ok(())
@@ -1816,20 +1819,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.reindex()
     }
 
-    fn force_all_reload(&mut self) {
-        self.changed_schema = true;
-        self.changed_acp = true;
-        self.changed_oauth2 = true;
-        self.changed_domain = true;
-        self.changed_sync_agreement = true;
-        self.changed_system_config = true;
-    }
-
     fn force_schema_reload(&mut self) {
         self.changed_schema = true;
     }
 
-    #[instrument(level = "info", skip_all)]
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
@@ -1851,7 +1844,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
-        // First, check if the domain version has changed.
+        // First, check if the domain version has changed. This can trigger
+        // changes to schema, access controls and more.
         if self.changed_domain {
             self.reload_domain_info_version()?;
         }
@@ -1862,7 +1856,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Reload the schema from qs.
         if self.changed_schema {
             self.reload_schema()?;
+
+            // If the server is in a late phase of start up or is
+            // operational, then a reindex may be required. After the reindex, the schema
+            // must also be reloaded so that slope optimisation indexes are loaded correctly.
+            if *self.phase >= ServerPhase::DomainInfoReady {
+                self.reindex()?;
+                self.reload_schema()?;
+            }
         }
+
         // Determine if we need to update access control profiles
         // based on any modifications that have occurred.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
@@ -1886,6 +1889,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if self.changed_domain {
             self.reload_domain_info()?;
         }
+
+        // Clear flags
+        self.changed_domain = false;
+        self.changed_schema = false;
+        self.changed_system_config = false;
+        self.changed_acp = false;
+        self.changed_sync_agreement = false;
 
         Ok(())
     }

@@ -108,7 +108,7 @@ impl Domain {
                     e.set_ava(Attribute::Version, once(n));
                     warn!("plugin_domain: Applying domain version transform");
                 } else {
-                    warn!("plugin_domain: NOT Applying domain version transform");
+                    debug!("plugin_domain: NOT Applying domain version transform");
                 };
 
                 // create the domain_display_name if it's missing

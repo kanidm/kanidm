@@ -251,6 +251,7 @@ impl ServerConfig {
                 "KANIDM_DEFAULT_CONFIG_PATH",
                 "KANIDM_DEFAULT_UNIX_SHELL_PATH",
                 "KANIDM_PKG_VERSION",
+                "KANIDM_PRE_RELEASE",
                 "KANIDM_PROFILE_NAME",
                 "KANIDM_WEB_UI_PKG_PATH",
             ];

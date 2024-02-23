@@ -8,21 +8,18 @@ use super::ServerPhase;
 
 impl QueryServer {
     #[instrument(level = "info", name = "system_initialisation", skip_all)]
-    pub async fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
+    pub async fn initialise_helper(
+        &self,
+        ts: Duration,
+        domain_target_level: DomainVersion,
+    ) -> Result<(), OperationError> {
         // We need to perform this in a single transaction pass to prevent tainting
         // databases during upgrades.
         let mut write_txn = self.write(ts).await;
 
         // Check our database version - attempt to do an initial indexing
-        // based on the in memory configuration
-        //
-        // If we ever change the core in memory schema, or the schema that we ship
-        // in fixtures, we have to bump these values. This is how we manage the
-        // first-run and upgrade reindexings.
-        //
-        // A major reason here to split to multiple transactions is to allow schema
-        // reloading to occur, which causes the idxmeta to update, and allows validation
-        // of the schema in the subsequent steps as we proceed.
+        // based on the in memory configuration. This ONLY triggers ONCE on
+        // the very first run of the instance when the DB in newely created.
         write_txn.upgrade_reindex(SYSTEM_INDEX_VERSION)?;
 
         // Because we init the schema here, and commit, this reloads meaning
@@ -124,14 +121,15 @@ impl QueryServer {
         // Reload if anything in the (older) system migrations requires it.
         write_txn.reload()?;
 
-        // This is what tells us if the domain entry existed before or not.
+        // This is what tells us if the domain entry existed before or not. This
+        // is now the primary method of migrations and version detection.
         let db_domain_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
             Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
             Err(OperationError::NoMatchingEntries) => Ok(0),
             Err(r) => Err(r),
         }?;
 
-        info!(?db_domain_version, "Before setting internal domain info");
+        debug!(?db_domain_version, "Before setting internal domain info");
 
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base-schema here.
@@ -139,9 +137,16 @@ impl QueryServer {
             write_txn.initialise_schema_idm()?;
 
             write_txn.reload()?;
+
+            // Since we just loaded in a ton of schema, lets reindex it to make
+            // sure that some base IDM operations are fast. Since this is still
+            // very early in the bootstrap process, and very few entries exist,
+            // reindexing is very fast here.
+            write_txn.reindex()?;
         }
 
-        // Indicate the schema is now ready, which allows dyngroups to work.
+        // Indicate the schema is now ready, which allows dyngroups to work when they
+        // are created in the next phase of migrations.
         write_txn.set_phase(ServerPhase::SchemaReady);
 
         // Init idm will now set the system config version and minimum domain
@@ -154,8 +159,7 @@ impl QueryServer {
             write_txn.initialise_idm()?;
         }
 
-        // Now force everything to reload, init idm can touch a lot.
-        write_txn.force_all_reload();
+        // Reload as init idm affects access controls.
         write_txn.reload()?;
 
         // Domain info is now ready and reloaded, we can proceed.
@@ -168,38 +172,39 @@ impl QueryServer {
 
         // The reloads will have populated this structure now.
         let domain_info_version = write_txn.get_domain_version();
-        info!(?db_domain_version, "After setting internal domain info");
+        debug!(?db_domain_version, "After setting internal domain info");
 
-        if domain_info_version < DOMAIN_TGT_LEVEL {
+        if domain_info_version < domain_target_level {
             write_txn
                 .internal_modify_uuid(
                     UUID_DOMAIN_INFO,
                     &ModifyList::new_purge_and_set(
                         Attribute::Version,
-                        Value::new_uint32(DOMAIN_TGT_LEVEL),
+                        Value::new_uint32(domain_target_level),
                     ),
                 )
                 .map(|()| {
-                    warn!("Domain level has been raised to {}", DOMAIN_TGT_LEVEL);
+                    warn!("Domain level has been raised to {}", domain_target_level);
                 })?;
+        } else {
+            // This forces pre-release versions to re-migrate each start up. This solves
+            // the domain-version-sprawl issue so that during a development cycle we can
+            // do a single domain version bump, and continue to extend the migrations
+            // within that release cycle to contain what we require.
+            //
+            // If this is a pre-release build
+            // AND
+            // we are NOT in a test environment
+            // AND
+            // We did not already need a version migration as above
+            if option_env!("KANIDM_PRE_RELEASE").is_some() && !cfg!(test) {
+                write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
+            }
         }
 
-        // Reload if anything in migrations requires it - this triggers the domain migrations.
+        // Reload if anything in migrations requires it - this triggers the domain migrations
+        // which in turn can trigger schema reloads etc.
         write_txn.reload()?;
-
-        // reindex and set to version + 1, this way when we bump the version
-        // we are essetially pushing this version id back up to step write_1
-        write_txn
-            .upgrade_reindex(SYSTEM_INDEX_VERSION + 1)
-            .and_then(|_| write_txn.reload())?;
-
-        // Force the schema to reload - this is so that any changes to index slope
-        // analysis that was performed during the reindex are now reflected correctly
-        // in the in-memory schema cache.
-        //
-        // A side effect of these reloads is that other plugins or elements that reload
-        // on schema change are now setup.
-        write_txn.force_schema_reload();
 
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
@@ -207,11 +212,7 @@ impl QueryServer {
         // Commit all changes, this also triggers the reload.
         write_txn.commit()?;
 
-        // Here is where in the future we will need to apply domain version increments.
-        // The actually migrations are done in a transaction though, this just needs to
-        // bump the version in it's own transaction.
-
-        admin_debug!("Database version check and migrations success! ☀️  ");
+        debug!("Database version check and migrations success! ☀️  ");
         Ok(())
     }
 }
@@ -722,7 +723,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     /// This migration will
     ///  * Trigger a "once off" mfa account policy rule on all persons.
-    pub fn migrate_domain_2_to_3(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn migrate_domain_2_to_3(&mut self) -> Result<(), OperationError> {
         let idm_all_persons = match self.internal_search_uuid(UUID_IDM_ALL_PERSONS) {
             Ok(entry) => entry,
             Err(OperationError::NoMatchingEntries) => return Ok(()),
@@ -751,7 +752,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[instrument(level = "info", skip_all)]
     /// Migrations for Oauth to support multiple origins, and custom claims.
-    pub fn migrate_domain_3_to_4(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn migrate_domain_3_to_4(&mut self) -> Result<(), OperationError> {
         let idm_schema_attrs = [
             SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
             SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
@@ -787,7 +788,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// and to allow oauth2 sessions on resource servers for client credentials
     /// grants. Accounts, persons and service accounts have some attributes
     /// relocated to allow oauth2 rs to become accounts.
-    pub fn migrate_domain_4_to_5(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn migrate_domain_4_to_5(&mut self) -> Result<(), OperationError> {
         let idm_schema_classes = [
             SCHEMA_CLASS_PERSON_DL5.clone().into(),
             SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
@@ -861,7 +862,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     /// Migration domain level 5 to 6 - support query limits in account policy.
-    pub fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
@@ -879,11 +881,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.reload()?;
 
         // Update access controls.
-        self.internal_migrate_or_create(IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into())
+        let idm_access_controls = [
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+        ];
+
+        idm_access_controls
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
                 error!(?err, "migrate_domain_5_to_6 -> Error");
                 err
-            })
+            })?;
+
+        Ok(())
     }
 
     #[instrument(level = "info", skip_all)]
@@ -1177,121 +1189,43 @@ mod tests {
         }
     }
 
-    /*
-    #[qs_test_no_init]
-    async fn test_qs_upgrade_entry_attrs(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION).is_ok());
-        assert!(server_txn.commit().is_ok());
+    #[qs_test(domain_level=DOMAIN_LEVEL_5)]
+    async fn test_migrations_dl5_dl6(server: &QueryServer) {
+        // Assert our instance was setup to version 5
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        server_txn.initialise_schema_core().unwrap();
-        server_txn.initialise_schema_idm().unwrap();
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn.upgrade_reindex(SYSTEM_INDEX_VERSION + 1).is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_SYSTEM_INFO_V1)
-            .is_ok());
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_DOMAIN_INFO_V1)
-            .is_ok());
-        assert!(server_txn
-            .internal_migrate_or_create_str(JSON_SYSTEM_CONFIG_V1)
-            .is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        // ++ Mod the schema to set name to the old string type
-        let me_syn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
-                ])),
-                ModifyList::new_purge_and_set(
-                    "syntax",
-                    Value::new_syntaxs("UTF8STRING_INSENSITIVE").unwrap(),
-                ),
-            )
-        };
-        assert!(server_txn.modify(&me_syn).is_ok());
-        assert!(server_txn.commit().is_ok());
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        // ++ Mod domain name and name to be the old type.
-        let me_dn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
-                ModifyList::new_list(vec![
-                    Modify::Purged(Attribute::Name.into()),
-                    Modify::Purged(Attribute::DomainName.into()),
-                    Modify::Present(Attribute::Name.into(), Value::new_iutf8("domain_local")),
-                    Modify::Present(
-                        Attribute::DomainName.into(),
-                        Value::new_iutf8("example.com"),
-                    ),
-                ]),
-            )
-        };
-        assert!(server_txn.modify(&me_dn).is_ok());
-
-        // Now, both the types are invalid.
-
-        // WARNING! We can't commit here because this triggers domain_reload which will fail
-        // due to incorrect syntax of the domain name! Run the migration in the same txn!
-        // Trigger a schema reload.
-        assert!(server_txn.reload_schema().is_ok());
-
-        // We can't just re-run the migrate here because name takes it's definition from
-        // in memory, and we can't re-run the initial memory gen. So we just fix it to match
-        // what the migrate "would do".
-        let me_syn = unsafe {
-            ModifyEvent::new_internal_invalid(
-                filter!(f_or!([
-                    f_eq(Attribute::AttributeName, Attribute::Name.to_partialvalue()),
-                    f_eq(Attribute::AttributeName, Attribute::DomainName.into()),
-                ])),
-                ModifyList::new_purge_and_set(
-                    "syntax",
-                    Value::new_syntaxs("UTF8STRING_INAME").unwrap(),
-                ),
-            )
-        };
-        assert!(server_txn.modify(&me_syn).is_ok());
-
-        // WARNING! We can't commit here because this triggers domain_reload which will fail
-        // due to incorrect syntax of the domain name! Run the migration in the same txn!
-        // Trigger a schema reload.
-        assert!(server_txn.reload_schema().is_ok());
-
-        // ++ Run the upgrade for X to Y
-        assert!(server_txn.migrate_2_to_3().is_ok());
-
-        assert!(server_txn.commit().is_ok());
-
-        // Assert that it migrated and worked as expected.
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
-        let domain = server_txn
+        let db_domain_version = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("failed");
-        // ++ assert all names are iname
-        assert!(
-            domain.get_ava_set(Attribute::Name).expect("no name?").syntax() == SyntaxType::Utf8StringIname
-        );
-        // ++ assert all domain/domain_name are iname
-        assert!(
-            domain
-                .get_ava_set(Attribute::DomainName.as_ref())
-                .expect("no domain_name?")
-                .syntax()
-                == SyntaxType::Utf8StringIname
-        );
-        assert!(server_txn.commit().is_ok());
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_5);
+
+        // Entry doesn't exist yet.
+        let _entry_not_found = write_txn
+            .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
+            .expect_err("unable to newly migrated schema entry");
+
+        // Set the version to 6.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_6),
+                ),
+            )
+            .expect("Unable to set domain level to version 6");
+
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        // It now exists as the migrations were run.
+        let _entry = write_txn
+            .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
+            .expect("unable to newly migrated schema entry");
+
+        write_txn.commit().expect("Unable to commit");
     }
-    */
 }
