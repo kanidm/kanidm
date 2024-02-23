@@ -241,7 +241,9 @@ impl SchemaAttribute {
             SyntaxType::KeyInternal => matches!(v, PartialValue::HexString(_)),
 
             SyntaxType::WebauthnAttestationCaList => false,
-            SyntaxType::ApplicationPassword => matches!(v, PartialValue::Refer(_)),
+            SyntaxType::ApplicationPassword => {
+                matches!(v, PartialValue::Uuid(_)) || matches!(v, PartialValue::Refer(_))
+            }
         };
         if r {
             Ok(())
@@ -781,7 +783,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 a.syntax == SyntaxType::OauthScopeMap ||
                 a.syntax == SyntaxType::OauthClaimMap ||
                 // So that when an rs is removed we trigger removal of the sessions.
-                a.syntax == SyntaxType::Oauth2Session
+                a.syntax == SyntaxType::Oauth2Session ||
+                // When an application is removed we trigger removal of passwords
+                a.syntax == SyntaxType::ApplicationPassword
             // May not need to be a ref type since it doesn't have external links/impact?
             // || a.syntax == SyntaxType::Session
             {

@@ -266,7 +266,9 @@ impl GenerateApplicationPasswordEvent {
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
+    use crate::idm::account::Account;
     use crate::idm::application::Application;
+    use crate::idm::application::GenerateApplicationPasswordEvent;
     use crate::idm::server::IdmServerTransaction;
     use crate::idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent};
     use crate::prelude::*;
@@ -532,6 +534,114 @@ mod tests {
             let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
             assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
             assert!(idms_proxy_write.qs_write.commit().is_ok());
+        }
+    }
+
+    #[idm_test]
+    async fn test_idm_application_delete(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let test_usr_name = "testuser1";
+        let test_usr_uuid = Uuid::new_v4();
+        let test_app_name = "testapp1";
+        let test_app_uuid = Uuid::new_v4();
+        let test_grp_name = "testgroup1";
+        let test_grp_uuid = Uuid::new_v4();
+
+        {
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = idms.proxy_write(ct).await;
+
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(test_usr_name)),
+                (Attribute::Uuid, Value::Uuid(test_usr_uuid)),
+                (Attribute::Description, Value::new_utf8s(test_usr_name)),
+                (Attribute::DisplayName, Value::new_utf8s(test_usr_name))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(test_grp_name)),
+                (Attribute::Uuid, Value::Uuid(test_grp_uuid)),
+                (Attribute::Member, Value::Refer(test_usr_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(test_app_name)),
+                (Attribute::Uuid, Value::Uuid(test_app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(test_grp_uuid))
+            );
+
+            let ce = CreateEvent::new_internal(vec![e1, e2, e3]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
+
+            let ev = GenerateApplicationPasswordEvent {
+                ident: Identity::from_internal(),
+                target: test_usr_uuid,
+                application: test_app_uuid,
+                label: "label".to_string(),
+            };
+            idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to create application password");
+
+            let cr = idms_prox_write.qs_write.commit();
+            assert!(cr.is_ok());
+        }
+
+        {
+            let mut idms_prox_read = idms.proxy_read().await;
+            let account = idms_prox_read
+                .qs_read
+                .internal_search_uuid(test_usr_uuid)
+                .and_then(|entry| Account::try_from_entry_ro(&entry, &mut idms_prox_read.qs_read))
+                .map_err(|e| {
+                    trace!("Error: {:?}", e);
+                    e
+                })
+                .expect("Failed to search for account");
+
+            assert!(account.apps_pwds.values().count() > 0);
+        }
+
+        // Test reference integrity. If app is removed linked application passwords must go
+        {
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(test_app_uuid)
+            )));
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
+            assert!(idms_proxy_write.qs_write.commit().is_ok());
+        }
+
+        {
+            let mut idms_prox_read = idms.proxy_read().await;
+            assert!(idms_prox_read
+                .qs_read
+                .internal_search_uuid(test_app_uuid)
+                .is_err());
+        }
+
+        {
+            let mut idms_prox_read = idms.proxy_read().await;
+            let account = idms_prox_read
+                .qs_read
+                .internal_search_uuid(test_usr_uuid)
+                .and_then(|entry| Account::try_from_entry_ro(&entry, &mut idms_prox_read.qs_read))
+                .map_err(|e| {
+                    trace!("Error: {:?}", e);
+                    e
+                })
+                .expect("Failed to search for account");
+
+            assert!(account.apps_pwds.values().count() == 0);
         }
     }
 
