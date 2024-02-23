@@ -97,6 +97,11 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn remove(&mut self, pv: &PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::Refer(u) => {
+                // Deletes all passwords for the referred application
+                self.map.remove(u).is_some()
+            }
+            PartialValue::Uuid(u) => {
+                // Delete specific application password
                 // TODO Migrate to extract_if when available
                 self.map.values_mut().any(|x| {
                     let prev = x.into_iter().count();
@@ -112,10 +117,14 @@ impl ValueSetT for ValueSetApplicationPassword {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
+            PartialValue::Uuid(u) => self
+                .map
+                .values()
+                .any(|v| v.into_iter().any(|ap| ap.uuid == *u)),
             PartialValue::Refer(u) => self
                 .map
                 .values()
-                .any(|x| x.into_iter().any(|y| y.uuid == *u)),
+                .any(|v| v.into_iter().any(|ap| ap.application == *u)),
             _ => false,
         }
     }
@@ -236,5 +245,10 @@ impl ValueSetT for ValueSetApplicationPassword {
 
     fn as_application_password_map(&self) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
         Some(&self.map)
+    }
+
+    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
+        // This is what ties us as a type that can be refint checked.
+        Some(Box::new(self.map.keys().copied()))
     }
 }
