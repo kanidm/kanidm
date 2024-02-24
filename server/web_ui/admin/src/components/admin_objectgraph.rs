@@ -1,6 +1,7 @@
 use enum_iterator::{all, Sequence};
 #[cfg(debug_assertions)]
 use gloo::console;
+use serde::Serialize;
 use std::fmt::{Display, Formatter};
 use yew::prelude::*;
 
@@ -11,7 +12,8 @@ use web_sys::HtmlInputElement;
 use yew_router::Routable;
 
 use crate::router::AdminRoute;
-use kanidm_proto::v1::Entry;
+use kanidm_proto::v1::Filter::{Eq, Or};
+use kanidm_proto::v1::{Entry, SearchRequest, SearchResponse};
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 use kanidmd_web_ui_shared::utils::{init_graphviz, open_blank};
 
@@ -137,12 +139,7 @@ impl AdminObjectGraph {
         loading_spinner()
     }
 
-    fn view_ready(
-        &self,
-        ctx: &Context<Self>,
-        filters: &[ObjectType],
-        entries: &[Entry],
-    ) -> Html {
+    fn view_ready(&self, ctx: &Context<Self>, filters: &[ObjectType], entries: &[Entry]) -> Html {
         let typed_entries = entries
             .iter()
             .filter_map(|entry| {
@@ -159,8 +156,10 @@ impl AdminObjectGraph {
                 } else if classes.contains(&"account".to_string()) {
                     if classes.contains(&"person".to_string()) {
                         ObjectType::Person
-                    } else {
+                    } else if classes.contains(&"service-account".to_string()) {
                         ObjectType::ServiceAccount
+                    } else {
+                        return None;
                     }
                 } else {
                     return None;
@@ -231,7 +230,7 @@ impl AdminObjectGraph {
         init_graphviz(sb.as_str());
 
         let node_refs = all::<ObjectType>()
-            .map(|object_type: ObjectType| { (object_type, NodeRef::default()) })
+            .map(|object_type: ObjectType| (object_type, NodeRef::default()))
             .collect::<Vec<_>>();
 
         let on_checkbox_click = {
@@ -273,14 +272,14 @@ impl AdminObjectGraph {
                     <div class="hstack gap-3">
                     {
                         node_refs.iter().map(|(ot, node_ref)| {
-                            let str = format!("{}", ot);
-                            let selected = filters.contains(&ot);
+                            let ot_str = format!("{}", ot);
+                            let selected = filters.contains(ot);
 
                             html! {
                                 <>
                                 <div class="form-check">
-                                  <input class="form-check-input obj-graph-filter-cb" type="checkbox" ref={ node_ref } id={str.clone()} onchange={on_checkbox_click.clone()} checked={selected}/>
-                                  <label class="form-check-label" for={str.clone()}>{str.clone()}</label>
+                                  <input class="form-check-input obj-graph-filter-cb" type="checkbox" ref={ node_ref } id={ot_str.clone()} onchange={on_checkbox_click.clone()} checked={selected}/>
+                                  <label class="form-check-label" for={ot_str.clone()}>{ot_str.clone()}</label>
                                 </div>
                                 if *ot != ObjectType::last().unwrap() {
                                     <div class="vr"></div>
@@ -303,37 +302,32 @@ impl AdminObjectGraph {
     }
 
     async fn fetch_objects() -> Result<Msg, FetchError> {
-        let urls = vec!["/v1/group", "/v1/service_account", "/v1/person"];
-        let mut results = Vec::new();
+        let req_body = SearchRequest {
+            filter: Or(vec![
+                Eq("class".to_string(), "person".to_string()),
+                Eq("class".to_string(), "service_account".to_string()),
+                Eq("class".to_string(), "group".to_string()),
+            ]),
+        };
 
-        for url in urls {
-            let (kopid, status, value, _) =
-                do_request(url, RequestMethod::GET, None::<JsValue>).await?;
-            results.push((kopid, status, value));
-        }
+        let req_jsvalue = req_body
+            .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
+            .expect("Failed to serialise request");
+        let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
-        let mapped: Vec<_> = results
-            .into_iter()
-            .map(|(kopid, status, value)| {
-                if status == 200 {
-                    let entries: Vec<Entry> = serde_wasm_bindgen::from_value(value)
-                        .expect_throw("Invalid response type - auth_init::AuthResponse");
-                    Ok(entries)
-                } else {
-                    let emsg = value.as_string().unwrap_or_default();
-                    Err(Msg::Error { emsg, kopid })
-                }
+        let (kopid, status, value, _) =
+            do_request("/v1/raw/search", RequestMethod::POST, Some(req_jsvalue)).await?;
+
+        if status == 200 {
+            let search_resp: SearchResponse = serde_wasm_bindgen::from_value(value)
+                .expect_throw("Invalid response type - objectgraph::SearchRequest");
+
+            Ok(Msg::NewObjects {
+                entries: search_resp.entries,
             })
-            .collect();
-
-        let list_result: Result<Vec<Entry>, Msg> = mapped
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map(|v| v.into_iter().flatten().collect());
-
-        match list_result {
-            Ok(entries) => Ok(Msg::NewObjects { entries }),
-            Err(e) => Ok(e),
+        } else {
+            let emsg = value.as_string().unwrap_or_default();
+            Ok(Msg::Error { emsg, kopid })
         }
     }
 }

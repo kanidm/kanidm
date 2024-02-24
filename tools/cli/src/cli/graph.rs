@@ -1,8 +1,6 @@
 use crate::common::OpType;
 use crate::{handle_client_error, GraphCommonOpt, GraphType, ObjectType, OutputMode};
-use kanidm_client::ClientError;
-use kanidm_proto::v1::Entry;
-use tokio::join;
+use kanidm_proto::v1::Filter::{Eq, Or};
 
 impl GraphCommonOpt {
     pub fn debug(&self) -> bool {
@@ -16,17 +14,15 @@ impl GraphCommonOpt {
         let graph_type = &gopt.graph_type;
         let filters = &gopt.filter;
 
-        let arr_result: [Result<Vec<Entry>, ClientError>; 3] = join!(
-            client.idm_group_list(),
-            client.idm_service_account_list(),
-            client.idm_person_account_list()
-        )
-        .into();
-        let list_result: Result<Vec<Entry>, ClientError> = arr_result
-            .into_iter()
-            .collect::<Result<Vec<_>, _>>()
-            .map(|v| v.into_iter().flatten().collect());
-        let entries = match list_result {
+        let filter = Or(vec![
+            Eq("class".to_string(), "person".to_string()),
+            Eq("class".to_string(), "service_account".to_string()),
+            Eq("class".to_string(), "group".to_string()),
+        ]);
+
+        let result = client.search(filter).await;
+
+        let entries = match result {
             Ok(entries) => entries,
             Err(e) => {
                 handle_client_error(e, copt.output_mode);
@@ -60,8 +56,10 @@ impl GraphCommonOpt {
                         } else if classes.contains(&"account".to_string()) {
                             if classes.contains(&"person".to_string()) {
                                 ObjectType::Person
-                            } else {
+                            } else if classes.contains(&"service-account".to_string()) {
                                 ObjectType::ServiceAccount
+                            } else {
+                                return None;
                             }
                         } else {
                             return None;
