@@ -15,11 +15,11 @@ use crate::{TargetServer, TargetServerBuilder};
 pub struct IpaServer {
     ldap: LdapClient,
     realm: String,
-    admin_pw: String,
+    idm_admin_pw: String,
 }
 
 impl IpaServer {
-    fn construct(uri: String, realm: String, admin_pw: String) -> Result<Self, ()> {
+    fn construct(uri: String, realm: String, idm_admin_pw: String) -> Result<Self, ()> {
         // explode the realm to basedn.
         //   dev.kanidm.com
         //   dc=dev,dc=kanidm,dc=com
@@ -30,7 +30,7 @@ impl IpaServer {
         Ok(IpaServer {
             ldap,
             realm,
-            admin_pw,
+            idm_admin_pw,
         })
     }
 
@@ -43,7 +43,7 @@ impl IpaServer {
         Self::construct(
             lconfig.uri.clone(),
             lconfig.realm.clone(),
-            lconfig.admin_pw.clone(),
+            lconfig.idm_admin_pw.clone(),
         )
         .map(TargetServer::Ipa)
     }
@@ -56,12 +56,14 @@ impl IpaServer {
         TargetServerBuilder::Ipa(
             self.ldap.uri.clone(),
             self.realm.clone(),
-            self.admin_pw.clone(),
+            self.idm_admin_pw.clone(),
         )
     }
 
     pub async fn open_admin_connection(&self) -> Result<(), ()> {
-        self.ldap.open_ipa_admin_connection(&self.admin_pw).await
+        self.ldap
+            .open_ipa_admin_connection(&self.idm_admin_pw)
+            .await
     }
 
     pub async fn setup_admin_delete_uuids(&self, _targets: &[Uuid]) -> Result<(), ()> {

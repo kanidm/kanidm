@@ -12,20 +12,20 @@ pub struct DsConfig {
 pub struct IpaConfig {
     pub uri: String,
     pub realm: String,
-    pub admin_pw: String,
+    pub idm_admin_pw: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KaniHttpConfig {
     pub uri: String,
-    pub admin_pw: String,
+    pub idm_admin_pw: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct KaniLdapConfig {
     pub uri: String,
     pub ldap_uri: String,
-    pub admin_pw: String,
+    pub idm_admin_pw: String,
     pub base_dn: String,
 }
 
@@ -62,13 +62,13 @@ impl Default for Profile {
     fn default() -> Self {
         let kani_http_config = KaniHttpConfig {
             uri: format!("https://{}", DEFAULT_SERVER_LOCALHOST),
-            admin_pw: "".to_string(),
+            idm_admin_pw: "".to_string(),
         };
 
         let kani_ldap_config = KaniLdapConfig {
             uri: format!("https://{}", DEFAULT_SERVER_LOCALHOST),
             ldap_uri: format!("ldaps://{}", DEFAULT_LDAP_LOCALHOST),
-            admin_pw: "".to_string(),
+            idm_admin_pw: "".to_string(),
             base_dn: "dn=localhost".to_string(),
         };
 

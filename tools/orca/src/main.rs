@@ -271,10 +271,10 @@ fn update_config_file(opt: ConfigOpt) {
         profile.name = name;
     };
 
-    if let Some(new_password) = opt.admin_password {
-        println!("Updating admin password.");
-        profile.kani_http_config.as_mut().unwrap().admin_pw = new_password.clone();
-        profile.kani_ldap_config.as_mut().unwrap().admin_pw = new_password;
+    if let Some(new_password) = opt.idm_admin_password {
+        println!("Updating idm admin password.");
+        profile.kani_http_config.as_mut().unwrap().idm_admin_pw = new_password.clone();
+        profile.kani_ldap_config.as_mut().unwrap().idm_admin_pw = new_password;
     };
 
     if let Some(kani_uri) = opt.kanidm_uri {

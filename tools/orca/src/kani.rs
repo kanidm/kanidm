@@ -13,7 +13,7 @@ use crate::{TargetServer, TargetServerBuilder};
 #[derive(Debug)]
 pub struct KaniHttpServer {
     uri: String,
-    admin_pw: String,
+    idm_admin_pw: String,
     client: KanidmClient,
 }
 
@@ -24,7 +24,7 @@ pub struct KaniLdapServer {
 }
 
 impl KaniHttpServer {
-    fn construct(uri: String, admin_pw: String) -> Result<Self, ()> {
+    fn construct(uri: String, idm_admin_pw: String) -> Result<Self, ()> {
         let client = KanidmClientBuilder::new()
             .address(uri.clone())
             .danger_accept_invalid_hostnames(true)
@@ -36,7 +36,7 @@ impl KaniHttpServer {
 
         Ok(KaniHttpServer {
             uri,
-            admin_pw,
+            idm_admin_pw,
             client,
         })
     }
@@ -47,7 +47,8 @@ impl KaniHttpServer {
 
     #[allow(clippy::new_ret_no_self)]
     pub fn new(khconfig: &KaniHttpConfig) -> Result<TargetServer, ()> {
-        Self::construct(khconfig.uri.clone(), khconfig.admin_pw.clone()).map(TargetServer::Kanidm)
+        Self::construct(khconfig.uri.clone(), khconfig.idm_admin_pw.clone())
+            .map(TargetServer::Kanidm)
     }
 
     pub fn info(&self) -> String {
@@ -55,25 +56,16 @@ impl KaniHttpServer {
     }
 
     pub fn builder(&self) -> TargetServerBuilder {
-        TargetServerBuilder::Kanidm(self.uri.clone(), self.admin_pw.clone())
+        TargetServerBuilder::Kanidm(self.uri.clone(), self.idm_admin_pw.clone())
     }
 
     // open the admin internal connection
     pub async fn open_admin_connection(&self) -> Result<(), ()> {
         self.client
-            .auth_simple_password("admin", &self.admin_pw)
+            .auth_simple_password("idm_admin", &self.idm_admin_pw)
             .await
             .map_err(|e| {
                 error!("Unable to authenticate -> {:?}", e);
-            })?;
-        // For admin to work, we need idm permissions.
-        // NOT RECOMMENDED IN PRODUCTION.
-        self.client
-            .idm_group_add_members("idm_admins", &["admin"])
-            .await
-            .map(|_| ())
-            .map_err(|e| {
-                error!("Unable to extend admin permissions (idm) -> {:?}", e);
             })
     }
 
@@ -339,11 +331,11 @@ impl KaniHttpServer {
 impl KaniLdapServer {
     fn construct(
         uri: String,
-        admin_pw: String,
+        idm_admin_pw: String,
         ldap_uri: String,
         basedn: String,
     ) -> Result<Box<Self>, ()> {
-        let http = KaniHttpServer::construct(uri, admin_pw)?;
+        let http = KaniHttpServer::construct(uri, idm_admin_pw)?;
         let ldap = LdapClient::new(ldap_uri, basedn, LdapSchema::Kanidm)?;
 
         Ok(Box::new(KaniLdapServer { http, ldap }))
@@ -362,7 +354,7 @@ impl KaniLdapServer {
     pub fn new(klconfig: &KaniLdapConfig) -> Result<TargetServer, ()> {
         Self::construct(
             klconfig.uri.clone(),
-            klconfig.admin_pw.clone(),
+            klconfig.idm_admin_pw.clone(),
             klconfig.ldap_uri.clone(),
             klconfig.base_dn.clone(),
         )
@@ -379,7 +371,7 @@ impl KaniLdapServer {
     pub fn builder(&self) -> TargetServerBuilder {
         TargetServerBuilder::KanidmLdap(
             self.http.uri.clone(),
-            self.http.admin_pw.clone(),
+            self.http.idm_admin_pw.clone(),
             self.ldap.uri.clone(),
             self.ldap.basedn.clone(),
         )

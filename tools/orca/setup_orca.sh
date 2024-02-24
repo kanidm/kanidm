@@ -31,13 +31,10 @@ echo "#########################"
 if [ -z "${KANIDM_CONFIG}" ]; then
     KANIDM_CONFIG="../../examples/insecure_server.toml"
 fi
-
-ADMIN_PW=$(grep -E "^admin password" "${KANI_TEMP}/kanifile" | awk '{print $NF}')
 IDM_ADMIN_PW=$(grep -E "^idm_admin password" "${KANI_TEMP}/kanifile" | awk '{print $NF}')
 rm "${KANI_TEMP}/kanifile"
 
 if [ -n "${DEBUG}" ]; then
-    echo "Admin pw: ${ADMIN_PW}"
     echo "IDM Admin pw: ${IDM_ADMIN_PW}"
 fi
 
@@ -49,7 +46,7 @@ PROFILE_PATH="/tmp/kanidm/orca.toml"
 
 cargo run --bin orca -- configure \
     --profile "${PROFILE_PATH}" \
-    --admin-password "${ADMIN_PW}" \
+    --idm-admin-password "${IDM_ADMIN_PW}" \
     --kanidm-uri "$(grep origin "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"')" \
     --ldap-uri "ldaps://$(grep domain "${KANIDM_CONFIG}" | awk '{print $NF}' | tr -d '"'):636" \
     --ldap-base-dn "${LDAP_DN}"

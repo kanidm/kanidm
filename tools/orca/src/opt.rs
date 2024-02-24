@@ -63,7 +63,7 @@ struct ConfigOpt {
     pub copt: CommonOpt,
     #[clap(value_parser, short, long)]
     /// Update the admin password
-    pub admin_password: Option<String>,
+    pub idm_admin_password: Option<String>,
     #[clap(value_parser, short, long)]
     /// Update the Kanidm URI
     pub kanidm_uri: Option<String>,

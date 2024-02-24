@@ -136,7 +136,7 @@ impl LdapClient {
     }
 
     pub async fn open_ipa_admin_connection(&self, pw: &str) -> Result<(), ()> {
-        let admin_dn = format!("uid=admin,cn=users,cn=accounts,{}", self.basedn);
+        let admin_dn = format!("uid=idm_admin,cn=users,cn=accounts,{}", self.basedn);
         self.bind(admin_dn, pw.to_string()).await
     }
 
