@@ -61,7 +61,7 @@ load-plugins = "pylint_pydantic,pylint_pytest"
 [tool.ruff]
 line-length = 150
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*.py" = [
     "F401", # unused import, reused fixtures across all tests
     "F811", # pytest fixtures

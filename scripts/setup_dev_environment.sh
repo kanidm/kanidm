@@ -126,6 +126,9 @@ ${KANIDM} system oauth2 update-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" openi
 echo "Creating the ${OAUTH2_RP_ID} OAuth2 RP Supplemental Scope Map"
 ${KANIDM} system oauth2 update-sup-scope-map "${OAUTH2_RP_ID}" "${TEST_GROUP}" admin -D "${IDM_ADMIN_USER}"
 
+echo "Creating a claim map for RS ${OAUTH2_RP_ID}"
+${KANIDM} system oauth2 update-claim-map "${OAUTH2_RP_ID}" testclaim "${TEST_GROUP}" foo bar
+
 echo "Creating the OAuth2 RP Secondary Supplemental Crab-baite Scope Map.... wait, no that's not a thing."
 
 echo "Checking the OAuth2 RP Exists"

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 from kanidm import KanidmClient
@@ -23,9 +24,12 @@ async def test_oauth2_rs_list(client: KanidmClient) -> None:
     logging.basicConfig(level=logging.DEBUG)
     print(f"config: {client.config}")
 
-    username = "admin"
-    # change this to be your admin password.
-    password = "pdf1Xz8q2QFsMTsvbv2jXNBaSEsDpW9h83ZRsH7dDfsJeJdM"
+    username = "idm_admin"
+    # change this to be the password.
+    password = os.getenv("KANIDM_PASSWORD")
+    if password is None:
+        print("No KANIDM_PASSWORD env var set for testing")
+        raise pytest.skip("No KANIDM_PASSWORD env var set for testing")
 
     auth_resp = await client.authenticate_password(
         username, password, update_internal_auth_token=True
@@ -41,13 +45,9 @@ async def test_oauth2_rs_list(client: KanidmClient) -> None:
 
     resource_servers = await client.oauth2_rs_list()
     print("content:")
-    print(json.dumps(resource_servers, indent=4))
 
     if resource_servers:
         for oauth_rs in resource_servers:
+            print(json.dumps(oauth_rs.model_dump(), indent=4, default=str))
             for mapping in oauth_rs.oauth2_rs_sup_scope_map:
                 print(f"oauth2_rs_sup_scope_map: {mapping}")
-                user, scopes = mapping.split(":")
-                scopes = scopes.replace("{", "[").replace("}", "]")
-                scopes = json.loads(scopes)
-                print(f"{user=} {scopes=}")
