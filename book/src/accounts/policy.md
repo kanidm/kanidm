@@ -26,10 +26,10 @@ The maximum length in seconds that an authentication session may exist for.
 The minimum security strength of credentials that may be assigned to this account. In order from
 weakest to strongest:
 
-* `any`
-* `mfa`
-* `passkey`
-* `attested_passkey`
+- `any`
+- `mfa`
+- `passkey`
+- `attested_passkey`
 
 ### Password Minimum Length
 

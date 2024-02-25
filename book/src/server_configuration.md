@@ -6,13 +6,14 @@ In this section we will configure your server and create its container instance.
 
 There are two methods for configuration:
 
-1. Providing a configuration file in the volume named `server.toml`. (Within the container it should be
-`/data/server.toml`)
-2. Using environment variables to specify configuration options (uppercased, prefixed with `KANIDM_`).
+1. Providing a configuration file in the volume named `server.toml`. (Within the container it should
+   be `/data/server.toml`)
+2. Using environment variables to specify configuration options (uppercased, prefixed with
+   `KANIDM_`).
 
 The full options and explanations are in the
-[kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html) docs page
-for your particular build.
+[kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html)
+docs page for your particular build.
 
 <!-- deno-fmt-ignore-start -->
 
@@ -55,7 +56,8 @@ docker run --rm -i -t -v kanidmd:/data \
 
 ## Run the Server
 
-Now we can run the server so that it can accept connections. The container defaults to using a configuration file in `/data/server.toml`.
+Now we can run the server so that it can accept connections. The container defaults to using a
+configuration file in `/data/server.toml`.
 
 ```bash
 docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
