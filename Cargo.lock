@@ -1121,6 +1121,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sketching",
+ "tempfile",
  "tikv-jemallocator",
  "tokio",
  "tokio-util",

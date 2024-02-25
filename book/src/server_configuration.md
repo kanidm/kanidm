@@ -4,12 +4,27 @@ In this section we will configure your server and create its container instance.
 
 ## Configuring server.toml
 
-You need a configuration file in the volume named `server.toml`. (Within the container it should be
-`/data/server.toml`) The following is a commented example configuration.
+There are two methods for configuration:
+
+1. Providing a configuration file in the volume named `server.toml`. (Within the container it should be
+`/data/server.toml`)
+2. Using environment variables to specify configuration options (uppercased, prefixed with `KANIDM_`).
 
 The full options and explanations are in the
-[kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html)
+[kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html) docs page
 for your particular build.
+
+<!-- deno-fmt-ignore-start -->
+
+{{#template templates/kani-warning.md
+imagepath=images
+title=Warning!
+text=You MUST set the "domain", "origin", "tls_chain" and "tls_path" options via one method or the other, or the server cannot start!
+}}
+
+<!-- deno-fmt-ignore-end -->
+
+The following is a commented example configuration.
 
 ```toml
 {{#rustdoc_include ../../examples/server_container.toml}}
@@ -23,7 +38,7 @@ This example is located in
 {{#template templates/kani-warning.md
 imagepath=images
 title=Warning!
-text=You MUST set the `domain` name correctly, aligned with your `origin`, else the server may refuse to start or some features (e.g. webauthn, oauth) may not work correctly!
+text=You MUST set the "domain" name correctly, aligned with your "origin", else the server may refuse to start or some features (e.g. WebAuthn, OAuth2) may not work correctly!
 }}
 
 <!-- deno-fmt-ignore-end -->
@@ -40,8 +55,7 @@ docker run --rm -i -t -v kanidmd:/data \
 
 ## Run the Server
 
-Now we can run the server so that it can accept connections. This defaults to using
-`-c /data/server.toml`.
+Now we can run the server so that it can accept connections. The container defaults to using a configuration file in `/data/server.toml`.
 
 ```bash
 docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
@@ -50,12 +64,14 @@ docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
 ### Using the NET\_BIND\_SERVICE capability
 
 If you plan to run without using docker port mapping or some other reverse proxy, and your
-bindaddress or ldapbindaddress port is less than `1024` you will need the `NET_BIND_SERVICE` in
+`bindaddress` or `ldapbindaddress` port is less than `1024` you will need the `NET_BIND_SERVICE` in
 docker to allow these port binds. You can add this with `--cap-add` in your docker run command.
 
 ```bash
-docker run --cap-add NET_BIND_SERVICE --network [host OR macvlan OR ipvlan] \
-    -v kanidmd:/data kanidm/server:latest
+docker run --cap-add NET_BIND_SERVICE \
+  --network [host OR macvlan OR ipvlan] \
+  -v kanidmd:/data \
+  kanidm/server:latest
 ```
 
 <!-- deno-fmt-ignore-start -->

@@ -1093,7 +1093,7 @@ fn config_security_checks(cfg_path: &Path) -> bool {
             Ok(v) => v,
             Err(e) => {
                 error!(
-                    "Unable to read metadata for '{}' during security checks - {:?}",
+                    "Unable to read metadata for config file '{}' during security checks - {:?}",
                     cfg_path_str, e
                 );
                 return false;
