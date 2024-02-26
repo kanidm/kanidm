@@ -25,16 +25,18 @@ if [ ! -f "run_insecure_dev_server.sh" ]; then
     exit 1
 fi
 
+export KANIDM_CONFIG="../../examples/insecure_server.toml"
+
 mkdir -p /tmp/kanidm/client_ca
 
 echo "Generating certificates..."
-cargo run --bin kanidmd --release cert-generate --config ../../examples/insecure_server.toml
+cargo run --bin kanidmd --release cert-generate
 
 echo "Making sure it runs with the DB..."
-cargo run --bin kanidmd --release recover-account idm_admin -o json --config ../../examples/insecure_server.toml
+cargo run --bin kanidmd --release recover-account idm_admin -o json
 
 echo "Running the server..."
-cargo run --bin kanidmd --release server --config ../../examples/insecure_server.toml &
+cargo run --bin kanidmd --release server  &
 KANIDMD_PID=$!
 echo "Kanidm PID: ${KANIDMD_PID}"
 

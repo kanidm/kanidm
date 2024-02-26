@@ -81,8 +81,8 @@ if [ "${REMOVE_TEST_DB}" -eq 1 ]; then
     rm /tmp/kanidm/kanidm.db || true
 fi
 
+export KANIDM_CONFIG="../../examples/insecure_server.toml"
 IDM_ADMIN_USER="idm_admin@localhost"
-
 
 echo "Resetting the idm_admin user..."
 IDM_ADMIN_PASS_RAW="$(${KANIDMD} recover-account idm_admin -o json 2>&1)"
