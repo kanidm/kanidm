@@ -87,9 +87,12 @@ IDM_ADMIN_USER="idm_admin@localhost"
 
 
 echo "Resetting the idm_admin user..."
-IDM_ADMIN_PASS=$(${KANIDMD} recover-account idm_admin -o json 2>&1 | grep password | jq -r .password)
+IDM_ADMIN_PASS_RAW="$(${KANIDMD} recover-account idm_admin -o json 2>&1)"
+IDM_ADMIN_PASS="$(echo "${IDM_ADMIN_PASS_RAW}" | grep password | jq -r .password)"
 if [ -z "${IDM_ADMIN_PASS}" ] || [ "${IDM_ADMIN_PASS}" == "null " ]; then
     echo "Failed to reset idm_admin password!"
+    echo "Raw output:"
+    echo "${IDM_ADMIN_PASS_RAW}"
     exit 1
 fi
 echo "idm_admin pass: '${IDM_ADMIN_PASS}'"
