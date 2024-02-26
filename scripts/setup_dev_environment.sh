@@ -7,8 +7,6 @@
 # - set up a test oauth2 rp (https://kanidm.com)
 # - prompt to reset testuser's creds online
 
-set -e
-
 if [ -n "${BUILD_MODE}" ]; then
     BUILD_MODE="--${BUILD_MODE}"
 else
