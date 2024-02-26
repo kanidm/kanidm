@@ -1,4 +1,4 @@
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
@@ -13,212 +13,59 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-use hashbrown::{HashMap, HashSet};
+// use hashbrown::{HashMap, HashSet};
+use std::process::ExitCode;
 use std::path::{Path, PathBuf};
-use std::time::{Duration, Instant};
+// use std::time::{Duration, Instant};
 
 use clap::{Parser, Subcommand};
-use uuid::Uuid;
+// use uuid::Uuid;
 
-use crate::ds::DirectoryServer;
-use crate::ipa::IpaServer;
-use crate::kani::{KaniHttpServer, KaniLdapServer};
-use crate::profile::Profile;
-use crate::setup::config;
+use crate::profile::{Profile, ProfileBuilder};
+// use crate::setup::config;
 
-mod data;
-mod ds;
-mod generate;
-mod ipa;
+mod error;
+// mod data;
+// mod ds;
+// mod generate;
+// mod ipa;
 mod kani;
-mod ldap;
-mod preprocess;
+// mod ldap;
+// mod preprocess;
+mod preflight;
 mod profile;
-mod runner;
-mod setup;
+mod populate;
+mod state;
+// mod runner;
+// mod setup;
 
 include!("./opt.rs");
 
 impl OrcaOpt {
-    pub fn debug(&self) -> bool {
+    fn debug(&self) -> bool {
         match self {
-            OrcaOpt::TestConnection(opt) => opt.copt.debug,
-            OrcaOpt::Generate(opt) => opt.copt.debug,
-            OrcaOpt::PreProc(opt) => opt.copt.debug,
-            OrcaOpt::Setup(opt) => opt.copt.debug,
-            OrcaOpt::Run(opt) => opt.copt.debug,
-            OrcaOpt::Version(opt) => opt.debug,
-            OrcaOpt::Configure(opt) => opt.copt.debug,
-        }
-    }
-}
-
-pub enum TargetServerBuilder {
-    Kanidm(String, String),
-    KanidmLdap(String, String, String, String),
-    DirSrv(String, String, String),
-    Ipa(String, String, String),
-}
-
-impl TargetServerBuilder {
-    #[allow(clippy::result_unit_err)]
-    pub fn build(self) -> Result<TargetServer, ()> {
-        match self {
-            TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),
-            TargetServerBuilder::KanidmLdap(a, b, c, d) => KaniLdapServer::build(a, b, c, d),
-            TargetServerBuilder::DirSrv(a, b, c) => DirectoryServer::build(a, b, c),
-            TargetServerBuilder::Ipa(a, b, c) => IpaServer::build(a, b, c),
-        }
-    }
-}
-
-#[allow(clippy::large_enum_variant)]
-pub enum TargetServer {
-    Kanidm(KaniHttpServer),
-    KanidmLdap(Box<KaniLdapServer>),
-    DirSrv(DirectoryServer),
-    Ipa(IpaServer),
-}
-
-impl TargetServer {
-    fn info(&self) -> String {
-        match self {
-            TargetServer::Kanidm(k) => k.info(),
-            TargetServer::KanidmLdap(k) => k.info(),
-            TargetServer::DirSrv(k) => k.info(),
-            TargetServer::Ipa(k) => k.info(),
-        }
-    }
-
-    fn rname(&self) -> &str {
-        match self {
-            TargetServer::Kanidm(_) => "kanidm_http",
-            TargetServer::KanidmLdap(_) => "kanidm_ldap",
-            TargetServer::DirSrv(_) => "directory_server",
-            TargetServer::Ipa(_) => "ipa",
-        }
-    }
-
-    fn builder(&self) -> TargetServerBuilder {
-        match self {
-            TargetServer::Kanidm(k) => k.builder(),
-            TargetServer::KanidmLdap(k) => k.builder(),
-            TargetServer::DirSrv(k) => k.builder(),
-            TargetServer::Ipa(k) => k.builder(),
-        }
-    }
-
-    async fn open_admin_connection(&self) -> Result<(), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.open_admin_connection().await,
-            TargetServer::KanidmLdap(k) => k.open_admin_connection().await,
-            TargetServer::DirSrv(k) => k.open_admin_connection().await,
-            TargetServer::Ipa(k) => k.open_admin_connection().await,
-        }
-    }
-
-    async fn setup_admin_delete_uuids(&self, targets: &[Uuid]) -> Result<(), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.setup_admin_delete_uuids(targets).await,
-            TargetServer::KanidmLdap(k) => k.setup_admin_delete_uuids(targets).await,
-            TargetServer::DirSrv(k) => k.setup_admin_delete_uuids(targets).await,
-            TargetServer::Ipa(k) => k.setup_admin_delete_uuids(targets).await,
-        }
-    }
-
-    async fn setup_admin_precreate_entities(
-        &self,
-        targets: &HashSet<Uuid>,
-        all_entities: &HashMap<Uuid, data::Entity>,
-    ) -> Result<(), ()> {
-        match self {
-            TargetServer::Kanidm(k) => {
-                k.setup_admin_precreate_entities(targets, all_entities)
-                    .await
+            OrcaOpt::Version {
+                common
+            } |
+            OrcaOpt::SetupWizard {
+                common, ..
+            } |
+            OrcaOpt::TestConnection {
+                common, ..
+            } |
+            OrcaOpt::PopulateData {
+                common, ..
+            } |
+            OrcaOpt::Preflight {
+                common, ..
             }
-            TargetServer::KanidmLdap(k) => {
-                k.setup_admin_precreate_entities(targets, all_entities)
-                    .await
-            }
-            TargetServer::DirSrv(k) => {
-                k.setup_admin_precreate_entities(targets, all_entities)
-                    .await
-            }
-            TargetServer::Ipa(k) => {
-                k.setup_admin_precreate_entities(targets, all_entities)
-                    .await
-            }
+            => common.debug,
         }
     }
-
-    async fn setup_access_controls(
-        &self,
-        access: &HashMap<Uuid, Vec<data::EntityType>>,
-        all_entities: &HashMap<Uuid, data::Entity>,
-    ) -> Result<(), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.setup_access_controls(access, all_entities).await,
-            TargetServer::KanidmLdap(k) => k.setup_access_controls(access, all_entities).await,
-            TargetServer::DirSrv(k) => k.setup_access_controls(access, all_entities).await,
-            TargetServer::Ipa(k) => k.setup_access_controls(access, all_entities).await,
-        }
-    }
-
-    async fn open_user_connection(
-        &self,
-        test_start: Instant,
-        name: &str,
-        pw: &str,
-    ) -> Result<(Duration, Duration), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.open_user_connection(test_start, name, pw).await,
-            TargetServer::KanidmLdap(k) => k.open_user_connection(test_start, name, pw).await,
-            TargetServer::DirSrv(k) => k.open_user_connection(test_start, name, pw).await,
-            TargetServer::Ipa(k) => k.open_user_connection(test_start, name, pw).await,
-        }
-    }
-
-    async fn close_connection(&self) {
-        match self {
-            TargetServer::Kanidm(k) => k.close_connection().await,
-            TargetServer::KanidmLdap(k) => k.close_connection().await,
-            TargetServer::DirSrv(k) => k.close_connection().await,
-            TargetServer::Ipa(k) => k.close_connection().await,
-        }
-    }
-
-    async fn search(
-        &self,
-        test_start: Instant,
-        ids: &[String],
-    ) -> Result<(Duration, Duration, usize), ()> {
-        match self {
-            TargetServer::Kanidm(k) => k.search(test_start, ids).await,
-            TargetServer::KanidmLdap(k) => k.search(test_start, ids).await,
-            TargetServer::DirSrv(k) => k.search(test_start, ids).await,
-            TargetServer::Ipa(k) => k.search(test_start, ids).await,
-        }
-    }
-}
-
-async fn conntest(target: &TargetOpt, profile_path: &Path) -> Result<(), ()> {
-    info!(
-        "Performing conntest of {:?} from {}",
-        target,
-        profile_path.to_str().unwrap(),
-    );
-
-    let (_data, _profile, server) = config(target, profile_path)?;
-
-    server
-        .open_admin_connection()
-        .await
-        .map(|_| info!("success"))
-        .map_err(|_| error!("connection test failed"))
 }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> ExitCode {
     let opt = OrcaOpt::parse();
 
     if opt.debug() {
@@ -227,18 +74,145 @@ async fn main() {
             "orca=debug,kanidm=debug,kanidm_client=debug,webauthn=debug",
         );
     }
+
     tracing_subscriber::fmt::init();
 
     info!("Orca - the Kanidm Load Testing Utility.");
     debug!("cli -> {:?}", opt);
     match opt {
-        OrcaOpt::Version(_opt) => {
+        OrcaOpt::Version { .. } => {
             println!("orca {}", env!("KANIDM_PKG_VERSION"));
-            std::process::exit(0);
+            return ExitCode::SUCCESS;
         }
-        OrcaOpt::TestConnection(opt) => {
-            let _ = conntest(&opt.target, &opt.profile_path).await;
+
+        // Build the profile and the test dimensions.
+        OrcaOpt::SetupWizard {
+            common: _,
+            admin_password,
+            idm_admin_password,
+            control_uri,
+            seed,
+            profile_path
+        } => {
+            // For now I hardcoded some dimensions, but we should prompt
+            // the user for these later.
+
+            let builder = ProfileBuilder::new(
+                control_uri,
+                admin_password,
+                idm_admin_password,
+            )
+                .seed(seed);
+
+            let profile = match builder.build() {
+                Ok(p) => p,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            match profile.write_to_path(&profile_path) {
+                Ok(_) => {
+                    return ExitCode::SUCCESS;
+                }
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            }
         }
+
+        // Test the connection
+        OrcaOpt::TestConnection {
+            common: _,
+            profile_path,
+        } => {
+            let profile = match Profile::try_from(profile_path.as_path()) {
+                Ok(p) => p,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            info!(
+                "Performing conntest of {}",
+                profile.control_uri()
+            );
+
+            match kani::KanidmOrcaClient::new(&profile).await {
+                Ok(_) => {
+                    info!("success");
+                    return ExitCode::SUCCESS;
+                }
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+
+        // From the profile and test dimensions, generate the data into a state file.
+        OrcaOpt::PopulateData {
+            common: _,
+            profile_path,
+            state_path,
+        } => {
+            let profile = match Profile::try_from(profile_path.as_path()) {
+                Ok(p) => p,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            let client = match kani::KanidmOrcaClient::new(&profile).await {
+                Ok(client) => client,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            // do-it.
+            let state = match populate::populate(&client, profile).await {
+                Ok(s) => s,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            match state.write_to_path(&state_path) {
+                Ok(_) => {
+                    return ExitCode::SUCCESS;
+                }
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            }
+        }
+
+        // 
+        OrcaOpt::Preflight {
+            common: _,
+            state_path,
+        } => {
+            let state = match state::State::try_from(state_path.as_path()) {
+                Ok(p) => p,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+
+            match preflight::preflight(state).await {
+                Ok(_) => {
+                    return ExitCode::SUCCESS;
+                }
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
+        }
+
+        // Run the test based on the state file.
+
+
+        /*
         OrcaOpt::Generate(opt) => generate::doit(&opt.output_path),
         OrcaOpt::PreProc(opt) => preprocess::doit(&opt.input_path, &opt.output_path),
         OrcaOpt::Setup(opt) => {
@@ -251,75 +225,8 @@ async fn main() {
             // run the test!
         }
         OrcaOpt::Configure(opt) => update_config_file(opt),
-    };
-    debug!("Exit");
-}
-
-fn update_config_file(opt: ConfigOpt) {
-    let mut profile = match opt.profile.exists() {
-        true => {
-            let file_contents = std::fs::read_to_string(&opt.profile).unwrap();
-            toml::from_str(&file_contents).unwrap()
-        }
-
-        false => Profile::default(),
-    };
-    println!("Current profile:\n{}", toml::to_string(&profile).unwrap());
-
-    if let Some(name) = opt.name {
-        println!("Updating config name.");
-        profile.name = name;
+        */
     };
 
-    if let Some(new_password) = opt.admin_password {
-        println!("Updating admin password.");
-        profile.kani_http_config.as_mut().unwrap().admin_pw = new_password.clone();
-        profile.kani_ldap_config.as_mut().unwrap().admin_pw = new_password;
-    };
-
-    if let Some(kani_uri) = opt.kanidm_uri {
-        println!("Updating kanidm uri.");
-        profile.kani_http_config.as_mut().unwrap().uri = kani_uri.clone();
-        profile.kani_ldap_config.as_mut().unwrap().uri = kani_uri;
-    };
-
-    if let Some(ldap_uri) = opt.ldap_uri {
-        println!("Updating ldap uri.");
-        profile.kani_ldap_config.as_mut().unwrap().ldap_uri = ldap_uri;
-    };
-
-    if let Some(base_dn) = opt.ldap_base_dn {
-        println!("Updating base DN.");
-        profile.kani_ldap_config.as_mut().unwrap().base_dn = base_dn;
-    };
-
-    if let Some(data_file) = opt.data_file {
-        println!("Updating data_file path.");
-        profile.data = data_file;
-    };
-
-    if let Some(results) = opt.results {
-        println!("Updating results path.");
-        profile.results = results.to_str().unwrap().to_string();
-    };
-
-    let file_contents = match toml::to_string(&profile) {
-        Err(err) => {
-            error!("Failed to serialize the config file: {:?}", err);
-            return;
-        }
-        Ok(val) => val,
-    };
-
-    match std::fs::write(&opt.profile, &file_contents) {
-        Err(err) => {
-            eprintln!("Failed to write the config file: {:?}", err);
-            return;
-        }
-        Ok(_) => {
-            println!("Wrote out the new config file");
-        }
-    };
-
-    println!("New config:\n{}", file_contents);
+    // debug!("Exit");
 }
