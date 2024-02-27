@@ -186,6 +186,7 @@ doc/format: ## Format docs and the Kanidm book
 		-not -path './target/*' \
 		-not -path './docs/*' \
 		-not -path '*/.venv/*' -not -path './vendor/*'\
+		-not -path '*/.*/*' \
 		-name \*.md \
 		-exec deno fmt --check $(MARKDOWN_FORMAT_ARGS) "{}" +
 

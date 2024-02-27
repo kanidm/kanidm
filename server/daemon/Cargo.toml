@@ -35,6 +35,7 @@ tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 opentelemetry_api = { workspace = true, features = ["logs"] }
+tempfile = { workspace = true }
 tracing = { workspace = true, features = [
     "max_level_trace",
     "release_max_level_debug",
