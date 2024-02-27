@@ -81,7 +81,7 @@ pub enum IdentifyUserRequest {
     DisplayCode,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
 pub enum IdentifyUserResponse {
     IdentityVerificationUnavailable,
     IdentityVerificationAvailable,
