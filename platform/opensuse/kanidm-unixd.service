@@ -32,6 +32,9 @@ NoNewPrivileges=true
 PrivateTmp=true
 # We have to disable this to allow tpmrm0 access for tpm binding.
 PrivateDevices=false
+# Older versions of systemd require this to be explicitly allowed.
+DeviceAllow=/dev/tpmrm0 rw
+
 ProtectHostname=true
 ProtectClock=true
 ProtectKernelTunables=true

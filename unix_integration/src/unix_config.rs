@@ -78,9 +78,8 @@ impl Display for UidAttr {
 
 #[derive(Debug, Clone, Default)]
 pub enum HsmType {
-    #[cfg_attr(not(feature = "tpm"), default)]
+    #[default]
     Soft,
-    #[cfg_attr(feature = "tpm", default)]
     Tpm,
 }
 
