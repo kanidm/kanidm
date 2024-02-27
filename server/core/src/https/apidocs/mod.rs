@@ -34,6 +34,16 @@ impl Modify for SecurityAddon {
 // docs for the derive macro are here: <https://docs.rs/utoipa-gen/3.5.0/utoipa_gen/derive.OpenApi.html#info-attribute-syntax>
 #[derive(OpenApi)]
 #[openapi(
+    servers(
+        (url="https://{host}:{port}",
+            variables(
+                ("host" = (default="localhost", description="Server's hostname")),
+                ("port" = (default="8443", description="Server HTTPS port")),
+            )
+        )
+    ),
+    external_docs(url = "https://kanidm.com/docs", description = "Kanidm documentation page"),
+
     paths(
         super::generic::status,
         super::generic::robots_txt,
@@ -266,9 +276,9 @@ impl Modify for SecurityAddon {
     ),
     info(
         title = "Kanidm",
-        description = "API for interacting with the Kanidm system. This is a work in progress",
+        description = "API for interacting with the Kanidm system. This is a work in progress.",
         contact( // <https://docs.rs/utoipa-gen/3.5.0/utoipa_gen/derive.OpenApi.html#info-attribute-syntax>
-            name="Kanidm",
+            name="Kanidm Github",
             url="https://github.com/kanidm/kanidm",
         )
     )
