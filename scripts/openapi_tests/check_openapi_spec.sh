@@ -39,3 +39,5 @@ docker run --rm -it \
     -i /spec/openapi.json -g rust
 
 cleanup "${WORKDIR}"
+
+echo "It looks to have passed OK!"
