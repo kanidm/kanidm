@@ -1,6 +1,6 @@
+use kanidm_proto::internal::Filter::{Eq, Or};
 use crate::common::OpType;
 use crate::{handle_client_error, GraphCommonOpt, GraphType, ObjectType, OutputMode};
-use kanidm_proto::v1::Filter::{Eq, Or};
 
 impl GraphCommonOpt {
     pub fn debug(&self) -> bool {

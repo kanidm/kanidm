@@ -10,10 +10,11 @@ use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlInputElement;
 use yew_router::Routable;
+use kanidm_proto::internal::Filter::{Eq, Or};
+use kanidm_proto::internal::{SearchRequest, SearchResponse};
+use kanidm_proto::v1::Entry;
 
 use crate::router::AdminRoute;
-use kanidm_proto::v1::Filter::{Eq, Or};
-use kanidm_proto::v1::{Entry, SearchRequest, SearchResponse};
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 use kanidmd_web_ui_shared::utils::{init_graphviz, open_blank};
 
