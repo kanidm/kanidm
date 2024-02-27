@@ -12,9 +12,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  set_lower_case_name:
+    runs-on: ubuntu-latest
+    name: set lower case owner name
+    steps:
+    - id: step1
+      run: |
+        echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_OUTPUT}"
+      env:
+        OWNER: '${{ github.repository_owner }}'
+    outputs:
+      owner_lc: ${{ steps.step1.outputs.OWNER_LC }}
+
   kanidmd_build:
     name: Build kanidmd Docker image
     runs-on: ubuntu-latest
+    needs: set_lower_case_name
     steps:
       - uses: actions/checkout@v4
       - name: Set up Docker Buildx
@@ -41,7 +54,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           platforms: "linux/amd64"
-          tags: ghcr.io/${{ github.repository_owner }}/kanidmd:devel
+          tags: ghcr.io/${{ needs.set_lower_case_name.outputs.owner_lc }}/kanidmd:devel
           # build-args: |
           #  "KANIDM_BUILD_OPTIONS=-j1"
           file: server/Dockerfile

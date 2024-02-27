@@ -162,14 +162,18 @@ fn protected_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -
                 if classes.contains(&EntryClass::SyncObject.into()) {
                     // Block the mod
                     security_access!("attempt to delete with protected class type");
-                    IResult::Denied
-                } else {
-                    IResult::Ignore
+                    return IResult::Denied;
                 }
-            } else {
-                // Nothing to check.
-                IResult::Ignore
+            };
+
+            // Prevent deletion of entries that exist in the system controlled entry range.
+            if entry.get_uuid() <= UUID_ANONYMOUS {
+                security_access!("attempt to delete system builtin entry");
+                return IResult::Denied;
             }
+
+            // Checks exhausted, no more input from us
+            IResult::Ignore
         }
     }
 }

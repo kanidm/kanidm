@@ -80,25 +80,27 @@ pub struct TlsConfiguration {
     pub client_ca: Option<PathBuf>,
 }
 
-/// This is the Server Configuration as read from `server.toml`.
+/// This is the Server Configuration as read from `server.toml` or environment variables.
+///
+/// Fields noted as "REQUIRED" are required for the server to start, even if they show as optional due to how file parsing works.
+///
+/// If you want to set these as environment variables, prefix them with `KANIDM_` and they will be picked up. This does not include replication peer config.
 ///
 /// NOTE: not all flags or values from the internal [Configuration] object are exposed via this structure
 /// to prevent certain settings being set (e.g. integration test modes)
-///
-/// If you want to set these as environment variables, prefix them with `KANIDM_` and they will be picked up. This doesn't include replication peer config.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
-    /// Kanidm Domain, eg `kanidm.example.com`.
-    pub domain: String,
-    /// The user-facing HTTPS URL for this server, eg <https://idm.example.com>
+    /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
+    pub domain: Option<String>,
+    /// *REQUIRED* - The user-facing HTTPS URL for this server, eg <https://idm.example.com>
     // TODO  -this should be URL
-    pub origin: String,
+    pub origin: Option<String>,
     /// File path of the database file
-    pub db_path: String,
-    /// The file path to the TLS Certificate Chain
+    pub db_path: Option<String>,
+    ///  *REQUIRED* - The file path to the TLS Certificate Chain
     pub tls_chain: Option<String>,
-    /// The file path to the TLS Private Key
+    ///  *REQUIRED* - The file path to the TLS Private Key
     pub tls_key: Option<String>,
 
     /// The directory path of the client ca and crl dir.
@@ -115,7 +117,7 @@ pub struct ServerConfig {
     /// If unset, the LDAP server will be disabled.
     pub ldapbindaddress: Option<String>,
 
-    /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica
+    /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica, defaults to [ServerRole::WriteReplica]
     #[serde(default)]
     pub role: ServerRole,
     /// The log level, one of info, debug, trace. Defaults to "info" if not set.
@@ -129,7 +131,8 @@ pub struct ServerConfig {
 
     /// The filesystem type, either "zfs" or "generic". Defaults to "generic" if unset. I you change this, run a database vacuum.
     pub db_fs_type: Option<kanidm_proto::internal::FsType>,
-    /// The path to the "admin" socket, used for local communication when performing cer ain server control tasks.
+
+    /// The path to the "admin" socket, used for local communication when performing certain server control tasks. Default is set on build, based on the system target.
     pub adminbindpath: Option<String>,
 
     /// Don't touch this unless you know what you're doing!
@@ -139,43 +142,101 @@ pub struct ServerConfig {
     #[serde(rename = "replication")]
     /// Replication configuration, this is a development feature and not yet ready for production use.
     pub repl_config: Option<ReplicationConfiguration>,
-    /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg http://localhost:4317
+    /// An optional OpenTelemetry collector (GRPC) url to send trace and log data to, eg `http://localhost:4317`. If not set, disables the feature.
     pub otel_grpc_url: Option<String>,
 }
 
 impl ServerConfig {
     /// loads the configuration file from the path specified, then overlays fields from environment variables starting with `KANIDM_``
-    pub fn new<P: AsRef<Path>>(config_path: P) -> Result<Self, std::io::Error> {
-        let mut f = File::open(config_path.as_ref()).map_err(|e| {
-            eprintln!("Unable to open config file [{:?}] 🥺", e);
-            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
-            e
-        })?;
+    pub fn new<P: AsRef<Path>>(config_path: Option<P>) -> Result<Self, std::io::Error> {
+        // start with a base config
+        let mut config = ServerConfig::default();
 
-        let mut contents = String::new();
-        f.read_to_string(&mut contents).map_err(|e| {
-            eprintln!("unable to read contents {:?}", e);
-            let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-            eprintln!("{}", diag);
-            e
-        })?;
+        if let Some(config_path) = config_path {
+            // see if we can load it from the config file you asked for
+            if config_path.as_ref().exists() {
+                eprintln!("📜 Using config file: {:?}", config_path.as_ref());
+                let mut f: File = File::open(config_path.as_ref()).map_err(|e| {
+                    eprintln!("Unable to open config file [{:?}] 🥺", e);
+                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+                    eprintln!("{}", diag);
+                    e
+                })?;
 
-        let res: ServerConfig = toml::from_str(contents.as_str()).map_err(|e| {
-            eprintln!(
-                "Unable to parse config from '{:?}': {:?}",
-                config_path.as_ref(),
-                e
-            );
-            std::io::Error::new(std::io::ErrorKind::Other, e)
-        })?;
+                let mut contents = String::new();
 
-        let res = res.try_from_env().map_err(|e| {
+                f.read_to_string(&mut contents).map_err(|e| {
+                    eprintln!("unable to read contents {:?}", e);
+                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
+                    eprintln!("{}", diag);
+                    e
+                })?;
+
+                // if we *can* load the config we'll set config to that.
+                match toml::from_str::<ServerConfig>(contents.as_str()) {
+                    Err(err) => {
+                        eprintln!(
+                            "Unable to parse config from '{:?}': {:?}",
+                            config_path.as_ref(),
+                            err
+                        );
+                    }
+                    Ok(val) => config = val,
+                };
+            } else {
+                eprintln!("📜 No config file found at {:?}", config_path.as_ref());
+            }
+        }
+
+        // build from the environment variables
+        let res = config.try_from_env().map_err(|e| {
             println!("Failed to use environment variable config: {e}");
             std::io::Error::new(std::io::ErrorKind::Other, e)
         })?;
 
-        Ok(res)
+        // check if the required fields are there
+        let mut config_failed = false;
+        if res.domain.is_none() {
+            eprintln!("❌ 'domain' field in server configuration is not set, server cannot start!");
+            config_failed = true;
+        }
+
+        if res.origin.is_none() {
+            eprintln!("❌ 'origin' field in server configuration is not set, server cannot start!");
+            config_failed = true;
+        }
+
+        if res.db_path.is_none() {
+            eprintln!(
+                "❌ 'db_path' field in server configuration is not set, server cannot start!"
+            );
+            config_failed = true;
+        }
+
+        #[cfg(not(test))]
+        if res.tls_chain.is_none() {
+            eprintln!(
+                "❌ 'tls_chain' field in server configuration is not set, server cannot start!"
+            );
+            config_failed = true;
+        }
+        #[cfg(not(test))]
+        if res.tls_key.is_none() {
+            eprintln!(
+                "❌ 'tls_key' field in server configuration is not set, server cannot start!"
+            );
+            config_failed = true;
+        }
+
+        if config_failed {
+            eprintln!("Failed to parse configuration, server cannot start!");
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to parse configuration, server cannot start!",
+            ))
+        } else {
+            Ok(res)
+        }
     }
 
     /// Updates the ServerConfig from environment variables starting with `KANIDM_`
@@ -202,13 +263,13 @@ impl ServerConfig {
 
             match key.replace("KANIDM_", "").as_str() {
                 "DOMAIN" => {
-                    self.domain = value.to_string();
+                    self.domain = Some(value.to_string());
                 }
                 "ORIGIN" => {
-                    self.origin = value.to_string();
+                    self.origin = Some(value.to_string());
                 }
                 "DB_PATH" => {
-                    self.origin = value.to_string();
+                    self.origin = Some(value.to_string());
                 }
                 "TLS_CHAIN" => {
                     self.tls_chain = Some(value.to_string());

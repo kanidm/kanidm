@@ -24,7 +24,7 @@ pub async fn version_middleware<B>(request: Request<B>, next: Next<B>) -> Respon
 
 #[cfg(any(test, debug_assertions))]
 /// This is a debug middleware to ensure that /v1/ endpoints only return JSON
-#[instrument(level = "debug", name = "are_we_json_yet", skip_all)]
+#[instrument(level = "trace", name = "are_we_json_yet", skip_all)]
 pub async fn are_we_json_yet<B>(request: Request<B>, next: Next<B>) -> Response {
     let uri = request.uri().path().to_string();
 
@@ -52,7 +52,7 @@ pub struct KOpId {
 }
 
 /// This runs at the start of the request, adding an extension with `KOpId` which has useful things inside it.
-#[instrument(level = "debug", name = "kopid_middleware", skip_all)]
+#[instrument(level = "trace", name = "kopid_middleware", skip_all)]
 pub async fn kopid_middleware<B>(mut request: Request<B>, next: Next<B>) -> Response {
     // generate the event ID
     let eventid = sketching::tracing_forest::id();

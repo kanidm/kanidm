@@ -1,8 +1,9 @@
 //! Constant Entries for the IDM
-use crate::prelude::{idm_builtin_admin_groups, AttrString};
+use crate::prelude::AttrString;
 use enum_iterator::Sequence;
 use std::fmt::Display;
 
+use crate::constants::groups::idm_builtin_admin_groups;
 use crate::constants::uuids::*;
 use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::idm::account::Account;

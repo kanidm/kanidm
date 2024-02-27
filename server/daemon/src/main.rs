@@ -15,7 +15,6 @@
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use std::fs::{metadata, File};
-use std::str::FromStr;
 // This works on both unix and windows.
 use fs2::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
@@ -268,19 +267,8 @@ async fn kanidm_main() -> ExitCode {
     //we set up a list of these so we can set the log config THEN log out the errors.
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
-    let cfg_path = opt
-        .commands
-        .commonopt()
-        .config_path
-        .clone()
-        .or_else(|| PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")).ok());
 
-    let Some(cfg_path) = cfg_path else {
-        eprintln!("Unable to start - can not locate any configuration file");
-        return ExitCode::FAILURE;
-    };
-
-    let sconfig = match ServerConfig::new(&cfg_path) {
+    let sconfig = match ServerConfig::new(opt.config_path()) {
         Ok(c) => Some(c),
         Err(e) => {
             config_error.push(format!("Config Parse failure {:?}", e));
@@ -365,85 +353,104 @@ async fn kanidm_main() -> ExitCode {
         }
     };
 
-    #[cfg(target_family = "unix")]
-    {
-        let cfg_meta = match metadata(&cfg_path) {
-            Ok(m) => m,
-            Err(e) => {
-                error!(
-                    "Unable to read metadata for '{}' - {:?}",
-                    cfg_path.display(),
-                    e
-                );
-                return ExitCode::FAILURE;
+    if let Some(cfg_path) = opt.config_path() {
+        #[cfg(target_family = "unix")]
+        {
+            if let Some(cfg_meta) = match metadata(&cfg_path) {
+                Ok(m) => Some(m),
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for configuration file '{}' - {:?}",
+                        cfg_path.display(),
+                        e
+                    );
+                    // return ExitCxode::FAILURE;
+                    None
+                }
+            } {
+                if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
+                    warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
+                            cfg_path.to_str().unwrap_or("invalid file path"));
+                }
+
+                if cfg_meta.mode() & 0o007 != 0 {
+                    warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
+                            cfg_path.to_str().unwrap_or("invalid file path")
+                            );
+                }
+
+                if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
+                    warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
+                            cfg_path.to_str().unwrap_or("invalid file path")
+                            );
+                }
             }
-        };
-
-        if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                    cfg_path.to_str().unwrap_or("invalid file path"));
-        }
-
-        if cfg_meta.mode() & 0o007 != 0 {
-            warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-                    cfg_path.to_str().unwrap_or("invalid file path")
-                    );
-        }
-
-        if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
-            warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                    cfg_path.to_str().unwrap_or("invalid file path")
-                    );
         }
     }
 
     // Check the permissions of the files from the configuration.
+    if let Some(db_path) = sconfig.db_path.clone() {
+        #[allow(clippy::expect_used)]
+        let db_pathbuf = PathBuf::from(db_path.as_str());
+        // We can't check the db_path permissions because it may not exist yet!
+        if let Some(db_parent_path) = db_pathbuf.parent() {
+            if !db_parent_path.exists() {
+                warn!(
+                    "DB folder {} may not exist, server startup may FAIL!",
+                    db_parent_path.to_str().unwrap_or("invalid file path")
+                );
+                let diag = kanidm_lib_file_permissions::diagnose_path(&db_pathbuf);
+                info!(%diag);
+            }
 
-    let db_path = PathBuf::from(sconfig.db_path.as_str());
-    // We can't check the db_path permissions because it may not exist yet!
-    if let Some(db_parent_path) = db_path.parent() {
-        if !db_parent_path.exists() {
-            warn!(
-                "DB folder {} may not exist, server startup may FAIL!",
-                db_parent_path.to_str().unwrap_or("invalid file path")
-            );
-            let diag = kanidm_lib_file_permissions::diagnose_path(&db_path);
-            info!(%diag);
-        }
-
-        let db_par_path_buf = db_parent_path.to_path_buf();
-        let i_meta = match metadata(&db_par_path_buf) {
-            Ok(m) => m,
-            Err(e) => {
+            let db_par_path_buf = db_parent_path.to_path_buf();
+            let i_meta = match metadata(&db_par_path_buf) {
+                Ok(m) => m,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for database folder '{}' - {:?}",
+                        &db_par_path_buf.to_str().unwrap_or("invalid file path"),
+                        e
+                    );
+                    return ExitCode::FAILURE;
+                }
+            };
+            if !i_meta.is_dir() {
                 error!(
-                    "Unable to read metadata for '{}' - {:?}",
-                    &db_par_path_buf.to_str().unwrap_or("invalid file path"),
-                    e
+                    "ERROR: Refusing to run - DB folder {} may not be a directory",
+                    db_par_path_buf.to_str().unwrap_or("invalid file path")
                 );
                 return ExitCode::FAILURE;
             }
-        };
-        if !i_meta.is_dir() {
-            error!(
-                "ERROR: Refusing to run - DB folder {} may not be a directory",
-                db_par_path_buf.to_str().unwrap_or("invalid file path")
-            );
-            return ExitCode::FAILURE;
-        }
 
-        if kanidm_lib_file_permissions::readonly(&i_meta) {
-            warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            if kanidm_lib_file_permissions::readonly(&i_meta) {
+                warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
+            #[cfg(not(target_os = "windows"))]
+            if i_meta.mode() & 0o007 != 0 {
+                warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
+            }
         }
-        #[cfg(not(target_os = "windows"))]
-        if i_meta.mode() & 0o007 != 0 {
-            warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
-        }
+        config.update_db_path(&db_path);
+    } else {
+        error!("No db_path set in configuration, server startup will FAIL!");
+        return ExitCode::FAILURE;
     }
 
-    config.update_db_path(sconfig.db_path.as_str());
-    config.update_db_fs_type(&sconfig.db_fs_type);
-    config.update_origin(sconfig.origin.as_str());
-    config.update_domain(sconfig.domain.as_str());
+    if let Some(origin) = sconfig.origin.clone() {
+        config.update_origin(&origin);
+    } else {
+        error!("No origin set in configuration, server startup will FAIL!");
+        return ExitCode::FAILURE;
+    }
+
+    if let Some(domain) = sconfig.domain.clone() {
+        config.update_domain(&domain);
+    } else {
+        error!("No domain set in configuration, server startup will FAIL!");
+        return ExitCode::FAILURE;
+    }
+
     config.update_db_arc_size(sconfig.get_db_arc_size());
     config.update_role(sconfig.role);
     config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
@@ -461,7 +468,16 @@ async fn kanidm_main() -> ExitCode {
         | KanidmdOpt::HealthCheck(_) => (),
         _ => {
             // Okay - Lets now create our lock and go.
-            let klock_path = format!("{}.klock", sconfig.db_path.as_str());
+            #[allow(clippy::expect_used)]
+            let klock_path = match sconfig.db_path.clone() {
+                Some(val) => format!("{}.klock", val),
+                None => std::env::temp_dir()
+                    .join("kanidmd.klock")
+                    .to_str()
+                    .expect("Unable to create klock path")
+                    .to_string(),
+            };
+
             let flock = match File::create(&klock_path) {
                 Ok(flock) => flock,
                 Err(e) => {
@@ -499,7 +515,7 @@ async fn kanidm_main() -> ExitCode {
                     Ok(m) => m,
                     Err(e) => {
                         error!(
-                            "Unable to read metadata for '{}' - {:?}",
+                            "Unable to read metadata for TLS chain file '{}' - {:?}",
                             &i_path.to_str().unwrap_or("invalid file path"),
                             e
                         );
@@ -520,7 +536,7 @@ async fn kanidm_main() -> ExitCode {
                     Ok(m) => m,
                     Err(e) => {
                         error!(
-                            "Unable to read metadata for '{}' - {:?}",
+                            "Unable to read metadata for TLS key file '{}' - {:?}",
                             &i_path.to_str().unwrap_or("invalid file path"),
                             e
                         );

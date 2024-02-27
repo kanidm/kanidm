@@ -432,7 +432,7 @@ pub trait IdmServerTransaction<'a> {
                 }
             },
             (None, None) => {
-                warn!("No client certificate or bearer tokens were supplied");
+                debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
             }
         }
@@ -464,7 +464,7 @@ pub trait IdmServerTransaction<'a> {
                 }
             },
             (None, None) => {
-                warn!("No client certificate or bearer tokens were supplied");
+                debug!("No client certificate or bearer tokens were supplied");
                 Err(OperationError::NotAuthenticated)
             }
         }
@@ -3810,7 +3810,7 @@ mod tests {
             Err(e) => {
                 error!("A critical error has occurred! {:?}", e);
                 // Should not occur!
-                panic!();
+                panic!("A critical error has occurred! {:?}", e);
             }
         };
 

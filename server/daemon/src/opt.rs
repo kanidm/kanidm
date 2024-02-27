@@ -1,6 +1,6 @@
 #[derive(Debug, Args)]
 struct CommonOpt {
-    /// Path to the server's configuration file. If it does not exist, it will be created.
+    /// Path to the server's configuration file.
     #[clap(short, long = "config", env = "KANIDM_CONFIG")]
     config_path: Option<PathBuf>,
     /// Log format (still in very early development)
@@ -152,6 +152,58 @@ enum DbScanOpt {
 struct KanidmdParser {
     #[command(subcommand)]
     commands: KanidmdOpt,
+}
+
+impl KanidmdParser {
+    /// Returns the configuration path that was specified on the command line, if any.
+    fn config_path(&self) -> Option<PathBuf> {
+        match self.commands {
+            KanidmdOpt::Server(ref c) => c.config_path.clone(),
+            KanidmdOpt::ConfigTest(ref c) => c.config_path.clone(),
+            KanidmdOpt::CertGenerate(ref c) => c.config_path.clone(),
+            KanidmdOpt::RecoverAccount { ref commonopts, .. } => commonopts.config_path.clone(),
+            KanidmdOpt::ShowReplicationCertificate { ref commonopts, .. } => {
+                commonopts.config_path.clone()
+            }
+            KanidmdOpt::RenewReplicationCertificate { ref commonopts, .. } => {
+                commonopts.config_path.clone()
+            }
+            KanidmdOpt::RefreshReplicationConsumer { ref commonopts, .. } => {
+                commonopts.config_path.clone()
+            }
+            KanidmdOpt::DbScan { ref commands } => match commands {
+                DbScanOpt::ListIndexes(ref c) => c.config_path.clone(),
+                DbScanOpt::ListIndex(ref c) => c.commonopts.config_path.clone(),
+                DbScanOpt::ListId2Entry(ref c) => c.config_path.clone(),
+                DbScanOpt::GetId2Entry(ref c) => c.commonopts.config_path.clone(),
+                DbScanOpt::ListIndexAnalysis(ref c) => c.config_path.clone(),
+                DbScanOpt::QuarantineId2Entry { ref commonopts, .. } => {
+                    commonopts.config_path.clone()
+                }
+                DbScanOpt::ListQuarantined { ref commonopts } => commonopts.config_path.clone(),
+                DbScanOpt::RestoreQuarantined { ref commonopts, .. } => {
+                    commonopts.config_path.clone()
+                }
+            },
+            KanidmdOpt::Database { ref commands } => match commands {
+                DbCommands::Vacuum(ref c) => c.config_path.clone(),
+                DbCommands::Backup(ref c) => c.commonopts.config_path.clone(),
+                DbCommands::Restore(ref c) => c.commonopts.config_path.clone(),
+                DbCommands::Verify(ref c) => c.config_path.clone(),
+                DbCommands::Reindex(ref c) => c.config_path.clone(),
+            },
+            KanidmdOpt::DomainSettings { ref commands } => match commands {
+                DomainSettingsCmds::Show { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::Change { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::Raise { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::Remigrate { ref commonopts, .. } => {
+                    commonopts.config_path.clone()
+                }
+            },
+            KanidmdOpt::HealthCheck(ref c) => c.commonopts.config_path.clone(),
+            KanidmdOpt::Version(ref c) => c.config_path.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Subcommand)]

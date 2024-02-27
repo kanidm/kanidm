@@ -367,7 +367,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_oauthclaim_map(&self) -> Option<&BTreeMap<String, OauthClaimMapping>> {
-        debug_assert!(false);
         None
     }
 

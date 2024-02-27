@@ -3117,4 +3117,30 @@ mod tests {
         // Test reject delete
         test_acp_delete!(&de_b, vec![acp], &data_set, false);
     }
+
+    #[test]
+    fn test_access_delete_protect_system_ranges() {
+        let ev1: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        let ev1 = ev1.into_sealed_committed();
+        let r_set = vec![Arc::new(ev1)];
+
+        let de_account = DeleteEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+        );
+
+        let acp = AccessControlDelete::from_raw(
+            "test_delete",
+            Uuid::new_v4(),
+            UUID_TEST_GROUP_1,
+            // To delete testperson
+            filter_valid!(f_eq(Attribute::Name, PartialValue::new_iname("anonymous"))),
+        );
+
+        // Test reject delete, can not delete due to system protection
+        test_acp_delete!(&de_account, vec![acp], &r_set, false);
+    }
 }

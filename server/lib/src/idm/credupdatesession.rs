@@ -1,6 +1,6 @@
 use core::ops::Deref;
 use std::collections::BTreeMap;
-use std::fmt;
+use std::fmt::{self, Display};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -280,6 +280,12 @@ pub enum CredentialUpdateSessionStatusWarnings {
     WebauthnAttestationUnsatisfiable,
 }
 
+impl Display for CredentialUpdateSessionStatusWarnings {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{:?}", self)
+    }
+}
+
 impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
     fn from(val: CredentialUpdateSessionStatusWarnings) -> CURegWarning {
         match val {
@@ -370,7 +376,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
             .resolved_account_policy
             .webauthn_attestation_ca_list()
             .iter()
-            .flat_map(|att_ca_list| {
+            .flat_map(|att_ca_list: &&webauthn_rs::prelude::AttestationCaList| {
                 att_ca_list.cas().values().flat_map(|ca| {
                     ca.aaguids()
                         .values()
@@ -1239,8 +1245,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.credential_update_commit_common(cust, ct)?;
 
         // Can we actually proceed?
-        if !session.can_commit().0 {
-            admin_error!("Session is unable to commit due to a constraint violation.");
+        let can_commit = session.can_commit();
+        if !can_commit.0 {
+            let commit_failure_reasons = can_commit
+                .1
+                .iter()
+                .map(|e| e.to_string())
+                .collect::<Vec<String>>()
+                .join(", ");
+            admin_error!(
+                "Session is unable to commit due to: {}",
+                commit_failure_reasons
+            );
+            // TODO: perhaps it would be more helpful to add a new operation error that describes what the issue is
             return Err(OperationError::InvalidState);
         }
 
