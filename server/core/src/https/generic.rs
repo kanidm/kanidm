@@ -38,6 +38,7 @@ pub async fn status(
         (status = 200, description = "Ok"),
     ),
     tag = "ui",
+    operation_id = "robots_txt",
 
 )]
 pub async fn robots_txt() -> impl IntoResponse {
