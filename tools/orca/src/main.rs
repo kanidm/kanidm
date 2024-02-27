@@ -13,31 +13,20 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-// use hashbrown::{HashMap, HashSet};
 use std::process::ExitCode;
 use std::path::{Path, PathBuf};
-// use std::time::{Duration, Instant};
 
-use clap::{Parser, Subcommand};
-// use uuid::Uuid;
+use clap::Parser;
 
 use crate::profile::{Profile, ProfileBuilder};
-// use crate::setup::config;
 
 mod error;
-// mod data;
-// mod ds;
-// mod generate;
-// mod ipa;
 mod kani;
-// mod ldap;
-// mod preprocess;
+mod run;
 mod preflight;
 mod profile;
 mod populate;
 mod state;
-// mod runner;
-// mod setup;
 
 include!("./opt.rs");
 
@@ -57,6 +46,9 @@ impl OrcaOpt {
                 common, ..
             } |
             OrcaOpt::Preflight {
+                common, ..
+            } |
+            OrcaOpt::Run {
                 common, ..
             }
             => common.debug,
@@ -210,23 +202,25 @@ async fn main() -> ExitCode {
         }
 
         // Run the test based on the state file.
+        OrcaOpt::Run {
+            common: _,
+            state_path,
+        } => {
+            let state = match state::State::try_from(state_path.as_path()) {
+                Ok(p) => p,
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
 
-
-        /*
-        OrcaOpt::Generate(opt) => generate::doit(&opt.output_path),
-        OrcaOpt::PreProc(opt) => preprocess::doit(&opt.input_path, &opt.output_path),
-        OrcaOpt::Setup(opt) => {
-            let _ = setup::doit(&opt.target, &opt.profile_path).await;
+            match run::execute(state).await {
+                Ok(_) => {
+                    return ExitCode::SUCCESS;
+                }
+                Err(_err) => {
+                    return ExitCode::FAILURE;
+                }
+            };
         }
-        OrcaOpt::Run(opt) => {
-            let _ = runner::doit(&opt.test_type, &opt.target, &opt.profile_path).await;
-            // read the profile that we are going to be using/testing
-            // load the related data (if any) or generate it
-            // run the test!
-        }
-        OrcaOpt::Configure(opt) => update_config_file(opt),
-        */
     };
-
-    // debug!("Exit");
 }

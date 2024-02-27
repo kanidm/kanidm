@@ -96,6 +96,16 @@ enum OrcaOpt {
         state_path: PathBuf,
     },
 
+    #[clap(name = "run")]
+    /// Run the simulation.
+    Run {
+        #[clap(flatten)]
+        common: CommonOpt,
+        #[clap(long = "state")]
+        /// Path to the state file.
+        state_path: PathBuf,
+    },
+
     #[clap(name = "version")]
     /// Print version info and exit
     Version {
