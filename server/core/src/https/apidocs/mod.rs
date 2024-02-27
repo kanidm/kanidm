@@ -241,12 +241,15 @@ impl Modify for SecurityAddon {
             v1::Entry,
             v1::GroupUnixExtend,
             v1::SingleStringRequest,
+            internal::UiHint,
             v1::UatPurposeStatus,
             v1::UatStatus,
             v1::UatStatusState,
             v1::UnixGroupToken,
             v1::UnixUserToken,
             v1::WhoamiResponse,
+            internal::CUCredState,
+            internal::CURegWarning,
 
             internal::IdentifyUserRequest,
             // terrible workaround for other things
