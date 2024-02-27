@@ -1,9 +1,9 @@
-use crate::profile::Profile;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
 use crate::error::Error;
+use crate::profile::Profile;
+use crate::model::ActorModel;
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
-
+use std::path::Path;
 
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
@@ -14,7 +14,6 @@ use std::collections::BTreeSet;
 pub struct State {
     pub profile: Profile,
     // ----------------------------
-
     pub preflight_flags: Vec<Flag>,
     pub persons: Vec<Person>,
     // groups: Vec<Group>,
@@ -23,36 +22,31 @@ pub struct State {
 
 impl State {
     pub fn write_to_path(&self, path: &Path) -> Result<(), Error> {
-        let output = std::fs::File::create(path)
-            .map_err(|io_err| {
-                error!(?io_err);
-                Error::IoError
-            })?;
+        let output = std::fs::File::create(path).map_err(|io_err| {
+            error!(?io_err);
+            Error::IoError
+        })?;
 
-        serde_json::to_writer(output, self)
-            .map_err(|json_err| {
-                error!(?json_err);
-                Error::SerdeJson
-            })
+        serde_json::to_writer(output, self).map_err(|json_err| {
+            error!(?json_err);
+            Error::SerdeJson
+        })
     }
 }
 
-impl TryFrom<&Path> for State
-{
+impl TryFrom<&Path> for State {
     type Error = Error;
 
     fn try_from(path: &Path) -> Result<Self, Self::Error> {
-        let input = std::fs::File::open(path)
-            .map_err(|io_err| {
-                error!(?io_err);
-                Error::IoError
-            })?;
+        let input = std::fs::File::open(path).map_err(|io_err| {
+            error!(?io_err);
+            Error::IoError
+        })?;
 
-        serde_json::from_reader(input)
-            .map_err(|json_err| {
-                error!(?json_err);
-                Error::SerdeJson
-            })
+        serde_json::from_reader(input).map_err(|json_err| {
+            error!(?json_err);
+            Error::SerdeJson
+        })
     }
 }
 
@@ -73,11 +67,19 @@ pub enum Model {
     Basic,
 }
 
+impl Model {
+    pub fn into_dyn_object(&self) -> Box<dyn ActorModel> {
+        match self {
+            Model::Basic => {
+                Box::new(crate::model_basic::ActorBasic::new())
+            }
+        }
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Credential {
-    Password {
-        plain: String
-    },
+    Password { plain: String },
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -89,4 +91,3 @@ pub struct Person {
     pub credential: Credential,
     pub model: Model,
 }
-

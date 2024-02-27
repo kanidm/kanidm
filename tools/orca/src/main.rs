@@ -13,19 +13,23 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-use std::process::ExitCode;
 use std::path::{Path, PathBuf};
+use std::process::ExitCode;
 
 use clap::Parser;
 
 use crate::profile::{Profile, ProfileBuilder};
 
+use tokio::sync::broadcast;
+
 mod error;
 mod kani;
-mod run;
+mod model;
+mod model_basic;
+mod populate;
 mod preflight;
 mod profile;
-mod populate;
+mod run;
 mod state;
 
 include!("./opt.rs");
@@ -33,25 +37,12 @@ include!("./opt.rs");
 impl OrcaOpt {
     fn debug(&self) -> bool {
         match self {
-            OrcaOpt::Version {
-                common
-            } |
-            OrcaOpt::SetupWizard {
-                common, ..
-            } |
-            OrcaOpt::TestConnection {
-                common, ..
-            } |
-            OrcaOpt::PopulateData {
-                common, ..
-            } |
-            OrcaOpt::Preflight {
-                common, ..
-            } |
-            OrcaOpt::Run {
-                common, ..
-            }
-            => common.debug,
+            OrcaOpt::Version { common }
+            | OrcaOpt::SetupWizard { common, .. }
+            | OrcaOpt::TestConnection { common, .. }
+            | OrcaOpt::PopulateData { common, .. }
+            | OrcaOpt::Preflight { common, .. }
+            | OrcaOpt::Run { common, .. } => common.debug,
         }
     }
 }
@@ -84,17 +75,13 @@ async fn main() -> ExitCode {
             idm_admin_password,
             control_uri,
             seed,
-            profile_path
+            profile_path,
         } => {
             // For now I hardcoded some dimensions, but we should prompt
             // the user for these later.
 
-            let builder = ProfileBuilder::new(
-                control_uri,
-                admin_password,
-                idm_admin_password,
-            )
-                .seed(seed);
+            let builder =
+                ProfileBuilder::new(control_uri, admin_password, idm_admin_password).seed(seed);
 
             let profile = match builder.build() {
                 Ok(p) => p,
@@ -125,10 +112,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            info!(
-                "Performing conntest of {}",
-                profile.control_uri()
-            );
+            info!("Performing conntest of {}", profile.control_uri());
 
             match kani::KanidmOrcaClient::new(&profile).await {
                 Ok(_) => {
@@ -179,7 +163,7 @@ async fn main() -> ExitCode {
             }
         }
 
-        // 
+        //
         OrcaOpt::Preflight {
             common: _,
             state_path,
@@ -213,14 +197,73 @@ async fn main() -> ExitCode {
                 }
             };
 
-            match run::execute(state).await {
-                Ok(_) => {
-                    return ExitCode::SUCCESS;
+            // We have a broadcast channel setup for controlling the state of
+            // various actors and parts.
+            //
+            // We want a small amount of backlog because there are a few possible
+            // commands that could be sent.
+
+            let (control_tx, control_rx) = broadcast::channel(8);
+
+            let mut run_execute = tokio::task::spawn(run::execute(state, control_rx));
+
+            loop {
+                tokio::select! {
+                    // Note that we pass a &mut handle here because we want the future to join
+                    // but not be consumed each loop iteration.
+                    result = &mut run_execute => {
+                        match result {
+                            Ok(_) => {
+                                return ExitCode::SUCCESS;
+                            }
+                            Err(_err) => {
+                                return ExitCode::FAILURE;
+                            }
+                        };
+                    }
+                    // Signal handling.
+                    Ok(()) = tokio::signal::ctrl_c() => {
+                        info!("Stopping Task ...");
+                        let _ = control_tx.send(run::Signal::Stop);
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::terminate();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Kill it with fire I guess.
+                        return ExitCode::FAILURE;
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::alarm();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::hangup();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
+                    Some(()) = async move {
+                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                        #[allow(clippy::unwrap_used)]
+                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                    } => {
+                        // Ignore
+                    }
                 }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            };
+            }
         }
     };
 }

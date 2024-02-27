@@ -1,6 +1,3 @@
-
-
-
 pub enum Error {
     IoError,
     SerdeToml,
@@ -8,4 +5,5 @@ pub enum Error {
     KanidmClient,
     ProfileBuilder,
     Tokio,
+    Interupt,
 }

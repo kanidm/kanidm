@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
 use crate::error::Error;
-use std::path::Path;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
+use std::path::Path;
 
 // Sorry nerds, capping this at 40 bits.
 const ITEM_UPPER_BOUND: u64 = 1 << 40;
@@ -63,24 +63,20 @@ pub struct ProfileBuilder {
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
-            if let Some(v) = value {
-                if v > ITEM_UPPER_BOUND {
-                    error!("group count exceeds upper bound ({})", ITEM_UPPER_BOUND);
-                    Err(Error::ProfileBuilder)
-                } else {
-                    Ok(v)
-                }
-            } else {
-                Ok(default)
-            }
+    if let Some(v) = value {
+        if v > ITEM_UPPER_BOUND {
+            error!("group count exceeds upper bound ({})", ITEM_UPPER_BOUND);
+            Err(Error::ProfileBuilder)
+        } else {
+            Ok(v)
+        }
+    } else {
+        Ok(default)
+    }
 }
 
 impl ProfileBuilder {
-    pub fn new(
-        control_uri: String,
-        admin_password: String,
-        idm_admin_password: String,
-    ) -> Self {
+    pub fn new(control_uri: String, admin_password: String, idm_admin_password: String) -> Self {
         ProfileBuilder {
             control_uri,
             admin_password,
@@ -108,67 +104,64 @@ impl ProfileBuilder {
     }
 
     pub fn build(self) -> Result<Profile, Error> {
-            let ProfileBuilder {
-                control_uri, admin_password, idm_admin_password, seed, extra_uris, group_count,
-                person_count
-            } = self;
+        let ProfileBuilder {
+            control_uri,
+            admin_password,
+            idm_admin_password,
+            seed,
+            extra_uris,
+            group_count,
+            person_count,
+        } = self;
 
-            let seed: u64 = seed.unwrap_or_else(|| {
-                let mut rng = thread_rng();
-                rng.gen()
-            });
+        let seed: u64 = seed.unwrap_or_else(|| {
+            let mut rng = thread_rng();
+            rng.gen()
+        });
 
-            let extra_uris = Vec::new();
+        let extra_uris = Vec::new();
 
-            let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
-            let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
+        let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
+        let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
 
-            Ok(Profile {
-                control_uri,
-                admin_password,
-                idm_admin_password,
-                seed,
-                extra_uris,
-                group_count,
-                person_count,
-            })
+        Ok(Profile {
+            control_uri,
+            admin_password,
+            idm_admin_password,
+            seed,
+            extra_uris,
+            group_count,
+            person_count,
+        })
     }
 }
 
 impl Profile {
     pub fn write_to_path(&self, path: &Path) -> Result<(), Error> {
-        let file_contents = toml::to_string(self)
-            .map_err(|toml_err| {
-                error!(?toml_err);
-                Error::SerdeToml
-            })?;
+        let file_contents = toml::to_string(self).map_err(|toml_err| {
+            error!(?toml_err);
+            Error::SerdeToml
+        })?;
 
-        std::fs::write(path, &file_contents)
-            .map_err(|io_err| {
-                error!(?io_err);
-                Error::IoError
-            })
+        std::fs::write(path, &file_contents).map_err(|io_err| {
+            error!(?io_err);
+            Error::IoError
+        })
     }
 }
 
-impl TryFrom<&Path> for Profile
-{
+impl TryFrom<&Path> for Profile {
     type Error = Error;
 
     fn try_from(path: &Path) -> Result<Self, Self::Error> {
-        let file_contents = std::fs::read_to_string(path)
-            .map_err(|io_err| {
-                error!(?io_err);
-                Error::IoError
-            })?;
+        let file_contents = std::fs::read_to_string(path).map_err(|io_err| {
+            error!(?io_err);
+            Error::IoError
+        })?;
 
-        toml::from_str(&file_contents)
-            .map_err(|toml_err| {
-                error!(?toml_err);
-                Error::SerdeToml
-            })
+        toml::from_str(&file_contents).map_err(|toml_err| {
+            error!(?toml_err);
+            Error::SerdeToml
+        })
     }
 }
-
-
-

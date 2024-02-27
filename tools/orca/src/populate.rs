@@ -1,10 +1,10 @@
 use crate::error::Error;
-use crate::state::{State, Credential, Person, Model, PreflightState, Flag};
-use crate::profile::Profile;
 use crate::kani::KanidmOrcaClient;
-use rand::SeedableRng;
-use rand::seq::SliceRandom;
+use crate::profile::Profile;
+use crate::state::{Credential, Flag, Model, Person, PreflightState, State};
 use rand::distributions::{Alphanumeric, DistString};
+use rand::seq::SliceRandom;
+use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
 use std::collections::{BTreeMap, BTreeSet};
@@ -26,10 +26,7 @@ fn random_password(rng: &mut ChaCha8Rng) -> String {
     Alphanumeric.sample_string(rng, 24)
 }
 
-pub async fn populate(
-    client: &KanidmOrcaClient,
-    profile: Profile,
-) -> Result<State, Error> {
+pub async fn populate(client: &KanidmOrcaClient, profile: Profile) -> Result<State, Error> {
     // IMPORTANT: We have to perform these steps in order so that the RNG is deterministic between
     // multiple invocations.
     let mut seeded_rng = ChaCha8Rng::seed_from_u64(profile.seed());
@@ -37,16 +34,20 @@ pub async fn populate(
     let female_given_names = std::include_str!("../names-dataset/dataset/Female_given_names.txt");
     let male_given_names = std::include_str!("../names-dataset/dataset/Male_given_names.txt");
 
-    let given_names = female_given_names.split('\n')
+    let given_names = female_given_names
+        .split('\n')
         .chain(male_given_names.split('\n'))
         .collect::<Vec<_>>();
 
     let surnames = std::include_str!("../names-dataset/dataset/Surnames.txt");
 
-    let surnames = surnames.split('\n')
-        .collect::<Vec<_>>();
+    let surnames = surnames.split('\n').collect::<Vec<_>>();
 
-    debug!("name pool: given: {} - family: {}", given_names.len(), surnames.len());
+    debug!(
+        "name pool: given: {} - family: {}",
+        given_names.len(),
+        surnames.len()
+    );
 
     // PHASE 0 - For now, set require MFA off.
     let mut preflight_flags = Vec::new();
@@ -62,12 +63,19 @@ pub async fn populate(
     let mut person_names = BTreeSet::new();
 
     for _ in 0..profile.person_count() {
-        let given_name = given_names.choose(&mut seeded_rng).expect("name set corrupted");
-        let surname = surnames.choose(&mut seeded_rng).expect("name set corrupted");
+        let given_name = given_names
+            .choose(&mut seeded_rng)
+            .expect("name set corrupted");
+        let surname = surnames
+            .choose(&mut seeded_rng)
+            .expect("name set corrupted");
 
         let display_name = format!("{} {}", given_name, surname);
 
-        let username = display_name.chars().filter(|c| c.is_ascii_alphanumeric()).collect::<String>()
+        let username = display_name
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect::<String>()
             .to_lowercase();
 
         let mut username = if username.is_empty() {
@@ -93,9 +101,7 @@ pub async fn populate(
             username: username.clone(),
             display_name,
             member_of: BTreeSet::default(),
-            credential: Credential::Password {
-                plain: password
-            },
+            credential: Credential::Password { plain: password },
             model,
         };
 

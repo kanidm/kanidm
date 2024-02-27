@@ -1,0 +1,6 @@
+
+pub trait ActorModel {
+    
+}
+
+

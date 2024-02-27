@@ -33,11 +33,10 @@ impl KanidmOrcaClient {
                 Error::KanidmClient
             })?;
 
-        let idm_admin_client = admin_client.new_session()
-            .map_err(|err| {
-                error!(?err, "Unable to create new session");
-                Error::KanidmClient
-            })?;
+        let idm_admin_client = admin_client.new_session().map_err(|err| {
+            error!(?err, "Unable to create new session");
+            Error::KanidmClient
+        })?;
 
         idm_admin_client
             .auth_simple_password("idm_admin", profile.idm_admin_password())
@@ -48,16 +47,14 @@ impl KanidmOrcaClient {
             })?;
 
         Ok(KanidmOrcaClient {
-            admin_client, idm_admin_client
+            admin_client,
+            idm_admin_client,
         })
     }
 
     pub async fn disable_mfa_requirement(&self) -> Result<(), Error> {
         self.idm_admin_client
-            .group_account_policy_credential_type_minimum_set(
-                "idm_all_persons",
-                "any"
-            )
+            .group_account_policy_credential_type_minimum_set("idm_all_persons", "any")
             .await
             .map_err(|err| {
                 error!(?err, "Unable to modify idm_all_persons policy");
@@ -65,13 +62,9 @@ impl KanidmOrcaClient {
             })
     }
 
-    pub async fn person_exists(&self,
-        username: &str,
-    ) -> Result<bool, Error> {
+    pub async fn person_exists(&self, username: &str) -> Result<bool, Error> {
         self.idm_admin_client
-            .idm_person_account_get(
-                username
-            )
+            .idm_person_account_get(username)
             .await
             .map(|e| e.is_some())
             .map_err(|err| {
@@ -80,14 +73,9 @@ impl KanidmOrcaClient {
             })
     }
 
-    pub async fn person_create(&self,
-        username: &str,
-        display_name: &str,
-    ) -> Result<(), Error> {
+    pub async fn person_create(&self, username: &str, display_name: &str) -> Result<(), Error> {
         self.idm_admin_client
-            .idm_person_account_create(
-                username, display_name
-            )
+            .idm_person_account_create(username, display_name)
             .await
             .map_err(|err| {
                 error!(?err, ?username, "Unable to create person");
@@ -96,12 +84,12 @@ impl KanidmOrcaClient {
     }
 
     pub async fn person_set_pirmary_password_only(
-        &self, username: &str, password: &str
+        &self,
+        username: &str,
+        password: &str,
     ) -> Result<(), Error> {
         self.idm_admin_client
-            .idm_person_account_primary_credential_set_password(
-                username, password
-            )
+            .idm_person_account_primary_credential_set_password(username, password)
             .await
             .map_err(|err| {
                 error!(?err, ?username, "Unable to set person password");
@@ -109,5 +97,3 @@ impl KanidmOrcaClient {
             })
     }
 }
-
-
