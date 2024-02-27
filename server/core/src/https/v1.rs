@@ -49,6 +49,7 @@ pub(crate) struct SessionId {
     request_body=CreateRequest,
     security(("token_jwt" = [])),
     tag = "v1/raw",
+    operation_id="raw_create"
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_create(
@@ -74,6 +75,7 @@ pub async fn raw_create(
     request_body=ModifyRequest,
     security(("token_jwt" = [])),
     tag = "v1/raw",
+    operation_id="raw_modify"
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_modify(
@@ -99,6 +101,7 @@ pub async fn raw_modify(
     request_body=DeleteRequest,
     security(("token_jwt" = [])),
     tag = "v1/raw",
+    operation_id = "raw_delete"
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_delete(
@@ -119,12 +122,13 @@ pub async fn raw_delete(
     post,
     path = "/v1/raw/search",
     responses(
-        (status = 200), // TODO: response content
+        (status = 200, body=SearchResponse, content_type="application/json"),
         ApiResponseWithout200,
     ),
     request_body=SearchRequest,
     security(("token_jwt" = [])),
     tag = "v1/raw",
+    operation_id="raw_search"
 )]
 /// Raw request to the system, be warned this can be dangerous!
 pub async fn raw_search(
@@ -145,11 +149,12 @@ pub async fn raw_search(
     get,
     path = "/v1/self",
     responses(
-        (status = 200), // TODO: response content
+        (status = 200, body=WhoamiResponse, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/self",
+    operation_id="whoami"
 )]
 // Whoami?
 pub async fn whoami(
@@ -170,11 +175,12 @@ pub async fn whoami(
     get,
     path = "/v1/self/_uat",
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200, description = "Ok", body=UserAuthToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/self",
+    operation_id="whoami_uat"
 )]
 pub async fn whoami_uat(
     State(state): State<ServerState>,
@@ -197,6 +203,7 @@ pub async fn whoami_uat(
     ),
     security(("token_jwt" = [])),
     tag = "v1/auth",
+    operation_id="logout"
 )]
 pub async fn logout(
     State(state): State<ServerState>,
@@ -441,11 +448,12 @@ pub async fn json_rest_event_delete_attr(
     get,
     path = "/v1/schema",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type="application/json", body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/schema",
+    operation_id = "schema_get",
 )]
 // Whoami?
 pub async fn schema_get(
@@ -468,11 +476,12 @@ pub async fn schema_get(
     get,
     path = "/v1/schema/attributetype",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type="application/json", body=Vec<ProtoEntry>),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/schema",
+    operation_id = "schema_attributetype_get",
 )]
 pub async fn schema_attributetype_get(
     State(state): State<ServerState>,
@@ -487,11 +496,12 @@ pub async fn schema_attributetype_get(
     get,
     path = "/v1/schema/attributetype/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/schema",
+    operation_id = "schema_attributetype_get_id",
 )]
 pub async fn schema_attributetype_get_id(
     State(state): State<ServerState>,
@@ -521,11 +531,12 @@ pub async fn schema_attributetype_get_id(
     get,
     path = "/v1/schema/classtype",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/schema",
+    operation_id="schema_classtype_get",
 )]
 pub async fn schema_classtype_get(
     State(state): State<ServerState>,
@@ -540,11 +551,12 @@ pub async fn schema_classtype_get(
     get,
     path = "/v1/schema/classtype/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/schema",
+    operation_id="schema_classtype_get_id",
 )]
 pub async fn schema_classtype_get_id(
     State(state): State<ServerState>,
@@ -570,11 +582,12 @@ pub async fn schema_classtype_get_id(
     get,
     path = "/v1/person",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_get",
 )]
 pub async fn person_get(
     State(state): State<ServerState>,
@@ -591,9 +604,10 @@ pub async fn person_get(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: ProtoEntry can't be serialized, so we need to do this manually
+    request_body=ProtoEntry,
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_post",
 )]
 /// Expects the following fields in the attrs field of the req: [name, displayname]
 pub async fn person_post(
@@ -614,11 +628,12 @@ pub async fn person_post(
     get,
     path = "/v1/person/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_id_get",
 )]
 pub async fn person_id_get(
     State(state): State<ServerState>,
@@ -638,6 +653,7 @@ pub async fn person_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_id_delete",
 )]
 pub async fn person_id_delete(
     State(state): State<ServerState>,
@@ -655,11 +671,12 @@ pub async fn person_id_delete(
     get,
     path = "/v1/service_account",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_get",
 )]
 pub async fn service_account_get(
     State(state): State<ServerState>,
@@ -673,12 +690,13 @@ pub async fn service_account_get(
 #[utoipa::path(
     post,
     path = "/v1/service_account",
-    // request_body=Json, // TODO ProtoEntry can't be serialized, so we need to do this manually
+    request_body=ProtoEntry,
     responses(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_post",
 )]
 pub async fn service_account_post(
     State(state): State<ServerState>,
@@ -700,9 +718,10 @@ pub async fn service_account_post(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    request_body=ProtoEntry,
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_patch",
 )]
 pub async fn service_account_id_patch(
     State(state): State<ServerState>,
@@ -726,11 +745,12 @@ pub async fn service_account_id_patch(
     get,
     path = "/v1/service_account/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_get",
 )]
 pub async fn service_account_id_get(
     State(state): State<ServerState>,
@@ -818,11 +838,12 @@ pub async fn service_account_into_person(
     get,
     path = "/v1/service_account/{id}/_spi_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<ApiToken>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_api_token_get",
 )]
 pub async fn service_account_api_token_get(
     State(state): State<ServerState>,
@@ -843,11 +864,12 @@ pub async fn service_account_api_token_get(
     path = "/v1/service_account/{id}/_spi_token",
     request_body = ApiTokenGenerate,
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=String, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_api_token_post",
 )]
 pub async fn service_account_api_token_post(
     State(state): State<ServerState>,
@@ -879,6 +901,7 @@ pub async fn service_account_api_token_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_api_token_delete",
 )]
 pub async fn service_account_api_token_delete(
     State(state): State<ServerState>,
@@ -898,12 +921,13 @@ pub async fn service_account_api_token_delete(
     get,
     path = "/v1/person/{id}/_attr/{attr}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
         (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/attr",
+    operation_id = "person_id_get_attr",
 )]
 pub async fn person_id_get_attr(
     State(state): State<ServerState>,
@@ -919,11 +943,12 @@ pub async fn person_id_get_attr(
     get,
     path = "/v1/service_account/{id}/_attr/{attr}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_get_attr",
 )]
 pub async fn service_account_id_get_attr(
     State(state): State<ServerState>,
@@ -944,6 +969,7 @@ pub async fn service_account_id_get_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/attr",
+    operation_id = "person_id_post_attr",
 )]
 pub async fn person_id_post_attr(
     State(state): State<ServerState>,
@@ -965,6 +991,7 @@ pub async fn person_id_post_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_post_attr",
 )]
 pub async fn service_account_id_post_attr(
     State(state): State<ServerState>,
@@ -985,6 +1012,7 @@ pub async fn service_account_id_post_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/attr",
+    operation_id = "person_id_delete_attr",
 )]
 pub async fn person_id_delete_attr(
     State(state): State<ServerState>,
@@ -1004,6 +1032,7 @@ pub async fn person_id_delete_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_delete_attr",
 )]
 pub async fn service_account_id_delete_attr(
     State(state): State<ServerState>,
@@ -1023,6 +1052,7 @@ pub async fn service_account_id_delete_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/attr",
+    operation_id = "person_id_put_attr",
 )]
 pub async fn person_id_put_attr(
     State(state): State<ServerState>,
@@ -1044,6 +1074,7 @@ pub async fn person_id_put_attr(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_put_attr",
 )]
 pub async fn service_account_id_put_attr(
     State(state): State<ServerState>,
@@ -1062,9 +1093,10 @@ pub async fn service_account_id_put_attr(
     responses(
         DefaultApiResponse,
     ),
-    // request_body=ProtoEntry, // TODO: can't deal with a HashMap in the attr
+    request_body=ProtoEntry,
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_id_patch",
 )]
 pub async fn person_id_patch(
     State(state): State<ServerState>,
@@ -1426,6 +1458,7 @@ pub async fn person_get_id_credential_status(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/ssh_pubkeys",
+    operation_id = "person_id_ssh_pubkeys_get",
 )]
 pub async fn person_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
@@ -1450,6 +1483,7 @@ pub async fn person_id_ssh_pubkeys_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/account",
+    operation_id = "account_id_ssh_pubkeys_get",
 )]
 #[deprecated]
 pub async fn account_id_ssh_pubkeys_get(
@@ -1475,6 +1509,7 @@ pub async fn account_id_ssh_pubkeys_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_ssh_pubkeys_get",
 )]
 pub async fn service_account_id_ssh_pubkeys_get(
     State(state): State<ServerState>,
@@ -1498,6 +1533,7 @@ pub async fn service_account_id_ssh_pubkeys_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/ssh_pubkeys",
+    operation_id = "person_id_ssh_pubkeys_post",
 )]
 pub async fn person_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
@@ -1525,6 +1561,7 @@ pub async fn person_id_ssh_pubkeys_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_ssh_pubkeys_post",
 )]
 pub async fn service_account_id_ssh_pubkeys_post(
     State(state): State<ServerState>,
@@ -1552,6 +1589,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/ssh_pubkeys/tag",
+    operation_id = "person_id_ssh_pubkeys_tag_get",
 )]
 pub async fn person_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1575,6 +1613,7 @@ pub async fn person_id_ssh_pubkeys_tag_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/account",
+    operation_id = "account_id_ssh_pubkeys_tag_get",
 )]
 pub async fn account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1599,6 +1638,7 @@ pub async fn account_id_ssh_pubkeys_tag_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
+    operation_id = "service_account_id_ssh_pubkeys_tag_get",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_get(
     State(state): State<ServerState>,
@@ -1625,6 +1665,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/ssh_pubkeys/tag",
+    operation_id = "person_id_ssh_pubkeys_tag_delete",
 )]
 pub async fn person_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
@@ -1660,6 +1701,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "service_account_id_ssh_pubkeys_tag_delete",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_delete(
     State(state): State<ServerState>,
@@ -1693,6 +1735,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/radius",
+    operation_id = "person_id_radius_get"
 )]
 /// Get and return a single str
 pub async fn person_id_radius_get(
@@ -1719,8 +1762,8 @@ pub async fn person_id_radius_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/radius",
+    operation_id = "person_id_radius_post"
 )]
-// TODO: what body do we take here?
 pub async fn person_id_radius_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1744,6 +1787,7 @@ pub async fn person_id_radius_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
+    operation_id = "person_id_radius_delete"
 )]
 pub async fn person_id_radius_delete(
     State(state): State<ServerState>,
@@ -1756,16 +1800,16 @@ pub async fn person_id_radius_delete(
     json_rest_event_delete_id_attr(state, id, attr, filter, None, kopid, client_auth_info).await
 }
 
-// /v1/person/:id/_radius/_token
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_radius/_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=RadiusAuthToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/radius",
+    operation_id = "person_id_radius_token_get"
 )]
 pub async fn person_id_radius_token_get(
     State(state): State<ServerState>,
@@ -1781,11 +1825,12 @@ pub async fn person_id_radius_token_get(
     get,
     path = "/v1/account/{id}/_radius/_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=RadiusAuthToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/account",
+    operation_id = "account_id_radius_token_get"
 )]
 pub async fn account_id_radius_token_get(
     State(state): State<ServerState>,
@@ -1800,12 +1845,13 @@ pub async fn account_id_radius_token_get(
     post,
     path = "/v1/account/{id}/_radius/_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=RadiusAuthToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
-)] // TODO: what body do we expect here?
+    operation_id = "account_id_radius_token_post"
+)]
 pub async fn account_id_radius_token_post(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -1912,12 +1958,13 @@ pub async fn account_id_unix_post(
     get,post,
     path = "/v1/account/{id}/_unix/_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=UnixUserToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/account",
-)] // TODO: what body do we expect here?
+    operation_id = "account_id_unix_token"
+)]
 #[instrument(level = "INFO", skip_all)]
 pub async fn account_id_unix_token(
     State(state): State<ServerState>,
@@ -1953,12 +2000,13 @@ pub async fn account_id_unix_token(
     post,
     path = "/v1/account/{id}/_unix/_auth",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<UnixUserToken>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/account",
-)] // TODO: what body do we expect here?
+    operation_id = "account_id_unix_auth_post"
+)]
 pub async fn account_id_unix_auth_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -1983,7 +2031,8 @@ pub async fn account_id_unix_auth_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/unix",
-)] // TODO: what body do we expect here?
+    operation_id = "person_id_unix_credential_put"
+)]
 pub async fn person_id_unix_credential_put(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -2007,6 +2056,7 @@ pub async fn person_id_unix_credential_put(
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/unix",
+    operation_id = "person_id_unix_credential_delete"
 )]
 pub async fn person_id_unix_credential_delete(
     State(state): State<ServerState>,
@@ -2033,12 +2083,13 @@ pub async fn person_id_unix_credential_delete(
     post,
     path = "/v1/person/{id}/_identify/_user",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=IdentifyUserResponse, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/person",
-)] // TODO: what body do we expect here?
+    operation_id = "person_identify_user_post"
+)]
 pub async fn person_identify_user_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -2058,11 +2109,12 @@ pub async fn person_identify_user_post(
     get,
     path = "/v1/group",
     responses(
-        (status=200), // TODO: define response
+        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/group",
+    operation_id = "group_get",
 )]
 /// Returns all groups visible  to the user
 pub async fn group_get(
@@ -2085,7 +2137,8 @@ pub async fn group_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group",
-)] // TODO: post body
+    operation_id = "group_post",
+)]
 pub async fn group_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -2100,11 +2153,12 @@ pub async fn group_post(
     get,
     path = "/v1/group/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/group",
+    operation_id = "group_id_get",
 )]
 pub async fn group_id_get(
     State(state): State<ServerState>,
@@ -2124,6 +2178,7 @@ pub async fn group_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group",
+    operation_id = "group_id_delete",
 )]
 pub async fn group_id_delete(
     State(state): State<ServerState>,
@@ -2139,11 +2194,12 @@ pub async fn group_id_delete(
     get,
     path = "/v1/group/{id}/_attr/{attr}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<String>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/attr",
+    operation_id = "group_id_attr_get",
 )]
 pub async fn group_id_attr_get(
     State(state): State<ServerState>,
@@ -2164,6 +2220,7 @@ pub async fn group_id_attr_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/attr",
+    operation_id = "group_id_attr_post",
 )]
 pub async fn group_id_attr_post(
     Path((id, attr)): Path<(String, String)>,
@@ -2185,6 +2242,7 @@ pub async fn group_id_attr_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/attr",
+    operation_id = "group_id_attr_delete",
 )]
 pub async fn group_id_attr_delete(
     Path((id, attr)): Path<(String, String)>,
@@ -2207,6 +2265,7 @@ pub async fn group_id_attr_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/attr",
+    operation_id = "group_id_attr_put",
 )]
 pub async fn group_id_attr_put(
     Path((id, attr)): Path<(String, String)>,
@@ -2228,6 +2287,7 @@ pub async fn group_id_attr_put(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/unix",
+    operation_id = "group_id_unix_put",
 )]
 pub async fn group_id_unix_post(
     State(state): State<ServerState>,
@@ -2248,11 +2308,12 @@ pub async fn group_id_unix_post(
     get,
     path = "/v1/group/{id}/_unix/_token",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=UnixGroupToken, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/unix",
+    operation_id = "group_id_unix_token_get",
 )]
 pub async fn group_id_unix_token_get(
     State(state): State<ServerState>,
@@ -2272,11 +2333,12 @@ pub async fn group_id_unix_token_get(
     get,
     path = "/v1/domain",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/domain",
+    operation_id = "domain_get",
 )]
 pub async fn domain_get(
     State(state): State<ServerState>,
@@ -2291,11 +2353,12 @@ pub async fn domain_get(
     get,
     path = "/v1/domain/_attr/{attr}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/domain",
+    operation_id = "domain_attr_get",
 )]
 pub async fn domain_attr_get(
     State(state): State<ServerState>,
@@ -2324,6 +2387,7 @@ pub async fn domain_attr_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/domain",
+    operation_id = "domain_attr_put",
 )]
 pub async fn domain_attr_put(
     State(state): State<ServerState>,
@@ -2354,6 +2418,7 @@ pub async fn domain_attr_put(
     ),
     security(("token_jwt" = [])),
     tag = "v1/domain",
+    operation_id = "domain_attr_delete",
 )]
 pub async fn domain_attr_delete(
     State(state): State<ServerState>,
@@ -2379,11 +2444,12 @@ pub async fn domain_attr_delete(
     get,
     path = "/v1/system",
     responses(
-        (status=200), // TODO: define response
+        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/system",
+    operation_id = "system_get",
 )]
 pub async fn system_get(
     State(state): State<ServerState>,
@@ -2401,11 +2467,12 @@ pub async fn system_get(
     get,
     path = "/v1/system/_attr/{attr}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/system",
+    operation_id = "system_attr_get",
 )]
 pub async fn system_attr_get(
     State(state): State<ServerState>,
@@ -2434,6 +2501,7 @@ pub async fn system_attr_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/system",
+    operation_id = "system_attr_post",
 )]
 pub async fn system_attr_post(
     State(state): State<ServerState>,
@@ -2464,6 +2532,7 @@ pub async fn system_attr_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/system",
+    operation_id = "system_attr_delete",
 )]
 pub async fn system_attr_delete(
     State(state): State<ServerState>,
@@ -2494,6 +2563,7 @@ pub async fn system_attr_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/system",
+    operation_id = "system_attr_put",
 )]
 pub async fn system_attr_put(
     State(state): State<ServerState>,
@@ -2519,11 +2589,12 @@ pub async fn system_attr_put(
     post,
     path = "/v1/recycle_bin",
     responses(
-        (status=200), // TODO: define response
+        (status=200,body=Vec<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/recycle_bin",
+    operation_id="recycle_bin_get",
 )]
 pub async fn recycle_bin_get(
     State(state): State<ServerState>,
@@ -2544,11 +2615,12 @@ pub async fn recycle_bin_get(
     get,
     path = "/v1/recycle_bin/{id}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/recycle_bin",
+    operation_id = "recycle_bin_id_get",
 )]
 pub async fn recycle_bin_id_get(
     State(state): State<ServerState>,
@@ -2576,6 +2648,7 @@ pub async fn recycle_bin_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/recycle_bin",
+    operation_id = "recycle_bin_revive_id_post",
 )]
 pub async fn recycle_bin_revive_id_post(
     State(state): State<ServerState>,
@@ -2596,11 +2669,12 @@ pub async fn recycle_bin_revive_id_post(
     get,
     path = "/v1/self/_applinks",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<AppLink>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/self",
+    operation_id = "self_applinks_get",
 )]
 /// Returns your OAuth2 app links for the Web UI
 pub async fn applinks_get(
@@ -2620,12 +2694,13 @@ pub async fn applinks_get(
     post,
     path = "/v1/reauth",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type="application/json"), // TODO: define response
         ApiResponseWithout200,
     ),
     request_body = AuthIssueSession,
     security(("token_jwt" = [])),
     tag = "v1/auth",
+    operation_id = "reauth_post",
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
@@ -2646,12 +2721,13 @@ pub async fn reauth(
     post,
     path = "/v1/auth",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type="application/json"), // TODO: define response
         ApiResponseWithout200,
     ),
     request_body = AuthRequest,
     security(("token_jwt" = [])),
     tag = "v1/auth",
+    operation_id = "auth_post",
 )]
 pub async fn auth(
     State(state): State<ServerState>,
@@ -2775,6 +2851,7 @@ fn auth_session_state_management(
     ),
     security(("token_jwt" = [])),
     tag = "v1/auth",
+    operation_id = "auth_valid",
 )]
 pub async fn auth_valid(
     State(state): State<ServerState>,
@@ -2793,10 +2870,11 @@ pub async fn auth_valid(
     get,
     path = "/v1/debug/ipinfo",
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200, description = "Ok", body=Vec<String>, content_type="application/json"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/debug",
+    operation_id = "debug_ipinfo",
 )]
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,

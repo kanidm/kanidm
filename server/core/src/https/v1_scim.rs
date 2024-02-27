@@ -25,6 +25,7 @@ use kanidmd_lib::prelude::*;
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_get"
 )]
 /// Get all? the sync accounts.
 pub async fn sync_account_get(
@@ -45,6 +46,7 @@ pub async fn sync_account_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_post"
 )]
 pub async fn sync_account_post(
     State(state): State<ServerState>,
@@ -86,6 +88,7 @@ pub async fn sync_account_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_id_patch"
 )]
 /// Modify a sync account in-place
 pub async fn sync_account_id_patch(
@@ -114,8 +117,8 @@ pub async fn sync_account_id_patch(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_id_finalise_get"
 )]
-// TODO: why is this a get and not a post?
 pub async fn sync_account_id_finalise_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -138,8 +141,8 @@ pub async fn sync_account_id_finalise_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_id_terminate_get"
 )]
-// TODO: why is this a get if it's a terminate?
 pub async fn sync_account_id_terminate_get(
     State(state): State<ServerState>,
     Path(id): Path<String>,
@@ -158,11 +161,12 @@ pub async fn sync_account_id_terminate_get(
     post,
     path = "/v1/sync_account/{id}/_sync_token",
     responses(
-        (status = 200), // TODO: response content
+        (status = 200, body=String, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_token_post"
 )]
 pub async fn sync_account_token_post(
     State(state): State<ServerState>,
@@ -187,6 +191,7 @@ pub async fn sync_account_token_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_token_delete"
 )]
 pub async fn sync_account_token_delete(
     State(state): State<ServerState>,
@@ -211,6 +216,7 @@ pub async fn sync_account_token_delete(
     ),
     security(("token_jwt" = [])),
     tag = "scim",
+    operation_id = "scim_sync_post"
 )]
 async fn scim_sync_post(
     State(state): State<ServerState>,
@@ -230,11 +236,12 @@ async fn scim_sync_post(
     get,
     path = "/scim/v1/Sync",
     responses(
-        (status = 200), // TODO: response content
+        (status = 200, content_type="application/json", body=ScimSyncState), // TODO: response content
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "scim",
+    operation_id = "scim_sync_get"
 )]
 async fn scim_sync_get(
     State(state): State<ServerState>,
@@ -255,11 +262,12 @@ async fn scim_sync_get(
     get,
     path = "/v1/sync_account/{id}/_attr/{attr}",
     responses(
-        (status = 200), // TODO: response content
+        (status = 200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_id_attr_get"
 )]
 pub async fn sync_account_id_attr_get(
     State(state): State<ServerState>,
@@ -280,6 +288,7 @@ pub async fn sync_account_id_attr_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/sync_account",
+    operation_id = "sync_account_id_attr_put"
 )]
 pub async fn sync_account_id_attr_put(
     State(state): State<ServerState>,

@@ -23,6 +23,7 @@ use sketching::admin_error;
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_get"
 )]
 /// Lists all the OAuth2 Resource Servers
 pub(crate) async fn oauth2_get(
@@ -46,6 +47,7 @@ pub(crate) async fn oauth2_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_basic_post"
 )]
 // TODO: what does this actually do? :D
 pub(crate) async fn oauth2_basic_post(
@@ -72,6 +74,7 @@ pub(crate) async fn oauth2_basic_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_public_post"
 )]
 // TODO: what does this actually do? :D
 pub(crate) async fn oauth2_public_post(
@@ -93,11 +96,12 @@ pub(crate) async fn oauth2_public_post(
     get,
     path = "/v1/oauth2/{rs_name}",
     responses(
-        (status = 200, /* TODO response=Option<ProtoEntry>*/),
+        (status = 200, body=Option<ProtoEntry>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_get"
 )]
 /// Get the details of a given OAuth2 Resource Server.
 pub(crate) async fn oauth2_id_get(
@@ -125,6 +129,7 @@ pub(crate) async fn oauth2_id_get(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_get_basic_secret"
 )]
 /// Get the basic secret for a given OAuth2 Resource Server. This is used for authentication.
 #[instrument(level = "info", skip(state))]
@@ -152,6 +157,7 @@ pub(crate) async fn oauth2_id_get_basic_secret(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_patch"
 )]
 /// Modify an OAuth2 Resource Server
 pub(crate) async fn oauth2_id_patch(
@@ -180,6 +186,7 @@ pub(crate) async fn oauth2_id_patch(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_scopemap_post"
 )]
 /// Modify the scope map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_scopemap_post(
@@ -206,6 +213,7 @@ pub(crate) async fn oauth2_id_scopemap_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_scopemap_delete"
 )]
 // Delete a scope map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_scopemap_delete(
@@ -232,6 +240,7 @@ pub(crate) async fn oauth2_id_scopemap_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_claimmap_post"
 )]
 /// Modify the claim map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_post(
@@ -266,6 +275,7 @@ pub(crate) async fn oauth2_id_claimmap_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_claimmap_join_post"
 )]
 /// Modify the claim map join strategy for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_join_post(
@@ -298,6 +308,7 @@ pub(crate) async fn oauth2_id_claimmap_join_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_claimmap_delete"
 )]
 // Delete a claim map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_claimmap_delete(
@@ -323,6 +334,7 @@ pub(crate) async fn oauth2_id_claimmap_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_sup_scopemap_post"
 )]
 /// Create a supplemental scope map for a given OAuth2 Resource Server
 pub(crate) async fn oauth2_id_sup_scopemap_post(
@@ -349,6 +361,7 @@ pub(crate) async fn oauth2_id_sup_scopemap_post(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_sup_scopemap_delete"
 )]
 // Delete a supplemental scope map configuration.
 pub(crate) async fn oauth2_id_sup_scopemap_delete(
@@ -375,6 +388,7 @@ pub(crate) async fn oauth2_id_sup_scopemap_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_delete"
 )]
 /// Delete an OAuth2 Resource Server
 pub(crate) async fn oauth2_id_delete(
@@ -400,6 +414,7 @@ pub(crate) async fn oauth2_id_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_image_delete"
 )]
 // API endpoint for deleting the image associated with an OAuth2 Resource Server.
 pub(crate) async fn oauth2_id_image_delete(
@@ -423,6 +438,7 @@ pub(crate) async fn oauth2_id_image_delete(
     ),
     security(("token_jwt" = [])),
     tag = "v1/oauth2",
+    operation_id = "oauth2_id_image_post"
 )]
 /// API endpoint for creating/replacing the image associated with an OAuth2 Resource Server.
 ///
