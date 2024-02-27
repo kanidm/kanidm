@@ -1,7 +1,8 @@
 use crate::db::KeyStoreTxn;
 use async_trait::async_trait;
 use kanidm_client::{ClientError, KanidmClient, StatusCode};
-use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+use kanidm_proto::internal::OperationError;
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use tokio::sync::RwLock;
 
 use super::interface::{

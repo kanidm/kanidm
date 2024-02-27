@@ -5,7 +5,8 @@ use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 
-use kanidm_proto::v1::{Entry, Filter, Modify, ModifyList};
+use kanidm_proto::internal::{Filter, Modify, ModifyList};
+use kanidm_proto::v1::Entry;
 use serde::de::DeserializeOwned;
 
 use crate::RawOpt;

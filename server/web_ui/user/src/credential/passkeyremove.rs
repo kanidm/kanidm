@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
+use kanidm_proto::internal::{CURegState, CURequest, CUSessionToken, CUStatus};
 use serde::Serialize;
 use uuid::Uuid;
 use wasm_bindgen::UnwrapThrowExt;

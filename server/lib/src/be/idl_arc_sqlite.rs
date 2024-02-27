@@ -10,7 +10,7 @@ use concread::cowcell::*;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use idlset::AndNot;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::internal::{ConsistencyError, OperationError};
 use tracing::trace;
 use uuid::Uuid;
 

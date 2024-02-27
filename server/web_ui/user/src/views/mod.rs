@@ -2,7 +2,7 @@
 #![allow(non_camel_case_types)]
 use gloo::console;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use kanidm_proto::v1::{UiHint, UserAuthToken};
+use kanidm_proto::internal::{UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::constants::{
     CSS_ALERT_DANGER, CSS_NAVBAR_BRAND, CSS_NAVBAR_LINKS_UL, CSS_NAVBAR_NAV, CSS_NAV_LINK,
     ID_NAVBAR_COLLAPSE, IMG_LOGO_SQUARE, URL_ADMIN, URL_LOGIN,

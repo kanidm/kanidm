@@ -32,10 +32,10 @@ use std::sync::Arc;
 use compact_jwt::JwsEs256Signer;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
-use kanidm_proto::v1::{
-    ConsistencyError, Entry as ProtoEntry, Filter as ProtoFilter, OperationError, SchemaError,
-    UiHint,
+use kanidm_proto::internal::{
+    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
 };
+use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};

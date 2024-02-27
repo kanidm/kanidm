@@ -1,5 +1,14 @@
+//! Kanidm JSON protocol definitions
+//!
+//! This library defines the elements that are used by Kanidm's http APIs.
+//! Each module has different support levels which define the projects policy
+//! on change for the module.
+
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+// #![warn(missing_docs)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

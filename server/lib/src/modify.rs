@@ -4,10 +4,10 @@
 
 use std::slice;
 
-use kanidm_proto::v1::{
-    Entry as ProtoEntry, Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError,
-    SchemaError,
+use kanidm_proto::internal::{
+    Modify as ProtoModify, ModifyList as ProtoModifyList, OperationError, SchemaError,
 };
+use kanidm_proto::v1::Entry as ProtoEntry;
 // Should this be std?
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;

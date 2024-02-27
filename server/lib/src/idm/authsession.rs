@@ -9,9 +9,8 @@ use std::time::Duration;
 
 use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
 use hashbrown::HashSet;
-use kanidm_proto::v1::{
-    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, OperationError, UserAuthToken,
-};
+use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
 use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
@@ -1482,9 +1481,8 @@ mod tests {
 
     use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
-    use kanidm_proto::v1::{
-        AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, UatPurpose, UserAuthToken,
-    };
+    use kanidm_proto::internal::{UatPurpose, UserAuthToken};
+    use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;

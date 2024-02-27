@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus};
+use kanidm_proto::internal::{CURequest, CUSessionToken, CUStatus};
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::utils::modal_hide_by_id;
 use serde::Serialize;

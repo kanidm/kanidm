@@ -1,7 +1,7 @@
 use crate::entry::EntryInitNew;
 use crate::prelude::*;
 
-use kanidm_proto::v1::{Filter, OperationError, UiHint};
+use kanidm_proto::internal::{Filter, OperationError, UiHint};
 
 #[derive(Clone, Debug, Default)]
 /// Built-in group definitions

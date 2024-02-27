@@ -2551,8 +2551,8 @@ mod tests {
         OidcSubject, OidcUnverified,
     };
     use kanidm_proto::constants::*;
+    use kanidm_proto::internal::UserAuthToken;
     use kanidm_proto::oauth2::*;
-    use kanidm_proto::v1::UserAuthToken;
     use openssl::sha;
 
     use crate::idm::accountpolicy::ResolvedAccountPolicy;

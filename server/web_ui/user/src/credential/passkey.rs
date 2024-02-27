@@ -1,5 +1,5 @@
 use gloo::console;
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus};
+use kanidm_proto::internal::{CURegState, CURequest, CUSessionToken, CUStatus};
 use kanidm_proto::webauthn::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use kanidmd_web_ui_shared::constants::CLASS_BUTTON_SUCCESS;
 use kanidmd_web_ui_shared::error::FetchError;

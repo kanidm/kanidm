@@ -63,7 +63,7 @@ pub mod testkit;
 /// help make imports cleaner.
 pub mod prelude {
     pub use kanidm_proto::constants::*;
-    pub use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
+    pub use kanidm_proto::internal::{ConsistencyError, OperationError, PluginError, SchemaError};
     pub use sketching::{
         admin_debug, admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace,
         filter_warn, perf_trace, request_error, request_info, request_trace, request_warn,

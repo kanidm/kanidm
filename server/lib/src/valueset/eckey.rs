@@ -4,7 +4,6 @@ use crate::be::dbvalue::DbValueSetV2;
 use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::value::{PartialValue, SyntaxType, Value};
-use kanidm_proto::v1::OperationError;
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
 
@@ -73,10 +72,7 @@ impl ValueSetEcKeyPrivate {
 }
 
 impl ValueSetT for ValueSetEcKeyPrivate {
-    fn insert_checked(
-        &mut self,
-        value: crate::value::Value,
-    ) -> Result<bool, kanidm_proto::v1::OperationError> {
+    fn insert_checked(&mut self, value: crate::value::Value) -> Result<bool, OperationError> {
         match value {
             Value::EcKeyPrivate(k) => Ok(self.push(&k)),
             _ => {
@@ -190,7 +186,7 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         })
     }
 
-    fn merge(&mut self, other: &super::ValueSet) -> Result<(), kanidm_proto::v1::OperationError> {
+    fn merge(&mut self, other: &super::ValueSet) -> Result<(), OperationError> {
         if let Some(other_key) = other.as_ec_key_private() {
             let priv_key = other_key.clone();
             let pub_key = Self::private_key_to_public_key(&priv_key)

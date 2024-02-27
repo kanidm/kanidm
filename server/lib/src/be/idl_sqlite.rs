@@ -9,7 +9,7 @@ use super::keystorage::{KeyHandle, KeyHandleId};
 // use crate::valueset;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::internal::{ConsistencyError, OperationError};
 use rusqlite::vtab::array::Array;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;

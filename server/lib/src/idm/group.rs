@@ -1,7 +1,6 @@
 use std::collections::BTreeSet;
 
-use kanidm_proto::v1::UiHint;
-use kanidm_proto::v1::{Group as ProtoGroup, OperationError};
+use kanidm_proto::internal::{Group as ProtoGroup, UiHint};
 use uuid::Uuid;
 
 use super::accountpolicy::{AccountPolicy, ResolvedAccountPolicy};

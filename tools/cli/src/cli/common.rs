@@ -7,7 +7,7 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::{DEFAULT_CLIENT_CONFIG_PATH, DEFAULT_CLIENT_CONFIG_PATH_HOME};
-use kanidm_proto::v1::UserAuthToken;
+use kanidm_proto::internal::UserAuthToken;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 

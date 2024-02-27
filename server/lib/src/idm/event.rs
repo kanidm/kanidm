@@ -1,6 +1,5 @@
 use crate::idm::AuthState;
 use crate::prelude::*;
-use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
 #[cfg(test)]

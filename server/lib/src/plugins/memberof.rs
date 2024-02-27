@@ -14,7 +14,6 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 
 use hashbrown::HashMap;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 use crate::entry::{Entry, EntryCommitted, EntrySealed, EntryTuple};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};

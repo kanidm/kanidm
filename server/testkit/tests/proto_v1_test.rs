@@ -3,10 +3,12 @@ use std::path::Path;
 use std::time::SystemTime;
 
 use kanidm_proto::constants::KSESSIONID;
-use kanidm_proto::internal::ImageValue;
+use kanidm_proto::internal::{
+    ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, UatPurpose, UserAuthToken,
+};
 use kanidm_proto::v1::{
-    ApiToken, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState,
-    AuthStep, CURegState, Entry, Filter, Modify, ModifyList, UatPurpose, UserAuthToken,
+    AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
+    Entry,
 };
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{

@@ -22,7 +22,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::time::{Duration, Instant};
 
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::internal::OperationError;
 use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::{self, MessageDigest};
 use openssl::nid::Nid;

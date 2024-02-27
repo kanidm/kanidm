@@ -29,6 +29,7 @@ use kanidm_proto::constants::{
     APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
     KVERSION,
 };
+use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
 use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;

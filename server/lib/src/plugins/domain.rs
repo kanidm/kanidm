@@ -8,7 +8,6 @@ use std::iter::once;
 use std::sync::Arc;
 
 use compact_jwt::JwsEs256Signer;
-use kanidm_proto::v1::OperationError;
 use rand::prelude::*;
 use regex::Regex;
 use tracing::trace;

@@ -2,7 +2,7 @@ use std::iter;
 // use crossbeam::channel::Sender;
 use std::time::Duration;
 
-use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
+use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;

@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
+use kanidm_proto::internal::{CURegState, CURequest, CUSessionToken, CUStatus, TotpSecret};
 use qrcode::render::svg;
 use qrcode::QrCode;
 use wasm_bindgen::UnwrapThrowExt;

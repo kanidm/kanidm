@@ -10,7 +10,7 @@ use std::net::IpAddr;
 use std::sync::Arc;
 use uuid::uuid;
 
-use kanidm_proto::v1::{ApiTokenPurpose, UatPurpose};
+use kanidm_proto::internal::{ApiTokenPurpose, UatPurpose};
 
 use serde::{Deserialize, Serialize};
 

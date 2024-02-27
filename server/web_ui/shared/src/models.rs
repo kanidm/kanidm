@@ -1,8 +1,8 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use gloo::storage::{LocalStorage, SessionStorage as TemporaryStorage, Storage};
+use kanidm_proto::internal::{CUSessionToken, CUStatus};
 use kanidm_proto::oauth2::AuthorisationRequest;
-use kanidm_proto::v1::{CUSessionToken, CUStatus};
 use wasm_bindgen::UnwrapThrowExt;
 
 use crate::constants::URL_USER_HOME;

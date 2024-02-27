@@ -15,6 +15,10 @@ include!("src/opt/kanidm.rs");
 fn main() -> Result<(), Error> {
     profiles::apply_profile();
 
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=OUT_DIR");
+    println!("cargo:rerun-if-changed=src/opt/kanidm.rs");
+    println!("cargo:rerun-if-changed=src/opt/ssh_authorizedkeys.rs");
     let outdir = match env::var_os("OUT_DIR") {
         None => return Ok(()),
         Some(outdir) => outdir,

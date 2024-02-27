@@ -1,7 +1,9 @@
 use std::convert::TryFrom;
 
 use hashbrown::{HashMap as Map, HashSet};
-use kanidm_proto::v1::{BackupCodesView, CredentialDetail, CredentialDetailType, OperationError};
+use kanidm_proto::internal::{
+    BackupCodesView, CredentialDetail, CredentialDetailType, OperationError,
+};
 use uuid::Uuid;
 use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};

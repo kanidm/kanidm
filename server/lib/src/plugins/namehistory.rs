@@ -1,7 +1,5 @@
 use std::sync::Arc;
 
-use kanidm_proto::v1::OperationError;
-
 use crate::entry::{EntryInvalidCommitted, EntrySealedCommitted};
 use crate::event::ModifyEvent;
 use crate::plugins::Plugin;

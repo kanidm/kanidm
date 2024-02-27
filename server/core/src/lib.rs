@@ -40,7 +40,7 @@ use std::sync::Arc;
 
 use crate::utils::touch_file_or_quit;
 use compact_jwt::JwsHs256Signer;
-use kanidm_proto::v1::OperationError;
+use kanidm_proto::internal::OperationError;
 use kanidmd_lib::be::{Backend, BackendConfig, BackendTransaction};
 use kanidmd_lib::idm::ldap::LdapServer;
 use kanidmd_lib::prelude::*;

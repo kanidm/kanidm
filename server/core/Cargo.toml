@@ -54,7 +54,6 @@ toml = { workspace = true }
 tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
 tower-http = { version = "0.4.4", features = [
     "compression-gzip",
-    "compression-zstd",
     "fs",
     "tokio",
     "trace",
