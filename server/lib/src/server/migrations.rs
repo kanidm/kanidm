@@ -1,5 +1,4 @@
 use crate::value::CredentialType;
-use kanidm_proto::v1::SchemaError;
 use std::time::Duration;
 
 use crate::prelude::*;

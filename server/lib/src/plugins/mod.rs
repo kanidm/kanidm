@@ -6,8 +6,6 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use kanidm_proto::v1::{ConsistencyError, OperationError};
-
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::prelude::*;

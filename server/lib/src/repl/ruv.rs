@@ -8,7 +8,6 @@ use std::time::Duration;
 use concread::bptree::{BptreeMap, BptreeMapReadSnapshot, BptreeMapReadTxn, BptreeMapWriteTxn};
 
 use idlset::v2::IDLBitRange;
-use kanidm_proto::v1::ConsistencyError;
 
 use crate::prelude::*;
 use crate::repl::cid::Cid;

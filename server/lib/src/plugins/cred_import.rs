@@ -3,8 +3,6 @@ use std::convert::TryFrom;
 use std::iter::once;
 use std::sync::Arc;
 
-use kanidm_proto::v1::PluginError;
-
 use crate::credential::{Credential, Password};
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
@@ -171,7 +169,6 @@ mod tests {
     use crate::credential::{Credential, CredentialType};
     use crate::prelude::*;
     use kanidm_lib_crypto::CryptoPolicy;
-    use kanidm_proto::v1::PluginError;
 
     const IMPORT_HASH: &str =
         "pbkdf2_sha256$36000$xIEozuZVAoYm$uW1b35DUKyhvQAf1mBqMvoBDcqSD06juzyO/nmyV0+w=";

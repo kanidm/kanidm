@@ -14,7 +14,7 @@ use concread::cowcell::*;
 use hashbrown::{HashMap as Map, HashSet};
 use idlset::v2::IDLBitRange;
 use idlset::AndNot;
-use kanidm_proto::v1::{ConsistencyError, OperationError};
+use kanidm_proto::internal::{ConsistencyError, OperationError};
 use smartstring::alias::String as AttrString;
 use tracing::{trace, trace_span};
 use uuid::Uuid;

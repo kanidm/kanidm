@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
+use kanidm_proto::internal::{CUSessionToken, CUStatus, UiHint, UserAuthToken};
 use kanidmd_web_ui_shared::models::{
     push_cred_update_session, push_login_hint, push_return_location,
 };

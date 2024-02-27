@@ -20,7 +20,7 @@ use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
-use kanidm_proto::v1::{Filter as ProtoFilter, OperationError, SchemaError};
+use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
 use serde::Deserialize;
@@ -1574,7 +1574,7 @@ mod tests {
     use std::collections::BTreeSet;
     use std::time::Duration;
 
-    use kanidm_proto::v1::Filter as ProtoFilter;
+    use kanidm_proto::internal::Filter as ProtoFilter;
     use ldap3_proto::simple::LdapFilter;
 
     use crate::event::{CreateEvent, DeleteEvent};

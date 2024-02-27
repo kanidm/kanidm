@@ -21,7 +21,6 @@ use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use kanidm_proto::v1::OperationError;
 use tracing::trace;
 use uuid::Uuid;
 

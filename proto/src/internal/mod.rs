@@ -1,11 +1,28 @@
+//! Kanidm internal elements
+//!
+//! Items defined in this module *may* change between releases without notice.
+
 use crate::constants::{
     CONTENT_TYPE_GIF, CONTENT_TYPE_JPG, CONTENT_TYPE_PNG, CONTENT_TYPE_SVG, CONTENT_TYPE_WEBP,
 };
-use crate::v1::ApiTokenPurpose;
 use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::str::FromStr;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
+
+use num_enum::TryFromPrimitive;
+
+mod credupdate;
+mod error;
+mod raw;
+mod token;
+
+pub use self::credupdate::*;
+pub use self::error::*;
+pub use self::raw::*;
+pub use self::token::*;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 /// This is a description of a linked or connected application for a user. This is
@@ -20,15 +37,40 @@ pub enum AppLink {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 #[serde(rename_all = "lowercase")]
-pub struct ScimSyncToken {
-    // uuid of the token?
-    pub token_id: Uuid,
-    #[serde(with = "time::serde::timestamp")]
-    pub issued_at: time::OffsetDateTime,
-    #[serde(default)]
-    pub purpose: ApiTokenPurpose,
+#[derive(TryFromPrimitive)]
+#[repr(u16)]
+pub enum UiHint {
+    ExperimentalFeatures = 0,
+    PosixAccount = 1,
+    CredentialUpdate = 2,
+    SynchronisedAccount = 3,
+}
+
+impl fmt::Display for UiHint {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            UiHint::PosixAccount => write!(f, "PosixAccount"),
+            UiHint::CredentialUpdate => write!(f, "CredentialUpdate"),
+            UiHint::ExperimentalFeatures => write!(f, "ExperimentalFeatures"),
+            UiHint::SynchronisedAccount => write!(f, "SynchronisedAccount"),
+        }
+    }
+}
+
+impl FromStr for UiHint {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "CredentialUpdate" => Ok(UiHint::CredentialUpdate),
+            "PosixAccount" => Ok(UiHint::PosixAccount),
+            "ExperimentalFeatures" => Ok(UiHint::ExperimentalFeatures),
+            "SynchronisedAccount" => Ok(UiHint::SynchronisedAccount),
+            _ => Err(()),
+        }
+    }
 }
 
 // State machine states and transitions for the identity verification system feature!

@@ -1,4 +1,5 @@
-use kanidm_proto::v1::{SingleStringRequest, UserAuthToken};
+use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::v1::SingleStringRequest;
 use kanidmd_web_ui_shared::constants::ID_UNIX_PASSWORDCHANGE;
 use kanidmd_web_ui_shared::do_request;
 use kanidmd_web_ui_shared::error::FetchError;

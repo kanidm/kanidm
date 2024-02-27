@@ -20,7 +20,6 @@ use std::collections::BTreeSet;
 
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
-use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 use tracing::trace;
 use uuid::Uuid;
 
@@ -2268,13 +2267,11 @@ impl Schema {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::v1::{ConsistencyError, SchemaError};
-    use uuid::Uuid;
-
     use crate::prelude::*;
     use crate::schema::{
         IndexType, Schema, SchemaAttribute, SchemaClass, SchemaTransaction, SyntaxType,
     };
+    use uuid::Uuid;
 
     // use crate::proto_v1::Filter as ProtoFilter;
 

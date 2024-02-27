@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use std::iter;
 
 use kanidm_proto::constants::*;
-use kanidm_proto::v1::{ApiToken, OperationError, UserAuthToken};
+use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
 use regex::Regex;
 use std::net::IpAddr;
@@ -621,7 +621,7 @@ mod tests {
 
     use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
     use hashbrown::HashSet;
-    use kanidm_proto::v1::ApiToken;
+    use kanidm_proto::internal::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
     use ldap3_proto::simple::*;
 

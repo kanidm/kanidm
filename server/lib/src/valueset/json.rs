@@ -1,4 +1,4 @@
-use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::internal::Filter as ProtoFilter;
 use smolset::SmolSet;
 
 use crate::prelude::*;

@@ -5,7 +5,7 @@ use crate::constants::uuids::*;
 use crate::entry::EntryInitNew;
 use crate::prelude::*;
 use crate::value::Value;
-use kanidm_proto::v1::Filter as ProtoFilter;
+use kanidm_proto::internal::Filter as ProtoFilter;
 
 lazy_static! {
     /// either recycled or tombstone

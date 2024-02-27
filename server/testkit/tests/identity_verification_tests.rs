@@ -1,5 +1,6 @@
 use core::result::Result::Err;
 use kanidm_client::KanidmClient;
+use kanidm_proto::internal::OperationError;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
 
 use kanidmd_lib::prelude::Attribute;
@@ -57,7 +58,7 @@ async fn test_non_existing_user_id(rsclient: KanidmClient) {
         .idm_person_identify_user(non_existing_user, IdentifyUserRequest::Start)
         .await;
     assert!(
-        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(kanidm_proto::v1::OperationError::NoMatchingEntries), .. )))
+        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(OperationError::NoMatchingEntries), .. )))
     );
 
     let res = rsclient
@@ -65,7 +66,7 @@ async fn test_non_existing_user_id(rsclient: KanidmClient) {
         .await;
 
     assert!(
-        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(kanidm_proto::v1::OperationError::NoMatchingEntries), .. )))
+        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(OperationError::NoMatchingEntries), .. )))
     );
 
     let res = rsclient
@@ -76,7 +77,7 @@ async fn test_non_existing_user_id(rsclient: KanidmClient) {
         .await;
 
     assert!(
-        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(kanidm_proto::v1::OperationError::NoMatchingEntries), .. )))
+        matches!(dbg!(res), Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::NOT_FOUND, Some(OperationError::NoMatchingEntries), .. )))
     );
 }
 

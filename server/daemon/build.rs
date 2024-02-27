@@ -11,6 +11,9 @@ include!("src/opt.rs");
 fn main() {
     profiles::apply_profile();
 
+    println!("cargo:rerun-if-changed=build.rs");
+    println!("cargo:rerun-if-env-changed=OUT_DIR");
+    println!("cargo:rerun-if-changed=src/opt.rs");
     let outdir = match env::var_os("OUT_DIR") {
         None => return,
         Some(outdir) => outdir,

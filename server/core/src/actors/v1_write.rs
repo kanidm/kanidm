@@ -1,13 +1,12 @@
 use std::{iter, sync::Arc};
 
-use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin;
-use kanidm_proto::v1::{
-    AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
-    Entry as ProtoEntry, GroupUnixExtend, Modify as ProtoModify, ModifyList as ProtoModifyList,
-    ModifyRequest, OperationError,
+use kanidm_proto::internal::{
+    CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
+    DomainInfo as ProtoDomainInfo, ImageValue, Modify as ProtoModify,
+    ModifyList as ProtoModifyList, ModifyRequest, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin,
+    OperationError,
 };
+use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
 use time::OffsetDateTime;
 use tracing::{info, instrument, span, trace, Instrument, Level};
 use uuid::Uuid;

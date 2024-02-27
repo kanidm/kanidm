@@ -1,10 +1,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Duration;
 
-use kanidm_proto::v1::{
-    BackupCodesView, CredentialStatus, OperationError, UatPurpose, UatStatus, UatStatusState,
-    UiHint, UserAuthToken,
+use kanidm_proto::internal::{
+    BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
 };
+use kanidm_proto::v1::{UatStatus, UatStatusState};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -925,7 +925,7 @@ mod tests {
     use crate::idm::account::Account;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::prelude::*;
-    use kanidm_proto::v1::UiHint;
+    use kanidm_proto::internal::UiHint;
 
     #[test]
     fn test_idm_account_from_anonymous() {

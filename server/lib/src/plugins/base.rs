@@ -3,7 +3,6 @@ use std::iter::once;
 use std::sync::Arc;
 
 use hashbrown::HashSet;
-use kanidm_proto::v1::{ConsistencyError, PluginError};
 
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
@@ -241,7 +240,6 @@ impl Plugin for Base {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use kanidm_proto::v1::PluginError;
     use std::sync::Arc;
 
     const UUID_TEST_ACCOUNT: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");

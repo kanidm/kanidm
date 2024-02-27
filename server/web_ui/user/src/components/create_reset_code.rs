@@ -1,6 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
-use kanidm_proto::v1::{CUIntentToken, UserAuthToken};
+use kanidm_proto::internal::{CUIntentToken, UserAuthToken};
 use kanidmd_web_ui_shared::constants::{ID_CRED_RESET_CODE, URL_RESET};
 use kanidmd_web_ui_shared::error::FetchError;
 use kanidmd_web_ui_shared::utils::{document, modal_hide_by_id, origin};

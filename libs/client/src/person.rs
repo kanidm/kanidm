@@ -1,10 +1,8 @@
 use std::collections::BTreeMap;
 
 use kanidm_proto::constants::*;
-use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
-use kanidm_proto::v1::{
-    AccountUnixExtend, CredentialStatus, Entry, SingleStringRequest, UatStatus,
-};
+use kanidm_proto::internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse};
+use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus};
 use uuid::Uuid;
 
 use crate::{ClientError, KanidmClient};

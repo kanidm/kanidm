@@ -1,5 +1,7 @@
 use gloo::console;
-use kanidm_proto::v1::{CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback};
+use kanidm_proto::internal::{
+    CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback,
+};
 use wasm_bindgen::UnwrapThrowExt;
 
 use serde::Serialize;

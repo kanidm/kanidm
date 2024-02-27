@@ -1,3 +1,5 @@
+//! Oauth2 RFC protocol definitions.
+
 use std::collections::{BTreeMap, BTreeSet};
 
 use base64urlsafedata::Base64UrlSafeData;
@@ -20,6 +22,8 @@ pub struct PkceRequest {
     pub code_challenge_method: CodeChallengeMethod,
 }
 
+/// An OAuth2 client redirects to the authorisation server with Authorisation Request
+/// parameters.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorisationRequest {
@@ -40,6 +44,8 @@ pub struct AuthorisationRequest {
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
 
+/// An OIDC client redirects to the authorisation server with Authorisation Request
+/// parameters.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AuthorisationRequestOidc {
@@ -53,8 +59,9 @@ pub struct AuthorisationRequestOidc {
     pub acr: Option<String>,
 }
 
-/// When we request to authorise, it can either prompt us for consent,
-/// or it can immediately be granted due the past grant.
+/// In response to an Authorisation request, the user may be prompted to consent to the
+/// scopes requested by the OAuth2 client. If they have previously consented, they will
+/// immediately proceed.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AuthorisationResponse {
     ConsentRequested {
@@ -74,7 +81,6 @@ pub enum AuthorisationResponse {
 
 #[serde_as]
 #[skip_serializing_none]
-// this is the equivalent of serde(skip_serializing_if = "Option::is_none") applied to ALL the options
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "grant_type", rename_all = "snake_case")]
 pub enum GrantTypeReq {
@@ -96,6 +102,7 @@ pub enum GrantTypeReq {
     },
 }
 
+/// An Access Token request. This requires a set of grant-type parameters to satisfy the request.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenRequest {
@@ -117,43 +124,45 @@ impl From<GrantTypeReq> for AccessTokenRequest {
     }
 }
 
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
-pub struct TokenRevokeRequest {
-    pub token: String,
-    /// Generally not needed. See:
-    /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
-    pub token_type_hint: Option<String>,
-}
-
-// The corresponding Response to a revoke request is empty body with 200.
-
+/// The
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
-    // Could be  Base64UrlSafeData
     pub access_token: String,
-    // Enum?
     pub token_type: String,
-    // seconds.
+    /// Expiration relative to `now` in seconds.
     pub expires_in: u32,
     pub refresh_token: Option<String>,
     /// Space separated list of scopes that were approved, if this differs from the
     /// original request.
     pub scope: Option<String>,
-    /// Oidc puts the token here.
+    /// If the `openid` scope was requested, an `id_token` may be present in the response.
     pub id_token: Option<String>,
 }
 
+/// Request revocation of an Access or Refresh token. On success the response is OK 200
+/// with no body.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
-pub struct AccessTokenIntrospectRequest {
+pub struct TokenRevokeRequest {
     pub token: String,
-    /// Generally not needed. See:
+    /// Not required for Kanidm.
     /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
     pub token_type_hint: Option<String>,
 }
 
+/// Request to introspect the identity of the account associated to a token.
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccessTokenIntrospectRequest {
+    pub token: String,
+    /// Not required for Kanidm.
+    /// <https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2>
+    pub token_type_hint: Option<String>,
+}
+
+/// Response to an introspection request. If the token is inactive or revoked, only
+/// `active` will be set to the value of `false`.
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenIntrospectResponse {
@@ -235,8 +244,9 @@ pub enum PkceAlg {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "UPPERCASE")]
-// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
+/// Algorithms supported for token signatures. Prefers `ES256`
 pub enum IdTokenSignAlg {
+    // WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
     ES256,
     RS256,
 }
@@ -292,9 +302,10 @@ fn require_request_uri_parameter_supported_default() -> bool {
     false
 }
 
+/// The response to an OpenID connect discovery request
+/// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
-// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 pub struct OidcDiscoveryResponse {
     pub issuer: Url,
     pub authorization_endpoint: Url,
@@ -354,9 +365,9 @@ pub struct OidcDiscoveryResponse {
     pub code_challenge_methods_supported: Vec<PkceAlg>,
 }
 
+/// The response to an OAuth2 rfc8414 metadata request
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
-// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata
 pub struct Oauth2Rfc8414MetadataResponse {
     pub issuer: Url,
     pub authorization_endpoint: Url,

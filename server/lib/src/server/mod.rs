@@ -11,8 +11,7 @@ use std::collections::BTreeSet;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
-use kanidm_proto::v1::{ConsistencyError, UiHint};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...

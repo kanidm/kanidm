@@ -14,8 +14,7 @@ use webauthn_rs::prelude::AttestationCaList;
 use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
-use kanidm_proto::v1::Filter as ProtoFilter;
-use kanidm_proto::v1::UiHint;
+use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{totp::Totp, Credential};

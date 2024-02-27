@@ -8,7 +8,6 @@ use std::collections::VecDeque;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use kanidm_proto::v1::{ConsistencyError, PluginError};
 use tracing::trace;
 
 use crate::event::{CreateEvent, ModifyEvent};
@@ -491,8 +490,6 @@ impl Plugin for AttrUnique {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::v1::PluginError;
-
     use crate::prelude::*;
 
     // Test entry in db, and same name, reject.

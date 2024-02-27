@@ -1,7 +1,7 @@
 use std::convert::{TryFrom, TryInto};
 use std::time::{Duration, SystemTime};
 
-use kanidm_proto::v1::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
+use kanidm_proto::internal::{TotpAlgo as ProtoTotpAlgo, TotpSecret as ProtoTotp};
 use openssl::hash::MessageDigest;
 use openssl::pkey::PKey;
 use openssl::sign::Signer;
