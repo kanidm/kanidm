@@ -38,8 +38,9 @@ docker run \
 echo "Running openapitools/openapi-generator-cli"
 docker run --rm  \
     --mount "type=bind,src=${WORKDIR},target=/spec" \
-    openapitools/openapi-generator-cli generate \
-    -i /spec/openapi.json -g rust
+    openapitools/openapi-generator-cli validate \
+    -i /spec/openapi.json
+
 
 cleanup "${WORKDIR}"
 
