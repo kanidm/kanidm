@@ -250,6 +250,8 @@ impl Modify for SecurityAddon {
             v1::WhoamiResponse,
             internal::CUCredState,
             internal::CURegWarning,
+            internal::IdentifyUserResponse,
+            internal::AppLink,
 
             internal::IdentifyUserRequest,
             // terrible workaround for other things
