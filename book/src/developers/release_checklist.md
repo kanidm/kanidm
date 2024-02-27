@@ -23,6 +23,9 @@ cargo install wasm-bindgen-cli
 - [ ] cargo audit
 - [ ] cargo test
 
+- [ ] setup a local instance and run orca (TBD)
+- [ ] store a copy an an example db (TBD)
+
 ### Code Changes
 
 - [ ] upgrade crypto policy values if required
