@@ -184,7 +184,7 @@ impl ServerConfig {
                     Ok(val) => config = val,
                 };
             } else {
-                eprintln!("📜 Mo config file found at {:?}", config_path.as_ref());
+                eprintln!("📜 No config file found at {:?}", config_path.as_ref());
             }
         }
 
