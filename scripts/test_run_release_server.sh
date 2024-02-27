@@ -72,7 +72,7 @@ fi
 
 echo "Running the OpenAPI schema checks"
 
-./scripts/openapi_tests/check_openapi_spec.sh || exit 1
+bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
