@@ -11,7 +11,8 @@ There are two methods for configuration:
 2. Using environment variables to specify configuration options (uppercased, prefixed with
    `KANIDM_`).
 
-The full options and explanations are in the
+You can use one or both methods, but environment variables take precedence over options specified in
+files.The full options and explanations are in the
 [kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html)
 docs page for your particular build.
 
