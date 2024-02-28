@@ -45,7 +45,6 @@ jobs:
       - name: "Run wasm-pack test"
         # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
         run: make webui/test
-        continue-on-error: true
 
       - name: "Run webdriver tests"
         run: |
