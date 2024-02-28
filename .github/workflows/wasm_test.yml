@@ -44,7 +44,9 @@ jobs:
       # - run: make webui
       - name: "Run wasm-pack test"
         # https://rustwasm.github.io/docs/wasm-bindgen/wasm-bindgen-test/browsers.html
-        run: make webui/test
+        run: |
+          rustup target add wasm32-unknown-unknown
+          make webui/test
 
       - name: "Run webdriver tests"
         run: |
