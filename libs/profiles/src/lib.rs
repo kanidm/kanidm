@@ -92,6 +92,11 @@ pub fn apply_profile() {
         println!("cargo:rustc-env=KANIDM_PKG_VERSION={}", version);
     };
 
+    let version_pre = env!("CARGO_PKG_VERSION_PRE");
+    if version_pre == "dev" {
+        println!("cargo:rustc-env=KANIDM_PRE_RELEASE=1");
+    }
+
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
         CpuOptLevel::none => {}

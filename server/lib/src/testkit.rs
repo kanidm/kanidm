@@ -2,8 +2,20 @@ use crate::be::{Backend, BackendConfig};
 use crate::prelude::*;
 use crate::schema::Schema;
 
+pub struct TestConfiguration {
+    pub domain_level: DomainVersion,
+}
+
+impl Default for TestConfiguration {
+    fn default() -> Self {
+        TestConfiguration {
+            domain_level: DOMAIN_TGT_LEVEL,
+        }
+    }
+}
+
 #[allow(clippy::expect_used)]
-pub async fn setup_test() -> QueryServer {
+pub async fn setup_test(config: TestConfiguration) -> QueryServer {
     sketching::test_init();
 
     // Create an in memory BE
@@ -15,13 +27,19 @@ pub async fn setup_test() -> QueryServer {
     let be =
         Backend::new(BackendConfig::new_test("main"), idxmeta, false).expect("Failed to init BE");
 
-    // Init is called via the proc macro
-    QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
-        .expect("Failed to setup Query Server")
+    let test_server = QueryServer::new(be, schema_outer, "example.com".to_string(), Duration::ZERO)
+        .expect("Failed to setup Query Server");
+
+    test_server
+        .initialise_helper(duration_from_epoch_now(), config.domain_level)
+        .await
+        .expect("init failed!");
+
+    test_server
 }
 
 #[allow(clippy::expect_used)]
-pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
+pub async fn setup_pair_test(config: TestConfiguration) -> (QueryServer, QueryServer) {
     sketching::test_init();
 
     let qs_a = {
@@ -54,16 +72,23 @@ pub async fn setup_pair_test() -> (QueryServer, QueryServer) {
             .expect("Failed to setup Query Server")
     };
 
+    qs_a.initialise_helper(duration_from_epoch_now(), config.domain_level)
+        .await
+        .expect("init failed!");
+
+    qs_b.initialise_helper(duration_from_epoch_now(), config.domain_level)
+        .await
+        .expect("init failed!");
+
     (qs_a, qs_b)
 }
 
 #[allow(clippy::expect_used)]
-pub async fn setup_idm_test() -> (IdmServer, IdmServerDelayed, IdmServerAudit) {
-    let qs = setup_test().await;
+pub async fn setup_idm_test(
+    config: TestConfiguration,
+) -> (IdmServer, IdmServerDelayed, IdmServerAudit) {
+    let qs = setup_test(config).await;
 
-    qs.initialise_helper(duration_from_epoch_now())
-        .await
-        .expect("init failed!");
     IdmServer::new(qs, "https://idm.example.com")
         .await
         .expect("Failed to setup idms")

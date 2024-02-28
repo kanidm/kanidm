@@ -4080,7 +4080,7 @@ mod tests {
         );
     }
 
-    #[idm_test(audit)]
+    #[idm_test(audit = 1)]
     async fn test_idm_credential_update_account_policy_attested_passkey_changed(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
