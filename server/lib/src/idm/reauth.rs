@@ -657,7 +657,7 @@ mod tests {
         assert!(matches!(ident.access_scope(), AccessScope::ReadWrite));
     }
 
-    #[idm_test(audit)]
+    #[idm_test(audit = 1)]
     async fn test_idm_reauth_softlocked_pw(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,

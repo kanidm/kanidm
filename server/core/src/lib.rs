@@ -108,7 +108,9 @@ async fn setup_qs_idms(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(curtime).await?;
+    query_server
+        .initialise_helper(curtime, DOMAIN_TGT_LEVEL)
+        .await?;
 
     // We generate a SINGLE idms only!
 
@@ -135,7 +137,9 @@ async fn setup_qs(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(curtime).await?;
+    query_server
+        .initialise_helper(curtime, DOMAIN_TGT_LEVEL)
+        .await?;
 
     Ok(query_server)
 }
