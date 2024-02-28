@@ -18,8 +18,13 @@ either "true" or "false". `true` indicates that the platform is responding to re
 
 ## OpenTelemetry Tracing
 
-Configure OTLP trace exports by setting a `otel_grpc_endpoint` in the server configuration. This'll
+Configure OTLP trace exports by setting a `otel_grpc_url` in the server configuration. This'll
 enable [OpenTelemetry traces](https://opentelemetry.io) to be sent for observability use cases.
+
+Example:
+```toml
+otel_grpc_url = "http://my-otel-host:4317"
+```
 
 ### Troubleshooting
 
@@ -33,7 +38,7 @@ Grafana Tempo
 
 ```yaml
 distributor:
-  receivers: 
+  receivers:
     otlp:
       protocols:
         grpc:
