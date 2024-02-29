@@ -288,7 +288,7 @@ webui: ## Build the WASM web frontend
 
 .PHONY: webui/test
 webui/test: ## Run wasm-pack test
-	cd server/web_ui && wasm-pack test --headless --chrome
+	cd server/web_ui/shared/ && wasm-pack test --headless --chrome --mode no-install
 
 .PHONY: rust/coverage
 coverage/test: ## Run coverage tests
