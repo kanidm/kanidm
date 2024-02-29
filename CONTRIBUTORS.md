@@ -35,6 +35,7 @@
 - Allan Zhang (allan2)
 - illode
 - Jinna Kiisuo (jinnatar)
+- Merlijn Verstraete (ToxicMushroom)
 
 ## Acknowledgements
 
