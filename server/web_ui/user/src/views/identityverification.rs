@@ -1,7 +1,6 @@
 #[cfg(debug_assertions)]
 use gloo::console;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
-use kanidmd_web_ui_shared::logo_img;
 use regex::Regex;
 use serde::Serialize;
 use wasm_bindgen::{JsValue, UnwrapThrowExt};
@@ -9,10 +8,11 @@ use yew::prelude::*;
 
 use crate::components::totpdisplay::TotpDisplayApp;
 use kanidmd_web_ui_shared::constants::{
-    CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, CSS_ALERT_DANGER, URL_USER_HOME,
+    CLASS_DIV_LOGIN_BUTTON, CLASS_DIV_LOGIN_FIELD, URL_USER_HOME,
 };
 
 use crate::views::ViewProps;
+use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
 #[derive(Clone, Debug, PartialEq)]
@@ -272,15 +272,7 @@ impl Component for IdentityVerificationApp {
 
 impl IdentityVerificationApp {
     fn view_start(&self) -> Html {
-        html! {
-            <>
-              <div class="vert-center">
-                <div class="spinner-border text-dark" role="status">
-                  <span class="visually-hidden">{ "Loading..." }</span>
-                </div>
-              </div>
-            </>
-        }
+        loading_spinner()
     }
 
     fn view_id_submit_and_display(&self, ctx: &Context<Self>) -> Html {
@@ -387,20 +379,7 @@ impl IdentityVerificationApp {
     }
 
     fn view_error(&self, error_message: &str) -> Html {
-        html! {
-          <>
-            <p class="text-center">
-                {logo_img()}
-            </p>
-            <div class={CSS_ALERT_DANGER} role="alert">
-              <h2>{ "An Error Occurred 🥺" }</h2>
-            <p>{ error_message }</p>
-            </div>
-            <p class="text-center">
-              <a href={URL_USER_HOME}><button href={URL_USER_HOME} class="btn btn-secondary" aria-label="Return home">{"Return to the home page"}</button></a>
-            </p>
-          </>
-        }
+        error_page(error_message, None)
     }
 
     fn view_success(&self) -> Html {

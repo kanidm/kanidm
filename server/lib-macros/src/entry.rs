@@ -1,14 +1,80 @@
 use proc_macro::TokenStream;
 use proc_macro2::{Ident, Span};
 use quote::{quote, quote_spanned, ToTokens};
-use syn::spanned::Spanned;
+use syn::{parse::Parser, punctuated::Punctuated, spanned::Spanned, ExprAssign, Token};
 
 fn token_stream_with_error(mut tokens: TokenStream, error: syn::Error) -> TokenStream {
     tokens.extend(TokenStream::from(error.into_compile_error()));
     tokens
 }
 
-pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -> TokenStream {
+const ALLOWED_ATTRIBUTES: &[&str] = &["audit", "domain_level"];
+
+#[derive(Default)]
+struct Flags {
+    audit: bool,
+}
+
+fn parse_attributes(
+    args: &TokenStream,
+    input: &syn::ItemFn,
+) -> Result<(proc_macro2::TokenStream, Flags), syn::Error> {
+    let args: Punctuated<ExprAssign, syn::token::Comma> =
+        match Punctuated::<ExprAssign, Token![,]>::parse_terminated.parse(args.clone()) {
+            Ok(it) => it,
+            Err(e) => return Err(e),
+        };
+
+    let args_are_allowed = args.pairs().all(|p| {
+        ALLOWED_ATTRIBUTES.to_vec().contains(
+            &p.value()
+                .left
+                .span()
+                .source_text()
+                .unwrap_or_default()
+                .as_str(),
+        )
+    });
+
+    if !args_are_allowed {
+        let msg = "Invalid test config attribute. The following are allow";
+        return Err(syn::Error::new_spanned(
+            input.sig.fn_token,
+            format!("{}: {}", msg, ALLOWED_ATTRIBUTES.join(", ")),
+        ));
+    }
+
+    let mut flags = Flags::default();
+    let mut field_modifications = quote! {};
+
+    args.pairs().for_each(|p| {
+        match p
+            .value()
+            .left
+            .span()
+            .source_text()
+            .unwrap_or_default()
+            .as_str()
+        {
+            "audit" => flags.audit = true,
+            _ => {
+                let field_name = p.value().left.to_token_stream(); // here we can use to_token_stream as we know we're iterating over ExprAssigns
+                let field_value = p.value().right.to_token_stream();
+                field_modifications.extend(quote! {
+                #field_name: #field_value,})
+            }
+        }
+    });
+
+    let ts = quote!(crate::testkit::TestConfiguration {
+        #field_modifications
+        ..crate::testkit::TestConfiguration::default()
+    });
+
+    Ok((ts, flags))
+}
+
+pub(crate) fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
     let input: syn::ItemFn = match syn::parse(item.clone()) {
         Ok(it) => it,
         Err(e) => return token_stream_with_error(item, e),
@@ -42,22 +108,18 @@ pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -
         (start, end)
     };
 
+    // Setup the config filling the remaining fields with the default values
+    let (default_config_struct, _flags) = match parse_attributes(&args, &input) {
+        Ok(dc) => dc,
+        Err(e) => return token_stream_with_error(args, e),
+    };
+
     let rt = quote_spanned! {last_stmt_start_span=>
         tokio::runtime::Builder::new_current_thread()
     };
 
     let header = quote! {
         #[::core::prelude::v1::test]
-    };
-
-    let init = if with_init {
-        quote! {
-            test_server.initialise_helper(duration_from_epoch_now())
-                .await
-                .expect("init failed!");
-        }
-    } else {
-        quote! {}
     };
 
     let test_fn = &input.sig.ident;
@@ -72,9 +134,9 @@ pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -
         #header
         fn #test_driver() {
             let body = async {
-                let test_server = crate::testkit::setup_test().await;
+                let test_config = #default_config_struct;
 
-                #init
+                let test_server = crate::testkit::setup_test(test_config).await;
 
                 #test_fn(&test_server).await;
 
@@ -100,7 +162,7 @@ pub(crate) fn qs_test(_args: &TokenStream, item: TokenStream, with_init: bool) -
     result.into()
 }
 
-pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bool) -> TokenStream {
+pub(crate) fn qs_pair_test(args: &TokenStream, item: TokenStream) -> TokenStream {
     let input: syn::ItemFn = match syn::parse(item.clone()) {
         Ok(it) => it,
         Err(e) => return token_stream_with_error(item, e),
@@ -142,17 +204,10 @@ pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bo
         #[::core::prelude::v1::test]
     };
 
-    let init = if with_init {
-        quote! {
-            server_a.initialise_helper(duration_from_epoch_now())
-                .await
-                .expect("init_a failed!");
-            server_b.initialise_helper(duration_from_epoch_now())
-                .await
-                .expect("init_b failed!");
-        }
-    } else {
-        quote! {}
+    // Setup the config filling the remaining fields with the default values
+    let (default_config_struct, _flags) = match parse_attributes(&args, &input) {
+        Ok(dc) => dc,
+        Err(e) => return token_stream_with_error(args.clone(), e),
     };
 
     let test_fn = &input.sig.ident;
@@ -167,9 +222,9 @@ pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bo
         #header
         fn #test_driver() {
             let body = async {
-                let (server_a, server_b) = crate::testkit::setup_pair_test().await;
+                let test_config = #default_config_struct;
 
-                #init
+                let (server_a, server_b) = crate::testkit::setup_pair_test(test_config).await;
 
                 #test_fn(&server_a, &server_b).await;
 
@@ -197,8 +252,6 @@ pub(crate) fn qs_pair_test(_args: &TokenStream, item: TokenStream, with_init: bo
 }
 
 pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
-    let audit = args.to_string() == "audit";
-
     let input: syn::ItemFn = match syn::parse(item.clone()) {
         Ok(it) => it,
         Err(e) => return token_stream_with_error(item, e),
@@ -232,6 +285,12 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
         (start, end)
     };
 
+    // Setup the config filling the remaining fields with the default values
+    let (default_config_struct, flags) = match parse_attributes(&args, &input) {
+        Ok(dc) => dc,
+        Err(e) => return token_stream_with_error(args.clone(), e),
+    };
+
     let rt = quote_spanned! {last_stmt_start_span=>
         tokio::runtime::Builder::new_current_thread()
     };
@@ -243,7 +302,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
     let test_fn = &input.sig.ident;
     let test_driver = Ident::new(&format!("idm_{}", test_fn), input.sig.span());
 
-    let test_fn_args = if audit {
+    let test_fn_args = if flags.audit {
         quote! {
             &test_server, &mut idms_delayed, &mut idms_audit
         }
@@ -262,7 +321,9 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
         #header
         fn #test_driver() {
             let body = async {
-                let (test_server, mut idms_delayed, mut idms_audit)  = crate::testkit::setup_idm_test().await;
+                let test_config = #default_config_struct;
+
+                let (test_server, mut idms_delayed, mut idms_audit)  = crate::testkit::setup_idm_test(test_config).await;
 
                 #test_fn(#test_fn_args).await;
 
