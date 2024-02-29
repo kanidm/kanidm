@@ -1,6 +1,6 @@
 use crate::error::Error;
-use crate::profile::Profile;
 use crate::model::ActorModel;
+use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -70,9 +70,7 @@ pub enum Model {
 impl Model {
     pub fn into_dyn_object(&self) -> Box<dyn ActorModel + Send> {
         match self {
-            Model::Basic => {
-                Box::new(crate::model_basic::ActorBasic::new())
-            }
+            Model::Basic => Box::new(crate::model_basic::ActorBasic::new()),
         }
     }
 }

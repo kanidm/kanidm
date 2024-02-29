@@ -1,13 +1,13 @@
-
-use crate::state::*;
 use crate::error::Error;
-use crate::run::{
-    EventDetail,
-    EventRecord
-};
+use crate::run::{EventDetail, EventRecord};
+use crate::state::*;
 use std::time::{Duration, Instant};
 
 use kanidm_client::KanidmClient;
+
+use async_trait::async_trait;
+
+use tokio::sync::oneshot;
 
 pub enum TransitionAction {
     Login,
@@ -36,100 +36,84 @@ pub enum TransitionResult {
     Error,
 }
 
+#[async_trait]
 pub trait ActorModel {
-    fn next_transition(&mut self) -> Transition;
-
-    fn next_state(&mut self, result: TransitionResult);
+    async fn transition(
+        &mut self,
+        client: &KanidmClient,
+        person: &Person,
+    ) -> Result<EventRecord, Error>;
 }
-
 
 pub async fn login(
-        client: &KanidmClient,
-        person: &Person,
-    ) -> Result<(
-        TransitionResult,
-        EventRecord
-    ), Error> {
-
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
     // Should we measure the time of each call rather than the time with multiple calls?
-        let start = Instant::now();
-        let result = match &person.credential {
-            Credential::Password { plain } => {
-                client.auth_simple_password(
-                    person.username.as_str(),
-                    plain.as_str()
-                ).await
-            }
-        };
-        let end = Instant::now();
-
-        let duration = end.duration_since(start);
-
-        match result {
-            Ok(_) => {
-                Ok((
-                    TransitionResult::Ok,
-                    EventRecord {
-                        start,
-                        duration,
-                        details: EventDetail::Authentication
-                    }
-                ))
-            }
-            Err(client_err) => {
-                debug!(?client_err);
-                Ok((
-                    TransitionResult::Error,
-                    EventRecord {
-                        start,
-                        duration,
-                        details: EventDetail::Error,
-                    }
-                ))
-            }
+    let start = Instant::now();
+    let result = match &person.credential {
+        Credential::Password { plain } => {
+            client
+                .auth_simple_password(person.username.as_str(), plain.as_str())
+                .await
         }
+    };
+    let end = Instant::now();
 
+    let duration = end.duration_since(start);
 
-
+    match result {
+        Ok(_) => Ok((
+            TransitionResult::Ok,
+            EventRecord {
+                start,
+                duration,
+                details: EventDetail::Authentication,
+            },
+        )),
+        Err(client_err) => {
+            debug!(?client_err);
+            Ok((
+                TransitionResult::Error,
+                EventRecord {
+                    start,
+                    duration,
+                    details: EventDetail::Error,
+                },
+            ))
+        }
+    }
 }
-
 
 pub async fn logout(
-        client: &KanidmClient,
-        person: &Person,
-    ) -> Result<(
-        TransitionResult,
-        EventRecord
-    ), Error> {
-        let start = Instant::now();
-        let result = client.logout().await;
-        let end = Instant::now();
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    let start = Instant::now();
+    let result = client.logout().await;
+    let end = Instant::now();
 
-        let duration = end.duration_since(start);
+    let duration = end.duration_since(start);
 
-        match result {
-            Ok(_) => {
-                Ok((
-                    TransitionResult::Ok,
-                    EventRecord {
-                        start,
-                        duration,
-                        details: EventDetail::Logout
-                    }
-                ))
-            }
-            Err(client_err) => {
-                debug!(?client_err);
-                Ok((
-                    TransitionResult::Error,
-                    EventRecord {
-                        start,
-                        duration,
-                        details: EventDetail::Error,
-                    }
-                ))
-            }
+    match result {
+        Ok(_) => Ok((
+            TransitionResult::Ok,
+            EventRecord {
+                start,
+                duration,
+                details: EventDetail::Logout,
+            },
+        )),
+        Err(client_err) => {
+            debug!(?client_err);
+            Ok((
+                TransitionResult::Error,
+                EventRecord {
+                    start,
+                    duration,
+                    details: EventDetail::Error,
+                },
+            ))
         }
+    }
 }
-
-

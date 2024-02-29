@@ -1,9 +1,6 @@
 use crate::error::Error;
+use crate::model::{self, TransitionAction};
 use crate::state::*;
-use crate::model::{
-    self,
-    TransitionAction
-};
 use crate::stats::{BasicStatistics, TestPhase};
 
 use std::sync::Arc;
@@ -12,7 +9,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use crossbeam::queue::{SegQueue, ArrayQueue};
+use crossbeam::queue::{ArrayQueue, SegQueue};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
@@ -35,52 +32,13 @@ async fn actor_person(
             }
             _ => {
                 // We have been asked to shutdown, return cleanly.
-                break
+                break;
             }
         }
 
-        // I'm not 100% sure about this. Should it all be contained in the model?
-        // Do we want re-usable transitions? Are they model specific? I'm not sure.
-        //
-        // A possible argument to confining this within the model could be person
-        // vs service account, but then wouldn't we need separate models for that
-        // too?
-        //
-        // But this can be refactored or changed, I think it needs some use-in-anger
-        // to find the correct balance.
-        let transition = model.next_transition();
-
-        // Execute any delay
-        if let Some(delay) = transition.delay() {
-
-            let sleep = tokio::time::sleep(delay);
-            tokio::pin!(sleep);
-            let recv = actor_rx.recv();
-            tokio::pin!(recv);
-
-            tokio::select! {
-                _ = sleep => {
-                    // continue.
-                }
-                _ = recv => {
-                    // We have been asked to shutdown, return cleanly.
-                    break
-                }
-            }
-        }
-
-        // Once we get to here, we want the transition to go ahead.
-        let (result, event) = match transition.action {
-            TransitionAction::Login =>
-                model::login(&client, &person).await,
-            TransitionAction::Logout =>
-                model::logout(&client, &person).await,
-        }?;
+        let event = model.transition(&client, &person).await?;
 
         stats_queue.push(event);
-
-        // Inform the model of the result
-        model.next_state(result);
     }
 
     debug!("Stopped person {}", person.username);
@@ -126,15 +84,18 @@ async fn execute_inner(
 
     let start = Instant::now();
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::Start(start)) {
-        error!(?crossbeam_err, "Unable to signal statistics collector to start");
+        error!(
+            ?crossbeam_err,
+            "Unable to signal statistics collector to start"
+        );
         return Err(Error::Crossbeam);
     }
 
     if let Some(test_time) = test_time {
-            let sleep = tokio::time::sleep(test_time);
-            tokio::pin!(sleep);
-            let recv = (&mut control_rx).recv();
-            tokio::pin!(recv);
+        let sleep = tokio::time::sleep(test_time);
+        tokio::pin!(sleep);
+        let recv = (&mut control_rx).recv();
+        tokio::pin!(recv);
 
         // Wait for some condition (signal, or time).
         tokio::select! {
@@ -154,17 +115,17 @@ async fn execute_inner(
 
     let end = Instant::now();
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::End(end)) {
-        error!(?crossbeam_err, "Unable to signal statistics collector to start");
+        error!(
+            ?crossbeam_err,
+            "Unable to signal statistics collector to start"
+        );
         return Err(Error::Crossbeam);
     }
 
-    return Ok(())
+    return Ok(());
 }
 
-pub async fn execute(
-    state: State,
-    control_rx: broadcast::Receiver<Signal>,
-) -> Result<(), Error> {
+pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> Result<(), Error> {
     // Create a statistics queue.
     let stats_queue = Arc::new(SegQueue::new());
     let stats_ctrl = Arc::new(ArrayQueue::new(4));
@@ -175,9 +136,8 @@ pub async fn execute(
 
     let mut dyn_data_collector = BasicStatistics::new();
 
-    let stats_task = tokio::task::spawn_blocking(move || {
-        dyn_data_collector.run(c_stats_queue, c_stats_ctrl)
-    });
+    let stats_task =
+        tokio::task::spawn_blocking(move || dyn_data_collector.run(c_stats_queue, c_stats_ctrl));
 
     // Create clients. Note, we actually seed these deterministically too, so that
     // or persons are spread over the clients that exist, in a way that is also
@@ -217,7 +177,12 @@ pub async fn execute(
 
         let c_actor_rx = actor_tx.subscribe();
 
-        tasks.push(tokio::spawn(actor_person(client, person, c_stats_queue, c_actor_rx)))
+        tasks.push(tokio::spawn(actor_person(
+            client,
+            person,
+            c_stats_queue,
+            c_actor_rx,
+        )))
     }
 
     let warmup = state.profile.warmup_time();
@@ -228,27 +193,27 @@ pub async fn execute(
     let c_stats_ctrl = stats_ctrl.clone();
     // Don't ? this, we want to stash the result so we cleanly stop all the workers
     // before returning the inner test result.
-    let test_result = execute_inner(
-        warmup, testtime, control_rx, c_stats_ctrl
-    ).await;
+    let test_result = execute_inner(warmup, testtime, control_rx, c_stats_ctrl).await;
 
     info!("stopping stats");
 
     // The statistics collector has been working in the BG, and was likely told
     // to end by now, but if not (due to an error) send a signal to stop immediately.
     if let Err(crossbeam_err) = stats_ctrl.push(TestPhase::StopNow) {
-        error!(?crossbeam_err, "Unable to signal statistics collector to stop");
+        error!(
+            ?crossbeam_err,
+            "Unable to signal statistics collector to stop"
+        );
         return Err(Error::Crossbeam);
     }
 
     info!("stopping workers");
 
     // Test workers to stop
-    actor_tx.send(Signal::Stop)
-        .map_err(|broadcast_err| {
-            error!(?broadcast_err, "Unable to signal workers to stop");
-            Error::Tokio
-        })?;
+    actor_tx.send(Signal::Stop).map_err(|broadcast_err| {
+        error!(?broadcast_err, "Unable to signal workers to stop");
+        Error::Tokio
+    })?;
 
     info!("joining workers");
 
@@ -264,8 +229,8 @@ pub async fn execute(
 
     // By this point the stats task should have been told to halt and rejoin.
     stats_task.await.map_err(|tokio_err| {
-            error!(?tokio_err, "Failed to join statistics task");
-            Error::Tokio
+        error!(?tokio_err, "Failed to join statistics task");
+        Error::Tokio
     })??;
     // Not an error, two ? to handle the inner data collector error.
 

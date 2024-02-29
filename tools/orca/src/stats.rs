@@ -1,10 +1,9 @@
-
 use crate::error::Error;
 use crate::run::EventRecord;
-use crossbeam::queue::{SegQueue, ArrayQueue};
+use crossbeam::queue::{ArrayQueue, SegQueue};
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 use std::thread;
+use std::time::{Duration, Instant};
 
 use mathru::statistics::distrib::{Continuous, Normal};
 
@@ -23,13 +22,11 @@ pub trait DataCollector {
     ) -> Result<(), Error>;
 }
 
-pub struct BasicStatistics {
-}
+pub struct BasicStatistics {}
 
 impl BasicStatistics {
     pub fn new() -> Box<dyn DataCollector + Send> {
-        Box::new(BasicStatistics {
-        })
+        Box::new(BasicStatistics {})
     }
 }
 
@@ -108,5 +105,3 @@ impl DataCollector for BasicStatistics {
         Ok(())
     }
 }
-
-

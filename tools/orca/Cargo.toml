@@ -18,6 +18,7 @@ test = true
 doctest = false
 
 [dependencies]
+async-trait = { workspace = true }
 clap = { workspace = true }
 crossbeam = { workspace = true }
 csv = { workspace = true }
