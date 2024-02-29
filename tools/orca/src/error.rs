@@ -6,4 +6,6 @@ pub enum Error {
     ProfileBuilder,
     Tokio,
     Interupt,
+    Crossbeam,
+    InvalidState,
 }

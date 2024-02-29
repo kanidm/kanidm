@@ -15,16 +15,16 @@ Test the connection
 orca conntest --profile ./profile.json
 ```
 
-Populate a State File
+Generate a State File
 
 ```
-orca populate --profile ./profile.json --state ./state.json
+orca generate --profile ./profile.json --state ./state.json
 ```
 
-Run the test preflight to create the sample data
+Run the test preflight to populate the sample data
 
 ```
-orca preflight --state ./state.json
+orca populate --state ./state.json
 ```
 
 Run the load test

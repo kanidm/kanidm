@@ -2,12 +2,16 @@ use crate::error::Error;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
+use std::time::Duration;
 
 // Sorry nerds, capping this at 40 bits.
 const ITEM_UPPER_BOUND: u64 = 1 << 40;
 
 const DEFAULT_GROUP_COUNT: u64 = 10;
 const DEFAULT_PERSON_COUNT: u64 = 10;
+
+const DEFAULT_WARMUP_TIME: u64 = 10;
+const DEFAULT_TEST_TIME: Option<u64> = Some(180);
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Profile {
@@ -17,6 +21,8 @@ pub struct Profile {
     seed: u64,
     extra_uris: Vec<String>,
     // Dimensions of the test to setup.
+    warmup_time: u64,
+    test_time: Option<u64>,
     group_count: u64,
     person_count: u64,
 }
@@ -49,6 +55,14 @@ impl Profile {
     pub fn seed(&self) -> u64 {
         self.seed
     }
+
+    pub fn warmup_time(&self) -> Duration {
+        Duration::from_secs(self.warmup_time)
+    }
+
+    pub fn test_time(&self) -> Option<Duration> {
+        self.test_time.map(Duration::from_secs)
+    }
 }
 
 pub struct ProfileBuilder {
@@ -58,6 +72,8 @@ pub struct ProfileBuilder {
     pub seed: Option<u64>,
     pub extra_uris: Vec<String>,
     // Dimensions of the test to setup.
+    pub warmup_time: Option<u64>,
+    pub test_time: Option<Option<u64>>,
     pub group_count: Option<u64>,
     pub person_count: Option<u64>,
 }
@@ -83,6 +99,8 @@ impl ProfileBuilder {
             idm_admin_password,
             seed: None,
             extra_uris: Vec::new(),
+            warmup_time: None,
+            test_time: None,
             group_count: None,
             person_count: None,
         }
@@ -90,6 +108,16 @@ impl ProfileBuilder {
 
     pub fn seed(mut self, seed: Option<u64>) -> Self {
         self.seed = seed;
+        self
+    }
+
+    pub fn warmup_time(mut self, time: Option<u64>) -> Self {
+        self.warmup_time = time;
+        self
+    }
+
+    pub fn test_time(mut self, time: Option<Option<u64>>) -> Self {
+        self.test_time = time;
         self
     }
 
@@ -110,6 +138,8 @@ impl ProfileBuilder {
             idm_admin_password,
             seed,
             extra_uris,
+            warmup_time,
+            test_time,
             group_count,
             person_count,
         } = self;
@@ -124,12 +154,17 @@ impl ProfileBuilder {
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
 
+        let warmup_time = warmup_time.unwrap_or(DEFAULT_WARMUP_TIME);
+        let test_time = test_time.unwrap_or(DEFAULT_TEST_TIME);
+
         Ok(Profile {
             control_uri,
             admin_password,
             idm_admin_password,
             seed,
             extra_uris,
+            warmup_time,
+            test_time,
             group_count,
             person_count,
         })

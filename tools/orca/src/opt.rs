@@ -72,10 +72,10 @@ enum OrcaOpt {
         profile_path: PathBuf,
     },
 
-    #[clap(name = "populate")]
+    #[clap(name = "generate")]
     /// Create a new state file that is populated with a complete dataset, ready
     /// to be loaded into a kanidm instance.
-    PopulateData {
+    GenerateData {
         #[clap(flatten)]
         common: CommonOpt,
         #[clap(long = "profile")]
@@ -86,9 +86,9 @@ enum OrcaOpt {
         state_path: PathBuf,
     },
 
-    #[clap(name = "preflight")]
+    #[clap(name = "populate")]
     /// Populate the data for the test into the Kanidm instance.
-    Preflight {
+    PopulateData {
         #[clap(flatten)]
         common: CommonOpt,
         #[clap(long = "state")]

@@ -23,14 +23,15 @@ use crate::profile::{Profile, ProfileBuilder};
 use tokio::sync::broadcast;
 
 mod error;
+mod generate;
 mod kani;
 mod model;
 mod model_basic;
 mod populate;
-mod preflight;
 mod profile;
 mod run;
 mod state;
+mod stats;
 
 include!("./opt.rs");
 
@@ -40,14 +41,14 @@ impl OrcaOpt {
             OrcaOpt::Version { common }
             | OrcaOpt::SetupWizard { common, .. }
             | OrcaOpt::TestConnection { common, .. }
+            | OrcaOpt::GenerateData { common, .. }
             | OrcaOpt::PopulateData { common, .. }
-            | OrcaOpt::Preflight { common, .. }
             | OrcaOpt::Run { common, .. } => common.debug,
         }
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread")]
 async fn main() -> ExitCode {
     let opt = OrcaOpt::parse();
 
@@ -126,7 +127,7 @@ async fn main() -> ExitCode {
         }
 
         // From the profile and test dimensions, generate the data into a state file.
-        OrcaOpt::PopulateData {
+        OrcaOpt::GenerateData {
             common: _,
             profile_path,
             state_path,
@@ -146,7 +147,7 @@ async fn main() -> ExitCode {
             };
 
             // do-it.
-            let state = match populate::populate(&client, profile).await {
+            let state = match generate::populate(&client, profile).await {
                 Ok(s) => s,
                 Err(_err) => {
                     return ExitCode::FAILURE;
@@ -164,7 +165,7 @@ async fn main() -> ExitCode {
         }
 
         //
-        OrcaOpt::Preflight {
+        OrcaOpt::PopulateData {
             common: _,
             state_path,
         } => {
@@ -175,7 +176,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            match preflight::preflight(state).await {
+            match populate::preflight(state).await {
                 Ok(_) => {
                     return ExitCode::SUCCESS;
                 }

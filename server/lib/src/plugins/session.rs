@@ -76,11 +76,19 @@ impl SessionConsistency {
             let invalidate: Option<BTreeSet<_>> = entry.get_ava_as_session_map(Attribute::UserAuthTokenSession)
                 .map(|sessions| {
                     sessions.iter().filter_map(|(session_id, session)| {
-                        if !cred_ids.contains(&session.cred_id) {
-                            info!(%session_id, "Removing auth session whose issuing credential no longer exists");
-                            Some(PartialValue::Refer(*session_id))
-                        } else {
-                            None
+                        match &session.state {
+                            SessionState::RevokedAt(_) => {
+                                // Ignore, it's already revoked.
+                                None
+                            }
+                            SessionState::ExpiresAt(_) |
+                            SessionState::NeverExpires =>
+                                if !cred_ids.contains(&session.cred_id) {
+                                    info!(%session_id, "Revoking auth session whose issuing credential no longer exists");
+                                    Some(PartialValue::Refer(*session_id))
+                                } else {
+                                    None
+                                },
                         }
                     })
                     .collect()

@@ -68,7 +68,7 @@ pub enum Model {
 }
 
 impl Model {
-    pub fn into_dyn_object(&self) -> Box<dyn ActorModel> {
+    pub fn into_dyn_object(&self) -> Box<dyn ActorModel + Send> {
         match self {
             Model::Basic => {
                 Box::new(crate::model_basic::ActorBasic::new())
