@@ -279,6 +279,31 @@ pub enum GroupOpt {
     },
 }
 
+#[derive(Clone, Debug, ValueEnum)]
+pub enum GraphType {
+    Graphviz,
+    Mermaid,
+    MermaidElk
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, ValueEnum)]
+pub enum ObjectType {
+    Group,
+    BuiltinGroup,
+    ServiceAccount,
+    Person
+}
+
+#[derive(Debug, Args)]
+pub struct GraphCommonOpt {
+    #[arg(value_enum)]
+    pub graph_type: GraphType,
+    #[clap()]
+    pub filter: Vec<ObjectType>,
+    #[clap(flatten)]
+    pub copt: CommonOpt,
+}
+
 #[derive(Debug, Args)]
 pub struct AccountCommonOpt {
     #[clap()]
@@ -1327,6 +1352,9 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: ServiceAccountOpt,
     },
+    /// Prints graphviz dot file of all groups
+    #[clap(name = "graph")]
+    Graph(GraphCommonOpt),
     /// System configuration operations
     System {
         #[clap(subcommand)]
