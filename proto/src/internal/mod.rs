@@ -24,7 +24,7 @@ pub use self::error::*;
 pub use self::raw::*;
 pub use self::token::*;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 /// This is a description of a linked or connected application for a user. This is
 /// used in the UI to render applications on the dashboard for a user to access.
 pub enum AppLink {
@@ -37,7 +37,9 @@ pub enum AppLink {
     },
 }
 
-#[derive(Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+#[derive(
+    Debug, Serialize, Deserialize, Copy, Clone, Ord, PartialOrd, Eq, PartialEq, Hash, ToSchema,
+)]
 #[serde(rename_all = "lowercase")]
 #[derive(TryFromPrimitive)]
 #[repr(u16)]
@@ -81,7 +83,7 @@ pub enum IdentifyUserRequest {
     DisplayCode,
 }
 
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, ToSchema)]
 pub enum IdentifyUserResponse {
     IdentityVerificationUnavailable,
     IdentityVerificationAvailable,

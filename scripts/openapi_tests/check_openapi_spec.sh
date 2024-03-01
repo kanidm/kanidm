@@ -27,15 +27,21 @@ if [ ! -s "${WORKDIR}/openapi.json" ]; then
     exit 1
 fi
 
+echo "Running pythonopenapi/openapi-spec-validator"
+
 docker run \
     --mount "type=bind,src=${WORKDIR}/openapi.json,target=/openapi.json" \
     --rm pythonopenapi/openapi-spec-validator /openapi.json && \
     echo "openapi-spec-validator passed"
 
 
-docker run --rm -it \
+echo "Running openapitools/openapi-generator-cli"
+docker run --rm  \
     --mount "type=bind,src=${WORKDIR},target=/spec" \
-    openapitools/openapi-generator-cli generate \
-    -i /spec/openapi.json -g rust
+    openapitools/openapi-generator-cli validate \
+    -i /spec/openapi.json
+
 
 cleanup "${WORKDIR}"
+
+echo "It looks to have passed OK!"
