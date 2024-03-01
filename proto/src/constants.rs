@@ -228,4 +228,8 @@ pub const KOPID: &str = "X-KANIDM-OPID";
 /// HTTP Header containing the Kanidm server version
 pub const KVERSION: &str = "X-KANIDM-VERSION";
 
+/// X-Forwarded-For header
 pub const X_FORWARDED_FOR: &str = "x-forwarded-for";
+
+/// Builtin object
+pub const ENTRYCLASS_BUILTIN: &str = "builtin";

@@ -22,6 +22,7 @@ Configure OTLP trace exports by setting a `otel_grpc_url` in the server configur
 enable [OpenTelemetry traces](https://opentelemetry.io) to be sent for observability use cases.
 
 Example:
+
 ```toml
 otel_grpc_url = "http://my-otel-host:4317"
 ```

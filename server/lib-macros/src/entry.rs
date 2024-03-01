@@ -205,7 +205,7 @@ pub(crate) fn qs_pair_test(args: &TokenStream, item: TokenStream) -> TokenStream
     };
 
     // Setup the config filling the remaining fields with the default values
-    let (default_config_struct, _flags) = match parse_attributes(&args, &input) {
+    let (default_config_struct, _flags) = match parse_attributes(args, &input) {
         Ok(dc) => dc,
         Err(e) => return token_stream_with_error(args.clone(), e),
     };
@@ -286,7 +286,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
     };
 
     // Setup the config filling the remaining fields with the default values
-    let (default_config_struct, flags) = match parse_attributes(&args, &input) {
+    let (default_config_struct, flags) = match parse_attributes(args, &input) {
         Ok(dc) => dc,
         Err(e) => return token_stream_with_error(args.clone(), e),
     };

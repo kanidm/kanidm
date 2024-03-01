@@ -89,8 +89,11 @@ impl ValueSetT for ValueSetUuid {
         false
     }
 
-    fn lessthan(&self, _pv: &PartialValue) -> bool {
-        false
+    fn lessthan(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::Uuid(u) => self.set.iter().any(|v| v < u),
+            _ => false,
+        }
     }
 
     fn len(&self) -> usize {

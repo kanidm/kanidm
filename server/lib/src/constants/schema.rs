@@ -699,6 +699,15 @@ pub static ref SCHEMA_CLASS_ORGPERSON: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_BUILTIN: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_BUILTIN,
+    name: EntryClass::Builtin.into(),
+    description: "Built in object".to_string(),
+
+    sync_allowed: true,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_GROUP,
     name: EntryClass::Group.into(),

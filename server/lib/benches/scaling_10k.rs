@@ -7,6 +7,7 @@ use criterion::{
 use kanidmd_lib::entry::{Entry, EntryInit, EntryNew};
 use kanidmd_lib::entry_init;
 use kanidmd_lib::prelude::{Attribute, EntryClass};
+use kanidmd_lib::testkit::{setup_idm_test, TestConfiguration};
 use kanidmd_lib::value::Value;
 
 pub fn duration_from_epoch_now() -> Duration {
@@ -38,7 +39,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                         .expect("Failed building the Runtime")
                         .block_on(async {
                             let (idms, _idms_delayed, _idms_audit) =
-                                kanidmd_lib::testkit::setup_idm_test().await;
+                                setup_idm_test(TestConfiguration::default()).await;
 
                             let ct = duration_from_epoch_now();
                             let start = Instant::now();
@@ -105,7 +106,7 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                         .expect("Failed building the Runtime")
                         .block_on(async {
                             let (idms, _idms_delayed, _idms_audit) =
-                                kanidmd_lib::testkit::setup_idm_test().await;
+                                setup_idm_test(TestConfiguration::default()).await;
 
                             let ct = duration_from_epoch_now();
                             let start = Instant::now();

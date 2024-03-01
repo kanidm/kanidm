@@ -868,6 +868,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_BUILTIN.clone().into(),
         ];
 
         idm_schema_classes
@@ -886,6 +887,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
         ];
+        self.reload()?;
 
         idm_access_controls
             .into_iter()
@@ -894,6 +896,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(?err, "migrate_domain_5_to_6 -> Error");
                 err
             })?;
+
+        // all the built-in objects get a builtin class
+        let filter = f_lt(
+            Attribute::Uuid,
+            PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),
+        );
+        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
+
+        self.internal_modify(&filter!(filter), &modlist)?;
 
         Ok(())
     }
@@ -1011,7 +1022,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         debug_assert!(r.is_ok());
 
-        let idm_schema_classes: Vec<EntryInitNew> = vec![
+        // !!! DOMAIN LEVEL 1 SCHEMA CLASSES
+        // !!! Future schema classes need to be added via migrations.
+        let idm_schema_classes_dl1: Vec<EntryInitNew> = vec![
             SCHEMA_CLASS_ACCOUNT.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
@@ -1029,7 +1042,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
         ];
 
-        let r: Result<(), _> = idm_schema_classes
+        let r: Result<(), _> = idm_schema_classes_dl1
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
 

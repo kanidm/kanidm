@@ -600,6 +600,7 @@ pub enum EntryClass {
     Account,
     AccountPolicy,
     AttributeType,
+    Builtin,
     Class,
     ClassType,
     Conflict,
@@ -646,6 +647,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::Account => "account",
             EntryClass::AccountPolicy => "account_policy",
             EntryClass::AttributeType => "attributetype",
+            EntryClass::Builtin => ENTRYCLASS_BUILTIN,
             EntryClass::Class => ATTR_CLASS,
             EntryClass::ClassType => "classtype",
             EntryClass::Conflict => "conflict",
@@ -798,6 +800,10 @@ impl Default for BuiltinAccount {
 
 impl From<BuiltinAccount> for Account {
     fn from(value: BuiltinAccount) -> Self {
+        #[allow(clippy::panic)]
+        if DYNAMIC_RANGE_MINIMUM_UUID > value.uuid {
+            panic!("Builtin ACP has invalid UUID! {:?}", value);
+        }
         Account {
             name: value.name.to_string(),
             uuid: value.uuid,
@@ -814,6 +820,10 @@ impl From<BuiltinAccount> for EntryInitNew {
     fn from(value: BuiltinAccount) -> Self {
         let mut entry = EntryInitNew::new();
         entry.add_ava(Attribute::Name, Value::new_iname(value.name));
+        #[allow(clippy::panic)]
+        if DYNAMIC_RANGE_MINIMUM_UUID > value.uuid {
+            panic!("Builtin ACP has invalid UUID! {:?}", value);
+        }
         entry.add_ava(Attribute::Uuid, Value::Uuid(value.uuid));
         entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));
         entry.add_ava(Attribute::DisplayName, Value::new_utf8s(value.displayname));

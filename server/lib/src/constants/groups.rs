@@ -22,6 +22,11 @@ impl TryFrom<BuiltinGroup> for EntryInitNew {
     fn try_from(val: BuiltinGroup) -> Result<Self, OperationError> {
         let mut entry = EntryInitNew::new();
 
+        if DYNAMIC_RANGE_MINIMUM_UUID > val.uuid {
+            error!("Builtin ACP has invalid UUID! {:?}", val);
+            return Err(OperationError::InvalidUuid);
+        }
+
         entry.add_ava(Attribute::Name, Value::new_iname(val.name));
         entry.add_ava(Attribute::Description, Value::new_utf8s(val.description));
         // classes for groups
