@@ -117,8 +117,8 @@ pub enum OperationError {
     ReplDomainUuidMismatch,
     ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
-    /// when you ask for a gid that's lower than a safe minimum
-    GidOverlapsSystemMin(u32),
+    /// when you ask for a gid that overlaps a system reserved range
+    GidOverlapsSystemRange,
     /// When a name is denied by the system config
     ValueDenyName,
     // What about something like this for unique errors?

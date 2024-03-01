@@ -12,10 +12,50 @@ use crate::utils::uuid_to_gid_u32;
 /// Systemd dynamic units allocate between 61184–65519, most distros allocate
 /// system uids from 0 - 1000, and many others give user ids between 1000 to
 /// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
-const GID_SYSTEM_NUMBER_MIN: u32 = 65536;
+///
+/// Per https://systemd.io/UIDS-GIDS/, systemd claims a huge chunk of this
+/// space to itself. As a result we can't allocate between 65536 and u32 max
+/// because systemd takes most of the usable range for its own containers,
+/// and half the range is probably going to trigger linux kernel issues.
+///
+/// Seriously, linux's uid/gid model is so fundamentally terrible... Windows
+/// NT got this right with SIDs.
+///
+/// Because of this, we have to ensure that anything we allocate is in the
+/// range 1879048192 (0x70000000) to 2147483647 (0x7fffffff)
+const GID_SYSTEM_NUMBER_PREFIX: u32 = 0x7000_0000;
+const GID_SYSTEM_NUMBER_MASK: u32 = 0x0fff_ffff;
+
+/// Systemd claims so many ranges to itself, we have to check we are in certain bounds.
 
 /// This is the normal system range, we MUST NOT allow it to be allocated.
-const GID_SAFETY_NUMBER_MIN: u32 = 1000;
+const GID_REGULAR_USER_MIN: u32 = 1000;
+const GID_REGULAR_USER_MAX: u32 = 60000;
+
+/// Systemd homed claims 60001 through 60577
+
+const GID_UNUSED_A_MIN: u32 = 60578;
+const GID_UNUSED_A_MAX: u32 = 61183;
+
+/// Systemd dyn service users 61184 through 65519
+
+const GID_UNUSED_B_MIN: u32 = 65520;
+const GID_UNUSED_B_MAX: u32 = 65533;
+
+/// nobody is 65534
+/// 16bit uid -1 65535
+
+const GID_UNUSED_C_MIN: u32 = 65536;
+const GID_UNUSED_C_MAX: u32 = 524287;
+
+/// systemd claims 524288 through 1879048191 for nspawn
+
+const GID_UNUSED_D_MIN: u32 = GID_SYSTEM_NUMBER_PREFIX;
+const GID_UNUSED_D_MAX: u32 = GID_SYSTEM_NUMBER_MASK;
+
+/// Anything above 2147483648 can confuse the kernel (so basicly half the address space
+/// can't be accessed.
+// const GID_UNSAFE_MAX: u32 = 2147483648;
 
 pub struct GidNumber {}
 
@@ -33,15 +73,11 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
             })?;
 
         let gid = uuid_to_gid_u32(u_ref);
-        // assert the value is greater than the system range.
-        if gid < GID_SYSTEM_NUMBER_MIN {
-            admin_error!(
-                "Requested GID {} is lower than system minimum {}",
-                gid,
-                GID_SYSTEM_NUMBER_MIN
-            );
-            return Err(OperationError::GidOverlapsSystemMin(GID_SYSTEM_NUMBER_MIN));
-        }
+
+        // Apply the mask to only take the last 24 bits, and then move them
+        // to the correct range.
+        let gid = gid & GID_SYSTEM_NUMBER_MASK;
+        let gid = gid | GID_SYSTEM_NUMBER_PREFIX;
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
@@ -49,15 +85,24 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
         // If they provided us with a gid number, ensure it's in a safe range.
-        if gid <= GID_SAFETY_NUMBER_MIN {
-            admin_error!(
-                "Requested GID {} is lower or equal to a safe value {}",
-                gid,
-                GID_SAFETY_NUMBER_MIN
-            );
-            Err(OperationError::GidOverlapsSystemMin(GID_SAFETY_NUMBER_MIN))
-        } else {
+        if (gid >= GID_REGULAR_USER_MIN && gid <= GID_REGULAR_USER_MAX)
+            || (gid >= GID_UNUSED_A_MIN && gid <= GID_UNUSED_A_MAX)
+            || (gid >= GID_UNUSED_B_MIN && gid <= GID_UNUSED_B_MAX)
+            || (gid >= GID_UNUSED_C_MIN && gid <= GID_UNUSED_C_MAX)
+            || (gid >= GID_UNUSED_D_MIN && gid <= GID_UNUSED_D_MAX)
+        {
             Ok(())
+        } else {
+            error!(
+                "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {}, {} to {}, {} to {} and {} to {}",
+                gid,
+                GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
+                GID_UNUSED_A_MIN, GID_UNUSED_A_MAX,
+                GID_UNUSED_B_MIN, GID_UNUSED_B_MAX,
+                GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
+                GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
+            );
+            Err(OperationError::GidOverlapsSystemRange)
         }
     } else {
         Ok(())
@@ -101,246 +146,245 @@ impl Plugin for GidNumber {
 
 #[cfg(test)]
 mod tests {
+    use super::{
+        GID_REGULAR_USER_MAX, GID_REGULAR_USER_MIN, GID_UNUSED_A_MAX, GID_UNUSED_A_MIN,
+        GID_UNUSED_B_MAX, GID_UNUSED_B_MIN, GID_UNUSED_C_MAX, GID_UNUSED_C_MIN, GID_UNUSED_D_MAX,
+        GID_UNUSED_D_MIN,
+    };
     use crate::prelude::*;
 
-    fn check_gid(qs_write: &mut QueryServerWriteTransaction, uuid: &str, gid: u32) {
-        let u = Uuid::parse_str(uuid).unwrap();
-        let e = qs_write.internal_search_uuid(u).unwrap();
-        let gidnumber = e.get_ava_single(Attribute::GidNumber).unwrap();
-        let ex_gid = Value::new_uint32(gid);
-        assert!(ex_gid == gidnumber);
-    }
+    #[qs_test]
+    async fn test_gidnumber_generate(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
 
-    #[test]
-    fn test_gidnumber_create_generate() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+        // Test that the gid number is generated on create
+        {
+            let user_a_uuid = uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244");
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_1")),
+                (Attribute::Uuid, Value::Uuid(user_a_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
 
-        let create = vec![e];
-        let preload = Vec::new();
+            assert!(op_result.is_ok());
 
-        run_create_test!(
-            Ok(()),
-            preload,
-            create,
-            None,
-            |qs_write: &mut QueryServerWriteTransaction| check_gid(
-                qs_write,
-                "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                0x997ef244
-            )
-        );
-    }
+            let user_a = server_txn
+                .internal_search_uuid(user_a_uuid)
+                .expect("Unable to access user");
 
-    // test that gid is not altered if provided on create.
-    #[test]
-    fn test_gidnumber_create_noaction() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (Attribute::GidNumber, Value::Uint32(10001)),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            let user_a_uid = user_a
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
 
-        let create = vec![e];
-        let preload = Vec::new();
+            assert_eq!(user_a_uid, 0x797ef244);
+        }
 
-        run_create_test!(
-            Ok(()),
-            preload,
-            create,
-            None,
-            |qs_write: &mut QueryServerWriteTransaction| check_gid(
-                qs_write,
-                "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                10001
-            )
-        );
-    }
+        // test that gid is not altered if provided on create.
+        let user_b_uuid = uuid!("d90fb0cb-6785-4f36-94cb-e364d9c13255");
+        {
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_2")),
+                (Attribute::Uuid, Value::Uuid(user_b_uuid)),
+                (Attribute::GidNumber, Value::Uint32(10001)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
 
-    // Test generated if not on mod (ie adding posixaccount to something)
-    #[test]
-    fn test_gidnumber_modify_generate() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            assert!(op_result.is_ok());
 
-        let preload = vec![e];
+            let user_b = server_txn
+                .internal_search_uuid(user_b_uuid)
+                .expect("Unable to access user");
 
-        run_modify_test!(
-            Ok(()),
-            preload,
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_pres(Attribute::Class, &EntryClass::PosixGroup.into())]),
-            None,
-            |_| {},
-            |qs_write: &mut QueryServerWriteTransaction| check_gid(
-                qs_write,
-                "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                0x997ef244
-            )
-        );
-    }
+            let user_b_uid = user_b
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
 
-    // test generated if DELETED on mod
-    #[test]
-    fn test_gidnumber_modify_regenerate() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            assert_eq!(user_b_uid, 10001);
+        }
 
-        let preload = vec![e];
+        // Test that if the value is deleted, it is correctly regenerated.
+        {
+            let modlist = modlist!([m_purge(Attribute::GidNumber)]);
+            server_txn
+                .internal_modify_uuid(user_b_uuid, &modlist)
+                .expect("Unable to modify user");
 
-        run_modify_test!(
-            Ok(()),
-            preload,
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([m_purge(Attribute::GidNumber)]),
-            None,
-            |_| {},
-            |qs_write: &mut QueryServerWriteTransaction| check_gid(
-                qs_write,
-                "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                0x997ef244
-            )
-        );
-    }
+            let user_b = server_txn
+                .internal_search_uuid(user_b_uuid)
+                .expect("Unable to access user");
 
-    // Test NOT regenerated if given on mod
-    #[test]
-    fn test_gidnumber_modify_noregen() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-2f7b997ef244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            let user_b_uid = user_b
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
 
-        let preload = vec![e];
+            assert_eq!(user_b_uid, 0x79c13255);
+        }
 
-        run_modify_test!(
-            Ok(()),
-            preload,
-            filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson"))),
-            modlist!([
-                m_purge(Attribute::GidNumber),
-                m_pres(Attribute::GidNumber, &Value::new_uint32(2000))
-            ]),
-            None,
-            |_| {},
-            |qs_write: &mut QueryServerWriteTransaction| check_gid(
-                qs_write,
-                "83a0927f-3de1-45ec-bea0-2f7b997ef244",
-                2000
-            )
-        );
-    }
+        let user_c_uuid = uuid!("0d5086b0-74f9-4518-92b4-89df0c55971b");
+        // Test that an entry when modified to have posix attributes will have
+        // it's gidnumber generated.
+        {
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_3")),
+                (Attribute::Uuid, Value::Uuid(user_c_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
 
-    #[test]
-    fn test_gidnumber_create_system_reject() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (
-                Attribute::Uuid,
-                Value::Uuid(uuid::uuid!("83a0927f-3de1-45ec-bea0-000000000244"))
-            ),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            assert!(op_result.is_ok());
 
-        let create = vec![e];
-        let preload = Vec::new();
+            let user_c = server_txn
+                .internal_search_uuid(user_c_uuid)
+                .expect("Unable to access user");
 
-        run_create_test!(
-            Err(OperationError::GidOverlapsSystemMin(65536)),
-            preload,
-            create,
-            None,
-            |_| {}
-        );
-    }
+            assert_eq!(user_c.get_ava_single_uint32(Attribute::GidNumber), None);
 
-    #[test]
-    fn test_gidnumber_create_secure_reject() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (Attribute::GidNumber, Value::Uint32(500)),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            let modlist = modlist!([m_pres(
+                Attribute::Class,
+                &EntryClass::PosixAccount.to_value()
+            )]);
+            server_txn
+                .internal_modify_uuid(user_c_uuid, &modlist)
+                .expect("Unable to modify user");
 
-        let create = vec![e];
-        let preload = Vec::new();
+            let user_c = server_txn
+                .internal_search_uuid(user_c_uuid)
+                .expect("Unable to access user");
 
-        run_create_test!(
-            Err(OperationError::GidOverlapsSystemMin(1000)),
-            preload,
-            create,
-            None,
-            |_| {}
-        );
-    }
+            let user_c_uid = user_c
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
 
-    #[test]
-    fn test_gidnumber_create_secure_root_reject() {
-        let e = entry_init!(
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::PosixAccount.to_value()),
-            (Attribute::Name, Value::new_iname("testperson")),
-            (Attribute::GidNumber, Value::Uint32(0)),
-            (Attribute::Description, Value::new_utf8s("testperson")),
-            (Attribute::DisplayName, Value::new_utf8s("testperson"))
-        );
+            assert_eq!(user_c_uid, 0x7c55971b);
+        }
 
-        let create = vec![e];
-        let preload = Vec::new();
+        let user_d_uuid = uuid!("36dc9010-d80c-404b-b5ba-8f66657c2f1d");
+        // Test that an entry when modified to have posix attributes will have
+        // it's gidnumber generated.
+        {
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_4")),
+                (Attribute::Uuid, Value::Uuid(user_d_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
 
-        run_create_test!(
-            Err(OperationError::GidOverlapsSystemMin(1000)),
-            preload,
-            create,
-            None,
-            |_| {}
-        );
+            assert!(op_result.is_ok());
+
+            let user_d = server_txn
+                .internal_search_uuid(user_d_uuid)
+                .expect("Unable to access user");
+
+            assert_eq!(user_d.get_ava_single_uint32(Attribute::GidNumber), None);
+
+            let modlist = modlist!([m_pres(
+                Attribute::Class,
+                &EntryClass::PosixAccount.to_value()
+            )]);
+            server_txn
+                .internal_modify_uuid(user_d_uuid, &modlist)
+                .expect("Unable to modify user");
+
+            let user_d = server_txn
+                .internal_search_uuid(user_d_uuid)
+                .expect("Unable to access user");
+
+            let user_d_uid = user_d
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
+
+            assert_eq!(user_d_uid, 0x757c2f1d);
+        }
+
+        let user_e_uuid = uuid!("a6dc0d68-9c7a-4dad-b1e2-f6274b691373");
+        // Test that an entry when modified to have posix attributes, if a gidnumber
+        // is provided then it is respected.
+        {
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_5")),
+                (Attribute::Uuid, Value::Uuid(user_e_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
+
+            assert!(op_result.is_ok());
+
+            let user_e = server_txn
+                .internal_search_uuid(user_e_uuid)
+                .expect("Unable to access user");
+
+            assert_eq!(user_e.get_ava_single_uint32(Attribute::GidNumber), None);
+
+            let modlist = modlist!([
+                m_pres(Attribute::Class, &EntryClass::PosixAccount.to_value()),
+                m_pres(Attribute::GidNumber, &Value::Uint32(10002))
+            ]);
+            server_txn
+                .internal_modify_uuid(user_e_uuid, &modlist)
+                .expect("Unable to modify user");
+
+            let user_e = server_txn
+                .internal_search_uuid(user_e_uuid)
+                .expect("Unable to access user");
+
+            let user_e_uid = user_e
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .expect("gidnumber not present on account");
+
+            assert_eq!(user_e_uid, 10002);
+        }
+
+        // Test rejection of important gid values.
+        let user_f_uuid = uuid!("33afc396-2434-47e5-b143-05176148b50e");
+        // Test that an entry when modified to have posix attributes, if a gidnumber
+        // is provided then it is respected.
+        {
+            let op_result = server_txn.internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson_6")),
+                (Attribute::Uuid, Value::Uuid(user_f_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson"))
+            )]);
+
+            assert!(op_result.is_ok());
+
+            for id in [
+                0,
+                500,
+                GID_REGULAR_USER_MIN - 1,
+                GID_REGULAR_USER_MAX + 1,
+                GID_UNUSED_A_MIN - 1,
+                GID_UNUSED_A_MAX + 1,
+                GID_UNUSED_B_MIN - 1,
+                GID_UNUSED_B_MAX + 1,
+                GID_UNUSED_C_MIN - 1,
+                GID_UNUSED_C_MAX + 1,
+                GID_UNUSED_D_MIN - 1,
+                GID_UNUSED_D_MAX + 1,
+                u32::MAX,
+            ] {
+                let modlist = modlist!([
+                    m_pres(Attribute::Class, &EntryClass::PosixAccount.to_value()),
+                    m_pres(Attribute::GidNumber, &Value::Uint32(id))
+                ]);
+                let op_result = server_txn.internal_modify_uuid(user_f_uuid, &modlist);
+
+                assert_eq!(op_result, Err(OperationError::GidOverlapsSystemRange));
+            }
+        }
     }
 }
