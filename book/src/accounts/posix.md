@@ -55,8 +55,9 @@ be able to allocate stable and reliable GID numbers to accounts on replicas that
 continual communication.
 
 To do this, we use the last 24 bits of the account or group's UUID to generate the GID number. We
-can only use the UID range 1879048192 (`0x70000000`) to 2147483647 (`0x7fffffff`) due to limitations of
-the Linux kernel and systemd reserving other uids in the range for it's exclusive use.
+can only use the UID range `1879048192` (`0x70000000`) to `2147483647` (`0x7fffffff`) due to
+limitations of the Linux kernel and systemd reserving other uids in the range for it's exclusive
+use.
 
 A valid concern is the possibility of duplication in the lower 24 bits. Given the birthday problem,
 if you have ~7700 groups and accounts, you have a 50% chance of duplication. With ~5000 you have a
@@ -65,6 +66,10 @@ if you have ~7700 groups and accounts, you have a 50% chance of duplication. Wit
 We advise that if you have a site with greater than approximately 2,000 users you should use an
 external system to allocate GID numbers serially or consistently to avoid potential duplication
 events.
+
+We recommend the use of the range `65536` through `524287` for manual allocation. This leaves the
+range `1000` through `65535` for OS/Distro purposes, and allows Kanidm to continue dynamic
+allocation in the range `1879048192` to `2147483647` if you choose a hybrid allocation approach.
 
 This design decision is made as most small sites will benefit greatly from the auto-allocation
 policy and the simplicity of its design, while larger enterprises will already have IDM or business

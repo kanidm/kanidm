@@ -863,7 +863,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Migration domain level 5 to 6 - support query limits in account policy.
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
-
         // Due to changes in gidnumber allocation, in the *extremely* unlikely
         // case that a users ID was generated to outside the valid range, we re-request
         // the creation of their gid number to proceed.
@@ -872,36 +871,71 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 f_eq(Attribute::Class, EntryClass::PosixAccount.into()),
                 f_eq(Attribute::Class, EntryClass::PosixGroup.into())
             ]),
-            f_andnot(
+            // This logic gets a bit messy but it would be:
+            // If ! (
+            //    (GID_REGULAR_USER_MIN < value < GID_REGULAR_USER_MAX) ||
+            //    (GID_UNUSED_A_MIN < value < GID_UNUSED_A_MAX) ||
+            //    (GID_UNUSED_B_MIN < value < GID_UNUSED_B_MAX) ||
+            //    (GID_UNUSED_C_MIN < value < GID_UNUSED_D_MAX)
+            // )
+            f_andnot(f_or!([
+                f_and!([
+                    // The gid value must be less than GID_REGULAR_USER_MAX
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MAX)
+                    ),
+                    // This bit of mental gymnastics is "greater than".
+                    // The gid value must not be less than USER_MIN
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MIN)
+                    ))
+                ]),
                 // If both of these conditions are true we get:
                 // C_MIN < value < D_MAX, which the outer and-not inverts.
                 f_and!([
                     // The gid value must be less than GID_UNUSED_D_MAX
-                    f_lt(Attribute::GidNumber, PartialValue::Uint32(
-                        crate::plugins::gidnumber::GID_UNUSED_D_MAX
-                    )),
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_D_MAX)
+                    ),
                     // This bit of mental gymnastics is "greater than".
                     // The gid value must not be less than C_MIN
-                    f_andnot(
-                        f_lt(Attribute::GidNumber, PartialValue::Uint32(
-                            crate::plugins::gidnumber::GID_UNUSED_C_MIN
-                        )),
-                    )
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_C_MIN)
+                    ))
                 ]),
-            )
+            ]))
         ]));
 
         let modlist = modlist!([m_purge(Attribute::GidNumber)]);
 
-        self.internal_modify(
-            &filter, &modlist
-        )
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
-
-
+        self.internal_modify(&filter, &modlist).map_err(|err| {
+            error!(?err, "migrate_domain_5_to_6 -> Error");
+            err
+        })?;
 
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),

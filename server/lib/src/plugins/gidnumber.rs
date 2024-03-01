@@ -29,18 +29,18 @@ const GID_SYSTEM_NUMBER_MASK: u32 = 0x0fff_ffff;
 /// Systemd claims so many ranges to itself, we have to check we are in certain bounds.
 
 /// This is the normal system range, we MUST NOT allow it to be allocated.
-const GID_REGULAR_USER_MIN: u32 = 1000;
-const GID_REGULAR_USER_MAX: u32 = 60000;
+pub const GID_REGULAR_USER_MIN: u32 = 1000;
+pub const GID_REGULAR_USER_MAX: u32 = 60000;
 
 /// Systemd homed claims 60001 through 60577
 
-const GID_UNUSED_A_MIN: u32 = 60578;
-const GID_UNUSED_A_MAX: u32 = 61183;
+pub const GID_UNUSED_A_MIN: u32 = 60578;
+pub const GID_UNUSED_A_MAX: u32 = 61183;
 
 /// Systemd dyn service users 61184 through 65519
 
-const GID_UNUSED_B_MIN: u32 = 65520;
-const GID_UNUSED_B_MAX: u32 = 65533;
+pub const GID_UNUSED_B_MIN: u32 = 65520;
+pub const GID_UNUSED_B_MAX: u32 = 65533;
 
 /// nobody is 65534
 /// 16bit uid -1 65535
@@ -107,11 +107,9 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
             // Note that here we don't advertise that we allow the nspawn range to be set, even
             // though we do allow it.
             error!(
-                "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {}, {} to {}, {} to {} and {} to {}",
+                "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
                 gid,
                 GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
-                GID_UNUSED_A_MIN, GID_UNUSED_A_MAX,
-                GID_UNUSED_B_MIN, GID_UNUSED_B_MAX,
                 GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
                 GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
             );
