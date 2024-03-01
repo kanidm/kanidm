@@ -36,6 +36,7 @@ wasm-timer = "0.2.5"
 regex.workspace = true
 lazy_static.workspace = true
 gloo-utils = { workspace = true }
+enum-iterator = { workspace = true}
 
 [dependencies.web-sys]
 workspace = true
@@ -65,7 +66,7 @@ features = [
     "RequestMode",
     "RequestRedirect",
     "Response",
-    "Window",
+    "Window"
 ]
 
 [dev-dependencies]

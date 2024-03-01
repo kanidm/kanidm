@@ -15,6 +15,14 @@ if [ -z "$(which wasm-pack)" ]; then
     echo "Cannot find wasm-pack which is needed to build the UI, quitting!"
     exit 1
 fi
+if [ -z "$(which wasm-bindgen)" ]; then
+    echo "Cannot find wasm-bindgen which is needed to build the UI, quitting!"
+    exit 1
+fi
+if [ -z "$(which bc)" ]; then
+    echo "Cannot find bc which is needed to build the UI, quitting!"
+    exit 1
+fi
 
 if [ -z "${BUILD_FLAGS}" ]; then
     export BUILD_FLAGS="--release"

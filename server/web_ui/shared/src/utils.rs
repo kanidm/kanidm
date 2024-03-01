@@ -83,6 +83,12 @@ pub fn get_value_from_element_id(id: &str) -> Option<String> {
 #[wasm_bindgen(raw_module = "/pkg/shared.js")]
 extern "C" {
     pub fn modal_hide_by_id(m: &str);
+    pub fn init_graphviz(m: &str);
+
+    /// Opens a popup window `target=_blank` filled with `content`
+    /// # Arguments
+    /// * `content` string shown in a \<pre> block
+    pub fn open_blank(content: &str);
 }
 
 /// Returns the footer node for the UI

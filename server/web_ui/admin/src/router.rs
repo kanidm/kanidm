@@ -15,6 +15,8 @@ pub enum AdminRoute {
     AdminListGroups,
     #[at("/ui/admin/accounts")]
     AdminListAccounts,
+    #[at("/ui/admin/object-graph")]
+    AdminObjectGraph,
     #[at("/ui/admin/oauth2")]
     AdminListOAuth2,
 
@@ -42,6 +44,9 @@ pub(crate) fn switch(route: AdminRoute) -> Html {
         ),
         AdminRoute::AdminListGroups => html!(
           <components::admin_groups::AdminListGroups />
+        ),
+        AdminRoute::AdminObjectGraph => html!(
+            <components::admin_objectgraph::AdminObjectGraph />
         ),
         AdminRoute::AdminListOAuth2 => html!(
           <components::admin_oauth2::AdminListOAuth2 />

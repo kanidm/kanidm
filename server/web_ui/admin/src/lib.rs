@@ -111,6 +111,7 @@ impl Component for AdminApp {
             html! {<Link<AdminRoute> classes={CSS_NAV_LINK} to={AdminRoute::AdminMenu}>{"Admin"}</Link<AdminRoute>>},
             html! {<Link<AdminRoute> classes={CSS_NAV_LINK} to={AdminRoute::AdminListAccounts}>{"Accounts"}</Link<AdminRoute>>},
             html! {<Link<AdminRoute> classes={CSS_NAV_LINK} to={AdminRoute::AdminListGroups}>{"Groups"}</Link<AdminRoute>>},
+            html! {<Link<AdminRoute> classes={CSS_NAV_LINK} to={AdminRoute::AdminObjectGraph}>{"ObjectGraph"}</Link<AdminRoute>>},
             html! {<Link<AdminRoute> classes={CSS_NAV_LINK} to={AdminRoute::AdminListOAuth2}>{"OAuth2"}</Link<AdminRoute>>},
             signout_link(),
         ];

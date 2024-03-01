@@ -26,6 +26,7 @@ include!("../opt/kanidm.rs");
 
 mod common;
 mod domain;
+mod graph;
 mod group;
 mod oauth2;
 mod person;
@@ -168,6 +169,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group { commands } => commands.debug(),
             KanidmClientOpt::Person { commands } => commands.debug(),
             KanidmClientOpt::ServiceAccount { commands } => commands.debug(),
+            KanidmClientOpt::Graph(gopt) => gopt.debug(),
             KanidmClientOpt::System { commands } => commands.debug(),
             KanidmClientOpt::Recycle { commands } => commands.debug(),
             KanidmClientOpt::Version {} => {
@@ -188,6 +190,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::Person { commands } => commands.exec().await,
             KanidmClientOpt::ServiceAccount { commands } => commands.exec().await,
             KanidmClientOpt::Group { commands } => commands.exec().await,
+            KanidmClientOpt::Graph(gops) => gops.exec().await,
             KanidmClientOpt::System { commands } => commands.exec().await,
             KanidmClientOpt::Recycle { commands } => commands.exec().await,
             KanidmClientOpt::Version {} => (),

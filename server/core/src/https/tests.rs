@@ -4,6 +4,7 @@ fn test_javscriptfile() {
     use crate::https::JavaScriptFile;
     let jsf = JavaScriptFile {
         filepath: "wasmloader_admin.js",
+        dynamic: false,
         hash: "1234567890".to_string(),
         filetype: Some("module".to_string()),
     };
@@ -13,6 +14,7 @@ fn test_javscriptfile() {
     );
     let jsf = JavaScriptFile {
         filepath: "wasmloader_admin.js",
+        dynamic: false,
         hash: "1234567890".to_string(),
         filetype: None,
     };

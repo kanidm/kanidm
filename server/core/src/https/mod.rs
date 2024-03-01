@@ -125,6 +125,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                         filepath.to_string(),
                         JavaScriptFile {
                             filepath,
+                            dynamic: false,
                             hash,
                             filetype: Some("module".to_string()),
                         },
@@ -141,9 +142,10 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
             };
         }
 
-        for (filepath, filetype) in [
-            ("shared.js", Some("module".to_string())),
-            ("external/bootstrap.bundle.min.js", None),
+        for (filepath, filetype, dynamic) in [
+            ("shared.js", Some("module".to_string()), false),
+            ("external/bootstrap.bundle.min.js", None, false),
+            ("external/viz.js", None, true),
         ] {
             // let's set up the list of non-wasm-module js files we want to serve
             // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
@@ -154,6 +156,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
             )) {
                 Ok(hash) => all_pages.push(JavaScriptFile {
                     filepath,
+                    dynamic,
                     hash,
                     filetype,
                 }),

@@ -248,3 +248,44 @@ body {
   max-width: 150px;
   max-height: 150px;
 }
+
+.codeblock {
+  background: gainsboro;
+  color: black;
+  padding: 1rem;
+  border: 1rem;
+  width: fit-content;
+  max-width: 100%;
+}
+
+.copy__btn {
+  float: right;
+  position: relative;
+  top: 1rem;
+  right: 1rem;
+  opacity: 50%;
+}
+.copy__btn:hover {
+  opacity: 90%;
+}
+
+.hstack {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  align-self: stretch;
+}
+
+.vr {
+  display: inline-block;
+  align-self: stretch;
+  width: 0.063rem;
+  min-height: 1em;
+  background-color: currentcolor;
+  opacity: .25;
+}
+
+#graph-container svg {
+  max-width: 100%;
+  height: fit-content;
+}
