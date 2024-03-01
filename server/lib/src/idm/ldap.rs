@@ -871,7 +871,7 @@ mod tests {
                 ),
                 (Attribute::Description, Value::new_utf8s("testperson1")),
                 (Attribute::DisplayName, Value::new_utf8s("testperson1")),
-                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::GidNumber, Value::new_uint32(12345)),
                 (Attribute::LoginShell, Value::new_iutf8("/bin/zsh")),
                 (
                     Attribute::SshPublicKey,
@@ -918,7 +918,7 @@ mod tests {
                     (Attribute::Class, EntryClass::PosixAccount.to_string()),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Name, "testperson1"),
-                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::GidNumber, "12345"),
                     (Attribute::LoginShell, "/bin/zsh"),
                     (Attribute::SshPublicKey, ssh_ed25519),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
@@ -953,7 +953,7 @@ mod tests {
                     (Attribute::ObjectClass, EntryClass::PosixAccount.as_ref()),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Name, "testperson1"),
-                    (Attribute::GidNumber, "12345678"),
+                    (Attribute::GidNumber, "12345"),
                     (Attribute::LoginShell, "/bin/zsh"),
                     (Attribute::SshPublicKey, ssh_ed25519),
                     (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
@@ -961,7 +961,7 @@ mod tests {
                         Attribute::EntryDn,
                         "spn=testperson1@example.com,dc=example,dc=com"
                     ),
-                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::UidNumber, "12345"),
                     (Attribute::Cn, "testperson1"),
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
@@ -999,7 +999,7 @@ mod tests {
                         Attribute::EntryDn,
                         "spn=testperson1@example.com,dc=example,dc=com"
                     ),
-                    (Attribute::UidNumber, "12345678"),
+                    (Attribute::UidNumber, "12345"),
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
@@ -1070,7 +1070,7 @@ mod tests {
                 ),
                 (Attribute::Description, Value::new_utf8s("testperson1")),
                 (Attribute::DisplayName, Value::new_utf8s("testperson1")),
-                (Attribute::GidNumber, Value::new_uint32(12345678)),
+                (Attribute::GidNumber, Value::new_uint32(12345)),
                 (Attribute::LoginShell, Value::new_iutf8("/bin/zsh"))
             );
 
@@ -1366,7 +1366,7 @@ mod tests {
                 (Attribute::Class, EntryClass::PosixAccount.to_value()),
                 (Attribute::Name, Value::new_iname("testperson1")),
                 (Attribute::Uuid, Value::Uuid(acct_uuid)),
-                (Attribute::GidNumber, Value::Uint32(123456)),
+                (Attribute::GidNumber, Value::Uint32(12345)),
                 (Attribute::Description, Value::new_utf8s("testperson1")),
                 (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
@@ -1448,8 +1448,8 @@ mod tests {
                     (Attribute::Uid, "testperson1"),
                     (Attribute::Cn, "testperson1"),
                     (Attribute::Gecos, "testperson1"),
-                    (Attribute::UidNumber, "123456"),
-                    (Attribute::GidNumber, "123456"),
+                    (Attribute::UidNumber, "12345"),
+                    (Attribute::GidNumber, "12345"),
                     (
                         Attribute::EntryUuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"

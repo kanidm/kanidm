@@ -45,13 +45,16 @@ const GID_UNUSED_B_MAX: u32 = 65533;
 /// nobody is 65534
 /// 16bit uid -1 65535
 
-const GID_UNUSED_C_MIN: u32 = 65536;
+pub const GID_UNUSED_C_MIN: u32 = 65536;
 const GID_UNUSED_C_MAX: u32 = 524287;
 
 /// systemd claims 524288 through 1879048191 for nspawn
 
-const GID_UNUSED_D_MIN: u32 = GID_SYSTEM_NUMBER_PREFIX;
-const GID_UNUSED_D_MAX: u32 = GID_SYSTEM_NUMBER_MASK;
+const GID_NSPAWN_MIN: u32 = 524288;
+const GID_NSPAWN_MAX: u32 = 1879048191;
+
+const GID_UNUSED_D_MIN: u32 = 0x7000_0000;
+pub const GID_UNUSED_D_MAX: u32 = 0x7fff_ffff;
 
 /// Anything above 2147483648 can confuse the kernel (so basicly half the address space
 /// can't be accessed.
@@ -89,10 +92,20 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
             || (gid >= GID_UNUSED_A_MIN && gid <= GID_UNUSED_A_MAX)
             || (gid >= GID_UNUSED_B_MIN && gid <= GID_UNUSED_B_MAX)
             || (gid >= GID_UNUSED_C_MIN && gid <= GID_UNUSED_C_MAX)
+            // We won't ever generate an id in the nspawn range, but we do secretly allow
+            // it to be set for compatability with services like freeipa or openldap. TBH
+            // most people don't even use systemd nspawn anyway ...
+            //
+            // I made this design choice to avoid a tunable that may confuse people to
+            // it's purpose. This way things "just work" for imports and existing systems
+            // but we do the right thing in the future.
+            || (gid >= GID_NSPAWN_MIN && gid <= GID_NSPAWN_MAX)
             || (gid >= GID_UNUSED_D_MIN && gid <= GID_UNUSED_D_MAX)
         {
             Ok(())
         } else {
+            // Note that here we don't advertise that we allow the nspawn range to be set, even
+            // though we do allow it.
             error!(
                 "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {}, {} to {}, {} to {} and {} to {}",
                 gid,
@@ -148,8 +161,7 @@ impl Plugin for GidNumber {
 mod tests {
     use super::{
         GID_REGULAR_USER_MAX, GID_REGULAR_USER_MIN, GID_UNUSED_A_MAX, GID_UNUSED_A_MIN,
-        GID_UNUSED_B_MAX, GID_UNUSED_B_MIN, GID_UNUSED_C_MAX, GID_UNUSED_C_MIN, GID_UNUSED_D_MAX,
-        GID_UNUSED_D_MIN,
+        GID_UNUSED_B_MAX, GID_UNUSED_B_MIN, GID_UNUSED_C_MIN, GID_UNUSED_D_MAX,
     };
     use crate::prelude::*;
 
@@ -372,8 +384,6 @@ mod tests {
                 GID_UNUSED_B_MIN - 1,
                 GID_UNUSED_B_MAX + 1,
                 GID_UNUSED_C_MIN - 1,
-                GID_UNUSED_C_MAX + 1,
-                GID_UNUSED_D_MIN - 1,
                 GID_UNUSED_D_MAX + 1,
                 u32::MAX,
             ] {
@@ -383,6 +393,7 @@ mod tests {
                 ]);
                 let op_result = server_txn.internal_modify_uuid(user_f_uuid, &modlist);
 
+                trace!(?id);
                 assert_eq!(op_result, Err(OperationError::GidOverlapsSystemRange));
             }
         }
