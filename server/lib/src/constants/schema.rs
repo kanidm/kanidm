@@ -854,6 +854,28 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL5: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
+    name: EntryClass::ServiceAccount.into(),
+    description: "Object representation of service account".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::SshPublicKey.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
+        Attribute::Description.into(),
+
+        Attribute::Mail.into(),
+        Attribute::PrimaryCredential.into(),
+        Attribute::JwsEs256PrivateKey.into(),
+        Attribute::ApiTokenSession.into(),
+    ],
+    systemexcludes: vec![EntryClass::Person.into()],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
     name: EntryClass::SyncAccount.into(),
