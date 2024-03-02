@@ -3057,6 +3057,7 @@ dependencies = [
  "base32",
  "base64urlsafedata",
  "num_enum",
+ "regex",
  "scim_proto",
  "serde",
  "serde_json",
