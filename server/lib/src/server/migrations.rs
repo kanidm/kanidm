@@ -864,7 +864,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
         // Due to changes in gidnumber allocation, in the *extremely* unlikely
-        // case that a users ID was generated to outside the valid range, we re-request
+        // case that a user's ID was generated outside the valid range, we re-request
         // the creation of their gid number to proceed.
         let filter = filter!(f_and!([
             f_or!([
