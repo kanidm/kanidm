@@ -806,6 +806,7 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL5: SchemaClass = SchemaClass {
         Attribute::SshPublicKey.into(),
         Attribute::UserAuthTokenSession.into(),
         Attribute::OAuth2Session.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
         Attribute::Description.into(),
 
         Attribute::Mail.into(),
