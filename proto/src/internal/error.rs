@@ -1,5 +1,3 @@
-use std::fmt::{self, Display, Formatter};
-
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -216,7 +214,7 @@ impl OperationError {
     ///
     /// Probably shouldn't use this with any of the complex types because it'll get weird quick!
     pub fn variant_as_nice_string(&self) -> String {
-        let asstr = self.to_string();
+        let asstr = format!("{:?}", self);
         let asstr = asstr.split("::").last().unwrap();
         let parser = regex::Regex::new(r"^(?P<errcode>[A-Z]{2}\d{4})(?P<therest>.*)")
             .expect("Failed to parse regex!");
@@ -228,12 +226,87 @@ impl OperationError {
                 while nice_string.contains("  ") {
                     nice_string = nice_string.replace("  ", " ");
                 }
-                format!("{} - {}", &caps["errcode"], nice_string.trim())
+                let message = match self.message() {
+                    Some(val) => format!(" - {}", val),
+                    None => "".to_string(),
+                };
+
+                format!("{} - {}{}", &caps["errcode"], nice_string.trim(), message)
             }
             None => {
                 let nice_string = splitter.replace_all(asstr, " $1").to_string();
                 nice_string.trim().to_string()
             }
+        }
+    }
+
+    fn message(&self) -> Option<&'static str> {
+        match self {
+            OperationError::SessionExpired => None,
+            OperationError::EmptyRequest => None,
+            OperationError::Backend => None,
+            OperationError::NoMatchingEntries => None,
+            OperationError::NoMatchingAttributes => None,
+            OperationError::CorruptedEntry(_) => None,
+            OperationError::CorruptedIndex(_) => None,
+            OperationError::ConsistencyError(_) => None,
+            OperationError::SchemaViolation(_) => None,
+            OperationError::Plugin(_) => None,
+            OperationError::FilterGeneration => None,
+            OperationError::FilterUuidResolution => None,
+            OperationError::InvalidAttributeName(_) => None,
+            OperationError::InvalidAttribute(_) => None,
+            OperationError::InvalidDbState => None,
+            OperationError::InvalidCacheState => None,
+            OperationError::InvalidValueState => None,
+            OperationError::InvalidEntryId => None,
+            OperationError::InvalidRequestState => None,
+            OperationError::InvalidSyncState => None,
+            OperationError::InvalidState => None,
+            OperationError::InvalidEntryState => None,
+            OperationError::InvalidUuid => None,
+            OperationError::InvalidReplChangeId => None,
+            OperationError::InvalidAcpState(_) => None,
+            OperationError::InvalidSchemaState(_) => None,
+            OperationError::InvalidAccountState(_) => None,
+            OperationError::MissingEntries => None,
+            OperationError::ModifyAssertionFailed => None,
+            OperationError::BackendEngine => None,
+            OperationError::SqliteError => None,
+            OperationError::FsError => None,
+            OperationError::SerdeJsonError => None,
+            OperationError::SerdeCborError => None,
+            OperationError::AccessDenied => None,
+            OperationError::NotAuthenticated => None,
+            OperationError::NotAuthorised => None,
+            OperationError::InvalidAuthState(_) => None,
+            OperationError::InvalidSessionState => None,
+            OperationError::SystemProtectedObject => None,
+            OperationError::SystemProtectedAttribute => None,
+            OperationError::PasswordQuality(_) => None,
+            OperationError::CryptographyError => None,
+            OperationError::ResourceLimit => None,
+            OperationError::QueueDisconnected => None,
+            OperationError::Webauthn => None,
+            OperationError::Wait(_) => None,
+            OperationError::ReplReplayFailure => None,
+            OperationError::ReplEntryNotChanged => None,
+            OperationError::ReplInvalidRUVState => None,
+            OperationError::ReplDomainLevelUnsatisfiable => None,
+            OperationError::ReplDomainUuidMismatch => None,
+            OperationError::ReplServerUuidSplitDataState => None,
+            OperationError::TransactionAlreadyCommitted => None,
+            OperationError::GidOverlapsSystemMin(_) => None,
+            OperationError::ValueDenyName => None,
+            OperationError::CU0002WebauthnRegistrationError => None,
+            OperationError::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
+                OperationError::CU0001WebauthnAttestationNotTrusted => None,
+            OperationError::VS0001IncomingReplSshPublicKey => None,
+            OperationError::VL0001ValueSshPublicKeyString => None,
+            OperationError::SC0001IncomingSshPublicKey => None,
+            OperationError::MG0001InvalidReMigrationLevel => None,
+            OperationError::MG0002RaiseDomainLevelExceedsMaximum => None,
+            OperationError::MG0003ServerPhaseInvalidForMigration => None,
         }
     }
 }
@@ -246,7 +319,7 @@ fn test_operationerror_as_nice_string() {
     );
     assert_eq!(
         OperationError::CU0003WebauthnUserNotVerified.variant_as_nice_string(),
-        "CU0003 - User Verification bit not set while registering credential.".to_string()
+        "CU0003 - Webauthn User Not Verified - User Verification bit not set while registering credential, you may need to configure a PIN on this device.".to_string()
     );
     assert_eq!(
         OperationError::SessionExpired.variant_as_nice_string(),
@@ -256,79 +329,4 @@ fn test_operationerror_as_nice_string() {
         OperationError::CorruptedEntry(12345).variant_as_nice_string(),
         "Corrupted Entry(12345)".to_string()
     );
-}
-
-impl Display for OperationError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            OperationError::SessionExpired => write!(f, "{:?}", self),
-            OperationError::EmptyRequest => write!(f, "{:?}", self),
-            OperationError::Backend => write!(f, "{:?}", self),
-            OperationError::NoMatchingEntries => write!(f, "{:?}", self),
-            OperationError::NoMatchingAttributes => write!(f, "{:?}", self),
-            OperationError::CorruptedEntry(_) => write!(f, "{:?}", self),
-            OperationError::CorruptedIndex(_) => write!(f, "{:?}", self),
-            OperationError::ConsistencyError(_) => write!(f, "{:?}", self),
-            OperationError::SchemaViolation(_) => write!(f, "{:?}", self),
-            OperationError::Plugin(_) => write!(f, "{:?}", self),
-            OperationError::FilterGeneration => write!(f, "{:?}", self),
-            OperationError::FilterUuidResolution => write!(f, "{:?}", self),
-            OperationError::InvalidAttributeName(_) => write!(f, "{:?}", self),
-            OperationError::InvalidAttribute(_) => write!(f, "{:?}", self),
-            OperationError::InvalidDbState => write!(f, "{:?}", self),
-            OperationError::InvalidCacheState => write!(f, "{:?}", self),
-            OperationError::InvalidValueState => write!(f, "{:?}", self),
-            OperationError::InvalidEntryId => write!(f, "{:?}", self),
-            OperationError::InvalidRequestState => write!(f, "{:?}", self),
-            OperationError::InvalidSyncState => write!(f, "{:?}", self),
-            OperationError::InvalidState => write!(f, "{:?}", self),
-            OperationError::InvalidEntryState => write!(f, "{:?}", self),
-            OperationError::InvalidUuid => write!(f, "{:?}", self),
-            OperationError::InvalidReplChangeId => write!(f, "{:?}", self),
-            OperationError::InvalidAcpState(_) => write!(f, "{:?}", self),
-            OperationError::InvalidSchemaState(_) => write!(f, "{:?}", self),
-            OperationError::InvalidAccountState(_) => write!(f, "{:?}", self),
-            OperationError::MissingEntries => write!(f, "{:?}", self),
-            OperationError::ModifyAssertionFailed => write!(f, "{:?}", self),
-            OperationError::BackendEngine => write!(f, "{:?}", self),
-            OperationError::SqliteError => write!(f, "{:?}", self),
-            OperationError::FsError => write!(f, "{:?}", self),
-            OperationError::SerdeJsonError => write!(f, "{:?}", self),
-            OperationError::SerdeCborError => write!(f, "{:?}", self),
-            OperationError::AccessDenied => write!(f, "{:?}", self),
-            OperationError::NotAuthenticated => write!(f, "{:?}", self),
-            OperationError::NotAuthorised => write!(f, "{:?}", self),
-            OperationError::InvalidAuthState(_) => write!(f, "{:?}", self),
-            OperationError::InvalidSessionState => write!(f, "{:?}", self),
-            OperationError::SystemProtectedObject => write!(f, "{:?}", self),
-            OperationError::SystemProtectedAttribute => write!(f, "{:?}", self),
-            OperationError::PasswordQuality(_) => write!(f, "{:?}", self),
-            OperationError::CryptographyError => write!(f, "{:?}", self),
-            OperationError::ResourceLimit => write!(f, "{:?}", self),
-            OperationError::QueueDisconnected => write!(f, "{:?}", self),
-            OperationError::Webauthn => write!(f, "{:?}", self),
-            OperationError::Wait(_) => write!(f, "{:?}", self),
-            OperationError::ReplReplayFailure => write!(f, "{:?}", self),
-            OperationError::ReplEntryNotChanged => write!(f, "{:?}", self),
-            OperationError::ReplInvalidRUVState => write!(f, "{:?}", self),
-            OperationError::ReplDomainLevelUnsatisfiable => write!(f, "{:?}", self),
-            OperationError::ReplDomainUuidMismatch => write!(f, "{:?}", self),
-            OperationError::ReplServerUuidSplitDataState => write!(f, "{:?}", self),
-            OperationError::TransactionAlreadyCommitted => write!(f, "{:?}", self),
-            OperationError::GidOverlapsSystemMin(_) => write!(f, "{:?}", self),
-            OperationError::ValueDenyName => write!(f, "{:?}", self),
-            OperationError::CU0001WebauthnAttestationNotTrusted => write!(f, "{:?}", self),
-            OperationError::CU0002WebauthnRegistrationError => write!(f, "{:?}", self),
-            OperationError::CU0003WebauthnUserNotVerified => write!(
-                f,
-                "CU0003 User Verification bit not set while registering credential, you may need to configure a PIN on this device."
-            ),
-            OperationError::VS0001IncomingReplSshPublicKey => write!(f, "{:?}", self),
-            OperationError::VL0001ValueSshPublicKeyString => write!(f, "{:?}", self),
-            OperationError::SC0001IncomingSshPublicKey => write!(f, "{:?}", self),
-            OperationError::MG0001InvalidReMigrationLevel => write!(f, "{:?}", self),
-            OperationError::MG0002RaiseDomainLevelExceedsMaximum => write!(f, "{:?}", self),
-            OperationError::MG0003ServerPhaseInvalidForMigration => write!(f, "{:?}", self),
-        }
-    }
 }
