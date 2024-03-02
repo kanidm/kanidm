@@ -321,7 +321,7 @@ impl Display for OperationError {
             OperationError::CU0002WebauthnRegistrationError => write!(f, "{:?}", self),
             OperationError::CU0003WebauthnUserNotVerified => write!(
                 f,
-                "CU0003 User Verification bit not set while registering credential.", // TODO: provide actionable message
+                "CU0003 User Verification bit not set while registering credential, you may need to configure a PIN on this device."
             ),
             OperationError::VS0001IncomingReplSshPublicKey => write!(f, "{:?}", self),
             OperationError::VL0001ValueSshPublicKeyString => write!(f, "{:?}", self),
