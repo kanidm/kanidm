@@ -1,3 +1,5 @@
+use std::fmt::{self, Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -127,6 +129,7 @@ pub enum OperationError {
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
+    CU0003WebauthnUserNotVerified,
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     // Value Errors
@@ -201,5 +204,131 @@ impl PartialEq for OperationError {
         // derive PartialEq. Generally we only use the PartialEq for TESTING
         // anyway.
         std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+}
+
+impl OperationError {
+    /// This is bad but I don't feel that bad.
+    ///
+    /// It takes something like `CU0001WebauthnAttestationNotTrusted` and turns it
+    /// into `CU0001 - Webauthn Attestation Not Trusted` if it can, otherwise you just get the normal
+    /// debug format with spaces
+    ///
+    /// Probably shouldn't use this with any of the complex types because it'll get weird quick!
+    pub fn variant_as_nice_string(&self) -> String {
+        let asstr = self.to_string();
+        let asstr = asstr.split("::").last().unwrap();
+        let parser = regex::Regex::new(r"^(?P<errcode>[A-Z]{2}\d{4})(?P<therest>.*)")
+            .expect("Failed to parse regex!");
+
+        let splitter = regex::Regex::new(r"([A-Z])").expect("Failed to parse splitter regex!");
+        match parser.captures(asstr) {
+            Some(caps) => {
+                let mut nice_string = splitter.replace_all(&caps["therest"], " $1").to_string();
+                while nice_string.contains("  ") {
+                    nice_string = nice_string.replace("  ", " ");
+                }
+                format!("{} - {}", &caps["errcode"], nice_string.trim())
+            }
+            None => {
+                let nice_string = splitter.replace_all(asstr, " $1").to_string();
+                nice_string.trim().to_string()
+            }
+        }
+    }
+}
+
+#[test]
+fn test_operationerror_as_nice_string() {
+    assert_eq!(
+        OperationError::CU0001WebauthnAttestationNotTrusted.variant_as_nice_string(),
+        "CU0001 - Webauthn Attestation Not Trusted".to_string()
+    );
+    assert_eq!(
+        OperationError::CU0003WebauthnUserNotVerified.variant_as_nice_string(),
+        "CU0003 - User Verification bit not set while registering credential.".to_string()
+    );
+    assert_eq!(
+        OperationError::SessionExpired.variant_as_nice_string(),
+        "Session Expired".to_string()
+    );
+    assert_eq!(
+        OperationError::CorruptedEntry(12345).variant_as_nice_string(),
+        "Corrupted Entry(12345)".to_string()
+    );
+}
+
+impl Display for OperationError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            OperationError::SessionExpired => write!(f, "{:?}", self),
+            OperationError::EmptyRequest => write!(f, "{:?}", self),
+            OperationError::Backend => write!(f, "{:?}", self),
+            OperationError::NoMatchingEntries => write!(f, "{:?}", self),
+            OperationError::NoMatchingAttributes => write!(f, "{:?}", self),
+            OperationError::CorruptedEntry(_) => write!(f, "{:?}", self),
+            OperationError::CorruptedIndex(_) => write!(f, "{:?}", self),
+            OperationError::ConsistencyError(_) => write!(f, "{:?}", self),
+            OperationError::SchemaViolation(_) => write!(f, "{:?}", self),
+            OperationError::Plugin(_) => write!(f, "{:?}", self),
+            OperationError::FilterGeneration => write!(f, "{:?}", self),
+            OperationError::FilterUuidResolution => write!(f, "{:?}", self),
+            OperationError::InvalidAttributeName(_) => write!(f, "{:?}", self),
+            OperationError::InvalidAttribute(_) => write!(f, "{:?}", self),
+            OperationError::InvalidDbState => write!(f, "{:?}", self),
+            OperationError::InvalidCacheState => write!(f, "{:?}", self),
+            OperationError::InvalidValueState => write!(f, "{:?}", self),
+            OperationError::InvalidEntryId => write!(f, "{:?}", self),
+            OperationError::InvalidRequestState => write!(f, "{:?}", self),
+            OperationError::InvalidSyncState => write!(f, "{:?}", self),
+            OperationError::InvalidState => write!(f, "{:?}", self),
+            OperationError::InvalidEntryState => write!(f, "{:?}", self),
+            OperationError::InvalidUuid => write!(f, "{:?}", self),
+            OperationError::InvalidReplChangeId => write!(f, "{:?}", self),
+            OperationError::InvalidAcpState(_) => write!(f, "{:?}", self),
+            OperationError::InvalidSchemaState(_) => write!(f, "{:?}", self),
+            OperationError::InvalidAccountState(_) => write!(f, "{:?}", self),
+            OperationError::MissingEntries => write!(f, "{:?}", self),
+            OperationError::ModifyAssertionFailed => write!(f, "{:?}", self),
+            OperationError::BackendEngine => write!(f, "{:?}", self),
+            OperationError::SqliteError => write!(f, "{:?}", self),
+            OperationError::FsError => write!(f, "{:?}", self),
+            OperationError::SerdeJsonError => write!(f, "{:?}", self),
+            OperationError::SerdeCborError => write!(f, "{:?}", self),
+            OperationError::AccessDenied => write!(f, "{:?}", self),
+            OperationError::NotAuthenticated => write!(f, "{:?}", self),
+            OperationError::NotAuthorised => write!(f, "{:?}", self),
+            OperationError::InvalidAuthState(_) => write!(f, "{:?}", self),
+            OperationError::InvalidSessionState => write!(f, "{:?}", self),
+            OperationError::SystemProtectedObject => write!(f, "{:?}", self),
+            OperationError::SystemProtectedAttribute => write!(f, "{:?}", self),
+            OperationError::PasswordQuality(_) => write!(f, "{:?}", self),
+            OperationError::CryptographyError => write!(f, "{:?}", self),
+            OperationError::ResourceLimit => write!(f, "{:?}", self),
+            OperationError::QueueDisconnected => write!(f, "{:?}", self),
+            OperationError::Webauthn => write!(f, "{:?}", self),
+            OperationError::Wait(_) => write!(f, "{:?}", self),
+            OperationError::ReplReplayFailure => write!(f, "{:?}", self),
+            OperationError::ReplEntryNotChanged => write!(f, "{:?}", self),
+            OperationError::ReplInvalidRUVState => write!(f, "{:?}", self),
+            OperationError::ReplDomainLevelUnsatisfiable => write!(f, "{:?}", self),
+            OperationError::ReplDomainUuidMismatch => write!(f, "{:?}", self),
+            OperationError::ReplServerUuidSplitDataState => write!(f, "{:?}", self),
+            OperationError::TransactionAlreadyCommitted => write!(f, "{:?}", self),
+            OperationError::GidOverlapsSystemMin(_) => write!(f, "{:?}", self),
+            OperationError::ValueDenyName => write!(f, "{:?}", self),
+            OperationError::CU0001WebauthnAttestationNotTrusted => write!(f, "{:?}", self),
+            OperationError::CU0002WebauthnRegistrationError => write!(f, "{:?}", self),
+            OperationError::CU0003WebauthnUserNotVerified => write!(
+                f,
+                "CU0003 User Verification bit not set while registering credential.", // TODO: provide actionable message
+            ),
+            OperationError::VS0001IncomingReplSshPublicKey => write!(f, "{:?}", self),
+            OperationError::VL0001ValueSshPublicKeyString => write!(f, "{:?}", self),
+            OperationError::SC0001IncomingSshPublicKey => write!(f, "{:?}", self),
+            OperationError::MG0001InvalidReMigrationLevel => write!(f, "{:?}", self),
+            OperationError::MG0002RaiseDomainLevelExceedsMaximum => write!(f, "{:?}", self),
+            OperationError::MG0003ServerPhaseInvalidForMigration => write!(f, "{:?}", self),
+        }
     }
 }

@@ -40,30 +40,46 @@ impl IntoResponse for WebError {
                 (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             }
             WebError::OperationError(inner) => {
-                let (response_code, headers) = match &inner {
+                match &inner {
                     OperationError::NotAuthenticated | OperationError::SessionExpired => {
                         // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
                         (
                             StatusCode::UNAUTHORIZED,
-                            // Some([("WWW-Authenticate", "Bearer")]),
                             Some([("WWW-Authenticate", "Bearer"); 1]),
+                            serde_json::to_string(&inner)
+                                .unwrap_or_else(|_err| format!("{:?}", inner)),
                         )
                     }
-                    OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        (StatusCode::FORBIDDEN, None)
-                    }
-                    OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
+                    OperationError::SystemProtectedObject | OperationError::AccessDenied => (
+                        StatusCode::FORBIDDEN,
+                        None,
+                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
+                    ),
+                    OperationError::NoMatchingEntries => (
+                        StatusCode::NOT_FOUND,
+                        None,
+                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
+                    ),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
-                    | OperationError::SchemaViolation(_) => (StatusCode::BAD_REQUEST, None),
-                    _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
-                };
-                let body =
-                    serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner));
-                match headers {
-                    Some(headers) => (response_code, headers, body).into_response(),
-                    None => (response_code, body).into_response(),
+                    | OperationError::SchemaViolation(_) => (
+                        StatusCode::BAD_REQUEST,
+                        None,
+                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
+                    ),
+                    OperationError::CU0003WebauthnUserNotVerified => (
+                        StatusCode::BAD_REQUEST,
+                        None,
+                        serde_json::to_string(&inner.variant_as_nice_string())
+                            .unwrap_or_else(|_err| format!("{:?}", inner)),
+                    ),
+                    _ => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        None,
+                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
+                    ),
                 }
+                .into_response()
             }
         }
     }

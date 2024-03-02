@@ -3193,6 +3193,7 @@ dependencies = [
  "base32",
  "base64urlsafedata 0.5.0",
  "num_enum",
+ "regex",
  "scim_proto",
  "serde",
  "serde_json",
