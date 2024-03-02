@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use gloo::console;
+use gloo::console::{self};
 use kanidmd_web_ui_shared::utils::{do_alert_error, do_page_header};
 use wasm_bindgen::JsValue;
 use yew::{html, Component, Context, Html, Properties};
@@ -218,7 +218,7 @@ impl AdminListGroups {
                         html!{
                           <tr key={uuid.clone()}>
                           <td class={CSS_CELL} scope={scope_col}>
-                          <Link<AdminRoute> to={AdminRoute::ViewGroup{uuid:{uuid.clone()}}} >{name}</Link<AdminRoute>></td>
+                          <Link<AdminRoute> to={AdminRoute::ViewGroup{id_or_name:{uuid.clone()}}} >{name}</Link<AdminRoute>></td>
                           <td class={CSS_CELL}>{description}</td>
                           </tr>
                         }
@@ -245,7 +245,7 @@ impl AdminListGroups {
 
 #[derive(Properties, PartialEq, Eq, Clone)]
 pub struct AdminViewGroupProps {
-    pub uuid: String,
+    pub id_or_name: String,
 }
 
 // callback messaging for group detail view
@@ -293,10 +293,9 @@ impl Component for AdminViewGroup {
     type Properties = AdminViewGroupProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let uuid = ctx.props().uuid.clone();
-        // TODO: start pulling the group details then send the msg blep blep
+        let id_or_name = ctx.props().id_or_name.clone();
         ctx.link().send_future(async move {
-            match get_group(&uuid).await {
+            match get_group(&id_or_name).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
@@ -328,8 +327,55 @@ impl Component for AdminViewGroup {
                     <>
                     {do_page_header(&page_title)}
                     <p>{"UUID: "}{group_uuid}</p>
-                    // TODO: pull group membership and show members
-                    <p>{"Group Membership will show up here soon..."}</p>
+
+                    // membership
+                    // TODO: need to pull the member details so we can identify what they are
+                    {
+                        if !response.attrs.member.is_empty() {
+                            html!{
+                                <>
+                                <h3>{"Members"}</h3>
+                                <ul>
+                                {
+                                    response.attrs.member.iter().map(|group| {
+                                            html!{
+                                                <li>{group}</li>
+                                            }
+                                        }).collect::<Html>()
+                                }
+                                </ul>
+                                </>
+                            }
+                        } else {
+                            html!{<></>}
+                        }
+                    }
+
+                    // this group is a member of the below
+                    // TODO: need to pull the names so we can identify what they are
+                    {
+                        if !response.attrs.memberof.is_empty() {
+                            html!{
+                                <>
+                                <h3>{"Group is a member of the following"}</h3>
+                                <ul>
+                                {
+                                    response.attrs.memberof.iter().map(|group| {
+                                            html!{
+                                                <li>
+
+                                                        {group}
+                                                </li>
+                                            }
+                                        }).collect::<Html>()
+                                }
+                                </ul>
+                                </>
+                            }
+                        } else {
+                            html!{<></>}
+                        }
+                    }
                     </>
                 }
             }
