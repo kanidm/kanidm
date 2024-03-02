@@ -56,7 +56,7 @@ continual communication.
 
 To do this, we use the last 24 bits of the account or group's UUID to generate the GID number. We
 can only use the UID range `1879048192` (`0x70000000`) to `2147483647` (`0x7fffffff`) due to
-limitations of the Linux kernel and systemd reserving other uids in the range for it's exclusive
+limitations of the Linux kernel and [systemd reserving other uids in the range](http://systemd.io/UIDS-GIDS/) for its exclusive
 use.
 
 A valid concern is the possibility of duplication in the lower 24 bits. Given the birthday problem,
