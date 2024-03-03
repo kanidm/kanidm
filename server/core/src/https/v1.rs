@@ -27,7 +27,6 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
-use super::apidocs::path_schema;
 use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
@@ -2128,10 +2127,7 @@ pub async fn group_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/group/{id}",
-    params(
-        path_schema::UuidOrName
-    ),
+    path = "/v1/group",
     responses(
         DefaultApiResponse,
     ),
