@@ -207,7 +207,7 @@ impl TryFrom<&str> for FsType {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Copy)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, ToSchema)]
 pub enum Oauth2ClaimMapJoin {
     #[serde(rename = "csv")]
     Csv,
