@@ -836,7 +836,7 @@ pub async fn service_account_into_person(
 
 #[utoipa::path(
     get,
-    path = "/v1/service_account/{id}/_spi_token",
+    path = "/v1/service_account/{id}/_api_token",
     responses(
         (status=200, body=Vec<ApiToken>, content_type="application/json"),
         ApiResponseWithout200,
@@ -861,7 +861,7 @@ pub async fn service_account_api_token_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/service_account/{id}/_spi_token",
+    path = "/v1/service_account/{id}/_api_token",
     request_body = ApiTokenGenerate,
     responses(
         (status=200, body=String, content_type="application/json"),
@@ -895,7 +895,7 @@ pub async fn service_account_api_token_post(
 
 #[utoipa::path(
     delete,
-    path = "/v1/service_account/{id}/_spi_token/{token_id}",
+    path = "/v1/service_account/{id}/_api_token/{token_id}",
     responses(
         DefaultApiResponse,
     ),
