@@ -27,7 +27,6 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
-use super::apidocs::path_schema;
 use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
@@ -836,7 +835,7 @@ pub async fn service_account_into_person(
 
 #[utoipa::path(
     get,
-    path = "/v1/service_account/{id}/_spi_token",
+    path = "/v1/service_account/{id}/_api_token",
     responses(
         (status=200, body=Vec<ApiToken>, content_type="application/json"),
         ApiResponseWithout200,
@@ -861,7 +860,7 @@ pub async fn service_account_api_token_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/service_account/{id}/_spi_token",
+    path = "/v1/service_account/{id}/_api_token",
     request_body = ApiTokenGenerate,
     responses(
         (status=200, body=String, content_type="application/json"),
@@ -895,7 +894,7 @@ pub async fn service_account_api_token_post(
 
 #[utoipa::path(
     delete,
-    path = "/v1/service_account/{id}/_spi_token/{token_id}",
+    path = "/v1/service_account/{id}/_api_token/{token_id}",
     responses(
         DefaultApiResponse,
     ),
@@ -2128,10 +2127,7 @@ pub async fn group_get(
 
 #[utoipa::path(
     post,
-    path = "/v1/group/{id}",
-    params(
-        path_schema::UuidOrName
-    ),
+    path = "/v1/group",
     responses(
         DefaultApiResponse,
     ),
