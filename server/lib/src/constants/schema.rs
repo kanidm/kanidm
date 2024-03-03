@@ -24,7 +24,7 @@ pub static ref SCHEMA_ATTR_DISPLAYNAME: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_MAIL,
     name: Attribute::Mail.into(),
-    description: "mail addresses of the object".to_string(),
+    description: "Mail addresses of the object".to_string(),
 
     index: vec![IndexType::Equality],
     unique: true,
@@ -37,7 +37,7 @@ pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_EC_KEY_PRIVATE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_EC_KEY_PRIVATE,
     name: Attribute::IdVerificationEcKey.into(),
-    description: "Account verification private key.".to_string(),
+    description: "Account verification private key".to_string(),
 
     index: vec![IndexType::Presence],
     unique: false,
@@ -60,13 +60,14 @@ pub static ref SCHEMA_ATTR_SSH_PUBLICKEY: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_PRIMARY_CREDENTIAL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIMARY_CREDENTIAL,
     name: Attribute::PrimaryCredential.into(),
-    description: "Primary credential material of the account for authentication interactively.to_string().".to_string(),
+    description: "Primary credential material of the account for authentication interactively".to_string(),
 
     index: vec![IndexType::Presence],
     sync_allowed: true,
     syntax: SyntaxType::Credential,
     ..Default::default()
 };
+
 pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LEGALNAME,
     name: Attribute::LegalName.into(),
@@ -103,7 +104,7 @@ pub static ref SCHEMA_ATTR_RADIUS_SECRET: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_NAME,
     name: Attribute::DomainName.into(),
-    description: "The domain's DNS name for webauthn and SPN generation purposes.to_string().".to_string(),
+    description: "The domain's DNS name for webauthn and SPN generation purposes".to_string(),
 
     index: vec![IndexType::Equality, IndexType::Presence],
     unique: true,
@@ -114,7 +115,8 @@ pub static ref SCHEMA_ATTR_DOMAIN_NAME: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND,
     name: Attribute::LdapAllowUnixPwBind.into(),
-    description: "Configuration to enable binds to LDAP objects using their UNIX password.".to_string(),
+    description: "Configuration to enable binds to LDAP objects using their UNIX password".to_string(),
+
     unique: false,
     syntax: SyntaxType::Boolean,
     ..Default::default()
@@ -123,8 +125,7 @@ pub static ref SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND: SchemaAttribute = SchemaAttr
 pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_LDAP_BASEDN,
     name: Attribute::DomainLdapBasedn.into(),
-    description:
-        "The domain's optional ldap basedn. If unset defaults to domain components of domain name.".to_string(),
+    description: "The domain's optional ldap basedn. If unset defaults to domain components of domain name".to_string(),
 
     unique: true,
     syntax: SyntaxType::Utf8StringInsensitive,
@@ -134,7 +135,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute
 pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
     name: Attribute::DomainDisplayName.into(),
-    description: "The user-facing display name of the Kanidm domain.to_string().".to_string(),
+    description: "The user-facing display name of the Kanidm domain".to_string(),
 
     index: vec![IndexType::Equality],
     syntax: SyntaxType::Utf8String,
@@ -144,7 +145,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribut
 pub static ref SCHEMA_ATTR_DOMAIN_UUID: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_UUID,
     name: Attribute::DomainUuid.into(),
-    description: "The domain's uuid, used in CSN and trust relationships.to_string().".to_string(),
+    description: "The domain's uuid, used in CSN and trust relationships".to_string(),
 
     index: vec![IndexType::Equality],
     unique: true,
@@ -167,6 +168,7 @@ pub static ref SCHEMA_ATTR_DENIED_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DENIED_NAME,
     name: Attribute::DeniedName.into(),
     description: "Iname values that are not allowed to be used in 'name'.".to_string(),
+
     syntax: SyntaxType::Utf8StringIname,
     ..Default::default()
 };
@@ -174,7 +176,7 @@ pub static ref SCHEMA_ATTR_DENIED_NAME: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_DOMAIN_TOKEN_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
     name: Attribute::DomainTokenKey.into(),
-    description: "The domain token encryption private key (NOT USED).to_string().".to_string(),
+    description: "The domain token encryption private key (NOT USED)".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
     ..Default::default()
@@ -183,7 +185,7 @@ pub static ref SCHEMA_ATTR_DOMAIN_TOKEN_KEY: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
     name: Attribute::FernetPrivateKeyStr.into(),
-    description: "The token encryption private key.to_string().".to_string(),
+    description: "The token encryption private key".to_string(),
 
     syntax: SyntaxType::SecretUtf8String,
     ..Default::default()
@@ -192,7 +194,7 @@ pub static ref SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: SchemaAttribute = SchemaAttri
 pub static ref SCHEMA_ATTR_GIDNUMBER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_GIDNUMBER,
     name: Attribute::GidNumber.into(),
-    description: "The groupid (uid) number of a group or account.to_string(). This is the same value as the UID number on posix accounts for security reasons.".to_string(),
+    description: "The groupid (uid) number of a group or account.to_string(). This is the same value as the UID number on posix accounts for security reasons".to_string(),
 
     index: vec![IndexType::Equality],
     unique: true,
@@ -204,7 +206,7 @@ pub static ref SCHEMA_ATTR_GIDNUMBER: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_BADLIST_PASSWORD,
     name: Attribute::BadlistPassword.into(),
-    description: "A password that is badlisted meaning that it can not be set as a valid password by any user account.to_string().".to_string(),
+    description: "A password that is badlisted meaning that it can not be set as a valid password by any user account".to_string(),
 
     multivalue: true,
     syntax: SyntaxType::Utf8StringInsensitive,
@@ -214,8 +216,8 @@ pub static ref SCHEMA_ATTR_BADLIST_PASSWORD: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_AUTH_SESSION_EXPIRY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_AUTH_SESSION_EXPIRY,
     name: Attribute::AuthSessionExpiry.into(),
+    description: "An expiration time for an authentication session".to_string(),
 
-    description: "An expiration time for an authentication session.".to_string(),
     syntax: SyntaxType::Uint32,
     ..Default::default()
 };
@@ -223,8 +225,8 @@ pub static ref SCHEMA_ATTR_AUTH_SESSION_EXPIRY: SchemaAttribute = SchemaAttribut
 pub static ref SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY,
     name: Attribute::PrivilegeExpiry.into(),
+    description: "An expiration time for a privileged authentication session".to_string(),
 
-    description: "An expiration time for a privileged authentication session.".to_string(),
     syntax: SyntaxType::Uint32,
     ..Default::default()
 };
@@ -232,8 +234,8 @@ pub static ref SCHEMA_ATTR_AUTH_PRIVILEGE_EXPIRY: SchemaAttribute = SchemaAttrib
 pub static ref SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_AUTH_PASSWORD_MINIMUM_LENGTH,
     name: Attribute::AuthPasswordMinimumLength.into(),
+    description: "Minimum length of passwords".to_string(),
 
-    description: "Minimum length of passwords.".to_string(),
     syntax: SyntaxType::Uint32,
     ..Default::default()
 };
@@ -251,7 +253,7 @@ pub static ref SCHEMA_ATTR_LOGINSHELL: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_UNIX_PASSWORD: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_UNIX_PASSWORD,
     name: Attribute::UnixPassword.into(),
-    description: "A POSIX user's UNIX login password.".to_string(),
+    description: "A POSIX user's UNIX login password".to_string(),
 
     index: vec![IndexType::Presence],
     syntax: SyntaxType::Credential,
@@ -273,7 +275,7 @@ pub static ref SCHEMA_ATTR_NSUNIQUEID: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE,
     name: Attribute::AccountExpire.into(),
-    description: "The datetime after which this account no longer may authenticate.".to_string(),
+    description: "The datetime after which this account no longer may authenticate".to_string(),
 
     sync_allowed: true,
     syntax: SyntaxType::DateTime,
@@ -283,7 +285,7 @@ pub static ref SCHEMA_ATTR_ACCOUNT_EXPIRE: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
     name: Attribute::AccountValidFrom.into(),
-    description: "The datetime after which this account may commence authenticating.".to_string(),
+    description: "The datetime after which this account may commence authenticating".to_string(),
 
     sync_allowed: true,
     syntax: SyntaxType::DateTime,
@@ -293,7 +295,8 @@ pub static ref SCHEMA_ATTR_ACCOUNT_VALID_FROM: SchemaAttribute = SchemaAttribute
 pub static ref SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
     name: Attribute::WebauthnAttestationCaList.into(),
-    description: "A set of CA's that limit devices that can be used with webauthn.".to_string(),
+    description: "A set of CA's that limit devices that can be used with webauthn".to_string(),
+
     syntax: SyntaxType::WebauthnAttestationCaList,
     multivalue: true,
     ..Default::default()
@@ -341,8 +344,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4: SchemaAttribute 
 pub static ref SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP,
     name: Attribute::OAuth2RsClaimMap.into(),
-    description:
-        "A set of custom claims mapped to group memberships of accounts.".to_string(),
+    description: "A set of custom claims mapped to group memberships of accounts".to_string(),
 
     index: vec![IndexType::Equality],
     multivalue: true,
@@ -354,8 +356,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4: SchemaAttribute = SchemaAttr
 pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP,
     name: Attribute::OAuth2RsScopeMap.into(),
-    description:
-        "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
+    description: "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
 
     index: vec![IndexType::Equality],
     multivalue: true,
@@ -366,8 +367,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: SchemaAttribute = SchemaAttribut
 pub static ref SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
     name: Attribute::OAuth2RsSupScopeMap.into(),
-    description:
-        "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
+    description: "A reference to a group mapped to scopes for the associated oauth2 resource server".to_string(),
 
     index: vec![IndexType::Equality],
     multivalue: true,
@@ -406,7 +406,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: SchemaAttribute = SchemaAt
 pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP,
     name: Attribute::OAuth2ConsentScopeMap.into(),
-    description: "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought.".to_string(),
+    description: "A set of scopes mapped from a relying server to a user, where the user has previously consented to the following. If changed or deleted, consent will be re-sought".to_string(),
 
     index: vec![IndexType::Equality],
     multivalue: true,
@@ -592,7 +592,7 @@ pub static ref SCHEMA_ATTR_GRANT_UI_HINT: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL,
     name: Attribute::SyncCredentialPortal.into(),
-    description: "The url of an external credential portal for synced accounts to visit to update their credentials.".to_string(),
+    description: "The url of an external credential portal for synced accounts to visit to update their credentials".to_string(),
 
     syntax: SyntaxType::Url,
     ..Default::default()
@@ -621,7 +621,7 @@ pub static ref SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM: SchemaAttribute = SchemaAttr
 pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS,
     name: Attribute::LimitSearchMaxResults.into(),
-    description: "The maximum number of query results that may be returned in a single operation.".to_string(),
+    description: "The maximum number of query results that may be returned in a single operation".to_string(),
 
     multivalue: false,
     syntax: SyntaxType::Uint32,
@@ -731,6 +731,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
     name: EntryClass::AccountPolicy.into(),
     description: "Policies applied to accounts that are members of a group".to_string(),
+
     systemmay: vec![
         Attribute::AuthSessionExpiry.into(),
         Attribute::PrivilegeExpiry.into(),
@@ -746,6 +747,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
     name: EntryClass::AccountPolicy.into(),
     description: "Policies applied to accounts that are members of a group".to_string(),
+
     systemmay: vec![
         Attribute::AuthSessionExpiry.into(),
         Attribute::PrivilegeExpiry.into(),
@@ -900,7 +902,8 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
     name: EntryClass::DomainInfo.into(),
-    description: "Local domain information and partial configuration.to_string().".to_string(),
+    description: "Local domain information and partial configuration".to_string(),
+
     systemmay: vec![
         Attribute::DomainSsid.into(),
         Attribute::DomainLdapBasedn.into(),
@@ -945,7 +948,7 @@ pub static ref SCHEMA_CLASS_POSIXACCOUNT: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SYSTEM_CONFIG,
     name: EntryClass::SystemConfig.into(),
-    description: "The class representing a system (topologies) configuration options.to_string().".to_string(),
+    description: "The class representing a system (topologies) configuration options".to_string(),
 
     systemmay: vec![
         Attribute::Description.into(),
