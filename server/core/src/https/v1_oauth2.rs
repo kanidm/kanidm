@@ -178,7 +178,7 @@ pub(crate) async fn oauth2_id_patch(
 }
 
 #[utoipa::path(
-    patch,
+    post,
     path = "/v1/oauth2/{rs_name}/_scopemap/{group}",
     request_body=Vec<String>,
     responses(
@@ -232,7 +232,7 @@ pub(crate) async fn oauth2_id_scopemap_delete(
 }
 
 #[utoipa::path(
-    patch,
+    post,
     path = "/v1/oauth2/{rs_name}/_claimmap/{claim_name}/{group}",
     request_body=Vec<String>,
     responses(
@@ -267,7 +267,7 @@ pub(crate) async fn oauth2_id_claimmap_post(
 }
 
 #[utoipa::path(
-    patch,
+    post,
     path = "/v1/oauth2/{rs_name}/_claimmap/{claim_name}",
     request_body=Oauth2ClaimMapJoin,
     responses(
