@@ -207,16 +207,22 @@ impl AdminObjectGraph {
 
         for (spn, uuid, obj_type) in typed_entries {
             let (color, shape, route) = match obj_type {
-                ObjectType::Group => ("#b86367", "box", AdminRoute::ViewGroup { uuid }),
-                ObjectType::BuiltinGroup => {
-                    ("#8bc1d6", "component", AdminRoute::ViewGroup { uuid })
-                }
+                ObjectType::Group => ("#b86367", "box", AdminRoute::ViewGroup { id_or_name: uuid }),
+                ObjectType::BuiltinGroup => (
+                    "#8bc1d6",
+                    "component",
+                    AdminRoute::ViewGroup { id_or_name: uuid },
+                ),
                 ObjectType::ServiceAccount => (
                     "#77c98d",
                     "parallelogram",
-                    AdminRoute::ViewServiceAccount { uuid },
+                    AdminRoute::ViewServiceAccount { id_or_name: uuid },
                 ),
-                ObjectType::Person => ("#af8bd6", "ellipse", AdminRoute::ViewPerson { uuid }),
+                ObjectType::Person => (
+                    "#af8bd6",
+                    "ellipse",
+                    AdminRoute::ViewPerson { id_or_name: uuid },
+                ),
             };
             let url = route.to_path();
             sb.push_str(

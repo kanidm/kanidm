@@ -208,9 +208,9 @@ impl Component for AdminListOAuth2 {
                         };
 
                         let rs_link = match oauth2_object.attrs.oauth2_rs_name.first() {
-                            Some(rs_name) => {
+                            Some(id_or_name) => {
                                 html!{
-                                    <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{rs_name: rs_name.clone()}}>
+                                    <Link<AdminRoute> to={AdminRoute::ViewOAuth2RP{id_or_name: id_or_name.clone()}}>
                                     {display_name}
                                     </Link<AdminRoute>>
                                 }
@@ -274,7 +274,7 @@ pub enum AdminViewOAuth2Msg {
 
 #[derive(PartialEq, Eq, Properties)]
 pub struct AdminViewOAuth2Props {
-    pub rs_name: String,
+    pub id_or_name: String,
 }
 
 enum ViewState {
@@ -303,7 +303,7 @@ impl Component for AdminViewOAuth2 {
     type Properties = AdminViewOAuth2Props;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let rs_name = ctx.props().rs_name.clone();
+        let rs_name = ctx.props().id_or_name.clone();
 
         // start pulling the data on startup
         ctx.link().send_future(async move {

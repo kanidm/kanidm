@@ -235,10 +235,10 @@ impl Component for AdminListAccounts {
                         };
 
                         let object_link = match account.object_type {
-                            EntityType::Person => AdminRoute::ViewPerson{uuid:uuid.clone()},
-                            EntityType::ServiceAccount => AdminRoute::ViewServiceAccount{uuid:uuid.clone()},
+                            EntityType::Person => AdminRoute::ViewPerson{id_or_name:uuid.clone()},
+                            EntityType::ServiceAccount => AdminRoute::ViewServiceAccount{id_or_name:uuid.clone()},
                             // because matching is hard
-                            _ => AdminRoute::ViewPerson{uuid:uuid.clone()},
+                            _ => AdminRoute::ViewPerson{id_or_name:uuid.clone()},
                         };
 
                         html!{
@@ -300,7 +300,7 @@ pub struct AdminViewPerson {
 #[derive(Properties, PartialEq, Eq, Clone)]
 /// Properties for accounts, either Person or Service Account
 pub struct AdminViewAccountProps {
-    pub uuid: String,
+    pub id_or_name: String,
 }
 
 // callback messaging for this confused pile of crab-bait
@@ -316,7 +316,7 @@ impl Component for AdminViewPerson {
     type Properties = AdminViewAccountProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let uuid = ctx.props().uuid.clone();
+        let uuid = ctx.props().id_or_name.clone();
         ctx.link().send_future(async move {
             match get_person(&uuid).await {
                 Ok(v) => v,
@@ -340,7 +340,7 @@ impl Component for AdminViewPerson {
         true
     }
 
-    fn view(&self, ctx: &Context<Self>) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         match &self.state {
             ViewAccountState::Loading => html! {{"Loading..."}},
             ViewAccountState::Failed { emsg, kopid } => do_alert_error(
@@ -423,7 +423,7 @@ impl Component for AdminViewPerson {
                     <dd class="col">{ username }</dd>
 
                     <dt class={CSS_DT}>{ "User's UUID" }</dt>
-                    <dd class="col">{ ctx.props().to_owned().uuid }</dd>
+                    <dd class="col">{ response.attrs.uuid.clone().first() }</dd>
 
                 // </dl>
                 </>
@@ -460,9 +460,9 @@ impl Component for AdminViewServiceAccount {
     type Properties = AdminViewAccountProps;
 
     fn create(ctx: &Context<Self>) -> Self {
-        let uuid = ctx.props().uuid.clone();
+        let id_or_name = ctx.props().id_or_name.clone();
         ctx.link().send_future(async move {
-            match get_service_account(&uuid).await {
+            match get_service_account(&id_or_name).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }

@@ -20,14 +20,14 @@ pub enum AdminRoute {
     #[at("/ui/admin/oauth2")]
     AdminListOAuth2,
 
-    #[at("/ui/admin/group/:uuid")]
-    ViewGroup { uuid: String },
-    #[at("/ui/admin/person/:uuid")]
-    ViewPerson { uuid: String },
-    #[at("/ui/admin/service_account/:uuid")]
-    ViewServiceAccount { uuid: String },
-    #[at("/ui/admin/oauth2/:rs_name")]
-    ViewOAuth2RP { rs_name: String },
+    #[at("/ui/admin/group/:id_or_name")]
+    ViewGroup { id_or_name: String },
+    #[at("/ui/admin/person/:id_or_name")]
+    ViewPerson { id_or_name: String },
+    #[at("/ui/admin/service_account/:id_or_name")]
+    ViewServiceAccount { id_or_name: String },
+    #[at("/ui/admin/oauth2/:id_or_name")]
+    ViewOAuth2RP { id_or_name: String },
 
     #[not_found]
     #[at("/ui/admin/404")]
@@ -51,19 +51,18 @@ pub(crate) fn switch(route: AdminRoute) -> Html {
         AdminRoute::AdminListOAuth2 => html!(
           <components::admin_oauth2::AdminListOAuth2 />
         ),
-        AdminRoute::ViewGroup { uuid } => {
-            html!(<components::admin_groups::AdminViewGroup uuid={uuid} />)
-            // html! {<></>}
+        AdminRoute::ViewGroup { id_or_name } => {
+            html!(<components::admin_groups::AdminViewGroup id_or_name={id_or_name} />)
         }
-        AdminRoute::ViewPerson { uuid } => html!(
-            <components::admin_accounts::AdminViewPerson uuid={uuid} />
+        AdminRoute::ViewPerson { id_or_name } => html!(
+            <components::admin_accounts::AdminViewPerson id_or_name={id_or_name} />
         ),
-        AdminRoute::ViewServiceAccount { uuid } => html!(
-              <components::admin_accounts::AdminViewServiceAccount uuid={uuid} />
+        AdminRoute::ViewServiceAccount { id_or_name } => html!(
+              <components::admin_accounts::AdminViewServiceAccount id_or_name={id_or_name} />
             // html! {<></>}
         ),
-        AdminRoute::ViewOAuth2RP { rs_name } => html! {
-          <components::admin_oauth2::AdminViewOAuth2 rs_name={rs_name} />
+        AdminRoute::ViewOAuth2RP { id_or_name } => html! {
+          <components::admin_oauth2::AdminViewOAuth2 id_or_name={id_or_name} />
 
         },
         AdminRoute::NotFound => html! (

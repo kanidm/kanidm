@@ -112,6 +112,10 @@ pub struct Attributes {
     pub oauth2_rs_name: Vec<String>,
     #[serde(skip_serializing_if = "Vec::is_empty", default)]
     pub oauth2_rs_origin: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub member: Vec<String>,
+    #[serde(skip_serializing_if = "Vec::is_empty", default)]
+    pub memberof: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
