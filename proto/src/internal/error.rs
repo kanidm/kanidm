@@ -125,6 +125,7 @@ pub enum OperationError {
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
+    CU0003WebauthnUserNotVerified,
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     // Value Errors
@@ -144,4 +145,130 @@ impl PartialEq for OperationError {
         // anyway.
         std::mem::discriminant(self) == std::mem::discriminant(other)
     }
+}
+
+impl OperationError {
+    /// This is bad but I don't feel that bad.
+    ///
+    /// It takes something like `CU0001WebauthnAttestationNotTrusted` and turns it
+    /// into `CU0001 - Webauthn Attestation Not Trusted` if it can, otherwise you just get the normal
+    /// debug format with spaces
+    ///
+    /// Probably shouldn't use this with any of the complex types because it'll get weird quick!
+    pub fn variant_as_nice_string(&self) -> String {
+        let asstr = format!("{:?}", self);
+        let asstr = asstr.split("::").last().unwrap();
+        let parser = regex::Regex::new(r"^(?P<errcode>[A-Z]{2}\d{4})(?P<therest>.*)")
+            .expect("Failed to parse regex!");
+
+        let splitter = regex::Regex::new(r"([A-Z])").expect("Failed to parse splitter regex!");
+        match parser.captures(asstr) {
+            Some(caps) => {
+                let mut nice_string = splitter.replace_all(&caps["therest"], " $1").to_string();
+                while nice_string.contains("  ") {
+                    nice_string = nice_string.replace("  ", " ");
+                }
+                let message = match self.message() {
+                    Some(val) => format!(" - {}", val),
+                    None => "".to_string(),
+                };
+
+                format!("{} - {}{}", &caps["errcode"], nice_string.trim(), message)
+            }
+            None => {
+                let nice_string = splitter.replace_all(asstr, " $1").to_string();
+                nice_string.trim().to_string()
+            }
+        }
+    }
+
+    fn message(&self) -> Option<&'static str> {
+        match self {
+            OperationError::SessionExpired => None,
+            OperationError::EmptyRequest => None,
+            OperationError::Backend => None,
+            OperationError::NoMatchingEntries => None,
+            OperationError::NoMatchingAttributes => None,
+            OperationError::CorruptedEntry(_) => None,
+            OperationError::CorruptedIndex(_) => None,
+            OperationError::ConsistencyError(_) => None,
+            OperationError::SchemaViolation(_) => None,
+            OperationError::Plugin(_) => None,
+            OperationError::FilterGeneration => None,
+            OperationError::FilterUuidResolution => None,
+            OperationError::InvalidAttributeName(_) => None,
+            OperationError::InvalidAttribute(_) => None,
+            OperationError::InvalidDbState => None,
+            OperationError::InvalidCacheState => None,
+            OperationError::InvalidValueState => None,
+            OperationError::InvalidEntryId => None,
+            OperationError::InvalidRequestState => None,
+            OperationError::InvalidSyncState => None,
+            OperationError::InvalidState => None,
+            OperationError::InvalidEntryState => None,
+            OperationError::InvalidUuid => None,
+            OperationError::InvalidReplChangeId => None,
+            OperationError::InvalidAcpState(_) => None,
+            OperationError::InvalidSchemaState(_) => None,
+            OperationError::InvalidAccountState(_) => None,
+            OperationError::MissingEntries => None,
+            OperationError::ModifyAssertionFailed => None,
+            OperationError::BackendEngine => None,
+            OperationError::SqliteError => None,
+            OperationError::FsError => None,
+            OperationError::SerdeJsonError => None,
+            OperationError::SerdeCborError => None,
+            OperationError::AccessDenied => None,
+            OperationError::NotAuthenticated => None,
+            OperationError::NotAuthorised => None,
+            OperationError::InvalidAuthState(_) => None,
+            OperationError::InvalidSessionState => None,
+            OperationError::SystemProtectedObject => None,
+            OperationError::SystemProtectedAttribute => None,
+            OperationError::PasswordQuality(_) => None,
+            OperationError::CryptographyError => None,
+            OperationError::ResourceLimit => None,
+            OperationError::QueueDisconnected => None,
+            OperationError::Webauthn => None,
+            OperationError::Wait(_) => None,
+            OperationError::ReplReplayFailure => None,
+            OperationError::ReplEntryNotChanged => None,
+            OperationError::ReplInvalidRUVState => None,
+            OperationError::ReplDomainLevelUnsatisfiable => None,
+            OperationError::ReplDomainUuidMismatch => None,
+            OperationError::ReplServerUuidSplitDataState => None,
+            OperationError::TransactionAlreadyCommitted => None,
+            OperationError::GidOverlapsSystemMin(_) => None,
+            OperationError::ValueDenyName => None,
+            OperationError::CU0002WebauthnRegistrationError => None,
+            OperationError::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
+                OperationError::CU0001WebauthnAttestationNotTrusted => None,
+            OperationError::VS0001IncomingReplSshPublicKey => None,
+            OperationError::VL0001ValueSshPublicKeyString => None,
+            OperationError::SC0001IncomingSshPublicKey => None,
+            OperationError::MG0001InvalidReMigrationLevel => None,
+            OperationError::MG0002RaiseDomainLevelExceedsMaximum => None,
+            OperationError::MG0003ServerPhaseInvalidForMigration => None,
+        }
+    }
+}
+
+#[test]
+fn test_operationerror_as_nice_string() {
+    assert_eq!(
+        OperationError::CU0001WebauthnAttestationNotTrusted.variant_as_nice_string(),
+        "CU0001 - Webauthn Attestation Not Trusted".to_string()
+    );
+    assert_eq!(
+        OperationError::CU0003WebauthnUserNotVerified.variant_as_nice_string(),
+        "CU0003 - Webauthn User Not Verified - User Verification bit not set while registering credential, you may need to configure a PIN on this device.".to_string()
+    );
+    assert_eq!(
+        OperationError::SessionExpired.variant_as_nice_string(),
+        "Session Expired".to_string()
+    );
+    assert_eq!(
+        OperationError::CorruptedEntry(12345).variant_as_nice_string(),
+        "Corrupted Entry(12345)".to_string()
+    );
 }

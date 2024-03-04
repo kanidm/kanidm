@@ -9,7 +9,7 @@ use kanidm_proto::internal::{Filter, Modify, ModifyList};
 use kanidm_proto::v1::Entry;
 use serde::de::DeserializeOwned;
 
-use crate::RawOpt;
+use crate::{OutputMode, RawOpt};
 
 fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn Error>> {
     let f = File::open(path)?;
@@ -36,13 +36,24 @@ impl RawOpt {
                 let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
-                        error!("Error -> {:?}", e);
+                        error!("Error parsing filter -> {:?}", e);
                         return;
                     }
                 };
 
                 match client.search(filter).await {
-                    Ok(rset) => rset.iter().for_each(|e| println!("{}", e)),
+                    Ok(rset) => match sopt.commonopts.output_mode {
+                        #[allow(clippy::expect_used)]
+                        OutputMode::Json => {
+                            println!(
+                                "{}",
+                                serde_json::to_string(&rset).expect("Failed to serialize entry!")
+                            )
+                        }
+                        OutputMode::Text => {
+                            rset.iter().for_each(|e| println!("{}", e));
+                        }
+                    },
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
