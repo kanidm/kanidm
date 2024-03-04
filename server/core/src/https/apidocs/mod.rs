@@ -70,6 +70,9 @@ impl Modify for SecurityAddon {
         super::v1_oauth2::oauth2_id_scopemap_delete,
         super::v1_oauth2::oauth2_id_sup_scopemap_post,
         super::v1_oauth2::oauth2_id_sup_scopemap_delete,
+        super::v1_oauth2::oauth2_id_claimmap_join_post,
+        super::v1_oauth2::oauth2_id_claimmap_post,
+        super::v1_oauth2::oauth2_id_claimmap_delete,
         super::v1_scim::scim_sync_post,
         super::v1_scim::scim_sync_get,
 
@@ -216,6 +219,7 @@ impl Modify for SecurityAddon {
             internal::Modify,
             internal::ModifyList,
             internal::ModifyRequest,
+            internal::Oauth2ClaimMapJoin,
             internal::OperationError,
             internal::PasskeyDetail,
             internal::PasswordFeedback,
