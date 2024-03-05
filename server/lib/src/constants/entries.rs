@@ -743,6 +743,7 @@ lazy_static! {
     /// Builtin System Admin account.
     pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
         account_type: AccountType::ServiceAccount,
+        entry_managed_by: None,
         name: "idm_admin",
         uuid: UUID_IDM_ADMIN,
         description: "Builtin IDM Admin account.",
@@ -778,6 +779,7 @@ Attribute::Description,
 /// Built in accounts such as anonymous, idm_admin and admin
 pub struct BuiltinAccount {
     pub account_type: kanidm_proto::v1::AccountType,
+    pub entry_managed_by: Option<uuid::Uuid>,
     pub name: &'static str,
     pub uuid: Uuid,
     pub description: &'static str,
@@ -788,6 +790,7 @@ impl Default for BuiltinAccount {
     fn default() -> Self {
         BuiltinAccount {
             account_type: AccountType::ServiceAccount,
+            entry_managed_by: None,
             name: "",
             uuid: Uuid::new_v4(),
             description: "<set description>",
@@ -818,6 +821,10 @@ impl From<BuiltinAccount> for EntryInitNew {
         entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));
         entry.add_ava(Attribute::DisplayName, Value::new_utf8s(value.displayname));
 
+        if let Some(entry_manager) = value.entry_managed_by {
+            entry.add_ava(Attribute::EntryManagedBy, Value::Refer(entry_manager));
+        }
+
         entry.set_ava(
             Attribute::Class,
             vec![
@@ -840,13 +847,29 @@ lazy_static! {
     /// Builtin System Admin account.
     pub static ref BUILTIN_ACCOUNT_ADMIN: BuiltinAccount = BuiltinAccount {
         account_type: AccountType::ServiceAccount,
+        entry_managed_by: None,
         name: "admin",
         uuid: UUID_ADMIN,
         description: "Builtin System Admin account.",
         displayname: "System Administrator",
     };
+}
+
+lazy_static! {
     pub static ref BUILTIN_ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
         account_type: AccountType::ServiceAccount,
+        entry_managed_by: None,
+        name: "anonymous",
+        uuid: UUID_ANONYMOUS,
+        description: "Anonymous access account.",
+        displayname: "Anonymous",
+    };
+}
+
+lazy_static! {
+    pub static ref BUILTIN_ACCOUNT_ANONYMOUS_DL6: BuiltinAccount = BuiltinAccount {
+        account_type: AccountType::ServiceAccount,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
         name: "anonymous",
         uuid: UUID_ANONYMOUS,
         description: "Anonymous access account.",
