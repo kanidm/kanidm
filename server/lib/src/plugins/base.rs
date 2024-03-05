@@ -67,15 +67,34 @@ impl Plugin for Base {
         // Now, every cand has a UUID - create a cand uuid set from it.
         let mut cand_uuid: BTreeSet<Uuid> = BTreeSet::new();
 
+        let mut system_range_invalid = false;
+
         // As we insert into the set, if a duplicate is found, return an error
         // that a duplicate exists.
         //
         // Remember, we have to use the ava here, not the get_uuid types because
         // we may not have filled in the uuid field yet.
-        for entry in cand.iter() {
+        for entry in cand.iter_mut() {
             let uuid_ref: Uuid = entry
                 .get_ava_single_uuid(Attribute::Uuid)
                 .ok_or_else(|| OperationError::InvalidAttribute(Attribute::Uuid.to_string()))?;
+
+            // Check that the system-protected range is not in the cand_uuid, unless we are
+            // an internal operation.
+            if uuid_ref < DYNAMIC_RANGE_MINIMUM_UUID {
+                if ce.ident.is_internal() {
+                    // it's a builtin entry, lets add the class.
+                    entry.add_ava(Attribute::Class, EntryClass::Builtin.to_value());
+                } else {
+                    // Don't do that!
+                    error!(
+                        "uuid from protected system UUID range found in create set! {:?}",
+                        uuid_ref
+                    );
+                    system_range_invalid = true;
+                }
+            };
+
             if !cand_uuid.insert(uuid_ref) {
                 trace!("uuid duplicate found in create set! {:?}", uuid_ref);
                 return Err(OperationError::Plugin(PluginError::Base(
@@ -84,33 +103,18 @@ impl Plugin for Base {
             }
         }
 
-        // Check that the system-protected range is not in the cand_uuid, unless we are
-        // an internal operation.
-        if !ce.ident.is_internal() {
-            // TODO: We can't lazy const this as you can't borrow the type down to what
-            // range and contains on btreeset need, but can we possibly make these
-            // part of the struct at init. rather than needing to parse a lot?
-            // The internal set is bounded by: UUID_ADMIN -> UUID_ANONYMOUS
-            // Sadly we need to allocate these to strings to make references, sigh.
-            let overlap: usize = cand_uuid.range(UUID_ADMIN..UUID_ANONYMOUS).count();
-            if overlap != 0 {
-                admin_error!(
-                    "uuid from protected system UUID range found in create set! {:?}",
-                    overlap
-                );
-                return Err(OperationError::Plugin(PluginError::Base(
-                    "Uuid must not be in protected range".to_string(),
-                )));
-            }
+        if system_range_invalid {
+            return Err(OperationError::Plugin(PluginError::Base(
+                "Uuid must not be in protected range".to_string(),
+            )));
         }
 
         if cand_uuid.contains(&UUID_DOES_NOT_EXIST) {
-            admin_error!(
-                "uuid \"does not exist\" found in create set! {:?}",
-                UUID_DOES_NOT_EXIST
+            error!(
+                "uuid \"does not exist\" found in create set! THIS IS A BUG. PLEASE REPORT IT IMMEDIATELY."
             );
             return Err(OperationError::Plugin(PluginError::Base(
-                "UUID_DOES_NOT_EXIST may not exist!".to_string(),
+                "Attempt to create UUID_DOES_NOT_EXIST".to_string(),
             )));
         }
 

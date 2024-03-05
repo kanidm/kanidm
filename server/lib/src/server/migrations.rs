@@ -868,7 +868,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-            SCHEMA_CLASS_BUILTIN.clone().into(),
         ];
 
         idm_schema_classes
@@ -936,6 +935,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
 
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
+        // Future schema attributes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_schema_attrs = [
             SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
             SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
@@ -950,7 +953,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         debug_assert!(r.is_ok());
 
-        // List of IDM schemas to init.
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
+        // Future schema classes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_schema: Vec<EntryInitNew> = vec![
             SCHEMA_ATTR_MAIL.clone().into(),
             SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
@@ -1022,8 +1028,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         debug_assert!(r.is_ok());
 
-        // !!! DOMAIN LEVEL 1 SCHEMA CLASSES
-        // !!! Future schema classes need to be added via migrations.
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA CLASSES ⚠️
+        // Future schema classes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_schema_classes_dl1: Vec<EntryInitNew> = vec![
             SCHEMA_CLASS_ACCOUNT.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
@@ -1107,6 +1115,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
+        // ⚠️  DOMAIN LEVEL 1 ENTRIES ⚠️
+        // Future entries need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
             IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone(),

@@ -801,7 +801,7 @@ impl Default for BuiltinAccount {
 impl From<BuiltinAccount> for Account {
     fn from(value: BuiltinAccount) -> Self {
         #[allow(clippy::panic)]
-        if DYNAMIC_RANGE_MINIMUM_UUID > value.uuid {
+        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
             panic!("Builtin ACP has invalid UUID! {:?}", value);
         }
         Account {
@@ -821,7 +821,7 @@ impl From<BuiltinAccount> for EntryInitNew {
         let mut entry = EntryInitNew::new();
         entry.add_ava(Attribute::Name, Value::new_iname(value.name));
         #[allow(clippy::panic)]
-        if DYNAMIC_RANGE_MINIMUM_UUID > value.uuid {
+        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
             panic!("Builtin ACP has invalid UUID! {:?}", value);
         }
         entry.add_ava(Attribute::Uuid, Value::Uuid(value.uuid));
@@ -898,6 +898,11 @@ lazy_static! {
         (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_2))
     );
 }
+
+// ⚠️  DOMAIN LEVEL 1 ENTRIES ⚠️
+// Future entries need to be added via migrations.
+//
+// DO NOT MODIFY THIS DEFINITION
 
 /// Build a list of internal admin entries
 pub fn idm_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> {

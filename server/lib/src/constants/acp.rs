@@ -96,7 +96,7 @@ impl From<BuiltinAcp> for EntryInitNew {
 
         entry.set_ava(Attribute::Name, [Value::new_iname(value.name)]);
 
-        if DYNAMIC_RANGE_MINIMUM_UUID > value.uuid {
+        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
             panic!("Builtin ACP has invalid UUID! {:?}", value);
         }
 
