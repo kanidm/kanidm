@@ -37,7 +37,7 @@ The minimum length for passwords (if they are allowed).
 
 ### Privilege Expiry
 
-The maximum length in seconds that privileges will exist after reauthentication for to a read/write
+The maximum length in seconds (<= 3600) that privileges will exist after reauthentication for to a read/write
 session.
 
 ### Webauthn Attestation
@@ -102,6 +102,8 @@ kanidm group account-policy enable <group name>
 kanidm group account-policy enable my_admin_group
 ```
 
+Note that the Account Policy is already enabled for `idm_all_persons`.
+
 ### Setting Maximum Session Time
 
 The auth-session value influences the maximum time in seconds that an authenticated session can
@@ -135,13 +137,14 @@ kanidm group account-policy password-minimum-length my_admin_group 12
 ### Setting Maximum Privilege Time
 
 The privilege-expiry time defines how long a session retains its write privileges after a
-reauthentication. After this time, the session returns to read-only mode.
+reauthentication. After this time (maximum 1 hour), the session returns to read-only mode.
 
 To set the maximum privilege time
 
 ```shell
 kanidm group account-policy privilege-expiry <group name> <seconds>
 kanidm group account-policy privilege-expiry my_admin_group 900
+kanidm group account-policy privilege-expiry my_admin_group 86400 # NB: will be limited to 3600
 ```
 
 ### Setting Webauthn Attestation CA Lists
