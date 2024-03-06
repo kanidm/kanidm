@@ -77,6 +77,7 @@ pub struct BuiltinAcp {
 }
 
 impl From<BuiltinAcp> for EntryInitNew {
+    #[allow(clippy::panic)]
     fn from(value: BuiltinAcp) -> Self {
         let mut entry = EntryInitNew::default();
 
@@ -94,6 +95,11 @@ impl From<BuiltinAcp> for EntryInitNew {
         });
 
         entry.set_ava(Attribute::Name, [Value::new_iname(value.name)]);
+
+        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
+            panic!("Builtin ACP has invalid UUID! {:?}", value);
+        }
+
         entry.set_ava(Attribute::Uuid, [Value::Uuid(value.uuid)]);
         entry.set_ava(
             Attribute::Description,

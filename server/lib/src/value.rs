@@ -999,7 +999,7 @@ pub enum OauthClaimMapJoin {
 }
 
 impl OauthClaimMapJoin {
-    pub(crate) fn to_char(&self) -> char {
+    pub(crate) fn to_char(self) -> char {
         match self {
             OauthClaimMapJoin::CommaSeparatedValue => ',',
             OauthClaimMapJoin::SpaceSeparatedValue => ' ',

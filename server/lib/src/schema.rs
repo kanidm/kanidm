@@ -1963,6 +1963,15 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.classes.insert(
+            EntryClass::Builtin.into(),
+            SchemaClass {
+                name: EntryClass::Builtin.into(),
+                uuid: UUID_SCHEMA_CLASS_BUILTIN,
+                description: String::from("A marker class denoting builtin entries"),
+                ..Default::default()
+            },
+        );
+        self.classes.insert(
             EntryClass::MemberOf.into(),
             SchemaClass {
                 name: EntryClass::MemberOf.into(),

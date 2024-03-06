@@ -280,6 +280,7 @@ pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000161");
 pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000162");
+pub const UUID_SCHEMA_CLASS_BUILTIN: Uuid = uuid!("00000000-0000-0000-0000-ffff00000163");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
@@ -396,3 +397,5 @@ pub const UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: Uuid = uuid!("00000000-0000-0000-
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
 pub const UUID_ANONYMOUS: Uuid = uuid!("00000000-0000-0000-0000-ffffffffffff");
+
+pub const DYNAMIC_RANGE_MINIMUM_UUID: Uuid = uuid!("00000000-0000-0000-0001-000000000000");
