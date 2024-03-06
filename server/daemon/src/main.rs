@@ -29,7 +29,10 @@ use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
 #[cfg(not(target_family = "windows"))] // not needed for windows builds
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
-use kanidmd_core::admin::{AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo};
+use kanidmd_core::admin::{
+    AdminTaskRequest, AdminTaskResponse, ClientCodec, ProtoDomainInfo,
+    ProtoDomainUpgradeCheckReport, ProtoDomainUpgradeCheckStatus,
+};
 use kanidmd_core::config::{Configuration, ServerConfig};
 use kanidmd_core::{
     backup_server_core, cert_generate_core, create_server_core, dbscan_get_id2entry_core,
@@ -83,7 +86,6 @@ impl KanidmdOpt {
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::ListIndex(dopt),
             } => &dopt.commonopts,
-            // KanidmdOpt::DbScan(DbScanOpt::GetIndex(dopt)) => &dopt.commonopts,
             KanidmdOpt::DbScan {
                 commands: DbScanOpt::GetId2Entry(dopt),
             } => &dopt.commonopts,
@@ -92,6 +94,9 @@ impl KanidmdOpt {
             }
             | KanidmdOpt::DomainSettings {
                 commands: DomainSettingsCmds::Change { commonopts },
+            }
+            | KanidmdOpt::DomainSettings {
+                commands: DomainSettingsCmds::UpgradeCheck { commonopts },
             }
             | KanidmdOpt::DomainSettings {
                 commands: DomainSettingsCmds::Raise { commonopts },
@@ -167,6 +172,52 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
+            }
+        },
+
+        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => match output_mode {
+            ConsoleOutputMode::JSON => {
+                let json_output = serde_json::json!({
+                    "domain_upgrade_check": report
+                });
+                println!("{}", json_output);
+            }
+            ConsoleOutputMode::Text => {
+                let ProtoDomainUpgradeCheckReport {
+                    name,
+                    uuid,
+                    current_level,
+                    upgrade_level,
+                    report_items,
+                } = report;
+
+                info!("domain_name            : {}", name);
+                info!("domain_uuid            : {}", uuid);
+                info!("domain_current_level   : {}", current_level);
+                info!("domain_upgrade_level   : {}", upgrade_level);
+
+                for item in report_items {
+                    info!("------------------------");
+                    match item.status {
+                        ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
+                            info!("upgrade_item           : gidnumber range validity");
+                            debug!("from_level             : {}", item.from_level);
+                            debug!("to_level               : {}", item.to_level);
+                            info!("status                 : PASS");
+                        }
+                        ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
+                            info!("upgrade_item           : gidnumber range validity");
+                            debug!("from_level             : {}", item.from_level);
+                            debug!("to_level               : {}", item.to_level);
+                            info!("status                 : FAIL");
+                            info!("description            : The automatic allocation gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
+                            info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
+                            for entry_id in item.affected_entries {
+                                info!("affected_entry         : {}", entry_id);
+                            }
+                        }
+                    }
+                }
             }
         },
 
@@ -837,6 +888,20 @@ async fn kanidm_main() -> ExitCode {
             )
             .await;
         }
+
+        KanidmdOpt::DomainSettings {
+            commands: DomainSettingsCmds::UpgradeCheck { commonopts },
+        } => {
+            info!("Running domain upgrade check ...");
+            let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
+            submit_admin_req(
+                config.adminbindpath.as_str(),
+                AdminTaskRequest::DomainUpgradeCheck,
+                output_mode,
+            )
+            .await;
+        }
+
         KanidmdOpt::DomainSettings {
             commands: DomainSettingsCmds::Raise { commonopts },
         } => {
@@ -849,10 +914,11 @@ async fn kanidm_main() -> ExitCode {
             )
             .await;
         }
+
         KanidmdOpt::DomainSettings {
             commands: DomainSettingsCmds::Remigrate { commonopts, level },
         } => {
-            info!("Running domain remigrate ...");
+            info!("⚠️  Running domain remigrate ...");
             let output_mode: ConsoleOutputMode = commonopts.output_mode.to_owned().into();
             submit_admin_req(
                 config.adminbindpath.as_str(),

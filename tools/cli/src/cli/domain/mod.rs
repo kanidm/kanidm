@@ -1,16 +1,14 @@
 use crate::common::OpType;
 use crate::{handle_client_error, DomainOpt};
 
-mod migration;
-
 impl DomainOpt {
     pub fn debug(&self) -> bool {
         match self {
             DomainOpt::SetDisplayName(copt) => copt.copt.debug,
             DomainOpt::SetLdapBasedn { copt, .. }
             | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. }
-            | DomainOpt::Show(copt) | DomainOpt::ResetTokenKey(copt) => copt.debug,
-            DomainOpt::Migration { opt } => opt.debug(),
+            | DomainOpt::Show(copt)
+            | DomainOpt::ResetTokenKey(copt) => copt.debug,
         }
     }
 
@@ -62,7 +60,6 @@ impl DomainOpt {
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
-            DomainOpt::Migration { opt } => opt.exec().await,
         }
     }
 }

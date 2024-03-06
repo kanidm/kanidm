@@ -1,5 +1,6 @@
 use crate::common::OpType;
 use crate::{handle_client_error, GroupOpt, GroupPosix, OutputMode};
+use kanidm_proto::constants::ATTR_GIDNUMBER;
 
 mod account_policy;
 
@@ -18,6 +19,7 @@ impl GroupOpt {
             GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
+                GroupPosix::ResetGidnumber { copt, .. } => copt.debug,
             },
             GroupOpt::AccountPolicy { commands } => commands.debug(),
         }
@@ -177,6 +179,15 @@ impl GroupOpt {
                             "Success adding POSIX configuration for group {}",
                             gcopt.name.as_str()
                         ),
+                    }
+                }
+                GroupPosix::ResetGidnumber { copt, group_id } => {
+                    let client = copt.to_client(OpType::Write).await;
+                    if let Err(e) = client
+                        .idm_group_purge_attr(group_id.as_str(), ATTR_GIDNUMBER)
+                        .await
+                    {
+                        handle_client_error(e, copt.output_mode)
                     }
                 }
             },

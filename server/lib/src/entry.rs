@@ -1435,6 +1435,8 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     #[inline]
     /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
+    ///
+    /// See also - `get_display_id`
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")

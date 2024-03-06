@@ -1,12 +1,13 @@
 use kanidmd_lib::prelude::*;
 
-use crate::{QueryServerReadV1, QueryServerWriteV1};
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
 };
 use kanidmd_lib::idm::server::IdmServerTransaction;
 
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+
+use super::{QueryServerReadV1, QueryServerWriteV1};
 
 impl QueryServerWriteV1 {
     #[instrument(

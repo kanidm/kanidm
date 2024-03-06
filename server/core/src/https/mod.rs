@@ -16,8 +16,7 @@ mod v1_scim;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
+use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::http::{HeaderMap, HeaderValue};
@@ -60,11 +59,11 @@ use self::v1::SessionId;
 
 #[derive(Clone, FromRef)]
 pub struct ServerState {
-    pub status_ref: &'static kanidmd_lib::status::StatusActor,
-    pub qe_w_ref: &'static crate::actors::v1_write::QueryServerWriteV1,
-    pub qe_r_ref: &'static crate::actors::v1_read::QueryServerReadV1,
+    pub status_ref: &'static StatusActor,
+    pub qe_w_ref: &'static QueryServerWriteV1,
+    pub qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub jws_signer: compact_jwt::JwsHs256Signer,
+    pub jws_signer: JwsHs256Signer,
     // The SHA384 hashes of javascript files we're going to serve to users
     pub js_files: JavaScriptFiles,
     pub(crate) trust_x_forward_for: bool,

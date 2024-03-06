@@ -79,6 +79,8 @@ pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The maximum supported domain functional level
 pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
+// The maximum supported domain functional level
+pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 
 // On test builds define to 60 seconds
 #[cfg(test)]

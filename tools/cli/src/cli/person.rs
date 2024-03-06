@@ -6,7 +6,9 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_SSH_PUBLICKEY};
+use kanidm_proto::constants::{
+    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
+};
 use kanidm_proto::internal::OperationError::PasswordQuality;
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
@@ -39,6 +41,7 @@ impl PersonOpt {
                 PersonPosix::Show(apo) => apo.copt.debug,
                 PersonPosix::Set(apo) => apo.copt.debug,
                 PersonPosix::SetPassword(apo) => apo.copt.debug,
+                PersonPosix::ResetGidnumber { copt, .. } => copt.debug,
             },
             PersonOpt::Session { commands } => match commands {
                 AccountUserAuthToken::Status(apo) => apo.copt.debug,
@@ -168,6 +171,15 @@ impl PersonOpt {
                         .await
                     {
                         handle_client_error(e, aopt.copt.output_mode)
+                    }
+                }
+                PersonPosix::ResetGidnumber { copt, account_id } => {
+                    let client = copt.to_client(OpType::Write).await;
+                    if let Err(e) = client
+                        .idm_person_account_purge_attr(account_id.as_str(), ATTR_GIDNUMBER)
+                        .await
+                    {
+                        handle_client_error(e, copt.output_mode)
                     }
                 }
             }, // end PersonOpt::Posix

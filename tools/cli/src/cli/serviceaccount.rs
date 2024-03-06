@@ -1,5 +1,7 @@
 use crate::common::{try_expire_at_from_string, OpType};
-use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_SSH_PUBLICKEY};
+use kanidm_proto::constants::{
+    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
+};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
 use time::OffsetDateTime;
 
@@ -24,6 +26,7 @@ impl ServiceAccountOpt {
             ServiceAccountOpt::Posix { commands } => match commands {
                 ServiceAccountPosix::Show(apo) => apo.copt.debug,
                 ServiceAccountPosix::Set(apo) => apo.copt.debug,
+                ServiceAccountPosix::ResetGidnumber { copt, .. } => copt.debug,
             },
             ServiceAccountOpt::Session { commands } => match commands {
                 AccountUserAuthToken::Status(apo) => apo.copt.debug,
@@ -206,6 +209,15 @@ impl ServiceAccountOpt {
                         .await
                     {
                         handle_client_error(e, aopt.copt.output_mode)
+                    }
+                }
+                ServiceAccountPosix::ResetGidnumber { copt, account_id } => {
+                    let client = copt.to_client(OpType::Write).await;
+                    if let Err(e) = client
+                        .idm_service_account_purge_attr(account_id.as_str(), ATTR_GIDNUMBER)
+                        .await
+                    {
+                        handle_client_error(e, copt.output_mode)
                     }
                 }
             }, // end ServiceAccountOpt::Posix

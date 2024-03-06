@@ -1,6 +1,11 @@
 use crate::{ClientError, KanidmClient};
 
 impl KanidmClient {
+    pub async fn idm_group_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/group/{}/_attr/{}", id, attr).as_str())
+            .await
+    }
+
     pub async fn group_account_policy_enable(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(
             &format!("/v1/group/{}/_attr/class", id),
