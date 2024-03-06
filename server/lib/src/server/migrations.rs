@@ -863,6 +863,53 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Migration domain level 5 to 6 - support query limits in account policy.
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
+        let idm_schema_classes = [
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        let idm_access_controls = [
+            // Update access controls.
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            // Update anonymous with the correct entry manager,
+            BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
+        ];
+
+        idm_access_controls
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        Ok(())
+    }
+
+    /// Migration domain level 6 to 7
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_6_to_7(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) {
+            error!("Unable to raise domain level from 6 to 7.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        // ============== Apply constraints ===============
+
         // Due to changes in gidnumber allocation, in the *extremely* unlikely
         // case that a user's ID was generated outside the valid range, we re-request
         // the creation of their gid number to proceed.
@@ -930,46 +977,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ]))
         ]));
 
-        let modlist = modlist!([m_purge(Attribute::GidNumber)]);
-
-        self.internal_modify(&filter, &modlist).map_err(|err| {
-            error!(?err, "migrate_domain_5_to_6 -> Error");
+        let results = self.internal_search(filter).map_err(|err| {
+            error!(?err, "migrate_domain_6_to_7 -> Error");
             err
         })?;
 
-        let idm_schema_classes = [
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-        ];
+        if !results.is_empty() {
+            error!("Unable to proceed. Not all entries meet gid/uid constraints.");
+            for entry in results {
+                error!(gid_invalid = ?entry.get_uuid2rdn());
+            }
+            return Err(OperationError::MG0005GidConstraintsNotMet);
+        }
 
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
-
-        self.reload()?;
-
-        let idm_access_controls = [
-            // Update access controls.
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
-            // Update anonymous with the correct entry manager,
-            BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
-        ];
-
-        idm_access_controls
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
+        // =========== Apply changes ==============
 
         Ok(())
     }

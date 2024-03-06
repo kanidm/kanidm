@@ -1130,6 +1130,22 @@ pub enum DomainOpt {
     /// Reset this domain token signing key. This will cause all user sessions to be
     /// invalidated (logged out).
     ResetTokenKey(CommonOpt),
+
+    /// Validate and perform migrations of your domain.
+    #[clap(name = "migration")]
+    Migration {
+        #[clap(subcommand)]
+        opt: DomainMigrationOpt
+    }
+}
+
+#[derive(Debug, Subcommand)]
+pub enum DomainMigrationOpt {
+    #[clap(name = "upgrade-check")]
+    UpgradeCheck {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    }
 }
 
 #[derive(Debug, Subcommand)]

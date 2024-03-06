@@ -45,13 +45,30 @@ pub const SYSTEM_INDEX_VERSION: i64 = 31;
  */
 pub type DomainVersion = u32;
 
+/// Domain level 0 - this indicates that this instance
+/// is a new install and has never had a domain level
+/// previously.
 pub const DOMAIN_LEVEL_0: DomainVersion = 0;
+
+/// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_1: DomainVersion = 1;
+/// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_2: DomainVersion = 2;
+/// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
+/// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
+/// Deprcated as of 1.3.0
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
+
+/// Domain Level introduced with 1.2.0.
+/// Deprcated as of 1.4.0
 pub const DOMAIN_LEVEL_6: DomainVersion = 6;
+
+/// Domain Level introduced with 1.3.0.
+/// Deprcated as of 1.5.0
+pub const DOMAIN_LEVEL_7: DomainVersion = 7;
+
 // The minimum level that we can re-migrate from
 pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
 // The minimum supported domain functional level
