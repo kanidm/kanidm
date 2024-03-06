@@ -85,8 +85,8 @@ pub(crate) fn oauth2_id(rs_name: &str) -> Filter<FilterInvalid> {
     operation_id = "oauth2_image_get",
     responses(
         (status = 200, description = "Ok", body=&[u8]),
-        (status = 403, description = "Authorization refused"),
-        (status = 403, description = "Authorization refused"),
+        (status = 401, description = "Authorization required"),
+        (status = 403, description = "Not Authorized"),
     ),
     security(("token_jwt" = [])),
     tag = "ui",

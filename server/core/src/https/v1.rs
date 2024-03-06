@@ -1181,7 +1181,7 @@ pub async fn person_id_credential_update_intent_ttl_get(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person",
+    tag = "v1/person/credential",
 )]
 #[instrument(level = "trace", skip(state, kopid))]
 pub async fn person_id_credential_update_intent_get(
@@ -1587,7 +1587,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person/ssh_pubkeys/tag",
+    tag = "v1/person/ssh_pubkeys",
     operation_id = "person_id_ssh_pubkeys_tag_get",
 )]
 pub async fn person_id_ssh_pubkeys_tag_get(
@@ -1663,7 +1663,7 @@ pub async fn service_account_id_ssh_pubkeys_tag_get(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person/ssh_pubkeys/tag",
+    tag = "v1/person/ssh_pubkeys",
     operation_id = "person_id_ssh_pubkeys_tag_delete",
 )]
 pub async fn person_id_ssh_pubkeys_tag_delete(
@@ -1699,7 +1699,7 @@ pub async fn person_id_ssh_pubkeys_tag_delete(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person",
+    tag = "v1/service_account",
     operation_id = "service_account_id_ssh_pubkeys_tag_delete",
 )]
 pub async fn service_account_id_ssh_pubkeys_tag_delete(
@@ -1785,7 +1785,7 @@ pub async fn person_id_radius_post(
         DefaultApiResponse,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person",
+    tag = "v1/person/radius",
     operation_id = "person_id_radius_delete"
 )]
 pub async fn person_id_radius_delete(
@@ -1848,7 +1848,7 @@ pub async fn account_id_radius_token_get(
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/person",
+    tag = "v1/account",
     operation_id = "account_id_radius_token_post"
 )]
 pub async fn account_id_radius_token_post(
