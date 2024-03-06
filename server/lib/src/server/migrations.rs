@@ -894,6 +894,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
         ];
+        self.reload()?;
 
         idm_access_controls
             .into_iter()
@@ -902,6 +903,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(?err, "migrate_domain_5_to_6 -> Error");
                 err
             })?;
+
+        // all the built-in objects get a builtin class
+        let filter = f_lt(
+            Attribute::Uuid,
+            PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),
+        );
+        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
+
+        self.internal_modify(&filter!(filter), &modlist)?;
 
         Ok(())
     }
@@ -1028,6 +1038,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub fn initialise_schema_idm(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_idm -> start ...");
 
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
+        // Future schema attributes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_schema_attrs = [
             SCHEMA_ATTR_SYNC_CREDENTIAL_PORTAL.clone().into(),
             SCHEMA_ATTR_SYNC_YIELD_AUTHORITY.clone().into(),
@@ -1042,7 +1056,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
         debug_assert!(r.is_ok());
 
-        // List of IDM schemas to init.
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA ATTRIBUTES ⚠️
+        // Future schema classes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_schema: Vec<EntryInitNew> = vec![
             SCHEMA_ATTR_MAIL.clone().into(),
             SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
@@ -1114,7 +1131,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         debug_assert!(r.is_ok());
 
-        let idm_schema_classes: Vec<EntryInitNew> = vec![
+        // ⚠️  DOMAIN LEVEL 1 SCHEMA CLASSES ⚠️
+        // Future schema classes need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
+        let idm_schema_classes_dl1: Vec<EntryInitNew> = vec![
             SCHEMA_CLASS_ACCOUNT.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
@@ -1132,7 +1153,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
         ];
 
-        let r: Result<(), _> = idm_schema_classes
+        let r: Result<(), _> = idm_schema_classes_dl1
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry));
 
@@ -1197,6 +1218,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug_assert!(res.is_ok());
         res?;
 
+        // ⚠️  DOMAIN LEVEL 1 ENTRIES ⚠️
+        // Future entries need to be added via migrations.
+        //
+        // DO NOT MODIFY THIS DEFINITION
         let idm_entries: Vec<BuiltinAcp> = vec![
             // Built in access controls.
             IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone(),
