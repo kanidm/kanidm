@@ -1,37 +1,26 @@
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::{APPLICATION_JSON, ATTR_EMAIL};
-use reqwest::header::CONTENT_TYPE;
+use kanidm_proto::constants::ATTR_MAIL;
+use kanidmd_testkit::{create_user, ADMIN_TEST_PASSWORD};
+use serde_json::Value;
 
-/// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]
-async fn test_v1_person_patch(rsclient: KanidmClient) {
-    // We need to do manual reqwests here.
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+async fn test_v1_person_id_patch(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
 
-    let post_body = serde_json::json!({"attrs": { ATTR_EMAIL : "crab@example.com"}}).to_string();
+    create_user(&rsclient, "foo", "foogroup").await;
 
-    let response = match client
-        .patch(rsclient.make_url("/v1/person/foo"))
-        .header(CONTENT_TYPE, APPLICATION_JSON)
-        .body(post_body)
-        .send()
+    let post_body = serde_json::json!({"attrs": { ATTR_MAIL : ["crab@example.com"]}});
+
+    let response: Value = match rsclient
+        .perform_patch_request("/v1/person/foo", post_body)
         .await
     {
-        Ok(value) => value,
-        Err(error) => {
-            panic!(
-                "Failed to query {:?} : {:#?}",
-                rsclient.make_url("/v1/person/foo"),
-                error
-            );
-        }
+        Ok(val) => val,
+        Err(err) => panic!("Failed to patch person: {:?}", err),
     };
-    eprintln!("response: {:#?}", response);
-    assert_eq!(response.status(), 422);
 
-    let body = response.text().await.unwrap();
-    eprintln!("{}", body);
+    eprintln!("response: {:#?}", response);
 }

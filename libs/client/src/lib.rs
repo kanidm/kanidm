@@ -857,7 +857,7 @@ impl KanidmClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    async fn perform_patch_request<R: Serialize, T: DeserializeOwned>(
+    pub async fn perform_patch_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
         request: R,
