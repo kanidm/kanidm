@@ -2167,6 +2167,35 @@ pub async fn group_id_get(
 }
 
 #[utoipa::path(
+    patch,
+    path = "/v1/group/{id}",
+    responses(
+        DefaultApiResponse,
+    ),
+    request_body=ProtoEntry,
+    security(("token_jwt" = [])),
+    tag = "v1/group",
+    operation_id = "group_id_patch",
+)]
+pub async fn group_id_patch(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+    Json(obj): Json<ProtoEntry>,
+) -> Result<Json<()>, WebError> {
+    // Update a value / attrs
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
+    state
+        .qe_w_ref
+        .handle_internalpatch(client_auth_info, filter, obj, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
     delete,
     path = "/v1/group/{id}",
     responses(
@@ -3152,7 +3181,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/group/:id/_unix/_token", get(group_id_unix_token_get))
         .route("/v1/group/:id/_unix", post(group_id_unix_post))
         .route("/v1/group", get(group_get).post(group_post))
-        .route("/v1/group/:id", get(group_id_get).delete(group_id_delete))
+        .route("/v1/group/:id", get(group_id_get).patch(group_id_patch).delete(group_id_delete))
         .route(
             "/v1/group/:id/_attr/:attr",
             delete(group_id_attr_delete)

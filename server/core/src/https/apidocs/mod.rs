@@ -164,6 +164,7 @@ impl Modify for SecurityAddon {
         super::v1::group_get,
         super::v1::group_post,
         super::v1::group_id_get,
+        super::v1::group_id_patch,
         super::v1::group_id_delete,
         super::v1::group_id_attr_delete,
         super::v1::group_id_attr_get,
