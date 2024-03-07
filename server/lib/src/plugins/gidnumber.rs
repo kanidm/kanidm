@@ -99,7 +99,7 @@ fn apply_gidnumber<T: Clone>(
                     GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
                     GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
                 );
-                Err(OperationError::GidOverlapsSystemRange)
+                Err(OperationError::PL0001GidOverlapsSystemRange)
             } else {
                 Ok(())
             }
@@ -130,7 +130,7 @@ fn apply_gidnumber<T: Clone>(
                     GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
                     GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
                 );
-                Err(OperationError::GidOverlapsSystemRange)
+                Err(OperationError::PL0001GidOverlapsSystemRange)
             }
         }
     } else {
@@ -418,7 +418,7 @@ mod tests {
                 let op_result = server_txn.internal_modify_uuid(user_f_uuid, &modlist);
 
                 trace!(?id);
-                assert_eq!(op_result, Err(OperationError::GidOverlapsSystemRange));
+                assert_eq!(op_result, Err(OperationError::PL0001GidOverlapsSystemRange));
             }
         }
 
@@ -499,7 +499,7 @@ mod tests {
                 let op_result = server_txn.internal_modify_uuid(user_b_uuid, &modlist);
 
                 trace!(?id);
-                assert_eq!(op_result, Err(OperationError::GidOverlapsSystemRange));
+                assert_eq!(op_result, Err(OperationError::PL0001GidOverlapsSystemRange));
             }
         }
 

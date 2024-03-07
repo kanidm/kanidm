@@ -210,7 +210,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                             debug!("from_level             : {}", item.from_level);
                             debug!("to_level               : {}", item.to_level);
                             info!("status                 : FAIL");
-                            info!("description            : The automatic allocation gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
+                            info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
                             info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
                             for entry_id in item.affected_entries {
                                 info!("affected_entry         : {}", entry_id);

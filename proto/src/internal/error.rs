@@ -118,7 +118,6 @@ pub enum OperationError {
     ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
     /// when you ask for a gid that overlaps a system reserved range
-    GidOverlapsSystemRange,
     /// When a name is denied by the system config
     ValueDenyName,
     // What about something like this for unique errors?
@@ -137,6 +136,9 @@ pub enum OperationError {
     MG0003ServerPhaseInvalidForMigration,
     MG0004DomainLevelInDevelopment,
     MG0005GidConstraintsNotMet,
+
+    // Plugins
+    PL0001GidOverlapsSystemRange,
 }
 
 impl PartialEq for OperationError {
