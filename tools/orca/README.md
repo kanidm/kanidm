@@ -6,19 +6,19 @@ Make a profile
 orca setup-wizard --idm-admin-password ... \
   --admin-password ... \
   --control-uri 'https://localhost:8443' \
-  --profile ./profile.json
+  --profile ./profile.toml
 ```
 
 Test the connection
 
 ```
-orca conntest --profile ./profile.json
+orca conntest --profile ./profile.toml
 ```
 
 Generate a State File
 
 ```
-orca generate --profile ./profile.json --state ./state.json
+orca generate --profile ./profile.toml --state ./state.json
 ```
 
 Run the test preflight to populate the sample data
