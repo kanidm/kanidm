@@ -18,7 +18,7 @@ is considered authoritive and applies to all versions.
 
 ## Release Schedule and Versioning
 
-Kanidm is released on a 3 month (quarterly) basis.
+Kanidm is released on a 3 month (quarterly) schedule.
 
 - February 1st
 - May 1st
@@ -62,6 +62,8 @@ Stable releases will have the following support provided during their support wi
 - Fixes that impact the ability to upgrade
 - Other quality fixes at the discretion of the project team
 
+Distributions should track the stable branch.
+
 ### Replication
 
 All nodes must be the same version. A topology may contain up to a maximum of 2 nodes.
@@ -70,10 +72,20 @@ All nodes must be the same version. A topology may contain up to a maximum of 2 
 
 Upgrades are supported from 1 release before the current stable release.
 
+> Example: A server running 1.2.0 may upgrade to version 1.3.0. A server running 1.2.0 may not
+> upgrade to 1.4.0.
+
 ### Tool Versions
 
 Command line tools (`kanidm`) and sync connectors (`kanidm-ipa-sync`, `kanidm-ldap-sync`) must be
-matched versions with the server that they communicate with.
+matched versions with the server that they communicate with at all times.
+
+### Unix Clients
+
+The server supports communication from unix clients with a version from 1 release before the servers release version.
+
+> Example: A server running 1.4.0 supports unix clients running 1.4.0 and 1.3.0 of the unix client
+> tools. Unix client tools of 1.2.0 and lower would not be supported.
 
 ### API stability
 
