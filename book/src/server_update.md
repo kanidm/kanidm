@@ -3,8 +3,8 @@
 ## General Update Notes
 
 During some upgrades the Kanidm project must apply new constraints or limits on your data. If we are
-unable to migrate these without disruption, we rely on administrators to make informed choices before
-the upgrade can proceed.
+unable to migrate these without disruption, we rely on administrators to make informed choices
+before the upgrade can proceed.
 
 When these are required, we will give you one release cycle ahead of time to make changes. To check
 for changes that will affect your instance you should run.
@@ -20,9 +20,9 @@ kanidmd domain upgrade-check
 # status                 : PASS
 ```
 
-This will provide you a list of actionable tasks and entries that must be changed before the
-next upgrade can complete successfully. If all tasks yield a `PASS` status then you can begin
-the upgrade process.
+This will provide you a list of actionable tasks and entries that must be changed before the next
+upgrade can complete successfully. If all tasks yield a `PASS` status then you can begin the upgrade
+process.
 
 ## Docker Update Procedure
 
@@ -140,4 +140,3 @@ docker run [Your Arguments Here] -v kanidmd:/data \
 
 In rare and exceptional cases, if the server from your previous version fails to start, you will
 need to restore from backup.
-

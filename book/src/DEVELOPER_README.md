@@ -60,11 +60,11 @@ decisions were made.
 When a possible risk arises we should always consider the [hierachy of controls]. In descedending
 order of priority
 
-* Elimination - eliminate the risk from existing
-* Substitution - replace the risk with something less dangerous
-* Engineering Controls - isolate the risk from causing harm
-* Administrative Controls - educate about the risk, add warnings
-* Personal Protection - document the risk
+- Elimination - eliminate the risk from existing
+- Substitution - replace the risk with something less dangerous
+- Engineering Controls - isolate the risk from causing harm
+- Administrative Controls - educate about the risk, add warnings
+- Personal Protection - document the risk
 
 [hierachy of controls]: https://en.wikipedia.org/wiki/Hierarchy_of_hazard_controls
 
@@ -84,8 +84,6 @@ optimally only offer one path that is correct for all users unless no other opti
 
 All configuration items, must be constrained to fit within our principles so that every kanidm
 deployment, will always provide a positive experience to all people.
-
-
 
 ## Setup the Server
 

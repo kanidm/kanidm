@@ -56,12 +56,13 @@ continual communication.
 
 To do this, we use the last 24 bits of the account or group's UUID to generate the GID number. We
 can only use the UID range `1879048192` (`0x70000000`) to `2147483647` (`0x7fffffff`) due to
-limitations of the Linux kernel and [systemd reserving other uids in the range](http://systemd.io/UIDS-GIDS/) for its exclusive
-use.
+limitations of the Linux kernel and
+[systemd reserving other uids in the range](http://systemd.io/UIDS-GIDS/) for its exclusive use.
 
-A valid concern is the possibility of duplication in the lower 24 bits. Given the [birthday problem](https://en.wikipedia.org/wiki/Birthday_problem),
-if you have ~7700 groups and accounts, you have a 50% chance of duplication. With ~5000 you have a
-25% chance, ~930 you have a 1% chance and with 290 you have a 0.1% chance.
+A valid concern is the possibility of duplication in the lower 24 bits. Given the
+[birthday problem](https://en.wikipedia.org/wiki/Birthday_problem), if you have ~7700 groups and
+accounts, you have a 50% chance of duplication. With ~5000 you have a 25% chance, ~930 you have a 1%
+chance and with 290 you have a 0.1% chance.
 
 We advise that if you have a site with greater than approximately 2,000 users you should use an
 external system to allocate GID numbers serially or consistently to avoid potential duplication
