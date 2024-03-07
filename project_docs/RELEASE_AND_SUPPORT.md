@@ -70,7 +70,7 @@ All nodes must be the same version. A topology may contain up to a maximum of 2 
 
 ### Upgrade Policy
 
-Upgrades are supported from 1 release before the current stable release.
+Upgrades are supported from 1 release (minor version) before the current stable release.
 
 > Example: A server running 1.2.0 may upgrade to version 1.3.0. A server running 1.2.0 may not
 > upgrade to 1.4.0.
@@ -82,7 +82,8 @@ matched versions with the server that they communicate with at all times.
 
 ### Unix Clients
 
-The server supports communication from unix clients with a version from 1 release before the servers release version.
+The server supports communication from unix clients with a version from 1 release (minor version)
+before the servers release.
 
 > Example: A server running 1.4.0 supports unix clients running 1.4.0 and 1.3.0 of the unix client
 > tools. Unix client tools of 1.2.0 and lower would not be supported.

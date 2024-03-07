@@ -37,8 +37,8 @@ The minimum length for passwords (if they are allowed).
 
 ### Privilege Expiry
 
-The maximum length in seconds (<= 3600) that privileges will exist after reauthentication for to a read/write
-session.
+The maximum length in seconds (<= 3600) that privileges will exist after reauthentication for to a
+read/write session.
 
 ### Webauthn Attestation
 
