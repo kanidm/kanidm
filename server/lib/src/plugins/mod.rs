@@ -17,7 +17,7 @@ mod default_values;
 mod domain;
 pub(crate) mod dyngroup;
 mod eckeygen;
-mod gidnumber;
+pub(crate) mod gidnumber;
 mod jwskeygen;
 mod memberof;
 mod namehistory;

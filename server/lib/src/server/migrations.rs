@@ -3,6 +3,12 @@ use std::time::Duration;
 
 use crate::prelude::*;
 
+use kanidm_proto::internal::{
+    DomainUpgradeCheckItem as ProtoDomainUpgradeCheckItem,
+    DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
+    DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus,
+};
+
 use super::ServerPhase;
 
 impl QueryServer {
@@ -910,6 +916,101 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    /// Migration domain level 6 to 7
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_6_to_7(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) {
+            error!("Unable to raise domain level from 6 to 7.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        // ============== Apply constraints ===============
+
+        // Due to changes in gidnumber allocation, in the *extremely* unlikely
+        // case that a user's ID was generated outside the valid range, we re-request
+        // the creation of their gid number to proceed.
+        let filter = filter!(f_and!([
+            f_or!([
+                f_eq(Attribute::Class, EntryClass::PosixAccount.into()),
+                f_eq(Attribute::Class, EntryClass::PosixGroup.into())
+            ]),
+            // This logic gets a bit messy but it would be:
+            // If ! (
+            //    (GID_REGULAR_USER_MIN < value < GID_REGULAR_USER_MAX) ||
+            //    (GID_UNUSED_A_MIN < value < GID_UNUSED_A_MAX) ||
+            //    (GID_UNUSED_B_MIN < value < GID_UNUSED_B_MAX) ||
+            //    (GID_UNUSED_C_MIN < value < GID_UNUSED_D_MAX)
+            // )
+            f_andnot(f_or!([
+                f_and!([
+                    // The gid value must be less than GID_REGULAR_USER_MAX
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MAX)
+                    ),
+                    // This bit of mental gymnastics is "greater than".
+                    // The gid value must not be less than USER_MIN
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MIN)
+                    ))
+                ]),
+                // If both of these conditions are true we get:
+                // C_MIN < value < D_MAX, which the outer and-not inverts.
+                f_and!([
+                    // The gid value must be less than GID_UNUSED_D_MAX
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_D_MAX)
+                    ),
+                    // This bit of mental gymnastics is "greater than".
+                    // The gid value must not be less than C_MIN
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_C_MIN)
+                    ))
+                ]),
+            ]))
+        ]));
+
+        let results = self.internal_search(filter).map_err(|err| {
+            error!(?err, "migrate_domain_6_to_7 -> Error");
+            err
+        })?;
+
+        if !results.is_empty() {
+            error!("Unable to proceed. Not all entries meet gid/uid constraints.");
+            for entry in results {
+                error!(gid_invalid = ?entry.get_display_id());
+            }
+            return Err(OperationError::MG0005GidConstraintsNotMet);
+        }
+
+        // =========== Apply changes ==============
+
+        Ok(())
+    }
+
     #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
@@ -1183,6 +1284,131 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.changed_acp = true;
 
         Ok(())
+    }
+}
+
+impl<'a> QueryServerReadTransaction<'a> {
+    /// Retrieve the domain info of this server
+    pub fn domain_upgrade_check(
+        &mut self,
+    ) -> Result<ProtoDomainUpgradeCheckReport, OperationError> {
+        let d_info = &self.d_info;
+
+        let name = d_info.d_name.clone();
+        let uuid = d_info.d_uuid;
+        let current_level = d_info.d_vers;
+        let upgrade_level = DOMAIN_NEXT_LEVEL;
+
+        let mut report_items = Vec::with_capacity(1);
+
+        if current_level <= DOMAIN_LEVEL_6 && upgrade_level >= DOMAIN_LEVEL_7 {
+            let item = self
+                .domain_upgrade_check_6_to_7_gidnumber()
+                .map_err(|err| {
+                    error!(
+                        ?err,
+                        "Failed to perform domain upgrade check 6 to 7 - gidnumber"
+                    );
+                    err
+                })?;
+            report_items.push(item);
+        }
+
+        Ok(ProtoDomainUpgradeCheckReport {
+            name,
+            uuid,
+            current_level,
+            upgrade_level,
+            report_items,
+        })
+    }
+
+    pub(crate) fn domain_upgrade_check_6_to_7_gidnumber(
+        &mut self,
+    ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
+        let filter = filter!(f_and!([
+            f_or!([
+                f_eq(Attribute::Class, EntryClass::PosixAccount.into()),
+                f_eq(Attribute::Class, EntryClass::PosixGroup.into())
+            ]),
+            // This logic gets a bit messy but it would be:
+            // If ! (
+            //    (GID_REGULAR_USER_MIN < value < GID_REGULAR_USER_MAX) ||
+            //    (GID_UNUSED_A_MIN < value < GID_UNUSED_A_MAX) ||
+            //    (GID_UNUSED_B_MIN < value < GID_UNUSED_B_MAX) ||
+            //    (GID_UNUSED_C_MIN < value < GID_UNUSED_D_MAX)
+            // )
+            f_andnot(f_or!([
+                f_and!([
+                    // The gid value must be less than GID_REGULAR_USER_MAX
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MAX)
+                    ),
+                    // This bit of mental gymnastics is "greater than".
+                    // The gid value must not be less than USER_MIN
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MIN)
+                    ))
+                ]),
+                f_and!([
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MAX)
+                    ),
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MIN)
+                    ))
+                ]),
+                // If both of these conditions are true we get:
+                // C_MIN < value < D_MAX, which the outer and-not inverts.
+                f_and!([
+                    // The gid value must be less than GID_UNUSED_D_MAX
+                    f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_D_MAX)
+                    ),
+                    // This bit of mental gymnastics is "greater than".
+                    // The gid value must not be less than C_MIN
+                    f_andnot(f_lt(
+                        Attribute::GidNumber,
+                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_C_MIN)
+                    ))
+                ]),
+            ]))
+        ]));
+
+        let results = self.internal_search(filter)?;
+
+        let affected_entries = results
+            .into_iter()
+            .map(|entry| entry.get_display_id())
+            .collect::<Vec<_>>();
+
+        let status = if affected_entries.is_empty() {
+            ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber
+        } else {
+            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber
+        };
+
+        Ok(ProtoDomainUpgradeCheckItem {
+            status,
+            from_level: DOMAIN_LEVEL_6,
+            to_level: DOMAIN_LEVEL_7,
+            affected_entries,
+        })
     }
 }
 

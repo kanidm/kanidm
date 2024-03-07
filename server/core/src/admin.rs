@@ -1,4 +1,4 @@
-use crate::actors::v1_write::QueryServerWriteV1;
+use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::repl::ReplCtrl;
 use crate::CoreAction;
 use bytes::{BufMut, BytesMut};
@@ -17,7 +17,10 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 use tracing::{span, Instrument, Level};
 use uuid::Uuid;
 
-pub use kanidm_proto::internal::DomainInfo as ProtoDomainInfo;
+pub use kanidm_proto::internal::{
+    DomainInfo as ProtoDomainInfo, DomainUpgradeCheckReport as ProtoDomainUpgradeCheckReport,
+    DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus,
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskRequest {
@@ -26,16 +29,28 @@ pub enum AdminTaskRequest {
     RenewReplicationCertificate,
     RefreshReplicationConsumer,
     DomainShow,
+    DomainUpgradeCheck,
     DomainRaise,
     DomainRemigrate { level: Option<u32> },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum AdminTaskResponse {
-    RecoverAccount { password: String },
-    ShowReplicationCertificate { cert: String },
-    DomainRaise { level: u32 },
-    DomainShow { domain_info: ProtoDomainInfo },
+    RecoverAccount {
+        password: String,
+    },
+    ShowReplicationCertificate {
+        cert: String,
+    },
+    DomainUpgradeCheck {
+        report: ProtoDomainUpgradeCheckReport,
+    },
+    DomainRaise {
+        level: u32,
+    },
+    DomainShow {
+        domain_info: ProtoDomainInfo,
+    },
     Success,
     Error,
 }
@@ -113,7 +128,8 @@ pub(crate) struct AdminActor;
 impl AdminActor {
     pub async fn create_admin_sock(
         sock_path: &str,
-        server: &'static QueryServerWriteV1,
+        server_rw: &'static QueryServerWriteV1,
+        server_ro: &'static QueryServerReadV1,
         mut broadcast_rx: broadcast::Receiver<CoreAction>,
         repl_ctrl_tx: Option<mpsc::Sender<ReplCtrl>>,
     ) -> Result<tokio::task::JoinHandle<()>, ()> {
@@ -163,7 +179,7 @@ impl AdminActor {
                                 // spawn the worker.
                                 let task_repl_ctrl_tx = repl_ctrl_tx.clone();
                                 tokio::spawn(async move {
-                                    if let Err(e) = handle_client(socket, server, task_repl_ctrl_tx).await {
+                                    if let Err(e) = handle_client(socket, server_rw, server_ro, task_repl_ctrl_tx).await {
                                         error!(err = ?e, "admin client error");
                                     }
                                 });
@@ -277,7 +293,8 @@ async fn replication_consumer_refresh(ctrl_tx: &mut mpsc::Sender<ReplCtrl>) -> A
 
 async fn handle_client(
     sock: UnixStream,
-    server: &'static QueryServerWriteV1,
+    server_rw: &'static QueryServerWriteV1,
+    server_ro: &'static QueryServerReadV1,
     mut repl_ctrl_tx: Option<mpsc::Sender<ReplCtrl>>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted admin socket connection");
@@ -293,7 +310,7 @@ async fn handle_client(
         let resp = async {
             match req {
                 AdminTaskRequest::RecoverAccount { name } => {
-                    match server.handle_admin_recover_account(name, eventid).await {
+                    match server_rw.handle_admin_recover_account(name, eventid).await {
                         Ok(password) => AdminTaskResponse::RecoverAccount { password },
                         Err(e) => {
                             error!(err = ?e, "error during recover-account");
@@ -323,14 +340,24 @@ async fn handle_client(
                     }
                 },
 
-                AdminTaskRequest::DomainShow => match server.handle_domain_show(eventid).await {
+                AdminTaskRequest::DomainShow => match server_ro.handle_domain_show(eventid).await {
                     Ok(domain_info) => AdminTaskResponse::DomainShow { domain_info },
                     Err(e) => {
                         error!(err = ?e, "error during domain show");
                         AdminTaskResponse::Error
                     }
                 },
-                AdminTaskRequest::DomainRaise => match server.handle_domain_raise(eventid).await {
+                AdminTaskRequest::DomainUpgradeCheck => {
+                    match server_ro.handle_domain_upgrade_check(eventid).await {
+                        Ok(report) => AdminTaskResponse::DomainUpgradeCheck { report },
+                        Err(e) => {
+                            error!(err = ?e, "error during domain upgrade checkr");
+                            AdminTaskResponse::Error
+                        }
+                    }
+                }
+                AdminTaskRequest::DomainRaise => match server_rw.handle_domain_raise(eventid).await
+                {
                     Ok(level) => AdminTaskResponse::DomainRaise { level },
                     Err(e) => {
                         error!(err = ?e, "error during domain raise");
@@ -338,7 +365,7 @@ async fn handle_client(
                     }
                 },
                 AdminTaskRequest::DomainRemigrate { level } => {
-                    match server.handle_domain_remigrate(level, eventid).await {
+                    match server_rw.handle_domain_remigrate(level, eventid).await {
                         Ok(()) => AdminTaskResponse::Success,
                         Err(e) => {
                             error!(err = ?e, "error during domain remigrate");

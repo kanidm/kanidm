@@ -53,8 +53,7 @@ use libc::umask;
 use tokio::sync::broadcast;
 use tokio::task::JoinHandle;
 
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
+use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
 use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
@@ -1097,6 +1096,7 @@ pub async fn create_server_core(
         let admin_handle = AdminActor::create_admin_sock(
             config.adminbindpath.as_str(),
             server_write_ref,
+            server_read_ref,
             broadcast_rx,
             maybe_repl_ctrl_tx,
         )

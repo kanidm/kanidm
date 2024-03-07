@@ -2,7 +2,7 @@ use std::net;
 use std::pin::Pin;
 use std::str::FromStr;
 
-use crate::actors::v1_read::QueryServerReadV1;
+use crate::actors::QueryServerReadV1;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use kanidmd_lib::idm::ldap::{LdapBoundToken, LdapResponseState};

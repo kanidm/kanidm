@@ -225,6 +225,29 @@ pub struct DomainInfo {
     pub level: u32,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DomainUpgradeCheckReport {
+    pub name: String,
+    pub uuid: Uuid,
+    pub current_level: u32,
+    pub upgrade_level: u32,
+    pub report_items: Vec<DomainUpgradeCheckItem>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub enum DomainUpgradeCheckStatus {
+    Pass6To7Gidnumber,
+    Fail6To7Gidnumber,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DomainUpgradeCheckItem {
+    pub from_level: u32,
+    pub to_level: u32,
+    pub status: DomainUpgradeCheckStatus,
+    pub affected_entries: Vec<String>,
+}
+
 #[test]
 fn test_fstype_deser() {
     assert_eq!(FsType::try_from("zfs"), Ok(FsType::Zfs));

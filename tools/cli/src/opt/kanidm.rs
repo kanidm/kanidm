@@ -107,6 +107,13 @@ pub enum GroupPosix {
     /// Setup posix group properties, or alter them
     #[clap(name = "set")]
     Set(GroupPosixOpt),
+    /// Reset the gidnumber of this group to the generated default
+    #[clap(name = "reset-gidnumber")]
+    ResetGidnumber {
+        group_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
@@ -444,6 +451,13 @@ pub enum PersonPosix {
     Set(AccountPosixOpt),
     #[clap(name = "set-password")]
     SetPassword(AccountNamedOpt),
+    /// Reset the gidnumber of this person to the generated default
+    #[clap(name = "reset-gidnumber")]
+    ResetGidnumber {
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -452,6 +466,13 @@ pub enum ServiceAccountPosix {
     Show(AccountNamedOpt),
     #[clap(name = "set")]
     Set(AccountPosixOpt),
+    /// Reset the gidnumber of this service account to the generated default
+    #[clap(name = "reset-gidnumber")]
+    ResetGidnumber {
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Args)]

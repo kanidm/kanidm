@@ -2,7 +2,6 @@ use std::convert::TryFrom;
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
 use kanidm_proto::internal::{
     ApiToken, AppLink, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
@@ -32,37 +31,22 @@ use kanidmd_lib::{
         AuthEvent, AuthResult, CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent,
         UnixGroupTokenEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     },
-    idm::ldap::{LdapBoundToken, LdapResponseState, LdapServer},
+    idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
         AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
-    idm::server::{IdmServer, IdmServerTransaction},
+    idm::server::IdmServerTransaction,
     idm::serviceaccount::ListApiTokenEvent,
     idm::ClientAuthInfo,
 };
 
+use super::QueryServerReadV1;
+
 // ===========================================================
 
-pub struct QueryServerReadV1 {
-    pub(crate) idms: Arc<IdmServer>,
-    ldap: Arc<LdapServer>,
-}
-
 impl QueryServerReadV1 {
-    pub fn new(idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
-        info!("Starting query server v1 worker ...");
-        QueryServerReadV1 { idms, ldap }
-    }
-
-    pub fn start_static(idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> &'static Self {
-        let x = Box::new(QueryServerReadV1::new(idms, ldap));
-
-        let x_ref = Box::leak(x);
-        &(*x_ref)
-    }
-
     // The server only receives "Message" structures, which
     // are whole self contained DB operations with all parsing
     // required complete. We still need to do certain validation steps, but

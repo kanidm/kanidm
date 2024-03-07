@@ -117,8 +117,7 @@ pub enum OperationError {
     ReplDomainUuidMismatch,
     ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
-    /// when you ask for a gid that's lower than a safe minimum
-    GidOverlapsSystemMin(u32),
+    /// when you ask for a gid that overlaps a system reserved range
     /// When a name is denied by the system config
     ValueDenyName,
     // What about something like this for unique errors?
@@ -135,6 +134,11 @@ pub enum OperationError {
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
     MG0003ServerPhaseInvalidForMigration,
+    MG0004DomainLevelInDevelopment,
+    MG0005GidConstraintsNotMet,
+
+    // Plugins
+    PL0001GidOverlapsSystemRange,
 }
 
 impl PartialEq for OperationError {

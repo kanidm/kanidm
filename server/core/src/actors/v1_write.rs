@@ -1,34 +1,29 @@
-use std::{iter, sync::Arc};
+use std::iter;
 
 use kanidm_proto::internal::{
-    CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest,
-    DomainInfo as ProtoDomainInfo, ImageValue, Modify as ProtoModify,
-    ModifyList as ProtoModifyList, ModifyRequest, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin,
-    OperationError,
+    CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest, ImageValue,
+    Modify as ProtoModify, ModifyList as ProtoModifyList, ModifyRequest,
+    Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
 };
 use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
 use time::OffsetDateTime;
-use tracing::{info, instrument, span, trace, Instrument, Level};
+use tracing::{info, instrument, trace};
 use uuid::Uuid;
 
 use kanidmd_lib::{
-    event::{
-        CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
-        ReviveRecycledEvent,
-    },
+    event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent},
     filter::{Filter, FilterInvalid},
     idm::account::DestroySessionTokenEvent,
     idm::credupdatesession::{
         CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
         InitCredentialUpdateIntentEvent,
     },
-    idm::delayed::DelayedAction,
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
     idm::oauth2::{
         AccessTokenRequest, AccessTokenResponse, AuthorisePermitSuccess, Oauth2Error,
         TokenRevokeRequest,
     },
-    idm::server::{IdmServer, IdmServerTransaction},
+    idm::server::IdmServerTransaction,
     idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent},
     modify::{Modify, ModifyInvalid, ModifyList},
     value::{OauthClaimMapJoin, PartialValue, Value},
@@ -36,23 +31,9 @@ use kanidmd_lib::{
 
 use kanidmd_lib::prelude::*;
 
-pub struct QueryServerWriteV1 {
-    pub(crate) idms: Arc<IdmServer>,
-}
+use super::QueryServerWriteV1;
 
 impl QueryServerWriteV1 {
-    pub fn new(idms: Arc<IdmServer>) -> Self {
-        debug!("Starting a query server v1 worker ...");
-        QueryServerWriteV1 { idms }
-    }
-
-    pub fn start_static(idms: Arc<IdmServer>) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(idms));
-
-        let x_ptr = Box::leak(x);
-        &(*x_ptr)
-    }
-
     #[instrument(level = "debug", skip_all)]
     async fn modify_from_parts(
         &self,
@@ -1726,151 +1707,5 @@ impl QueryServerWriteV1 {
         idms_prox_write
             .oauth2_token_revoke(&client_authz, &intr_req, ct)
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
-    }
-
-    // ===== These below are internal only event types. =====
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?msg.eventid)
-    )]
-    pub async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
-        trace!(?msg, "Begin purge tombstone event");
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await;
-
-        let res = idms_prox_write
-            .qs_write
-            .purge_tombstones()
-            .and_then(|_changed| idms_prox_write.commit());
-
-        match res {
-            Ok(()) => {
-                debug!("Purge tombstone success");
-            }
-            Err(err) => {
-                error!(?err, "Unable to purge tombstones");
-            }
-        }
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?msg.eventid)
-    )]
-    pub async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
-        trace!(?msg, "Begin purge recycled event");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        let res = idms_prox_write
-            .qs_write
-            .purge_recycled()
-            .and_then(|touched| {
-                // don't need to commit a txn with no changes
-                if touched > 0 {
-                    idms_prox_write.commit()
-                } else {
-                    Ok(())
-                }
-            });
-
-        match res {
-            Ok(()) => {
-                debug!("Purge recyclebin success");
-            }
-            Err(err) => {
-                error!(?err, "Unable to purge recyclebin");
-            }
-        }
-    }
-
-    pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
-        let eventid = Uuid::new_v4();
-        let span = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
-
-        async {
-            trace!("Begin delayed action ...");
-            let ct = duration_from_epoch_now();
-            let mut idms_prox_write = self.idms.proxy_write(ct).await;
-            if let Err(res) = idms_prox_write
-                .process_delayedaction(da, ct)
-                .and_then(|_| idms_prox_write.commit())
-            {
-                info!(?res, "delayed action error");
-            }
-        }
-        .instrument(span)
-        .await
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub(crate) async fn handle_admin_recover_account(
-        &self,
-        name: String,
-        eventid: Uuid,
-    ) -> Result<String, OperationError> {
-        trace!(%name, "Begin admin recover account event");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        let pw = idms_prox_write.recover_account(name.as_str(), None)?;
-
-        idms_prox_write.commit().map(|()| pw)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub(crate) async fn handle_domain_show(
-        &self,
-        eventid: Uuid,
-    ) -> Result<ProtoDomainInfo, OperationError> {
-        trace!("Begin domain show event");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-
-        let domain_info = idms_prox_write.qs_write.domain_info()?;
-
-        idms_prox_write.commit().map(|()| domain_info)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub(crate) async fn handle_domain_raise(&self, eventid: Uuid) -> Result<u32, OperationError> {
-        trace!("Begin domain raise event");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-
-        idms_prox_write.qs_write.domain_raise(DOMAIN_MAX_LEVEL)?;
-
-        idms_prox_write.commit().map(|()| DOMAIN_MAX_LEVEL)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub(crate) async fn handle_domain_remigrate(
-        &self,
-        level: Option<u32>,
-        eventid: Uuid,
-    ) -> Result<(), OperationError> {
-        let level = level.unwrap_or(DOMAIN_MIN_REMIGRATION_LEVEL);
-        trace!(%level, "Begin domain remigrate event");
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = self.idms.proxy_write(ct).await;
-
-        idms_prox_write.qs_write.domain_remigrate(level)?;
-
-        idms_prox_write.commit()
     }
 }

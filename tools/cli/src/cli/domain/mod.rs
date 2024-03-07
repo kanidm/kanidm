@@ -6,8 +6,9 @@ impl DomainOpt {
         match self {
             DomainOpt::SetDisplayName(copt) => copt.copt.debug,
             DomainOpt::SetLdapBasedn { copt, .. }
-            | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. } => copt.debug,
-            DomainOpt::Show(copt) | DomainOpt::ResetTokenKey(copt) => copt.debug,
+            | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. }
+            | DomainOpt::Show(copt)
+            | DomainOpt::ResetTokenKey(copt) => copt.debug,
         }
     }
 

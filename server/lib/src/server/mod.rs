@@ -1042,9 +1042,21 @@ impl<'a> QueryServerReadTransaction<'a> {
         &self.trim_cid
     }
 
-    // Verify the data content of the server is as expected. This will probably
-    // call various functions for validation, including possibly plugin
-    // verifications.
+    /// Retrieve the domain info of this server
+    pub fn domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
+        let d_info = &self.d_info;
+
+        Ok(ProtoDomainInfo {
+            name: d_info.d_name.clone(),
+            displayname: d_info.d_display.clone(),
+            uuid: d_info.d_uuid,
+            level: d_info.d_vers,
+        })
+    }
+
+    /// Verify the data content of the server is as expected. This will probably
+    /// call various functions for validation, including possibly plugin
+    /// verifications.
     pub(crate) fn verify(&mut self) -> Vec<Result<(), ConsistencyError>> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
@@ -1404,17 +1416,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
         &mut self.dyngroup_cache
-    }
-
-    pub fn domain_info(&mut self) -> Result<ProtoDomainInfo, OperationError> {
-        let d_info = &self.d_info;
-
-        Ok(ProtoDomainInfo {
-            name: d_info.d_name.clone(),
-            displayname: d_info.d_display.clone(),
-            uuid: d_info.d_uuid,
-            level: d_info.d_vers,
-        })
     }
 
     pub fn domain_raise(&mut self, level: u32) -> Result<(), OperationError> {

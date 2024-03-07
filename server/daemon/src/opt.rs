@@ -28,27 +28,37 @@ struct RestoreOpt {
 
 #[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
-    #[clap(name = "show")]
     /// Show the current domain
+    #[clap(name = "show")]
     Show {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    #[clap(name = "rename")]
     /// Change the IDM domain name based on the values in the configuration
+    #[clap(name = "rename")]
     Change {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
+    /// Perform a pre-upgrade-check of this domains content. This will report possible
+    /// incompatibilities that can block a successful upgrade to the next version of
+    /// Kanidm. This is a safe read only operation.
+    #[clap(name = "upgrade-check")]
+    UpgradeCheck {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+    },
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// - Raise the functional level of this domain to the maximum available.
     #[clap(name = "raise")]
-    /// Raise the functional level of this domain to the maximum available.
     Raise {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    #[clap(name = "remigrate")]
-    /// Rerun migrations of this domains database, optionally nominating the level
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// - Rerun migrations of this domains database, optionally nominating the level
     /// to start from.
+    #[clap(name = "remigrate")]
     Remigrate {
         #[clap(flatten)]
         commonopts: CommonOpt,
@@ -195,6 +205,7 @@ impl KanidmdParser {
             KanidmdOpt::DomainSettings { ref commands } => match commands {
                 DomainSettingsCmds::Show { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Change { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::UpgradeCheck { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Raise { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Remigrate { ref commonopts, .. } => {
                     commonopts.config_path.clone()
