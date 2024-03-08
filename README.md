@@ -146,4 +146,4 @@ When developing the server you should refer to the latest commit documentation i
 
 - [Kanidm book (Latest commit)](https://kanidm.github.io/kanidm/master/)
 
-[guide for developers]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/readme.md
+[guide for developers]: https://kanidm.github.io/kanidm/stable/developers/readme.html
