@@ -1,9 +1,11 @@
 # Kanidm
 
 - [Introduction to Kanidm](intro.md)
-- [Supported Features](features.md)
 
 - [Evaluation Quickstart](quickstart.md)
+
+- [Supported Features](features.md)
+- [Project Support](support.md)
 
 - [Installing the Server](installing_the_server.md)
   - [Choosing a Domain Name](choosing_a_domain_name.md)
@@ -65,7 +67,8 @@
 
 # For Developers
 
-- [Developer Guide](DEVELOPER_README.md)
+- [Developer Guide](developers/readme.md)
+- [Developer Ethics](developers/ethics.md)
 - [Frequently Asked Questions](developers/faq.md)
 - [Design Documents]()
   - [Access Profiles 2022](developers/designs/access_profiles_rework_2022.md)
@@ -81,5 +84,6 @@
   - [REST Interface](developers/designs/rest_interface.md)
 - [Python Module](developers/python.md)
 - [RADIUS Integration](developers/radius.md)
-- [Packaging](packaging.md)
-  - [Debian/Ubuntu](packaging_debs.md)
+- [Release Checklist](developers/release_checklist.md)
+- [Packaging](developers/packaging.md)
+  - [Debian/Ubuntu](developers/packaging_debs.md)
