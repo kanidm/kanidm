@@ -20,9 +20,9 @@ kanidmd domain upgrade-check
 # status                 : PASS
 ```
 
-This will provide you a list of actionable tasks and entries that must be changed before the next
-upgrade can complete successfully. If all tasks yield a `PASS` status then you can begin the upgrade
-process.
+If _any_ task yields a `FAIL` then a future upgrade will also fail. A `FAIL` status will provide you
+a list of actions and affected entries that must be resolved before the next upgrade can complete
+successfully. If all tasks yield a `PASS` status then you can begin the upgrade process.
 
 ## Docker Update Procedure
 

@@ -22,6 +22,8 @@ If you have not already, please see our documentation on [rights and ethics]
 We must at all times make decisions that put humans first. We must respect all cultures, languages,
 and identities and how they are represented.
 
+We will never put a burden on the user to correct for poor designs on our part.
+
 This may mean we make technical choices that are difficult or more complex, or different to "how
 things have always been done". But we do this to ensure that all people can have their identities
 stored how they choose.
@@ -29,12 +31,6 @@ stored how they choose.
 For example, any user may change their name, display name and legal name at any time. Many
 applications will break as they primary key from name when this occurs. But this is the fault of the
 application. Name changes must be allowed. Our job as technical experts is to allow that to happen.
-
-We will never put a burden on the user to correct for poor designs on our part. For example, locking
-an account if it logs in from a different country unless the user logs in before hand to indicate
-where they are going. This makes the user responsible for a burden (changing the allowed login
-country) when the real problem is preventing bruteforce attacks - which can be technically solved in
-better ways that doesn't put administrative load to humans.
 
 ### Correct and Simple
 
@@ -48,9 +44,9 @@ git clone ...
 cargo test
 ```
 
-If a test or change would require extra requirements, dependencies, or preconfiguration, then we can
-no longer provide the above. Testing must be easy and accessible, else we won't do it, and that
-leads to poor software quality.
+If a test or change would require extra requirements or preconfiguration (such as setting up an
+external database or service), then we can no longer provide the above. Testing must be easy and
+accessible - otherwise people will not run the tests, leading to poor quality.
 
 The project must be simple. Any one should be able to understand how it works and why those
 decisions were made.
@@ -82,8 +78,8 @@ deployments the ability to violate human first principles, which reflects badly 
 In addition every extra configuration item expands our testing matrix exponentially. We should
 optimally only offer one path that is correct for all users unless no other options are possible.
 
-All configuration items, must be constrained to fit within our principles so that every kanidm
-deployment, will always provide a positive experience to all people.
+All configuration items, must be constrained to fit within our principles so that every Kanidm
+deployment, will aim to provide a positive experience to all people.
 
 ## Setup the Server
 
