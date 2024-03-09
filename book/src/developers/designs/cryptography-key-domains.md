@@ -100,10 +100,33 @@ used.
 For each private/public key pair, or each symmetric key, a record of it's status (valid, retained,
 expired, revoked)
 
-Each key may have multiple Key Identifiers. Key Identifiers must be unique.
+In the valid state, a key has a validity "from" a point in time. The latest `valid_from` attribute
+defines the currently active signing key for the object.
 
-Every Key Object must have only _one_ key in the valid state. Key rotation causes a key to move to
-the retained state. If a key is missing a valid key, a new one MUST be generated.
+> EXAMPLE
+
+We have 3 keys defined with:
+
+```
+k1 { status: valid, valid_from: 10 }
+k2 { status: valid, valid_from: 14 }
+k3 { status: valid, valid_from: 19 }
+```
+
+Assume the current time is `15`. During a signing operation since `k3` would not-yet be valid, then
+we use the nearest key which is `k2`.
+
+If a signed object was presented with `k3` and the time is `15` then we reject the signature as it
+could not have validly been produced. (we may allow some small time window).
+
+If a signed object was presented with `k1` and the time is `15`, then we validate the signature as
+`k1` is still valid, and still is accepted for signatures.
+
+Each key may have one Key Identifier. Key Identifiers must be unique.
+
+Key rotation is triggered by adding a new key with a newer `valid_from` attribute.
+
+If a key object is missing a valid key, a new one MUST be generated.
 
 On replication revoked, expired, retained and valid take precedence in that order. If two keys are
 marked as valid, the "latest write" wins.
@@ -118,54 +141,45 @@ uuid: ...
 key_object_type: ECDSA_SHA256
 key_object_type: RSA_SHA256
 key_object_type: RSA_SHA256
-es256_private: <private key>
-es256_public: { id: ..., status: valid, public_key }
-hs256_private: <private key>
-rs256_private: <private key>
+
+key_internal_es256: { id: ..., status: valid, public_key, private_key }
+key_internal_es256: { id: ..., status: retained, public_key }
+key_internal_es256: { id: ..., status: retained, public_key, private_key }
+
+hs256_private: { id: ..., status: valid, public_key, private_key }
+
 rs256_public: { id: ..., status: valid, public_key }
 ```
 
 ```
-          ┌─────────────────────┐
-          │                     │
-          │                     │
-          │        Valid        │
-┌─────────│                     │──────────────────────────┐
-│         │                     │                          │
-│         │                     │                          │
-│         └─────────────────────┘                          │
-│                    │                                     │
-│                    │                                     │
-│                    │                                     │
-│                 ┌──┘                                     │
-│           ┌─────┼───────────────┐                ┌───────┼─────────────┐
-│          ┌┴─────┼──────────────┐│               ┌┴───────▼────────────┐│
-│        ┌─┴──────▼────────────┐ ││             ┌─┴───────────────────┐ ││
-│      ┌─┴───────────────────┐ │ ││           ┌─┴───────────────────┐ │ ││
-│      │                     │ │ ││           │                     │ │ ││
-│      │                     │ │ ││           │                     │ │ ││
-│      │      Retained       │ │ ││           │       Expired       │ │ ││
-│      │                     │─┼─┼┴──────────▶│                     │ │ ├┘
-│      │                     │ ├─┘            │                     │ ├─┘
-│      │                     ├─┘              │                     ├─┘
-│      └─────────────────────┘                └─────────────────────┘
-│                 │                                      │
-│                 │                                      │
-│                 │                                      │
-│                 │                                      │
-│                 │                                      │
-│                 │                                      │
-│                 │        ┌─────────────────────┐       │
-│                 │       ┌┴────────────────────┐│       │
-│                 │     ┌─┴───────────────────┐ ││       │
-│                 │   ┌─┴───────────────────┐ │ ││       │
-│                 │   │                     │ │ ││       │
-│                 │   │                     │ │ ││       │
-│                 │   │       Revoked       │ │ ││       │
-└─────────────────┴──▶│                     │◀┼─┼┴───────┘
-                      │                     │ ├─┘
-                      │                     ├─┘
-                      └─────────────────────┘
+     ┌─────────────────────┐                ┌─────────────────────┐
+    ┌┴────────────────────┐│               ┌┴────────────────────┐│
+  ┌─┴───────────────────┐ ││             ┌─┴───────────────────┐ ││
+┌─┴───────────────────┐ │ ││           ┌─┴───────────────────┐ │ ││
+│                     │ │ ││           │                     │ │ ││
+│                     │ │ ││           │                     │ │ ││
+│        Valid        │ │ ││           │       Expired       │ │ ││
+│                     │─┼─┼┴──────────▶│                     │ │ ├┘
+│                     │ ├─┘            │                     │ ├─┘
+│                     ├─┘              │                     ├─┘
+└─────────────────────┘                └─────────────────────┘
+           │                                      │
+           │                                      │
+           │                                      │
+           │                                      │
+           │                                      │
+           │                                      │
+           │        ┌─────────────────────┐       │
+           │       ┌┴────────────────────┐│       │
+           │     ┌─┴───────────────────┐ ││       │
+           │   ┌─┴───────────────────┐ │ ││       │
+           │   │                     │ │ ││       │
+           │   │                     │ │ ││       │
+           │   │       Revoked       │ │ ││       │
+           └──▶│                     │◀┼─┼┴───────┘
+               │                     │ ├─┘
+               │                     ├─┘
+               └─────────────────────┘
 ```
 
 A central key-object store is maintained with keys in memory/other. This allows dynamic reference to
@@ -203,3 +217,19 @@ We also need to consider key-wrapping for import of keys to HSM's on disjoint no
 probably need to consider keyObjects that are not always accessible to all nodes so that the
 replication coordinator keys may only be loaded on a subset of nodes. However I think that's a
 pkcs11 problem, not a problem for this change.
+
+### Internal to PKCS11 migration
+
+In the future we need to consider how to perform a migration from internal keys to HSM's in a non
+disruptive manner.
+
+The design presented above associates a Key Object with it's Key Provider. There isn't a way to mix
+Key Objects with multiple possible providers.
+
+However, we _can_ create a migration helper object. This would be a Key Object / Key Provider that
+acts as a router toward different providers. This would allow us to route operations to the correct
+backend as required during the migration, until all objects reside in a single provider.
+
+Alternately, an option is to allow a Key Provider (like a PKCS11 provider) to migrate Key Objects
+into itself with a marker that denotes that as internal to allow validation, but not to allow new
+signatures.
