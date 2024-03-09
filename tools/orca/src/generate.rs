@@ -7,7 +7,7 @@ use rand::seq::SliceRandom;
 use rand::SeedableRng;
 use rand_chacha::ChaCha8Rng;
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
 const PEOPLE_PREFIX: &str = "person";
 
@@ -26,7 +26,7 @@ fn random_password(rng: &mut ChaCha8Rng) -> String {
     Alphanumeric.sample_string(rng, 24)
 }
 
-pub async fn populate(client: &KanidmOrcaClient, profile: Profile) -> Result<State, Error> {
+pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<State, Error> {
     // IMPORTANT: We have to perform these steps in order so that the RNG is deterministic between
     // multiple invocations.
     let mut seeded_rng = ChaCha8Rng::seed_from_u64(profile.seed());
@@ -50,9 +50,7 @@ pub async fn populate(client: &KanidmOrcaClient, profile: Profile) -> Result<Sta
     );
 
     // PHASE 0 - For now, set require MFA off.
-    let mut preflight_flags = Vec::new();
-
-    preflight_flags.push(Flag::DisableAllPersonsMFAPolicy);
+    let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
 
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
     // todo! may need a random username vec for later stuff

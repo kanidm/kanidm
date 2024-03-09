@@ -24,7 +24,7 @@ impl State {
     pub fn write_to_path(&self, path: &Path) -> Result<(), Error> {
         let output = std::fs::File::create(path).map_err(|io_err| {
             error!(?io_err);
-            Error::IoError
+            Error::Io
         })?;
 
         serde_json::to_writer(output, self).map_err(|json_err| {
@@ -40,7 +40,7 @@ impl TryFrom<&Path> for State {
     fn try_from(path: &Path) -> Result<Self, Self::Error> {
         let input = std::fs::File::open(path).map_err(|io_err| {
             error!(?io_err);
-            Error::IoError
+            Error::Io
         })?;
 
         serde_json::from_reader(input).map_err(|json_err| {
@@ -61,14 +61,14 @@ pub enum PreflightState {
     Absent,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
     Basic,
 }
 
 impl Model {
-    pub fn into_dyn_object(&self) -> Box<dyn ActorModel + Send> {
+    pub fn as_dyn_object(&self) -> Box<dyn ActorModel + Send> {
         match self {
             Model::Basic => Box::new(crate::model_basic::ActorBasic::new()),
         }

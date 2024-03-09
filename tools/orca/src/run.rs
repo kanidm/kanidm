@@ -1,5 +1,4 @@
 use crate::error::Error;
-use crate::model::{self, TransitionAction};
 use crate::state::*;
 use crate::stats::{BasicStatistics, TestPhase};
 
@@ -23,19 +22,9 @@ async fn actor_person(
     stats_queue: Arc<SegQueue<EventRecord>>,
     mut actor_rx: broadcast::Receiver<Signal>,
 ) -> Result<(), Error> {
-    let mut model = person.model.into_dyn_object();
+    let mut model = person.model.as_dyn_object();
 
-    loop {
-        match actor_rx.try_recv() {
-            Err(broadcast::error::TryRecvError::Empty) => {
-                // Free to advance.
-            }
-            _ => {
-                // We have been asked to shutdown, return cleanly.
-                break;
-            }
-        }
-
+    while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
         let event = model.transition(&client, &person).await?;
 
         stats_queue.push(event);
@@ -94,7 +83,7 @@ async fn execute_inner(
     if let Some(test_time) = test_time {
         let sleep = tokio::time::sleep(test_time);
         tokio::pin!(sleep);
-        let recv = (&mut control_rx).recv();
+        let recv = (control_rx).recv();
         tokio::pin!(recv);
 
         // Wait for some condition (signal, or time).
@@ -122,7 +111,7 @@ async fn execute_inner(
         return Err(Error::Crossbeam);
     }
 
-    return Ok(());
+    Ok(())
 }
 
 pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> Result<(), Error> {
@@ -219,7 +208,7 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
 
     // Join all the tasks.
     for task in tasks {
-        let _ = task.await.map_err(|tokio_err| {
+        task.await.map_err(|tokio_err| {
             error!(?tokio_err, "Failed to join task");
             Error::Tokio
         })??;

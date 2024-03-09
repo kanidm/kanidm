@@ -7,8 +7,6 @@ use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
 
-use tokio::sync::oneshot;
-
 pub enum TransitionAction {
     Login,
     Logout,
@@ -22,6 +20,7 @@ pub struct Transition {
 }
 
 impl Transition {
+    #[allow(dead_code)]
     pub fn delay(&self) -> Option<Duration> {
         self.delay
     }
@@ -87,7 +86,7 @@ pub async fn login(
 
 pub async fn logout(
     client: &KanidmClient,
-    person: &Person,
+    _person: &Person,
 ) -> Result<(TransitionResult, EventRecord), Error> {
     let start = Instant::now();
     let result = client.logout().await;

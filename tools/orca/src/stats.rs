@@ -25,6 +25,7 @@ pub trait DataCollector {
 pub struct BasicStatistics {}
 
 impl BasicStatistics {
+    #[allow(clippy::new_ret_no_self)]
     pub fn new() -> Box<dyn DataCollector + Send> {
         Box::new(BasicStatistics {})
     }

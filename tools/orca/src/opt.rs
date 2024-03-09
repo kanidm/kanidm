@@ -1,4 +1,3 @@
-
 #[derive(Debug, Parser)]
 struct CommonOpt {
     #[clap(short, long)]
@@ -7,10 +6,7 @@ struct CommonOpt {
 }
 
 #[derive(Debug, Parser)]
-#[clap(
-    name = "orca",
-    about = "Orca Load Testing Utility"
-)]
+#[clap(name = "orca", about = "Orca Load Testing Utility")]
 enum OrcaOpt {
     /*
     #[clap(name = "conntest")]
@@ -33,7 +29,6 @@ enum OrcaOpt {
     /// Update a config file
     Configure(ConfigOpt),
     */
-
     SetupWizard {
         #[clap(flatten)]
         common: CommonOpt,
@@ -51,12 +46,11 @@ enum OrcaOpt {
         control_uri: String,
 
         #[clap(long)]
-        /// Optional RNG seed. Takes an unsigned 64bit integer. This allows
-        /// deterministic regeneration of a test state file.
-        seed: Option<u64>,
+        /// Optional RNG seed. Takes a signed 64bit integer and turns it into an unsigned one for use.
+        /// This allows deterministic regeneration of a test state file.
+        seed: Option<i64>,
 
         // Todo - support the extra uris field for replicated tests.
-
         #[clap(long = "profile")]
         /// The configuration file path to update (or create)
         profile_path: PathBuf,
@@ -110,6 +104,6 @@ enum OrcaOpt {
     /// Print version info and exit
     Version {
         #[clap(flatten)]
-        common: CommonOpt
+        common: CommonOpt,
     },
 }

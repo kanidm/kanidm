@@ -41,8 +41,8 @@ impl ActorModel for ActorBasic {
 
         // Once we get to here, we want the transition to go ahead.
         let (result, event) = match transition.action {
-            TransitionAction::Login => model::login(&client, &person).await,
-            TransitionAction::Logout => model::logout(&client, &person).await,
+            TransitionAction::Login => model::login(client, person).await,
+            TransitionAction::Logout => model::logout(client, person).await,
         }?;
 
         // Given the result, make a choice about what text.

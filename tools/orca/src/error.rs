@@ -1,5 +1,5 @@
 pub enum Error {
-    IoError,
+    Io,
     SerdeToml,
     SerdeJson,
     KanidmClient,

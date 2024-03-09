@@ -18,7 +18,7 @@ pub struct Profile {
     control_uri: String,
     admin_password: String,
     idm_admin_password: String,
-    seed: u64,
+    seed: i64,
     extra_uris: Vec<String>,
     // Dimensions of the test to setup.
     warmup_time: u64,
@@ -44,6 +44,7 @@ impl Profile {
         self.idm_admin_password.as_str()
     }
 
+    #[allow(dead_code)]
     pub fn group_count(&self) -> u64 {
         self.group_count
     }
@@ -53,7 +54,11 @@ impl Profile {
     }
 
     pub fn seed(&self) -> u64 {
-        self.seed
+        if self.seed < 0 {
+            self.seed.wrapping_mul(-1) as u64
+        } else {
+            self.seed as u64
+        }
     }
 
     pub fn warmup_time(&self) -> Duration {
@@ -111,21 +116,25 @@ impl ProfileBuilder {
         self
     }
 
+    #[allow(dead_code)]
     pub fn warmup_time(mut self, time: Option<u64>) -> Self {
         self.warmup_time = time;
         self
     }
 
+    #[allow(dead_code)]
     pub fn test_time(mut self, time: Option<Option<u64>>) -> Self {
         self.test_time = time;
         self
     }
 
+    #[allow(dead_code)]
     pub fn group_count(mut self, group_count: Option<u64>) -> Self {
         self.group_count = group_count;
         self
     }
 
+    #[allow(dead_code)]
     pub fn person_count(mut self, person_count: Option<u64>) -> Self {
         self.person_count = person_count;
         self
@@ -137,7 +146,7 @@ impl ProfileBuilder {
             admin_password,
             idm_admin_password,
             seed,
-            extra_uris,
+            extra_uris: _,
             warmup_time,
             test_time,
             group_count,
@@ -156,6 +165,14 @@ impl ProfileBuilder {
 
         let warmup_time = warmup_time.unwrap_or(DEFAULT_WARMUP_TIME);
         let test_time = test_time.unwrap_or(DEFAULT_TEST_TIME);
+
+        let seed: i64 = if seed > i64::MAX as u64 {
+            // let it wrap around
+            let seed = seed - i64::MAX as u64;
+            -(seed as i64)
+        } else {
+            seed as i64
+        };
 
         Ok(Profile {
             control_uri,
@@ -178,9 +195,9 @@ impl Profile {
             Error::SerdeToml
         })?;
 
-        std::fs::write(path, &file_contents).map_err(|io_err| {
+        std::fs::write(path, file_contents).map_err(|io_err| {
             error!(?io_err);
-            Error::IoError
+            Error::Io
         })
     }
 }
@@ -191,7 +208,7 @@ impl TryFrom<&Path> for Profile {
     fn try_from(path: &Path) -> Result<Self, Self::Error> {
         let file_contents = std::fs::read_to_string(path).map_err(|io_err| {
             error!(?io_err);
-            Error::IoError
+            Error::Io
         })?;
 
         toml::from_str(&file_contents).map_err(|toml_err| {

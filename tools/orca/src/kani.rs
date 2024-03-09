@@ -7,6 +7,7 @@ use crate::profile::Profile;
 // pre-authenticated for use against the kanidm server. In addition,
 // new clients can be requested for our test actors.
 pub struct KanidmOrcaClient {
+    #[allow(dead_code)]
     admin_client: KanidmClient,
     idm_admin_client: KanidmClient,
     // In future we probably need a way to connect to all the nodes?

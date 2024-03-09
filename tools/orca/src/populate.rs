@@ -30,7 +30,7 @@ async fn preflight_person(
     match &person.credential {
         Credential::Password { plain } => {
             client
-                .person_set_pirmary_password_only(&person.username, &plain)
+                .person_set_pirmary_password_only(&person.username, plain)
                 .await?;
         }
     }
@@ -53,7 +53,7 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     }
 
     for task in tasks {
-        let _ = task.await.map_err(|tokio_err| {
+        task.await.map_err(|tokio_err| {
             error!(?tokio_err, "Failed to join task");
             Error::Tokio
         })??;

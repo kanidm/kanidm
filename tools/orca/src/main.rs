@@ -13,7 +13,7 @@ static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
@@ -80,6 +80,14 @@ async fn main() -> ExitCode {
         } => {
             // For now I hardcoded some dimensions, but we should prompt
             // the user for these later.
+
+            let seed = seed.map(|seed| {
+                if seed < 0 {
+                    seed.wrapping_mul(-1) as u64
+                } else {
+                    seed as u64
+                }
+            });
 
             let builder =
                 ProfileBuilder::new(control_uri, admin_password, idm_admin_password).seed(seed);
