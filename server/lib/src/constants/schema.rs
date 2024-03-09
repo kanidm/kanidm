@@ -638,6 +638,33 @@ pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = S
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_ES256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_ES256,
+    name: Attribute::KeyInternalEs256.into(),
+    description: "".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::KeyInternalEs256,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_RS256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_RS256,
+    name: Attribute::KeyInternalRs256.into(),
+    description: "".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::KeyInternalRs256,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_HS256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_HS256,
+    name: Attribute::KeyInternalHs256.into(),
+    description: "".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::KeyInternalHs256,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -787,7 +814,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
             Attribute::DisplayName.into(),
             Attribute::Name.into(),
             Attribute::Spn.into()
-            ],
+    ],
     systemsupplements: vec![
         EntryClass::Person.into(),
         EntryClass::ServiceAccount.into(),
@@ -1077,6 +1104,62 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
 
     systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect.into()],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
+    ..Default::default()
+};
+
+// =========================================
+// KeyProviders
+
+pub static ref SCHEMA_CLASS_KEY_PROVIDER_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_PROVIDER,
+    name: EntryClass::KeyProvider.into(),
+    description: "A provider for cryptographic key storage and operations".to_string(),
+    systemmay: vec![
+        Attribute::Description.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+    ],
+    systemsupplements: vec![
+        EntryClass::KeyProviderInternal.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_PROVIDER_INTERNAL,
+    name: EntryClass::KeyProviderInternal.into(),
+    description: "The Kanidm internal cryptographic key provider".to_string(),
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT,
+    name: EntryClass::KeyObject.into(),
+    description: "A cryptographic key object that can be used by a provider".to_string(),
+    systemmay: vec![
+        Attribute::Description.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+    ],
+    systemsupplements: vec![
+        EntryClass::KeyObjectInternal.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_INTERNAL,
+    name: EntryClass::KeyObjectInternal.into(),
+    description: "A cryptographic key that can be used by the internal provider".to_string(),
+
+    systemmay: vec![
+        Attribute::KeyInternalEs256.into(),
+        Attribute::KeyInternalRs256.into(),
+        Attribute::KeyInternalHs256.into(),
+    ],
+
     ..Default::default()
 };
 

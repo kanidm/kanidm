@@ -282,6 +282,17 @@ pub const UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000162");
 pub const UUID_SCHEMA_CLASS_BUILTIN: Uuid = uuid!("00000000-0000-0000-0000-ffff00000163");
 
+pub const UUID_SCHEMA_CLASS_KEY_PROVIDER: Uuid = uuid!("00000000-0000-0000-0000-ffff00000164");
+pub const UUID_SCHEMA_CLASS_KEY_PROVIDER_INTERNAL: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000165");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT: Uuid = uuid!("00000000-0000-0000-0000-ffff00000166");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT_INTERNAL: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000167");
+
+pub const UUID_SCHEMA_ATTR_KEY_INTERNAL_ES256: Uuid = uuid!("00000000-0000-0000-0000-ffff00000168");
+pub const UUID_SCHEMA_ATTR_KEY_INTERNAL_RS256: Uuid = uuid!("00000000-0000-0000-0000-ffff00000169");
+pub const UUID_SCHEMA_ATTR_KEY_INTERNAL_HS256: Uuid = uuid!("00000000-0000-0000-0000-ffff00000170");
+
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
