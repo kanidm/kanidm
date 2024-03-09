@@ -264,6 +264,9 @@ pub enum SyntaxType {
     CredentialType = 35,
     WebauthnAttestationCaList = 36,
     OauthClaimMap = 37,
+    KeyInternalEs256 = 38,
+    KeyInternalRs256 = 39,
+    KeyInternalHs256 = 40,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -310,6 +313,9 @@ impl TryFrom<&str> for SyntaxType {
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
+            "KEY_INTERNAL_ES256" => Ok(SyntaxType::KeyInternalEs256),
+            "KEY_INTERNAL_RS256" => Ok(SyntaxType::KeyInternalRs256),
+            "KEY_INTERNAL_HS256" => Ok(SyntaxType::KeyInternalHs256),
             _ => Err(()),
         }
     }
@@ -356,6 +362,9 @@ impl fmt::Display for SyntaxType {
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
+            SyntaxType::KeyInternalEs256 => "KEY_INTERNAL_ES256",
+            SyntaxType::KeyInternalRs256 => "KEY_INTERNAL_RS256",
+            SyntaxType::KeyInternalHs256 => "KEY_INTERNAL_HS256",
         })
     }
 }

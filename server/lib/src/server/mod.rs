@@ -37,11 +37,14 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
+use self::keys::{KeyObjects, KeyProviders};
+
 pub(crate) mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
 pub mod identity;
+pub(crate) mod keys;
 pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
@@ -89,6 +92,8 @@ pub struct QueryServer {
         Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
     cid_max: Arc<CowCell<Cid>>,
+    _key_providers: Arc<KeyProviders>,
+    _key_objects: Arc<KeyObjects>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -602,6 +607,10 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
+
+                    SyntaxType::KeyInternalEs256 => Err(OperationError::InvalidAttribute("ES256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternalRs256 => Err(OperationError::InvalidAttribute("RS256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternalHs256 => Err(OperationError::InvalidAttribute("HS256 keys are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -725,6 +734,10 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
+
+                    SyntaxType::KeyInternalEs256 => todo!(),
+                    SyntaxType::KeyInternalRs256 => todo!(),
+                    SyntaxType::KeyInternalHs256 => todo!(),
                 }
             }
             None => {
@@ -1234,6 +1247,10 @@ impl QueryServer {
                 .expect("Failed to build resolve_filter_cache"),
         );
 
+        let key_objects = Arc::new(KeyObjects::default());
+
+        let key_providers = Arc::new(KeyProviders::default());
+
         Ok(QueryServer {
             phase,
             d_info,
@@ -1246,6 +1263,8 @@ impl QueryServer {
             resolve_filter_cache,
             dyngroup_cache,
             cid_max,
+            _key_objects: key_objects,
+            _key_providers: key_providers,
         })
     }
 

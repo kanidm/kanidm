@@ -108,6 +108,9 @@ pub const ATTR_INDEX: &str = "index";
 pub const ATTR_IPANTHASH: &str = "ipanthash";
 pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";
 pub const ATTR_JWS_ES256_PRIVATE_KEY: &str = "jws_es256_private_key";
+pub const ATTR_KEY_INTERNAL_ES256: &str = "key_internal_es256";
+pub const ATTR_KEY_INTERNAL_RS256: &str = "key_internal_rs256";
+pub const ATTR_KEY_INTERNAL_HS256: &str = "key_internal_hs256";
 pub const ATTR_LAST_MODIFIED_CID: &str = "last_modified_cid";
 pub const ATTR_LDAP_ALLOW_UNIX_PW_BIND: &str = "ldap_allow_unix_pw_bind";
 pub const ATTR_LEGALNAME: &str = "legalname";
@@ -233,3 +236,7 @@ pub const X_FORWARDED_FOR: &str = "x-forwarded-for";
 
 /// Builtin object
 pub const ENTRYCLASS_BUILTIN: &str = "builtin";
+pub const ENTRYCLASS_KEY_PROVIDER: &str = "key_provider";
+pub const ENTRYCLASS_KEY_PROVIDER_INTERNAL: &str = "key_provider_internal";
+pub const ENTRYCLASS_KEY_OBJECT: &str = "key_object";
+pub const ENTRYCLASS_KEY_OBJECT_INTERNAL: &str = "key_object_internal";
