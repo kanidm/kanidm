@@ -37,6 +37,43 @@ possible.
 
 Entities that rely on a cryptographic key will relate to a Key Object.
 
+```
+  ┌─────────────────────┐
+  │                     │
+  │                     │
+  │    Key Provider     │
+  │                     │
+  │                     │
+  │                     │
+  └─────────────────────┘
+             ▲
+             │
+           ┌─┘
+     ┌─────┼───────────────┐
+    ┌┴─────┼──────────────┐│
+  ┌─┴──────┴────────────┐ ││
+┌─┴───────────────────┐ │ ││
+│                     │ │ ││
+│                     │ │ ││
+│     Key Object      │ │ ││
+│                     │ │ ├┘
+│                     │ ├─┘
+│                     ├─┘
+└─────────────────────┘
+           ▲
+           │
+           │
+           │
+┌─────────────────────┐
+│                     │
+│    Key Consumer     │
+│                     │
+│   * OAuth2 Client   │
+│    * Domain Keys    │
+│                     │
+└─────────────────────┘
+```
+
 Key Objects have a Key Type denoting the type of material they contain. The types will be named
 after the JWA algorithms from [rfc7518](https://www.rfc-editor.org/rfc/rfc7518). This allows easy
 mapping to OAuth2 concepts and PKCS11 in the future.
@@ -63,6 +100,8 @@ used.
 For each private/public key pair, or each symmetric key, a record of it's status (valid, retained,
 expired, revoked)
 
+Each key may have multiple Key Identifiers. Key Identifiers must be unique.
+
 Every Key Object must have only _one_ key in the valid state. Key rotation causes a key to move to
 the retained state. If a key is missing a valid key, a new one MUST be generated.
 
@@ -84,6 +123,49 @@ es256_public: { id: ..., status: valid, public_key }
 hs256_private: <private key>
 rs256_private: <private key>
 rs256_public: { id: ..., status: valid, public_key }
+```
+
+```
+          ┌─────────────────────┐
+          │                     │
+          │                     │
+          │        Valid        │
+┌─────────│                     │──────────────────────────┐
+│         │                     │                          │
+│         │                     │                          │
+│         └─────────────────────┘                          │
+│                    │                                     │
+│                    │                                     │
+│                    │                                     │
+│                 ┌──┘                                     │
+│           ┌─────┼───────────────┐                ┌───────┼─────────────┐
+│          ┌┴─────┼──────────────┐│               ┌┴───────▼────────────┐│
+│        ┌─┴──────▼────────────┐ ││             ┌─┴───────────────────┐ ││
+│      ┌─┴───────────────────┐ │ ││           ┌─┴───────────────────┐ │ ││
+│      │                     │ │ ││           │                     │ │ ││
+│      │                     │ │ ││           │                     │ │ ││
+│      │      Retained       │ │ ││           │       Expired       │ │ ││
+│      │                     │─┼─┼┴──────────▶│                     │ │ ├┘
+│      │                     │ ├─┘            │                     │ ├─┘
+│      │                     ├─┘              │                     ├─┘
+│      └─────────────────────┘                └─────────────────────┘
+│                 │                                      │
+│                 │                                      │
+│                 │                                      │
+│                 │                                      │
+│                 │                                      │
+│                 │                                      │
+│                 │        ┌─────────────────────┐       │
+│                 │       ┌┴────────────────────┐│       │
+│                 │     ┌─┴───────────────────┐ ││       │
+│                 │   ┌─┴───────────────────┐ │ ││       │
+│                 │   │                     │ │ ││       │
+│                 │   │                     │ │ ││       │
+│                 │   │       Revoked       │ │ ││       │
+└─────────────────┴──▶│                     │◀┼─┼┴───────┘
+                      │                     │ ├─┘
+                      │                     ├─┘
+                      └─────────────────────┘
 ```
 
 A central key-object store is maintained with keys in memory/other. This allows dynamic reference to
