@@ -76,6 +76,7 @@
   - [Access Control Defaults](developers/designs/access_control_defaults.md)
   - [Architecture](developers/designs/architecture.md)
   - [Authentication flow](developers/designs/authentication_flow.md)
+  - [Cryptography Key Domains (2024)](developers/designs/cryptography-key-domains.md)
   - [Domain Join](developers/designs/domain_join.md)
   - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
   - [Oauth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
