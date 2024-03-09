@@ -2,7 +2,7 @@
 
 Make a profile
 
-```
+```shell
 orca setup-wizard --idm-admin-password ... \
   --admin-password ... \
   --control-uri 'https://localhost:8443' \
@@ -11,25 +11,25 @@ orca setup-wizard --idm-admin-password ... \
 
 Test the connection
 
-```
+```shell
 orca conntest --profile ./profile.toml
 ```
 
 Generate a State File
 
-```
+```shell
 orca generate --profile ./profile.toml --state ./state.json
 ```
 
 Run the test preflight to populate the sample data
 
-```
+```shell
 orca populate --state ./state.json
 ```
 
 Run the load test
 
-```
+```shell
 orca run --state ./state.json
 ```
 
@@ -54,5 +54,3 @@ orca knows what it can and can not interact with.
 
 Because generating the data is single thread limited, this would also bottleneck entry creation.
 By generating the data first, we can then execute preflight entry creation in parallel.
-
-
