@@ -20,9 +20,10 @@ keys but preserve existing api-token signatures. Currently we have no mechanism 
 ## Use Cases
 
 - Multiple OAuth2 clients wish to be able to access a shared resource server. `access_tokens` issued
-  to client a or b should be accepted by the resource server.
-- Support key-rotation within a key-domain, where former public keys are retained in a valid state,
-  or can be revoked.
+  to client `a` or `b` should be accepted by the resource server.
+- Support key-rotation within a key-domain, where former public keys are retained (can verify
+  existing signatures but not create new ones), or can be revoked (verification can not succeed, and
+  can not create new ones). Keys should be able to be retained for auditing purposes.
 - Replication Coordinator role needs a way to issue keys that only work within the replication
   coordinator scope.
 - Migration of key-domains and private keys into PKCS11 modules, or creation of new keys in PKCS11
@@ -30,31 +31,59 @@ keys but preserve existing api-token signatures. Currently we have no mechanism 
 
 ## Design
 
-Keys will be moved to dedicated key-objects in the database. Each key-object can have many
-associated keys of various cryptographic types.
+To accomodate future changes, keys will be associated to a Key Provider. Key Objects relate to a
+single Key Provider. Migration of a Key Object to another Key Provider in the future _may_ be
+possible.
 
-For each key present, they have a key-id related to the public keys. This allows lookup based on
-keyid.
+Entities that rely on a cryptographic key will relate to a Key Object.
 
-When a private key is created, it's public key is added to a public key record along with a key
-status such as "valid" or "expired".
+Key Objects have a Key Type denoting the type of material they contain. The types will be named
+after the JWA algorithms from [rfc7518](https://www.rfc-editor.org/rfc/rfc7518). This allows easy
+mapping to OAuth2 concepts and PKCS11 in the future.
 
-As HMAC keys don't have a public portion, they can only exist as a private key. Similar for AES.
+- `ES256` (ECDSA using P-256 and SHA-256, `CKM_ECDSA_SHA256`)
+- `RS256` (RSASSA-PKCS1-v1\_5 using SHA-256, `CKM_SHA256_RSA_PKCS`)
+- `HS256` (HMAC using SHA-256, `CKM_SHA256_HMAC`)
 
-When a public key is marked as expired, if it's private key is the active private key, it must be
-rotated.
+Possible future classes could be
 
-On replication expiry of a public key always takes precedence over valid. Public key maps are
-merged.
+- `A256GCM` (AES GCM with 256 bit key `CKM_AES_GCM`)
+
+The type defines the possible operations of the Key Object but not how the operation is performed.
+
+A key object MAY have multiple Key Types.
+
+Key Objects also must define their structure related to their Key Provider. For example a possible
+TPM Key Provider needs to store it's Public and Private components in the Key Object, where our
+internal provider needs to store the DER portions of the keys.
+
+Between the type and the provider, this provides a concrete way to determine how a key needs to be
+used.
+
+For each private/public key pair, or each symmetric key, a record of it's status (valid, retained,
+expired, revoked)
+
+Every Key Object must have only _one_ key in the valid state. Key rotation causes a key to move to
+the retained state. If a key is missing a valid key, a new one MUST be generated.
+
+On replication revoked, expired, retained and valid take precedence in that order. If two keys are
+marked as valid, the "latest write" wins.
+
+On rotation the private key is _discarded_ to prevent future use of a rotated key.
+
+Keys must be merged, and not deleted.
 
 ```
 class: KeyObject
 uuid: ...
-ec256: <private key>
-ec256_public_key: { id: ..., status: valid, public_key }
-hs256: <private key>
-rs256: <private key>
-rs256_public_key: { id: ..., status: valid, public_key }
+key_object_type: ECDSA_SHA256
+key_object_type: RSA_SHA256
+key_object_type: RSA_SHA256
+es256_private: <private key>
+es256_public: { id: ..., status: valid, public_key }
+hs256_private: <private key>
+rs256_private: <private key>
+rs256_public: { id: ..., status: valid, public_key }
 ```
 
 A central key-object store is maintained with keys in memory/other. This allows dynamic reference to
@@ -68,7 +97,13 @@ key_object: Refer( ... )
 ```
 
 This allows access to the keyObject from the primary store. Due to kanidm's transactions, it's
-guaranteed that any reference to a keyObject must be valid with a key in the keyObject store.
+guaranteed that any reference to a keyObject must be valid with a key in the keyObject store. Care
+must still be taken at run time in the extremely unlikely case this no longer holds true.
+
+Key Objects likely will be referenced from other cached items like the domain, idmserver and oauth2
+so Key Object changes will trigger reloads of these other services.
+
+Calls to Key Objects must be async to allow for future cases with single threaded providers.
 
 ## Future Considerations
 
