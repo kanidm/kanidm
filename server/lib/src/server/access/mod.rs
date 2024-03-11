@@ -484,24 +484,24 @@ pub trait AccessControlsTransaction<'a> {
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
                     if !requested_pres.is_subset(&pres) {
-                        security_access!("requested_pres is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_pres is not a subset of allowed");
+                        security_error!(
                             "requested_pres: {:?} !⊆ allowed: {:?}",
                             requested_pres,
                             pres
                         );
                         false
                     } else if !requested_rem.is_subset(&rem) {
-                        security_access!("requested_rem is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_rem is not a subset of allowed");
+                        security_error!(
                             "requested_rem: {:?} !⊆ allowed: {:?}",
                             requested_rem,
                             rem
                         );
                         false
                     } else if !requested_classes.is_subset(&cls) {
-                        security_access!("requested_classes is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_classes is not a subset of allowed");
+                        security_error!(
                             "requested_classes: {:?} !⊆ allowed: {:?}",
                             requested_classes,
                             cls
@@ -617,24 +617,24 @@ pub trait AccessControlsTransaction<'a> {
                 ModifyResult::Grant => true,
                 ModifyResult::Allow { pres, rem, cls } => {
                     if !requested_pres.is_subset(&pres) {
-                        security_access!("requested_pres is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_pres is not a subset of allowed");
+                        security_error!(
                             "requested_pres: {:?} !⊆ allowed: {:?}",
                             requested_pres,
                             pres
                         );
                         false
                     } else if !requested_rem.is_subset(&rem) {
-                        security_access!("requested_rem is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_rem is not a subset of allowed");
+                        security_error!(
                             "requested_rem: {:?} !⊆ allowed: {:?}",
                             requested_rem,
                             rem
                         );
                         false
                     } else if !requested_classes.is_subset(&cls) {
-                        security_access!("requested_classes is not a subset of allowed");
-                        security_access!(
+                        security_error!("requested_classes is not a subset of allowed");
+                        security_error!(
                             "requested_classes: {:?} !⊆ allowed: {:?}",
                             requested_classes,
                             cls
