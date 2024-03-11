@@ -63,11 +63,31 @@ pub struct UserToken {
 pub enum AuthCredHandler {
     Password,
     DeviceAuthorizationGrant,
+    MFA,
 }
 
 pub enum AuthRequest {
     Password,
-    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
+    DeviceAuthorizationGrant {
+        data: DeviceAuthorizationResponse,
+    },
+    MFACode {
+        msg: String,
+        /// Additional data required by the provider to complete the
+        /// authentication, but not required by PAM
+        data: Vec<String>,
+    },
+    MFAPoll {
+        msg: String,
+        /// Maximum number of permitted polling attempts
+        max_poll_attempts: u32,
+        /// Interval in seconds between poll attemts
+        polling_interval: u32,
+        /// Additional data required by the provider to complete the
+        /// authentication, but not required by PAM
+        data: Vec<String>,
+    },
+    MFAPollWait,
 }
 
 #[allow(clippy::from_over_into)]
@@ -78,6 +98,19 @@ impl Into<PamAuthResponse> for AuthRequest {
             AuthRequest::DeviceAuthorizationGrant { data } => {
                 PamAuthResponse::DeviceAuthorizationGrant { data }
             }
+            AuthRequest::MFACode { msg, data } => PamAuthResponse::MFACode { msg, data },
+            AuthRequest::MFAPoll {
+                msg,
+                max_poll_attempts,
+                polling_interval,
+                data,
+            } => PamAuthResponse::MFAPoll {
+                msg,
+                max_poll_attempts,
+                polling_interval,
+                data,
+            },
+            AuthRequest::MFAPollWait => PamAuthResponse::MFAPollWait,
         }
     }
 }

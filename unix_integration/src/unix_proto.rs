@@ -36,22 +36,41 @@ pub enum PamAuthResponse {
     Success,
     Denied,
     Password,
-    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
-    /*
-    MFACode {
+    DeviceAuthorizationGrant {
+        data: DeviceAuthorizationResponse,
     },
-    */
+    /// PAM must prompt for an authentication code
+    MFACode {
+        msg: String,
+        data: Vec<String>,
+    },
+    /// PAM will poll for an external response
+    MFAPoll {
+        msg: String,
+        max_poll_attempts: u32,
+        polling_interval: u32,
+        data: Vec<String>,
+    },
+    MFAPollWait,
     // CTAP2
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PamAuthRequest {
-    Password { cred: String },
-    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse }, /*
-                                                                    MFACode {
-                                                                        cred: Option<PamCred>
-                                                                    }
-                                                                    */
+    Password {
+        cred: String,
+    },
+    DeviceAuthorizationGrant {
+        data: DeviceAuthorizationResponse,
+    },
+    MFACode {
+        cred: String,
+        data: Vec<String>,
+    },
+    MFAPoll {
+        poll_attempt: u32,
+        data: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

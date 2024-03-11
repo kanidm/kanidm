@@ -1038,6 +1038,10 @@ where
                         // AuthCredHandler::DeviceAuthorizationGrant is invalid for offline auth
                         return Err(());
                     }
+                    (AuthCredHandler::MFA, _) => {
+                        // AuthCredHandler::MFA is invalid for offline auth
+                        return Err(());
+                    }
                 }
 
                 /*
@@ -1108,6 +1112,18 @@ where
                 auth_session
             }
             (auth_session, PamAuthResponse::DeviceAuthorizationGrant { .. }) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::MFACode { .. }) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::MFAPoll { .. }) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::MFAPollWait) => {
                 // Can continue!
                 auth_session
             }
