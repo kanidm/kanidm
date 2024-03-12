@@ -1494,11 +1494,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
-        /*
-        lperf_trace_segment!("idm::server::IdmServerAuthTransaction::commit", || {
-            self.sessions.commit();
-            Ok(())
-        })*/
         Ok(())
     }
 }
@@ -2099,6 +2094,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .get_oauth2rs_set()
                 .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+            // Clear the flag to indicate we completed the reload.
+            self.qs_write.clear_changed_oauth2();
         }
         if self.qs_write.get_changed_domain() {
             // reload token_key?

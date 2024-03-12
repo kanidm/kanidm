@@ -1,7 +1,10 @@
 mod internal;
 
-mod object;
+// mod object;
 mod provider;
 
-pub(crate) use self::object::KeyObjects;
-pub(crate) use self::provider::KeyProviders;
+// pub(crate) use self::object::KeyObjects;
+pub(crate) use self::provider::{
+    KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvidersWriteTransaction,
+};

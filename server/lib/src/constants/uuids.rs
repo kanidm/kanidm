@@ -405,6 +405,8 @@ pub const UUID_IDM_ACP_HP_GROUP_UNIX_MANAGE_V1: Uuid =
 pub const UUID_IDM_ACP_GROUP_UNIX_MANAGE_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000068");
 pub const UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000069");
 
+pub const UUID_KEY_PROVIDER_INTERNAL: Uuid = uuid!("00000000-0000-0000-0000-ffffff000070");
+
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
 pub const UUID_ANONYMOUS: Uuid = uuid!("00000000-0000-0000-0000-ffffffffffff");
