@@ -689,12 +689,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "migrate 16 to 17 -> result");
         }
         debug_assert!(res.is_ok());
-        res?;
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
+        res
     }
 
     #[instrument(level = "info", skip_all)]
@@ -919,6 +914,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
 
         self.internal_modify(&filter!(filter), &modlist)?;
+
+        // Generate the internal key provider.
 
         Ok(())
     }
@@ -1282,15 +1279,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
         debug_assert!(res.is_ok());
-        res?;
-
-        // Some attributes we don't want to stomp if they already exist. So we conditionally
-        // modify them.
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
+        res
     }
 }
 

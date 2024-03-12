@@ -37,7 +37,10 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
-use self::keys::{KeyObjects, KeyProviders};
+use self::keys::{
+    KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvidersWriteTransaction,
+};
 
 pub(crate) mod access;
 pub mod batch_modify;
@@ -92,8 +95,7 @@ pub struct QueryServer {
         Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
     cid_max: Arc<CowCell<Cid>>,
-    _key_providers: Arc<KeyProviders>,
-    _key_objects: Arc<KeyObjects>,
+    key_providers: Arc<KeyProviders>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -104,6 +106,7 @@ pub struct QueryServerReadTransaction<'a> {
     system_config: CowCellReadTxn<SystemConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
+    key_providers: KeyProvidersReadTransaction,
     _db_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
         ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
@@ -116,6 +119,19 @@ unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
 
 unsafe impl<'a> Send for QueryServerReadTransaction<'a> {}
 
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Debug)]
+    pub struct ChangeFlag: u32 {
+        const SCHEMA =         0b0000_0001;
+        const ACP =            0b0000_0010;
+        const OAUTH2 =         0b0000_0100;
+        const DOMAIN =         0b0000_1000;
+        const SYSTEM_CONFIG =  0b0001_0000;
+        const SYNC_AGREEMENT = 0b0010_0000;
+        const KEY_PROVIDER =   0b0100_0000;
+    }
+}
+
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     phase: CowCellWriteTxn<'a, ServerPhase>,
@@ -127,15 +143,12 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
+    key_providers: KeyProvidersWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    pub(super) changed_schema: bool,
-    pub(super) changed_acp: bool,
-    pub(super) changed_oauth2: bool,
-    pub(super) changed_domain: bool,
-    pub(super) changed_system_config: bool,
-    pub(super) changed_sync_agreement: bool,
+    pub(super) changed_flags: ChangeFlag,
+
     // Store the list of changed uuids for other invalidation needs?
     pub(super) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
@@ -169,6 +182,9 @@ pub trait QueryServerTransaction<'a> {
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
+
+    type KeyProvidersTransactionType: KeyProvidersTransaction;
+    fn get_key_providers(&self) -> &Self::KeyProvidersTransactionType;
 
     fn pw_badlist(&self) -> &HashSet<String>;
 
@@ -990,6 +1006,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     type AccessControlsTransactionType = AccessControlsReadTransaction<'a>;
     type BackendTransactionType = BackendReadTransaction<'a>;
     type SchemaTransactionType = SchemaReadTransaction;
+    type KeyProvidersTransactionType = KeyProvidersReadTransaction;
 
     fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
         &mut self.be_txn
@@ -1007,6 +1024,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
 
     fn get_accesscontrols(&self) -> &AccessControlsReadTransaction<'a> {
         &self.accesscontrols
+    }
+
+    fn get_key_providers(&self) -> &KeyProvidersReadTransaction {
+        &self.key_providers
     }
 
     fn get_resolve_filter_cache(
@@ -1131,6 +1152,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
     type BackendTransactionType = BackendWriteTransaction<'a>;
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
+    type KeyProvidersTransactionType = KeyProvidersWriteTransaction<'a>;
 
     fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
         &mut self.be_txn
@@ -1148,6 +1170,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn get_accesscontrols(&self) -> &AccessControlsWriteTransaction<'a> {
         &self.accesscontrols
+    }
+
+    fn get_key_providers(&self) -> &KeyProvidersWriteTransaction<'a> {
+        &self.key_providers
     }
 
     fn get_resolve_filter_cache(
@@ -1247,8 +1273,6 @@ impl QueryServer {
                 .expect("Failed to build resolve_filter_cache"),
         );
 
-        let key_objects = Arc::new(KeyObjects::default());
-
         let key_providers = Arc::new(KeyProviders::default());
 
         Ok(QueryServer {
@@ -1263,8 +1287,7 @@ impl QueryServer {
             resolve_filter_cache,
             dyngroup_cache,
             cid_max,
-            _key_objects: key_objects,
-            _key_providers: key_providers,
+            key_providers: key_providers,
         })
     }
 
@@ -1307,6 +1330,7 @@ impl QueryServer {
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
             accesscontrols: self.accesscontrols.read(),
+            key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             trim_cid,
@@ -1378,17 +1402,13 @@ impl QueryServer {
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
-            changed_schema: false,
-            changed_acp: false,
-            changed_oauth2: false,
-            changed_domain: false,
-            changed_system_config: false,
-            changed_sync_agreement: false,
+            changed_flags: ChangeFlag::empty(),
             changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             dyngroup_cache: self.dyngroup_cache.write(),
+            key_providers: self.key_providers.write(),
         }
     }
 
@@ -1463,7 +1483,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             level, mut_d_info.d_vers
         );
         mut_d_info.d_vers = level;
-        self.changed_domain = true;
+        self.changed_flags.insert(ChangeFlag::DOMAIN);
 
         Ok(())
     }
@@ -1730,7 +1750,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
         // We have to set the domain version here so that features which check for it
-        // will now see it's been increased.
+        // will now see it's been increased. This also prevents recursion during reloads
+        // inside of a domain migration.
         let mut_d_info = self.d_info.get_mut();
         let previous_version = mut_d_info.d_vers;
         mut_d_info.d_vers = domain_info_version;
@@ -1839,19 +1860,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn force_schema_reload(&mut self) {
-        self.changed_schema = true;
+        self.changed_flags.insert(ChangeFlag::SCHEMA);
     }
 
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
 
+    #[inline]
     pub(crate) fn get_changed_oauth2(&self) -> bool {
-        self.changed_oauth2
+        self.changed_flags.contains(ChangeFlag::OAUTH2)
     }
 
+    #[inline]
+    pub(crate) fn clear_changed_oauth2(&mut self) {
+        self.changed_flags.remove(ChangeFlag::OAUTH2)
+    }
+
+    #[inline]
     pub(crate) fn get_changed_domain(&self) -> bool {
-        self.changed_domain
+        self.changed_flags.contains(ChangeFlag::DOMAIN)
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
@@ -1865,7 +1893,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // First, check if the domain version has changed. This can trigger
         // changes to schema, access controls and more.
-        if self.changed_domain {
+        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
             self.reload_domain_info_version()?;
         }
 
@@ -1873,7 +1901,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_schema {
+        if self.changed_flags.contains(ChangeFlag::SCHEMA) {
             self.reload_schema()?;
 
             // If the server is in a late phase of start up or is
@@ -1892,7 +1920,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // Also note that changing sync agreements triggers an acp reload since
         // access controls need to be aware of these agreements.
-        if self.changed_schema || self.changed_acp || self.changed_sync_agreement {
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::SCHEMA | ChangeFlag::ACP | ChangeFlag::SYNC_AGREEMENT)
+        {
             self.reload_accesscontrols()?;
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols
@@ -1901,20 +1932,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_system_config {
+        if self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG) {
             self.reload_system_config()?;
         }
 
-        if self.changed_domain {
+        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
             self.reload_domain_info()?;
         }
 
         // Clear flags
-        self.changed_domain = false;
-        self.changed_schema = false;
-        self.changed_system_config = false;
-        self.changed_acp = false;
-        self.changed_sync_agreement = false;
+        self.changed_flags.remove(
+            ChangeFlag::DOMAIN
+                | ChangeFlag::SCHEMA
+                | ChangeFlag::SYSTEM_CONFIG
+                | ChangeFlag::ACP
+                | ChangeFlag::SYNC_AGREEMENT,
+        );
 
         Ok(())
     }
@@ -1940,21 +1973,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
             accesscontrols,
             cid,
             dyngroup_cache,
+            key_providers,
+            // Hold these for a bit more ...
+            _db_ticket,
+            _write_ticket,
             // Ignore values that don't need a commit.
             curtime: _,
             trim_cid: _,
-            changed_schema: _,
-            changed_acp: _,
-            changed_oauth2: _,
-            changed_domain: _,
-            changed_system_config: _,
-            changed_sync_agreement: _,
+            changed_flags,
             changed_uuid: _,
-            _db_ticket: _,
-            _write_ticket: _,
             resolve_filter_cache: _,
         } = self;
         debug_assert!(!committed);
+
+        // Should have been cleared by any reloads.
+        trace!(
+            changed = ?changed_flags.iter_names().collect::<Vec<_>>(),
+        );
 
         // Write the cid to the db. If this fails, we can't assume replication
         // will be stable, so return if it fails.
@@ -1971,6 +2006,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|_| system_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
+            .and_then(|_| key_providers.commit())
             .and_then(|_| accesscontrols.commit())
             .and_then(|_| be_txn.commit())
     }

@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use crate::server::CreateEvent;
-use crate::server::Plugins;
+use crate::server::{ChangeFlag, Plugins};
 
 impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
@@ -105,47 +105,55 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload.
-        if !self.changed_schema {
-            self.changed_schema = commit_cand.iter().any(|e| {
+        if !self.changed_flags.contains(ChangeFlag::SCHEMA)
+            && commit_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
                     || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
-            });
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::SCHEMA)
         }
-        if !self.changed_acp {
-            self.changed_acp = commit_cand.iter().any(|e| {
+        if !self.changed_flags.contains(ChangeFlag::ACP)
+            && commit_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
-            });
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::ACP)
         }
-        if !self.changed_oauth2 {
-            self.changed_oauth2 = commit_cand.iter().any(|e| {
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2)
+            && commit_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
-            });
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
-        if !self.changed_domain {
-            self.changed_domain = commit_cand
+        if !self.changed_flags.contains(ChangeFlag::DOMAIN)
+            && commit_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO))
+        {
+            self.changed_flags.insert(ChangeFlag::DOMAIN)
         }
-        if !self.changed_system_config {
-            self.changed_system_config = commit_cand
+        if !self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG)
+            && commit_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG))
+        {
+            self.changed_flags.insert(ChangeFlag::SYSTEM_CONFIG)
         }
-        if !self.changed_sync_agreement {
-            self.changed_sync_agreement = commit_cand
+        if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
+            && commit_cand
                 .iter()
-                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
         }
 
         self.changed_uuid
             .extend(commit_cand.iter().map(|e| e.get_uuid()));
+
         trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-            system_config_reload = ?self.changed_system_config,
-            changed_sync_agreement = ?self.changed_sync_agreement,
+            changed = ?self.changed_flags.iter_names().collect::<Vec<_>>(),
         );
 
         // We are complete, finalise logging and return

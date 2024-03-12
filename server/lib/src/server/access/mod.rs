@@ -21,7 +21,6 @@ use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
-use tracing::trace;
 use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
