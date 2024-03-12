@@ -213,7 +213,7 @@ fn make_navbar(links: Vec<Html>) -> Html {
             {"Kanidm"}
             </Link<ViewRoute>>
             // this shows a button on mobile devices to open the menu
-            <button class="navbar-toggler bg-light" type="button" data-bs-toggle="collapse" data-bs-target={["#", ID_NAVBAR_COLLAPSE].concat()} aria-controls={ID_NAVBAR_COLLAPSE} aria-expanded="false" aria-label="Toggle navigation">
+            <button class="navbar-toggler bg-white" type="button" data-bs-toggle="collapse" data-bs-target={["#", ID_NAVBAR_COLLAPSE].concat()} aria-controls={ID_NAVBAR_COLLAPSE} aria-expanded="false" aria-label="Toggle navigation">
               <img src={IMG_LOGO_SQUARE} alt="Toggle navigation" class="navbar-toggler-img" />
             </button>
 
