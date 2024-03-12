@@ -302,10 +302,10 @@ impl Component for TotpModalApp {
 
                 html! {
                     <>
-                      <div class="col-8">
+                      <div class="col">
                         { svg_html }
                       </div>
-                      <div class="col-4">
+                      <div class="col">
                         <p>{ accountname }</p>
                         <p>{ issuer }</p>
                         <p>{ secret_b32 }</p>

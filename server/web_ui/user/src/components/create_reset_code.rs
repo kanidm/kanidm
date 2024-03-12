@@ -153,10 +153,10 @@ impl Component for CreateResetCode {
 
                 html! {
                     <>
-                      <div class="col-6">
+                      <div class="col">
                         { svg_html }
                       </div>
-                      <div class="col-5">
+                      <div class="col">
                         <p>{ reset_link }</p>
                         <p>{ code }</p>
                       </div>
