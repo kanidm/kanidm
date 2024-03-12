@@ -378,10 +378,14 @@ OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<oauth2_
 Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) - it
 can also be found in the Apps section of your deployment as "OpenID Connect user backend".
 
-In Nextcloud's config.php you need to allow connection to remote servers:
+In Nextcloud's config.php you need to allow connection to remote servers and enable PKCE:
 
 ```php
 'allow_local_remote_servers' => true,
+
+'user_oidc' => [
+    'use_pkce' => true,
+],
 ```
 
 You may optionally choose to add:
@@ -395,13 +399,6 @@ If you forget this, you may see the following error in logs:
 
 ```bash
 Host 172.24.11.129 was not connected to because it violates local access rules
-```
-
-This module does not support PKCE or ES256. You will need to run:
-
-```bash
-kanidm system oauth2 warning-insecure-client-disable-pkce <resource server name>
-kanidm system oauth2 warning-enable-legacy-crypto <resource server name>
 ```
 
 In the settings menu, configure the discovery URL and client ID and secret.
