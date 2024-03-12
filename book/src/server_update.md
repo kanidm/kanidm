@@ -1,5 +1,31 @@
 # Updating the Server
 
+## General Update Notes
+
+During some upgrades the Kanidm project must apply new constraints or limits on your data. If we are
+unable to migrate these without disruption, we rely on administrators to make informed choices
+before the upgrade can proceed.
+
+When these are required, we will give you one release cycle ahead of time to make changes. To check
+for changes that will affect your instance you should run.
+
+```bash
+kanidmd domain upgrade-check
+
+# Running domain upgrade check ...
+# domain_name            : localhost
+# domain_uuid            : 7dcc7a71-b488-4e2c-ad4d-d89fc49678cb
+# ------------------------
+# upgrade_item           : gidnumber range validity
+# status                 : PASS
+```
+
+If _any_ task yields a `FAIL` then a future upgrade will also fail. A `FAIL` status will provide you
+a list of actions and affected entries that must be resolved before the next upgrade can complete
+successfully. If all tasks yield a `PASS` status then you can begin the upgrade process.
+
+## Docker Update Procedure
+
 Docker doesn't follow a "traditional" method of updates. Rather you remove the old version of the
 container and recreate it with a newer version. This document will help walk you through that
 process.
@@ -14,7 +40,23 @@ text=You should have documented and preserved your kanidm container create / run
 
 <!-- deno-fmt-ignore-end -->
 
-## Preserving the Previous Image
+### Upgrade Check
+
+Perform the pre-upgrade check.
+
+```bash
+docker exec -i -t <container name> \
+  kanidmd domain upgrade-check
+
+# Running domain upgrade check ...
+# domain_name            : localhost
+# domain_uuid            : 7dcc7a71-b488-4e2c-ad4d-d89fc49678cb
+# ------------------------
+# upgrade_item           : gidnumber range validity
+# status                 : PASS
+```
+
+### Preserving the Previous Image
 
 You may wish to preserve the previous image before updating. This is useful if an issue is
 encountered in upgrades.
@@ -24,7 +66,7 @@ docker tag kanidm/server:latest kanidm/server:<DATE>
 docker tag kanidm/server:latest kanidm/server:2022-10-24
 ```
 
-## Update your Image
+### Update your Image
 
 Pull the latest version of Kanidm.
 
@@ -34,11 +76,11 @@ docker pull kanidm/radius:latest
 docker pull kanidm/tools:latest
 ```
 
-## Perform a backup
+### Perform a backup
 
 See [backup and restore](backup_restore.md)
 
-## Update your Instance
+### Update your Instance
 
 <!-- deno-fmt-ignore-start -->
 
@@ -80,7 +122,8 @@ Once you confirm the upgrade is successful you can delete the previous instance
 docker rm <previous instance name>
 ```
 
-If you encounter an issue you can revert to the previous version.
+If you encounter an issue you can revert to the previous version. Upgrades are performed in a single
+transaction and no changes to your data are made unless the upgrade was successful.
 
 ```bash
 docker stop <new instance name>
@@ -95,4 +138,5 @@ docker run [Your Arguments Here] -v kanidmd:/data \
     kanidm/server:<DATE>
 ```
 
-If the server from your previous version fails to start, you will need to restore from backup.
+In rare and exceptional cases, if the server from your previous version fails to start, you will
+need to restore from backup.

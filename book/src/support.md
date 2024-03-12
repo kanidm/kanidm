@@ -1,9 +1,5 @@
 # Kanidm - Support and Release Processes
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
-</p>
-
 # Introduction
 
 This document describes the Kanidm project teams support and release version processes.
@@ -13,8 +9,8 @@ missing or if you have a question, please
 [open a discussion](https://github.com/kanidm/kanidm/discussions).
 
 The version of this document found
-[on the project page](https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md)
-is considered authoritive and applies to all versions.
+[on the project page](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) is
+considered authoritive and applies to all versions.
 
 ## Release Schedule and Versioning
 

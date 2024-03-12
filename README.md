@@ -24,7 +24,7 @@ If you want to host your own authentication service, then Kanidm is for you!
 Kanidm supports:
 
 - Passkeys (webauthn) for secure cryptographic authentication
-- Attested Passkeys for high assurance environments
+- Attested Passkeys for high security environments
 - Oauth2/OIDC Authentication provider for web SSO
 - Application Portal allowing easy access to linked applications
 - Linux/Unix integration with TPM secured offline authentication
@@ -44,8 +44,8 @@ If you want to read more about what Kanidm can do, you should read our documenta
 - [Kanidm book (Latest stable)](https://kanidm.github.io/kanidm/stable/)
 
 We also have a set of
-[support guidelines](https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md)
-for what the project team will support
+[support guidelines](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) for what the
+project team will support
 
 ## Code of Conduct / Ethics
 
@@ -54,7 +54,7 @@ All interactions with the project are covered by our [code of conduct].
 When we develop features we follow our projects guidelines on [rights and ethics]
 
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/project_docs/ethics/README.md
+[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/ethics.md
 
 ## Getting in Contact / Questions
 
@@ -146,4 +146,4 @@ When developing the server you should refer to the latest commit documentation i
 
 - [Kanidm book (Latest commit)](https://kanidm.github.io/kanidm/master/)
 
-[guide for developers]: https://kanidm.github.io/kanidm/master/DEVELOPER_README.html
+[guide for developers]: https://kanidm.github.io/kanidm/stable/developers/readme.html
