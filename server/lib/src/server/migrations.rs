@@ -871,6 +871,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_KEY_INTERNAL_RS256_DL6.clone().into(),
             SCHEMA_ATTR_KEY_INTERNAL_HS256_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
@@ -916,8 +917,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
 
         self.internal_modify(&filter!(filter), &modlist)?;
-
-        // Generate the internal key provider.
 
         Ok(())
     }
@@ -1013,6 +1012,33 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // =========== Apply changes ==============
+
+        // Do this before schema change since domain info has cookie key
+        // as may at this point.
+        //
+        // Domain info should have the attribute private cookie key removed.
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
+            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
+        ]));
+        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
+        self.internal_modify(&filter, &modlist)?;
+
+        // Now update schema
+
+        let idm_schema_classes = [SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into()];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        // Post schema changes.
 
         Ok(())
     }
@@ -1476,6 +1502,50 @@ mod tests {
         let _entry = write_txn
             .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
             .expect("unable to newly migrated schema entry");
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_6)]
+    async fn test_migrations_dl6_dl7(server: &QueryServer) {
+        // Assert our instance was setup to version 6
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_6);
+
+        // per migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(domain_entry.attribute_pres(Attribute::PrivateCookieKey));
+
+        // Set the version to 7.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_7),
+                ),
+            )
+            .expect("Unable to set domain level to version 7");
+
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        // post migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(!domain_entry.attribute_pres(Attribute::PrivateCookieKey));
 
         write_txn.commit().expect("Unable to commit");
     }

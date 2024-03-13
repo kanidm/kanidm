@@ -888,32 +888,13 @@ pub trait QueryServerTransaction<'a> {
                 e
             })
     }
+
     fn get_domain_ldap_allow_unix_pw_bind(&mut self) -> Result<bool, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO).map(|entry| {
             entry
                 .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
                 .unwrap_or(true)
         })
-    }
-    fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
-        self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_private_binary(Attribute::PrivateCookieKey)
-                    .and_then(|s| {
-                        let mut x = [0; 64];
-                        if s.len() == x.len() {
-                            x.copy_from_slice(s);
-                            Some(x)
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain cookie key");
-                e
-            })
     }
 
     /// Get the password badlist from the system config. You should not call this directly
@@ -1799,6 +1780,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if previous_version <= DOMAIN_LEVEL_5 && domain_info_version >= DOMAIN_LEVEL_6 {
             self.migrate_domain_5_to_6()?;
         }
+
+        if previous_version <= DOMAIN_LEVEL_6 && domain_info_version >= DOMAIN_LEVEL_7 {
+            self.migrate_domain_6_to_7()?;
+        }
+
+        // This is here to catch when we increase domain levels but didn't create the migration
+        // hooks. If this fails it probably means you need to add another migration hook
+        // in the above.
+        debug_assert!(domain_info_version <= DOMAIN_LEVEL_7);
 
         Ok(())
     }
