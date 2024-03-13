@@ -143,6 +143,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
         }
+        if !self.changed_flags.contains(ChangeFlag::KEY_PROVIDER)
+            && del_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_PROVIDER)
+        }
 
         self.changed_uuid
             .extend(del_cand.iter().map(|e| e.get_uuid()));

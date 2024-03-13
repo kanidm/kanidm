@@ -16,6 +16,36 @@ pub enum KeyProvider {
     Internal(Arc<KeyProviderInternal>),
 }
 
+impl KeyProvider {
+    pub(crate) fn uuid(&self) -> Uuid {
+        match self {
+            KeyProvider::Internal(inner) => inner.uuid(),
+        }
+    }
+
+    pub(crate) fn name(&self) -> &str {
+        match self {
+            KeyProvider::Internal(inner) => inner.name(),
+        }
+    }
+
+    pub(crate) fn try_from(
+        value: &Entry<EntrySealed, EntryCommitted>,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()) {
+            error!("class key_provider not present.");
+            return Err(OperationError::KP0002KeyProviderInvalidClass);
+        }
+
+        if value.attribute_equality(Attribute::Class, &EntryClass::KeyProviderInternal.into()) {
+            KeyProviderInternal::try_from(value).map(|kpi| KeyProvider::Internal(Arc::new(kpi)))
+        } else {
+            error!("No supported key provider type present");
+            Err(OperationError::KP0003KeyProviderInvalidType)
+        }
+    }
+}
+
 #[derive(Clone)]
 struct KeyProvidersInner {
     // Wondering if this should be Arc later to allow KeyObjects to refer to their provider directly.
@@ -75,7 +105,26 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
 }
 
 impl<'a> KeyProvidersWriteTransaction<'a> {
-    pub fn commit(self) -> Result<(), OperationError> {
+    pub(crate) fn update_providers(
+        &mut self,
+        providers: Vec<KeyProvider>,
+    ) -> Result<(), OperationError> {
+        // Clear the current set.
+        self.inner.providers.clear();
+
+        // For each provider insert.
+        for provider in providers.into_iter() {
+            let uuid = provider.uuid();
+            if self.inner.providers.insert(uuid, provider).is_some() {
+                error!(key_provider_uuid = ?uuid, "duplicate key provider detected");
+                return Err(OperationError::KP0005KeyProviderDuplicate);
+            }
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn commit(self) -> Result<(), OperationError> {
         self.inner.commit();
 
         Ok(())

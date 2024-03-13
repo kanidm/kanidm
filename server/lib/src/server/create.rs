@@ -141,12 +141,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.changed_flags.insert(ChangeFlag::SYSTEM_CONFIG)
         }
+
         if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
             && commit_cand
                 .iter()
                 .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()))
         {
             self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::KEY_PROVIDER)
+            && commit_cand
+                .iter()
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_PROVIDER)
         }
 
         self.changed_uuid

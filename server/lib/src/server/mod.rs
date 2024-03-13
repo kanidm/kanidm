@@ -38,7 +38,7 @@ use self::access::{
 };
 
 use self::keys::{
-    KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
     KeyProvidersWriteTransaction,
 };
 
@@ -1725,6 +1725,28 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub(crate) fn reload_key_providers(&mut self) -> Result<(), OperationError> {
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::KeyProvider.into()));
+
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!(
+                err = ?e,
+                "reload key providers internal search failed",
+            );
+            e
+        })?;
+
+        // FUTURE: During this reload we may need to access the PIN or other data
+        // to access the provider.
+        let providers = res
+            .iter()
+            .map(|e| KeyProvider::try_from(e))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        self.key_providers.update_providers(providers)
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_system_config(&mut self) -> Result<(), OperationError> {
         let denied_names = self.get_sc_denied_names()?;
         let pw_badlist = self.get_sc_password_badlist()?;
@@ -1913,6 +1935,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
         }
 
+        // We need to reload cryptographic providers before anything else so that
+        // sync agreements and the domain can access their key material.
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::SCHEMA | ChangeFlag::KEY_PROVIDER)
+        {
+            self.reload_key_providers()?;
+        }
+
         // Determine if we need to update access control profiles
         // based on any modifications that have occurred.
         // IF SCHEMA CHANGED WE MUST ALSO RELOAD!!! IE if schema had an attr removed
@@ -1946,7 +1977,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 | ChangeFlag::SCHEMA
                 | ChangeFlag::SYSTEM_CONFIG
                 | ChangeFlag::ACP
-                | ChangeFlag::SYNC_AGREEMENT,
+                | ChangeFlag::SYNC_AGREEMENT
+                | ChangeFlag::KEY_PROVIDER,
         );
 
         Ok(())
