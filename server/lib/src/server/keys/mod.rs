@@ -5,6 +5,6 @@ mod provider;
 
 // pub(crate) use self::object::KeyObjects;
 pub(crate) use self::provider::{
-    KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
     KeyProvidersWriteTransaction,
 };

@@ -138,6 +138,10 @@ pub enum OperationError {
     MG0005GidConstraintsNotMet,
     //
     KP0001KeyProviderNotLoaded,
+    KP0002KeyProviderInvalidClass,
+    KP0003KeyProviderInvalidType,
+    KP0004KeyProviderMissingAttributeName,
+    KP0005KeyProviderDuplicate,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

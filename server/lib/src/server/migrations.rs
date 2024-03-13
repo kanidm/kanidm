@@ -888,17 +888,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        let idm_access_controls = [
+        let idm_data = [
             // Update access controls.
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
+            // Add the internal key provider.
+            E_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
         ];
         self.reload()?;
 
-        idm_access_controls
+        idm_data
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
@@ -906,7 +908,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
-        // all the built-in objects get a builtin class
+        // all existing built-in objects get a builtin class
         let filter = f_lt(
             Attribute::Uuid,
             PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),

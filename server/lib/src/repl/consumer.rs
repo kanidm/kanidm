@@ -251,6 +251,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
         }
 
+        if !self.changed_flags.contains(ChangeFlag::KEY_PROVIDER)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_PROVIDER)
+        }
+
         trace!(
             changed = ?self.changed_flags.iter_names().collect::<Vec<_>>(),
         );
@@ -594,7 +603,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 | ChangeFlag::OAUTH2
                 | ChangeFlag::DOMAIN
                 | ChangeFlag::SYSTEM_CONFIG
-                | ChangeFlag::SYNC_AGREEMENT,
+                | ChangeFlag::SYNC_AGREEMENT
+                | ChangeFlag::KEY_PROVIDER,
         );
 
         // That's it! We are GOOD to go!
