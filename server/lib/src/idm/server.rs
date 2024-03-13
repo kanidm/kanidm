@@ -65,7 +65,6 @@ pub struct DomainKeys {
     pub(crate) uat_jwt_signer: JwsEs256Signer,
     pub(crate) uat_jwt_validator: JwsEs256Verifier,
     pub(crate) token_enc_key: Fernet,
-    pub(crate) cookie_key: [u8; 64],
 }
 
 pub struct IdmServer {
@@ -155,14 +154,13 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
+        let (rp_id, rp_name, fernet_private_key, es256_private_key, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
                 qs_read.get_domain_fernet_private_key()?,
                 qs_read.get_domain_es256_private_key()?,
-                qs_read.get_domain_cookie_key()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
             )
@@ -221,7 +219,6 @@ impl IdmServer {
             uat_jwt_signer,
             uat_jwt_validator,
             token_enc_key,
-            cookie_key,
         }));
 
         let oauth2rs =
@@ -247,10 +244,6 @@ impl IdmServer {
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
         ))
-    }
-
-    pub fn get_cookie_key(&self) -> [u8; 64] {
-        self.domain_keys.read().cookie_key
     }
 
     /// Start an auth txn
@@ -2132,11 +2125,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .map(|(new_signer, new_validator)| {
                     self.domain_keys.uat_jwt_signer = new_signer;
                     self.domain_keys.uat_jwt_validator = new_validator;
-                })?;
-            self.qs_write
-                .get_domain_cookie_key()
-                .map(|new_cookie_key| {
-                    self.domain_keys.cookie_key = new_cookie_key;
                 })?;
             // If the domain name has changed, we need to update rp-id in
             // webauthn rs

@@ -443,6 +443,7 @@ pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+// TO BE REMOVED.
 pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
     name: Attribute::PrivateCookieKey.into(),
@@ -921,11 +922,6 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-// domain_info type
-//  domain_uuid
-//  domain_name <- should be the dns name?
-//  domain_ssid <- for radius
-//
 pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
     name: EntryClass::DomainInfo.into(),
@@ -944,6 +940,51 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
         Attribute::FernetPrivateKeyStr.into(),
         Attribute::Es256PrivateKeyDer.into(),
         Attribute::PrivateCookieKey.into(),
+        Attribute::Version.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid.into(),
+        Attribute::DomainLdapBasedn.into(),
+        Attribute::LdapAllowUnixPwBind.into(),
+        Attribute::PrivateCookieKey.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::DomainUuid.into(),
+        Attribute::DomainName.into(),
+        Attribute::DomainDisplayName.into(),
+        Attribute::FernetPrivateKeyStr.into(),
+        Attribute::Es256PrivateKeyDer.into(),
+        Attribute::Version.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid.into(),
+        Attribute::DomainLdapBasedn.into(),
+        Attribute::LdapAllowUnixPwBind.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::DomainUuid.into(),
+        Attribute::DomainName.into(),
+        Attribute::DomainDisplayName.into(),
+        Attribute::FernetPrivateKeyStr.into(),
+        Attribute::Es256PrivateKeyDer.into(),
         Attribute::Version.into(),
     ],
     ..Default::default()
