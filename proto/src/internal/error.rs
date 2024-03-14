@@ -142,6 +142,7 @@ pub enum OperationError {
     KP0003KeyProviderInvalidType,
     KP0004KeyProviderMissingAttributeName,
     KP0005KeyProviderDuplicate,
+    KP0006KeyObjectJwtEs256Generation,
 
     // Plugins
     PL0001GidOverlapsSystemRange,
