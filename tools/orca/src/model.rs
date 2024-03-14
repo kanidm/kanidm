@@ -3,7 +3,7 @@ use crate::run::{EventDetail, EventRecord};
 use crate::state::*;
 use std::time::{Duration, Instant};
 
-use kanidm_client::KanidmClient;
+use kanidm_client::{ClientError, KanidmClient};
 
 use async_trait::async_trait;
 use strum_macros::EnumCount;
@@ -12,8 +12,8 @@ use strum_macros::EnumCount;
 pub enum TransitionAction {
     Login = 0,
     Logout = 1,
-    ReadProperty = 2,
-    WriteProperty = 3,
+    ReadAttribute = 2,
+    WriteAttribute = 3,
 }
 
 impl TryFrom<i32> for TransitionAction {
@@ -23,8 +23,10 @@ impl TryFrom<i32> for TransitionAction {
         match v {
             x if x == TransitionAction::Login as i32 => Ok(TransitionAction::Login),
             x if x == TransitionAction::Logout as i32 => Ok(TransitionAction::Logout),
-            x if x == TransitionAction::ReadProperty as i32 => Ok(TransitionAction::ReadProperty),
-            x if x == TransitionAction::WriteProperty as i32 => Ok(TransitionAction::WriteProperty),
+            x if x == TransitionAction::ReadAttribute as i32 => Ok(TransitionAction::ReadAttribute),
+            x if x == TransitionAction::WriteAttribute as i32 => {
+                Ok(TransitionAction::WriteAttribute)
+            }
             _ => Err(()),
         }
     }
@@ -145,6 +147,21 @@ pub async fn person_set(
     // Should we measure the time of each call rather than the time with multiple calls?
     let start = Instant::now();
     let person_username = person.username.as_str();
+
+    if let Err(client_err) = match &person.credential {
+        Credential::Password { plain } => client.reauth_simple_password(plain.as_str()).await,
+    } {
+        debug!(?client_err);
+        let duration = Instant::now().duration_since(start);
+        return Ok((
+            TransitionResult::Error,
+            EventRecord {
+                start,
+                duration,
+                details: EventDetail::Error,
+            },
+        ));
+    };
     let result = client
         .idm_person_account_set_attr(person_username, "displayname", &[person_username])
         .await;
@@ -158,7 +175,7 @@ pub async fn person_set(
             EventRecord {
                 start,
                 duration,
-                details: EventDetail::PersonGet,
+                details: EventDetail::PersonSet,
             },
         )),
         Err(client_err) => {

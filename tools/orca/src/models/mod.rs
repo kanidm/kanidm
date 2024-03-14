@@ -1,2 +1,3 @@
-pub(crate) mod model_basic;
-pub(crate) mod model_markov;
+pub(crate) mod basic;
+pub(crate) mod markov;
+pub(crate) mod read_write_attr;
