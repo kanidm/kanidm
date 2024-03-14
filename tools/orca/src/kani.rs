@@ -84,7 +84,7 @@ impl KanidmOrcaClient {
             })
     }
 
-    pub async fn person_set_pirmary_password_only(
+    pub async fn person_set_primary_password_only(
         &self,
         username: &str,
         password: &str,

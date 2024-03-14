@@ -27,10 +27,14 @@ hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 mathru = { workspace = true }
+ndarray = "0.15.6"
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
+statrs = "0.16.0"
+strum = "0.26.2"
+strum_macros = "0.26.2"
 tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 toml = { workspace = true }
 tracing = { workspace = true }

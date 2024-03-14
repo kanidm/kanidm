@@ -18,7 +18,10 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::profile::{Profile, ProfileBuilder};
+use crate::{
+    profile::{Profile, ProfileBuilder},
+    state::Model,
+};
 
 use tokio::sync::broadcast;
 
@@ -26,7 +29,7 @@ mod error;
 mod generate;
 mod kani;
 mod model;
-mod model_basic;
+mod models;
 mod populate;
 mod profile;
 mod run;
