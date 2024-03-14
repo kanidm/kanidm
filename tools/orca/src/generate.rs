@@ -88,17 +88,19 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let password = random_password(&mut seeded_rng);
 
-        //God forbid me but I didn't want to bother with matrixes as input
-        // Bare in mind that actually these probabilities are not so random: the first 4 represent the
-        // prob of each transition if we are in the Unauthenticated state, so we obv will have 0 prob to unauthenticate ourselves,
-        // and also 0 prob to update our account.
-        // The last 4 values refer to the authenticated scenario: here we will have 0 prob to authenticate, since we already did that, but we have some
-        // non-0 prob of doing everything else.
-        let model = Model::Markov {
-            distributions_matrix: [0.5, 0., 0.5, 0., 0., 0.5, 0.25, 0.25],
-            rng_seed: None,
-            normal_dist_mean_and_std_dev: None,
-        };
+        // //God forbid me but I didn't want to bother with matrixes as input
+        // // Bare in mind that actually these probabilities are not so random: the first 4 represent the
+        // // prob of each transition if we are in the Unauthenticated state, so we obv will have 0 prob to unauthenticate ourselves,
+        // // and also 0 prob to update our account.
+        // // The last 4 values refer to the authenticated scenario: here we will have 0 prob to authenticate, since we already did that, but we have some
+        // // non-0 prob of doing everything else.
+        // let model = Model::Markov {
+        //     distributions_matrix: [0.5, 0., 0.5, 0., 0., 0.5, 0.25, 0.25],
+        //     rng_seed: None,
+        //     normal_dist_mean_and_std_dev: None,
+        // };
+
+        let model = Model::ReadWriteAttr;
 
         // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.

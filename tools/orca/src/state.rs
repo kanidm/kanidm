@@ -1,6 +1,6 @@
 use crate::error::Error;
 use crate::model::ActorModel;
-use crate::models::model_markov::DISTR_MATRIX_SIZE;
+use crate::models::markov::DISTR_MATRIX_SIZE;
 use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -71,6 +71,7 @@ pub enum Model {
         rng_seed: Option<u64>,
         normal_dist_mean_and_std_dev: Option<(f64, f64)>,
     },
+    ReadWriteAttr,
 }
 
 impl Default for Model {
@@ -82,16 +83,17 @@ impl Default for Model {
 impl Model {
     pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
         Ok(match self {
-            Model::Basic => Box::new(crate::models::model_basic::ActorBasic::new()),
+            Model::Basic => Box::new(crate::models::basic::ActorBasic::new()),
             Model::Markov {
                 distributions_matrix,
                 rng_seed,
                 normal_dist_mean_and_std_dev,
-            } => Box::new(crate::models::model_markov::ActorMarkov::new(
+            } => Box::new(crate::models::markov::ActorMarkov::new(
                 distributions_matrix,
                 rng_seed,
                 normal_dist_mean_and_std_dev,
             )?),
+            Model::ReadWriteAttr => Box::new(crate::models::read_write_attr::ActorReadWrite::new()),
         })
     }
 }

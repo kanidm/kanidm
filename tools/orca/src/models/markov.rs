@@ -117,8 +117,8 @@ impl ActorModel for ActorMarkov {
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
-            TransitionAction::ReadProperty => model::person_get(client, person).await,
-            TransitionAction::WriteProperty => model::person_set(client, person).await,
+            TransitionAction::ReadAttribute => model::person_get(client, person).await,
+            TransitionAction::WriteAttribute => model::person_set(client, person).await,
             _ => Err(Error::InvalidState),
         }?;
 
