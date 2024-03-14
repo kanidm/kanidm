@@ -1,11 +1,12 @@
 use crate::error::Error;
 use crate::model::ActorModel;
+use crate::models::model_markov::DISTR_MATRIX_SIZE;
 use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-/// A serialisable state representing the content of a kanidm database and potential
+/// A serializable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
 /// This is all generated ahead of time before the test so that during the test
@@ -65,13 +66,33 @@ pub enum PreflightState {
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
     Basic,
+    Markov {
+        distributions_matrix: [f64; DISTR_MATRIX_SIZE],
+        rng_seed: Option<u64>,
+        normal_dist_mean_and_std_dev: Option<(f64, f64)>,
+    },
+}
+
+impl Default for Model {
+    fn default() -> Self {
+        Model::Basic
+    }
 }
 
 impl Model {
-    pub fn as_dyn_object(&self) -> Box<dyn ActorModel + Send> {
-        match self {
-            Model::Basic => Box::new(crate::model_basic::ActorBasic::new()),
-        }
+    pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
+        Ok(match self {
+            Model::Basic => Box::new(crate::models::model_basic::ActorBasic::new()),
+            Model::Markov {
+                distributions_matrix,
+                rng_seed,
+                normal_dist_mean_and_std_dev,
+            } => Box::new(crate::models::model_markov::ActorMarkov::new(
+                distributions_matrix,
+                rng_seed,
+                normal_dist_mean_and_std_dev,
+            )?),
+        })
     }
 }
 

@@ -43,6 +43,7 @@ impl ActorModel for ActorBasic {
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
+            _ => Err(Error::InvalidState),
         }?;
 
         // Given the result, make a choice about what text.
