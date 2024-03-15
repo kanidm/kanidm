@@ -1,12 +1,11 @@
 use crate::error::Error;
-use crate::model::ActorModel;
-use crate::models::markov::DISTR_MATRIX_SIZE;
+use crate::model::{ActorModel, ActorRole};
 use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
 
-/// A serializable state representing the content of a kanidm database and potential
+/// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
 /// This is all generated ahead of time before the test so that during the test
@@ -17,7 +16,7 @@ pub struct State {
     // ----------------------------
     pub preflight_flags: Vec<Flag>,
     pub persons: Vec<Person>,
-    // groups: Vec<Group>,
+    pub groups: Vec<Group>,
     // oauth_clients: Vec<Oauth2Clients>,
 }
 
@@ -66,12 +65,13 @@ pub enum PreflightState {
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
     Basic,
-    Markov {
-        distributions_matrix: [f64; DISTR_MATRIX_SIZE],
-        rng_seed: Option<u64>,
-        normal_dist_mean_and_std_dev: Option<(f64, f64)>,
-    },
+    // Markov {
+    //     distributions_matrix: [f64; DISTR_MATRIX_SIZE],
+    //     rng_seed: Option<u64>,
+    //     normal_dist_mean_and_std_dev: Option<(f64, f64)>,
+    // },
     ReadWriteAttr,
+    ConditionalReadWriteAttr(ActorRole),
 }
 
 impl Default for Model {
@@ -84,16 +84,21 @@ impl Model {
     pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
         Ok(match self {
             Model::Basic => Box::new(crate::models::basic::ActorBasic::new()),
-            Model::Markov {
-                distributions_matrix,
-                rng_seed,
-                normal_dist_mean_and_std_dev,
-            } => Box::new(crate::models::markov::ActorMarkov::new(
-                distributions_matrix,
-                rng_seed,
-                normal_dist_mean_and_std_dev,
-            )?),
+            // Model::Markov {
+            //     distributions_matrix,
+            //     rng_seed,
+            //     normal_dist_mean_and_std_dev,
+            // } => Box::new(crate::models::markov::ActorMarkov::new(
+            //     distributions_matrix,
+            //     rng_seed,
+            //     normal_dist_mean_and_std_dev,
+            // )?),
             Model::ReadWriteAttr => Box::new(crate::models::read_write_attr::ActorReadWrite::new()),
+            Model::ConditionalReadWriteAttr(role) => Box::new(
+                crate::models::conditional_read_write_attr::ActorConditionalReadWrite::new(
+                    role.clone(),
+                ),
+            ),
         })
     }
 }
@@ -111,4 +116,15 @@ pub struct Person {
     pub member_of: BTreeSet<String>,
     pub credential: Credential,
     pub model: Model,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Group {
+    pub name: String,
+}
+
+impl Group {
+    pub fn new(name: String) -> Self {
+        Group { name }
+    }
 }

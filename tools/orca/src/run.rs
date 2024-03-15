@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::model::ActorRole;
 use crate::state::*;
 use crate::stats::{BasicStatistics, TestPhase};
 
@@ -46,6 +47,15 @@ pub enum EventDetail {
     PersonGet,
     PersonSet,
     Error,
+}
+
+impl From<ActorRole> for EventDetail {
+    fn from(value: ActorRole) -> Self {
+        match value {
+            ActorRole::ReadAttribute => EventDetail::PersonGet,
+            ActorRole::WriteAttribute => EventDetail::PersonSet,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

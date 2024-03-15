@@ -1,13 +1,16 @@
 use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
+use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Model, Person, PreflightState, State};
+use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{Rng, RngCore, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
+use std::borrow::BorrowMut;
 use std::collections::BTreeSet;
+use std::str::FromStr;
 
 const PEOPLE_PREFIX: &str = "person";
 
@@ -121,6 +124,24 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     }
 
     // PHASE 3 - generate groups for integration access, assign persons.
+    // actually these are just groups to decide what each person is supposed to do with their life
+    let groups = vec![
+        Group::new("readers".to_string()),
+        Group::new("writers".to_string()),
+    ];
+
+    for i in 0..persons.len() {
+        let chosen_group = if seeded_rng.gen_bool(0.5) {
+            "readers"
+        } else {
+            "writers"
+        };
+
+        persons[i].member_of.insert(chosen_group.to_string());
+        if let Ok(role) = ActorRole::from_str(chosen_group) {
+            persons[i].model = Model::ConditionalReadWriteAttr(role);
+        }
+    }
 
     // PHASE 4 - generate groups for user modification rights
 
@@ -135,6 +156,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     let state = State {
         profile,
         // ---------------
+        groups,
         preflight_flags,
         persons,
     };
