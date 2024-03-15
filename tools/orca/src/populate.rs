@@ -35,6 +35,20 @@ async fn preflight_person(
         }
     }
 
+    for group in person.member_of.iter() {
+        client.add_person_to_group(&person.username, group).await?
+    }
+
+    Ok(())
+}
+
+async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> Result<(), Error> {
+    if client.group_exists(&group.name).await? {
+        // Do nothing? Do we need to create them later?
+    } else {
+        client.group_create(&group.name).await?;
+    }
+
     Ok(())
 }
 
@@ -45,8 +59,15 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     // Apply any flags if they exist.
     apply_flags(client.clone(), state.preflight_flags.as_slice()).await?;
 
-    // Create persons.
     let mut tasks = Vec::with_capacity(state.persons.len());
+
+    // Create groups
+    for group in state.groups.into_iter() {
+        let c = client.clone();
+        tasks.push(tokio::spawn(preflight_group(c, group)))
+    }
+
+    // Create persons.
     for person in state.persons.into_iter() {
         let c = client.clone();
         tasks.push(tokio::spawn(preflight_person(c, person)))
