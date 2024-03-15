@@ -1,7 +1,7 @@
-pub struct KeyObjects {}
+use uuid::Uuid;
 
-impl Default for KeyObjects {
-    fn default() -> Self {
-        KeyObjects {}
-    }
+pub trait KeyObject {
+    fn uuid(&self) -> Uuid;
+
+    // Provider?
 }

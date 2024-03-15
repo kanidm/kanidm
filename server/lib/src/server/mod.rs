@@ -624,9 +624,9 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
 
-                    SyntaxType::KeyInternalEs256 => Err(OperationError::InvalidAttribute("ES256 keys are generated and not able to be set.".to_string())),
-                    SyntaxType::KeyInternalRs256 => Err(OperationError::InvalidAttribute("RS256 keys are generated and not able to be set.".to_string())),
-                    SyntaxType::KeyInternalHs256 => Err(OperationError::InvalidAttribute("HS256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternalJwtEs256 => Err(OperationError::InvalidAttribute("ES256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternalJwtRs256 => Err(OperationError::InvalidAttribute("RS256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternalJwtHs256 => Err(OperationError::InvalidAttribute("HS256 keys are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -751,9 +751,9 @@ pub trait QueryServerTransaction<'a> {
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
 
-                    SyntaxType::KeyInternalEs256 => todo!(),
-                    SyntaxType::KeyInternalRs256 => todo!(),
-                    SyntaxType::KeyInternalHs256 => todo!(),
+                    SyntaxType::KeyInternalJwtEs256 => todo!(),
+                    SyntaxType::KeyInternalJwtRs256 => todo!(),
+                    SyntaxType::KeyInternalJwtHs256 => todo!(),
                 }
             }
             None => {

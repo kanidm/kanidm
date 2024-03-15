@@ -118,58 +118,52 @@ impl KeyObjectInternalJwtEs256 {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_key_object_internal_basic() {
-        /*
-         * Here we have to test a bit of a fun chicken and egg scenario. Imagine we have our domain
-         * entry. It has no associated key object. So we need to create the key object *and* it's
-         * keys in a single transaction.
-         *
-         * However to create cryptographic material we need the key object in place with valid ID's
-         * else in the future how will pkcs11 work? (in addition, we need to handle roll-backs
-         * in those cases too). We need to create the keys in the provider/object and then have
-         * a way to export them back to database form.
-         *
-         * (Later we need to also find orphan pkcs11 objects and prune them too ...)
-         *
-         * But we also have to be able to take the database form into the object during a reload.
-         * But we can't create the database form without the object being loaded.
-         *
-         * This creates this wonderful problem where we have to have the object existing so we
-         * can make keys for the database, but we need the database entries to make the object.
-         *
-         * To solve this, we have to think about the user interface. The user can:
-         * - Revoke a key by it's KeyId
-         * - Retire a key by it's KeyId
-         * - Inspect the DB content without revealing the keys.
-         *
-         * Since none of these directly allow the user to create, import or view keys, we can use
-         * this to our advantage. Create/Delete of all objects ends up being an internal only
-         * operation, and the database is just a reflection of the state that the user can inspect
-         * and request a limited set of deletes via.
-         *
-         * Because of this, this means that internal to the DB, the domain entries/objects can
-         * directly interact with the key provider and object level operations, and then these
-         * are reflected into the database.
-         *
-         */
+    #[qs_test]
+    async fn test_key_object_internal_es256(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
 
-        // Get the internal provider.
-        let provider = Arc::new(KeyProviderInternal::create_test_provider());
+        // Assert the default provider is the internal one.
+        let default_key_provider = write_txn
+            .get_key_providers()
+            .get_default()
+            .expect("Unable to access default key provider object.");
 
-        // Create a jwt es256 key object
-        let key_uuid = Uuid::new_v4();
-        let key_object = KeyObjectInternalJwtEs256::new(provider.clone(), key_uuid)
-            .expect("Unable to create new jwt es256 object");
-        // Turn the key_object to an entry.
+        assert_eq!(default_key_provider.uuid(), UUID_KEY_PROVIDER_INTERNAL);
 
-        // Now load it back from an entry.
+        // Create a new key object
+        let key_object_uuid = Uuid::new_v4();
 
-        // Compare they are the same.
+        write_txn
+            .internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::KeyObject.to_value()),
+                // Signal we want a jwt es256
+                (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+                (Attribute::Uuid, Value::Uuid(key_object_uuid))
+            )])
+            .expect("Unable to create new key object");
 
-        // I think in the domain plugin or oauth2 etc, we check for the key object in the provider,
-        // if it's there we can do operations, else we have to create it with our default params.
+        // Reload to trigger the key object to reload.
+        write_txn.reload().expect("Unable to reload transaction");
 
-        todo!();
+        // Get the key object entry.
+
+        let key_object_entry = write_txn
+            .internal_search_uuid(key_object_uuid)
+            .expect("Unable to retrieve key object by uuid");
+
+        // Check that the es256 is now present.
+        assert!(key_object_entry.attribute_pres(Attribute::KeyInternalJwtEs256));
+
+        // Now check the object was loaded.
+
+        let key_object_loaded = write_txn
+            .get_key_providers()
+            .get_key_object(key_object_uuid)
+            .expect("Unable to retrieve key object by uuid");
+
+        // Check the key works, and has es256.
+
+        write_txn.commit().expect("Failed to commit");
     }
 }

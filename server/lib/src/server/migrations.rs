@@ -867,15 +867,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_ES256_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_RS256_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_HS256_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_JWT_ES256_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_JWT_RS256_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_JWT_HS256_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
         ];
 
@@ -917,6 +918,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
 
         self.internal_modify(&filter!(filter), &modlist)?;
+
+        // Update the domain entry to contain it's key object, which can now be generated.
+
+        // Migrate all service account keys to the domain key for verification.
+        //
 
         Ok(())
     }

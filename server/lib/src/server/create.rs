@@ -54,19 +54,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // run any pre plugins, giving them the list of mutable candidates.
         // pre-plugins are defined here in their correct order of calling!
         // I have no intent to make these dynamic or configurable.
-
         Plugins::run_pre_create_transform(self, &mut candidates, ce).map_err(|e| {
             admin_error!("Create operation failed (pre_transform plugin), {:?}", e);
             e
         })?;
 
-        // NOTE: This is how you map from Vec<Result<T>> to Result<Vec<T>>
-        // remember, that you only get the first error and the iter terminates.
-
-        // eprintln!("{:?}", candidates);
-
         // Now, normalise AND validate!
-
         let norm_cand = candidates
             .into_iter()
             .map(|e| {
@@ -83,7 +76,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect::<Result<Vec<EntrySealedNew>, _>>()?;
 
         // Run any pre-create plugins now with schema validated entries.
-        // This is important for normalisation of certain types IE class
+        // This is important for normalisation of certain types i.e. class
         // or attributes for these checks.
         Plugins::run_pre_create(self, &norm_cand, ce).map_err(|e| {
             admin_error!("Create operation failed (plugin), {:?}", e);
@@ -97,13 +90,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // Run any post plugins
-
         Plugins::run_post_create(self, &commit_cand, ce).map_err(|e| {
             admin_error!("Create operation failed (post plugin), {:?}", e);
             e
         })?;
 
-        // We have finished all plugs and now have a successful operation - flag if
+        // We have finished all plugins and now have a successful operation - flag if
         // schema or acp requires reload.
         if !self.changed_flags.contains(ChangeFlag::SCHEMA)
             && commit_cand.iter().any(|e| {

@@ -8,6 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use super::internal::KeyProviderInternal;
+use super::object::KeyObject;
 
 #[derive(Clone)]
 pub enum KeyProvider {
@@ -31,14 +32,16 @@ impl KeyProvider {
 
     pub(crate) fn try_from(
         value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
+    ) -> Result<Arc<Self>, OperationError> {
         if !value.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()) {
             error!("class key_provider not present.");
             return Err(OperationError::KP0002KeyProviderInvalidClass);
         }
 
         if value.attribute_equality(Attribute::Class, &EntryClass::KeyProviderInternal.into()) {
-            KeyProviderInternal::try_from(value).map(|kpi| KeyProvider::Internal(Arc::new(kpi)))
+            KeyProviderInternal::try_from(value)
+                .map(|kpi| KeyProvider::Internal(Arc::new(kpi)))
+                .map(Arc::new)
         } else {
             error!("No supported key provider type present");
             Err(OperationError::KP0003KeyProviderInvalidType)
@@ -49,7 +52,8 @@ impl KeyProvider {
 #[derive(Clone)]
 struct KeyProvidersInner {
     // Wondering if this should be Arc later to allow KeyObjects to refer to their provider directly.
-    providers: BTreeMap<Uuid, KeyProvider>,
+    providers: BTreeMap<Uuid, Arc<KeyProvider>>,
+    objects: BTreeMap<Uuid, Arc<Box<dyn KeyObject>>>,
 }
 
 pub struct KeyProviders {
@@ -61,6 +65,7 @@ impl Default for KeyProviders {
         KeyProviders {
             inner: CowCell::new(KeyProvidersInner {
                 providers: BTreeMap::default(),
+                objects: BTreeMap::default(),
             }),
         }
     }
@@ -82,6 +87,9 @@ impl KeyProviders {
 
 pub trait KeyProvidersTransaction {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
+
+    // should this actually be dyn trait?
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject>;
 }
 
 pub struct KeyProvidersReadTransaction {
@@ -90,7 +98,11 @@ pub struct KeyProvidersReadTransaction {
 
 impl KeyProvidersTransaction for KeyProvidersReadTransaction {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider> {
-        self.inner.deref().providers.get(&key_provider_uuid)
+        self.inner
+            .deref()
+            .providers
+            .get(&key_provider_uuid)
+            .map(|k| k.as_ref())
     }
 }
 
@@ -100,14 +112,26 @@ pub struct KeyProvidersWriteTransaction<'a> {
 
 impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider> {
-        self.inner.deref().providers.get(&key_provider_uuid)
+        self.inner
+            .deref()
+            .providers
+            .get(&key_provider_uuid)
+            .map(|k| k.as_ref())
+    }
+}
+
+impl<'a> KeyProvidersWriteTransaction<'a> {
+    pub(crate) fn get_default(&self) -> Option<&KeyProvider> {
+        // In future we will make this configurable, and we'll load the default into
+        // the write txn during a reload.
+        self.get_uuid(UUID_KEY_PROVIDER_INTERNAL)
     }
 }
 
 impl<'a> KeyProvidersWriteTransaction<'a> {
     pub(crate) fn update_providers(
         &mut self,
-        providers: Vec<KeyProvider>,
+        providers: Vec<Arc<KeyProvider>>,
     ) -> Result<(), OperationError> {
         // Clear the current set.
         self.inner.providers.clear();
@@ -137,10 +161,14 @@ mod tests {
     use crate::prelude::*;
 
     #[qs_test(domain_level=DOMAIN_LEVEL_5)]
-    async fn test_key_provider_creation_basic(server: &QueryServer) {
+    async fn test_key_provider_internal_migration(server: &QueryServer) {
         let mut write_txn = server.write(duration_from_epoch_now()).await;
 
-        // No key providers.
+        // Read the initial state of the domain object, including it's
+        // private key.
+        let domain_object_initial = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain object");
 
         // Set the version to 6.
         write_txn
@@ -167,7 +195,6 @@ mod tests {
         ));
 
         // Check that is loaded in the qs.
-
         let key_provider = write_txn
             .get_key_providers()
             .get_uuid(UUID_KEY_PROVIDER_INTERNAL)
@@ -182,5 +209,16 @@ mod tests {
 
         // Run the providers internal test
         assert!(key_provider_internal.test().is_ok());
+
+        // Now at this point, the domain object should now be a key object, and have it's
+        // keys migrated.
+        let domain_object_migrated = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain object");
+
+        // Assert the former key is now in the domain key object.
+        assert!(false);
+
+        write_txn.commit().expect("Failed to commit");
     }
 }

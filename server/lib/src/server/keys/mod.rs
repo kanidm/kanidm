@@ -1,6 +1,6 @@
 mod internal;
 
-// mod object;
+mod object;
 mod provider;
 
 pub type KeyId = Vec<u8>;
