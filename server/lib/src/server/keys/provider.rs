@@ -104,6 +104,14 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
             .get(&key_provider_uuid)
             .map(|k| k.as_ref())
     }
+
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject> {
+        self.inner
+            .deref()
+            .objects
+            .get(&key_object_uuid)
+            .map(|k| k.as_ref())
+    }
 }
 
 pub struct KeyProvidersWriteTransaction<'a> {
@@ -116,6 +124,14 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
             .deref()
             .providers
             .get(&key_provider_uuid)
+            .map(|k| k.as_ref())
+    }
+
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject> {
+        self.inner
+            .deref()
+            .objects
+            .get(&key_object_uuid)
             .map(|k| k.as_ref())
     }
 }
