@@ -136,6 +136,39 @@ impl<'a> IdmServerAuthTransaction<'a> {
     }
 }
 
+#[derive(Debug)]
+pub struct GenerateApplicationPasswordEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+    pub application: Uuid,
+    pub label: String,
+}
+
+impl GenerateApplicationPasswordEvent {
+    pub fn from_parts(
+        ident: Identity,
+        target: Uuid,
+        application: Uuid,
+        label: String,
+    ) -> Result<Self, OperationError> {
+        Ok(GenerateApplicationPasswordEvent {
+            ident,
+            target,
+            application,
+            label,
+        })
+    }
+
+    pub fn new_internal(target: Uuid, application: Uuid, label: String) -> Self {
+        GenerateApplicationPasswordEvent {
+            ident: Identity::from_internal(),
+            target,
+            application,
+            label,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;

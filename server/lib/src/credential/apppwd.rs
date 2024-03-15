@@ -1,13 +1,35 @@
-use crate::credential::Password;
+use crate::credential::{CryptoPolicy, Password};
 use crate::prelude::*;
 use std::cmp::Ordering;
+use kanidm_proto::internal::OperationError;
 
 #[derive(Debug, Clone)]
 pub struct ApplicationPassword {
-    pub(crate) uuid: Uuid,
+    pub uuid: Uuid,
     pub(crate) application: Uuid,
     pub(crate) label: String,
     pub(crate) password: Password,
+}
+
+impl ApplicationPassword {
+    pub fn new(
+        application: Uuid,
+        label: &str,
+        cleartext: &str,
+        policy: &CryptoPolicy,
+    ) -> Result<ApplicationPassword, OperationError> {
+        let pw = Password::new(policy, cleartext).map_err(|e| {
+            error!(crypto_err = ?e);
+            e.into()
+        })?;
+        let ap = ApplicationPassword {
+            uuid: Uuid::new_v4(),
+            application,
+            label: label.to_string(),
+            password: pw,
+        };
+        Ok(ap)
+    }
 }
 
 impl PartialEq for ApplicationPassword {

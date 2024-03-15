@@ -25,6 +25,7 @@ use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
+use crate::idm::application::GenerateApplicationPasswordEvent;
 use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -1926,6 +1927,47 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         trace!("cred_update_session.commit");
         self.qs_write.commit()
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn generate_application_password(
+        &mut self,
+        ev: &GenerateApplicationPasswordEvent,
+    ) -> Result<String, OperationError> {
+        let account = self.target_to_account(ev.target)?;
+
+        // This is intended to be read/copied by a human
+        let cleartext = readable_password_from_random();
+
+        // Create a modlist from the change
+        let modlist = account
+            .generate_application_password_mod(
+                ev.application,
+                ev.label.as_str(),
+                cleartext.as_str(),
+                self.crypto_policy,
+            )
+            .map_err(|e| {
+                admin_error!("Unable to generate application password mod {:?}", e);
+                e
+            })?;
+        trace!(?modlist, "processing change");
+        // Apply it
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &ev.ident,
+            )
+            .map_err(|e| {
+                error!(error = ?e);
+                e
+            })
+            .map(|_| cleartext)
     }
 }
 
