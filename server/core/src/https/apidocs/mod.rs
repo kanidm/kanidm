@@ -117,7 +117,7 @@ impl Modify for SecurityAddon {
 
         super::v1::account_id_ssh_pubkeys_get,
         super::v1::account_id_radius_token_post,
-        super::v1::service_account_id_unix_post,
+        super::v1::person_id_unix_post,
         super::v1::person_id_unix_credential_put,
         super::v1::person_id_unix_credential_delete,
         super::v1::person_identify_user_post,
@@ -140,6 +140,7 @@ impl Modify for SecurityAddon {
         super::v1::service_account_id_credential_status_get,
         super::v1::service_account_id_ssh_pubkeys_tag_get,
         super::v1::service_account_id_ssh_pubkeys_tag_delete,
+        super::v1::service_account_id_unix_post,
         super::v1::account_id_unix_post,
         super::v1::account_id_unix_auth_post,
         super::v1::account_id_unix_token,
