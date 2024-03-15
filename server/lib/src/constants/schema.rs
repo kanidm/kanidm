@@ -639,30 +639,30 @@ pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = S
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_ES256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_ES256,
-    name: Attribute::KeyInternalEs256.into(),
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_ES256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_ES256,
+    name: Attribute::KeyInternalJwtEs256.into(),
     description: "".to_string(),
     multivalue: true,
-    syntax: SyntaxType::KeyInternalEs256,
+    syntax: SyntaxType::KeyInternalJwtEs256,
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_RS256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_RS256,
-    name: Attribute::KeyInternalRs256.into(),
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_RS256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_RS256,
+    name: Attribute::KeyInternalJwtRs256.into(),
     description: "".to_string(),
     multivalue: true,
-    syntax: SyntaxType::KeyInternalRs256,
+    syntax: SyntaxType::KeyInternalJwtRs256,
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_HS256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_HS256,
-    name: Attribute::KeyInternalHs256.into(),
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_HS256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_HS256,
+    name: Attribute::KeyInternalJwtHs256.into(),
     description: "".to_string(),
     multivalue: true,
-    syntax: SyntaxType::KeyInternalHs256,
+    syntax: SyntaxType::KeyInternalJwtHs256,
     ..Default::default()
 };
 
@@ -1174,18 +1174,22 @@ pub static ref SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6: SchemaClass = SchemaClass
     ..Default::default()
 };
 
+// =========================================
+// KeyObjects
+
 pub static ref SCHEMA_CLASS_KEY_OBJECT_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT,
     name: EntryClass::KeyObject.into(),
     description: "A cryptographic key object that can be used by a provider".to_string(),
-    systemmay: vec![
-        Attribute::Description.into(),
-    ],
-    systemmust: vec![
-        Attribute::Name.into(),
-    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_ES256,
+    name: EntryClass::KeyObjectJwtEs256.into(),
+    description: "A marker class indicating that this keyobject must provide jwt es256 capability.".to_string(),
     systemsupplements: vec![
-        EntryClass::KeyObjectInternal.into(),
+        EntryClass::KeyObject.into(),
     ],
     ..Default::default()
 };
@@ -1193,14 +1197,15 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_DL6: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_INTERNAL,
     name: EntryClass::KeyObjectInternal.into(),
-    description: "A cryptographic key that can be used by the internal provider".to_string(),
-
+    description: "A cryptographic key object that can be used by the internal provider".to_string(),
     systemmay: vec![
-        Attribute::KeyInternalEs256.into(),
-        Attribute::KeyInternalRs256.into(),
-        Attribute::KeyInternalHs256.into(),
+        Attribute::KeyInternalJwtEs256.into(),
+        Attribute::KeyInternalJwtHs256.into(),
+        Attribute::KeyInternalJwtRs256.into(),
     ],
-
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
     ..Default::default()
 };
 

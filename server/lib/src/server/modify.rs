@@ -22,7 +22,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
     }
 
-    /// Unsafety: This is unsafe because you need to be careful about how you handle and check
+    /// SAFETY: This is unsafe because you need to be careful about how you handle and check
     /// the Ok(None) case which occurs during internal operations, and that you DO NOT re-order
     /// and call multiple pre-applies at the same time, else you can cause DB corruption.
     #[instrument(level = "debug", skip_all)]

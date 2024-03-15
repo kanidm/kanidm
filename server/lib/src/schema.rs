@@ -237,9 +237,9 @@ impl SchemaAttribute {
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
 
-            SyntaxType::KeyInternalEs256 => todo!(),
-            SyntaxType::KeyInternalRs256 => todo!(),
-            SyntaxType::KeyInternalHs256 => todo!(),
+            SyntaxType::KeyInternalJwtEs256 => todo!(),
+            SyntaxType::KeyInternalJwtRs256 => todo!(),
+            SyntaxType::KeyInternalJwtHs256 => todo!(),
 
             SyntaxType::WebauthnAttestationCaList => false,
         };
@@ -302,9 +302,9 @@ impl SchemaAttribute {
                 SyntaxType::WebauthnAttestationCaList => {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
-                SyntaxType::KeyInternalEs256 => todo!(),
-                SyntaxType::KeyInternalRs256 => todo!(),
-                SyntaxType::KeyInternalHs256 => todo!(),
+                SyntaxType::KeyInternalJwtEs256 => todo!(),
+                SyntaxType::KeyInternalJwtRs256 => todo!(),
+                SyntaxType::KeyInternalJwtHs256 => todo!(),
             };
         if r {
             Ok(())
