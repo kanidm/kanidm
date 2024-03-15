@@ -96,6 +96,7 @@ impl ActorMarkov {
             (State::Authenticated, TransitionResult::Error) => {
                 self.state = State::Unauthenticated;
             }
+            _ => {}
         }
     }
 }

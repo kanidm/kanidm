@@ -1,14 +1,16 @@
 use crate::error::Error;
 use crate::run::{EventDetail, EventRecord};
 use crate::state::*;
+use std::str::FromStr;
 use std::time::{Duration, Instant};
 
 use kanidm_client::{ClientError, KanidmClient};
 
 use async_trait::async_trait;
-use strum_macros::EnumCount;
+use serde::{Deserialize, Serialize};
+// use strum_macros::EnumCount;
 
-#[derive(EnumCount)]
+// #[derive(EnumCount)]
 pub enum TransitionAction {
     Login = 0,
     Logout = 1,
@@ -53,6 +55,24 @@ pub enum TransitionResult {
     // AuthenticationNeeded,
     // An error occurred.
     Error,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ActorRole {
+    ReadAttribute,
+    WriteAttribute,
+}
+
+impl FromStr for ActorRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "readers" => Ok(ActorRole::ReadAttribute),
+            "writers" => Ok(ActorRole::WriteAttribute),
+            _ => Err(format!("Invalid group provided: {}", s)),
+        }
+    }
 }
 
 #[async_trait]
@@ -225,17 +245,79 @@ pub async fn logout(
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::TransitionAction;
-    use strum::EnumCount;
+// pub async fn fetch_next_action(
+//     client: &KanidmClient,
+//     person: &Person,
+// ) -> Result<(TransitionResult, EventRecord), Error> {
+//     let start = Instant::now();
+//     let result = client
+//         .idm_person_account_get_attr(&person.username, "memberof")
+//         .await;
+//     let end = Instant::now();
 
-    #[test]
-    fn transition_action_try_from_test() {
-        for i in 0..TransitionAction::COUNT {
-            let transition_action = TransitionAction::try_from(i as i32);
-            assert!(transition_action.is_ok());
-            assert_eq!(transition_action.unwrap() as usize, i);
-        }
-    }
-}
+//     let duration = end.duration_since(start);
+
+//     match result {
+//         Ok(res) => Ok(if let Some(groups) = res {
+//             let (transition_result, details) =
+//                 parse_groups_into_transition_result_and_event_details(&groups);
+//             (
+//                 transition_result,
+//                 EventRecord {
+//                     start,
+//                     duration,
+//                     details,
+//                 },
+//             )
+//         } else {
+//             (
+//                 TransitionResult::Error,
+//                 EventRecord {
+//                     start,
+//                     duration,
+//                     details: EventDetail::Error,
+//                 },
+//             )
+//         }),
+//         Err(client_err) => {
+//             debug!(?client_err);
+//             Ok((
+//                 TransitionResult::Error,
+//                 EventRecord {
+//                     start,
+//                     duration,
+//                     details: EventDetail::Error,
+//                 },
+//             ))
+//         }
+//     }
+// }
+
+// fn parse_groups_into_transition_result_and_event_details(
+//     groups: &Vec<String>,
+// ) -> (TransitionResult, EventDetail) {
+//     for group in groups {
+//         if let Ok(role) = ActorRole::from_str(group) {
+//             return (
+//                 TransitionResult::OkWithRole(role.clone()),
+//                 EventDetail::from(role),
+//             );
+//         };
+//     }
+//     return (TransitionResult::Error, EventDetail::Error);
+// }
+
+// #[cfg(test)]
+// mod test {
+//     use super::TransitionAction;
+//     use strum::EnumCount;
+
+//     #[test]
+//     fn transition_action_try_from_test() {
+//         for i in 0..TransitionAction::COUNT {
+//             let transition_action = TransitionAction::try_from(i as i32);
+//             assert!(transition_action.is_ok());
+//             assert_eq!(transition_action.unwrap() as usize, i);
+//         }
+//     }
+// }
