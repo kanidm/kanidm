@@ -65,6 +65,7 @@ pub struct LdapServer {
 enum LdapBindTarget {
     Account(Uuid),
     ApiToken,
+    Application(String, Uuid),
 }
 
 impl LdapServer {
@@ -90,8 +91,10 @@ impl LdapServer {
         let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{basedn}$").as_str())
             .map_err(|_| OperationError::InvalidEntryState)?;
 
-        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{basedn})?$").as_str())
-            .map_err(|_| OperationError::InvalidEntryState)?;
+        let binddnre = Regex::new(
+            format!("^((([^=,]+)=)?(?P<val>[^=,]+))(,app=(?P<app>[^=,]+))?(,{basedn})?$").as_str(),
+        )
+        .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
             dn: "".to_string(),
@@ -423,6 +426,14 @@ impl LdapServer {
                 let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
+            LdapBindTarget::Application(app, usr) => {
+                security_info!(
+                    "Application binding not implemented: app={:?}, usr={:?}",
+                    app,
+                    usr
+                );
+                todo!()
+            }
         };
 
         idm_auth.commit()?;
@@ -687,24 +698,34 @@ impl LdapServer {
             return Ok(LdapBindTarget::ApiToken);
         }
 
-        if let Some(rdn) = self
-            .binddnre
-            .captures(dn)
-            .and_then(|caps| caps.name("val"))
-            .map(|v| v.as_str().to_string())
-        {
-            if rdn.is_empty() {
-                // That's weird ...
-                return Err(OperationError::NoMatchingEntries);
+        if let Some(captures) = self.binddnre.captures(dn) {
+            if let Some(usr) = captures.name("val") {
+                let usr = usr.as_str();
+
+                if usr.is_empty() {
+                    error!("Failed to parse user name from bind DN, it is empty (capture group is {:#?})", captures.name("val"));
+                    return Err(OperationError::NoMatchingEntries);
+                }
+
+                let mut idm_auth = idms.auth().await;
+                let usr_uuid = idm_auth.qs_read.name_to_uuid(usr).map_err(|e| {
+                    error!(err = ?e, ?usr, "Error resolving rdn to target");
+                    e
+                })?;
+
+                if let Some(app) = captures.name("app") {
+                    let app = app.as_str();
+
+                    if app.is_empty() {
+                        error!("Failed to parse application name from bind DN, it is empty (capture group is {:#?})", captures.name("app"));
+                        return Err(OperationError::NoMatchingEntries);
+                    }
+
+                    return Ok(LdapBindTarget::Application(app.to_string(), usr_uuid));
+                }
+
+                return Ok(LdapBindTarget::Account(usr_uuid));
             }
-
-            let mut idm_auth = idms.auth().await;
-            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
-                error!(err = ?e, ?rdn, "Error resolving rdn to target");
-                e
-            })?;
-
-            return Ok(LdapBindTarget::Account(uuid));
         }
 
         error!(
