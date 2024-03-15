@@ -4,6 +4,45 @@ use crate::idm::event::LdapApplicationAuthEvent;
 use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
 use crate::prelude::*;
 
+pub(crate) struct Application {
+    pub uuid: Uuid,
+    pub name: String,
+    pub linked_group: Option<Uuid>,
+}
+
+impl Application {
+    pub(crate) fn try_from_entry_ro(
+        value: &Entry<EntrySealed, EntryCommitted>,
+        _qs: &mut QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Application.to_partialvalue()) {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: application".to_string(),
+            ));
+        }
+
+        let uuid = value.get_uuid();
+
+        let name = value
+            .get_ava_single_iname(Attribute::Name)
+            .map(|s| s.to_string())
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::Name
+                ))
+            })?;
+
+        let linked_group: Option<Uuid> = value.get_ava_single_refer(Attribute::LinkedGroup);
+
+        Ok(Application {
+            name,
+            uuid,
+            linked_group,
+        })
+    }
+}
+
 impl<'a> IdmServerAuthTransaction<'a> {
     pub async fn application_auth_ldap(
         &mut self,
@@ -23,6 +62,38 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Err(OperationError::InvalidUuid);
         }
 
+        let application: Application = self
+            .get_qs_txn()
+            .internal_search(filter!(f_and!([
+                f_eq(Attribute::Class, EntryClass::Application.into()),
+                f_eq(
+                    Attribute::Name,
+                    PartialValue::new_iname(lae.application.as_str())
+                )
+            ])))
+            .and_then(|mut vs| match vs.pop() {
+                Some(entry) if vs.is_empty() => Ok(entry),
+                _ => {
+                    admin_error!(
+                        ?lae.application,
+                        "entries was empty, or matched multiple results for name"
+                    );
+                    Err(OperationError::NotAuthenticated)
+                }
+            })
+            .and_then(|entry| Application::try_from_entry_ro(&entry, self.get_qs_txn()))
+            .map_err(|e| {
+                admin_error!("Failed to search application {:?}", e);
+                e
+            })?;
+
+        trace!(
+            "Application: {:?} {:?} {:?}",
+            application.name,
+            application.uuid,
+            application.linked_group
+        );
+
         security_info!("Account does not have a configured application password.");
         Ok(None)
     }
@@ -31,6 +102,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
+    use crate::idm::application::Application;
     use crate::idm::server::IdmServerTransaction;
     use crate::idm::serviceaccount::{DestroyApiTokenEvent, GenerateApiTokenEvent};
     use crate::prelude::*;
@@ -244,6 +316,22 @@ mod tests {
 
         let cr = idms_prox_write.qs_write.commit();
         assert!(cr.is_ok());
+
+        let mut idms_prox_read = idms.proxy_read().await;
+        let app = idms_prox_read
+            .qs_read
+            .internal_search_uuid(test_entry_uuid)
+            .and_then(|entry| Application::try_from_entry_ro(&entry, &mut idms_prox_read.qs_read))
+            .map_err(|e| {
+                trace!("Error: {:?}", e);
+                e
+            });
+        assert!(app.is_ok());
+
+        let app = app.unwrap();
+        assert!(app.name == "test_app_name");
+        assert!(app.uuid == test_entry_uuid);
+        assert!(app.linked_group.is_some_and(|u| u == test_grp_uuid));
     }
 
     // Test apitoken for application entries
