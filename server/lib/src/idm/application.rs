@@ -49,11 +49,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapApplicationAuthEvent,
         _ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let account: Account = self
-            .get_qs_txn()
-            .internal_search_uuid(lae.target)
-            .and_then(|entry| Account::try_from_entry_ro(&entry, self.get_qs_txn()))
-            .map_err(|e| {
+        let usr_entry = self.get_qs_txn().internal_search_uuid(lae.target)?;
+
+        let account: Account =
+            Account::try_from_entry_ro(&usr_entry, self.get_qs_txn()).map_err(|e| {
                 admin_error!("Failed to search account {:?}", e);
                 e
             })?;
@@ -86,6 +85,33 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 admin_error!("Failed to search application {:?}", e);
                 e
             })?;
+
+        // Check linked group membership
+        let linked_group_uuid = match application.linked_group {
+            Some(u) => u,
+            None => {
+                admin_warn!(
+                    "Application {:?} does not have a linked group.",
+                    application.name
+                );
+                return Ok(None);
+            }
+        };
+
+        let is_memberof = usr_entry
+            .get_ava_refer(Attribute::MemberOf)
+            .map(|member_of_set| member_of_set.contains(&linked_group_uuid))
+            .unwrap_or_default();
+
+        if !is_memberof {
+            trace!(
+                "User {:?} not member of application {:?} linked group {:?}",
+                account.uuid,
+                application.uuid,
+                linked_group_uuid
+            );
+            return Ok(None);
+        }
 
         trace!(
             "Application: {:?} {:?} {:?}",
