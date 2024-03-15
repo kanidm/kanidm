@@ -736,6 +736,18 @@ impl Account {
         }
         Ok(None)
     }
+
+    pub(crate) fn generate_application_password_mod(
+        &self,
+        application: Uuid,
+        label: &str,
+        cleartext: &str,
+        policy: &CryptoPolicy,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
+        let vap = Value::ApplicationPassword(ap.uuid, ap);
+        Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...
