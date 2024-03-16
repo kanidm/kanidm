@@ -1,4 +1,4 @@
-# Synchronising from FreeIPA
+# FreeIPA
 
 FreeIPA is a popular opensource LDAP and Kerberos provider, aiming to be "Active Directory" for
 Linux.

@@ -13,7 +13,7 @@ consumers - many of who are unlikely to be in a position to contact us to ask fo
 
 ### Ethics / Rights
 
-If you have not already, please see our documentation on [rights and ethics](ethics.md)
+If you have not already, please see our documentation on [rights and ethics](developer_ethics.md)
 
 ### Humans First
 

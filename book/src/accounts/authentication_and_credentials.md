@@ -27,7 +27,7 @@ text=Kanidm's definition of Passkeys may differ from that of other systems. This
 ### Attested Passkeys
 
 These are the same as Passkeys, except that the device must present a cryptographic certificate or
-origin during registration. This allows [account policy](policy.md) to be defined to only allow the
+origin during registration. This allows [account policy](account_policy.md) to be defined to only allow the
 use of certain models of authenticator. In general only FIDO2 keys or TPM's are capable of meeting
 attestation requirements.
 

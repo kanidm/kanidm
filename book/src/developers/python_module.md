@@ -1,4 +1,4 @@
-# Kanidm Python Module
+# Python Module
 
 So far it includes:
 

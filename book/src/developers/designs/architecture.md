@@ -1,4 +1,4 @@
-## Architectural Overview
+## Architecture
 
 Kanidm has a number of components and layers that make it up. As this project is continually
 evolving, if you have questions or notice discrepancies with this document please contact William
