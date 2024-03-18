@@ -1,10 +1,12 @@
+use std::fs::read;
+use std::path::Path;
 use std::process::exit;
 
 use crate::common::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 
 use crate::Oauth2ClaimMapJoin;
-use kanidm_proto::internal::Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin;
+use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 
 impl Oauth2Opt {
     pub fn debug(&self) -> bool {
@@ -22,6 +24,7 @@ impl Oauth2Opt {
             Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::SetName { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::SetLandingUrl { nopt, .. } => nopt.copt.debug,
+            Oauth2Opt::SetImage { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
@@ -255,6 +258,47 @@ impl Oauth2Opt {
                     )
                     .await
                 {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            Oauth2Opt::SetImage { nopt, path, image_type } => {
+                let client = nopt.copt.to_client(OpType::Write).await;
+                let img_res: Result<ImageValue, &str> = (move || {
+                    let path = Path::new(path);
+                    let file_name = path
+                        .file_name().ok_or("Please pass a file")?
+                        .to_str().ok_or("Path contains non utf-8")?
+                        .to_string();
+
+                    let image_type = if let Some(image_type) = image_type {
+                        image_type.as_str().try_into()?
+                    } else {
+                         path
+                            .extension().ok_or("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
+                            .to_str().ok_or("Path contains non utf-8")?
+                            .try_into()?
+                    };
+
+                    let read_res = read(path);
+                    match read_res {
+                        Ok(data) => {
+                            Ok(ImageValue::new(file_name, image_type, data))
+                        }
+                        Err(_err) => {
+                            Err("reading error") // TODO: use anyhow to propegate all kinds of errors up
+                        }
+                    }
+                })();
+
+                let img = match img_res {
+                    Ok(img) => img,
+                    Err(err) => {
+                        eprintln!("{err}");
+                        return;
+                    }
+                };
+                match client.idm_oauth2_rs_update_image(nopt.name.as_str(), img).await {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }

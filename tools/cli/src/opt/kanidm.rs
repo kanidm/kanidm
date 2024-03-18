@@ -1011,6 +1011,16 @@ pub enum Oauth2Opt {
         #[clap(name = "landing-url")]
         url: String,
     },
+    /// The image presented on the Kanidm Apps Listing page for a oauth2 resource server.
+    #[clap(name="set-image")]
+    SetImage {
+        #[clap(flatten)]
+        nopt: Named,
+        #[clap(name = "file-path")]
+        path: String,
+        #[clap(name = "file-type")]
+        image_type: Option<String>,
+    },
     #[clap(name = "enable-pkce")]
     /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     EnablePkce(Named),
