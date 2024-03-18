@@ -47,8 +47,24 @@ impl<'a> IdmServerAuthTransaction<'a> {
     pub async fn application_auth_ldap(
         &mut self,
         lae: &LdapApplicationAuthEvent,
+        ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         let usr_entry = self.get_qs_txn().internal_search_uuid(lae.target)?;
+
+        let within_valid_window = Account::check_within_valid_time(
+            ct,
+            usr_entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            usr_entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
+        );
+
+        if !within_valid_window {
+            security_info!("Account has expired or is not yet valid, not allowing to proceed");
+            return Err(OperationError::SessionExpired);
+        }
 
         let account: Account =
             Account::try_from_entry_ro(&usr_entry, self.get_qs_txn()).map_err(|e| {
