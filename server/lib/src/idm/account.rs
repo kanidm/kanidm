@@ -17,6 +17,7 @@ use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
+use crate::idm::application::Application;
 use crate::idm::group::Group;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -25,6 +26,7 @@ use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
 
+use crate::idm::ldap::{LdapBoundToken, LdapSession};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 #[derive(Debug, Clone)]
@@ -703,6 +705,36 @@ impl Account {
                 }
             }
         }
+    }
+
+    pub(crate) fn verify_application_password(
+        &self,
+        application: &Application,
+        cleartext: &str,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        if let Some(v) = self.apps_pwds.get(&application.uuid) {
+            for ap in v.iter() {
+                if ap.password.verify(cleartext).map_err(|e| {
+                    error!(crypto_err = ?e);
+                    e.into()
+                })? {
+                    let session_id = uuid::Uuid::new_v4();
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        self.spn,
+                        self.uuid
+                    );
+
+                    return Ok(Some(LdapBoundToken {
+                        spn: self.spn.clone(),
+                        session_id,
+                        effective_session: LdapSession::UnixBind(self.uuid),
+                    }));
+                }
+            }
+        }
+        Ok(None)
     }
 }
 
