@@ -432,7 +432,7 @@ impl LdapServer {
                     usr_uuid,
                     pw.to_string(),
                 )?;
-                idm_auth.application_auth_ldap(&lae, ct).await?
+                idm_auth.application_auth_ldap(&lae).await?
             }
         };
 

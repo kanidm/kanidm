@@ -1,4 +1,4 @@
-use super::ldap::LdapBoundToken;
+use super::ldap::{LdapBoundToken, LdapSession};
 use crate::idm::account::Account;
 use crate::idm::event::LdapApplicationAuthEvent;
 use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
@@ -47,7 +47,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
     pub async fn application_auth_ldap(
         &mut self,
         lae: &LdapApplicationAuthEvent,
-        _ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         let usr_entry = self.get_qs_txn().internal_search_uuid(lae.target)?;
 
@@ -113,15 +112,27 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Ok(None);
         }
 
-        trace!(
-            "Application: {:?} {:?} {:?}",
-            application.name,
-            application.uuid,
-            application.linked_group
-        );
+        match account.verify_application_password(&application, lae.cleartext.as_str())? {
+            Some(_) => {
+                let session_id = Uuid::new_v4();
+                security_info!(
+                    "Starting session {} for {} {}",
+                    session_id,
+                    account.spn,
+                    account.uuid
+                );
 
-        security_info!("Account does not have a configured application password.");
-        Ok(None)
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn,
+                    session_id,
+                    effective_session: LdapSession::UnixBind(account.uuid),
+                }))
+            }
+            None => {
+                security_info!("Account does not have a configured application password.");
+                Ok(None)
+            }
+        }
     }
 }
 
