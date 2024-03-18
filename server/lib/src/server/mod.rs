@@ -127,6 +127,7 @@ pub struct QueryServerWriteTransaction<'a> {
     // changing content.
     pub(super) changed_schema: bool,
     pub(super) changed_acp: bool,
+    pub(super) changed_application: bool,
     pub(super) changed_oauth2: bool,
     pub(super) changed_domain: bool,
     pub(super) changed_system_config: bool,
@@ -930,6 +931,13 @@ pub trait QueryServerTransaction<'a> {
         )))
     }
 
+    fn get_ldap_applications_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::Application.into(),
+        )))
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn consumer_get_state(&mut self) -> Result<ReplRuvRange, OperationError> {
         // Get the current state of "where we are up to"
@@ -1363,6 +1371,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: false,
             changed_acp: false,
+            changed_application: false,
             changed_oauth2: false,
             changed_domain: false,
             changed_system_config: false,
@@ -1829,6 +1838,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.upgrade_reindex(v)
     }
 
+    pub(crate) fn get_changed_app(&self) -> bool {
+        self.changed_application
+    }
+
     pub(crate) fn get_changed_oauth2(&self) -> bool {
         self.changed_oauth2
     }
@@ -1928,6 +1941,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             trim_cid: _,
             changed_schema: _,
             changed_acp: _,
+            changed_application: _,
             changed_oauth2: _,
             changed_domain: _,
             changed_system_config: _,

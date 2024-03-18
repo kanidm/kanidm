@@ -201,6 +201,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 });
         }
+        if !self.changed_application {
+            self.changed_application = norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Application.into()));
+        }
         if !self.changed_oauth2 {
             self.changed_oauth2 = norm_cand
                 .iter()
@@ -226,6 +232,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         trace!(
             schema_reload = ?self.changed_schema,
             acp_reload = ?self.changed_acp,
+            application_reload = ?self.changed_application,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
         );

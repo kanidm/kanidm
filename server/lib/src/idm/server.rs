@@ -30,6 +30,9 @@ use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::apppwd::GenerateApplicationPasswordEvent;
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
+use crate::idm::application::{
+    LdapApplications, LdapApplicationsReadTransaction, LdapApplicationsWriteTransaction,
+};
 use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -89,6 +92,7 @@ pub struct IdmServer {
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
     domain_keys: Arc<CowCell<DomainKeys>>,
+    ldap_applications: Arc<LdapApplications>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -105,6 +109,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
+    pub(crate) ldap_applications: LdapApplicationsReadTransaction,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -134,6 +139,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     webauthn: &'a Webauthn,
     pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
+    pub(crate) ldap_applications: LdapApplicationsWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -156,7 +162,15 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
+        let (
+            rp_id,
+            rp_name,
+            fernet_private_key,
+            es256_private_key,
+            cookie_key,
+            oauth2rs_set,
+            application_set,
+        ) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
@@ -166,6 +180,7 @@ impl IdmServer {
                 qs_read.get_domain_cookie_key()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
+                qs_read.get_ldap_applications_set()?,
             )
         };
 
@@ -231,6 +246,12 @@ impl IdmServer {
                 e
             })?;
 
+        let ldap_applications =
+            LdapApplications::try_from(application_set).map_err(|e| {
+                admin_error!("Failed to load ldap applications - {:?}", e);
+                e
+            })?;
+
         Ok((
             IdmServer {
                 session_ticket: Semaphore::new(1),
@@ -244,6 +265,7 @@ impl IdmServer {
                 webauthn,
                 domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
+                ldap_applications: Arc::new(ldap_applications),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
@@ -272,6 +294,7 @@ impl IdmServer {
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
             domain_keys: self.domain_keys.read(),
+            ldap_applications: self.ldap_applications.read(),
         }
     }
 
@@ -302,6 +325,7 @@ impl IdmServer {
             webauthn: &self.webauthn,
             domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
+            ldap_applications: self.ldap_applications.write(),
         }
     }
 
@@ -2096,6 +2120,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
+        if self.qs_write.get_changed_app() {
+            self.qs_write
+                .get_ldap_applications_set()
+                .and_then(|ldap_application_set| {
+                    self.ldap_applications.reload(ldap_application_set)
+                })?;
+        }
         if self.qs_write.get_changed_oauth2() {
             self.qs_write
                 .get_oauth2rs_set()
@@ -2151,6 +2182,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // admin do it inline with their configs too.
         }
         // Commit everything.
+        self.ldap_applications.commit();
         self.oauth2rs.commit();
         self.domain_keys.commit();
         self.cred_update_sessions.commit();
