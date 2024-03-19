@@ -639,30 +639,21 @@ pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = S
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_ES256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_ES256,
-    name: Attribute::KeyInternalJwtEs256.into(),
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL,
+    name: Attribute::KeyInternal.into(),
     description: "".to_string(),
     multivalue: true,
-    syntax: SyntaxType::KeyInternalJwtEs256,
+    syntax: SyntaxType::KeyInternal,
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_RS256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_RS256,
-    name: Attribute::KeyInternalJwtRs256.into(),
+pub static ref SCHEMA_ATTR_KEY_PROVIDER_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_PROVIDER,
+    name: Attribute::KeyProvider.into(),
     description: "".to_string(),
-    multivalue: true,
-    syntax: SyntaxType::KeyInternalJwtRs256,
-    ..Default::default()
-};
-
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_JWT_HS256_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_JWT_HS256,
-    name: Attribute::KeyInternalJwtHs256.into(),
-    description: "".to_string(),
-    multivalue: true,
-    syntax: SyntaxType::KeyInternalJwtHs256,
+    multivalue: false,
+    syntax: SyntaxType::ReferenceUuid,
     ..Default::default()
 };
 
@@ -1202,9 +1193,7 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     name: EntryClass::KeyObjectInternal.into(),
     description: "A cryptographic key object that can be used by the internal provider".to_string(),
     systemmay: vec![
-        Attribute::KeyInternalJwtEs256.into(),
-        Attribute::KeyInternalJwtHs256.into(),
-        Attribute::KeyInternalJwtRs256.into(),
+        Attribute::KeyInternal.into(),
     ],
     systemsupplements: vec![
         EntryClass::KeyObject.into(),

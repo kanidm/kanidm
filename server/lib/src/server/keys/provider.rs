@@ -30,9 +30,14 @@ impl KeyProvider {
         }
     }
 
-    pub(crate) fn create_new_key_object(&self, key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
+    pub(crate) fn create_new_key_object(
+        &self,
+        key_object_uuid: Uuid,
+    ) -> Result<Box<dyn KeyObject>, OperationError> {
         match self {
-            KeyProvider::Internal(inner) => inner.create_new_key_object(key_object_uuid, inner.clone()),
+            KeyProvider::Internal(inner) => {
+                inner.create_new_key_object(key_object_uuid, inner.clone())
+            }
         }
     }
 
