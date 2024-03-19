@@ -121,7 +121,7 @@ impl AppsApp {
                             name,
                             display_name,
                             redirect_url,
-                            icon: _,
+                            has_image: _,
                         } => {
                             let redirect_url = redirect_url.to_string();
                             html!{
