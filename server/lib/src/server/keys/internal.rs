@@ -1,11 +1,11 @@
 use super::KeyId;
+use super::object::KeyObject;
 use crate::prelude::*;
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
-use time::OffsetDateTime;
 
-use compact_jwt::{JwsEs256Signer, JwsEs256Verifier};
+use compact_jwt::{JwsEs256Signer, JwsSigner, JwsEs256Verifier};
 
 pub struct KeyProviderInternal {
     uuid: Uuid,
@@ -38,6 +38,17 @@ impl KeyProviderInternal {
         self.name.as_str()
     }
 
+    pub(crate) fn create_new_key_object(&self,
+        uuid: Uuid,
+        provider: Arc<Self>,
+        ) -> Result<Box<dyn KeyObject>, OperationError> {
+        Ok(Box::new(KeyObjectInternal {
+            provider,
+            uuid,
+            jwt_es256: None,
+        }))
+    }
+
     pub(crate) fn test(&self) -> Result<(), OperationError> {
         // Are there crypto operations we should test?
 
@@ -55,68 +66,87 @@ impl KeyProviderInternal {
     }
 }
 
-pub enum KeyObjectInternalStatus {
+enum InternalJwtEs256Status {
     Valid {
-        private_der: Vec<u8>,
-        from: OffsetDateTime,
+        signer: JwsEs256Signer
     },
-    // A special form of valid, where only the public key is retained for verification
-    // Retained {
-    //     from: OffsetDateTime
-    // },
+    Retained {
+        verifier: JwsEs256Verifier
+    },
     Revoked {
-        at: OffsetDateTime,
+        untrusted_verifier: JwsEs256Verifier
     },
 }
 
-pub enum VSKeyObjectInternal {
-    JwtES256 {
-        status: KeyObjectInternalStatus,
-        public_der: Vec<u8>,
-        key_id: KeyId,
-    },
+struct InternalJwtEs256 {
+    // key_id: KeyId,
+    valid_from: u64,
+    status: InternalJwtEs256Status
 }
 
-// To move elsewhere, probably valueSet
-pub struct ValueSetKeyObjectInternal {
-    objects: BTreeMap<KeyId, VSKeyObjectInternal>,
+#[derive(Default)]
+struct KeyObjectInternalJwtEs256 {
+    // active signing keys are in a BTreeMap indexed by their valid_from
+    // time so that we can retrieve the active key.
+    //
+    // We don't need to worry about manipulating this at runtime, since any expiry
+    // event will cause the keyObject to reload, which will reflect to this map.
+
+    // QUESTION: If we're worried about memory this could be an Rc or a
+    // KeyId
+    active: BTreeMap<u64, JwsEs256Signer>,
+
+    // All keys are stored by their KeyId for fast lookup. Keys internally have a
+    // current status which is checked for signature validation.
+    all: BTreeMap<KeyId, InternalJwtEs256>,
+}
+
+impl KeyObjectInternalJwtEs256 {
+    fn new_active(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        let signer = JwsEs256Signer::generate_es256().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to generate new jwt es256 signing key");
+            OperationError::KP0006KeyObjectJwtEs256Generation
+        })?;
+
+        self.active.insert(valid_from, signer.clone());
+
+        let kid = signer.get_kid().as_bytes().to_vec();
+
+        self.all.insert(kid, InternalJwtEs256 { valid_from, status: InternalJwtEs256Status::Valid {
+            signer,
+        } });
+
+        Ok(())
+    }
 }
 
 pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
+    jwt_es256: Option<KeyObjectInternalJwtEs256>,
 }
 
-pub struct KeyObjectInternalJwtEs256 {
-    object: KeyObjectInternal,
+impl KeyObject for KeyObjectInternal {
+    fn uuid(&self) -> Uuid {
+        self.uuid
+    }
 
-    // The active signing key
-    jwt_es256: JwsEs256Signer,
-    // All current trust keys that can validate a signature.
-    //
-    // NOTE: The active signing key is reflected in this set!
-    jwt_es256_valid: BTreeMap<KeyId, JwsEs256Verifier>,
-}
+    fn jwt_es256_generate(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+        let mut koi = self.jwt_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+        koi.new_active(valid_from)
+    }
 
-impl KeyObjectInternalJwtEs256 {
-    pub fn new(provider: Arc<KeyProviderInternal>, uuid: Uuid) -> Result<Self, OperationError> {
-        // Generate a new key.
-        let jwt_es256 = JwsEs256Signer::generate_es256().map_err(|jwt_error| {
-            error!(?jwt_error, "Unable to generate new jwt es256 signing key");
-            OperationError::KP0006KeyObjectJwtEs256Generation
-        })?;
-
-        Ok(KeyObjectInternalJwtEs256 {
-            object: KeyObjectInternal { provider, uuid },
-            jwt_es256,
-            jwt_es256_valid: BTreeMap::default(),
-        })
+    fn into_entry_new(&self) -> Result<EntryInitNew, OperationError> {
+        todo!();
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::server::keys::*;
 
     #[qs_test]
     async fn test_key_object_internal_es256(server: &QueryServer) {

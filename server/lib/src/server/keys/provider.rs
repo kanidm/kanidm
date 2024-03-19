@@ -30,6 +30,12 @@ impl KeyProvider {
         }
     }
 
+    pub(crate) fn create_new_key_object(&self, key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
+        match self {
+            KeyProvider::Internal(inner) => inner.create_new_key_object(key_object_uuid, inner.clone()),
+        }
+    }
+
     pub(crate) fn try_from(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Arc<Self>, OperationError> {
@@ -110,7 +116,7 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
             .deref()
             .objects
             .get(&key_object_uuid)
-            .map(|k| k.as_ref())
+            .map(|k| k.as_ref().as_ref())
     }
 }
 
@@ -132,15 +138,16 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
             .deref()
             .objects
             .get(&key_object_uuid)
-            .map(|k| k.as_ref())
+            .map(|k| k.as_ref().as_ref())
     }
 }
 
 impl<'a> KeyProvidersWriteTransaction<'a> {
-    pub(crate) fn get_default(&self) -> Option<&KeyProvider> {
+    pub(crate) fn get_default(&self) -> Result<&KeyProvider, OperationError> {
         // In future we will make this configurable, and we'll load the default into
         // the write txn during a reload.
         self.get_uuid(UUID_KEY_PROVIDER_INTERNAL)
+            .ok_or(OperationError::KP0007KeyProviderDefaultNotAvailable)
     }
 }
 
