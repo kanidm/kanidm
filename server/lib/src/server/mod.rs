@@ -624,9 +624,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
 
-                    SyntaxType::KeyInternalJwtEs256 => Err(OperationError::InvalidAttribute("ES256 keys are generated and not able to be set.".to_string())),
-                    SyntaxType::KeyInternalJwtRs256 => Err(OperationError::InvalidAttribute("RS256 keys are generated and not able to be set.".to_string())),
-                    SyntaxType::KeyInternalJwtHs256 => Err(OperationError::InvalidAttribute("HS256 keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute("Internal keys are generated and not able to be set.".to_string())),
                 }
             }
             None => {
@@ -750,10 +748,12 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
-
-                    SyntaxType::KeyInternalJwtEs256 => todo!(),
-                    SyntaxType::KeyInternalJwtRs256 => todo!(),
-                    SyntaxType::KeyInternalJwtHs256 => todo!(),
+                    SyntaxType::KeyInternal => PartialValue::new_key_identifier_s(value)
+                        .ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid key identifer syntax, expected hex string".to_string(),
+                            )
+                        }),
                 }
             }
             None => {

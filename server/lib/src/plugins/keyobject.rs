@@ -23,7 +23,8 @@ impl Plugin for KeyObjectManagement {
         // Valid from right meow!
         let valid_from = qs.get_curtime();
 
-        let key_objects_to_create = cand.iter_mut()
+        let key_objects_to_create = cand
+            .iter_mut()
             .filter(|entry| {
                 entry.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
             })
@@ -33,15 +34,18 @@ impl Plugin for KeyObjectManagement {
                 entry.remove_ava(Attribute::Class, &EntryClass::KeyObjectInternal.into());
 
                 // Must be set by now.
-                let key_object_uuid = entry.get_uuid()
+                let key_object_uuid = entry
+                    .get_uuid()
                     .ok_or(OperationError::KP0008KeyObjectMissingUuid)?;
 
                 // Get the default provider, and create a new ephemeral key object
                 // inside it.
-                let mut key_object = key_providers.get_default()?
+                let mut key_object = key_providers
+                    .get_default()?
                     .create_new_key_object(key_object_uuid)?;
 
-                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into()) {
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
+                {
                     key_object.jwt_es256_generate(valid_from)?;
                 }
 

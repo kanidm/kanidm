@@ -1,11 +1,11 @@
-use super::KeyId;
 use super::object::KeyObject;
+use super::KeyId;
 use crate::prelude::*;
 
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use compact_jwt::{JwsEs256Signer, JwsSigner, JwsEs256Verifier};
+use compact_jwt::{JwsEs256Signer, JwsEs256Verifier, JwsSigner};
 
 pub struct KeyProviderInternal {
     uuid: Uuid,
@@ -38,10 +38,11 @@ impl KeyProviderInternal {
         self.name.as_str()
     }
 
-    pub(crate) fn create_new_key_object(&self,
+    pub(crate) fn create_new_key_object(
+        &self,
         uuid: Uuid,
         provider: Arc<Self>,
-        ) -> Result<Box<dyn KeyObject>, OperationError> {
+    ) -> Result<Box<dyn KeyObject>, OperationError> {
         Ok(Box::new(KeyObjectInternal {
             provider,
             uuid,
@@ -68,20 +69,20 @@ impl KeyProviderInternal {
 
 enum InternalJwtEs256Status {
     Valid {
-        signer: JwsEs256Signer
+        signer: JwsEs256Signer,
     },
     Retained {
-        verifier: JwsEs256Verifier
+        verifier: JwsEs256Verifier,
     },
     Revoked {
-        untrusted_verifier: JwsEs256Verifier
+        untrusted_verifier: JwsEs256Verifier,
     },
 }
 
 struct InternalJwtEs256 {
     // key_id: KeyId,
     valid_from: u64,
-    status: InternalJwtEs256Status
+    status: InternalJwtEs256Status,
 }
 
 #[derive(Default)]
@@ -114,9 +115,13 @@ impl KeyObjectInternalJwtEs256 {
 
         let kid = signer.get_kid().as_bytes().to_vec();
 
-        self.all.insert(kid, InternalJwtEs256 { valid_from, status: InternalJwtEs256Status::Valid {
-            signer,
-        } });
+        self.all.insert(
+            kid,
+            InternalJwtEs256 {
+                valid_from,
+                status: InternalJwtEs256Status::Valid { signer },
+            },
+        );
 
         Ok(())
     }
@@ -134,7 +139,9 @@ impl KeyObject for KeyObjectInternal {
     }
 
     fn jwt_es256_generate(&mut self, valid_from: Duration) -> Result<(), OperationError> {
-        let mut koi = self.jwt_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+        let mut koi = self
+            .jwt_es256
+            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
         koi.new_active(valid_from)
     }
 
@@ -183,7 +190,7 @@ mod tests {
             .expect("Unable to retrieve key object by uuid");
 
         // Check that the es256 is now present.
-        assert!(key_object_entry.attribute_pres(Attribute::KeyInternalJwtEs256));
+        assert!(key_object_entry.attribute_pres(Attribute::KeyInternal));
 
         // Now check the object was loaded.
 
