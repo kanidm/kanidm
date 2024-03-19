@@ -4,7 +4,7 @@ This is a list of common questions that are generally raised by developers or te
 
 ## Why don't you use library/project X?
 
-A critical aspect of kanidm is the ability to test it. Generally requests to add libraries or
+A critical aspect of Kanidm is the ability to test it. Generally requests to add libraries or
 projects can come in different forms so I'll answer to a few of them:
 
 ## Is the library in Rust?
@@ -25,7 +25,7 @@ parts. This creates production fragility and issues such as:
 - Design choices of the project not being compatible with Kanidm's model
 - Extra requirements for testing/production configuration
 
-This last point is key. It is a critical part of kanidm that the following must work on all
+This last point is key. It is a critical part of Kanidm that the following must work on all
 machines, and run every single test in the suite.
 
 ```shell
