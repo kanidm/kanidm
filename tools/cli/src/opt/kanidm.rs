@@ -1018,7 +1018,7 @@ pub enum Oauth2Opt {
         nopt: Named,
         #[clap(name = "file-path")]
         path: String,
-        #[clap(name = "file-type")]
+        #[clap(name = "image-type")]
         image_type: Option<String>,
     },
     #[clap(name = "enable-pkce")]

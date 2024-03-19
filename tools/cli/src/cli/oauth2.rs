@@ -1,6 +1,7 @@
 use std::fs::read;
 use std::path::Path;
 use std::process::exit;
+use anyhow::{anyhow, Context, Error};
 
 use crate::common::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
@@ -264,20 +265,21 @@ impl Oauth2Opt {
             }
             Oauth2Opt::SetImage { nopt, path, image_type } => {
                 let client = nopt.copt.to_client(OpType::Write).await;
-                let img_res: Result<ImageValue, &str> = (move || {
+                let img_res: Result<ImageValue, Error> = (move || {
                     let path = Path::new(path);
                     let file_name = path
-                        .file_name().ok_or("Please pass a file")?
-                        .to_str().ok_or("Path contains non utf-8")?
+                        .file_name().context("Please pass a file")?
+                        .to_str().context("Path contains non utf-8")?
                         .to_string();
 
                     let image_type = if let Some(image_type) = image_type {
-                        image_type.as_str().try_into()?
+                        image_type.as_str().try_into().map_err(Error::msg)?
                     } else {
-                         path
-                            .extension().ok_or("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
-                            .to_str().ok_or("Path contains non utf-8")?
-                            .try_into()?
+                        path
+                            .extension().context("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
+                            .to_str().context("Path contains invalid utf-8")?
+                            .try_into()
+                            .map_err(Error::msg)?
                     };
 
                     let read_res = read(path);
@@ -285,8 +287,8 @@ impl Oauth2Opt {
                         Ok(data) => {
                             Ok(ImageValue::new(file_name, image_type, data))
                         }
-                        Err(_err) => {
-                            Err("reading error") // TODO: use anyhow to propegate all kinds of errors up
+                        Err(err) => {
+                            Err(err).context("Reading error")
                         }
                     }
                 })();
@@ -298,6 +300,7 @@ impl Oauth2Opt {
                         return;
                     }
                 };
+
                 match client.idm_oauth2_rs_update_image(nopt.name.as_str(), img).await {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),

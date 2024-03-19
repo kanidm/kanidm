@@ -93,6 +93,7 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.2.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.2.0-dev" }
 
 serde_with = "3.4.0"
+anyhow = { version = "1.0.81" }
 argon2 = { version = "0.5.2", features = ["alloc"] }
 async-recursion = "1.0.5"
 async-trait = "^0.1.74"
