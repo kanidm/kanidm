@@ -1181,6 +1181,9 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT,
     name: EntryClass::KeyObject.into(),
     description: "A cryptographic key object that can be used by a provider".to_string(),
+    systemmust: vec![
+        Attribute::KeyProvider.into(),
+    ],
     ..Default::default()
 };
 

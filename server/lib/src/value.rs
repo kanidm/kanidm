@@ -39,6 +39,9 @@ use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
+
+use crate::server::keys::KeyId;
+
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
@@ -1054,6 +1057,13 @@ pub struct Oauth2Session {
     pub rs_uuid: Uuid,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum KeyInternalStatus {
+    Valid,
+    Retained,
+    Revoked,
+}
+
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
 /// used for selection, filtering, searching, matching etc. It also contains supplemental data
 /// which may be stored inside of the Value, such as credential secrets, blobs etc.
@@ -1112,6 +1122,13 @@ pub enum Value {
 
     OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
+
+    KeyInternalJwtEs256 {
+        id: KeyId,
+        valid_from: u64,
+        status: KeyInternalStatus,
+        der: Vec<u8>,
+    },
 }
 
 impl PartialEq for Value {
