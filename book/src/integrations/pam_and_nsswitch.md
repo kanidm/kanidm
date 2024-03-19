@@ -78,7 +78,7 @@ If it is not working, you will see an error message:
    Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 ```
 
-For more information, see the [Troubleshooting](./pam_and_nsswitch.md#troubleshooting) section.
+For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting.md) section.
 
 ## nsswitch
 
