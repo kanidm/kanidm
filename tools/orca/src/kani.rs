@@ -98,7 +98,11 @@ impl KanidmOrcaClient {
             })
     }
 
-    pub async fn add_person_to_group(&self, username: &str, group_name: &str) -> Result<(), Error> {
+    pub async fn add_members_to_group(
+        &self,
+        username: &str,
+        group_name: &str,
+    ) -> Result<(), Error> {
         self.idm_admin_client
             .idm_group_add_members(group_name, &[username])
             .await
@@ -126,7 +130,7 @@ impl KanidmOrcaClient {
 
     pub async fn group_create(&self, group_name: &str) -> Result<(), Error> {
         self.idm_admin_client
-            .idm_group_create(group_name, None)
+            .idm_group_create(group_name, Some("idm_admin"))
             .await
             .map_err(|err| {
                 error!(?err, ?group_name, "Unable to create group");

@@ -126,13 +126,11 @@ pub async fn login(
 
 pub async fn person_get(
     client: &KanidmClient,
-    person: &Person,
+    _person: &Person,
 ) -> Result<(TransitionResult, EventRecord), Error> {
     // Should we measure the time of each call rather than the time with multiple calls?
     let start = Instant::now();
-    let result = client
-        .idm_person_account_get(person.username.as_str())
-        .await;
+    let result = client.idm_person_account_get("idm_admin").await;
     let end = Instant::now();
 
     let duration = end.duration_since(start);
@@ -183,7 +181,11 @@ pub async fn person_set(
         ));
     };
     let result = client
-        .idm_person_account_set_attr(person_username, "displayname", &[person_username])
+        .idm_person_account_set_attr(
+            person_username,
+            "mail",
+            &[&format!("{person_username}@localhost.it")],
+        )
         .await;
     let end = Instant::now();
 
