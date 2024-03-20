@@ -145,6 +145,8 @@ pub enum OperationError {
     KP0006KeyObjectJwtEs256Generation,
     KP0007KeyProviderDefaultNotAvailable,
     KP0008KeyObjectMissingUuid,
+    KP0009KeyObjectPrivateToDer,
+    KP0010KeyObjectSignerToVerifier,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

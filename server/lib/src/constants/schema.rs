@@ -639,9 +639,9 @@ pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = S
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_KEY_INTERNAL_DL6: SchemaAttribute = SchemaAttribute {
-    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL,
-    name: Attribute::KeyInternal.into(),
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_DATA,
+    name: Attribute::KeyInternalData.into(),
     description: "".to_string(),
     multivalue: true,
     syntax: SyntaxType::KeyInternal,
@@ -1193,7 +1193,7 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     name: EntryClass::KeyObjectInternal.into(),
     description: "A cryptographic key object that can be used by the internal provider".to_string(),
     systemmay: vec![
-        Attribute::KeyInternal.into(),
+        Attribute::KeyInternalData.into(),
     ],
     systemsupplements: vec![
         EntryClass::KeyObject.into(),

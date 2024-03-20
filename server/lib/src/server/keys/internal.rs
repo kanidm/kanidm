@@ -5,7 +5,10 @@ use crate::prelude::*;
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-use compact_jwt::{JwsEs256Signer, JwsEs256Verifier, JwsSigner};
+use compact_jwt::{JwsEs256Signer, JwsEs256Verifier, JwsSigner, JwsSignerToVerifier};
+
+use crate::value::{KeyInternalStatus, KeyUsage};
+use crate::valueset::{KeyInternalData, ValueSetKeyInternal};
 
 pub struct KeyProviderInternal {
     uuid: Uuid,
@@ -70,6 +73,7 @@ impl KeyProviderInternal {
 enum InternalJwtEs256Status {
     Valid {
         signer: JwsEs256Signer,
+        verifier: JwsEs256Verifier,
     },
     Retained {
         verifier: JwsEs256Verifier,
@@ -80,8 +84,8 @@ enum InternalJwtEs256Status {
 }
 
 struct InternalJwtEs256 {
-    // key_id: KeyId,
     valid_from: u64,
+    der: Vec<u8>,
     status: InternalJwtEs256Status,
 }
 
@@ -111,6 +115,19 @@ impl KeyObjectInternalJwtEs256 {
             OperationError::KP0006KeyObjectJwtEs256Generation
         })?;
 
+        let verifier = signer.get_verifier().map_err(|jwt_error| {
+            error!(
+                ?jwt_error,
+                "Unable to produce jwt es256 verifier from signer"
+            );
+            OperationError::KP0010KeyObjectSignerToVerifier
+        })?;
+
+        let der = signer.private_key_to_der().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to convert signing key to DER");
+            OperationError::KP0009KeyObjectPrivateToDer
+        })?;
+
         self.active.insert(valid_from, signer.clone());
 
         let kid = signer.get_kid().as_bytes().to_vec();
@@ -119,11 +136,38 @@ impl KeyObjectInternalJwtEs256 {
             kid,
             InternalJwtEs256 {
                 valid_from,
-                status: InternalJwtEs256Status::Valid { signer },
+                der,
+                status: InternalJwtEs256Status::Valid { signer, verifier },
             },
         );
 
         Ok(())
+    }
+
+    fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
+        self.all.iter().map(|(key_id, internal_jwt)| {
+            let usage = KeyUsage::JwtEs256;
+
+            let valid_from = internal_jwt.valid_from;
+
+            let der = internal_jwt.der.clone();
+
+            let status = match &internal_jwt.status {
+                InternalJwtEs256Status::Valid { .. } => KeyInternalStatus::Valid,
+                InternalJwtEs256Status::Retained { .. } => KeyInternalStatus::Retained,
+                InternalJwtEs256Status::Revoked { .. } => KeyInternalStatus::Revoked,
+            };
+
+            (
+                key_id.clone(),
+                KeyInternalData {
+                    usage,
+                    valid_from,
+                    der,
+                    status,
+                },
+            )
+        })
     }
 }
 
@@ -145,8 +189,21 @@ impl KeyObject for KeyObjectInternal {
         koi.new_active(valid_from)
     }
 
-    fn into_entry_new(&self) -> Result<EntryInitNew, OperationError> {
-        todo!();
+    fn update_entry_invalid_new(&self, entry: &mut EntryInvalidNew) -> Result<(), OperationError> {
+        entry.add_ava(Attribute::Class, EntryClass::KeyObjectInternal.to_value());
+        entry.add_ava(Attribute::KeyProvider, Value::Refer(self.provider.uuid()));
+
+        let key_iter = self
+            .jwt_es256
+            .iter()
+            .flat_map(|jwt_es256| jwt_es256.to_key_iter());
+
+        let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)?;
+
+        // Replace any content with this.
+        entry.set_ava_set(Attribute::KeyInternalData, key_vs);
+
+        Ok(())
     }
 }
 
@@ -190,7 +247,7 @@ mod tests {
             .expect("Unable to retrieve key object by uuid");
 
         // Check that the es256 is now present.
-        assert!(key_object_entry.attribute_pres(Attribute::KeyInternal));
+        assert!(key_object_entry.attribute_pres(Attribute::KeyInternalData));
 
         // Now check the object was loaded.
 
