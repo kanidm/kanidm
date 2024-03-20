@@ -58,7 +58,20 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
     // todo! may need a random username vec for later stuff
 
-    // PHASE 2 - generate persons
+    // PHASE 2 - generate groups for integration access, assign roles to groups
+    // actually these are just groups to decide what each person is supposed to do with their life
+    let groups = vec![
+        Group::new(
+            "readers".to_string(),
+            BTreeSet::from(["idm_people_pii_read".to_string()]),
+        ),
+        Group::new(
+            "writers".to_string(),
+            BTreeSet::from(["idm_people_self_write_mail".to_string()]),
+        ),
+    ];
+
+    // PHASE 3 - generate persons
     //         - assign them credentials of various types.
     let mut persons = Vec::with_capacity(profile.person_count() as usize);
     let mut person_usernames = BTreeSet::new();
@@ -103,8 +116,17 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         //     normal_dist_mean_and_std_dev: None,
         // };
 
-        let model = Model::ReadWriteAttr;
+        let mut member_of = BTreeSet::new();
 
+        let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
+
+        for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
+            member_of.insert(group.name.to_string());
+        }
+
+        let model = Model::ConditionalReadWriteAttr {
+            member_of: member_of.clone(),
+        };
         // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
 
@@ -112,7 +134,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             preflight_state: PreflightState::Present,
             username: username.clone(),
             display_name,
-            member_of: BTreeSet::default(),
+            member_of,
             credential: Credential::Password { plain: password },
             model,
         };
@@ -121,26 +143,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         person_usernames.insert(username.clone());
         persons.push(p);
-    }
-
-    // PHASE 3 - generate groups for integration access, assign persons.
-    // actually these are just groups to decide what each person is supposed to do with their life
-    let groups = vec![
-        Group::new("readers".to_string()),
-        Group::new("writers".to_string()),
-    ];
-
-    for i in 0..persons.len() {
-        let chosen_group = if seeded_rng.gen_bool(0.5) {
-            "readers"
-        } else {
-            "writers"
-        };
-
-        persons[i].member_of.insert(chosen_group.to_string());
-        if let Ok(role) = ActorRole::from_str(chosen_group) {
-            persons[i].model = Model::ConditionalReadWriteAttr(role);
-        }
     }
 
     // PHASE 4 - generate groups for user modification rights
