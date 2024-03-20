@@ -7,6 +7,8 @@ use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
 
+use std::collections::BTreeSet;
+use std::str::FromStr;
 use std::time::Duration;
 
 enum State {
@@ -18,14 +20,21 @@ enum State {
 
 pub struct ActorConditionalReadWrite {
     state: State,
-    role: ActorRole,
+    roles: Vec<ActorRole>,
+    role_index: Option<usize>,
 }
 
 impl ActorConditionalReadWrite {
-    pub fn new(role: ActorRole) -> Self {
+    pub fn new(member_of: BTreeSet<String>) -> Self {
+        let roles = member_of
+            .iter()
+            .filter_map(|member| ActorRole::from_str(&member).ok())
+            .collect::<Vec<ActorRole>>();
+        let role_index = if roles.is_empty() { None } else { Some(0) };
         ActorConditionalReadWrite {
             state: State::Unauthenticated,
-            role,
+            roles,
+            role_index,
         }
     }
 }
@@ -49,7 +58,6 @@ impl ActorModel for ActorConditionalReadWrite {
             TransitionAction::ReadAttribute => model::person_get(client, person).await,
             TransitionAction::WriteAttribute => model::person_set(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
-            _ => Err(Error::InvalidState),
         }?;
 
         self.next_state(result);
@@ -65,20 +73,20 @@ impl ActorConditionalReadWrite {
                 delay: None,
                 action: TransitionAction::Login,
             },
-            State::Authenticated => {
-                let action = match self.role {
-                    ActorRole::ReadAttribute => TransitionAction::ReadAttribute,
-                    ActorRole::WriteAttribute => TransitionAction::WriteAttribute,
+            State::Authenticated | State::WroteAttribute | State::ReadAttribute => {
+                let action = match self.role_index {
+                    Some(role_index) => match self.roles[role_index] {
+                        ActorRole::ReadAttribute => TransitionAction::ReadAttribute,
+                        ActorRole::WriteAttribute => TransitionAction::WriteAttribute,
+                    },
+                    None => TransitionAction::Logout,
                 };
+
                 Transition {
                     delay: Some(Duration::from_millis(100)),
                     action,
                 }
             }
-            State::WroteAttribute | State::ReadAttribute => Transition {
-                delay: Some(Duration::from_millis(500)),
-                action: TransitionAction::Logout,
-            },
         }
     }
 
@@ -89,23 +97,49 @@ impl ActorConditionalReadWrite {
             (State::Unauthenticated, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
-            (State::Unauthenticated, TransitionResult::Error) => {
-                self.state = State::Unauthenticated;
+            (
+                State::Authenticated | State::ReadAttribute | State::WroteAttribute,
+                TransitionResult::Ok,
+            ) => {
+                self.state = match self.role_index {
+                    Some(role_index) => match self.roles[role_index] {
+                        ActorRole::ReadAttribute => State::ReadAttribute,
+                        ActorRole::WriteAttribute => State::WroteAttribute,
+                    },
+                    None => State::Unauthenticated,
+                };
+                // only after successfully transitioning to the new state we update the role index
+                self.update_role_index();
             }
-            (State::Authenticated, TransitionResult::Ok) => {
-                self.state = match self.role {
-                    ActorRole::ReadAttribute => State::ReadAttribute,
-                    ActorRole::WriteAttribute => State::WroteAttribute,
+            (_, TransitionResult::Error) => {
+                // do nothing in case of error
+            }
+        }
+    }
+
+    // for the time being this is somewhat contorted, but I believe we won't need this specific function with the probabilistic approach
+    // so I'll you leave this here for now
+    fn update_role_index(&mut self) {
+        //* */ if there are no roles for this actor our index will always be 0!!
+        if self.roles.is_empty() {
+            return;
+        }
+
+        let roles_len = self.roles.len();
+        // otherwise what we do is iterate through all the possible roles this person has, and when we get to the last
+        // one (that is index roles_len - 1), we assign 'None' to role_index which is interpreted by the transition function
+        // as: "nothing to do here, log out". This way each actor cycles through all their duties and then they log out.
+        // Once they log out we repeat everything again, so we go from "None" to "Some(0)", which means "do the role at index 0".
+        match self.role_index.as_mut() {
+            Some(index) => {
+                if index == &(roles_len - 1) {
+                    self.role_index = None
+                } else {
+                    *index += 1;
+                    *index %= roles_len;
                 }
             }
-            (State::Authenticated, TransitionResult::Error) => {
-                self.state = State::Authenticated;
-            }
-            (State::ReadAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
-            (State::ReadAttribute, TransitionResult::Error) => self.state = State::ReadAttribute,
-            (State::WroteAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
-            (State::WroteAttribute, TransitionResult::Error) => self.state = State::WroteAttribute,
-            _ => {}
+            None => self.role_index = Some(0),
         }
     }
 }

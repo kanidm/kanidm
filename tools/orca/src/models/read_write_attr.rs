@@ -99,6 +99,7 @@ impl ActorReadWrite {
             (State::ReadAttribute, TransitionResult::Error) => self.state = State::ReadAttribute,
             (State::WroteAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
             (State::WroteAttribute, TransitionResult::Error) => self.state = State::WroteAttribute,
+            _ => {}
         }
     }
 }

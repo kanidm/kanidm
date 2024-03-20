@@ -71,7 +71,9 @@ pub enum Model {
     //     normal_dist_mean_and_std_dev: Option<(f64, f64)>,
     // },
     ReadWriteAttr,
-    ConditionalReadWriteAttr(ActorRole),
+    ConditionalReadWriteAttr {
+        member_of: BTreeSet<String>,
+    },
 }
 
 impl Default for Model {
@@ -94,9 +96,9 @@ impl Model {
             //     normal_dist_mean_and_std_dev,
             // )?),
             Model::ReadWriteAttr => Box::new(crate::models::read_write_attr::ActorReadWrite::new()),
-            Model::ConditionalReadWriteAttr(role) => Box::new(
+            Model::ConditionalReadWriteAttr { member_of } => Box::new(
                 crate::models::conditional_read_write_attr::ActorConditionalReadWrite::new(
-                    role.clone(),
+                    member_of.clone(),
                 ),
             ),
         })
@@ -121,10 +123,11 @@ pub struct Person {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Group {
     pub name: String,
+    pub member_of: BTreeSet<String>,
 }
 
 impl Group {
-    pub fn new(name: String) -> Self {
-        Group { name }
+    pub fn new(name: String, member_of: BTreeSet<String>) -> Self {
+        Group { name, member_of }
     }
 }

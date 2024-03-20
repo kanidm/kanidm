@@ -36,7 +36,7 @@ async fn preflight_person(
     }
 
     for group in person.member_of.iter() {
-        client.add_person_to_group(&person.username, group).await?
+        client.add_members_to_group(&person.username, group).await?
     }
 
     Ok(())
@@ -47,6 +47,11 @@ async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> R
         // Do nothing? Do we need to create them later?
     } else {
         client.group_create(&group.name).await?;
+        for parent_group in group.member_of.iter() {
+            client
+                .add_members_to_group(&group.name, &parent_group)
+                .await?
+        }
     }
 
     Ok(())
