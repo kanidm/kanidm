@@ -867,7 +867,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
             SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),

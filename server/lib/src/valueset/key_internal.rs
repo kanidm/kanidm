@@ -8,13 +8,14 @@ use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyInternalStatus, DbValueKe
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 use std::collections::BTreeMap;
+use std::fmt;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
-    usage: KeyUsage,
-    valid_from: u64,
-    status: KeyInternalStatus,
-    der: Vec<u8>,
+    pub usage: KeyUsage,
+    pub valid_from: u64,
+    pub status: KeyInternalStatus,
+    pub der: Vec<u8>,
 }
 
 #[derive(Debug, Clone)]
@@ -62,6 +63,14 @@ impl ValueSetKeyInternal {
                 },
             )
             .is_none()
+    }
+
+    pub fn from_key_iter(
+        keys: impl Iterator<Item = (KeyId, KeyInternalData)>,
+    ) -> Result<ValueSet, OperationError> {
+        let map = keys.collect();
+
+        Ok(Box::new(ValueSetKeyInternal { map }))
     }
 
     fn from_dbv_iter(
@@ -236,8 +245,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        // Vec::with_capacity(0)
-        todo!();
+        self.map.keys().map(|kid| hex::encode(kid)).collect()
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -245,13 +253,9 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn validate(&self, _schema_attr: &crate::schema::SchemaAttribute) -> bool {
-        todo!();
-        /*
-        match self.set.as_ref() {
-            Some(key) => key.priv_key.check_key().is_ok() && key.pub_key.check_key().is_ok(),
-            None => false,
-        }
-        */
+        // ⚠️  Validation of this type isn't needed because validation is asserted
+        // by the correct reloading of the key objects into the provider!
+        true
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {

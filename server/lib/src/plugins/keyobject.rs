@@ -23,12 +23,11 @@ impl Plugin for KeyObjectManagement {
         // Valid from right meow!
         let valid_from = qs.get_curtime();
 
-        let key_objects_to_create = cand
-            .iter_mut()
+        cand.iter_mut()
             .filter(|entry| {
                 entry.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
             })
-            .map(|entry| {
+            .try_for_each(|entry| {
                 // The entry should not have set any type of KeyObject at this point.
                 // Should we force delete those attrs here just incase?
                 entry.remove_ava(Attribute::Class, &EntryClass::KeyObjectInternal.into());
@@ -50,15 +49,10 @@ impl Plugin for KeyObjectManagement {
                 }
 
                 // Turn that object into it's entry template to create
-                key_object.into_entry_new()
+                key_object.update_entry_invalid_new(entry)?;
+
+                Ok(())
             })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        if !key_objects_to_create.is_empty() {
-            qs.internal_create(key_objects_to_create)?;
-        }
-
-        Ok(())
     }
 
     #[instrument(level = "debug", name = "keyobject_management::pre_modify", skip_all)]
