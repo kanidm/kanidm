@@ -1,4 +1,4 @@
-# Updating the Server
+# Server Updates
 
 ## General Update Notes
 

@@ -1,4 +1,4 @@
-# Replication Coordinator Design
+# Replication Coordinator
 
 Many other IDM systems configure replication on each node of the topology. This means that the
 administrator is responsible for ensuring all nodes are connected properly, and that agreements are

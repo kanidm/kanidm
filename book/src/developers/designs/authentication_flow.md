@@ -1,4 +1,4 @@
-# The Authentication Flow
+# Authentication Flow
 
 1. Client sends an init request. This can be either:
    1. `AuthStep::Init` which just includes the username, or
