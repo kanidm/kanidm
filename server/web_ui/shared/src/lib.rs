@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
+use web_sys::{Blob, Headers, Request, RequestInit, RequestMode, Response};
 
 use gloo::storage::{SessionStorage as TemporaryStorage, Storage};
 use yew::{html, Html};
@@ -68,22 +68,7 @@ pub async fn do_request<JV: AsRef<JsValue>>(
         .set(CONTENT_TYPE, APPLICATION_JSON)
         .expect_throw("failed to set content-type header");
 
-    if let Some(sessionid) = pop_auth_session_id() {
-        request
-            .headers()
-            .set(KSESSIONID, &sessionid)
-            .expect_throw(&format!("failed to set {} header", KSESSIONID));
-    }
-
-    if let Some(bearer_token) = get_bearer_token() {
-        request
-            .headers()
-            .set("authorization", &bearer_token)
-            .expect_throw("failed to set authorization header");
-    }
-
-    let window = utils::window();
-    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+    let resp_value = run_request_with_auth(request).await?;
     let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
     let status = resp.status();
     let headers: Headers = resp.headers();
@@ -111,6 +96,53 @@ pub async fn do_request<JV: AsRef<JsValue>>(
     };
 
     Ok((kopid, status, body, headers))
+}
+
+/// Build and send a request to the backend, with some standard headers and pull back
+pub async fn get_blob(uri: &str) -> Result<(Option<String>, u16, Blob, Headers), FetchError> {
+    let mut opts = RequestInit::new();
+    opts.method(&RequestMethod::GET.to_string());
+    opts.mode(RequestMode::SameOrigin);
+    opts.credentials(web_sys::RequestCredentials::SameOrigin);
+
+    let request = Request::new_with_str_and_init(uri, &opts)?;
+    let resp_value = run_request_with_auth(request).await?;
+    let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+    let status = resp.status();
+    let headers: Headers = resp.headers();
+
+    if let Some(sessionid) = headers.get(KSESSIONID).ok().flatten() {
+        push_auth_session_id(sessionid);
+    }
+
+    let kopid = headers.get(KOPID).ok().flatten();
+    let blob = resp.blob()?;
+    let blob: Blob = JsFuture::from(blob)
+        .await?
+        .dyn_into()
+        .expect_throw("Failed to convert response body into a blob.");
+
+    Ok((kopid, status, blob, headers))
+}
+
+async fn run_request_with_auth(request: Request) -> Result<JsValue, FetchError> {
+    if let Some(sessionid) = pop_auth_session_id() {
+        request
+            .headers()
+            .set(KSESSIONID, &sessionid)
+            .expect_throw(&format!("failed to set {} header", KSESSIONID));
+    }
+
+    if let Some(bearer_token) = get_bearer_token() {
+        request
+            .headers()
+            .set("authorization", &bearer_token)
+            .expect_throw("failed to set authorization header");
+    }
+
+    let window = utils::window();
+    let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+    Ok(resp_value)
 }
 
 #[derive(Serialize, Deserialize, Eq, PartialEq)]

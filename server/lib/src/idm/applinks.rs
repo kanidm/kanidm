@@ -1,4 +1,3 @@
-use std::str::FromStr;
 use crate::idm::server::IdmServerProxyReadTransaction;
 use crate::prelude::*;
 use kanidm_proto::internal::AppLink;
@@ -53,7 +52,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)?;
 
-                let has_image = entry.get_ava_single_image(Attribute::Image).is_some()
+                let has_image = entry.get_ava_single_image(Attribute::Image).is_some();
 
                 Some(AppLink::Oauth2 {
                     name,
