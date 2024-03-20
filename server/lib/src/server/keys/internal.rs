@@ -53,6 +53,47 @@ impl KeyProviderInternal {
         }))
     }
 
+    pub(super) fn load_key_object(
+        &self,
+        entry: &EntrySealedCommitted,
+        provider: Arc<Self>,
+    ) -> Result<Arc<Box<dyn KeyObject>>, OperationError> {
+        let uuid = entry.get_uuid();
+
+        let mut jwt_es256: Option<KeyObjectInternalJwtEs256> = None;
+
+        if let Some(key_internal_map) = entry
+            .get_ava_set(Attribute::KeyInternalData)
+            .and_then(|vs| vs.as_key_internal_map())
+        {
+            for (
+                key_id,
+                KeyInternalData {
+                    usage,
+                    status,
+                    der,
+                    valid_from,
+                },
+            ) in key_internal_map.iter()
+            {
+                match usage {
+                    KeyUsage::JwtEs256 => {
+                        let jwt_es256_ref =
+                            jwt_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+
+                        jwt_es256_ref.load(key_id, *status, der, *valid_from)?;
+                    }
+                }
+            }
+        }
+
+        Ok(Arc::new(Box::new(KeyObjectInternal {
+            provider,
+            uuid,
+            jwt_es256: None,
+        })))
+    }
+
     pub(crate) fn test(&self) -> Result<(), OperationError> {
         // Are there crypto operations we should test?
 
@@ -142,6 +183,16 @@ impl KeyObjectInternalJwtEs256 {
         );
 
         Ok(())
+    }
+
+    fn load(
+        &mut self,
+        id: &[u8],
+        status: KeyInternalStatus,
+        der: &[u8],
+        valid_from: u64,
+    ) -> Result<(), OperationError> {
+        todo!();
     }
 
     fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {

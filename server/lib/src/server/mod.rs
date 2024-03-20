@@ -128,7 +128,7 @@ bitflags::bitflags! {
         const DOMAIN =         0b0000_1000;
         const SYSTEM_CONFIG =  0b0001_0000;
         const SYNC_AGREEMENT = 0b0010_0000;
-        const KEY_PROVIDER =   0b0100_0000;
+        const KEY_MATERIAL   = 0b0100_0000;
     }
 }
 
@@ -1706,7 +1706,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub(crate) fn reload_key_providers(&mut self) -> Result<(), OperationError> {
+    pub(crate) fn reload_key_material(&mut self) -> Result<(), OperationError> {
         let filt = filter!(f_eq(Attribute::Class, EntryClass::KeyProvider.into()));
 
         let res = self.internal_search(filt).map_err(|e| {
@@ -1724,7 +1724,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .map(|e| KeyProvider::try_from(e))
             .collect::<Result<Vec<_>, _>>()?;
 
-        self.key_providers.update_providers(providers)
+        self.key_providers.update_providers(providers)?;
+
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::KeyObject.into()));
+
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!(
+                err = ?e,
+                "reload key objects internal search failed",
+            );
+            e
+        })?;
+
+        res.iter()
+            .try_for_each(|entry| self.key_providers.load_key_object(entry.as_ref()))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1929,9 +1942,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // sync agreements and the domain can access their key material.
         if self
             .changed_flags
-            .intersects(ChangeFlag::SCHEMA | ChangeFlag::KEY_PROVIDER)
+            .intersects(ChangeFlag::SCHEMA | ChangeFlag::KEY_MATERIAL)
         {
-            self.reload_key_providers()?;
+            self.reload_key_material()?;
         }
 
         // Determine if we need to update access control profiles
@@ -1968,7 +1981,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 | ChangeFlag::SYSTEM_CONFIG
                 | ChangeFlag::ACP
                 | ChangeFlag::SYNC_AGREEMENT
-                | ChangeFlag::KEY_PROVIDER,
+                | ChangeFlag::KEY_MATERIAL,
         );
 
         Ok(())

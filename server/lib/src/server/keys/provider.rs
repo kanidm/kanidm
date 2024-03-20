@@ -41,6 +41,15 @@ impl KeyProvider {
         }
     }
 
+    fn load_key_object(
+        &self,
+        entry: &EntrySealedCommitted,
+    ) -> Result<Arc<Box<dyn KeyObject>>, OperationError> {
+        match self {
+            KeyProvider::Internal(inner) => inner.load_key_object(entry, inner.clone()),
+        }
+    }
+
     pub(crate) fn try_from(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Arc<Self>, OperationError> {
@@ -172,6 +181,50 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
                 return Err(OperationError::KP0005KeyProviderDuplicate);
             }
         }
+
+        Ok(())
+    }
+
+    pub(crate) fn load_key_object(
+        &mut self,
+        entry: &EntrySealedCommitted,
+    ) -> Result<(), OperationError> {
+        // Object UUID
+        let object_uuid = entry.get_uuid();
+
+        if !entry.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into()) {
+            error!(?object_uuid, "Invalid entry, keyobject class not found.");
+            return Err(OperationError::KP0011KeyObjectMissingClass);
+        }
+
+        // Get provider UUID.
+        let provider_uuid = entry
+            .get_ava_single_refer(Attribute::KeyProvider)
+            .ok_or_else(|| {
+                error!(
+                    ?object_uuid,
+                    "Invalid key object, key provider referenced is not found."
+                );
+                OperationError::KP0012KeyObjectMissingProvider
+            })?;
+
+        let provider = self.inner.providers.get(&provider_uuid).ok_or_else(|| {
+            error!(
+                ?object_uuid,
+                ?provider_uuid,
+                "Invalid reference state, key provider has not be loaded."
+            );
+            OperationError::KP0012KeyProviderNotLoaded
+        })?;
+
+        // Ask the provider to load this object.
+        let key_object = provider.load_key_object(entry)?;
+
+        // Prevent duplicate mut borrows, drop provider reference.
+        drop(provider);
+
+        // Can't be duplicate as uuid is enforced unique in other layers.
+        self.inner.objects.insert(object_uuid, key_object);
 
         Ok(())
     }
