@@ -1076,7 +1076,7 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyInternalStatus {
     Valid,
     Retained,

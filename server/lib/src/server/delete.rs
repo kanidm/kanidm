@@ -143,12 +143,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
         }
-        if !self.changed_flags.contains(ChangeFlag::KEY_PROVIDER)
-            && del_cand
-                .iter()
-                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into()))
+        if !self.changed_flags.contains(ChangeFlag::KEY_MATERIAL)
+            && del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into())
+                    || e.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
+            })
         {
-            self.changed_flags.insert(ChangeFlag::KEY_PROVIDER)
+            self.changed_flags.insert(ChangeFlag::KEY_MATERIAL)
         }
 
         self.changed_uuid
