@@ -103,13 +103,15 @@ impl ValueSetT for ValueSetApplicationPassword {
             PartialValue::Uuid(u) => {
                 // Delete specific application password
                 // TODO Migrate to extract_if when available
-                self.map.values_mut().any(|x| {
-                    let prev = x.into_iter().count();
-                    x.retain(|y| y.uuid != *u);
-                    let post = x.into_iter().count();
-                    post < prev
-                    // TODO Drop KV pair if vec empty
-                })
+                let mut removed = false;
+                self.map.retain(|_, v| {
+                    let prev = v.len();
+                    v.retain(|y| y.uuid != *u);
+                    let post = v.len();
+                    removed |= post < prev;
+                    v.len() > 0
+                });
+                removed
             }
             _ => false,
         }
@@ -146,7 +148,11 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn len(&self) -> usize {
-        self.map.len()
+        let mut count = 0;
+        for v in self.map.values() {
+            count += v.len();
+        }
+        count
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
@@ -250,5 +256,82 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::credential::{apppwd::ApplicationPassword, Password};
+    use crate::prelude::*;
+    use crate::valueset::ValueSetApplicationPassword;
+    use kanidm_lib_crypto::CryptoPolicy;
+
+    // Test the remove operation, removing all application passwords for an
+    // applicaiton should also remove the KV pair.
+    #[test]
+    fn test_valueset_application_password_remove() {
+        let app1_uuid = Uuid::new_v4();
+        let app2_uuid = Uuid::new_v4();
+        let ap1_uuid = Uuid::new_v4();
+        let ap2_uuid = Uuid::new_v4();
+        let ap3_uuid = Uuid::new_v4();
+
+        let ap1: ApplicationPassword = ApplicationPassword {
+            uuid: ap1_uuid,
+            application: app1_uuid,
+            label: "apppwd1".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd1")
+                .expect("Failed to create password"),
+        };
+
+        let ap2: ApplicationPassword = ApplicationPassword {
+            uuid: ap2_uuid,
+            application: app1_uuid,
+            label: "apppwd2".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd2")
+                .expect("Failed to create password"),
+        };
+
+        let ap3: ApplicationPassword = ApplicationPassword {
+            uuid: ap3_uuid,
+            application: app2_uuid,
+            label: "apppwd3".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd3")
+                .expect("Failed to create password"),
+        };
+
+        let mut vs: ValueSet = ValueSetApplicationPassword::new(ap1);
+        assert!(vs.len() == 1);
+
+        let res = vs
+            .insert_checked(Value::ApplicationPassword(ap2))
+            .expect("Failed to insert");
+        assert!(res);
+        assert!(vs.len() == 2);
+
+        let res = vs
+            .insert_checked(Value::ApplicationPassword(ap3))
+            .expect("Failed to insert");
+        assert!(res);
+        assert!(vs.len() == 3);
+
+        let res = vs.remove(&PartialValue::Uuid(Uuid::new_v4()), &Cid::new_zero());
+        assert!(!res);
+        assert!(vs.len() == 3);
+
+        let res = vs.remove(&PartialValue::Uuid(ap1_uuid), &Cid::new_zero());
+        assert!(res);
+        assert!(vs.len() == 2);
+
+        let res = vs.remove(&PartialValue::Uuid(ap3_uuid), &Cid::new_zero());
+        assert!(res);
+        assert!(vs.len() == 1);
+
+        let res = vs.remove(&PartialValue::Uuid(ap2_uuid), &Cid::new_zero());
+        assert!(res);
+        assert!(vs.len() == 0);
+
+        let res = vs.as_application_password_map().unwrap();
+        assert!(res.keys().len() == 0);
     }
 }
