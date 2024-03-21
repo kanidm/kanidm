@@ -69,7 +69,7 @@ impl ValueSetApplicationPassword {
 impl ValueSetT for ValueSetApplicationPassword {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
-            Value::ApplicationPassword(_, ap) => {
+            Value::ApplicationPassword(ap) => {
                 if let Some(e) = self
                     .map
                     .entry(ap.application)
@@ -221,7 +221,7 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(self.map.iter().flat_map(|(_, v)| {
             v.into_iter()
-                .map(|ap| Value::ApplicationPassword(ap.uuid, ap.clone()))
+                .map(|ap| Value::ApplicationPassword(ap.clone()))
         }))
     }
 

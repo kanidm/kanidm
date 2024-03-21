@@ -1107,8 +1107,7 @@ pub enum Value {
     OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
 
-    //TODO remove uuid
-    ApplicationPassword(Uuid, ApplicationPassword),
+    ApplicationPassword(ApplicationPassword),
 }
 
 impl PartialEq for Value {
@@ -1907,7 +1906,7 @@ impl Value {
             Value::AuditLogString(_, s) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
-            Value::ApplicationPassword(_, ap) => {
+            Value::ApplicationPassword(ap) => {
                 Value::validate_str_escapes(&ap.label) && Value::validate_singleline(&ap.label)
             }
 
