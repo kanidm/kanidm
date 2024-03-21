@@ -55,7 +55,7 @@ When we develop features, we follow our project's guidelines on [rights and ethi
 
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
 
-[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/ethics.md
+[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/developer_ethics.md
 
 ## Getting in Contact / Questions
 
