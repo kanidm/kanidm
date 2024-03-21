@@ -48,7 +48,7 @@ repository = "https://github.com/kanidm/kanidm/"
 ## As Kanidm maintains a number of libraries, sometimes during development we need to override them
 ## with local or git versions. This patch table allows quick uncommenting to achieve that.
 
-# compact_jwt = { path = "../compact_jwt" }
+compact_jwt = { path = "../compact_jwt" }
 # concread = { path = "../concread" }
 
 # idlset = { path = "../idlset" }
@@ -117,7 +117,7 @@ clap = { version = "^4.5.3", features = ["derive", "env"] }
 clap_complete = "^4.5.1"
 # Forced by saffron/cron
 chrono = "^0.4.35"
-compact_jwt = { version = "^0.3.5", default-features = false }
+compact_jwt = { version = "^0.4.0-dev", default-features = false }
 concread = "^0.5.0"
 cron = "0.12.1"
 crossbeam = "0.8.4"

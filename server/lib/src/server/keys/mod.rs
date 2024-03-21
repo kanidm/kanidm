@@ -3,7 +3,7 @@ mod internal;
 mod object;
 mod provider;
 
-pub type KeyId = Vec<u8>;
+pub type KeyId = String;
 
 // pub(crate) use self::object::KeyObjects;
 pub(crate) use self::provider::{

@@ -298,6 +298,20 @@ mod tests {
             .expect("unable to access domain object");
 
         // Assert the former key is now in the domain key object.
+        /*
+        assert!(!key_provider_object.attribute_pres(
+            Attribute::Es256PrivateKeyDer
+        ));
+
+        assert!(!key_provider_object.attribute_pres(
+            Attribute::FernetPrivateKeyStr
+        ));
+
+        assert!(!key_provider_object.attribute_pres(
+            Attribute::PrivateCookieKey
+        ));
+        */
+
         assert!(false);
 
         write_txn.commit().expect("Failed to commit");

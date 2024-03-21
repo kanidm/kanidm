@@ -67,6 +67,12 @@ lazy_static! {
         Regex::new("^[a-z][a-z0-9-_\\.]*$").expect("Invalid Iname regex found")
     };
 
+    /// Only lowercase+numbers, with limited chars.
+    pub static ref HEXSTR_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
+    };
+
     pub static ref EXTRACT_VAL_DN: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
@@ -801,7 +807,12 @@ impl PartialValue {
     }
 
     pub fn new_key_identifier_s(hexstr: &str) -> Option<Self> {
-        hex::decode(hexstr).map(PartialValue::KeyIdentifier).ok()
+        let hexstr_lower = hexstr.to_lowercase();
+        if HEXSTR_RE.is_match(&hexstr_lower) {
+            Some(PartialValue::KeyIdentifier(hexstr_lower))
+        } else {
+            None
+        }
     }
 
     pub fn new_image(input: &str) -> Self {
@@ -870,7 +881,7 @@ impl PartialValue {
             // We don't allow searching on claim/uuid pairs.
             PartialValue::OauthClaim(_, _) => "_".to_string(),
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
-            PartialValue::KeyIdentifier(bytes) => hex::encode(bytes),
+            PartialValue::KeyIdentifier(hexstr) => hexstr.to_string(),
         }
     }
 
@@ -2022,6 +2033,15 @@ impl Value {
                     true
                 }
             }
+        }
+    }
+
+    pub(crate) fn validate_hexstr(s: &str) -> bool {
+        if !HEXSTR_RE.is_match(s) {
+            error!("hexstrings may only contain limited characters. - \"{}\" does not pass regex pattern \"{}\"", s, *HEXSTR_RE);
+            false
+        } else {
+            true
         }
     }
 

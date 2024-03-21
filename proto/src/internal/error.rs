@@ -150,6 +150,18 @@ pub enum OperationError {
     KP0011KeyObjectMissingClass,
     KP0012KeyObjectMissingProvider,
     KP0012KeyProviderNotLoaded,
+    KP0013KeyObjectJwsEs256DerInvalid,
+    KP0014KeyObjectSignerToVerifier,
+    KP0015KeyObjectJwsEs256DerInvalid,
+    KP0016KeyObjectJwsEs256DerInvalid,
+    KP0017KeyProviderNoSuchKey,
+    KP0018KeyProviderNoSuchKey,
+    KP0019KeyProviderUnsupportedAlgorithm,
+    KP0020KeyObjectNoActiveSigningKeys,
+    KP0021KeyObjectJwsEs256Signature,
+    KP0022KeyObjectJwsNotAssociated,
+    KP0023KeyObjectJwsKeyRevoked,
+    KP0024KeyObjectJwsInvalid,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

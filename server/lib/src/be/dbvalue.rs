@@ -610,7 +610,7 @@ pub enum DbValueKeyInternalStatus {
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueKeyInternal {
     V1 {
-        id: Vec<u8>,
+        id: String,
         usage: DbValueKeyUsage,
         valid_from: u64,
         status: DbValueKeyInternalStatus,

@@ -135,7 +135,7 @@ impl ValueSetKeyInternal {
                         der,
                     },
                 )| {
-                    let id: Vec<u8> = id.clone();
+                    let id: String = id.clone();
                     let usage = match usage {
                         KeyUsage::JwtEs256 => DbValueKeyUsage::JwtEs256,
                     };
@@ -186,7 +186,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn remove(&mut self, pv: &crate::value::PartialValue, cid: &Cid) -> bool {
         match pv {
-            PartialValue::KeyIdentifier(kid) => {
+            PartialValue::Iname(kid) => {
                 if let Some(key_object) = self.map.get_mut(kid) {
                     if !matches!(key_object.status, KeyInternalStatus::Revoked) {
                         // Do we need to track the Cid like sessions?
@@ -219,7 +219,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn contains(&self, pv: &crate::value::PartialValue) -> bool {
         match pv {
-            PartialValue::KeyIdentifier(kid) => self.map.contains_key(kid),
+            PartialValue::Iname(kid) => self.map.contains_key(kid),
             _ => false,
         }
     }
@@ -253,9 +253,13 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn validate(&self, _schema_attr: &crate::schema::SchemaAttribute) -> bool {
-        // ⚠️  Validation of this type isn't needed because validation is asserted
-        // by the correct reloading of the key objects into the provider!
-        true
+        // Validate that every key id is a valid iname.
+        self.map.keys().all(|s| {
+            // We validate these two first to prevent injection attacks.
+            Value::validate_str_escapes(s)
+                && Value::validate_singleline(s)
+                && Value::validate_hexstr(s.as_str())
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -280,7 +284,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = crate::value::PartialValue> + '_> {
-        Box::new(self.map.keys().cloned().map(PartialValue::KeyIdentifier))
+        Box::new(self.map.keys().cloned().map(PartialValue::Iname))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = crate::value::Value> + '_> {

@@ -37,6 +37,8 @@ impl Plugin for KeyObjectManagement {
                     .get_uuid()
                     .ok_or(OperationError::KP0008KeyObjectMissingUuid)?;
 
+                trace!(?key_object_uuid, "Setting up key object");
+
                 // Get the default provider, and create a new ephemeral key object
                 // inside it.
                 let mut key_object = key_providers
@@ -45,7 +47,8 @@ impl Plugin for KeyObjectManagement {
 
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
                 {
-                    key_object.jwt_es256_generate(valid_from)?;
+                    trace!(?key_object_uuid, "Adding es256 to key object");
+                    key_object.jws_es256_generate(valid_from)?;
                 }
 
                 // Turn that object into it's entry template to create

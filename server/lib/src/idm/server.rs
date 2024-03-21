@@ -481,10 +481,7 @@ pub trait IdmServerTransaction<'a> {
             OperationError::NotAuthenticated
         })?;
 
-        let jwsv_kid = jws_validator.get_kid().ok_or_else(|| {
-            security_info!("JWS validator does not contain a valid kid");
-            OperationError::NotAuthenticated
-        })?;
+        let jwsv_kid = jws_validator.get_kid();
 
         if kid == jwsv_kid {
             // It's signed by the primary jws, so it's probably a UserAuthToken.
