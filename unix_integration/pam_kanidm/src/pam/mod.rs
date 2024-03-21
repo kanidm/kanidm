@@ -332,7 +332,6 @@ impl PamHooks for PamKanidm {
                 },
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFACode {
                     msg,
-                    data,
                 }) => {
                     match conv.send(PAM_TEXT_INFO, &msg) {
                         Ok(_) => {}
@@ -361,14 +360,12 @@ impl PamHooks for PamKanidm {
                     timeout = cfg.unix_sock_timeout;
                     req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFACode {
                         cred,
-                        data,
                     });
                     continue;
                 },
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFAPoll {
                     msg,
                     polling_interval,
-                    // data,
                 }) => {
                     match conv.send(PAM_TEXT_INFO, &msg) {
                         Ok(_) => {}
@@ -383,10 +380,7 @@ impl PamHooks for PamKanidm {
                     loop {
                         thread::sleep(Duration::from_secs(polling_interval.into()));
                         timeout = cfg.unix_sock_timeout;
-                        req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFAPoll {
-                            poll_attempt,
-                            // data: data.clone(),
-                        });
+                        req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFAPoll);
 
                         // Counter intuitive, but we don't need a max poll attempts here because
                         // if the resolver goes away, then this will error on the sock and

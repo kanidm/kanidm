@@ -56,20 +56,10 @@ pub enum PamAuthResponse {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum PamAuthRequest {
-    Password {
-        cred: String,
-    },
-    DeviceAuthorizationGrant {
-        data: DeviceAuthorizationResponse,
-    },
-    MFACode {
-        cred: String,
-        data: Vec<String>,
-    },
-    MFAPoll {
-        // poll_attempt: u32,
-        data: Vec<String>,
-    },
+    Password { cred: String },
+    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
+    MFACode { cred: String },
+    MFAPoll,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

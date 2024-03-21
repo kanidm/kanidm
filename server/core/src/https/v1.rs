@@ -3181,7 +3181,12 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/group/:id/_unix/_token", get(group_id_unix_token_get))
         .route("/v1/group/:id/_unix", post(group_id_unix_post))
         .route("/v1/group", get(group_get).post(group_post))
-        .route("/v1/group/:id", get(group_id_get).patch(group_id_patch).delete(group_id_delete))
+        .route(
+            "/v1/group/:id",
+            get(group_id_get)
+                .patch(group_id_patch)
+                .delete(group_id_delete),
+        )
         .route(
             "/v1/group/:id/_attr/:attr",
             delete(group_id_attr_delete)

@@ -197,6 +197,7 @@ impl IdProvider for KanidmProvider {
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))

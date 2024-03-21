@@ -493,11 +493,7 @@ pub trait AccessControlsTransaction<'a> {
                         false
                     } else if !requested_rem.is_subset(&rem) {
                         security_error!("requested_rem is not a subset of allowed");
-                        security_error!(
-                            "requested_rem: {:?} !⊆ allowed: {:?}",
-                            requested_rem,
-                            rem
-                        );
+                        security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
                         false
                     } else if !requested_classes.is_subset(&cls) {
                         security_error!("requested_classes is not a subset of allowed");
@@ -626,11 +622,7 @@ pub trait AccessControlsTransaction<'a> {
                         false
                     } else if !requested_rem.is_subset(&rem) {
                         security_error!("requested_rem is not a subset of allowed");
-                        security_error!(
-                            "requested_rem: {:?} !⊆ allowed: {:?}",
-                            requested_rem,
-                            rem
-                        );
+                        security_error!("requested_rem: {:?} !⊆ allowed: {:?}", requested_rem, rem);
                         false
                     } else if !requested_classes.is_subset(&cls) {
                         security_error!("requested_classes is not a subset of allowed");

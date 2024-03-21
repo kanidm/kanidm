@@ -70,6 +70,9 @@ pub enum AuthCredHandler {
     /// Sadly due to how this is passed around we can't make this a
     /// generic associated type, else it would have to leak up to the
     /// daemon.
+    ///
+    /// ⚠️  TODO: Optimally this should actually be a tokio oneshot receiver
+    /// with the decision from a task that is spawned.
     MFA {
         data: Vec<String>,
     },
@@ -164,6 +167,7 @@ pub trait IdProvider {
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(

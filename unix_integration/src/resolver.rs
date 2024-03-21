@@ -899,6 +899,7 @@ where
                     token.as_ref(),
                     hsm_lock.deref_mut(),
                     &self.machine_key,
+                    &shutdown_rx,
                 )
                 .await
         } else {
