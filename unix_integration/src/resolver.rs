@@ -28,6 +28,8 @@ use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, Pa
 
 use kanidm_hsm_crypto::{BoxedDynTpm, HmacKey, MachineKey, Tpm};
 
+use tokio::sync::broadcast;
+
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
 #[derive(Debug, Clone)]
@@ -44,9 +46,12 @@ pub enum AuthSession {
         id: Id,
         token: Option<Box<UserToken>>,
         online_at_init: bool,
-        // cred_type: AuthCredType,
-        // next_cred: AuthNextCred,
         cred_handler: AuthCredHandler,
+        /// Some authentication operations may need to spawn background tasks. These tasks need
+        /// to know when to stop as the caller has disconnected. This reciever allows that, so
+        /// that tasks which .resubscribe() to this channel can then select! on it and be notified
+        /// when they need to stop.
+        shutdown_rx: broadcast::Receiver<()>,
     },
     Success,
     Denied,
@@ -867,6 +872,7 @@ where
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
+        shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(AuthSession, PamAuthResponse), ()> {
         // Setup an auth session. If possible bring the resolver online.
         // Further steps won't attempt to bring the cache online to prevent
@@ -910,6 +916,7 @@ where
                     token: token.map(Box::new),
                     online_at_init,
                     cred_handler,
+                    shutdown_rx,
                 };
 
                 // Now identify what credentials are needed next. The auth session tells
@@ -945,6 +952,7 @@ where
                     token: _,
                     online_at_init: true,
                     ref mut cred_handler,
+                    ref shutdown_rx,
                 },
                 CacheState::Online,
             ) => {
@@ -960,6 +968,7 @@ where
                         &mut dbtxn,
                         hsm_lock.deref_mut(),
                         &self.machine_key,
+                        shutdown_rx,
                     )
                     .await;
 
@@ -1008,6 +1017,8 @@ where
                     token: Some(ref token),
                     online_at_init: _,
                     ref mut cred_handler,
+                    // Only need in online auth.
+                    shutdown_rx: _,
                 },
                 _,
             ) => {
@@ -1038,7 +1049,7 @@ where
                         // AuthCredHandler::DeviceAuthorizationGrant is invalid for offline auth
                         return Err(());
                     }
-                    (AuthCredHandler::MFA, _) => {
+                    (AuthCredHandler::MFA { .. }, _) => {
                         // AuthCredHandler::MFA is invalid for offline auth
                         return Err(());
                     }
@@ -1106,7 +1117,12 @@ where
         account_id: &str,
         password: &str,
     ) -> Result<Option<bool>, ()> {
-        let mut auth_session = match self.pam_account_authenticate_init(account_id).await? {
+        let (_shutdown_tx, shutdown_rx) = broadcast::channel(1);
+
+        let mut auth_session = match self
+            .pam_account_authenticate_init(account_id, shutdown_rx)
+            .await?
+        {
             (auth_session, PamAuthResponse::Password) => {
                 // Can continue!
                 auth_session

@@ -2,6 +2,7 @@ use crate::db::KeyStoreTxn;
 use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 pub use kanidm_hsm_crypto as tpm;
@@ -63,7 +64,15 @@ pub struct UserToken {
 pub enum AuthCredHandler {
     Password,
     DeviceAuthorizationGrant,
-    MFA,
+    /// Additional data required by the provider to complete the
+    /// authentication, but not required by PAM
+    ///
+    /// Sadly due to how this is passed around we can't make this a
+    /// generic associated type, else it would have to leak up to the
+    /// daemon.
+    MFA {
+        data: Vec<String>,
+    },
 }
 
 pub enum AuthRequest {
@@ -73,19 +82,12 @@ pub enum AuthRequest {
     },
     MFACode {
         msg: String,
-        /// Additional data required by the provider to complete the
-        /// authentication, but not required by PAM
-        data: Vec<String>,
     },
     MFAPoll {
+        /// Message to display to the user.
         msg: String,
-        /// Maximum number of permitted polling attempts
-        max_poll_attempts: u32,
-        /// Interval in seconds between poll attemts
+        /// Interval in seconds between poll attemts.
         polling_interval: u32,
-        /// Additional data required by the provider to complete the
-        /// authentication, but not required by PAM
-        data: Vec<String>,
     },
     MFAPollWait,
 }
@@ -98,17 +100,13 @@ impl Into<PamAuthResponse> for AuthRequest {
             AuthRequest::DeviceAuthorizationGrant { data } => {
                 PamAuthResponse::DeviceAuthorizationGrant { data }
             }
-            AuthRequest::MFACode { msg, data } => PamAuthResponse::MFACode { msg, data },
+            AuthRequest::MFACode { msg } => PamAuthResponse::MFACode { msg },
             AuthRequest::MFAPoll {
                 msg,
-                max_poll_attempts,
                 polling_interval,
-                data,
             } => PamAuthResponse::MFAPoll {
                 msg,
-                max_poll_attempts,
                 polling_interval,
-                data,
             },
             AuthRequest::MFAPollWait => PamAuthResponse::MFAPollWait,
         }
@@ -176,6 +174,7 @@ pub trait IdProvider {
         _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
     async fn unix_user_offline_auth_init(

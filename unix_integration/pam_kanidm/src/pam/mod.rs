@@ -367,9 +367,8 @@ impl PamHooks for PamKanidm {
                 },
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFAPoll {
                     msg,
-                    max_poll_attempts,
                     polling_interval,
-                    data,
+                    // data,
                 }) => {
                     match conv.send(PAM_TEXT_INFO, &msg) {
                         Ok(_) => {}
@@ -381,22 +380,28 @@ impl PamHooks for PamKanidm {
                         }
                     }
 
-                    for poll_attempt in 1..max_poll_attempts {
+                    loop {
                         thread::sleep(Duration::from_secs(polling_interval.into()));
                         timeout = cfg.unix_sock_timeout;
                         req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFAPoll {
                             poll_attempt,
-                            data: data.clone(),
+                            // data: data.clone(),
                         });
+
+                        // Counter intuitive, but we don't need a max poll attempts here because
+                        // if the resolver goes away, then this will error on the sock and
+                        // will shutdown. This allows the resolver to dynamically extend the
+                        // timeout if needed, and removes logic from the front end.
                         match_sm_auth_client_response!(
                             daemon_client.call_and_wait(&req, timeout), opts,
                             ClientResponse::PamAuthenticateStepResponse(
                                     PamAuthResponse::MFAPollWait,
                             ) => {
-                                    // Continue polling if the daemon says to wait
-                                    continue;
+                                // Continue polling if the daemon says to wait
+                                continue;
                             }
                         );
+
                     }
                 }
             );

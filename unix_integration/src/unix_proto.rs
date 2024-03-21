@@ -42,14 +42,13 @@ pub enum PamAuthResponse {
     /// PAM must prompt for an authentication code
     MFACode {
         msg: String,
-        data: Vec<String>,
     },
     /// PAM will poll for an external response
     MFAPoll {
+        /// Initial message to display as the polling begins.
         msg: String,
-        max_poll_attempts: u32,
+        /// Seconds between polling attempts.
         polling_interval: u32,
-        data: Vec<String>,
     },
     MFAPollWait,
     // CTAP2
@@ -68,7 +67,7 @@ pub enum PamAuthRequest {
         data: Vec<String>,
     },
     MFAPoll {
-        poll_attempt: u32,
+        // poll_attempt: u32,
         data: Vec<String>,
     },
 }
