@@ -623,8 +623,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
-
                     SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute("Internal keys are generated and not able to be set.".to_string())),
+                    SyntaxType::HexString => Err(OperationError::InvalidAttribute("Hex String are not (yet) able to be set.".to_string())),
                 }
             }
             None => {
@@ -748,12 +748,13 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
-                    SyntaxType::KeyInternal => PartialValue::new_key_identifier_s(value)
-                        .ok_or_else(|| {
+                    SyntaxType::HexString | SyntaxType::KeyInternal => {
+                        PartialValue::new_hex_string_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute(
                                 "Invalid key identifer syntax, expected hex string".to_string(),
                             )
-                        }),
+                        })
+                    }
                 }
             }
             None => {

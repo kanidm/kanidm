@@ -274,6 +274,7 @@ pub enum SyntaxType {
     WebauthnAttestationCaList = 36,
     OauthClaimMap = 37,
     KeyInternal = 38,
+    HexString = 39,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -321,6 +322,7 @@ impl TryFrom<&str> for SyntaxType {
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
             "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
+            "HEX_STRING" => Ok(SyntaxType::HexString),
             _ => Err(()),
         }
     }
@@ -368,6 +370,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
             SyntaxType::KeyInternal => "KEY_INTERNAL",
+            SyntaxType::HexString => "HEX_STRING",
         })
     }
 }
@@ -489,8 +492,7 @@ pub enum PartialValue {
     OauthClaim(String, Uuid),
     OauthClaimValue(String, Uuid, String),
 
-    /// A key identifier for a cryptographic key provider.
-    KeyIdentifier(KeyId),
+    HexString(String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -806,10 +808,10 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::AttestedPasskey).ok()
     }
 
-    pub fn new_key_identifier_s(hexstr: &str) -> Option<Self> {
+    pub fn new_hex_string_s(hexstr: &str) -> Option<Self> {
         let hexstr_lower = hexstr.to_lowercase();
         if HEXSTR_RE.is_match(&hexstr_lower) {
-            Some(PartialValue::KeyIdentifier(hexstr_lower))
+            Some(PartialValue::HexString(hexstr_lower))
         } else {
             None
         }
@@ -881,7 +883,7 @@ impl PartialValue {
             // We don't allow searching on claim/uuid pairs.
             PartialValue::OauthClaim(_, _) => "_".to_string(),
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
-            PartialValue::KeyIdentifier(hexstr) => hexstr.to_string(),
+            PartialValue::HexString(hexstr) => hexstr.to_string(),
         }
     }
 
@@ -1984,8 +1986,10 @@ impl Value {
                 OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
-            Value::KeyInternal { .. } => {
-                todo!();
+            Value::KeyInternal { id, .. } => {
+                Value::validate_str_escapes(id.as_str())
+                    && Value::validate_singleline(id.as_str())
+                    && Value::validate_hexstr(id.as_str())
             }
 
             Value::PhoneNumber(_, _) => true,

@@ -657,6 +657,28 @@ pub static ref SCHEMA_ATTR_KEY_PROVIDER_DL6: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_ACTION_ROTATE,
+    name: Attribute::KeyActionRotate.into(),
+    description: "".to_string(),
+    multivalue: false,
+    // Ephemeral action.
+    phantom: true,
+    syntax: SyntaxType::DateTime,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_ACTION_REVOKE,
+    name: Attribute::KeyActionRevoke.into(),
+    description: "".to_string(),
+    multivalue: true,
+    // Ephemeral action.
+    phantom: true,
+    syntax: SyntaxType::HexString,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {

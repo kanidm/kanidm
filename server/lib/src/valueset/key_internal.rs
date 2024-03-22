@@ -186,7 +186,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn remove(&mut self, pv: &crate::value::PartialValue, cid: &Cid) -> bool {
         match pv {
-            PartialValue::Iname(kid) => {
+            PartialValue::HexString(kid) => {
                 if let Some(key_object) = self.map.get_mut(kid) {
                     if !matches!(key_object.status, KeyInternalStatus::Revoked) {
                         // Do we need to track the Cid like sessions?
@@ -219,7 +219,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn contains(&self, pv: &crate::value::PartialValue) -> bool {
         match pv {
-            PartialValue::Iname(kid) => self.map.contains_key(kid),
+            PartialValue::HexString(kid) => self.map.contains_key(kid),
             _ => false,
         }
     }
@@ -284,7 +284,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = crate::value::PartialValue> + '_> {
-        Box::new(self.map.keys().cloned().map(PartialValue::Iname))
+        Box::new(self.map.keys().cloned().map(PartialValue::HexString))
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = crate::value::Value> + '_> {

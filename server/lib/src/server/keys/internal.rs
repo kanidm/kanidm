@@ -440,30 +440,160 @@ mod tests {
 
         // Now check the object was loaded.
 
-        let key_object_loaded = write_txn
-            .get_key_providers()
-            .get_key_object(key_object_uuid)
-            .expect("Unable to retrieve key object by uuid");
-
-        // Check the key works, and has es256.
         let jws = JwsBuilder::from(vec![0, 1, 2, 3, 4]).build();
 
-        let jwsc = key_object_loaded
-            .jws_es256_sign(&jws, ct)
-            .expect("Unable to sign jws");
+        let jwsc_sig_1 = {
+            let key_object_loaded = write_txn
+                .get_key_providers()
+                .get_key_object(key_object_uuid)
+                .expect("Unable to retrieve key object by uuid");
 
-        assert!(jwsc.get_jwk_pubkey_url().is_none());
+            // Check the key works, and has es256.
+            let jwsc_sig_1 = key_object_loaded
+                .jws_es256_sign(&jws, ct)
+                .expect("Unable to sign jws");
 
-        let released = key_object_loaded
-            .jws_verify(&jwsc)
-            .expect("Unable to validate jws");
+            assert!(jwsc_sig_1.get_jwk_pubkey_url().is_none());
 
-        assert_eq!(released.payload(), &[0, 1, 2, 3, 4]);
+            let released = key_object_loaded
+                .jws_verify(&jwsc_sig_1)
+                .expect("Unable to validate jws");
 
-        // Test rotation of the key
+            assert_eq!(released.payload(), &[0, 1, 2, 3, 4]);
 
-        // Test Key revocation.
-        todo!();
+            jwsc_sig_1
+        };
+
+        // Test rotation of the key. Key rotation is always in terms of when the new key should be
+        // considered valid from, which allows us to nominate a time in the future for it to be used.
+
+        let ct_future = ct + Duration::from_secs(300);
+
+        write_txn
+            .internal_modify_uuid(
+                key_object_uuid,
+                &ModifyList::new_append(
+                    Attribute::KeyActionRotate,
+                    Value::new_datetime_epoch(ct_future),
+                ),
+            )
+            .expect("Unable to rotate key.");
+
+        // While the rotation is stored in the DB, it's not reflected in the key object until
+        // a reload occurs.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        let (jwsc_sig_2, jwsc_sig_3) = {
+            let key_object_loaded = write_txn
+                .get_key_providers()
+                .get_key_object(key_object_uuid)
+                .expect("Unable to retrieve key object by uuid");
+
+            // Will be signed with the former key.
+            let jwsc_sig_2 = key_object_loaded
+                .jws_es256_sign(&jws, ct)
+                .expect("Unable to sign jws");
+
+            // Signed with the new key (note that we manipulated time here).
+            let jwsc_sig_3 = key_object_loaded
+                .jws_es256_sign(&jws, ct_future)
+                .expect("Unable to sign jws");
+
+            (jwsc_sig_2, jwsc_sig_3)
+        };
+
+        assert_eq!(jwsc_sig_1.kid(), jwsc_sig_2.kid());
+        assert_ne!(jwsc_sig_2.kid(), jwsc_sig_3.kid());
+
+        // Test Key revocation. Revocation takes effect immediately, and is by key id.
+        let remain_key = jwsc_sig_2.kid().unwrap().to_string();
+        let revoke_kid = jwsc_sig_1.kid().unwrap().to_string();
+
+        // First check that both keys are live.
+        {
+            let key_object = write_txn
+                .internal_search_uuid(key_object_uuid)
+                .expect("unable to access key object");
+
+            let key_internal_map = key_object
+                .get_ava_set(Attribute::KeyInternalData)
+                .and_then(|vs| vs.as_key_internal_map())
+                .expect("Unable to access key internal map.");
+
+            let revoke_key_status = key_internal_map
+                .get(&revoke_kid)
+                .map(|kdata| kdata.status)
+                .expect("Key ID not found");
+
+            assert_eq!(revoke_key_status, KeyInternalStatus::Valid);
+
+            let remain_key_status = key_internal_map
+                .get(&remain_key)
+                .map(|kdata| kdata.status)
+                .expect("Key ID not found");
+
+            assert_eq!(remain_key_status, KeyInternalStatus::Valid);
+            // Scope the object
+        }
+
+        // Revoke the older key.
+        write_txn
+            .internal_modify_uuid(
+                key_object_uuid,
+                &ModifyList::new_remove(
+                    Attribute::KeyActionRevoke,
+                    PartialValue::HexString(revoke_kid.clone()),
+                ),
+            )
+            .expect("Unable to revoke key.");
+
+        // While the rotation is stored in the DB, it's not reflected in the key object until
+        // a reload occurs.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        {
+            let key_object = write_txn
+                .internal_search_uuid(key_object_uuid)
+                .expect("unable to access key object");
+
+            let key_internal_map = key_object
+                .get_ava_set(Attribute::KeyInternalData)
+                .and_then(|vs| vs.as_key_internal_map())
+                .expect("Unable to access key internal map.");
+
+            let revoke_key_status = key_internal_map
+                .get(&revoke_kid)
+                .map(|kdata| kdata.status)
+                .expect("Key ID not found");
+
+            assert_eq!(revoke_key_status, KeyInternalStatus::Revoked);
+
+            let remain_key_status = key_internal_map
+                .get(&remain_key)
+                .map(|kdata| kdata.status)
+                .expect("Key ID not found");
+
+            assert_eq!(remain_key_status, KeyInternalStatus::Valid);
+            // Scope to limit the key object
+        }
+
+        // Will fail to be signed with the former key, since it is now revoked, and the ct preceeds
+        // the validity of the new key
+        {
+            let key_object_loaded = write_txn
+                .get_key_providers()
+                .get_key_object(key_object_uuid)
+                .expect("Unable to retrieve key object by uuid");
+
+            let _ = key_object_loaded
+                .jws_es256_sign(&jws, ct)
+                .expect("Unable to sign jws");
+
+            // Signature works since the time is now in the valid window of the newer key.
+            let _jwsc_sig_4 = key_object_loaded
+                .jws_es256_sign(&jws, ct_future)
+                .expect("Unable to sign jws");
+        }
 
         write_txn.commit().expect("Failed to commit");
     }
