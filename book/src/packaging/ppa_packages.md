@@ -6,34 +6,34 @@ Please note that while the commands below should also work on Ubuntu-based distr
 
 ## Adding it to your system
 
-Sets pipefail so that failures are caught.
+Set pipefail so that failures are caught.
 ```bash
 set -o pipefail
 ```
-Makes sure you have a “trusted GPG” directory.
+Make sure you have a “trusted GPG” directory.
 ```bash
 sudo mkdir -p /etc/apt/trusted.gpg.d/
 ```
-Downloads the Kanidm PPA GPG public key.
+Download the Kanidm PPA GPG public key.
 ```bash
 curl -s --compressed "https://kanidm.github.io/kanidm_ppa/KEY.gpg" \
     | gpg --dearmor \
     | sudo tee /etc/apt/trusted.gpg.d/kanidm_ppa.gpg >/dev/null
 ```
-Adds the Kanidm PPA to your local APT configuration, with autodetection of Ubuntu vs. Debian.
+Add the Kanidm PPA to your local APT configuration, with autodetection of Ubuntu vs. Debian.
 ```bash
 sudo curl -s --compressed "https://kanidm.github.io/kanidm_ppa/kanidm_ppa.list" \
     | grep $( ( . /etc/os-release && echo $ID) ) \
     | sudo tee /etc/apt/sources.list.d/kanidm_ppa.list
 ```
-Updates your local package cache.
+Update your local package cache.
 ```bash
 sudo apt update
 ```
 
 ## Listing Packages
 
-Use apt-cache to list the packages available:
+Use `apt-cache` to list the packages available:
 
 ```bash
 apt-cache search kanidm
