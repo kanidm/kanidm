@@ -513,29 +513,31 @@ fn ldap_to_scim_entry(
             name
         } else {
             entry
-                .remove_ava_single(&sync_config.person_attr_user_name)
+                .get_ava_single(&sync_config.person_attr_user_name)
                 .ok_or_else(|| {
                     error!(
                         "Missing required attribute {} (person_attr_user_name)",
                         sync_config.person_attr_user_name
                     );
                 })?
+                .to_owned()
         };
 
         let display_name = entry
-            .remove_ava_single(&sync_config.person_attr_display_name)
+            .get_ava_single(&sync_config.person_attr_display_name)
             .ok_or_else(|| {
                 error!(
                     "Missing required attribute {} (person_attr_display_name)",
                     sync_config.person_attr_display_name
                 );
-            })?;
+            })?
+            .to_owned();
 
         let gidnumber = if let Some(number) = entry_config.map_gidnumber {
             Some(number)
         } else {
             entry
-                .remove_ava_single(&sync_config.person_attr_gidnumber)
+                .get_ava_single(&sync_config.person_attr_gidnumber)
                 .map(|gid| {
                     u32::from_str(&gid).map_err(|_| {
                         error!(
@@ -547,7 +549,9 @@ fn ldap_to_scim_entry(
                 .transpose()?
         };
 
-        let password_import = entry.remove_ava_single(&sync_config.person_attr_password);
+        let password_import = entry
+            .get_ava_single(&sync_config.person_attr_password)
+            .map(str::to_string);
 
         let password_import = if let Some(pw_prefix) = sync_config.person_password_prefix.as_ref() {
             password_import.map(|s| format!("{}{}", pw_prefix, s))
@@ -610,7 +614,9 @@ fn ldap_to_scim_entry(
         };
         let account_valid_from = None;
 
-        let login_shell = entry.remove_ava_single(&sync_config.person_attr_login_shell);
+        let login_shell = entry
+            .get_ava_single(&sync_config.person_attr_login_shell)
+            .map(str::to_string);
         let external_id = Some(entry.dn);
 
         Ok(Some(
@@ -641,18 +647,21 @@ fn ldap_to_scim_entry(
         let id = entry_uuid;
 
         let name = entry
-            .remove_ava_single(&sync_config.group_attr_name)
+            .get_ava_single(&sync_config.group_attr_name)
             .ok_or_else(|| {
                 error!(
                     "Missing required attribute {} (group_attr_name)",
                     sync_config.group_attr_name
                 );
-            })?;
+            })?
+            .to_owned();
 
-        let description = entry.remove_ava_single(&sync_config.group_attr_description);
+        let description = entry
+            .get_ava_single(&sync_config.group_attr_description)
+            .map(str::to_string);
 
         let gidnumber = entry
-            .remove_ava_single(&sync_config.group_attr_gidnumber)
+            .get_ava_single(&sync_config.group_attr_gidnumber)
             .map(|gid| {
                 u32::from_str(&gid).map_err(|_| {
                     error!(

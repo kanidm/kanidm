@@ -149,7 +149,7 @@ js-sys = "^0.3.69"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.4.0"
-ldap3_client = "^0.4.3"
+ldap3_client = "^0.4.4"
 ldap3_proto = { version = "^0.4.3", features = ["serde"] }
 
 libc = "^0.2.153"
