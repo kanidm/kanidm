@@ -1,10 +1,6 @@
 # Packaging
 
-Packages are known to exist for the following distributions:
-
-- [Arch Linux](https://aur.archlinux.org/packages?O=0&K=kanidm)
-- [OpenSUSE](https://software.opensuse.org/search?baseproject=ALL&q=kanidm)
-- [NixOS](https://search.nixos.org/packages?sort=relevance&type=packages&query=kanidm)
+This chapter presents the alternative packages and how to build your own.
 
 To ease packaging for your distribution, the `Makefile` has targets for sets of binary outputs.
 
