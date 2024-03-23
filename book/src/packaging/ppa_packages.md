@@ -2,7 +2,7 @@
 
 This pulls the packages from the Kanidm [debs releases](https://github.com/kanidm/kanidm/releases/tag/debs) and makes a package archive for “nightly” packages. Packages are distributed for the latest LTS versions, Ubuntu 22.04 & Debian 12.
 
-Please note that while the commands below should also work on other Ubuntu-based distributions, we cannot ensure the their compatibility with PPA. Pop OS for example, would require an altered setup in line with their [instructions](https://support.system76.com/articles/ppa-third-party/).
+Please note that while the commands below should also work on other Ubuntu-based distributions, we cannot ensure their compatibility with PPA. Pop OS for example, would require an altered setup in line with their [instructions](https://support.system76.com/articles/ppa-third-party/).
 
 ## Adding it to your system
 
