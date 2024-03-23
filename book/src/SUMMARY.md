@@ -86,5 +86,8 @@
 - [Python Module](developers/python_module.md)
 - [RADIUS Module Development](developers/radius.md)
 - [Release Checklist](developers/release_checklist.md)
-- [Packaging](developers/packaging.md)
-  - [Debian/Ubuntu](developers/debian_ubuntu_packaging.md)
+- [Packaging](packaging/packaging.md)
+  - [Debian/Ubuntu Packaging](packaging/debian_ubuntu_packaging.md)
+  - [PPA Packages](packaging/ppa_packages.md)
+  - [Community Packages](packaging/community_packages.md)
+
