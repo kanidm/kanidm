@@ -39,6 +39,9 @@ use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
+
+use crate::server::keys::KeyId;
+
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
@@ -264,6 +267,7 @@ pub enum SyntaxType {
     CredentialType = 35,
     WebauthnAttestationCaList = 36,
     OauthClaimMap = 37,
+    KeyInternal = 38,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -310,6 +314,7 @@ impl TryFrom<&str> for SyntaxType {
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
+            "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
             _ => Err(()),
         }
     }
@@ -356,6 +361,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
+            SyntaxType::KeyInternal => "KEY_INTERNAL",
         })
     }
 }
@@ -476,6 +482,9 @@ pub enum PartialValue {
 
     OauthClaim(String, Uuid),
     OauthClaimValue(String, Uuid, String),
+
+    /// A key identifier for a cryptographic key provider.
+    KeyIdentifier(KeyId),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -791,6 +800,10 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::AttestedPasskey).ok()
     }
 
+    pub fn new_key_identifier_s(hexstr: &str) -> Option<Self> {
+        hex::decode(hexstr).map(PartialValue::KeyIdentifier).ok()
+    }
+
     pub fn new_image(input: &str) -> Self {
         PartialValue::Image(input.to_string())
     }
@@ -857,6 +870,7 @@ impl PartialValue {
             // We don't allow searching on claim/uuid pairs.
             PartialValue::OauthClaim(_, _) => "_".to_string(),
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
+            PartialValue::KeyIdentifier(bytes) => hex::encode(bytes),
         }
     }
 
@@ -1045,6 +1059,44 @@ pub struct Oauth2Session {
     pub rs_uuid: Uuid,
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum KeyUsage {
+    JwtEs256,
+}
+
+impl fmt::Display for KeyUsage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                KeyUsage::JwtEs256 => "jwt_es256",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum KeyInternalStatus {
+    Valid,
+    Retained,
+    Revoked,
+}
+
+impl fmt::Display for KeyInternalStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                KeyInternalStatus::Valid => "valid",
+                KeyInternalStatus::Retained => "retained",
+                KeyInternalStatus::Revoked => "revoked",
+            }
+        )
+    }
+}
+
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
 /// used for selection, filtering, searching, matching etc. It also contains supplemental data
 /// which may be stored inside of the Value, such as credential secrets, blobs etc.
@@ -1103,6 +1155,14 @@ pub enum Value {
 
     OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
+
+    KeyInternal {
+        id: KeyId,
+        usage: KeyUsage,
+        valid_from: u64,
+        status: KeyInternalStatus,
+        der: Vec<u8>,
+    },
 }
 
 impl PartialEq for Value {
@@ -1913,6 +1973,10 @@ impl Value {
                 OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
+            Value::KeyInternal { .. } => {
+                todo!();
+            }
+
             Value::PhoneNumber(_, _) => true,
             Value::Address(_) => true,
 
@@ -2238,5 +2302,11 @@ mod tests {
         assert!(Value::validate_str_escapes("🙃 emoji are 👍"));
 
         assert!(!Value::validate_str_escapes("naughty \x1b[31mred"));
+    }
+
+    #[test]
+    fn test_value_key_internal_status_order() {
+        assert!(KeyInternalStatus::Valid < KeyInternalStatus::Retained);
+        assert!(KeyInternalStatus::Retained < KeyInternalStatus::Revoked);
     }
 }

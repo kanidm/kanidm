@@ -595,6 +595,29 @@ pub enum DbValueImage {
     },
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyUsage {
+    JwtEs256,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyInternalStatus {
+    Valid,
+    Retained,
+    Revoked,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyInternal {
+    V1 {
+        id: Vec<u8>,
+        usage: DbValueKeyUsage,
+        valid_from: u64,
+        status: DbValueKeyInternalStatus,
+        der: Vec<u8>,
+    },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
@@ -748,6 +771,8 @@ pub enum DbValueSetV2 {
     CredentialType(Vec<u16>),
     #[serde(rename = "WC")]
     WebauthnAttestationCaList { ca_list: AttestationCaList },
+    #[serde(rename = "KI")]
+    KeyInternal(Vec<DbValueKeyInternal>),
 }
 
 impl DbValueSetV2 {
@@ -797,6 +822,7 @@ impl DbValueSetV2 {
             // represents the bytes of  SINGLE(!) key
             DbValueSetV2::CredentialType(set) => set.len(),
             DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
+            DbValueSetV2::KeyInternal(set) => set.len(),
         }
     }
 

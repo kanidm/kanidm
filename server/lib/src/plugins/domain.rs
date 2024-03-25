@@ -137,7 +137,7 @@ impl Domain {
                     e.add_ava(Attribute::Es256PrivateKeyDer, v);
                 }
 
-                if !e.attribute_pres(Attribute::PrivateCookieKey) {
+                if qs.get_domain_version() < DOMAIN_LEVEL_6 && !e.attribute_pres(Attribute::PrivateCookieKey) {
                     security_info!("regenerating domain cookie key");
                     e.add_ava(Attribute::PrivateCookieKey, generate_domain_cookie_key());
                 }

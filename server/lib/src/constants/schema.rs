@@ -443,6 +443,7 @@ pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+// TO BE REMOVED.
 pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
     name: Attribute::PrivateCookieKey.into(),
@@ -638,6 +639,24 @@ pub static ref SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6: SchemaAttribute = S
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_INTERNAL_DATA,
+    name: Attribute::KeyInternalData.into(),
+    description: "".to_string(),
+    multivalue: true,
+    syntax: SyntaxType::KeyInternal,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_KEY_PROVIDER_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_PROVIDER,
+    name: Attribute::KeyProvider.into(),
+    description: "".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -787,7 +806,7 @@ pub static ref SCHEMA_CLASS_ACCOUNT: SchemaClass = SchemaClass {
             Attribute::DisplayName.into(),
             Attribute::Name.into(),
             Attribute::Spn.into()
-            ],
+    ],
     systemsupplements: vec![
         EntryClass::Person.into(),
         EntryClass::ServiceAccount.into(),
@@ -894,11 +913,6 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-// domain_info type
-//  domain_uuid
-//  domain_name <- should be the dns name?
-//  domain_ssid <- for radius
-//
 pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
     name: EntryClass::DomainInfo.into(),
@@ -917,6 +931,51 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
         Attribute::FernetPrivateKeyStr.into(),
         Attribute::Es256PrivateKeyDer.into(),
         Attribute::PrivateCookieKey.into(),
+        Attribute::Version.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid.into(),
+        Attribute::DomainLdapBasedn.into(),
+        Attribute::LdapAllowUnixPwBind.into(),
+        Attribute::PrivateCookieKey.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::DomainUuid.into(),
+        Attribute::DomainName.into(),
+        Attribute::DomainDisplayName.into(),
+        Attribute::FernetPrivateKeyStr.into(),
+        Attribute::Es256PrivateKeyDer.into(),
+        Attribute::Version.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid.into(),
+        Attribute::DomainLdapBasedn.into(),
+        Attribute::LdapAllowUnixPwBind.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::DomainUuid.into(),
+        Attribute::DomainName.into(),
+        Attribute::DomainDisplayName.into(),
+        Attribute::FernetPrivateKeyStr.into(),
+        Attribute::Es256PrivateKeyDer.into(),
         Attribute::Version.into(),
     ],
     ..Default::default()
@@ -1077,6 +1136,68 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
 
     systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect.into()],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
+    ..Default::default()
+};
+
+// =========================================
+// KeyProviders
+
+pub static ref SCHEMA_CLASS_KEY_PROVIDER_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_PROVIDER,
+    name: EntryClass::KeyProvider.into(),
+    description: "A provider for cryptographic key storage and operations".to_string(),
+    systemmay: vec![
+        Attribute::Description.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+    ],
+    systemsupplements: vec![
+        EntryClass::KeyProviderInternal.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_PROVIDER_INTERNAL,
+    name: EntryClass::KeyProviderInternal.into(),
+    description: "The Kanidm internal cryptographic key provider".to_string(),
+    ..Default::default()
+};
+
+// =========================================
+// KeyObjects
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT,
+    name: EntryClass::KeyObject.into(),
+    description: "A cryptographic key object that can be used by a provider".to_string(),
+    systemmust: vec![
+        Attribute::KeyProvider.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWT_ES256,
+    name: EntryClass::KeyObjectJwtEs256.into(),
+    description: "A marker class indicating that this keyobject must provide jwt es256 capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_INTERNAL,
+    name: EntryClass::KeyObjectInternal.into(),
+    description: "A cryptographic key object that can be used by the internal provider".to_string(),
+    systemmay: vec![
+        Attribute::KeyInternalData.into(),
+    ],
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
     ..Default::default()
 };
 

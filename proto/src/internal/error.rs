@@ -136,6 +136,20 @@ pub enum OperationError {
     MG0003ServerPhaseInvalidForMigration,
     MG0004DomainLevelInDevelopment,
     MG0005GidConstraintsNotMet,
+    //
+    KP0001KeyProviderNotLoaded,
+    KP0002KeyProviderInvalidClass,
+    KP0003KeyProviderInvalidType,
+    KP0004KeyProviderMissingAttributeName,
+    KP0005KeyProviderDuplicate,
+    KP0006KeyObjectJwtEs256Generation,
+    KP0007KeyProviderDefaultNotAvailable,
+    KP0008KeyObjectMissingUuid,
+    KP0009KeyObjectPrivateToDer,
+    KP0010KeyObjectSignerToVerifier,
+    KP0011KeyObjectMissingClass,
+    KP0012KeyObjectMissingProvider,
+    KP0012KeyProviderNotLoaded,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

@@ -236,6 +236,9 @@ impl SchemaAttribute {
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
+
+            SyntaxType::KeyInternal => todo!(),
+
             SyntaxType::WebauthnAttestationCaList => false,
         };
         if r {
@@ -297,6 +300,7 @@ impl SchemaAttribute {
                 SyntaxType::WebauthnAttestationCaList => {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
+                SyntaxType::KeyInternal => todo!(),
             };
         if r {
             Ok(())
