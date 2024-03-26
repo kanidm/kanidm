@@ -92,20 +92,27 @@ impl KeyObjectManagement {
                 trace!(?key_object_uuid, "Setting up key object");
 
                 // Get the default provider, and create a new ephemeral key object
-                // inside it. If the object existed already, we clone it.
+                // inside it. If the object existed already, we clone it so that we can stage
+                // our changes.
                 let mut key_object = key_providers.get_or_create_in_default(key_object_uuid)?;
-
-                // If rotate.
-                //    if key type ...
 
                 // If revoke.
                 //    locate the key and revoke it.
 
+                // Rotation is after revocation, but before assertion. This way if the user
+                // asked for rotation and revocation, we don't double rotate when we get to
+                // the assert phase.
+                if let Some(_) = e.pop_ava(Attribute::KeyActionRotate) {
+                    key_object.rotate_keys(valid_from)?;
+                }
+
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
                 {
-                    // If has valid es 256
+                    // Assert that this object has a valid es256 key present. Post revoke, it may NOT
+                    // be present. This differs to rotate, in that the assert verifes we have at least
+                    // *one* key that is valid from right now.
                     trace!(?key_object_uuid, "Adding es256 to key object");
-                    key_object.jws_es256_generate(valid_from)?;
+                    key_object.jws_es256_assert(valid_from)?;
                 }
 
                 // Turn that object into it's entry template to create. I think we need to make this

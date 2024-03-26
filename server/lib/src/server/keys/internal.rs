@@ -156,6 +156,27 @@ struct KeyObjectInternalJwtEs256 {
 }
 
 impl KeyObjectInternalJwtEs256 {
+    fn get_valid_signer(&self, valid_from: Duration) -> Option<
+        &JwsEs256Signer
+    > {
+        let ct_secs = current_time.as_secs();
+
+        self
+            .active
+            .range((Unbounded, Included(ct_secs)))
+            .next_back()
+            .map(|(_time, signer)| signer)
+    }
+
+    fn assert_active(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+        if self.get_valid_signer(valid_from).is_none() {
+            // This means there is no active signing key, so we need to create one.
+            self.new_active(valid_from)
+        } else {
+            Ok(())
+        }
+    }
+
     fn new_active(&mut self, valid_from: Duration) -> Result<(), OperationError> {
         let valid_from = valid_from.as_secs();
 
@@ -280,13 +301,7 @@ impl KeyObjectInternalJwtEs256 {
         jws: &V,
         current_time: Duration,
     ) -> Result<V::Signed, OperationError> {
-        let ct_secs = current_time.as_secs();
-
-        let Some((_key_id, signing_key)) = self
-            .active
-            .range((Unbounded, Included(ct_secs)))
-            .next_back()
-        else {
+        let Some(signing_key) = self.get_valid_signer(current_time) else {
             error!("No signing keys available");
             return Err(OperationError::KP0020KeyObjectNoActiveSigningKeys);
         };
@@ -338,11 +353,12 @@ impl KeyObject for KeyObjectInternal {
         Box::new(self.clone())
     }
 
-    fn jws_es256_generate(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+    fn jws_es256_assert(&mut self, valid_from: Duration) -> Result<(), OperationError> {
         let mut koi = self
             .jws_es256
             .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
-        koi.new_active(valid_from)
+
+        koi.assert_active(valid_from)
     }
 
     fn jws_es256_sign(

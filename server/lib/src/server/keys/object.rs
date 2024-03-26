@@ -6,7 +6,7 @@ use uuid::Uuid;
 pub trait KeyObject {
     fn uuid(&self) -> Uuid;
 
-    fn jws_es256_generate(&mut self, valid_from: Duration) -> Result<(), OperationError>;
+    fn jws_es256_assert(&mut self, valid_from: Duration) -> Result<(), OperationError>;
 
     fn jws_es256_sign(
         &self,
