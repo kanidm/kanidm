@@ -483,3 +483,65 @@ The `email` scope needs to be passed and thus the mail attribute needs to exist 
 ```bash
 kanidm person update <ID> --mail "YYYY@somedomain.com" --name idm_admin
 ```
+
+### Grafana
+
+Grafana is a open source analytics and interactive visualization web application. It provides charts, graphs, and alerts when connected to supported data source.
+
+Prepare the environment:
+
+```bash
+$ kanidm system oauth2 create grafana "grafana.domain.name" https://grafana.domain.name
+$ kanidm system oauth2 update-scope-map grafana grafana_users email openid profile
+$ kanidm system oauth2 enable-pkce grafana
+$ kanidm system oauth2 get grafana
+$ kanidm system oauth2 show-basic-secret grafana
+<SECRET>
+```
+
+Create Grafana user groups:
+
+```bash
+$ kanidm group create 'grafana_superadmins'
+$ kanidm group create 'grafana_admins'
+$ kanidm group create 'grafana_editors'
+$ kanidm group create 'grafana_users'
+```
+
+Setup the claim-map that will set what role each group will map to in Grafana:
+
+```bash
+$ kanidm system oauth2 update-claim-map-join 'grafana' 'grafana_role' array
+$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_superadmins' 'GrafanaAdmin'
+$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_admins' 'Admin'
+$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_editors' 'Editor'
+```
+
+Don't forget that every Grafana user needs be member of one of above group and have name and e-mail:
+
+```bash
+$ kanidm person update <user> --legalname "Personal Name" --mail "user@example.com"
+$ kanidm group add-members 'grafana_users' 'my_user_group_or_user_name'
+```
+
+And add the following to your Grafana config:
+
+```ini
+[auth.generic_oauth]
+enabled = true
+name = Kanidm
+client_id = grafana
+client_secret = <SECRET>
+scopes = openid,profile,email,groups
+auth_url = https://idm.example.com/ui/oauth2
+token_url = https://idm.example.com/oauth2/token
+api_url = https://idm.example.com/oauth2/openid/grafana/userinfo
+use_pkce = true
+use_refresh_token = true
+allow_sign_up = true
+login_attribute_path = preferred_username
+groups_attribute_path = groups
+role_attribute_path = contains(grafana_role[*], 'GrafanaAdmin') && 'GrafanaAdmin' || contains(grafana_role[*], 'Admin') && 'Admin' || contains(grafana_role[*], 'Editor') && 'Editor' || 'Viewer'
+allow_assign_grafana_admin = true
+```
+
