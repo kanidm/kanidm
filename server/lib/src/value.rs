@@ -1000,6 +1000,17 @@ pub enum OauthClaimMapJoin {
     JsonArray,
 }
 
+impl OauthClaimMapJoin {
+    pub(crate) fn to_str(self) -> &'static str {
+        match self {
+            OauthClaimMapJoin::CommaSeparatedValue => ",",
+            OauthClaimMapJoin::SpaceSeparatedValue => " ",
+            // Should this be something else?
+            OauthClaimMapJoin::JsonArray => ";",
+        }
+    }
+}
+
 impl From<DbValueOauthClaimMapJoinV1> for OauthClaimMapJoin {
     fn from(value: DbValueOauthClaimMapJoinV1) -> OauthClaimMapJoin {
         match value {

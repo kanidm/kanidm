@@ -144,6 +144,7 @@ image = { version = "0.24.7", default-features = false, features = [
     "jpeg",
     "webp",
 ] }
+itertools = "0.12.1"
 enum-iterator = "1.4.0"
 js-sys = "^0.3.65"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }

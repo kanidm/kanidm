@@ -463,6 +463,14 @@ impl ValueSetOauthClaimMap {
         Some(Box::new(ValueSetOauthClaimMap { map }))
     }
     */
+
+    fn trim(&mut self) {
+        self.map
+            .values_mut()
+            .for_each(|mapping_mut| mapping_mut.values.retain(|_k, v| !v.is_empty()));
+
+        self.map.retain(|_k, v| !v.values.is_empty());
+    }
 }
 
 impl ValueSetT for ValueSetOauthClaimMap {
@@ -561,11 +569,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
         };
 
         // Trim anything that is now empty.
-        self.map
-            .values_mut()
-            .for_each(|mapping_mut| mapping_mut.values.retain(|_k, v| !v.is_empty()));
-
-        self.map.retain(|_k, v| !v.values.is_empty());
+        self.trim();
 
         res
     }
@@ -629,6 +633,16 @@ impl ValueSetT for ValueSetOauthClaimMap {
                     mapping
                         .values
                         .values()
+                        .map(|claim_values| claim_values.is_empty())
+                })
+                .all(|is_empty| !is_empty)
+            && self
+                .map
+                .values()
+                .flat_map(|mapping| {
+                    mapping
+                        .values
+                        .values()
                         .flat_map(|claim_values| claim_values.iter())
                 })
                 .all(|s| OAUTHSCOPE_RE.is_match(s))
@@ -637,14 +651,9 @@ impl ValueSetT for ValueSetOauthClaimMap {
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().flat_map(|(name, mapping)| {
             mapping.values.iter().map(move |(group, claims)| {
-                let join_char = match mapping.join {
-                    OauthClaimMapJoin::CommaSeparatedValue => ',',
-                    OauthClaimMapJoin::SpaceSeparatedValue => ' ',
-                    // Should this be something else?
-                    OauthClaimMapJoin::JsonArray => ';',
-                };
+                let join_str = mapping.join.to_str();
 
-                let joined = str_concat!(claims, join_char);
+                let joined = str_concat!(claims, join_str);
 
                 format!(
                     "{}: {} \"{:?}\"",
@@ -728,5 +737,27 @@ impl ValueSetT for ValueSetOauthClaimMap {
                 .flat_map(|mapping| mapping.values.keys())
                 .copied(),
         ))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetOauthClaimMap;
+    use crate::valueset::ValueSetT;
+    use std::collections::BTreeSet;
+
+    #[test]
+    fn test_oauth_claim_invalid_str_concat_when_empty() {
+        let group_uuid = uuid::uuid!("5a6b8783-3f67-4ebb-b6aa-77fd6e66589f");
+        let vs =
+            ValueSetOauthClaimMap::new_value("claim".to_string(), group_uuid, BTreeSet::default());
+
+        // Invalid handling of an empty claim map would cause a crash.
+        let proto_value = vs.to_proto_string_clone_iter().next().unwrap();
+
+        assert_eq!(
+            &proto_value,
+            "claim: 5a6b8783-3f67-4ebb-b6aa-77fd6e66589f \"\"\"\""
+        );
     }
 }

@@ -764,6 +764,27 @@ pub trait QueryServerTransaction<'a> {
                 })
                 .collect();
             v
+        } else if let Some(r_map) = value.as_oauthclaim_map() {
+            let mut v = Vec::new();
+            for (claim_name, mapping) in r_map.iter() {
+                for (group_ref, claims) in mapping.values() {
+                    let join_char = mapping.join().to_str();
+
+                    let nv = self.uuid_to_spn(*group_ref)?;
+                    let resolved_id = match nv {
+                        Some(v) => v.to_proto_string_clone(),
+                        None => uuid_to_proto_string(*group_ref),
+                    };
+
+                    let joined = str_concat!(claims, ",");
+
+                    v.push(format!(
+                        "{}:{}:{}:{:?}",
+                        claim_name, resolved_id, join_char, joined
+                    ))
+                }
+            }
+            Ok(v)
         } else {
             let v: Vec<_> = value.to_proto_string_clone_iter().collect();
             Ok(v)

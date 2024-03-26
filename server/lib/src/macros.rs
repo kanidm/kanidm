@@ -655,21 +655,7 @@ macro_rules! limmediate_warning {
 
 macro_rules! str_concat {
     ($str_iter:expr, $join_char:expr) => {{
-        // Sub 1 here because we need N minus 1 join chars
-        let max_join_chars: usize = $str_iter.len() - 1;
-        let data_len: usize = $str_iter
-            .iter()
-            .map(|s| s.len())
-            .fold(max_join_chars, |acc, x| acc + x);
-
-        let mut joined = String::with_capacity(data_len);
-        for (i, value) in $str_iter.iter().enumerate() {
-            joined.push_str(value);
-            if i < max_join_chars {
-                joined.push($join_char);
-            }
-        }
-
-        joined
+        use itertools::Itertools;
+        $str_iter.iter().join($join_char)
     }};
 }

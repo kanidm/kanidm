@@ -254,9 +254,7 @@ impl ClaimValue {
     }
 
     fn to_json_value(&self) -> serde_json::Value {
-        let join_char = match self.join {
-            OauthClaimMapJoin::CommaSeparatedValue => ',',
-            OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+        let join_str = match self.join {
             OauthClaimMapJoin::JsonArray => {
                 let arr: Vec<_> = self
                     .values
@@ -268,9 +266,10 @@ impl ClaimValue {
                 // This shortcuts out.
                 return serde_json::Value::Array(arr);
             }
+            joiner => joiner.to_str(),
         };
 
-        let joined = str_concat!(&self.values, join_char);
+        let joined = str_concat!(&self.values, join_str);
 
         serde_json::Value::String(joined)
     }
