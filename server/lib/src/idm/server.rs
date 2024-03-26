@@ -5,6 +5,7 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
+use compact_jwt::traits::JwsVerifiable;
 use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSignerToVerifier, JwsVerifier};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
@@ -476,7 +477,7 @@ pub trait IdmServerTransaction<'a> {
         // Frow the unverified token we can now get the kid, and use that to locate the correct
         // key to id the token.
         let jws_validator = self.get_uat_validator_txn();
-        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
+        let kid = jwsu.kid().ok_or_else(|| {
             security_info!("Token does not contain a valid kid");
             OperationError::NotAuthenticated
         })?;
@@ -904,7 +905,7 @@ pub trait IdmServerTransaction<'a> {
                 })
             })?;
 
-        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
+        let kid = jwsu.kid().ok_or_else(|| {
             security_info!("Token does not contain a valid kid");
             OperationError::NotAuthenticated
         })?;

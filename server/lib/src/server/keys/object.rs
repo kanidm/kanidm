@@ -16,5 +16,7 @@ pub trait KeyObject {
 
     fn jws_verify(&self, jwsc: &JwsCompact) -> Result<Jws, OperationError>;
 
-    fn update_entry_invalid_new(&self, entry: &mut EntryInvalidNew) -> Result<(), OperationError>;
+    fn into_valuesets(
+        &self,
+    ) -> Box<dyn Iterator<Item = Result<(Attribute, ValueSet), OperationError>> + '_>;
 }

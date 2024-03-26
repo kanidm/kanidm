@@ -166,15 +166,18 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
             .ok_or(OperationError::KP0007KeyProviderDefaultNotAvailable)
     }
 
-    pub(crate) fn get_or_create_in_default(&mut self,
-        key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
+    pub(crate) fn get_or_create_in_default(
+        &mut self,
+        key_object_uuid: Uuid,
+    ) -> Result<Box<dyn KeyObject>, OperationError> {
         self.get_or_create(UUID_KEY_PROVIDER_INTERNAL, key_object_uuid)
     }
 
-    pub(crate) fn get_or_create(&mut self,
+    pub(crate) fn get_or_create(
+        &mut self,
         key_provider_uuid: Uuid,
-        key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
-
+        key_object_uuid: Uuid,
+    ) -> Result<Box<dyn KeyObject>, OperationError> {
         // If found, clone.
 
         // If not, create.

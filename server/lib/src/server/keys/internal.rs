@@ -372,21 +372,31 @@ impl KeyObject for KeyObjectInternal {
         }
     }
 
-    fn update_entry_invalid_new(&self, entry: &mut EntryInvalidNew) -> Result<(), OperationError> {
-        entry.add_ava(Attribute::Class, EntryClass::KeyObjectInternal.to_value());
-        entry.add_ava(Attribute::KeyProvider, Value::Refer(self.provider.uuid()));
-
-        let key_iter = self
-            .jws_es256
-            .iter()
-            .flat_map(|jws_es256| jws_es256.to_key_iter());
-
-        let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)?;
-
-        // Replace any content with this.
-        entry.set_ava_set(Attribute::KeyInternalData, key_vs);
-
-        Ok(())
+    fn into_valuesets(
+        &self,
+    ) -> Box<dyn Iterator<Item = Result<(Attribute, ValueSet), OperationError>> + '_> {
+        Box::new(
+            std::iter::once_with(|| {
+                Ok((
+                    Attribute::Class,
+                    ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
+                ))
+            })
+            .chain(std::iter::once_with(|| {
+                Ok((
+                    Attribute::KeyProvider,
+                    ValueSetRefer::new(self.provider.uuid()) as ValueSet,
+                ))
+            }))
+            .chain(std::iter::once_with(|| {
+                let key_iter = self
+                    .jws_es256
+                    .iter()
+                    .flat_map(|jws_es256| jws_es256.to_key_iter());
+                ValueSetKeyInternal::from_key_iter(key_iter)
+                    .and_then(|key_vs: ValueSet| Ok((Attribute::KeyInternalData, key_vs)))
+            })),
+        )
     }
 }
 

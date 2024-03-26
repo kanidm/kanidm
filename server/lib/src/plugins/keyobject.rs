@@ -68,7 +68,7 @@ impl Plugin for KeyObjectManagement {
 impl KeyObjectManagement {
     fn apply_keyobject_inner<T: Clone>(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut [Entry<EntryInvalid, T>]
+        cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         // Valid from right meow!
         let valid_from = qs.get_curtime();
@@ -93,8 +93,7 @@ impl KeyObjectManagement {
 
                 // Get the default provider, and create a new ephemeral key object
                 // inside it. If the object existed already, we clone it.
-                let mut key_object = key_providers
-                    .get_or_create_in_default(key_object_uuid)?;
+                let mut key_object = key_providers.get_or_create_in_default(key_object_uuid)?;
 
                 // If rotate.
                 //    if key type ...
@@ -111,7 +110,12 @@ impl KeyObjectManagement {
 
                 // Turn that object into it's entry template to create. I think we need to make this
                 // some kind of merge_vs?
-                key_object.update_entry_invalid_new(entry)?;
+                key_object.into_valuesets().try_for_each(|maybe_valueset| {
+                    // If an error occured during the conversion into a valueset,
+                    // it will be bubbled up here.
+                    maybe_valueset
+                        .and_then(|(attribute, valueset)| entry.merge_ava_set(attribute, valueset))
+                })?;
 
                 Ok(())
             })
