@@ -1435,6 +1435,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &self.cid
     }
 
+    pub(crate) fn get_key_providers_mut(&mut self) -> &mut KeyProvidersWriteTransaction<'a> {
+        &mut self.key_providers
+    }
+
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
         &mut self.dyngroup_cache
     }

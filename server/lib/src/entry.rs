@@ -1099,7 +1099,6 @@ impl Entry<EntryIncremental, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-    // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
             .get(Attribute::Uuid.as_ref())

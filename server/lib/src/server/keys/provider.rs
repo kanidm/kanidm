@@ -30,6 +30,7 @@ impl KeyProvider {
         }
     }
 
+    /*
     pub(crate) fn create_new_key_object(
         &self,
         key_object_uuid: Uuid,
@@ -40,6 +41,7 @@ impl KeyProvider {
             }
         }
     }
+    */
 
     fn load_key_object(
         &self,
@@ -162,6 +164,22 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
         // the write txn during a reload.
         self.get_uuid(UUID_KEY_PROVIDER_INTERNAL)
             .ok_or(OperationError::KP0007KeyProviderDefaultNotAvailable)
+    }
+
+    pub(crate) fn get_or_create_in_default(&mut self,
+        key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
+        self.get_or_create(UUID_KEY_PROVIDER_INTERNAL, key_object_uuid)
+    }
+
+    pub(crate) fn get_or_create(&mut self,
+        key_provider_uuid: Uuid,
+        key_object_uuid: Uuid) -> Result<Box<dyn KeyObject>, OperationError> {
+
+        // If found, clone.
+
+        // If not, create.
+
+        todo!();
     }
 }
 

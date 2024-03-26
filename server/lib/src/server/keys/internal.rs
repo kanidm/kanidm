@@ -430,7 +430,6 @@ mod tests {
         write_txn.reload().expect("Unable to reload transaction");
 
         // Get the key object entry.
-
         let key_object_entry = write_txn
             .internal_search_uuid(key_object_uuid)
             .expect("Unable to retrieve key object by uuid");
