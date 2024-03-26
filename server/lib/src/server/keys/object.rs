@@ -19,4 +19,6 @@ pub trait KeyObject {
     fn into_valuesets(
         &self,
     ) -> Box<dyn Iterator<Item = Result<(Attribute, ValueSet), OperationError>> + '_>;
+
+    fn duplicate(&self) -> Box<dyn KeyObject>;
 }

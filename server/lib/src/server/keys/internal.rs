@@ -117,6 +117,7 @@ impl KeyProviderInternal {
     }
 }
 
+#[derive(Clone)]
 enum InternalJwtEs256Status {
     Valid {
         signer: JwsEs256Signer,
@@ -130,13 +131,14 @@ enum InternalJwtEs256Status {
     },
 }
 
+#[derive(Clone)]
 struct InternalJwtEs256 {
     valid_from: u64,
     der: Vec<u8>,
     status: InternalJwtEs256Status,
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 struct KeyObjectInternalJwtEs256 {
     // active signing keys are in a BTreeMap indexed by their valid_from
     // time so that we can retrieve the active key.
@@ -320,6 +322,7 @@ impl KeyObjectInternalJwtEs256 {
     }
 }
 
+#[derive(Clone)]
 pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
@@ -329,6 +332,10 @@ pub struct KeyObjectInternal {
 impl KeyObject for KeyObjectInternal {
     fn uuid(&self) -> Uuid {
         self.uuid
+    }
+
+    fn duplicate(&self) -> Box<dyn KeyObject> {
+        Box::new(self.clone())
     }
 
     fn jws_es256_generate(&mut self, valid_from: Duration) -> Result<(), OperationError> {

@@ -30,8 +30,7 @@ impl KeyProvider {
         }
     }
 
-    /*
-    pub(crate) fn create_new_key_object(
+    fn create_new_key_object(
         &self,
         key_object_uuid: Uuid,
     ) -> Result<Box<dyn KeyObject>, OperationError> {
@@ -41,7 +40,6 @@ impl KeyProvider {
             }
         }
     }
-    */
 
     fn load_key_object(
         &self,
@@ -178,11 +176,19 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
         key_provider_uuid: Uuid,
         key_object_uuid: Uuid,
     ) -> Result<Box<dyn KeyObject>, OperationError> {
-        // If found, clone.
+        if let Some(key_object) = self.inner.deref().objects.get(&key_object_uuid) {
+            Ok(key_object.as_ref().duplicate())
+        } else {
+            let provider = self
+                .inner
+                .deref()
+                .providers
+                .get(&key_provider_uuid)
+                .map(|k| k.as_ref())
+                .ok_or(OperationError::KP0025KeyProviderNotAvailable)?;
 
-        // If not, create.
-
-        todo!();
+            provider.create_new_key_object(key_object_uuid)
+        }
     }
 }
 
