@@ -999,12 +999,12 @@ pub enum OauthClaimMapJoin {
 }
 
 impl OauthClaimMapJoin {
-    pub(crate) fn to_char(self) -> char {
+    pub(crate) fn to_str(self) -> &'static str {
         match self {
-            OauthClaimMapJoin::CommaSeparatedValue => ',',
-            OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+            OauthClaimMapJoin::CommaSeparatedValue => ",",
+            OauthClaimMapJoin::SpaceSeparatedValue => " ",
             // Should this be something else?
-            OauthClaimMapJoin::JsonArray => ';',
+            OauthClaimMapJoin::JsonArray => ";",
         }
     }
 }
