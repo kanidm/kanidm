@@ -1133,6 +1133,7 @@ lazy_static! {
             Attribute::UserAuthTokenSession,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -1160,6 +1161,7 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
         ],
         modify_present_attrs: vec![
             Attribute::DisplayName,
@@ -1170,6 +1172,7 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -2056,6 +2059,94 @@ lazy_static! {
             Attribute::Class,
             Attribute::Name,
             Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![Attribute::EntryManagedBy],
+        modify_present_attrs: vec![Attribute::EntryManagedBy],
+        ..Default::default()
+    };
+}
+
+// Application Create/Manage
+//   needs to be able to assign to entry managed by
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_CREATE_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+        ],
+        name: "idm_acp_application_create",
+        uuid: UUID_IDM_ACP_APPLICATION_CREATE_V1,
+        description: "Builtin IDM Control for creating new applications.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APPLICATION_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::EntryManagedBy,
+            Attribute::Description,
+        ],
+        create_classes: vec![EntryClass::Object, EntryClass::Application],
+        ..Default::default()
+    };
+    pub static ref IDM_ACP_APPLICATION_MANAGE_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify
+        ],
+        name: "idm_acp_application_manage",
+        uuid: UUID_IDM_ACP_APPLICATION_MANAGE_V1,
+        description: "Builtin IDM Control for modifying application data",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APPLICATION_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        modify_removed_attrs: vec![Attribute::Description],
+        modify_present_attrs: vec![Attribute::Name, Attribute::Description],
+        ..Default::default()
+    };
+    pub static ref IDM_ACP_APPLICATION_DELETE_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlDelete,
+        ],
+        name: "idm_acp_application_delete",
+        uuid: UUID_IDM_ACP_APPLICATION_DELETE_V1,
+        description: "Builtin IDM Control for deleting applications.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APPLICATION_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        ..Default::default()
+    };
+    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGED_BY_MODIFY_V1: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_application_entry_managed_by",
+        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGED_BY_MODIFY,
+        description:
+            "Builtin IDM Control for allowing entry_managed_by to be set on application entries",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APPLICATION_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application).clone(),
+            FILTER_ANDNOT_HP_OR_RECYCLED_OR_TOMBSTONE.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
             Attribute::Uuid,
             Attribute::EntryManagedBy,
         ],

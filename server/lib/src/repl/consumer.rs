@@ -227,6 +227,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
         }
+        if !self.changed_application {
+            self.changed_application = cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Application.into()));
+        }
         if !self.changed_oauth2 {
             self.changed_oauth2 = cand
                 .iter()
@@ -245,6 +251,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         trace!(
             schema_reload = ?self.changed_schema,
             acp_reload = ?self.changed_acp,
+            application_reload = ?self.changed_application,
             oauth2_reload = ?self.changed_oauth2,
             domain_reload = ?self.changed_domain,
             changed_sync_agreement = ?self.changed_sync_agreement
@@ -581,6 +588,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Mark that everything changed so that post commit hooks function as expected.
         self.changed_schema = true;
         self.changed_acp = true;
+        self.changed_application = true;
         self.changed_oauth2 = true;
         self.changed_domain = true;
 

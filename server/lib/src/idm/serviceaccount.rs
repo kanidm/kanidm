@@ -23,10 +23,6 @@ macro_rules! try_from_entry {
             ));
         }
 
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
-
         let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
@@ -48,7 +44,6 @@ macro_rules! try_from_entry {
         let uuid = $value.get_uuid().clone();
 
         Ok(ServiceAccount {
-            spn,
             uuid,
             valid_from,
             expire,
@@ -59,7 +54,6 @@ macro_rules! try_from_entry {
 }
 
 pub struct ServiceAccount {
-    pub spn: String,
     pub uuid: Uuid,
 
     pub valid_from: Option<OffsetDateTime>,

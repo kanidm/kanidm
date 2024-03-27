@@ -127,6 +127,7 @@ pub struct QueryServerWriteTransaction<'a> {
     // changing content.
     pub(super) changed_schema: bool,
     pub(super) changed_acp: bool,
+    pub(super) changed_application: bool,
     pub(super) changed_oauth2: bool,
     pub(super) changed_domain: bool,
     pub(super) changed_system_config: bool,
@@ -602,6 +603,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
+                    SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -657,7 +659,8 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::ApiToken
-                    | SyntaxType::Oauth2Session => {
+                    | SyntaxType::Oauth2Session
+                    | SyntaxType::ApplicationPassword => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }
@@ -925,6 +928,13 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,
             EntryClass::OAuth2ResourceServer.into(),
+        )))
+    }
+
+    fn get_ldap_applications_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::Application.into(),
         )))
     }
 
@@ -1361,6 +1371,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: false,
             changed_acp: false,
+            changed_application: false,
             changed_oauth2: false,
             changed_domain: false,
             changed_system_config: false,
@@ -1827,6 +1838,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.be_txn.upgrade_reindex(v)
     }
 
+    pub(crate) fn get_changed_app(&self) -> bool {
+        self.changed_application
+    }
+
     pub(crate) fn get_changed_oauth2(&self) -> bool {
         self.changed_oauth2
     }
@@ -1926,6 +1941,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             trim_cid: _,
             changed_schema: _,
             changed_acp: _,
+            changed_application: _,
             changed_oauth2: _,
             changed_domain: _,
             changed_system_config: _,

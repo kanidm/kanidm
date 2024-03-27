@@ -61,6 +61,7 @@ tasks within Kanidm as required.
 | `idm_schema_admins`          | add and modify elements of schema                                       |
 | `idm_service_account_admins` | create and modify service accounts                                      |
 | `idm_unix_admins`            | enable posix attributes on accounts and groups                          |
+| `idm_ldap_application_admins`| create and modify applications
 
 ## Default Roles
 

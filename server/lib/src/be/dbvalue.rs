@@ -338,16 +338,6 @@ pub struct DbValueCredV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub enum DbApiToken {
-    V1 {
-        #[serde(rename = "u")]
-        uuid: Uuid,
-        #[serde(rename = "s")]
-        secret: DbPasswordV1,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValuePasskeyV1 {
     V4 { u: Uuid, t: String, k: PasskeyV4 },
 }
@@ -596,6 +586,20 @@ pub enum DbValueImage {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueApplicationPassword {
+    V1 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "a")]
+        application_refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "p")]
+        password: DbPasswordV1,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
     Utf8(String),
@@ -748,6 +752,8 @@ pub enum DbValueSetV2 {
     CredentialType(Vec<u16>),
     #[serde(rename = "WC")]
     WebauthnAttestationCaList { ca_list: AttestationCaList },
+    #[serde(rename = "AP")]
+    ApplicationPassword(Vec<DbValueApplicationPassword>),
 }
 
 impl DbValueSetV2 {
@@ -797,6 +803,7 @@ impl DbValueSetV2 {
             // represents the bytes of  SINGLE(!) key
             DbValueSetV2::CredentialType(set) => set.len(),
             DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
+            DbValueSetV2::ApplicationPassword(set) => set.len(),
         }
     }
 

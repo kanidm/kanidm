@@ -872,8 +872,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_ATTR_LINKED_GROUP_DL6.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL6.clone().into(),
+            SCHEMA_CLASS_PERSON_DL6.clone().into(),
         ];
 
         idm_schema_classes
@@ -891,6 +895,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            IDM_ACP_APPLICATION_CREATE_DL6.clone().into(),
+            IDM_ACP_APPLICATION_MANAGE_DL6.clone().into(),
+            IDM_ACP_APPLICATION_DELETE_DL6.clone().into(),
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
         ];
