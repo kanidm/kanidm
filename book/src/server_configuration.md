@@ -1,4 +1,4 @@
-# Configuring the Server
+# Server Configuration
 
 In this section we will configure your server and create its container instance.
 

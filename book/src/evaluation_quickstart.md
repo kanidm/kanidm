@@ -102,4 +102,4 @@ Then follow the presented steps.
 
 ### What next?
 
-You can now follow the steps in the [administration section](administrivia.md)
+You can now follow the steps in the [administration section](administration.md)

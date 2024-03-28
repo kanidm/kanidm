@@ -1,4 +1,4 @@
-# Rename the domain
+# Domain Rename
 
 There are some cases where you may need to rename the domain. You should have configured this
 initially in the setup, however you may have a situation where a business is changing name, merging,

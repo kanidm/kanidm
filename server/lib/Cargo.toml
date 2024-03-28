@@ -36,6 +36,7 @@ fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
+itertools = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 lazy_static = { workspace = true }

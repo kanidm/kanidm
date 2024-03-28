@@ -767,7 +767,7 @@ pub trait QueryServerTransaction<'a> {
             let mut v = Vec::new();
             for (claim_name, mapping) in r_map.iter() {
                 for (group_ref, claims) in mapping.values() {
-                    let join_char = mapping.join().to_char();
+                    let join_char = mapping.join().to_str();
 
                     let nv = self.uuid_to_spn(*group_ref)?;
                     let resolved_id = match nv {
@@ -775,7 +775,7 @@ pub trait QueryServerTransaction<'a> {
                         None => uuid_to_proto_string(*group_ref),
                     };
 
-                    let joined = str_concat!(claims, ',');
+                    let joined = str_concat!(claims, ",");
 
                     v.push(format!(
                         "{}:{}:{}:{:?}",
