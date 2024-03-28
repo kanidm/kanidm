@@ -18,10 +18,7 @@ use std::process::ExitCode;
 
 use clap::Parser;
 
-use crate::{
-    profile::{Profile, ProfileBuilder},
-    state::Model,
-};
+use crate::profile::{Profile, ProfileBuilder};
 
 use tokio::sync::broadcast;
 

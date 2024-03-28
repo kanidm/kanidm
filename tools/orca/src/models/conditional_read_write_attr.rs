@@ -1,7 +1,7 @@
 use crate::model::{self, ActorModel, ActorRole, Transition, TransitionAction, TransitionResult};
 
 use crate::error::Error;
-use crate::run::EventRecord;
+use crate::run::EventRecords;
 use crate::state::*;
 use kanidm_client::KanidmClient;
 
@@ -25,10 +25,10 @@ pub struct ActorConditionalReadWrite {
 }
 
 impl ActorConditionalReadWrite {
-    pub fn new(member_of: BTreeSet<String>) -> Self {
+    pub fn new(member_of: &BTreeSet<String>) -> Self {
         let roles = member_of
             .iter()
-            .filter_map(|member| ActorRole::from_str(&member).ok())
+            .filter_map(|member| ActorRole::from_str(member).ok())
             .collect::<Vec<ActorRole>>();
         let role_index = if roles.is_empty() { None } else { Some(0) };
         ActorConditionalReadWrite {
@@ -45,7 +45,7 @@ impl ActorModel for ActorConditionalReadWrite {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<EventRecords, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
@@ -76,8 +76,8 @@ impl ActorConditionalReadWrite {
             State::Authenticated | State::WroteAttribute | State::ReadAttribute => {
                 let action = match self.role_index {
                     Some(role_index) => match self.roles[role_index] {
-                        ActorRole::ReadAttribute => TransitionAction::ReadAttribute,
-                        ActorRole::WriteAttribute => TransitionAction::WriteAttribute,
+                        ActorRole::AttributeReader => TransitionAction::ReadAttribute,
+                        ActorRole::AttributeWriter => TransitionAction::WriteAttribute,
                     },
                     None => TransitionAction::Logout,
                 };
@@ -103,8 +103,8 @@ impl ActorConditionalReadWrite {
             ) => {
                 self.state = match self.role_index {
                     Some(role_index) => match self.roles[role_index] {
-                        ActorRole::ReadAttribute => State::ReadAttribute,
-                        ActorRole::WriteAttribute => State::WroteAttribute,
+                        ActorRole::AttributeReader => State::ReadAttribute,
+                        ActorRole::AttributeWriter => State::WroteAttribute,
                     },
                     None => State::Unauthenticated,
                 };

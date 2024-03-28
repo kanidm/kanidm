@@ -1,7 +1,7 @@
 use crate::model::{self, ActorModel, Transition, TransitionAction, TransitionResult};
 
 use crate::error::Error;
-use crate::run::EventRecord;
+use crate::run::EventRecords;
 use crate::state::*;
 use kanidm_client::KanidmClient;
 
@@ -34,7 +34,7 @@ impl ActorModel for ActorReadWrite {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<EventRecords, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
@@ -47,7 +47,6 @@ impl ActorModel for ActorReadWrite {
             TransitionAction::ReadAttribute => model::person_get(client, person).await,
             TransitionAction::WriteAttribute => model::person_set(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
-            _ => Err(Error::InvalidState),
         }?;
 
         // Given the result, make a choice about what text.
@@ -99,7 +98,6 @@ impl ActorReadWrite {
             (State::ReadAttribute, TransitionResult::Error) => self.state = State::ReadAttribute,
             (State::WroteAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
             (State::WroteAttribute, TransitionResult::Error) => self.state = State::WroteAttribute,
-            _ => {}
         }
     }
 }
