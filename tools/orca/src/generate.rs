@@ -5,12 +5,11 @@ use crate::profile::Profile;
 use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::seq::SliceRandom;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use std::borrow::BorrowMut;
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
-use std::str::FromStr;
 
 const PEOPLE_PREFIX: &str = "person";
 
@@ -62,11 +61,11 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // actually these are just groups to decide what each person is supposed to do with their life
     let groups = vec![
         Group::new(
-            "readers".to_string(),
+            ActorRole::AttributeReader,
             BTreeSet::from(["idm_people_pii_read".to_string()]),
         ),
         Group::new(
-            "writers".to_string(),
+            ActorRole::AttributeWriter,
             BTreeSet::from(["idm_people_self_write_mail".to_string()]),
         ),
     ];
@@ -121,7 +120,9 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
 
         for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
-            member_of.insert(group.name.to_string());
+            member_of.insert(String::from(Into::<&'static str>::into(
+                group.name.borrow(),
+            )));
         }
 
         let model = Model::ConditionalReadWriteAttr {

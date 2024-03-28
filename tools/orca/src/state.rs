@@ -4,7 +4,6 @@ use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
-
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
@@ -61,9 +60,10 @@ pub enum PreflightState {
     Absent,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
+    #[default]
     Basic,
     // Markov {
     //     distributions_matrix: [f64; DISTR_MATRIX_SIZE],
@@ -74,12 +74,6 @@ pub enum Model {
     ConditionalReadWriteAttr {
         member_of: BTreeSet<String>,
     },
-}
-
-impl Default for Model {
-    fn default() -> Self {
-        Model::Basic
-    }
 }
 
 impl Model {
@@ -98,7 +92,7 @@ impl Model {
             Model::ReadWriteAttr => Box::new(crate::models::read_write_attr::ActorReadWrite::new()),
             Model::ConditionalReadWriteAttr { member_of } => Box::new(
                 crate::models::conditional_read_write_attr::ActorConditionalReadWrite::new(
-                    member_of.clone(),
+                    member_of,
                 ),
             ),
         })
@@ -121,13 +115,14 @@ pub struct Person {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+
 pub struct Group {
-    pub name: String,
+    pub name: ActorRole,
     pub member_of: BTreeSet<String>,
 }
 
 impl Group {
-    pub fn new(name: String, member_of: BTreeSet<String>) -> Self {
+    pub fn new(name: ActorRole, member_of: BTreeSet<String>) -> Self {
         Group { name, member_of }
     }
 }

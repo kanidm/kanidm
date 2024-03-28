@@ -8,5 +8,4 @@ pub enum Error {
     Interrupt,
     Crossbeam,
     InvalidState,
-    InvalidInput(String),
 }

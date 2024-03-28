@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::kani;
 use crate::state::*;
 
+use std::borrow::Borrow;
 use std::sync::Arc;
 
 async fn apply_flags(client: Arc<kani::KanidmOrcaClient>, flags: &[Flag]) -> Result<(), Error> {
@@ -43,13 +44,13 @@ async fn preflight_person(
 }
 
 async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> Result<(), Error> {
-    if client.group_exists(&group.name).await? {
+    if client.group_exists(group.name.borrow().into()).await? {
         // Do nothing? Do we need to create them later?
     } else {
-        client.group_create(&group.name).await?;
+        client.group_create(group.name.borrow().into()).await?;
         for parent_group in group.member_of.iter() {
             client
-                .add_members_to_group(&group.name, &parent_group)
+                .add_members_to_group(group.name.borrow().into(), parent_group)
                 .await?
         }
     }
