@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
-use tokio::sync::RwLock;
+use tokio::sync::{broadcast, RwLock};
 
 use super::interface::{
     // KeyStore,
@@ -197,6 +197,7 @@ impl IdProvider for KanidmProvider {
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))
@@ -210,6 +211,7 @@ impl IdProvider for KanidmProvider {
         _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError> {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {

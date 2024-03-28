@@ -2,6 +2,7 @@ use crate::db::KeyStoreTxn;
 use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
+use tokio::sync::broadcast;
 use uuid::Uuid;
 
 pub use kanidm_hsm_crypto as tpm;
@@ -63,11 +64,35 @@ pub struct UserToken {
 pub enum AuthCredHandler {
     Password,
     DeviceAuthorizationGrant,
+    /// Additional data required by the provider to complete the
+    /// authentication, but not required by PAM
+    ///
+    /// Sadly due to how this is passed around we can't make this a
+    /// generic associated type, else it would have to leak up to the
+    /// daemon.
+    ///
+    /// ⚠️  TODO: Optimally this should actually be a tokio oneshot receiver
+    /// with the decision from a task that is spawned.
+    MFA {
+        data: Vec<String>,
+    },
 }
 
 pub enum AuthRequest {
     Password,
-    DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
+    DeviceAuthorizationGrant {
+        data: DeviceAuthorizationResponse,
+    },
+    MFACode {
+        msg: String,
+    },
+    MFAPoll {
+        /// Message to display to the user.
+        msg: String,
+        /// Interval in seconds between poll attemts.
+        polling_interval: u32,
+    },
+    MFAPollWait,
 }
 
 #[allow(clippy::from_over_into)]
@@ -78,6 +103,15 @@ impl Into<PamAuthResponse> for AuthRequest {
             AuthRequest::DeviceAuthorizationGrant { data } => {
                 PamAuthResponse::DeviceAuthorizationGrant { data }
             }
+            AuthRequest::MFACode { msg } => PamAuthResponse::MFACode { msg },
+            AuthRequest::MFAPoll {
+                msg,
+                polling_interval,
+            } => PamAuthResponse::MFAPoll {
+                msg,
+                polling_interval,
+            },
+            AuthRequest::MFAPollWait => PamAuthResponse::MFAPollWait,
         }
     }
 }
@@ -133,6 +167,7 @@ pub trait IdProvider {
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(
@@ -143,6 +178,7 @@ pub trait IdProvider {
         _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
+        _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
     async fn unix_user_offline_auth_init(

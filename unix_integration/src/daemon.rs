@@ -202,6 +202,10 @@ async fn handle_client(
     let mut reqs = Framed::new(sock, ClientCodec);
     let mut pam_auth_session_state = None;
 
+    // Setup a broadcast channel so that if we have an unexpected disconnection, we can
+    // tell consumers to stop work.
+    let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
+
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
         let resp = match req {
@@ -295,7 +299,10 @@ async fn handle_client(
                     }
                     None => {
                         match cachelayer
-                            .pam_account_authenticate_init(account_id.as_str())
+                            .pam_account_authenticate_init(
+                                account_id.as_str(),
+                                shutdown_tx.subscribe(),
+                            )
                             .await
                         {
                             Ok((auth_session, pam_auth_response)) => {
@@ -405,6 +412,14 @@ async fn handle_client(
         reqs.send(resp).await?;
         reqs.flush().await?;
         debug!("flushed response!");
+    }
+
+    // Signal any tasks that they need to stop.
+    if let Err(shutdown_err) = shutdown_tx.send(()) {
+        warn!(
+            ?shutdown_err,
+            "Unable to signal tasks to stop, they will naturally timeout instead."
+        )
     }
 
     // Disconnect them
