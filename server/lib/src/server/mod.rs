@@ -624,7 +624,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
                     SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute("Internal keys are generated and not able to be set.".to_string())),
-                    SyntaxType::HexString => Err(OperationError::InvalidAttribute("Hex String are not (yet) able to be set.".to_string())),
+                    SyntaxType::HexString => Value::new_hex_string_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid hex string syntax".to_string())),
                 }
             }
             None => {

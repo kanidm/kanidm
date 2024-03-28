@@ -456,6 +456,9 @@ pub enum ReplAttrV1 {
     KeyInternal {
         set: Vec<DbValueKeyInternal>,
     },
+    HexString {
+        set: Vec<String>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]

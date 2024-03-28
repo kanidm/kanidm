@@ -302,8 +302,7 @@ impl SchemaAttribute {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
                 SyntaxType::KeyInternal => matches!(v, Value::KeyInternal { .. }),
-                // For now, it's not "settable".
-                SyntaxType::HexString => false,
+                SyntaxType::HexString => matches!(v, Value::HexString(_)),
             };
         if r {
             Ok(())

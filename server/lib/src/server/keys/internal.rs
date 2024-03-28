@@ -1,8 +1,8 @@
-use super::object::KeyObject;
+use super::object::{KeyObject, KeyObjectT};
 use super::KeyId;
 use crate::prelude::*;
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use compact_jwt::traits::*;
@@ -50,7 +50,7 @@ impl KeyProviderInternal {
         &self,
         uuid: Uuid,
         provider: Arc<Self>,
-    ) -> Result<Box<dyn KeyObject>, OperationError> {
+    ) -> Result<KeyObject, OperationError> {
         Ok(Box::new(KeyObjectInternal {
             provider,
             uuid,
@@ -62,7 +62,7 @@ impl KeyProviderInternal {
         &self,
         entry: &EntrySealedCommitted,
         provider: Arc<Self>,
-    ) -> Result<Arc<Box<dyn KeyObject>>, OperationError> {
+    ) -> Result<Arc<KeyObject>, OperationError> {
         let uuid = entry.get_uuid();
         trace!(?uuid, "Loading key object ...");
 
@@ -122,19 +122,21 @@ enum InternalJwtEs256Status {
     Valid {
         signer: JwsEs256Signer,
         verifier: JwsEs256Verifier,
+        private_der: Vec<u8>,
     },
     Retained {
         verifier: JwsEs256Verifier,
+        public_der: Vec<u8>,
     },
     Revoked {
         untrusted_verifier: JwsEs256Verifier,
+        public_der: Vec<u8>,
     },
 }
 
 #[derive(Clone)]
 struct InternalJwtEs256 {
     valid_from: u64,
-    der: Vec<u8>,
     status: InternalJwtEs256Status,
 }
 
@@ -156,13 +158,10 @@ struct KeyObjectInternalJwtEs256 {
 }
 
 impl KeyObjectInternalJwtEs256 {
-    fn get_valid_signer(&self, valid_from: Duration) -> Option<
-        &JwsEs256Signer
-    > {
-        let ct_secs = current_time.as_secs();
+    fn get_valid_signer(&self, time: Duration) -> Option<&JwsEs256Signer> {
+        let ct_secs = time.as_secs();
 
-        self
-            .active
+        self.active
             .range((Unbounded, Included(ct_secs)))
             .next_back()
             .map(|(_time, signer)| signer)
@@ -193,7 +192,7 @@ impl KeyObjectInternalJwtEs256 {
             OperationError::KP0010KeyObjectSignerToVerifier
         })?;
 
-        let der = signer.private_key_to_der().map_err(|jwt_error| {
+        let private_der = signer.private_key_to_der().map_err(|jwt_error| {
             error!(?jwt_error, "Unable to convert signing key to DER");
             OperationError::KP0009KeyObjectPrivateToDer
         })?;
@@ -206,12 +205,50 @@ impl KeyObjectInternalJwtEs256 {
             kid,
             InternalJwtEs256 {
                 valid_from,
-                der,
-                status: InternalJwtEs256Status::Valid { signer, verifier },
+                status: InternalJwtEs256Status::Valid {
+                    signer,
+                    verifier,
+                    private_der,
+                },
             },
         );
 
         Ok(())
+    }
+
+    fn revoke(&mut self, revoke_key_id: &KeyId) -> Result<bool, OperationError> {
+        if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
+            let untrusted_verifier = match &key_to_revoke.status {
+                InternalJwtEs256Status::Valid { verifier, .. }
+                | InternalJwtEs256Status::Retained { verifier, .. } => verifier,
+                InternalJwtEs256Status::Revoked {
+                    untrusted_verifier, ..
+                } => untrusted_verifier,
+            }
+            .clone();
+
+            let public_der = untrusted_verifier
+                .public_key_to_der()
+                .map_err(|jwt_error| {
+                    error!(?jwt_error, "Unable to convert public key to DER");
+                    OperationError::KP0027KeyObjectPublicToDer
+                })?;
+
+            key_to_revoke.status = InternalJwtEs256Status::Revoked {
+                untrusted_verifier,
+                public_der,
+            };
+
+            let valid_from = key_to_revoke.valid_from;
+
+            // Remove it from the active set.
+            self.active.remove(&valid_from);
+
+            Ok(true)
+        } else {
+            // We didn't revoke anything
+            Ok(false)
+        }
     }
 
     fn load(
@@ -237,7 +274,11 @@ impl KeyObjectInternalJwtEs256 {
 
                 self.active.insert(valid_from, signer.clone());
 
-                InternalJwtEs256Status::Valid { signer, verifier }
+                InternalJwtEs256Status::Valid {
+                    signer,
+                    verifier,
+                    private_der: der.to_vec(),
+                }
             }
             KeyInternalStatus::Retained => {
                 let verifier = JwsEs256Verifier::from_es256_der(der).map_err(|err| {
@@ -245,7 +286,10 @@ impl KeyObjectInternalJwtEs256 {
                     OperationError::KP0015KeyObjectJwsEs256DerInvalid
                 })?;
 
-                InternalJwtEs256Status::Retained { verifier }
+                InternalJwtEs256Status::Retained {
+                    verifier,
+                    public_der: der.to_vec(),
+                }
             }
             KeyInternalStatus::Revoked => {
                 let untrusted_verifier = JwsEs256Verifier::from_es256_der(der).map_err(|err| {
@@ -253,17 +297,14 @@ impl KeyObjectInternalJwtEs256 {
                     OperationError::KP0016KeyObjectJwsEs256DerInvalid
                 })?;
 
-                InternalJwtEs256Status::Revoked { untrusted_verifier }
+                InternalJwtEs256Status::Revoked {
+                    untrusted_verifier,
+                    public_der: der.to_vec(),
+                }
             }
         };
 
-        let der = der.to_vec();
-
-        let internal_jwt = InternalJwtEs256 {
-            valid_from,
-            der,
-            status,
-        };
+        let internal_jwt = InternalJwtEs256 { valid_from, status };
 
         self.all.insert(id, internal_jwt);
 
@@ -276,12 +317,16 @@ impl KeyObjectInternalJwtEs256 {
 
             let valid_from = internal_jwt.valid_from;
 
-            let der = internal_jwt.der.clone();
-
-            let status = match &internal_jwt.status {
-                InternalJwtEs256Status::Valid { .. } => KeyInternalStatus::Valid,
-                InternalJwtEs256Status::Retained { .. } => KeyInternalStatus::Retained,
-                InternalJwtEs256Status::Revoked { .. } => KeyInternalStatus::Revoked,
+            let (status, der) = match &internal_jwt.status {
+                InternalJwtEs256Status::Valid { private_der, .. } => {
+                    (KeyInternalStatus::Valid, private_der.clone())
+                }
+                InternalJwtEs256Status::Retained { public_der, .. } => {
+                    (KeyInternalStatus::Retained, public_der.clone())
+                }
+                InternalJwtEs256Status::Revoked { public_der, .. } => {
+                    (KeyInternalStatus::Revoked, public_der.clone())
+                }
             };
 
             (
@@ -323,7 +368,7 @@ impl KeyObjectInternalJwtEs256 {
 
         match &internal_jws.status {
             InternalJwtEs256Status::Valid { verifier, .. }
-            | InternalJwtEs256Status::Retained { verifier } => {
+            | InternalJwtEs256Status::Retained { verifier, .. } => {
                 verifier.verify(jwsc).map_err(|jwt_err| {
                     error!(?jwt_err, "Failed to verify jws");
                     OperationError::KP0024KeyObjectJwsInvalid
@@ -342,14 +387,16 @@ pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
     jws_es256: Option<KeyObjectInternalJwtEs256>,
+    // If you add more types here you need to add these to rotate
+    // and revoke.
 }
 
-impl KeyObject for KeyObjectInternal {
+impl KeyObjectT for KeyObjectInternal {
     fn uuid(&self) -> Uuid {
         self.uuid
     }
 
-    fn duplicate(&self) -> Box<dyn KeyObject> {
+    fn duplicate(&self) -> KeyObject {
         Box::new(self.clone())
     }
 
@@ -359,6 +406,33 @@ impl KeyObject for KeyObjectInternal {
             .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
 
         koi.assert_active(valid_from)
+    }
+
+    fn rotate_keys(&mut self, rotation_time: Duration) -> Result<(), OperationError> {
+        if let Some(jws_es256_object) = &mut self.jws_es256 {
+            jws_es256_object.new_active(rotation_time)?;
+        }
+
+        Ok(())
+    }
+
+    fn revoke_keys(&mut self, revoke_set: &BTreeSet<String>) -> Result<(), OperationError> {
+        for revoke_key_id in revoke_set.iter() {
+            let mut has_revoked = false;
+
+            if let Some(jws_es256_object) = &mut self.jws_es256 {
+                if jws_es256_object.revoke(revoke_key_id)? {
+                    has_revoked = true;
+                }
+            };
+
+            if !has_revoked {
+                error!(?revoke_key_id, "Unable to revoked key, id not found");
+                return Err(OperationError::KP0026KeyObjectNoSuchKey);
+            }
+        }
+
+        Ok(())
     }
 
     fn jws_es256_sign(
@@ -395,31 +469,25 @@ impl KeyObject for KeyObjectInternal {
         }
     }
 
-    fn into_valuesets(
-        &self,
-    ) -> Box<dyn Iterator<Item = Result<(Attribute, ValueSet), OperationError>> + '_> {
-        Box::new(
-            std::iter::once_with(|| {
-                Ok((
-                    Attribute::Class,
-                    ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
-                ))
-            })
-            .chain(std::iter::once_with(|| {
-                Ok((
-                    Attribute::KeyProvider,
-                    ValueSetRefer::new(self.provider.uuid()) as ValueSet,
-                ))
-            }))
-            .chain(std::iter::once_with(|| {
-                let key_iter = self
-                    .jws_es256
-                    .iter()
-                    .flat_map(|jws_es256| jws_es256.to_key_iter());
-                ValueSetKeyInternal::from_key_iter(key_iter)
-                    .and_then(|key_vs: ValueSet| Ok((Attribute::KeyInternalData, key_vs)))
-            })),
-        )
+    fn into_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError> {
+        let key_iter = self
+            .jws_es256
+            .iter()
+            .flat_map(|jws_es256| jws_es256.to_key_iter());
+        let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
+
+        let mut attrs = Vec::with_capacity(3);
+        attrs.push((
+            Attribute::Class,
+            ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
+        ));
+        attrs.push((
+            Attribute::KeyProvider,
+            ValueSetRefer::new(self.provider.uuid()) as ValueSet,
+        ));
+
+        attrs.push((Attribute::KeyInternalData, key_vs));
+        Ok(attrs)
     }
 }
 
@@ -538,8 +606,10 @@ mod tests {
         assert_ne!(jwsc_sig_2.kid(), jwsc_sig_3.kid());
 
         // Test Key revocation. Revocation takes effect immediately, and is by key id.
-        let remain_key = jwsc_sig_2.kid().unwrap().to_string();
-        let revoke_kid = jwsc_sig_1.kid().unwrap().to_string();
+        // The new key
+        let remain_key = jwsc_sig_3.kid().unwrap().to_string();
+        // The older key (since sig 1 == sig 2 kid)
+        let revoke_kid = jwsc_sig_2.kid().unwrap().to_string();
 
         // First check that both keys are live.
         {
@@ -572,9 +642,9 @@ mod tests {
         write_txn
             .internal_modify_uuid(
                 key_object_uuid,
-                &ModifyList::new_remove(
+                &ModifyList::new_append(
                     Attribute::KeyActionRevoke,
-                    PartialValue::HexString(revoke_kid.clone()),
+                    Value::HexString(revoke_kid.clone()),
                 ),
             )
             .expect("Unable to revoke key.");
@@ -598,12 +668,17 @@ mod tests {
                 .map(|kdata| kdata.status)
                 .expect("Key ID not found");
 
+            trace!(?revoke_kid);
+
             assert_eq!(revoke_key_status, KeyInternalStatus::Revoked);
 
             let remain_key_status = key_internal_map
                 .get(&remain_key)
                 .map(|kdata| kdata.status)
                 .expect("Key ID not found");
+
+            trace!(?remain_key);
+            trace!(?remain_key_status);
 
             assert_eq!(remain_key_status, KeyInternalStatus::Valid);
             // Scope to limit the key object

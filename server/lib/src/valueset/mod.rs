@@ -35,6 +35,7 @@ pub use self::cred::{
 };
 pub use self::datetime::ValueSetDateTime;
 pub use self::eckey::ValueSetEcKeyPrivate;
+pub use self::hexstring::ValueSetHexString;
 use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
@@ -67,6 +68,7 @@ mod cid;
 mod cred;
 mod datetime;
 pub mod eckey;
+mod hexstring;
 pub mod image;
 mod iname;
 mod index;
@@ -374,6 +376,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_key_internal_map(&self) -> Option<&BTreeMap<KeyId, KeyInternalData>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_hexstring_set(&self) -> Option<&BTreeSet<String>> {
         debug_assert!(false);
         None
     }
@@ -693,6 +700,7 @@ pub fn from_result_value_iter(
         | Value::OauthClaimValue(_, _, _)
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_)
+        | Value::HexString(_)
         | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -760,7 +768,16 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::OauthClaimValue(name, group, claims) => {
             ValueSetOauthClaimMap::new_value(name, group, claims)
         }
-        Value::KeyInternal { .. } => todo!(),
+        Value::HexString(s) => ValueSetHexString::new(s),
+
+        Value::KeyInternal {
+            id,
+            usage,
+            valid_from,
+            status,
+            der,
+        } => ValueSetKeyInternal::new(id, usage, valid_from, status, der),
+
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -823,6 +840,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         }
         DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
         DbValueSetV2::KeyInternal(set) => ValueSetKeyInternal::from_dbvs2(set),
+        DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
     }
 }
 
@@ -874,5 +892,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         }
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
         ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
+        ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
     }
 }

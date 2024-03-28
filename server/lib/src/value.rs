@@ -1176,6 +1176,7 @@ pub enum Value {
         status: KeyInternalStatus,
         der: Vec<u8>,
     },
+    HexString(String),
 }
 
 impl PartialEq for Value {
@@ -1454,6 +1455,15 @@ impl Value {
         match &self {
             Value::Cred(_, cred) => Some(cred),
             _ => None,
+        }
+    }
+
+    pub fn new_hex_string_s(hexstr: &str) -> Option<Self> {
+        let hexstr_lower = hexstr.to_lowercase();
+        if HEXSTR_RE.is_match(&hexstr_lower) {
+            Some(Value::HexString(hexstr_lower))
+        } else {
+            None
         }
     }
 
@@ -1986,7 +1996,7 @@ impl Value {
                 OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
-            Value::KeyInternal { id, .. } => {
+            Value::HexString(id) | Value::KeyInternal { id, .. } => {
                 Value::validate_str_escapes(id.as_str())
                     && Value::validate_singleline(id.as_str())
                     && Value::validate_hexstr(id.as_str())

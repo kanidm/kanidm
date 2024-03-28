@@ -163,6 +163,8 @@ pub enum OperationError {
     KP0023KeyObjectJwsKeyRevoked,
     KP0024KeyObjectJwsInvalid,
     KP0025KeyProviderNotAvailable,
+    KP0026KeyObjectNoSuchKey,
+    KP0027KeyObjectPublicToDer,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

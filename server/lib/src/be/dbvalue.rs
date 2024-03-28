@@ -773,14 +773,17 @@ pub enum DbValueSetV2 {
     WebauthnAttestationCaList { ca_list: AttestationCaList },
     #[serde(rename = "KI")]
     KeyInternal(Vec<DbValueKeyInternal>),
+    #[serde(rename = "HS")]
+    HexString(Vec<String>),
 }
 
 impl DbValueSetV2 {
     pub fn len(&self) -> usize {
         match self {
-            DbValueSetV2::Utf8(set) => set.len(),
-            DbValueSetV2::Iutf8(set) => set.len(),
-            DbValueSetV2::Iname(set) => set.len(),
+            DbValueSetV2::Utf8(set)
+            | DbValueSetV2::Iutf8(set)
+            | DbValueSetV2::HexString(set)
+            | DbValueSetV2::Iname(set) => set.len(),
             DbValueSetV2::Uuid(set) => set.len(),
             DbValueSetV2::Bool(set) => set.len(),
             DbValueSetV2::SyntaxType(set) => set.len(),

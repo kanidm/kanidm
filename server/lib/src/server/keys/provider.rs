@@ -8,7 +8,7 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use super::internal::KeyProviderInternal;
-use super::object::KeyObject;
+use super::object::{KeyObject, KeyObjectRef};
 
 #[derive(Clone)]
 pub enum KeyProvider {
@@ -30,10 +30,7 @@ impl KeyProvider {
         }
     }
 
-    fn create_new_key_object(
-        &self,
-        key_object_uuid: Uuid,
-    ) -> Result<Box<dyn KeyObject>, OperationError> {
+    fn create_new_key_object(&self, key_object_uuid: Uuid) -> Result<KeyObject, OperationError> {
         match self {
             KeyProvider::Internal(inner) => {
                 inner.create_new_key_object(key_object_uuid, inner.clone())
@@ -44,7 +41,7 @@ impl KeyProvider {
     fn load_key_object(
         &self,
         entry: &EntrySealedCommitted,
-    ) -> Result<Arc<Box<dyn KeyObject>>, OperationError> {
+    ) -> Result<Arc<KeyObject>, OperationError> {
         match self {
             KeyProvider::Internal(inner) => inner.load_key_object(entry, inner.clone()),
         }
@@ -73,7 +70,7 @@ impl KeyProvider {
 struct KeyProvidersInner {
     // Wondering if this should be Arc later to allow KeyObjects to refer to their provider directly.
     providers: BTreeMap<Uuid, Arc<KeyProvider>>,
-    objects: BTreeMap<Uuid, Arc<Box<dyn KeyObject>>>,
+    objects: BTreeMap<Uuid, Arc<KeyObject>>,
 }
 
 pub struct KeyProviders {
@@ -109,7 +106,7 @@ pub trait KeyProvidersTransaction {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
 
     // should this actually be dyn trait?
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject>;
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
 }
 
 pub struct KeyProvidersReadTransaction {
@@ -125,7 +122,7 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
             .map(|k| k.as_ref())
     }
 
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject> {
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
         self.inner
             .deref()
             .objects
@@ -147,7 +144,7 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
             .map(|k| k.as_ref())
     }
 
-    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<&dyn KeyObject> {
+    fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
         self.inner
             .deref()
             .objects
@@ -167,7 +164,7 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
     pub(crate) fn get_or_create_in_default(
         &mut self,
         key_object_uuid: Uuid,
-    ) -> Result<Box<dyn KeyObject>, OperationError> {
+    ) -> Result<KeyObject, OperationError> {
         self.get_or_create(UUID_KEY_PROVIDER_INTERNAL, key_object_uuid)
     }
 
@@ -175,7 +172,7 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
         &mut self,
         key_provider_uuid: Uuid,
         key_object_uuid: Uuid,
-    ) -> Result<Box<dyn KeyObject>, OperationError> {
+    ) -> Result<KeyObject, OperationError> {
         if let Some(key_object) = self.inner.deref().objects.get(&key_object_uuid) {
             Ok(key_object.as_ref().duplicate())
         } else {

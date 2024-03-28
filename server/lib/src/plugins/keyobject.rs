@@ -96,14 +96,32 @@ impl KeyObjectManagement {
                 // our changes.
                 let mut key_object = key_providers.get_or_create_in_default(key_object_uuid)?;
 
-                // If revoke.
-                //    locate the key and revoke it.
+                // If revoke. This weird looking let dance is to ensure that the inner hexstring set
+                // lives long enough.
+                let maybe_revoked = entry.pop_ava(Attribute::KeyActionRevoke);
+                if let Some(revoke_keys) =
+                    maybe_revoked.as_ref().and_then(|vs| vs.as_hexstring_set())
+                {
+                    key_object.revoke_keys(revoke_keys)?;
+                }
 
                 // Rotation is after revocation, but before assertion. This way if the user
                 // asked for rotation and revocation, we don't double rotate when we get to
-                // the assert phase.
-                if let Some(_) = e.pop_ava(Attribute::KeyActionRotate) {
-                    key_object.rotate_keys(valid_from)?;
+                // the assert phase. We also only get a rotation time if the time is in the
+                // future, to avoid rotating keys in the past.
+                if let Some(rotation_time) = entry
+                    .pop_ava(Attribute::KeyActionRotate)
+                    .and_then(|vs| vs.to_datetime_single())
+                    .and_then(|odt| {
+                        let secs = odt.unix_timestamp() as u64;
+                        if secs > valid_from.as_secs() {
+                            Some(Duration::from_secs(secs))
+                        } else {
+                            None
+                        }
+                    })
+                {
+                    key_object.rotate_keys(rotation_time)?;
                 }
 
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
@@ -117,12 +135,9 @@ impl KeyObjectManagement {
 
                 // Turn that object into it's entry template to create. I think we need to make this
                 // some kind of merge_vs?
-                key_object.into_valuesets().try_for_each(|maybe_valueset| {
-                    // If an error occured during the conversion into a valueset,
-                    // it will be bubbled up here.
-                    maybe_valueset
-                        .and_then(|(attribute, valueset)| entry.merge_ava_set(attribute, valueset))
-                })?;
+                key_object.into_valuesets()?.into_iter().try_for_each(
+                    |(attribute, valueset)| entry.merge_ava_set(attribute, valueset),
+                )?;
 
                 Ok(())
             })
