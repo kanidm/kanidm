@@ -1,12 +1,14 @@
 use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
+use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Model, Person, PreflightState, State};
+use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
 use rand::distributions::{Alphanumeric, DistString};
 use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
+use std::borrow::Borrow;
 use std::collections::BTreeSet;
 
 const PEOPLE_PREFIX: &str = "person";
@@ -55,7 +57,20 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
     // todo! may need a random username vec for later stuff
 
-    // PHASE 2 - generate persons
+    // PHASE 2 - generate groups for integration access, assign roles to groups
+    // actually these are just groups to decide what each person is supposed to do with their life
+    let groups = vec![
+        Group::new(
+            ActorRole::AttributeReader,
+            BTreeSet::from(["idm_people_pii_read".to_string()]),
+        ),
+        Group::new(
+            ActorRole::AttributeWriter,
+            BTreeSet::from(["idm_people_self_write_mail".to_string()]),
+        ),
+    ];
+
+    // PHASE 3 - generate persons
     //         - assign them credentials of various types.
     let mut persons = Vec::with_capacity(profile.person_count() as usize);
     let mut person_usernames = BTreeSet::new();
@@ -88,9 +103,31 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let password = random_password(&mut seeded_rng);
 
-        // TODO: Add more and different "models" to each person for their actions.
-        let model = Model::Basic;
+        // //God forbid me but I didn't want to bother with matrixes as input
+        // // Bare in mind that actually these probabilities are not so random: the first 4 represent the
+        // // prob of each transition if we are in the Unauthenticated state, so we obv will have 0 prob to unauthenticate ourselves,
+        // // and also 0 prob to update our account.
+        // // The last 4 values refer to the authenticated scenario: here we will have 0 prob to authenticate, since we already did that, but we have some
+        // // non-0 prob of doing everything else.
+        // let model = Model::Markov {
+        //     distributions_matrix: [0.5, 0., 0.5, 0., 0., 0.5, 0.25, 0.25],
+        //     rng_seed: None,
+        //     normal_dist_mean_and_std_dev: None,
+        // };
 
+        let mut member_of = BTreeSet::new();
+
+        let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
+
+        for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
+            member_of.insert(String::from(Into::<&'static str>::into(
+                group.name.borrow(),
+            )));
+        }
+
+        let model = Model::ConditionalReadWriteAttr {
+            member_of: member_of.clone(),
+        };
         // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
 
@@ -98,7 +135,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             preflight_state: PreflightState::Present,
             username: username.clone(),
             display_name,
-            member_of: BTreeSet::default(),
+            member_of,
             credential: Credential::Password { plain: password },
             model,
         };
@@ -109,21 +146,20 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         persons.push(p);
     }
 
-    // PHASE 3 - generate groups for integration access, assign persons.
-
     // PHASE 4 - generate groups for user modification rights
 
     // PHASE 5 - generate excess groups with nesting. Randomly assign persons.
 
     // PHASE 6 - generate integrations -
 
-    // PHASE 7 - given the intergariotns and groupings,
+    // PHASE 7 - given the integrations and groupings,
 
     // Return the state.
 
     let state = State {
         profile,
         // ---------------
+        groups,
         preflight_flags,
         persons,
     };

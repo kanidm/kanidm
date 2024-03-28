@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::kani;
 use crate::state::*;
 
+use std::borrow::Borrow;
 use std::sync::Arc;
 
 async fn apply_flags(client: Arc<kani::KanidmOrcaClient>, flags: &[Flag]) -> Result<(), Error> {
@@ -30,8 +31,27 @@ async fn preflight_person(
     match &person.credential {
         Credential::Password { plain } => {
             client
-                .person_set_pirmary_password_only(&person.username, plain)
+                .person_set_primary_password_only(&person.username, plain)
                 .await?;
+        }
+    }
+
+    for group in person.member_of.iter() {
+        client.add_members_to_group(&person.username, group).await?
+    }
+
+    Ok(())
+}
+
+async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> Result<(), Error> {
+    if client.group_exists(group.name.borrow().into()).await? {
+        // Do nothing? Do we need to create them later?
+    } else {
+        client.group_create(group.name.borrow().into()).await?;
+        for parent_group in group.member_of.iter() {
+            client
+                .add_members_to_group(group.name.borrow().into(), parent_group)
+                .await?
         }
     }
 
@@ -45,8 +65,15 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     // Apply any flags if they exist.
     apply_flags(client.clone(), state.preflight_flags.as_slice()).await?;
 
-    // Create persons.
     let mut tasks = Vec::with_capacity(state.persons.len());
+
+    // Create groups
+    for group in state.groups.into_iter() {
+        let c = client.clone();
+        tasks.push(tokio::spawn(preflight_group(c, group)))
+    }
+
+    // Create persons.
     for person in state.persons.into_iter() {
         let c = client.clone();
         tasks.push(tokio::spawn(preflight_person(c, person)))

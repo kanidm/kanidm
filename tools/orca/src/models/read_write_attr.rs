@@ -1,7 +1,7 @@
 use crate::model::{self, ActorModel, Transition, TransitionAction, TransitionResult};
 
 use crate::error::Error;
-use crate::run::EventRecord;
+use crate::run::EventRecords;
 use crate::state::*;
 use kanidm_client::KanidmClient;
 
@@ -12,27 +12,29 @@ use std::time::Duration;
 enum State {
     Unauthenticated,
     Authenticated,
+    ReadAttribute,
+    WroteAttribute,
 }
 
-pub struct ActorBasic {
+pub struct ActorReadWrite {
     state: State,
 }
 
-impl ActorBasic {
+impl ActorReadWrite {
     pub fn new() -> Self {
-        ActorBasic {
+        ActorReadWrite {
             state: State::Unauthenticated,
         }
     }
 }
 
 #[async_trait]
-impl ActorModel for ActorBasic {
+impl ActorModel for ActorReadWrite {
     async fn transition(
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<EventRecords, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
@@ -42,6 +44,8 @@ impl ActorModel for ActorBasic {
         // Once we get to here, we want the transition to go ahead.
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
+            TransitionAction::ReadAttribute => model::person_get(client, person).await,
+            TransitionAction::WriteAttribute => model::person_set(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
         }?;
 
@@ -52,7 +56,7 @@ impl ActorModel for ActorBasic {
     }
 }
 
-impl ActorBasic {
+impl ActorReadWrite {
     fn next_transition(&mut self) -> Transition {
         match self.state {
             State::Unauthenticated => Transition {
@@ -61,6 +65,14 @@ impl ActorBasic {
             },
             State::Authenticated => Transition {
                 delay: Some(Duration::from_millis(100)),
+                action: TransitionAction::ReadAttribute,
+            },
+            State::ReadAttribute => Transition {
+                delay: None,
+                action: TransitionAction::WriteAttribute,
+            },
+            State::WroteAttribute => Transition {
+                delay: Some(Duration::from_millis(500)),
                 action: TransitionAction::Logout,
             },
         }
@@ -77,11 +89,15 @@ impl ActorBasic {
                 self.state = State::Unauthenticated;
             }
             (State::Authenticated, TransitionResult::Ok) => {
-                self.state = State::Unauthenticated;
+                self.state = State::ReadAttribute;
             }
             (State::Authenticated, TransitionResult::Error) => {
-                self.state = State::Unauthenticated;
+                self.state = State::Authenticated;
             }
+            (State::ReadAttribute, TransitionResult::Ok) => self.state = State::WroteAttribute,
+            (State::ReadAttribute, TransitionResult::Error) => self.state = State::ReadAttribute,
+            (State::WroteAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
+            (State::WroteAttribute, TransitionResult::Error) => self.state = State::WroteAttribute,
         }
     }
 }

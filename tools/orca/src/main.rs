@@ -26,7 +26,7 @@ mod error;
 mod generate;
 mod kani;
 mod model;
-mod model_basic;
+mod models;
 mod populate;
 mod profile;
 mod run;

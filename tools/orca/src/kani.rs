@@ -84,7 +84,7 @@ impl KanidmOrcaClient {
             })
     }
 
-    pub async fn person_set_pirmary_password_only(
+    pub async fn person_set_primary_password_only(
         &self,
         username: &str,
         password: &str,
@@ -94,6 +94,46 @@ impl KanidmOrcaClient {
             .await
             .map_err(|err| {
                 error!(?err, ?username, "Unable to set person password");
+                Error::KanidmClient
+            })
+    }
+
+    pub async fn add_members_to_group(
+        &self,
+        username: &str,
+        group_name: &str,
+    ) -> Result<(), Error> {
+        self.idm_admin_client
+            .idm_group_add_members(group_name, &[username])
+            .await
+            .map_err(|err| {
+                error!(
+                    ?err,
+                    ?username,
+                    ?group_name,
+                    "Unable to add person to group"
+                );
+                Error::KanidmClient
+            })
+    }
+
+    pub async fn group_exists(&self, group_name: &str) -> Result<bool, Error> {
+        self.idm_admin_client
+            .idm_group_get(group_name)
+            .await
+            .map(|e| e.is_some())
+            .map_err(|err| {
+                error!(?err, ?group_name, "Unable to check group");
+                Error::KanidmClient
+            })
+    }
+
+    pub async fn group_create(&self, group_name: &str) -> Result<(), Error> {
+        self.idm_admin_client
+            .idm_group_create(group_name, Some("idm_admin"))
+            .await
+            .map_err(|err| {
+                error!(?err, ?group_name, "Unable to create group");
                 Error::KanidmClient
             })
     }
