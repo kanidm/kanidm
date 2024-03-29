@@ -191,10 +191,11 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_online_auth_init(
+    async fn unix_user_online_auth_init<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,

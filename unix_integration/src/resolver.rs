@@ -893,10 +893,13 @@ where
 
         let maybe_err = if online_at_init {
             let mut hsm_lock = self.hsm.lock().await;
+            let mut dbtxn = self.db.write().await;
+
             self.client
                 .unix_user_online_auth_init(
                     account_id,
                     token.as_ref(),
+                    &mut dbtxn,
                     hsm_lock.deref_mut(),
                     &self.machine_key,
                     &shutdown_rx,
