@@ -463,6 +463,35 @@ impl PamHooks for PamKanidm {
                         pin,
                     });
                     continue;
+                },
+                ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Pin) => {
+                    let mut consume_authtok = None;
+                    // Swap the authtok out with a None, so it can only be consumed once.
+                    // If it's already been swapped, we are just swapping two null pointers
+                    // here effectively.
+                    std::mem::swap(&mut authtok, &mut consume_authtok);
+                    let cred = if let Some(cred) = consume_authtok {
+                        cred
+                    } else {
+                        match conv.send(PAM_PROMPT_ECHO_OFF, "PIN") {
+                            Ok(password) => match password {
+                                Some(cred) => cred,
+                                None => {
+                                    debug!("no pin");
+                                    return PamResultCode::PAM_CRED_INSUFFICIENT;
+                                }
+                            },
+                            Err(err) => {
+                                debug!("unable to get pin");
+                                return err;
+                            }
+                        }
+                    };
+
+                    // Now setup the request for the next loop.
+                    timeout = cfg.unix_sock_timeout;
+                    req = ClientRequest::PamAuthenticateStep(PamAuthRequest::Pin { cred });
+                    continue;
                 }
             );
         } // while true, continue calling PamAuthenticateStep until we get a decision.

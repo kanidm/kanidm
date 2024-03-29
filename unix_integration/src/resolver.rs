@@ -906,9 +906,11 @@ where
                 )
                 .await
         } else {
+            let mut dbtxn = self.db.write().await;
+
             // Can the auth proceed offline?
             self.client
-                .unix_user_offline_auth_init(account_id, token.as_ref())
+                .unix_user_offline_auth_init(account_id, token.as_ref(), &mut dbtxn)
                 .await
         };
 
@@ -1016,10 +1018,10 @@ where
             */
             (
                 &mut AuthSession::InProgress {
-                    account_id: _,
+                    ref account_id,
                     id: _,
                     token: Some(ref token),
-                    online_at_init: _,
+                    online_at_init,
                     ref mut cred_handler,
                     // Only need in online auth.
                     shutdown_rx: _,
@@ -1032,9 +1034,9 @@ where
                 // Rather than calling client, should this actually be self
                 // contained to the resolver so that it has generic offline-paths
                 // that are possible?
-                match (cred_handler, pam_next_req) {
+                match (&cred_handler, &pam_next_req) {
                     (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
-                        match self.check_cache_userpassword(token.uuid, &cred).await {
+                        match self.check_cache_userpassword(token.uuid, cred).await {
                             Ok(true) => Ok(AuthResult::Success {
                                 token: *token.clone(),
                             }),
@@ -1061,18 +1063,36 @@ where
                         // AuthCredHandler::SetupPin is invalid for offline auth
                         return Err(());
                     }
-                }
+                    (AuthCredHandler::Pin, PamAuthRequest::Pin { .. }) => {
+                        // The Pin acts as a single device password, and can be
+                        // used to unlock the TPM to validate the authentication.
+                        let mut hsm_lock = self.hsm.lock().await;
+                        let mut dbtxn = self.db.write().await;
 
-                /*
-                self.client
-                    .unix_user_offline_auth_step(
-                        &account_id,
-                        cred_handler,
-                        pam_next_req,
-                        online_at_init,
-                    )
-                    .await
-                */
+                        let auth_result = self
+                            .client
+                            .unix_user_offline_auth_step(
+                                account_id,
+                                token,
+                                cred_handler,
+                                pam_next_req,
+                                &mut dbtxn,
+                                hsm_lock.deref_mut(),
+                                &self.machine_key,
+                                online_at_init,
+                            )
+                            .await;
+
+                        drop(hsm_lock);
+                        dbtxn.commit().map_err(|_| ())?;
+
+                        auth_result
+                    }
+                    (AuthCredHandler::Pin, _) => {
+                        // AuthCredHandler::Pin is only valid with a cred provided
+                        return Err(());
+                    }
+                }
             }
             (&mut AuthSession::InProgress { token: None, .. }, _) => {
                 // Can't do much with offline auth when there is no token ...
@@ -1152,6 +1172,10 @@ where
                 auth_session
             }
             (auth_session, PamAuthResponse::SetupPin { .. }) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::Pin) => {
                 // Can continue!
                 auth_session
             }

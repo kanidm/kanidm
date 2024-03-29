@@ -55,6 +55,7 @@ pub enum PamAuthResponse {
     SetupPin {
         msg: String,
     },
+    Pin,
     // CTAP2
 }
 
@@ -65,6 +66,7 @@ pub enum PamAuthRequest {
     MFACode { cred: String },
     MFAPoll,
     SetupPin { pin: String },
+    Pin { cred: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
