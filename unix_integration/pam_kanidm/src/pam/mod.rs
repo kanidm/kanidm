@@ -397,6 +397,72 @@ impl PamHooks for PamKanidm {
                         );
 
                     }
+                },
+                ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::SetupPin {
+                    msg,
+                }) => {
+                    match conv.send(PAM_TEXT_INFO, &msg) {
+                        Ok(_) => {}
+                        Err(err) => {
+                            if opts.debug {
+                                println!("Message prompt failed");
+                            }
+                            return err;
+                        }
+                    }
+
+                    let mut pin;
+                    let mut confirm;
+                    loop {
+                        pin = match conv.send(PAM_PROMPT_ECHO_OFF, "New PIN") {
+                            Ok(password) => match password {
+                                Some(cred) => cred,
+                                None => {
+                                    debug!("no pin");
+                                    return PamResultCode::PAM_CRED_INSUFFICIENT;
+                                }
+                            },
+                            Err(err) => {
+                                debug!("unable to get pin");
+                                return err;
+                            }
+                        };
+
+                        confirm = match conv.send(PAM_PROMPT_ECHO_OFF, "Confirm PIN") {
+                            Ok(password) => match password {
+                                Some(cred) => cred,
+                                None => {
+                                    debug!("no confirmation pin");
+                                    return PamResultCode::PAM_CRED_INSUFFICIENT;
+                                }
+                            },
+                            Err(err) => {
+                                debug!("unable to get confirmation pin");
+                                return err;
+                            }
+                        };
+
+                        if pin == confirm {
+                            break;
+                        } else {
+                            match conv.send(PAM_TEXT_INFO, "Inputs did not match. Try again.") {
+                                Ok(_) => {}
+                                Err(err) => {
+                                    if opts.debug {
+                                        println!("Message prompt failed");
+                                    }
+                                    return err;
+                                }
+                            }
+                        }
+                    }
+
+                    // Now setup the request for the next loop.
+                    timeout = cfg.unix_sock_timeout;
+                    req = ClientRequest::PamAuthenticateStep(PamAuthRequest::SetupPin {
+                        pin,
+                    });
+                    continue;
                 }
             );
         } // while true, continue calling PamAuthenticateStep until we get a decision.

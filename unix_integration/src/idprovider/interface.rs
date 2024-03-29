@@ -76,6 +76,7 @@ pub enum AuthCredHandler {
     MFA {
         data: Vec<String>,
     },
+    SetupPin,
 }
 
 pub enum AuthRequest {
@@ -93,6 +94,10 @@ pub enum AuthRequest {
         polling_interval: u32,
     },
     MFAPollWait,
+    SetupPin {
+        /// Message to display to the user.
+        msg: String,
+    },
 }
 
 #[allow(clippy::from_over_into)]
@@ -112,6 +117,7 @@ impl Into<PamAuthResponse> for AuthRequest {
                 polling_interval,
             },
             AuthRequest::MFAPollWait => PamAuthResponse::MFAPollWait,
+            AuthRequest::SetupPin { msg } => PamAuthResponse::SetupPin { msg },
         }
     }
 }

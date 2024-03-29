@@ -1057,6 +1057,10 @@ where
                         // AuthCredHandler::MFA is invalid for offline auth
                         return Err(());
                     }
+                    (AuthCredHandler::SetupPin, _) => {
+                        // AuthCredHandler::SetupPin is invalid for offline auth
+                        return Err(());
+                    }
                 }
 
                 /*
@@ -1144,6 +1148,10 @@ where
                 auth_session
             }
             (auth_session, PamAuthResponse::MFAPollWait) => {
+                // Can continue!
+                auth_session
+            }
+            (auth_session, PamAuthResponse::SetupPin { .. }) => {
                 // Can continue!
                 auth_session
             }

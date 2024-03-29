@@ -51,6 +51,10 @@ pub enum PamAuthResponse {
         polling_interval: u32,
     },
     MFAPollWait,
+    /// PAM must prompt for a new PIN and confirm that PIN input
+    SetupPin {
+        msg: String,
+    },
     // CTAP2
 }
 
@@ -60,6 +64,7 @@ pub enum PamAuthRequest {
     DeviceAuthorizationGrant { data: DeviceAuthorizationResponse },
     MFACode { cred: String },
     MFAPoll,
+    SetupPin { pin: String },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
