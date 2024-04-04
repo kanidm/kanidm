@@ -1091,9 +1091,9 @@ impl fmt::Display for KeyUsage {
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyStatus {
-    Revoked { at: Cid },
-    Retained { since: Cid },
-    Valid { from: Cid },
+    Revoked { at_cid: Cid },
+    Retained { since_cid: Cid },
+    Valid { since_cid: Cid },
 }
 
 impl fmt::Display for KeyStatus {

@@ -217,19 +217,27 @@ impl ValueSetT for ValueSetKeyInternal {
         }
     }
 
-    fn purge(&mut self, _cid: &Cid) -> bool {
+    fn purge(&mut self, cid: &Cid) -> bool {
         for key_object in self.map.values_mut() {
-            if !matches!(key_object.status, KeyStatus::Revoked) {
-                key_object.status = KeyStatus::Revoked
+            if !matches!(key_object.status, KeyStatus::Revoked { .. }) {
+                key_object.status = KeyStatus::Revoked { at: cid }
             }
         }
         false
     }
 
-    fn trim(&mut self, _trim_cid: &Cid) {
-        // Can't be trimmed since we need the keys to persist for auditing.
-
-        // If trim is added, also add to repl merge valueset.
+    fn trim(&mut self, trim_cid: &Cid) {
+        map.retain(|_, key_internal| {
+            match &key_internal.status {
+                SessionState::Revoked { at_cid }  if at_cid < trim_cid => {
+                    // This value is past the replication trim window and can now safely
+                    // be removed
+                    false
+                }
+                // Retain all else
+                _ => true,
+            }
+        });
     }
 
     fn contains(&self, pv: &crate::value::PartialValue) -> bool {
@@ -378,7 +386,17 @@ impl ValueSetT for ValueSetKeyInternal {
             }
         }
 
-        // In future, trim.
+        map.retain(|_, key_internal| {
+            match &key_internal.status {
+                SessionState::Revoked { at_cid }  if at_cid < trim_cid => {
+                    // This value is past the replication trim window and can now safely
+                    // be removed
+                    false
+                }
+                // Retain all else
+                _ => true,
+            }
+        });
 
         Some(Box::new(ValueSetKeyInternal { map }))
     }
