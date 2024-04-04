@@ -229,7 +229,7 @@ impl ValueSetT for ValueSetKeyInternal {
     fn trim(&mut self, trim_cid: &Cid) {
         map.retain(|_, key_internal| {
             match &key_internal.status {
-                SessionState::Revoked { at_cid }  if at_cid < trim_cid => {
+                KeyStatus::Revoked { at_cid }  if at_cid < trim_cid => {
                     // This value is past the replication trim window and can now safely
                     // be removed
                     false
@@ -388,7 +388,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
         map.retain(|_, key_internal| {
             match &key_internal.status {
-                SessionState::Revoked { at_cid }  if at_cid < trim_cid => {
+                KeyStatus::Revoked { at_cid }  if at_cid < trim_cid => {
                     // This value is past the replication trim window and can now safely
                     // be removed
                     false
@@ -399,5 +399,40 @@ impl ValueSetT for ValueSetKeyInternal {
         });
 
         Some(Box::new(ValueSetKeyInternal { map }))
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_valueset_key_internal_purge() {
+        todo!();
+    }
+
+    #[test]
+    fn test_valueset_key_internal_trim() {
+        todo!();
+    }
+
+    #[test]
+    fn test_valueset_key_internal_merge_left() {
+        todo!();
+    }
+
+    #[test]
+    fn test_valueset_key_internal_merge_right() {
+        todo!();
+    }
+
+    #[test]
+    fn test_valueset_key_internal_repl_merge_left() {
+        todo!();
+    }
+
+    #[test]
+    fn test_valueset_key_internal_repl_merge_right() {
+        todo!();
     }
 }
