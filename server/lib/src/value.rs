@@ -1089,22 +1089,22 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
-pub enum KeyInternalStatus {
-    Valid,
-    Retained,
-    Revoked,
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum KeyStatus {
+    Revoked { at: Cid },
+    Retained { since: Cid },
+    Valid { from: Cid },
 }
 
-impl fmt::Display for KeyInternalStatus {
+impl fmt::Display for KeyStatus {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
             "{}",
             match self {
-                KeyInternalStatus::Valid => "valid",
-                KeyInternalStatus::Retained => "retained",
-                KeyInternalStatus::Revoked => "revoked",
+                KeyStatus::Revoked => "revoked",
+                KeyStatus::Retained => "retained",
+                KeyStatus::Valid => "valid",
             }
         )
     }
@@ -1173,9 +1173,10 @@ pub enum Value {
         id: KeyId,
         usage: KeyUsage,
         valid_from: u64,
-        status: KeyInternalStatus,
+        status: KeyStatus,
         der: Vec<u8>,
     },
+
     HexString(String),
 }
 
@@ -2340,7 +2341,7 @@ mod tests {
 
     #[test]
     fn test_value_key_internal_status_order() {
-        assert!(KeyInternalStatus::Valid < KeyInternalStatus::Retained);
-        assert!(KeyInternalStatus::Retained < KeyInternalStatus::Revoked);
+        assert!(KeyStatus::Valid < KeyStatus::Retained);
+        assert!(KeyStatus::Retained < KeyStatus::Revoked);
     }
 }

@@ -696,6 +696,7 @@ impl ValueSetT for ValueSetSession {
                 _ => true,
             }
         });
+
         Some(Box::new(ValueSetSession { map }))
     }
 }

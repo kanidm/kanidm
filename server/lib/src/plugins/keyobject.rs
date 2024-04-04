@@ -60,8 +60,75 @@ impl Plugin for KeyObjectManagement {
 
     #[instrument(level = "debug", name = "keyobject_management::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
-        // Every key object must have at least one concrete provided key type.
-        Vec::default()
+        let filt_in = filter!(f_eq(Attribute::Class, EntryClass::KeyProvider.into()));
+
+        let key_providers = match qs
+            .internal_search(filt_in)
+            .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
+        {
+            Ok(all_cand) => all_cand,
+            Err(e) => return vec![e],
+        };
+
+        // Put the providers into a map by uuid.
+        let key_providers: hashbrown::HashSet<_> = key_providers
+            .into_iter()
+            .map(|entry| entry.get_uuid())
+            .collect();
+
+        let filt_in = filter!(f_eq(Attribute::Class, EntryClass::KeyObject.into()));
+
+        let key_objects = match qs
+            .internal_search(filt_in)
+            .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
+        {
+            Ok(all_cand) => all_cand,
+            Err(e) => return vec![e],
+        };
+
+        let errs = key_objects
+            .into_iter()
+            .filter_map(|key_object_entry| {
+                let object_uuid = key_object_entry.get_uuid();
+
+                // Each key objects must relate to a provider.
+                let Some(provider_uuid) =
+                    key_object_entry.get_ava_single_refer(Attribute::KeyProvider)
+                else {
+                    error!(?object_uuid, "Invalid key object, no key provider uuid.");
+                    return Some(ConsistencyError::KeyProviderUuidMissing {
+                        key_object: object_uuid,
+                    });
+                };
+
+                if !key_providers.contains(&provider_uuid) {
+                    error!(
+                        ?object_uuid,
+                        ?provider_uuid,
+                        "Invalid key object, key provider referenced is not found."
+                    );
+                    return Some(ConsistencyError::KeyProviderNotFound {
+                        key_object: object_uuid,
+                        provider: provider_uuid,
+                    });
+                }
+
+                // Every key object needs at least *one* key it stores.
+                if !key_object_entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
+                {
+                    error!(?object_uuid, "Invalid key object, contains no keys.");
+                    return Some(ConsistencyError::KeyProviderNoKeys {
+                        key_object: object_uuid,
+                    });
+                }
+
+                None
+            })
+            .map(|err| Err(err))
+            .collect::<Vec<_>>();
+
+        errs
     }
 }
 

@@ -56,6 +56,9 @@ pub enum ConsistencyError {
     ChangeStateDesynchronised(u64),
     RuvInconsistent(String),
     DeniedName(Uuid),
+    KeyProviderUuidMissing { key_object: Uuid },
+    KeyProviderNoKeys { key_object: Uuid },
+    KeyProviderNotFound { key_object: Uuid, provider: Uuid },
 }
 
 #[derive(Serialize, Deserialize, Debug, ToSchema)]

@@ -2,20 +2,30 @@ use crate::prelude::*;
 
 use crate::repl::proto::ReplAttrV1;
 use crate::server::keys::KeyId;
-use crate::value::{KeyInternalStatus, KeyUsage};
+use crate::value::{KeyStatus, KeyUsage};
 
-use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyInternalStatus, DbValueKeyUsage};
+use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 use std::collections::BTreeMap;
 use std::fmt;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
     pub usage: KeyUsage,
     pub valid_from: u64,
-    pub status: KeyInternalStatus,
+    pub status: KeyStatus,
     pub der: Vec<u8>,
+}
+
+impl fmt::Debug for KeyInternalData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyInternalData")
+            .field("usage", &self.usage)
+            .field("valid_from", &self.valid_from)
+            .field("status", &self.status)
+            .finish()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -28,7 +38,7 @@ impl ValueSetKeyInternal {
         id: KeyId,
         usage: KeyUsage,
         valid_from: u64,
-        status: KeyInternalStatus,
+        status: KeyStatus,
         der: Vec<u8>,
     ) -> Box<Self> {
         let map = BTreeMap::from([(
@@ -44,12 +54,13 @@ impl ValueSetKeyInternal {
         Box::new(ValueSetKeyInternal { map })
     }
 
+    /*
     fn push(
         &mut self,
         id: KeyId,
         usage: KeyUsage,
         valid_from: u64,
-        status: KeyInternalStatus,
+        status: KeyStatus,
         der: Vec<u8>,
     ) -> bool {
         self.map
@@ -64,6 +75,7 @@ impl ValueSetKeyInternal {
             )
             .is_none()
     }
+    */
 
     pub fn from_key_iter(
         keys: impl Iterator<Item = (KeyId, KeyInternalData)>,
@@ -92,9 +104,9 @@ impl ValueSetKeyInternal {
                             DbValueKeyUsage::JwtEs256 => KeyUsage::JwtEs256,
                         };
                         let status = match status {
-                            DbValueKeyInternalStatus::Valid => KeyInternalStatus::Valid,
-                            DbValueKeyInternalStatus::Retained => KeyInternalStatus::Retained,
-                            DbValueKeyInternalStatus::Revoked => KeyInternalStatus::Revoked,
+                            DbValueKeyStatus::Valid => KeyStatus::Valid,
+                            DbValueKeyStatus::Retained => KeyStatus::Retained,
+                            DbValueKeyStatus::Revoked => KeyStatus::Revoked,
                         };
 
                         Ok((
@@ -140,9 +152,9 @@ impl ValueSetKeyInternal {
                         KeyUsage::JwtEs256 => DbValueKeyUsage::JwtEs256,
                     };
                     let status = match status {
-                        KeyInternalStatus::Valid => DbValueKeyInternalStatus::Valid,
-                        KeyInternalStatus::Retained => DbValueKeyInternalStatus::Retained,
-                        KeyInternalStatus::Revoked => DbValueKeyInternalStatus::Revoked,
+                        KeyStatus::Valid => DbValueKeyStatus::Valid,
+                        KeyStatus::Retained => DbValueKeyStatus::Retained,
+                        KeyStatus::Revoked => DbValueKeyStatus::Revoked,
                     };
 
                     DbValueKeyInternal::V1 {
@@ -161,6 +173,8 @@ impl ValueSetKeyInternal {
 impl ValueSetT for ValueSetKeyInternal {
     fn insert_checked(&mut self, value: crate::value::Value) -> Result<bool, OperationError> {
         match value {
+            // I'm not sure we ever need to actually push this?
+            /*
             Value::KeyInternal {
                 id,
                 usage,
@@ -169,8 +183,8 @@ impl ValueSetT for ValueSetKeyInternal {
                 der,
             } => {
                 todo!();
-                // Ok(self.push(&k))
             }
+            */
             _ => {
                 debug_assert!(false);
                 Err(OperationError::InvalidValueState)
@@ -184,13 +198,13 @@ impl ValueSetT for ValueSetKeyInternal {
         self.map.clear();
     }
 
-    fn remove(&mut self, pv: &crate::value::PartialValue, cid: &Cid) -> bool {
+    fn remove(&mut self, pv: &crate::value::PartialValue, _cid: &Cid) -> bool {
         match pv {
             PartialValue::HexString(kid) => {
                 if let Some(key_object) = self.map.get_mut(kid) {
-                    if !matches!(key_object.status, KeyInternalStatus::Revoked) {
+                    if !matches!(key_object.status, KeyStatus::Revoked) {
                         // Do we need to track the Cid like sessions?
-                        key_object.status = KeyInternalStatus::Revoked;
+                        key_object.status = KeyStatus::Revoked;
                         true
                     } else {
                         false
@@ -203,18 +217,19 @@ impl ValueSetT for ValueSetKeyInternal {
         }
     }
 
-    fn purge(&mut self, cid: &Cid) -> bool {
+    fn purge(&mut self, _cid: &Cid) -> bool {
         for key_object in self.map.values_mut() {
-            if !matches!(key_object.status, KeyInternalStatus::Revoked) {
-                key_object.status = KeyInternalStatus::Revoked
+            if !matches!(key_object.status, KeyStatus::Revoked) {
+                key_object.status = KeyStatus::Revoked
             }
         }
-        // Can't be purged since we need the keys to persist for auditing.
         false
     }
 
     fn trim(&mut self, _trim_cid: &Cid) {
-        // Should we impl trim here for expired keys?
+        // Can't be trimmed since we need the keys to persist for auditing.
+
+        // If trim is added, also add to repl merge valueset.
     }
 
     fn contains(&self, pv: &crate::value::PartialValue) -> bool {
@@ -319,7 +334,7 @@ impl ValueSetT for ValueSetKeyInternal {
         }
     }
 
-    fn merge(&mut self, other: &super::ValueSet) -> Result<(), OperationError> {
+    fn merge(&mut self, other: &ValueSet) -> Result<(), OperationError> {
         let Some(b) = other.as_key_internal_map() else {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -327,9 +342,7 @@ impl ValueSetT for ValueSetKeyInternal {
 
         for (k_other, v_other) in b.iter() {
             if let Some(v_self) = self.map.get_mut(k_other) {
-                // We only update if lower. This is where RevokedAt
-                // always proceeds other states, and lower revoked
-                // cids will always take effect.
+                // Revoked is always a greater status than retained or valid.
                 if v_other.status > v_self.status {
                     *v_self = v_other.clone();
                 }
@@ -351,6 +364,22 @@ impl ValueSetT for ValueSetKeyInternal {
             return None;
         };
 
-        todo!();
+        let mut map = self.map.clone();
+
+        for (k_other, v_other) in b.iter() {
+            if let Some(v_self) = map.get_mut(k_other) {
+                // Revoked is always a greater status than retained or valid.
+                if v_other.status > v_self.status {
+                    *v_self = v_other.clone();
+                }
+            } else {
+                // Not present, just insert.
+                map.insert(k_other.clone(), v_other.clone());
+            }
+        }
+
+        // In future, trim.
+
+        Some(Box::new(ValueSetKeyInternal { map }))
     }
 }

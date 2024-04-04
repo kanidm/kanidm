@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use compact_jwt::traits::*;
 use compact_jwt::{Jws, JwsCompact};
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -27,4 +26,10 @@ pub trait KeyObjectT {
     fn rotate_keys(&mut self, current_time: Duration) -> Result<(), OperationError>;
 
     fn revoke_keys(&mut self, revoke_set: &BTreeSet<String>) -> Result<(), OperationError>;
+
+    #[cfg(test)]
+    fn kid_status(
+        &self,
+        kid: &super::KeyId,
+    ) -> Result<Option<crate::value::KeyStatus>, OperationError>;
 }

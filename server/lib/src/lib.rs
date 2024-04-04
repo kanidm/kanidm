@@ -2,7 +2,6 @@
 //! which is used to process authentication, store identities and enforce access controls.
 
 #![deny(warnings)]
-
 #![allow(deprecated)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]

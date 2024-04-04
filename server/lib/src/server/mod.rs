@@ -1727,7 +1727,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // to access the provider.
         let providers = res
             .iter()
-            .map(|e| KeyProvider::try_from(e))
+            .map(|e| KeyProvider::try_from(e).and_then(|kp| kp.test().map(|()| kp)))
             .collect::<Result<Vec<_>, _>>()?;
 
         self.key_providers.update_providers(providers)?;

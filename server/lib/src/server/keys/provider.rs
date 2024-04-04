@@ -4,6 +4,7 @@ use concread::cowcell::*;
 use uuid::Uuid;
 
 use std::collections::BTreeMap;
+use std::fmt;
 use std::ops::Deref;
 use std::sync::Arc;
 
@@ -17,6 +18,15 @@ pub enum KeyProvider {
     Internal(Arc<KeyProviderInternal>),
 }
 
+impl fmt::Display for KeyProvider {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("KeyProvider")
+            .field("name", &self.name())
+            .field("uuid", &self.uuid())
+            .finish()
+    }
+}
+
 impl KeyProvider {
     pub(crate) fn uuid(&self) -> Uuid {
         match self {
@@ -27,6 +37,12 @@ impl KeyProvider {
     pub(crate) fn name(&self) -> &str {
         match self {
             KeyProvider::Internal(inner) => inner.name(),
+        }
+    }
+
+    pub(crate) fn test(&self) -> Result<(), OperationError> {
+        match self {
+            KeyProvider::Internal(inner) => inner.test(),
         }
     }
 
@@ -154,6 +170,7 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
 }
 
 impl<'a> KeyProvidersWriteTransaction<'a> {
+    #[cfg(test)]
     pub(crate) fn get_default(&self) -> Result<&KeyProvider, OperationError> {
         // In future we will make this configurable, and we'll load the default into
         // the write txn during a reload.
@@ -244,9 +261,6 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
         // Ask the provider to load this object.
         let key_object = provider.load_key_object(entry)?;
 
-        // Prevent duplicate mut borrows, drop provider reference.
-        drop(provider);
-
         // Can't be duplicate as uuid is enforced unique in other layers.
         self.inner.objects.insert(object_uuid, key_object);
 
@@ -264,6 +278,8 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
 mod tests {
     use super::{KeyProvider, KeyProvidersTransaction};
     use crate::prelude::*;
+    use crate::value::KeyStatus;
+    use compact_jwt::{JwsEs256Signer, JwsSigner};
 
     #[qs_test(domain_level=DOMAIN_LEVEL_5)]
     async fn test_key_provider_internal_migration(server: &QueryServer) {
@@ -274,6 +290,16 @@ mod tests {
         let domain_object_initial = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("unable to access domain object");
+
+        let initial_private_es256_key = domain_object_initial
+            .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
+            .map(|s| s.to_vec())
+            .expect("No private key found");
+
+        let initial_jwt_signer =
+            JwsEs256Signer::from_es256_der(&initial_private_es256_key).unwrap();
+
+        let former_kid = initial_jwt_signer.get_legacy_kid().to_string();
 
         // Set the version to 6.
         write_txn
@@ -321,20 +347,25 @@ mod tests {
             .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("unable to access domain object");
 
-        // Assert the former key is now in the domain key object.
-        /*
-        assert!(!key_provider_object.attribute_pres(
-            Attribute::Es256PrivateKeyDer
-        ));
+        // Assert items are removed from the migrated entry.
+        assert!(!domain_object_migrated.attribute_pres(Attribute::Es256PrivateKeyDer));
 
-        assert!(!key_provider_object.attribute_pres(
-            Attribute::FernetPrivateKeyStr
-        ));
+        assert!(!domain_object_migrated.attribute_pres(Attribute::FernetPrivateKeyStr));
 
-        assert!(!key_provider_object.attribute_pres(
-            Attribute::PrivateCookieKey
-        ));
-        */
+        assert!(!domain_object_migrated.attribute_pres(Attribute::PrivateCookieKey));
+
+        let key_object = write_txn
+            .get_key_providers()
+            .get_key_object(UUID_DOMAIN_INFO)
+            .expect("Unable to retrieve key object by uuid");
+
+        // Assert the former key is now in the domain key object, and now is "retained".
+        let status = key_object
+            .kid_status(&former_kid)
+            .expect("Failed to access kid status");
+        assert_eq!(status, Some(KeyStatus::Retained));
+
+        // The migration worked!
 
         assert!(false);
 
