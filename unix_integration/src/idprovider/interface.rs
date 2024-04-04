@@ -76,6 +76,8 @@ pub enum AuthCredHandler {
     MFA {
         data: Vec<String>,
     },
+    SetupPin,
+    Pin,
 }
 
 pub enum AuthRequest {
@@ -93,6 +95,11 @@ pub enum AuthRequest {
         polling_interval: u32,
     },
     MFAPollWait,
+    SetupPin {
+        /// Message to display to the user.
+        msg: String,
+    },
+    Pin,
 }
 
 #[allow(clippy::from_over_into)]
@@ -112,6 +119,8 @@ impl Into<PamAuthResponse> for AuthRequest {
                 polling_interval,
             },
             AuthRequest::MFAPollWait => PamAuthResponse::MFAPollWait,
+            AuthRequest::SetupPin { msg } => PamAuthResponse::SetupPin { msg },
+            AuthRequest::Pin => PamAuthResponse::Pin,
         }
     }
 }
@@ -161,10 +170,11 @@ pub trait IdProvider {
         _machine_key: &tpm::MachineKey,
     ) -> Result<UserToken, IdpError>;
 
-    async fn unix_user_online_auth_init(
+    async fn unix_user_online_auth_init<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
@@ -181,13 +191,13 @@ pub trait IdProvider {
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
-    async fn unix_user_offline_auth_init(
+    async fn unix_user_offline_auth_init<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _keystore: &mut D,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
-    /*
     // I thought about this part of the interface a lot. we could have the
     // provider actually need to check the password or credentials, but then
     // we need to rework the tpm/crypto engine to be an argument to pass here
@@ -202,14 +212,22 @@ pub trait IdProvider {
     // involved if there is some "custom logic" or similar that is needed but
     // for now I think making it generic is a good first step and we can change
     // it later.
-    async fn unix_user_offline_auth_step(
+    //
+    // EDIT 04042024: When we're performing an offline PIN auth, the PIN can
+    // unlock the associated TPM key. While we can't perform a full request
+    // for an auth token, we can verify that the PIN successfully unlocks the
+    // TPM key.
+    async fn unix_user_offline_auth_step<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
+        _token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _keystore: &mut D,
+        _tpm: &mut tpm::BoxedDynTpm,
+        _machine_key: &tpm::MachineKey,
         _online_at_init: bool,
     ) -> Result<AuthResult, IdpError>;
-    */
 
     async fn unix_group_get(
         &self,
