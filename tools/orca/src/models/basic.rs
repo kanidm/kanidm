@@ -1,7 +1,7 @@
 use crate::model::{self, ActorModel, Transition, TransitionAction, TransitionResult};
 
 use crate::error::Error;
-use crate::run::EventRecords;
+use crate::run::EventRecord;
 use crate::state::*;
 use kanidm_client::KanidmClient;
 
@@ -32,7 +32,7 @@ impl ActorModel for ActorBasic {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecords, Error> {
+    ) -> Result<EventRecord, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
