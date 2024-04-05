@@ -26,23 +26,13 @@ async fn actor_person(
     let mut model = person.model.as_dyn_object()?;
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
-        let records = model.transition(&client, &person).await?;
+        let event = model.transition(&client, &person).await?;
 
-        match records {
-            EventRecords::SingleEvent(event) => stats_queue.push(event),
-            EventRecords::MultipleEvents(events) => {
-                events.into_iter().for_each(|event| stats_queue.push(event))
-            }
-        }
+        stats_queue.push(event);
     }
 
     debug!("Stopped person {}", person.username);
     Ok(())
-}
-
-pub enum EventRecords {
-    SingleEvent(EventRecord),
-    MultipleEvents(Vec<EventRecord>),
 }
 
 pub struct EventRecord {
@@ -65,6 +55,7 @@ impl From<ActorRole> for EventDetail {
         match value {
             ActorRole::AttributeReader => EventDetail::PersonGet,
             ActorRole::AttributeWriter => EventDetail::PersonSet,
+            ActorRole::LazyActor => EventDetail::Logout,
         }
     }
 }

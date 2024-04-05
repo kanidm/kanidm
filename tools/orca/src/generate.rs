@@ -116,18 +116,28 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         // };
 
         let mut member_of = BTreeSet::new();
+        // TODO: add a proper option to pick the model inside the profile.toml
+        let model = if false {
+            let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
 
-        let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
+            for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
+                member_of.insert(String::from(Into::<&'static str>::into(
+                    group.name.borrow(),
+                )));
+            }
 
-        for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
+            Model::ConditionalReadWriteAttr {
+                member_of: member_of.clone(),
+            }
+        } else {
+            Model::ReadWriteAttr
+        };
+
+        for group in groups.iter() {
             member_of.insert(String::from(Into::<&'static str>::into(
                 group.name.borrow(),
             )));
         }
-
-        let model = Model::ConditionalReadWriteAttr {
-            member_of: member_of.clone(),
-        };
         // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
 

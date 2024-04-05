@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::run::{EventDetail, EventRecord, EventRecords};
+use crate::run::{EventDetail, EventRecord};
 use crate::state::*;
 use std::time::{Duration, Instant};
 
@@ -13,8 +13,9 @@ use strum::{EnumString, IntoStaticStr};
 pub enum TransitionAction {
     Login = 0,
     Logout = 1,
-    ReadAttribute = 2,
-    WriteAttribute = 3,
+    PrivilegeReauth = 2,
+    ReadAttribute = 3,
+    WriteAttribute = 4,
 }
 
 // impl TryFrom<i32> for TransitionAction {
@@ -60,6 +61,9 @@ pub enum TransitionResult {
 pub enum ActorRole {
     AttributeReader,
     AttributeWriter,
+    #[strum(disabled)]
+    LazyActor, //this one just logs out, it cannot be used by the test designers as it's unique in the
+               // state machine flow, that's why serialization is disabled
 }
 
 #[async_trait]
@@ -68,13 +72,13 @@ pub trait ActorModel {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecords, Error>;
+    ) -> Result<EventRecord, Error>;
 }
 
 pub async fn login(
     client: &KanidmClient,
     person: &Person,
-) -> Result<(TransitionResult, EventRecords), Error> {
+) -> Result<(TransitionResult, EventRecord), Error> {
     // Should we measure the time of each call rather than the time with multiple calls?
     let start = Instant::now();
     let result = match &person.credential {
@@ -84,51 +88,33 @@ pub async fn login(
                 .await
         }
     };
-    Ok(parse_call_result_into_transition_result_and_event_records(
+    Ok(parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::Login,
         start,
-        None,
     ))
 }
 
 pub async fn person_get(
     client: &KanidmClient,
     _person: &Person,
-) -> Result<(TransitionResult, EventRecords), Error> {
+) -> Result<(TransitionResult, EventRecord), Error> {
     // Should we measure the time of each call rather than the time with multiple calls?
     let start = Instant::now();
     let result = client.idm_person_account_get("idm_admin").await;
-    Ok(parse_call_result_into_transition_result_and_event_records(
+    Ok(parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::PersonGet,
         start,
-        None,
     ))
 }
 
 pub async fn person_set(
     client: &KanidmClient,
     person: &Person,
-) -> Result<(TransitionResult, EventRecords), Error> {
+) -> Result<(TransitionResult, EventRecord), Error> {
     // Should we measure the time of each call rather than the time with multiple calls?
-    let start = Instant::now();
     let person_username = person.username.as_str();
-
-    let result = match &person.credential {
-        Credential::Password { plain } => client.reauth_simple_password(plain.as_str()).await,
-    };
-
-    let first_parsed_result = parse_call_result_into_transition_result_and_event_records(
-        result,
-        EventDetail::PersonReauth,
-        start,
-        None,
-    );
-
-    if let TransitionResult::Error = first_parsed_result.0 {
-        return Ok(first_parsed_result);
-    };
 
     let start = Instant::now();
     let result = client
@@ -139,70 +125,72 @@ pub async fn person_set(
         )
         .await;
 
-    let final_outcome = parse_call_result_into_transition_result_and_event_records(
+    let parsed_result = parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::PersonSet,
         start,
-        Some(first_parsed_result.1),
     );
 
-    Ok(final_outcome)
+    Ok(parsed_result)
+}
+
+pub async fn privilege_reauth(
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    let start = Instant::now();
+
+    let result = match &person.credential {
+        Credential::Password { plain } => client.reauth_simple_password(plain.as_str()).await,
+    };
+
+    let parsed_result = parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonReauth,
+        start,
+    );
+    Ok(parsed_result)
 }
 
 pub async fn logout(
     client: &KanidmClient,
     _person: &Person,
-) -> Result<(TransitionResult, EventRecords), Error> {
+) -> Result<(TransitionResult, EventRecord), Error> {
     let start = Instant::now();
     let result = client.logout().await;
 
-    Ok(parse_call_result_into_transition_result_and_event_records(
+    Ok(parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::Logout,
         start,
-        None,
     ))
 }
 
-fn parse_call_result_into_transition_result_and_event_records<T>(
+fn parse_call_result_into_transition_result_and_event_record<T>(
     result: Result<T, ClientError>,
     details: EventDetail,
     start: Instant,
-    previous_records: Option<EventRecords>,
-) -> (TransitionResult, EventRecords) {
-    let get_new_event_records = |new_record: EventRecord| match previous_records {
-        None => EventRecords::SingleEvent(new_record),
-        Some(previous_records) => {
-            let records_vec = match previous_records {
-                EventRecords::SingleEvent(previous_record) => vec![previous_record, new_record],
-                EventRecords::MultipleEvents(mut previous_records) => {
-                    previous_records.push(new_record);
-                    previous_records
-                }
-            };
-            EventRecords::MultipleEvents(records_vec)
-        }
-    };
+) -> (TransitionResult, EventRecord) {
     let duration = Instant::now().duration_since(start);
 
     match result {
         Ok(_) => (
             TransitionResult::Ok,
-            get_new_event_records(EventRecord {
+            EventRecord {
                 start,
                 duration,
                 details,
-            }),
+            },
         ),
         Err(client_err) => {
             debug!(?client_err);
             (
                 TransitionResult::Error,
-                get_new_event_records(EventRecord {
+                EventRecord {
                     start,
                     duration,
                     details: EventDetail::Error,
-                }),
+                },
             )
         }
     }

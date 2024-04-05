@@ -1,7 +1,7 @@
 use crate::model::{self, ActorModel, Transition, TransitionAction, TransitionResult};
 
 use crate::error::Error;
-use crate::run::EventRecords;
+use crate::run::EventRecord;
 use crate::state::*;
 use kanidm_client::KanidmClient;
 
@@ -11,8 +11,9 @@ use std::time::Duration;
 
 enum State {
     Unauthenticated,
-    Authenticated,
+    AuthenticatedUnpriv,
     ReadAttribute,
+    AuthenticatedPriv,
     WroteAttribute,
 }
 
@@ -34,7 +35,7 @@ impl ActorModel for ActorReadWrite {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecords, Error> {
+    ) -> Result<EventRecord, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
@@ -45,6 +46,7 @@ impl ActorModel for ActorReadWrite {
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
             TransitionAction::ReadAttribute => model::person_get(client, person).await,
+            TransitionAction::PrivilegeReauth => model::privilege_reauth(client, person).await,
             TransitionAction::WriteAttribute => model::person_set(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
         }?;
@@ -63,11 +65,15 @@ impl ActorReadWrite {
                 delay: None,
                 action: TransitionAction::Login,
             },
-            State::Authenticated => Transition {
+            State::AuthenticatedUnpriv => Transition {
                 delay: Some(Duration::from_millis(100)),
                 action: TransitionAction::ReadAttribute,
             },
             State::ReadAttribute => Transition {
+                delay: None,
+                action: TransitionAction::PrivilegeReauth,
+            },
+            State::AuthenticatedPriv => Transition {
                 delay: None,
                 action: TransitionAction::WriteAttribute,
             },
@@ -83,21 +89,16 @@ impl ActorReadWrite {
         // requested to move to?
         match (&self.state, result) {
             (State::Unauthenticated, TransitionResult::Ok) => {
-                self.state = State::Authenticated;
+                self.state = State::AuthenticatedUnpriv;
             }
-            (State::Unauthenticated, TransitionResult::Error) => {
-                self.state = State::Unauthenticated;
-            }
-            (State::Authenticated, TransitionResult::Ok) => {
+
+            (State::AuthenticatedUnpriv, TransitionResult::Ok) => {
                 self.state = State::ReadAttribute;
             }
-            (State::Authenticated, TransitionResult::Error) => {
-                self.state = State::Authenticated;
-            }
-            (State::ReadAttribute, TransitionResult::Ok) => self.state = State::WroteAttribute,
-            (State::ReadAttribute, TransitionResult::Error) => self.state = State::ReadAttribute,
+            (State::ReadAttribute, TransitionResult::Ok) => self.state = State::AuthenticatedPriv,
+            (State::AuthenticatedPriv, TransitionResult::Ok) => self.state = State::WroteAttribute,
             (State::WroteAttribute, TransitionResult::Ok) => self.state = State::Unauthenticated,
-            (State::WroteAttribute, TransitionResult::Error) => self.state = State::WroteAttribute,
+            (_, TransitionResult::Error) => self.state = State::WroteAttribute,
         }
     }
 }
