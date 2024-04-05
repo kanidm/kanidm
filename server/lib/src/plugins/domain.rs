@@ -118,14 +118,14 @@ impl Domain {
                     e.set_ava(Attribute::DomainDisplayName, once(domain_display_name));
                 }
 
-                if !e.attribute_pres(Attribute::FernetPrivateKeyStr) {
+                if qs.get_domain_version() < DOMAIN_LEVEL_6 && !e.attribute_pres(Attribute::FernetPrivateKeyStr) {
                     security_info!("regenerating domain token encryption key");
                     let k = fernet::Fernet::generate_key();
                     let v = Value::new_secret_str(&k);
                     e.add_ava(Attribute::FernetPrivateKeyStr, v);
                 }
 
-                if !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
+                if qs.get_domain_version() < DOMAIN_LEVEL_6 && !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                     security_info!("regenerating domain es256 private key");
                     let der = JwsEs256Signer::generate_es256()
                         .and_then(|jws| jws.private_key_to_der())

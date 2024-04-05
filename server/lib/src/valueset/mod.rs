@@ -775,8 +775,9 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             usage,
             valid_from,
             status,
+            status_cid,
             der,
-        } => ValueSetKeyInternal::new(id, usage, valid_from, status, der),
+        } => ValueSetKeyInternal::new(id, usage, valid_from, status, status_cid, der),
 
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);

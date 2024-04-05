@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use base64urlsafedata::Base64UrlSafeData;
 
-use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
+use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -123,7 +123,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         gte: &GenerateScimSyncTokenEvent,
         ct: Duration,
-    ) -> Result<String, OperationError> {
+    ) -> Result<JwsCompact, OperationError> {
         // Get the target signing key.
         let sync_account = self
             .qs_write
@@ -184,14 +184,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                sync_account
-                    .jws_key
-                    .sign(&token)
-                    .map(|jws_signed| jws_signed.to_string())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to sign sync token");
-                        OperationError::CryptographyError
-                    })
+                sync_account.jws_key.sign(&token).map_err(|e| {
+                    admin_error!(err = ?e, "Unable to sign sync token");
+                    OperationError::CryptographyError
+                })
             })
             .map_err(|e| {
                 admin_error!("Failed to generate sync token {:?}", e);
@@ -1535,7 +1531,7 @@ mod tests {
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
     use base64urlsafedata::Base64UrlSafeData;
-    use compact_jwt::{Jws, JwsSigner};
+    use compact_jwt::{Jws, JwsCompact, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
     use std::sync::Arc;
@@ -1551,7 +1547,7 @@ mod tests {
     fn create_scim_sync_account(
         idms_prox_write: &mut IdmServerProxyWriteTransaction<'_>,
         ct: Duration,
-    ) -> (Uuid, String) {
+    ) -> (Uuid, JwsCompact) {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
@@ -1594,7 +1590,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to validate sync token");
 
         assert!(Some(sync_uuid) == ident.get_uuid());
@@ -1650,7 +1646,7 @@ mod tests {
         // -- Check the happy path.
         let mut idms_prox_read = idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct)
             .expect("Failed to validate sync token");
         assert!(Some(sync_uuid) == ident.get_uuid());
         drop(idms_prox_read);
@@ -1671,7 +1667,7 @@ mod tests {
         // Must fail
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
         drop(idms_prox_read);
 
@@ -1695,7 +1691,7 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
 
         // -- Forge a session, use wrong types
@@ -1732,13 +1728,9 @@ mod tests {
 
         let token = Jws::into_json(&scim_sync_token).expect("Unable to serialise forged token");
 
-        let forged_token = jws_key
-            .sign(&token)
-            .map(|jws_signed| jws_signed.to_string())
-            .expect("Unable to sign forged token");
+        let forged_token = jws_key.sign(&token).expect("Unable to sign forged token");
 
-        let fail = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(forged_token.as_str().into(), ct);
+        let fail = idms_prox_read.validate_sync_client_auth_info_to_ident(forged_token.into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
     }
 
@@ -1770,7 +1762,7 @@ mod tests {
             .expect("failed to generate new scim sync token");
 
         let ident = idms_prox_write
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to process sync token to ident");
 
         (sync_uuid, ident)

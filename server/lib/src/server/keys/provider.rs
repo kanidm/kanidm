@@ -123,6 +123,9 @@ pub trait KeyProvidersTransaction {
 
     // should this actually be dyn trait?
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
+
+    // should this actually be dyn trait?
+    fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>>;
 }
 
 pub struct KeyProvidersReadTransaction {
@@ -145,6 +148,14 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
             .get(&key_object_uuid)
             .map(|k| k.as_ref().as_ref())
     }
+
+    fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>> {
+        self.inner
+            .deref()
+            .objects
+            .get(&key_object_uuid)
+            .map(|k| k.clone())
+    }
 }
 
 pub struct KeyProvidersWriteTransaction<'a> {
@@ -166,6 +177,14 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
             .objects
             .get(&key_object_uuid)
             .map(|k| k.as_ref().as_ref())
+    }
+
+    fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>> {
+        self.inner
+            .deref()
+            .objects
+            .get(&key_object_uuid)
+            .map(|k| k.clone())
     }
 }
 
@@ -343,17 +362,6 @@ mod tests {
 
         // Now at this point, the domain object should now be a key object, and have it's
         // keys migrated.
-        let domain_object_migrated = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain object");
-
-        // Assert items are removed from the migrated entry.
-        assert!(!domain_object_migrated.attribute_pres(Attribute::Es256PrivateKeyDer));
-
-        assert!(!domain_object_migrated.attribute_pres(Attribute::FernetPrivateKeyStr));
-
-        assert!(!domain_object_migrated.attribute_pres(Attribute::PrivateCookieKey));
-
         let key_object = write_txn
             .get_key_providers()
             .get_key_object(UUID_DOMAIN_INFO)
@@ -365,9 +373,29 @@ mod tests {
             .expect("Failed to access kid status");
         assert_eq!(status, Some(KeyStatus::Retained));
 
-        // The migration worked!
+        // Now from DL6 -> 7 the keys are actually removed.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_7),
+                ),
+            )
+            .expect("Unable to set domain level to version 7");
 
-        assert!(false);
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        let domain_object_migrated = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain object");
+
+        assert!(!domain_object_migrated.attribute_pres(Attribute::Es256PrivateKeyDer));
+
+        assert!(!domain_object_migrated.attribute_pres(Attribute::FernetPrivateKeyStr));
+
+        assert!(!domain_object_migrated.attribute_pres(Attribute::PrivateCookieKey));
 
         write_txn.commit().expect("Failed to commit");
     }

@@ -18,7 +18,7 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq, Clone)]
 pub struct DbCidV1 {
     #[serde(rename = "t")]
     pub timestamp: Duration,
@@ -614,6 +614,7 @@ pub enum DbValueKeyInternal {
         usage: DbValueKeyUsage,
         valid_from: u64,
         status: DbValueKeyStatus,
+        status_cid: DbCidV1,
         der: Vec<u8>,
     },
 }

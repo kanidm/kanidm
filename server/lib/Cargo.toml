@@ -108,6 +108,8 @@ webauthn-authenticator-rs = { workspace = true }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 
+compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_release_without_verify"] }
+
 [build-dependencies]
 hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }

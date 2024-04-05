@@ -137,8 +137,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
             ct,
             client_auth_info,
         };
+        let key_object = (*self.domain_keys).clone();
         let (auth_session, state) =
-            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id);
+            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id, key_object);
 
         // Push the re-auth session to the session maps.
         match auth_session {
@@ -178,6 +179,7 @@ mod tests {
 
     use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 
+    use compact_jwt::JwsCompact;
     use uuid::uuid;
 
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
@@ -324,7 +326,7 @@ mod tests {
         ct: Duration,
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
         let origin = idms_auth.get_origin().clone();
 
@@ -404,7 +406,7 @@ mod tests {
         pw: &str,
         token: &Totp,
         idms_delayed: &mut IdmServerDelayed,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -487,7 +489,7 @@ mod tests {
         ident: &Identity,
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
         let origin = idms_auth.get_origin().clone();
 
@@ -554,7 +556,7 @@ mod tests {
         pw: &str,
         token: &Totp,
         idms_delayed: &mut IdmServerDelayed,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_allowed = idms_auth
@@ -631,7 +633,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
+        let ident = token_to_ident(idms, ct, token.clone().into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);
@@ -650,7 +652,7 @@ mod tests {
             .expect("Failed to get new session token");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
+        let ident = token_to_ident(idms, ct, token.clone().into()).await;
 
         // They now have the entitlement.
         debug!(?ident);
@@ -677,7 +679,7 @@ mod tests {
             .expect("failed to authenticate with passkey");
 
         // Token_str to uat
-        let ident = token_to_ident(idms, ct, token.as_str().into()).await;
+        let ident = token_to_ident(idms, ct, token.into()).await;
 
         // Check that the rw entitlement is not present
         debug!(?ident);

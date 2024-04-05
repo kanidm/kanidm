@@ -110,6 +110,7 @@ pub const ATTR_IPASSHPUBKEY: &str = "ipasshpubkey";
 pub const ATTR_JWS_ES256_PRIVATE_KEY: &str = "jws_es256_private_key";
 pub const ATTR_KEY_ACTION_ROTATE: &str = "key_action_rotate";
 pub const ATTR_KEY_ACTION_REVOKE: &str = "key_action_revoke";
+pub const ATTR_KEY_ACTION_IMPORT_JWS_ES256: &str = "key_action_import_jws_es256";
 pub const ATTR_KEY_INTERNAL_DATA: &str = "key_internal_data";
 pub const ATTR_KEY_PROVIDER: &str = "key_provider";
 pub const ATTR_LAST_MODIFIED_CID: &str = "last_modified_cid";

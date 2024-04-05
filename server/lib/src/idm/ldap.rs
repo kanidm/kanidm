@@ -3,7 +3,9 @@
 
 use std::collections::BTreeSet;
 use std::iter;
+use std::str::FromStr;
 
+use compact_jwt::JwsCompact;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
@@ -429,7 +431,12 @@ impl LdapServer {
                 idm_auth.auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::ApiToken => {
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                let jwsc = JwsCompact::from_str(pw).map_err(|err| {
+                    error!(?err, "Invalid JwsCompact supplied as authentication token.");
+                    OperationError::LD0001InvalidAuthenticationToken
+                })?;
+
+                let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
         };
@@ -617,9 +624,8 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use std::str::FromStr;
 
-    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::internal::ApiToken;
     use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
@@ -1133,28 +1139,28 @@ mod tests {
         };
 
         // Inspect the token to get its uuid out.
-        let apitoken_unverified =
-            JwsCompact::from_str(&apitoken).expect("Failed to parse apitoken");
-
-        let jws_verifier =
-            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
+        let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
         let apitoken_inner = jws_verifier
-            .verify(&apitoken_unverified)
+            .verify(&apitoken)
             .unwrap()
             .from_json::<ApiToken>()
             .unwrap();
 
         // Bind using the token as a DN
         let sa_lbt = ldaps
-            .do_bind(idms, "dn=token", &apitoken)
+            .do_bind(idms, "dn=token", &apitoken.to_string())
             .await
             .unwrap()
             .unwrap();
         assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
 
         // Bind using the token as a pw
-        let sa_lbt = ldaps.do_bind(idms, "", &apitoken).await.unwrap().unwrap();
+        let sa_lbt = ldaps
+            .do_bind(idms, "", &apitoken.to_string())
+            .await
+            .unwrap()
+            .unwrap();
         assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
 
         // Search and retrieve mail that's now accessible.

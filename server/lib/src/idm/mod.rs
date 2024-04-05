@@ -23,6 +23,7 @@ pub mod serviceaccount;
 pub(crate) mod unix;
 
 use crate::server::identity::Source;
+use compact_jwt::JwsCompact;
 use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 use std::fmt;
 
@@ -30,7 +31,7 @@ pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
     Denied(String),
-    Success(String, AuthIssueSession),
+    Success(JwsCompact, AuthIssueSession),
 }
 
 impl fmt::Debug for AuthState {
@@ -48,7 +49,7 @@ impl fmt::Debug for AuthState {
 pub struct ClientAuthInfo {
     pub source: Source,
     pub client_cert: Option<ClientCertInfo>,
-    pub bearer_token: Option<String>,
+    pub bearer_token: Option<JwsCompact>,
 }
 
 #[derive(Debug, Clone)]
@@ -69,12 +70,12 @@ impl From<Source> for ClientAuthInfo {
 }
 
 #[cfg(test)]
-impl From<&str> for ClientAuthInfo {
-    fn from(value: &str) -> ClientAuthInfo {
+impl From<JwsCompact> for ClientAuthInfo {
+    fn from(value: JwsCompact) -> ClientAuthInfo {
         ClientAuthInfo {
             source: Source::Internal,
             client_cert: None,
-            bearer_token: Some(value.to_string()),
+            bearer_token: Some(value),
         }
     }
 }

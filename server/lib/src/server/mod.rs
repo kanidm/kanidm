@@ -38,7 +38,7 @@ use self::access::{
 };
 
 use self::keys::{
-    KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
     KeyProvidersWriteTransaction,
 };
 
@@ -865,17 +865,10 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
-        self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_secret(Attribute::FernetPrivateKeyStr)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain fernet key");
-                e
-            })
+    fn get_domain_key_object_handle(&mut self) -> Result<Arc<KeyObject>, OperationError> {
+        self.get_key_providers()
+            .get_key_object_handle(UUID_DOMAIN_INFO)
+            .ok_or(OperationError::KP0031KeyObjectNotFound)
     }
 
     fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {

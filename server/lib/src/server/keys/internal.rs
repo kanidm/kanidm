@@ -2,9 +2,13 @@ use super::object::{KeyObject, KeyObjectT};
 use super::KeyId;
 use crate::prelude::*;
 
+use smolset::SmolSet;
+
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
+use compact_jwt::compact::JweCompact;
+use compact_jwt::jwe::Jwe;
 use compact_jwt::traits::*;
 use compact_jwt::{
     JwaAlg, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner, JwsSignerToVerifier,
@@ -77,6 +81,7 @@ impl KeyProviderInternal {
                 KeyInternalData {
                     usage,
                     status,
+                    status_cid,
                     der,
                     valid_from,
                 },
@@ -87,7 +92,13 @@ impl KeyProviderInternal {
                         let jws_es256_ref =
                             jws_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
 
-                        jws_es256_ref.load(key_id, *status, der, *valid_from)?;
+                        jws_es256_ref.load(
+                            key_id,
+                            *status,
+                            status_cid.clone(),
+                            der,
+                            *valid_from,
+                        )?;
                     }
                 }
             }
@@ -138,6 +149,7 @@ enum InternalJwtEs256Status {
 struct InternalJwtEs256 {
     valid_from: u64,
     status: InternalJwtEs256Status,
+    status_cid: Cid,
 }
 
 #[derive(Default, Clone)]
@@ -167,16 +179,62 @@ impl KeyObjectInternalJwtEs256 {
             .map(|(_time, signer)| signer)
     }
 
-    fn assert_active(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+    fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         if self.get_valid_signer(valid_from).is_none() {
             // This means there is no active signing key, so we need to create one.
-            self.new_active(valid_from)
+            self.new_active(valid_from, cid)
         } else {
             Ok(())
         }
     }
 
-    fn new_active(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+    fn import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        for der in import_keys {
+            let signer = JwsEs256Signer::from_es256_der(der).map_err(|err| {
+                error!(?err, "Unable to load imported es256 DER signer");
+                OperationError::KP0028KeyObjectImportJwsEs256DerInvalid
+            })?;
+
+            let verifier = signer.get_verifier().map_err(|jwt_error| {
+                error!(
+                    ?jwt_error,
+                    "Unable to produce jwt es256 verifier from signer"
+                );
+                OperationError::KP0029KeyObjectSignerToVerifier
+            })?;
+
+            let public_der = verifier.public_key_to_der().map_err(|jwt_error| {
+                error!(?jwt_error, "Unable to convert public key to DER");
+                OperationError::KP0030KeyObjectPublicToDer
+            })?;
+
+            // We need to use the legacy KID for imported objects
+            let kid = signer.get_legacy_kid().to_string();
+
+            self.all.insert(
+                kid,
+                InternalJwtEs256 {
+                    valid_from,
+                    status: InternalJwtEs256Status::Retained {
+                        verifier,
+                        public_der,
+                    },
+                    status_cid: cid.clone(),
+                },
+            );
+        }
+
+        Ok(())
+    }
+
+    fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         let valid_from = valid_from.as_secs();
 
         let signer = JwsEs256Signer::generate_es256().map_err(|jwt_error| {
@@ -210,13 +268,14 @@ impl KeyObjectInternalJwtEs256 {
                     verifier,
                     private_der,
                 },
+                status_cid: cid.clone(),
             },
         );
 
         Ok(())
     }
 
-    fn revoke(&mut self, revoke_key_id: &KeyId) -> Result<bool, OperationError> {
+    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
         if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
             let untrusted_verifier = match &key_to_revoke.status {
                 InternalJwtEs256Status::Valid { verifier, .. }
@@ -238,6 +297,7 @@ impl KeyObjectInternalJwtEs256 {
                 untrusted_verifier,
                 public_der,
             };
+            key_to_revoke.status_cid = cid.clone();
 
             let valid_from = key_to_revoke.valid_from;
 
@@ -255,6 +315,7 @@ impl KeyObjectInternalJwtEs256 {
         &mut self,
         id: &str,
         status: KeyStatus,
+        status_cid: Cid,
         der: &[u8],
         valid_from: u64,
     ) -> Result<(), OperationError> {
@@ -304,7 +365,11 @@ impl KeyObjectInternalJwtEs256 {
             }
         };
 
-        let internal_jwt = InternalJwtEs256 { valid_from, status };
+        let internal_jwt = InternalJwtEs256 {
+            valid_from,
+            status,
+            status_cid,
+        };
 
         self.all.insert(id, internal_jwt);
 
@@ -316,6 +381,7 @@ impl KeyObjectInternalJwtEs256 {
             let usage = KeyUsage::JwtEs256;
 
             let valid_from = internal_jwt.valid_from;
+            let status_cid = internal_jwt.status_cid.clone();
 
             let (status, der) = match &internal_jwt.status {
                 InternalJwtEs256Status::Valid { private_der, .. } => {
@@ -336,6 +402,7 @@ impl KeyObjectInternalJwtEs256 {
                     valid_from,
                     der,
                     status,
+                    status_cid,
                 },
             )
         })
@@ -405,6 +472,23 @@ pub struct KeyObjectInternal {
     // and revoke.
 }
 
+#[cfg(test)]
+impl KeyObjectInternal {
+    pub fn new_test() -> Arc<KeyObject> {
+        let provider = Arc::new(KeyProviderInternal::create_test_provider());
+
+        let mut key_object = provider
+            .create_new_key_object(Uuid::new_v4(), provider.clone())
+            .expect("Unable to build new key object");
+
+        key_object
+            .jws_es256_assert(Duration::from_secs(0), &Cid::new_zero())
+            .expect("Unable to add jws_es256 to key object");
+
+        Arc::new(key_object)
+    }
+}
+
 impl KeyObjectT for KeyObjectInternal {
     fn uuid(&self) -> Uuid {
         self.uuid
@@ -414,28 +498,45 @@ impl KeyObjectT for KeyObjectInternal {
         Box::new(self.clone())
     }
 
-    fn jws_es256_assert(&mut self, valid_from: Duration) -> Result<(), OperationError> {
+    fn jws_es256_import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
         let koi = self
             .jws_es256
             .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
 
-        koi.assert_active(valid_from)
+        koi.import(import_keys, valid_from, cid)
     }
 
-    fn rotate_keys(&mut self, rotation_time: Duration) -> Result<(), OperationError> {
+    fn jws_es256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jws_es256
+            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+
+        koi.assert_active(valid_from, cid)
+    }
+
+    fn rotate_keys(&mut self, rotation_time: Duration, cid: &Cid) -> Result<(), OperationError> {
         if let Some(jws_es256_object) = &mut self.jws_es256 {
-            jws_es256_object.new_active(rotation_time)?;
+            jws_es256_object.new_active(rotation_time, cid)?;
         }
 
         Ok(())
     }
 
-    fn revoke_keys(&mut self, revoke_set: &BTreeSet<String>) -> Result<(), OperationError> {
+    fn revoke_keys(
+        &mut self,
+        revoke_set: &BTreeSet<String>,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
         for revoke_key_id in revoke_set.iter() {
             let mut has_revoked = false;
 
             if let Some(jws_es256_object) = &mut self.jws_es256 {
-                if jws_es256_object.revoke(revoke_key_id)? {
+                if jws_es256_object.revoke(revoke_key_id, cid)? {
                     has_revoked = true;
                 }
             };
@@ -483,6 +584,14 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
+    fn jwe_encrypt(&self, jwe: &Jwe, current_time: Duration) -> Result<JweCompact, OperationError> {
+        todo!();
+    }
+
+    fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
+        todo!();
+    }
+
     #[cfg(test)]
     fn kid_status(&self, key_id: &KeyId) -> Result<Option<KeyStatus>, OperationError> {
         if let Some(jws_es256_object) = &self.jws_es256 {
@@ -523,15 +632,19 @@ mod tests {
     use compact_jwt::jws::JwsBuilder;
 
     #[tokio::test]
-    async fn test_key_provider_internal() {
+    async fn test_key_object_internal_basic() {
         let ct = duration_from_epoch_now();
         let test_provider = Arc::new(KeyProviderInternal::create_test_provider());
 
         test_provider.test().expect("Provider failed testing");
 
-        let key_object = test_provider
+        let mut key_object = test_provider
             .create_new_key_object(Uuid::new_v4(), test_provider.clone())
             .expect("Unable to create new key object");
+
+        key_object
+            .jws_es256_assert(ct, &Cid::new_count(ct.as_secs()))
+            .expect("Unable to create signing key");
 
         let jws = JwsBuilder::from(vec![0, 1, 2, 3, 4]).build();
 

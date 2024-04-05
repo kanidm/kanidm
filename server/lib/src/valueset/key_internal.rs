@@ -15,6 +15,7 @@ pub struct KeyInternalData {
     pub usage: KeyUsage,
     pub valid_from: u64,
     pub status: KeyStatus,
+    pub status_cid: Cid,
     pub der: Vec<u8>,
 }
 
@@ -24,6 +25,7 @@ impl fmt::Debug for KeyInternalData {
             .field("usage", &self.usage)
             .field("valid_from", &self.valid_from)
             .field("status", &self.status)
+            .field("status_cid", &self.status_cid)
             .finish()
     }
 }
@@ -39,6 +41,7 @@ impl ValueSetKeyInternal {
         usage: KeyUsage,
         valid_from: u64,
         status: KeyStatus,
+        status_cid: Cid,
         der: Vec<u8>,
     ) -> Box<Self> {
         let map = BTreeMap::from([(
@@ -47,35 +50,13 @@ impl ValueSetKeyInternal {
                 usage,
                 valid_from,
                 status,
+                status_cid,
                 der,
             },
         )]);
 
         Box::new(ValueSetKeyInternal { map })
     }
-
-    /*
-    fn push(
-        &mut self,
-        id: KeyId,
-        usage: KeyUsage,
-        valid_from: u64,
-        status: KeyStatus,
-        der: Vec<u8>,
-    ) -> bool {
-        self.map
-            .insert(
-                id,
-                KeyInternalData {
-                    usage,
-                    valid_from,
-                    status,
-                    der,
-                },
-            )
-            .is_none()
-    }
-    */
 
     pub fn from_key_iter(
         keys: impl Iterator<Item = (KeyId, KeyInternalData)>,
@@ -96,6 +77,7 @@ impl ValueSetKeyInternal {
                         usage,
                         valid_from,
                         status,
+                        status_cid,
                         der,
                     } => {
                         // Type cast, for now, these are both Vec<u8>
@@ -103,6 +85,7 @@ impl ValueSetKeyInternal {
                         let usage = match usage {
                             DbValueKeyUsage::JwtEs256 => KeyUsage::JwtEs256,
                         };
+                        let status_cid = status_cid.into();
                         let status = match status {
                             DbValueKeyStatus::Valid => KeyStatus::Valid,
                             DbValueKeyStatus::Retained => KeyStatus::Retained,
@@ -115,6 +98,7 @@ impl ValueSetKeyInternal {
                                 usage,
                                 valid_from,
                                 status,
+                                status_cid,
                                 der,
                             },
                         ))
@@ -143,6 +127,7 @@ impl ValueSetKeyInternal {
                     KeyInternalData {
                         usage,
                         status,
+                        status_cid,
                         valid_from,
                         der,
                     },
@@ -151,6 +136,7 @@ impl ValueSetKeyInternal {
                     let usage = match usage {
                         KeyUsage::JwtEs256 => DbValueKeyUsage::JwtEs256,
                     };
+                    let status_cid = status_cid.into();
                     let status = match status {
                         KeyStatus::Valid => DbValueKeyStatus::Valid,
                         KeyStatus::Retained => DbValueKeyStatus::Retained,
@@ -161,6 +147,7 @@ impl ValueSetKeyInternal {
                         id,
                         usage,
                         status,
+                        status_cid,
                         der: der.clone(),
                         valid_from: *valid_from,
                     }
@@ -219,17 +206,18 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn purge(&mut self, cid: &Cid) -> bool {
         for key_object in self.map.values_mut() {
-            if !matches!(key_object.status, KeyStatus::Revoked { .. }) {
-                key_object.status = KeyStatus::Revoked { at: cid }
+            if !matches!(key_object.status, KeyStatus::Revoked) {
+                key_object.status_cid = cid.clone();
+                key_object.status = KeyStatus::Revoked;
             }
         }
         false
     }
 
     fn trim(&mut self, trim_cid: &Cid) {
-        map.retain(|_, key_internal| {
+        self.map.retain(|_, key_internal| {
             match &key_internal.status {
-                KeyStatus::Revoked { at_cid }  if at_cid < trim_cid => {
+                KeyStatus::Revoked if &key_internal.status_cid < trim_cid => {
                     // This value is past the replication trim window and can now safely
                     // be removed
                     false
@@ -318,6 +306,7 @@ impl ValueSetT for ValueSetKeyInternal {
                 KeyInternalData {
                     usage,
                     status,
+                    status_cid,
                     der,
                     valid_from,
                 },
@@ -326,6 +315,7 @@ impl ValueSetT for ValueSetKeyInternal {
                     id: id.clone(),
                     usage: usage.clone(),
                     status: status.clone(),
+                    status_cid: status_cid.clone(),
                     der: der.clone(),
                     valid_from: *valid_from,
                 }
@@ -367,7 +357,7 @@ impl ValueSetT for ValueSetKeyInternal {
         Some(&self.map)
     }
 
-    fn repl_merge_valueset(&self, older: &ValueSet, _trim_cid: &Cid) -> Option<ValueSet> {
+    fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
         let Some(b) = older.as_key_internal_map() else {
             return None;
         };
@@ -386,53 +376,247 @@ impl ValueSetT for ValueSetKeyInternal {
             }
         }
 
-        map.retain(|_, key_internal| {
-            match &key_internal.status {
-                KeyStatus::Revoked { at_cid }  if at_cid < trim_cid => {
-                    // This value is past the replication trim window and can now safely
-                    // be removed
-                    false
-                }
-                // Retain all else
-                _ => true,
-            }
-        });
+        let mut vs = Box::new(ValueSetKeyInternal { map });
 
-        Some(Box::new(ValueSetKeyInternal { map }))
+        vs.trim(trim_cid);
+
+        Some(vs)
     }
 }
 
-
 #[cfg(test)]
 mod tests {
+    use super::{KeyInternalData, ValueSetKeyInternal};
+    use crate::prelude::*;
+    use crate::value::*;
 
     #[test]
-    fn test_valueset_key_internal_purge() {
-        todo!();
-    }
+    fn test_valueset_key_internal_purge_trim() {
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwtEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let status_cid = Cid::new_zero();
+        let der = Vec::default();
 
-    #[test]
-    fn test_valueset_key_internal_trim() {
-        todo!();
+        let mut vs_a: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
+
+        let one_cid = Cid::new_count(1);
+
+        // Simulate session revocation.
+        vs_a.purge(&one_cid);
+
+        assert!(vs_a.len() == 1);
+
+        let key_internal = vs_a
+            .as_key_internal_map()
+            .and_then(|map| map.get(&kid))
+            .expect("Unable to locate session");
+
+        assert_eq!(key_internal.status, KeyStatus::Revoked);
+        assert_eq!(key_internal.status_cid, one_cid);
+
+        // Now trim
+        let two_cid = Cid::new_count(2);
+
+        vs_a.trim(&two_cid);
+
+        assert!(vs_a.is_empty());
     }
 
     #[test]
     fn test_valueset_key_internal_merge_left() {
-        todo!();
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwtEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let status_cid = Cid::new_zero();
+        let der = Vec::default();
+
+        let mut vs_a: ValueSet = ValueSetKeyInternal::new(
+            kid.clone(),
+            usage,
+            valid_from,
+            status,
+            status_cid.clone(),
+            der.clone(),
+        );
+
+        let status = KeyStatus::Revoked;
+
+        let vs_b: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
+
+        vs_a.merge(&vs_b).expect("Failed to merge");
+
+        assert!(vs_a.len() == 1);
+        let key_internal = vs_a
+            .as_key_internal_map()
+            .and_then(|map| map.get(&kid))
+            .expect("Unable to locate session");
+
+        assert_eq!(key_internal.status, KeyStatus::Revoked);
     }
 
     #[test]
     fn test_valueset_key_internal_merge_right() {
-        todo!();
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwtEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let status_cid = Cid::new_zero();
+        let der = Vec::default();
+
+        let vs_a: ValueSet = ValueSetKeyInternal::new(
+            kid.clone(),
+            usage,
+            valid_from,
+            status,
+            status_cid.clone(),
+            der.clone(),
+        );
+
+        let status = KeyStatus::Revoked;
+
+        let mut vs_b: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
+
+        vs_b.merge(&vs_a).expect("Failed to merge");
+
+        assert!(vs_b.len() == 1);
+
+        let key_internal = vs_b
+            .as_key_internal_map()
+            .and_then(|map| map.get(&kid))
+            .expect("Unable to locate session");
+
+        assert_eq!(key_internal.status, KeyStatus::Revoked);
     }
 
     #[test]
     fn test_valueset_key_internal_repl_merge_left() {
-        todo!();
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwtEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
+        let two_cid = Cid::new_count(2);
+        let der = Vec::default();
+
+        let kid_2 = "key_2".to_string();
+
+        let vs_a: ValueSet = ValueSetKeyInternal::from_key_iter(
+            [
+                (
+                    kid.clone(),
+                    KeyInternalData {
+                        usage,
+                        valid_from,
+                        status,
+                        status_cid: two_cid.clone(),
+                        der: der.clone(),
+                    },
+                ),
+                (
+                    kid_2.clone(),
+                    KeyInternalData {
+                        usage,
+                        valid_from,
+                        status: KeyStatus::Revoked,
+                        status_cid: zero_cid.clone(),
+                        der: der.clone(),
+                    },
+                ),
+            ]
+            .into_iter(),
+        )
+        .expect("Failed to build valueset");
+
+        let status = KeyStatus::Revoked;
+
+        let vs_b: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, two_cid, der);
+
+        let vs_r = vs_a
+            .repl_merge_valueset(&vs_b, &one_cid)
+            .expect("Failed to merge");
+
+        let key_internal_map = vs_r.as_key_internal_map().expect("Unable to access map");
+
+        eprintln!("{:?}", key_internal_map);
+
+        assert!(vs_r.len() == 1);
+
+        let key_internal = key_internal_map.get(&kid).expect("Unable to access key");
+
+        assert_eq!(key_internal.status, KeyStatus::Revoked);
+
+        // Assert the item was trimmed
+        assert!(!key_internal_map.contains_key(&kid_2));
     }
 
     #[test]
     fn test_valueset_key_internal_repl_merge_right() {
-        todo!();
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwtEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let zero_cid = Cid::new_zero();
+        let one_cid = Cid::new_count(1);
+        let two_cid = Cid::new_count(2);
+        let der = Vec::default();
+
+        let kid_2 = "key_2".to_string();
+
+        let vs_a: ValueSet = ValueSetKeyInternal::from_key_iter(
+            [
+                (
+                    kid.clone(),
+                    KeyInternalData {
+                        usage,
+                        valid_from,
+                        status,
+                        status_cid: two_cid.clone(),
+                        der: der.clone(),
+                    },
+                ),
+                (
+                    kid_2.clone(),
+                    KeyInternalData {
+                        usage,
+                        valid_from,
+                        status: KeyStatus::Revoked,
+                        status_cid: zero_cid.clone(),
+                        der: der.clone(),
+                    },
+                ),
+            ]
+            .into_iter(),
+        )
+        .expect("Failed to build valueset");
+
+        let status = KeyStatus::Revoked;
+
+        let vs_b: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, two_cid, der);
+
+        let vs_r = vs_b
+            .repl_merge_valueset(&vs_a, &one_cid)
+            .expect("Failed to merge");
+
+        let key_internal_map = vs_r.as_key_internal_map().expect("Unable to access map");
+
+        eprintln!("{:?}", key_internal_map);
+
+        assert!(vs_r.len() == 1);
+
+        let key_internal = key_internal_map.get(&kid).expect("Unable to access key");
+
+        assert_eq!(key_internal.status, KeyStatus::Revoked);
+
+        // Assert the item was trimmed
+        assert!(!key_internal_map.contains_key(&kid_2));
     }
 }

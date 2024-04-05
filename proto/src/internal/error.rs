@@ -131,6 +131,9 @@ pub enum OperationError {
     VS0001IncomingReplSshPublicKey,
     // Value Errors
     VL0001ValueSshPublicKeyString,
+    // LDAP
+    LD0001InvalidAuthenticationToken,
+
     // SCIM
     SC0001IncomingSshPublicKey,
     // Migration
@@ -168,6 +171,10 @@ pub enum OperationError {
     KP0025KeyProviderNotAvailable,
     KP0026KeyObjectNoSuchKey,
     KP0027KeyObjectPublicToDer,
+    KP0028KeyObjectImportJwsEs256DerInvalid,
+    KP0029KeyObjectSignerToVerifier,
+    KP0030KeyObjectPublicToDer,
+    KP0031KeyObjectNotFound,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

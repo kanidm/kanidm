@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
+use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
@@ -185,7 +185,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         gte: &GenerateApiTokenEvent,
         ct: Duration,
-    ) -> Result<String, OperationError> {
+    ) -> Result<JwsCompact, OperationError> {
         let service_account = self
             .qs_write
             .internal_search_uuid(gte.target)
@@ -258,14 +258,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .and_then(|_| {
                 // The modify succeeded and was allowed, now sign the token for return.
-                service_account
-                    .jws_key
-                    .sign(&token)
-                    .map(|jws_signed| jws_signed.to_string())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to sign api token");
-                        OperationError::CryptographyError
-                    })
+                service_account.jws_key.sign(&token).map_err(|e| {
+                    admin_error!(err = ?e, "Unable to sign api token");
+                    OperationError::CryptographyError
+                })
             })
             .map_err(|e| {
                 admin_error!("Failed to generate api token {:?}", e);
@@ -413,10 +409,9 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use kanidm_proto::internal::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
@@ -462,20 +457,16 @@ mod tests {
         trace!(?api_token);
 
         // Deserialise it.
-        let apitoken_unverified =
-            JwsCompact::from_str(&api_token).expect("Failed to parse apitoken");
-
-        let jws_verifier =
-            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
+        let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
         let apitoken_inner = jws_verifier
-            .verify(&apitoken_unverified)
+            .verify(&api_token)
             .unwrap()
             .from_json::<ApiToken>()
             .unwrap();
 
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(api_token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
             .expect("Unable to verify api token.");
 
         assert!(ident.get_uuid() == Some(testaccount_uuid));
@@ -485,7 +476,7 @@ mod tests {
         // Check the expiry
         assert!(
             idms_prox_write
-                .validate_client_auth_info_to_ident(api_token.as_str().into(), post_exp)
+                .validate_client_auth_info_to_ident(api_token.clone().into(), post_exp)
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );
@@ -500,14 +491,14 @@ mod tests {
         // Within gracewindow?
         // This is okay, because we are within the gracewindow.
         let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(api_token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
             .expect("Unable to verify api token.");
         assert!(ident.get_uuid() == Some(testaccount_uuid));
 
         // Past gracewindow?
         assert!(
             idms_prox_write
-                .validate_client_auth_info_to_ident(api_token.as_str().into(), past_grc)
+                .validate_client_auth_info_to_ident(api_token.into(), past_grc)
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );

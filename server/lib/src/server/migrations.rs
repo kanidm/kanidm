@@ -871,6 +871,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
             SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
@@ -901,7 +902,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Add the internal key provider.
             E_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
         ];
-        self.reload()?;
 
         idm_data
             .into_iter()
@@ -920,10 +920,37 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.internal_modify(&filter!(filter), &modlist)?;
 
+        // Reload such that the new default key provider is loaded.
+        self.reload()?;
+
         // Update the domain entry to contain it's key object, which can now be generated.
+        let idm_data = [E_DOMAIN_INFO_DL6.clone().into()];
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        // Migrate the domain key to a retained key on the key object.
+        let domain_es256_private_key = self.get_domain_es256_private_key().map_err(|err| {
+            error!(?err, "migrate_domain_5_to_6 -> Error");
+            err
+        })?;
 
         // Migrate all service account keys to the domain key for verification.
-        //
+
+        let mut modlist = Vec::with_capacity(1);
+
+        modlist.push(Modify::Present(
+            Attribute::KeyActionImportJwsEs256.into(),
+            Value::PrivateBinary(domain_es256_private_key),
+        ));
+
+        let modlist = ModifyList::new_list(modlist);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
 
         Ok(())
     }
@@ -1024,12 +1051,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // as may at this point.
         //
         // Domain info should have the attribute private cookie key removed.
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
-            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-        ]));
-        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
-        self.internal_modify(&filter, &modlist)?;
+        let modlist = ModifyList::new_list(vec![
+            Modify::Purged(Attribute::PrivateCookieKey.into()),
+            Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+            Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+        ]);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
 
         // Now update schema
 

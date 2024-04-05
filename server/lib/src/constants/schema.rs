@@ -679,6 +679,17 @@ pub static ref SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256,
+    name: Attribute::KeyActionImportJwsEs256.into(),
+    description: "".to_string(),
+    multivalue: true,
+    // Ephemeral action.
+    phantom: true,
+    syntax: SyntaxType::PrivateBinary,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -968,14 +979,14 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL6: SchemaClass = SchemaClass {
         Attribute::DomainLdapBasedn.into(),
         Attribute::LdapAllowUnixPwBind.into(),
         Attribute::PrivateCookieKey.into(),
+        Attribute::FernetPrivateKeyStr.into(),
+        Attribute::Es256PrivateKeyDer.into(),
     ],
     systemmust: vec![
         Attribute::Name.into(),
         Attribute::DomainUuid.into(),
         Attribute::DomainName.into(),
         Attribute::DomainDisplayName.into(),
-        Attribute::FernetPrivateKeyStr.into(),
-        Attribute::Es256PrivateKeyDer.into(),
         Attribute::Version.into(),
     ],
     ..Default::default()
@@ -996,8 +1007,6 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL7: SchemaClass = SchemaClass {
         Attribute::DomainUuid.into(),
         Attribute::DomainName.into(),
         Attribute::DomainDisplayName.into(),
-        Attribute::FernetPrivateKeyStr.into(),
-        Attribute::Es256PrivateKeyDer.into(),
         Attribute::Version.into(),
     ],
     ..Default::default()

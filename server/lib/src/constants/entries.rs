@@ -102,6 +102,7 @@ pub enum Attribute {
     JwsEs256PrivateKey,
     KeyActionRotate,
     KeyActionRevoke,
+    KeyActionImportJwsEs256,
     KeyInternalData,
     KeyProvider,
     LastModifiedCid,
@@ -296,6 +297,7 @@ impl TryFrom<String> for Attribute {
             ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
             ATTR_KEY_ACTION_ROTATE => Attribute::KeyActionRotate,
             ATTR_KEY_ACTION_REVOKE => Attribute::KeyActionRevoke,
+            ATTR_KEY_ACTION_IMPORT_JWS_ES256 => Attribute::KeyActionImportJwsEs256,
             ATTR_KEY_INTERNAL_DATA => Attribute::KeyInternalData,
             ATTR_KEY_PROVIDER => Attribute::KeyProvider,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
@@ -466,6 +468,7 @@ impl From<Attribute> for &'static str {
             Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
             Attribute::KeyActionRotate => ATTR_KEY_ACTION_ROTATE,
             Attribute::KeyActionRevoke => ATTR_KEY_ACTION_REVOKE,
+            Attribute::KeyActionImportJwsEs256 => ATTR_KEY_ACTION_IMPORT_JWS_ES256,
             Attribute::KeyInternalData => ATTR_KEY_INTERNAL_DATA,
             Attribute::KeyProvider => ATTR_KEY_PROVIDER,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
@@ -790,6 +793,20 @@ Attribute::Description,
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::DomainInfo.to_value()),
         (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+Attribute::Description,
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
+
+    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (

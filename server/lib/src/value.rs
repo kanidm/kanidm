@@ -1072,7 +1072,7 @@ pub struct Oauth2Session {
     pub rs_uuid: Uuid,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
     JwtEs256,
 }
@@ -1089,11 +1089,11 @@ impl fmt::Display for KeyUsage {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
 pub enum KeyStatus {
-    Revoked { at_cid: Cid },
-    Retained { since_cid: Cid },
-    Valid { since_cid: Cid },
+    Valid,
+    Retained,
+    Revoked,
 }
 
 impl fmt::Display for KeyStatus {
@@ -1102,9 +1102,9 @@ impl fmt::Display for KeyStatus {
             f,
             "{}",
             match self {
-                KeyStatus::Revoked => "revoked",
-                KeyStatus::Retained => "retained",
                 KeyStatus::Valid => "valid",
+                KeyStatus::Retained => "retained",
+                KeyStatus::Revoked => "revoked",
             }
         )
     }
@@ -1174,6 +1174,7 @@ pub enum Value {
         usage: KeyUsage,
         valid_from: u64,
         status: KeyStatus,
+        status_cid: Cid,
         der: Vec<u8>,
     },
 

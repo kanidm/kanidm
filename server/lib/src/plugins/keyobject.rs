@@ -139,6 +139,7 @@ impl KeyObjectManagement {
     ) -> Result<(), OperationError> {
         // Valid from right meow!
         let valid_from = qs.get_curtime();
+        let txn_cid = qs.get_cid().clone();
 
         let key_providers = qs.get_key_providers_mut();
 
@@ -163,13 +164,23 @@ impl KeyObjectManagement {
                 // our changes.
                 let mut key_object = key_providers.get_or_create_in_default(key_object_uuid)?;
 
+                // Import any keys that we were asked to import. This is before revocation so that
+                // any keyId here might also be able to be revoked.
+                let maybe_import = entry.pop_ava(Attribute::KeyActionImportJwsEs256);
+                if let Some(import_keys) = maybe_import
+                    .as_ref()
+                    .and_then(|vs| vs.as_private_binary_set())
+                {
+                    key_object.jws_es256_import(import_keys, valid_from, &txn_cid)?;
+                }
+
                 // If revoke. This weird looking let dance is to ensure that the inner hexstring set
                 // lives long enough.
                 let maybe_revoked = entry.pop_ava(Attribute::KeyActionRevoke);
                 if let Some(revoke_keys) =
                     maybe_revoked.as_ref().and_then(|vs| vs.as_hexstring_set())
                 {
-                    key_object.revoke_keys(revoke_keys)?;
+                    key_object.revoke_keys(revoke_keys, &txn_cid)?;
                 }
 
                 // Rotation is after revocation, but before assertion. This way if the user
@@ -188,7 +199,7 @@ impl KeyObjectManagement {
                         }
                     })
                 {
-                    key_object.rotate_keys(rotation_time)?;
+                    key_object.rotate_keys(rotation_time, &txn_cid)?;
                 }
 
                 if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJwtEs256.into())
@@ -197,7 +208,7 @@ impl KeyObjectManagement {
                     // be present. This differs to rotate, in that the assert verifes we have at least
                     // *one* key that is valid from right now.
                     trace!(?key_object_uuid, "Adding es256 to key object");
-                    key_object.jws_es256_assert(valid_from)?;
+                    key_object.jws_es256_assert(valid_from, &txn_cid)?;
                 }
 
                 // Turn that object into it's entry template to create. I think we need to make this
