@@ -378,9 +378,10 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         let ClientAuthInfo {
+            source,
             client_cert,
             bearer_token,
-            source,
+            basic_authz: _,
         } = client_auth_info;
 
         match (client_cert, bearer_token) {
@@ -412,6 +413,7 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             source: _,
+            basic_authz: _,
         } = client_auth_info;
 
         match (client_cert, bearer_token) {

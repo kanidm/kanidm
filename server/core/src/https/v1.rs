@@ -2834,7 +2834,7 @@ fn auth_session_state_management(
                     debug!("🧩 -> AuthState::Success");
 
                     match issue {
-                        AuthIssueSession::Token => Ok(ProtoAuthState::Success(token)),
+                        AuthIssueSession::Token => Ok(ProtoAuthState::Success(token.to_string())),
                     }
                 }
                 AuthState::Denied(reason) => {

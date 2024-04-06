@@ -584,11 +584,15 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
-    fn jwe_encrypt(&self, jwe: &Jwe, current_time: Duration) -> Result<JweCompact, OperationError> {
+    fn jwe_encrypt(
+        &self,
+        _jwe: &Jwe,
+        _current_time: Duration,
+    ) -> Result<JweCompact, OperationError> {
         todo!();
     }
 
-    fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
+    fn jwe_decrypt(&self, _jwec: &JweCompact) -> Result<Jwe, OperationError> {
         todo!();
     }
 

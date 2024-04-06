@@ -47,6 +47,7 @@ impl QueryServerWriteV1 {
 
         idms_prox_write
             .scim_sync_generate_token(&gte, ct)
+            .map(|token| token.to_string())
             .and_then(|r| idms_prox_write.commit().map(|_| r))
     }
 

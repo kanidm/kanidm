@@ -50,6 +50,7 @@ pub struct ClientAuthInfo {
     pub source: Source,
     pub client_cert: Option<ClientCertInfo>,
     pub bearer_token: Option<JwsCompact>,
+    pub basic_authz: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -59,12 +60,25 @@ pub struct ClientCertInfo {
 }
 
 #[cfg(test)]
+impl ClientAuthInfo {
+    fn none() -> Self {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: None,
+            bearer_token: None,
+            basic_authz: None,
+        }
+    }
+}
+
+#[cfg(test)]
 impl From<Source> for ClientAuthInfo {
     fn from(value: Source) -> ClientAuthInfo {
         ClientAuthInfo {
             source: value,
             client_cert: None,
             bearer_token: None,
+            basic_authz: None,
         }
     }
 }
@@ -76,6 +90,7 @@ impl From<JwsCompact> for ClientAuthInfo {
             source: Source::Internal,
             client_cert: None,
             bearer_token: Some(value),
+            basic_authz: None,
         }
     }
 }
@@ -87,6 +102,34 @@ impl From<ClientCertInfo> for ClientAuthInfo {
             source: Source::Internal,
             client_cert: Some(value),
             bearer_token: None,
+            basic_authz: None,
+        }
+    }
+}
+
+#[cfg(test)]
+impl From<&str> for ClientAuthInfo {
+    fn from(value: &str) -> ClientAuthInfo {
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: None,
+            bearer_token: None,
+            basic_authz: Some(value.to_string()),
+        }
+    }
+}
+
+#[cfg(test)]
+impl ClientAuthInfo {
+    fn encode_basic(id: &str, secret: &str) -> ClientAuthInfo {
+        use base64::{engine::general_purpose, Engine as _};
+        let value = format!("{id}:{secret}");
+        let value = general_purpose::STANDARD.encode(&value);
+        ClientAuthInfo {
+            source: Source::Internal,
+            client_cert: None,
+            bearer_token: None,
+            basic_authz: Some(value),
         }
     }
 }

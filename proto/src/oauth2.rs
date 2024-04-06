@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::formats::SpaceSeparator;
 use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
 use url::Url;
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeChallengeMethod {
@@ -124,7 +125,50 @@ impl From<GrantTypeReq> for AccessTokenRequest {
     }
 }
 
-/// The
+#[derive(Serialize, Debug, Clone, Deserialize)]
+#[skip_serializing_none]
+pub struct OAuth2RFC9068Token<V>
+where
+    V: Clone,
+{
+    /// The issuer of this token
+    pub iss: String,
+    /// Unique id of the subject
+    pub sub: Uuid,
+    /// client_id of the oauth2 rp
+    pub aud: String,
+    /// Expiry in utc epoch seconds
+    pub exp: i64,
+    /// Not valid before.
+    pub nbf: i64,
+    /// Issued at time.
+    pub iat: i64,
+    /// -- not used.
+    pub jti: Option<String>,
+    pub client_id: String,
+    #[serde(flatten)]
+    pub extensions: V,
+}
+
+/// Extensions for RFC 9068 Access Token
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct OAuth2RFC9068TokenExtensions {
+    pub auth_time: Option<i64>,
+    pub acr: Option<String>,
+    pub amr: Option<Vec<String>>,
+
+    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
+    pub scope: BTreeSet<String>,
+
+    pub nonce: Option<String>,
+
+    pub session_id: Uuid,
+    pub parent_session_id: Option<Uuid>,
+}
+
+/// The respons for an access token
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
