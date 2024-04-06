@@ -137,9 +137,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
             ct,
             client_auth_info,
         };
-        let key_object = (*self.domain_keys).clone();
+
+        let domain_keys = self.qs_read.get_domain_key_object_handle()?;
+
         let (auth_session, state) =
-            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id, key_object);
+            AuthSession::new_reauth(asd, ident.session_id, session, session_cred_id, domain_keys);
 
         // Push the re-auth session to the session maps.
         match auth_session {

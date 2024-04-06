@@ -223,6 +223,21 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
+    /// level.
+    #[cfg(test)]
+    pub(crate) fn internal_apply_domain_migration(
+        &mut self,
+        to_level: u32,
+    ) -> Result<(), OperationError> {
+        assert!(to_level > self.get_domain_version());
+        self.internal_modify_uuid(
+            UUID_DOMAIN_INFO,
+            &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(to_level)),
+        )
+        .and_then(|()| self.reload())
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
         let res = Entry::from_proto_entry_str(e_str, self)
@@ -875,6 +890,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
@@ -939,14 +955,36 @@ impl<'a> QueryServerWriteTransaction<'a> {
             err
         })?;
 
-        // Migrate all service account keys to the domain key for verification.
+        // Migrate all service/scim account keys to the domain key for verification.
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+        let entry_keys_to_migrate = self.internal_search(filter)?;
 
-        let mut modlist = Vec::with_capacity(1);
+        let mut modlist = Vec::with_capacity(1 + entry_keys_to_migrate.len());
 
         modlist.push(Modify::Present(
             Attribute::KeyActionImportJwsEs256.into(),
             Value::PrivateBinary(domain_es256_private_key),
         ));
+
+        for entry in entry_keys_to_migrate {
+            // In these entries, the keys are in JwsEs256PrivateKey.
+            if let Some(jws_signer) =
+                entry.get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
+            {
+                let es256_private_key = jws_signer.private_key_to_der().map_err(|err| {
+                    error!(?err, uuid = ?entry.get_display_id(), "unable to convert signer to der");
+                    OperationError::InvalidValueState
+                })?;
+
+                modlist.push(Modify::Present(
+                    Attribute::KeyActionImportJwsEs256.into(),
+                    Value::PrivateBinary(es256_private_key),
+                ));
+            }
+        }
 
         let modlist = ModifyList::new_list(modlist);
 
@@ -1059,15 +1097,29 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
 
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+
+        let modlist =
+            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]);
+
+        self.internal_modify(&filter, &modlist)?;
+
         // Now update schema
 
-        let idm_schema_classes = [SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into()];
+        let idm_schema_classes = [
+            SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+        ];
 
         idm_schema_classes
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
+                error!(?err, "migrate_domain_6_to_7 -> Error");
                 err
             })?;
 

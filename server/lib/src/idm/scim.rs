@@ -22,7 +22,7 @@ pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
     pub sync_tokens: BTreeMap<Uuid, ApiToken>,
-    pub jws_key: JwsEs256Signer,
+    pub jws_key: Option<JwsEs256Signer>,
 }
 
 macro_rules! try_from_entry {
@@ -44,11 +44,11 @@ macro_rules! try_from_entry {
         let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::JwsEs256PrivateKey
-            )))?
-            .set_sign_option_embed_jwk(true);
+            .map(|jws_key| {
+                jws_key
+                    .set_sign_option_embed_jwk(true)
+                    .set_sign_option_legacy_kid(true)
+            });
 
         let sync_tokens = $value
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
@@ -182,17 +182,31 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Provide the event to impersonate
                 &gte.ident,
             )
-            .and_then(|_| {
-                // The modify succeeded and was allowed, now sign the token for return.
-                sync_account.jws_key.sign(&token).map_err(|e| {
-                    admin_error!(err = ?e, "Unable to sign sync token");
+            .map_err(|err| {
+                error!(?err, "Failed to generate sync token");
+                err
+            })?;
+
+        // The modify succeeded and was allowed, now sign the token for return.
+        if self.qs_write.get_domain_version() < DOMAIN_LEVEL_6 {
+            sync_account
+                .jws_key
+                .as_ref()
+                .ok_or_else(|| {
+                    admin_error!("Unable to sign sync token, no sync keys available");
                     OperationError::CryptographyError
                 })
-            })
-            .map_err(|e| {
-                admin_error!("Failed to generate sync token {:?}", e);
-                e
-            })
+                .and_then(|jws_key| {
+                    jws_key.sign(&token).map_err(|err| {
+                        admin_error!(?err, "Unable to sign sync token");
+                        OperationError::CryptographyError
+                    })
+                })
+        } else {
+            self.qs_write
+                .get_domain_key_object_handle()?
+                .jws_es256_sign(&token, ct)
+        }
         // Done!
     }
 
@@ -1530,7 +1544,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 mod tests {
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
+    use crate::server::keys::KeyProvidersTransaction;
+    use crate::value::KeyStatus;
     use base64urlsafedata::Base64UrlSafeData;
+    use compact_jwt::traits::JwsVerifiable;
     use compact_jwt::{Jws, JwsCompact, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
@@ -1561,9 +1578,10 @@ mod tests {
             )
         );
 
-        let ce = CreateEvent::new_internal(vec![e1]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_ok());
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![e1])
+            .expect("Failed to create sync account");
 
         let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
 
@@ -1732,6 +1750,117 @@ mod tests {
 
         let fail = idms_prox_read.validate_sync_client_auth_info_to_ident(forged_token.into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
+    }
+
+    #[idm_test(domain_level=DOMAIN_LEVEL_5)]
+    async fn test_idm_scim_sync_token_dl5_dl6_token(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        assert_eq!(
+            idms_prox_write.qs_write.get_domain_version(),
+            DOMAIN_LEVEL_5
+        );
+
+        let sync_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description,
+                Value::new_utf8s("A test sync agreement")
+            )
+        );
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![e1])
+            .expect("Failed to create sync account");
+
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+        let old_sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now trigger 5 -> 6
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        idms_prox_write
+            .qs_write
+            .internal_apply_domain_migration(DOMAIN_LEVEL_6)
+            .expect("Unable to set domain level to version 6");
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Check existing token still validates.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let _ident = idms_prox_write
+            .validate_sync_client_auth_info_to_ident(old_sync_token.clone().into(), ct)
+            .expect("Failed to process old sync token to ident");
+
+        // Delete the old session else we get a schema violation
+        let modlist = ModifyList::new_purge(Attribute::SyncTokenSession.into());
+
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(sync_uuid, &modlist)
+            .expect("Unable to delete previous sync token session");
+
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+        let new_sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
+
+        assert_ne!(old_sync_token.kid(), new_sync_token.kid());
+
+        let _ident = idms_prox_write
+            .validate_sync_client_auth_info_to_ident(new_sync_token.into(), ct)
+            .expect("Failed to process new sync token to ident");
+
+        // The former key is now on the domain object.
+        let key_object = idms_prox_write
+            .qs_write
+            .get_key_providers()
+            .get_key_object(UUID_DOMAIN_INFO)
+            .expect("Unable to retrieve key object by uuid");
+
+        // Assert the former key is now in the domain key object, and now is "retained".
+        let former_kid = old_sync_token.kid().unwrap().to_string();
+        let status = key_object
+            .kid_status(&former_kid)
+            .expect("Failed to access kid status");
+        assert_eq!(status, Some(KeyStatus::Retained));
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now trigger 6 -> 7
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        idms_prox_write
+            .qs_write
+            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
+            .expect("Unable to set domain level to version 7");
+        assert!(idms_prox_write.commit().is_ok());
+
+        // The key on the service account is removed.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let sync_entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(sync_uuid)
+            .expect("Unable to access service account");
+
+        assert!(!sync_entry.attribute_pres(Attribute::JwsEs256PrivateKey));
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     fn test_scim_sync_apply_setup_ident(

@@ -4,12 +4,9 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use compact_jwt::traits::JwsVerifiable;
-use compact_jwt::{JwsCompact, JwsSignerToVerifier, JwsVerifier};
+use compact_jwt::JwsCompact;
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
-use concread::CowCell;
 use kanidm_proto::internal::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
     UatPurpose, UserAuthToken,
@@ -35,7 +32,6 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
-use crate::server::keys::KeyObject;
 
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -80,7 +76,6 @@ pub struct IdmServer {
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
-    domain_keys: Arc<CowCell<Arc<KeyObject>>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -96,7 +91,6 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) domain_keys: CowCellReadTxn<Arc<KeyObject>>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -104,14 +98,12 @@ pub struct IdmServerCredUpdateTransaction<'a> {
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
-    pub(crate) domain_keys: CowCellReadTxn<Arc<KeyObject>>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
-    pub(crate) domain_keys: CowCellReadTxn<Arc<KeyObject>>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
 }
 
@@ -124,7 +116,6 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
-    pub(crate) domain_keys: CowCellWriteTxn<'a, Arc<KeyObject>>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
@@ -148,12 +139,11 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, domain_key_object, oauth2rs_set) = {
+        let (rp_id, rp_name, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
-                qs_read.get_domain_key_object_handle()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
             )
@@ -190,8 +180,6 @@ impl IdmServer {
                 OperationError::InvalidState
             })?;
 
-        let domain_keys = Arc::new(CowCell::new(domain_key_object));
-
         let oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
                 admin_error!("Failed to load oauth2 resource servers - {:?}", e);
@@ -209,7 +197,6 @@ impl IdmServer {
                 async_tx,
                 audit_tx,
                 webauthn,
-                domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
@@ -234,7 +221,6 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            domain_keys: self.domain_keys.read(),
         }
     }
 
@@ -243,7 +229,6 @@ impl IdmServer {
     pub async fn proxy_read(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read().await,
-            domain_keys: self.domain_keys.read(),
             oauth2rs: self.oauth2rs.read(),
             // async_tx: self.async_tx.clone(),
         }
@@ -263,7 +248,6 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
         }
     }
@@ -274,7 +258,6 @@ impl IdmServer {
             // sid: Sid,
             webauthn: &self.webauthn,
             cred_update_sessions: self.cred_update_sessions.read(),
-            domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
         }
     }
@@ -361,8 +344,6 @@ pub trait IdmServerTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
 
-    fn get_domain_key_object(&self) -> &KeyObject;
-
     /// This is the preferred method to transform and securely verify a token into
     /// an identity that can be used for operations and access enforcement. This
     /// function *is* aware of the various classes of tokens that may exist, and can
@@ -444,7 +425,8 @@ pub trait IdmServerTransaction<'a> {
         // Our key objects now handle this logic and determine the correct key
         // from the input type.
         let jws_inner = self
-            .get_domain_key_object()
+            .get_qs_txn()
+            .get_domain_key_object_handle()?
             .jws_verify(jwsu)
             .map_err(|err| {
                 security_info!(?err, "Unable to verify token");
@@ -491,50 +473,6 @@ pub trait IdmServerTransaction<'a> {
         security_info!("Unable to verify token, invalid inner JSON");
         Err(OperationError::NotAuthenticated)
     }
-
-    /*
-    #[instrument(level = "debug", skip_all)]
-    fn validate_and_parse_uat(
-        &self,
-        token: Option<&str>,
-        ct: Duration,
-    ) -> Result<UserAuthToken, OperationError> {
-        let uat: UserAuthToken = token
-            .ok_or(OperationError::NotAuthenticated)
-            .and_then(|s| {
-                JwsCompact::from_str(s).map_err(|e| {
-                    security_info!(?e, "Unable to decode token");
-                    OperationError::NotAuthenticated
-                })
-            })
-            .and_then(|jwtu| {
-                self.domain_keys
-                    .jws_verify(&jwtu)
-                    .map_err(|e| {
-                        security_info!(?e, "Unable to verify token");
-                        OperationError::NotAuthenticated
-                    })
-                    .and_then(|t| {
-                        t.from_json::<UserAuthToken>().map_err(|err| {
-                            error!(?err, "Unable to deserialise JWS");
-                            OperationError::SerdeJsonError
-                        })
-                    })
-            })?;
-
-        if let Some(exp) = uat.expiry {
-            if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
-                security_info!("Session expired");
-                Err(OperationError::SessionExpired)
-            } else {
-                Ok(uat)
-            }
-        } else {
-            debug!("Session has no expiry");
-            Ok(uat)
-        }
-    }
-    */
 
     fn check_oauth2_account_uuid_valid(
         &mut self,
@@ -817,55 +755,35 @@ pub trait IdmServerTransaction<'a> {
             OperationError::NotAuthenticated
         })?;
 
-        let kid = jwsu.kid().ok_or_else(|| {
-            security_info!("Token does not contain a valid kid");
-            OperationError::NotAuthenticated
+        let jws_inner = self
+            .get_qs_txn()
+            .get_domain_key_object_handle()?
+            .jws_verify(&jwsu)
+            .map_err(|err| {
+                security_info!(?err, "Unable to verify token");
+                OperationError::NotAuthenticated
+            })?;
+
+        let sync_token = jws_inner.from_json::<ScimSyncToken>().map_err(|err| {
+            error!(?err, "Unable to deserialise JWS");
+            OperationError::SerdeJsonError
         })?;
 
         let entry = self
             .get_qs_txn()
             .internal_search(filter!(f_eq(
-                Attribute::JwsEs256PrivateKey,
-                PartialValue::new_iutf8(kid)
+                Attribute::SyncTokenSession,
+                PartialValue::Refer(sync_token.token_id)
             )))
             .and_then(|mut vs| match vs.pop() {
                 Some(entry) if vs.is_empty() => Ok(entry),
                 _ => {
                     admin_error!(
-                        ?kid,
-                        "entries was empty, or matched multiple results for kid"
+                        token_id = ?sync_token.token_id,
+                        "entries was empty, or matched multiple results for token id"
                     );
                     Err(OperationError::NotAuthenticated)
                 }
-            })?;
-
-        let user_signer = entry
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .ok_or_else(|| {
-                admin_error!(
-                    ?kid,
-                    "A kid was present on entry {} but it does not contain a signing key",
-                    entry.get_uuid()
-                );
-                OperationError::NotAuthenticated
-            })?;
-
-        let user_validator = user_signer.get_verifier().map_err(|e| {
-            security_info!(?e, "Unable to access token verifier");
-            OperationError::NotAuthenticated
-        })?;
-
-        let sync_token = user_validator
-            .verify(&jwsu)
-            .map_err(|e| {
-                security_info!(?e, "Unable to verify token");
-                OperationError::NotAuthenticated
-            })
-            .and_then(|t| {
-                t.from_json::<ScimSyncToken>().map_err(|err| {
-                    error!(?err, "Unable to deserialise JWS");
-                    OperationError::SerdeJsonError
-                })
             })?;
 
         let valid = SyncAccount::check_sync_token_valid(ct, &sync_token, &entry);
@@ -894,10 +812,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_read
-    }
-
-    fn get_domain_key_object(&self) -> &KeyObject {
-        &self.domain_keys
     }
 }
 
@@ -1015,8 +929,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     client_auth_info,
                 };
 
-                let (auth_session, state) =
-                    AuthSession::new(asd, init.privileged, (*self.domain_keys).clone());
+                let domain_keys = self.qs_read.get_domain_key_object_handle()?;
+
+                let (auth_session, state) = AuthSession::new(asd, init.privileged, domain_keys);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -1407,10 +1322,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_read
     }
-
-    fn get_domain_key_object(&self) -> &KeyObject {
-        &self.domain_keys
-    }
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
@@ -1509,10 +1420,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_write
-    }
-
-    fn get_domain_key_object(&self) -> &KeyObject {
-        &self.domain_keys
     }
 }
 
@@ -2000,29 +1907,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // Clear the flag to indicate we completed the reload.
             self.qs_write.clear_changed_oauth2();
         }
-        if self.qs_write.get_changed_domain() {
-            let domain_key_object =
-                self.qs_write
-                    .get_domain_key_object_handle()
-                    .map_err(|err| {
-                        error!(?err, "Unable to load domain key object");
-                        err
-                    })?;
 
-            *self.domain_keys = domain_key_object;
-
-            // If the domain name has changed, we need to update rp-id in
-            // webauthn rs
-            //
-            // TODO: I'm not sure actually. because on a domain rename we
-            // might need to update origin too. So this gets a bit tricky.
-            // we might actually need to *not* reload here, and then let the
-            // admin do it inline with their configs too.
-        }
         // Commit everything.
         self.oauth2rs.commit();
-        self.domain_keys.commit();
         self.cred_update_sessions.commit();
+
         trace!("cred_update_session.commit");
         self.qs_write.commit()
     }

@@ -15,36 +15,39 @@ impl Plugin for JwsKeygen {
 
     #[instrument(level = "debug", name = "jwskeygen_pre_create_transform", skip_all)]
     fn pre_create_transform(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Self::modify_inner(cand)
+        Self::modify_inner(qs, cand)
     }
 
     #[instrument(level = "debug", name = "jwskeygen_pre_modify", skip_all)]
     fn pre_modify(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::modify_inner(cand)
+        Self::modify_inner(qs, cand)
     }
 
     #[instrument(level = "debug", name = "jwskeygen_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
-        _qs: &mut QueryServerWriteTransaction,
+        qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::modify_inner(cand)
+        Self::modify_inner(qs, cand)
     }
 }
 
 impl JwsKeygen {
-    fn modify_inner<T: Clone>(cand: &mut [Entry<EntryInvalid, T>]) -> Result<(), OperationError> {
+    fn modify_inner<T: Clone>(
+        qs: &mut QueryServerWriteTransaction,
+        cand: &mut [Entry<EntryInvalid, T>],
+    ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
         if e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServerBasic.into()) &&
             !e.attribute_pres(Attribute::OAuth2RsBasicSecret) {
@@ -85,7 +88,8 @@ impl JwsKeygen {
             }
         }
 
-        if (e.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) ||
+        if qs.get_domain_version() < DOMAIN_LEVEL_6 &&
+            (e.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) ||
             e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into())) &&
             !e.attribute_pres(Attribute::JwsEs256PrivateKey) {
                 security_info!("regenerating jws es256 private key");

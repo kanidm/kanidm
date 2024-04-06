@@ -217,6 +217,7 @@ impl KeyObjectInternalJwtEs256 {
 
             // We need to use the legacy KID for imported objects
             let kid = signer.get_legacy_kid().to_string();
+            debug!(?kid, "imported key");
 
             self.all.insert(
                 kid,
@@ -418,6 +419,10 @@ impl KeyObjectInternalJwtEs256 {
             return Err(OperationError::KP0020KeyObjectNoActiveSigningKeys);
         };
 
+        debug!("=====================================================================");
+        debug!(kid = ?signing_key.get_kid());
+        debug!(kid = ?signing_key.get_legacy_kid());
+
         signing_key.sign(jws).map_err(|jwt_err| {
             error!(?jwt_err, "Unable to sign jws");
             OperationError::KP0021KeyObjectJwsEs256Signature
@@ -427,9 +432,15 @@ impl KeyObjectInternalJwtEs256 {
     fn verify<V: JwsVerifiable>(&self, jwsc: &V) -> Result<V::Verified, OperationError> {
         let internal_jws = jwsc
             .kid()
-            .and_then(|kid| self.all.get(kid))
+            .and_then(|kid| {
+                debug!(?kid);
+                self.all.get(kid)
+            })
             .ok_or_else(|| {
                 error!("JWS is signed by a key that is not present in this KeyObject");
+                for pres_kid in self.all.keys() {
+                    debug!(?pres_kid);
+                }
                 OperationError::KP0022KeyObjectJwsNotAssociated
             })?;
 

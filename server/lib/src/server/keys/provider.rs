@@ -121,10 +121,8 @@ impl KeyProviders {
 pub trait KeyProvidersTransaction {
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
 
-    // should this actually be dyn trait?
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
 
-    // should this actually be dyn trait?
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>>;
 }
 
@@ -322,17 +320,8 @@ mod tests {
 
         // Set the version to 6.
         write_txn
-            .internal_modify_uuid(
-                UUID_DOMAIN_INFO,
-                &ModifyList::new_purge_and_set(
-                    Attribute::Version,
-                    Value::new_uint32(DOMAIN_LEVEL_6),
-                ),
-            )
+            .internal_apply_domain_migration(DOMAIN_LEVEL_6)
             .expect("Unable to set domain level to version 6");
-
-        // Re-load - this applies the migrations.
-        write_txn.reload().expect("Unable to reload transaction");
 
         // The internel key provider is created from dl 5 to 6
         let key_provider_object = write_txn
@@ -375,17 +364,8 @@ mod tests {
 
         // Now from DL6 -> 7 the keys are actually removed.
         write_txn
-            .internal_modify_uuid(
-                UUID_DOMAIN_INFO,
-                &ModifyList::new_purge_and_set(
-                    Attribute::Version,
-                    Value::new_uint32(DOMAIN_LEVEL_7),
-                ),
-            )
+            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
             .expect("Unable to set domain level to version 7");
-
-        // Re-load - this applies the migrations.
-        write_txn.reload().expect("Unable to reload transaction");
 
         let domain_object_migrated = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)

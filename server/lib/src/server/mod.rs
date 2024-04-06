@@ -865,7 +865,14 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_key_object_handle(&mut self) -> Result<Arc<KeyObject>, OperationError> {
+    fn get_domain_key_object_handle(&self) -> Result<Arc<KeyObject>, OperationError> {
+        #[cfg(test)]
+        if self.get_domain_version() < DOMAIN_LEVEL_6 {
+            // We must be in tests, and this is a DL5 to 6 test. For this we'll just make
+            // an ephemeral provider.
+            return Ok(crate::server::keys::KeyObjectInternal::new_test());
+        };
+
         self.get_key_providers()
             .get_key_object_handle(UUID_DOMAIN_INFO)
             .ok_or(OperationError::KP0031KeyObjectNotFound)
@@ -1899,11 +1906,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[inline]
     pub(crate) fn clear_changed_oauth2(&mut self) {
         self.changed_flags.remove(ChangeFlag::OAUTH2)
-    }
-
-    #[inline]
-    pub(crate) fn get_changed_domain(&self) -> bool {
-        self.changed_flags.contains(ChangeFlag::DOMAIN)
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {

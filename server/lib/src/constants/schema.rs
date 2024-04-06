@@ -923,7 +923,29 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL6: SchemaClass = SchemaClass {
 
         Attribute::Mail.into(),
         Attribute::PrimaryCredential.into(),
+        Attribute::ApiTokenSession.into(),
+
         Attribute::JwsEs256PrivateKey.into(),
+    ],
+    systemexcludes: vec![EntryClass::Person.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
+    name: EntryClass::ServiceAccount.into(),
+    description: "Object representation of service account".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::SshPublicKey.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
+        Attribute::Description.into(),
+
+        Attribute::Mail.into(),
+        Attribute::PrimaryCredential.into(),
         Attribute::ApiTokenSession.into(),
     ],
     systemexcludes: vec![EntryClass::Person.into()],
@@ -936,6 +958,39 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
     description: "Object representation of sync account".to_string(),
 
     systemmust: vec![Attribute::Name.into(), Attribute::JwsEs256PrivateKey.into()],
+    systemmay: vec![
+        Attribute::SyncTokenSession.into(),
+        Attribute::SyncCookie.into(),
+        Attribute::SyncCredentialPortal.into(),
+        Attribute::SyncYieldAuthority.into(),
+    ],
+    systemexcludes: vec![EntryClass::Account.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_SYNC_ACCOUNT_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
+    name: EntryClass::SyncAccount.into(),
+    description: "Object representation of sync account".to_string(),
+
+    systemmust: vec![Attribute::Name.into()],
+    systemmay: vec![
+        Attribute::SyncTokenSession.into(),
+        Attribute::SyncCookie.into(),
+        Attribute::SyncCredentialPortal.into(),
+        Attribute::SyncYieldAuthority.into(),
+        Attribute::JwsEs256PrivateKey.into(),
+    ],
+    systemexcludes: vec![EntryClass::Account.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_SYNC_ACCOUNT_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
+    name: EntryClass::SyncAccount.into(),
+    description: "Object representation of sync account".to_string(),
+
+    systemmust: vec![Attribute::Name.into()],
     systemmay: vec![
         Attribute::SyncTokenSession.into(),
         Attribute::SyncCookie.into(),
