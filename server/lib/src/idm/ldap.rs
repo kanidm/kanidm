@@ -433,7 +433,7 @@ impl LdapServer {
             LdapBindTarget::ApiToken => {
                 let jwsc = JwsCompact::from_str(pw).map_err(|err| {
                     error!(?err, "Invalid JwsCompact supplied as authentication token.");
-                    OperationError::LD0001InvalidAuthenticationToken
+                    OperationError::NotAuthenticated
                 })?;
 
                 let lae = LdapTokenAuthEvent::from_parts(jwsc)?;

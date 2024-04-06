@@ -209,6 +209,9 @@ impl KeyObjectManagement {
                     // *one* key that is valid from right now.
                     trace!(?key_object_uuid, "Adding es256 to key object");
                     key_object.jws_es256_assert(valid_from, &txn_cid)?;
+                    // And assert a key that is valid from time 0. This is needed for tests but also
+                    // in case the clock steps back a long way. It establishes a baseline/fallback.
+                    key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
                 // Turn that object into it's entry template to create. I think we need to make this

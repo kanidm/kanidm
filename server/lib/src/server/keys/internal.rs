@@ -68,7 +68,7 @@ impl KeyProviderInternal {
         provider: Arc<Self>,
     ) -> Result<Arc<KeyObject>, OperationError> {
         let uuid = entry.get_uuid();
-        trace!(?uuid, "Loading key object ...");
+        debug!(?uuid, "Loading key object ...");
 
         let mut jws_es256: Option<KeyObjectInternalJwtEs256> = None;
 
@@ -87,6 +87,7 @@ impl KeyProviderInternal {
                 },
             ) in key_internal_map.iter()
             {
+                trace!(?uuid, ?usage, ?status, ?key_id);
                 match usage {
                     KeyUsage::JwtEs256 => {
                         let jws_es256_ref =
@@ -415,7 +416,7 @@ impl KeyObjectInternalJwtEs256 {
         current_time: Duration,
     ) -> Result<V::Signed, OperationError> {
         let Some(signing_key) = self.get_valid_signer(current_time) else {
-            error!("No signing keys available");
+            error!("No signing keys available. This may indicate that no keys are valid yet!");
             return Err(OperationError::KP0020KeyObjectNoActiveSigningKeys);
         };
 

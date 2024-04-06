@@ -131,8 +131,6 @@ pub enum OperationError {
     VS0001IncomingReplSshPublicKey,
     // Value Errors
     VL0001ValueSshPublicKeyString,
-    // LDAP
-    LD0001InvalidAuthenticationToken,
 
     // SCIM
     SC0001IncomingSshPublicKey,

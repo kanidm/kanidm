@@ -437,7 +437,7 @@ pub trait IdmServerTransaction<'a> {
         if let Ok(uat) = jws_inner.from_json::<UserAuthToken>() {
             if let Some(exp) = uat.expiry {
                 let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
-                if ct_odt >= exp {
+                if exp < ct_odt {
                     security_info!(?ct_odt, ?exp, "Session expired");
                     return Err(OperationError::SessionExpired);
                 } else {
@@ -2174,20 +2174,15 @@ mod tests {
         sessionid
     }
 
-    async fn check_testperson_password(idms: &IdmServer, pw: &str) -> JwsCompact {
-        let sid =
-            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
+    async fn check_testperson_password(idms: &IdmServer, pw: &str, ct: Duration) -> JwsCompact {
+        let sid = init_authsession_sid(idms, ct, "testperson1").await;
 
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
         let r2 = idms_auth
-            .auth(
-                &anon_step,
-                Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal.into(),
-            )
+            .auth(&anon_step, ct, Source::Internal.into())
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2223,10 +2218,11 @@ mod tests {
 
     #[idm_test]
     async fn test_idm_simple_password_auth(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        let ct = duration_from_epoch_now();
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        check_testperson_password(idms, TEST_PASSWORD).await;
+        check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear our the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -2573,11 +2569,12 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
+        let ct = duration_from_epoch_now();
         // Assert the delayed action queue is empty
         idms_delayed.check_is_empty_or_panic();
         // Setup the admin w_ an imported password.
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(ct).await;
             // now modify and provide a primary credential.
 
             idms_prox_write
@@ -2612,7 +2609,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Do an auth, this will trigger the action to send.
-        check_testperson_password(idms, "password").await;
+        check_testperson_password(idms, "password", ct).await;
 
         // ⚠️  We have to be careful here. Between these two actions, it's possible
         // that on the pw upgrade that the credential uuid changes. This immediately
@@ -2645,7 +2642,7 @@ mod tests {
         assert_eq!(cred_before.uuid, cred_after.uuid);
 
         // Check the admin pw still matches
-        check_testperson_password(idms, "password").await;
+        check_testperson_password(idms, "password", ct).await;
         // Clear the next auth session record
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
@@ -3231,7 +3228,7 @@ mod tests {
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_testperson_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear out the queued session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3353,7 +3350,7 @@ mod tests {
     ) {
         use kanidm_proto::internal::UserAuthToken;
 
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let ct = duration_from_epoch_now();
 
         let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
         let expiry = ct + Duration::from_secs(DEFAULT_AUTH_SESSION_EXPIRY as u64 + 1);
@@ -3366,7 +3363,7 @@ mod tests {
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let uat_unverified = check_testperson_password(idms, TEST_PASSWORD).await;
+        let uat_unverified = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Process the session info.
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3776,12 +3773,12 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let ct = duration_from_epoch_now();
 
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_testperson_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3797,8 +3794,6 @@ mod tests {
 
         drop(idms_prox_read);
 
-        assert!(false);
-
         // We need to get the token key id and revoke it.
         let revoke_kid = token.kid().expect("token does not contain a key id");
 
@@ -3813,8 +3808,8 @@ mod tests {
         );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
         assert!(idms_prox_write.commit().is_ok());
-        // Check the old token is invalid, due to reload.
-        let new_token = check_testperson_password(idms, TEST_PASSWORD).await;
+
+        let new_token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3822,9 +3817,12 @@ mod tests {
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await;
+
+        // Check the old token is invalid, due to reload.
         assert!(idms_prox_read
             .validate_client_auth_info_to_ident(token.into(), ct)
             .is_err());
+
         // A new token will work due to the matching key.
         idms_prox_read
             .validate_client_auth_info_to_ident(new_token.into(), ct)
