@@ -19,7 +19,7 @@ use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::http::{HeaderMap, HeaderValue};
+use axum::http::{HeaderMap, HeaderValue, Request};
 use axum::middleware::{from_fn, from_fn_with_state};
 use axum::response::Redirect;
 use axum::routing::*;
@@ -27,9 +27,10 @@ use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
 use axum_macros::FromRef;
 use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
+use futures::pin_mut;
 use hashbrown::HashMap;
-use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrStream, Http};
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_proto::constants::KSESSIONID;
 use kanidmd_lib::idm::ClientCertInfo;
 use kanidmd_lib::status::StatusActor;
@@ -39,14 +40,13 @@ use openssl::x509::X509;
 use sketching::*;
 use tokio_openssl::SslStream;
 
-use futures_util::future::poll_fn;
-use tokio::net::TcpListener;
+use tokio::net::{TcpListener, TcpStream};
+use tower::Service;
 
 use std::fs;
 use std::io::{ErrorKind, Read};
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
 use tokio::sync::broadcast;
 use tower_http::services::ServeDir;
@@ -206,7 +206,7 @@ pub async fn create_https_server(
         .collect();
     js_directives.extend(vec![CspValue::UnsafeEval, CspValue::SelfSite]);
 
-    let csp_header = axum_csp::CspSetBuilder::new()
+    let csp_header = axum_csp::CspHeaderBuilder::new()
         // default-src 'self';
         .add(CspDirectiveType::DefaultSrc, vec![CspValue::SelfSite])
         // form-action https: 'self';
@@ -354,7 +354,8 @@ pub async fn create_https_server(
                     tokio::spawn(server_loop(tls_param, listener, app))
                 },
                 None => {
-                    tokio::spawn(axum_server::bind(addr).serve(app))
+                    // tokio::spawn(axum_server::bind(addr).serve(app))
+                    unimplemented!("can't handle non-tls currently!");
                 }
             } => {
                 match res {
@@ -386,7 +387,7 @@ pub async fn create_https_server(
 
 async fn server_loop(
     tls_param: TlsConfiguration,
-    listener: TcpListener,
+    tcp_listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
 ) -> Result<(), std::io::Error> {
     let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
@@ -520,25 +521,27 @@ async fn server_loop(
 
         // End tls_client setup
     }
+    // TODO: fix this
+    tls_builder
+        .check_private_key()
+        .expect("Failed to check private key!");
 
     let tls_acceptor = tls_builder.build();
 
-    let protocol = Arc::new(Http::new());
-    let mut listener =
-        hyper::server::conn::AddrIncoming::from_listener(listener).map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to create listener: {:?}", err),
-            )
-        })?;
+    // let protocol = Arc::new(Http::new());
+    // let mut listener = hyper_util::server::conn::auto::Builder::new(TokioExecutor::new());
+
+    pin_mut!(tcp_listener);
+
     loop {
-        if let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
+        if let Ok((stream, socket_addr)) = tcp_listener.accept().await {
+            //listener..serve_connection(cx).await {
             let tls_acceptor = tls_acceptor.clone();
             let app = app.clone();
 
             // let svc = tower::MakeService::make_service(&mut app, &stream);
             // tokio::spawn(handle_conn(tls_acceptor, stream, svc, protocol.clone()));
-            tokio::spawn(handle_conn(tls_acceptor, stream, app, protocol.clone()));
+            tokio::spawn(handle_conn(tls_acceptor, stream, app, socket_addr));
         }
     }
 }
@@ -546,17 +549,15 @@ async fn server_loop(
 /// This handles an individual connection.
 pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
-    stream: AddrStream,
+    stream: TcpStream,
     // svc: ResponseFuture<Router, ClientConnInfo>,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-    protocol: Arc<Http>,
+    socket_addr: SocketAddr,
 ) -> Result<(), std::io::Error> {
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
-
-    let addr = stream.remote_addr();
 
     let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
         error!("Failed to create TLS stream: {:?}", e);
@@ -592,7 +593,10 @@ pub(crate) async fn handle_conn(
                 None
             };
 
-            let client_conn_info = ClientConnInfo { addr, client_cert };
+            let client_conn_info = ClientConnInfo {
+                addr: socket_addr,
+                client_cert,
+            };
 
             debug!(?client_conn_info);
 
@@ -603,13 +607,37 @@ pub(crate) async fn handle_conn(
                 std::io::Error::from(ErrorKind::Other)
             })?;
 
-            protocol
-                .serve_connection(tls_stream, svc)
+            // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+            // `TokioIo` converts between them.
+            let stream = TokioIo::new(tls_stream);
+
+            // Hyper also has its own `Service` trait and doesn't use tower. We can use
+            // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+            // `tower::Service::call`.
+            let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+                // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                // tower's `Service` requires `&mut self`.
+                //
+                // We don't need to call `poll_ready` since `Router` is always ready.
+                svc.clone().call(request)
+            });
+
+            hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(stream, hyper_service)
                 .await
+                // protocol
+                //     .serve_connection(tls_stream, svc)
+                //     .await
                 .map_err(|e| {
-                    debug!("Failed to complete connection: {:?}", e);
+                    debug!(
+                        "Failed to complete connection from {}: {:?}",
+                        socket_addr, e
+                    );
                     std::io::Error::from(ErrorKind::ConnectionAborted)
                 })
+            // if let Err(err) = ret {
+            //     warn!("error serving connection from {}: {}", socket_addr, err);
+            // };
         }
         Err(error) => {
             trace!("Failed to handle connection: {:?}", error);

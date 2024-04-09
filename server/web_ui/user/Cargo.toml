@@ -31,8 +31,8 @@ uuid = { workspace = true }
 yew = { workspace = true, features = ["csr"] }
 yew-router = { workspace = true }
 time = { workspace = true }
-gloo-timers = "0.3.0"
-wasm-timer = "0.2.5"
+gloo-timers = { workspace = true }
+wasm-timer = { workspace = true }
 regex.workspace = true
 lazy_static.workspace = true
 gloo-utils = { workspace = true }

@@ -89,9 +89,9 @@ serde_with = "3.7.0"
 argon2 = { version = "0.5.3", features = ["alloc"] }
 async-recursion = "1.1.0"
 async-trait = "^0.1.78"
-axum = { version = "0.6.20", features = [
+axum = { version = "0.7.5", features = [
     "form",
-    "headers",
+    # "headers",
     "http2",
     "json",
     "macros",
@@ -100,7 +100,11 @@ axum = { version = "0.6.20", features = [
     "query",
     "tracing",
 ] }
-axum-csp = { version = "0.0.5" }
+axum-auth = "0.4.1"
+axum-csp = { path = "../axum-csp" }
+axum-extra = "0.9.3"
+axum-macros = "0.3.8"
+axum-server = "0.5.1"
 base32 = "^0.4.0"
 base64 = "^0.21.7"
 base64urlsafedata = "0.5.0"
@@ -129,9 +133,10 @@ gloo = "^0.8.1"
 gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
-http = "0.2.12"
-hyper = { version = "0.14.28", features = ["full"] }
-hyper-tls = "0.5.0"
+http = "1.1.0"
+hyper = { version = "1.2.0", features = ["full"] }
+hyper-util = { version = "0.1.3", features = ["server"] }
+hyper-tls = "0.6.0"
 idlset = "^0.2.4"
 image = { version = "0.24.9", default-features = false, features = [
     "gif",
@@ -210,10 +215,12 @@ time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
 tikv-jemallocator = "0.5"
 
 tokio = "^1.36.0"
-tokio-openssl = "^0.6.4"
+tokio-openssl = "0.6.4"
 tokio-util = "^0.7.10"
 
 toml = "^0.5.11"
+tower = "0.4.13"
+tower-http = "0.5.2"
 tracing = { version = "^0.1.40", features = [
     "max_level_trace",
     "release_max_level_debug",
@@ -225,7 +232,7 @@ tracing-forest = "^0.1.6"
 url = "^2.5.0"
 urlencoding = "2.1.3"
 utoipa = "4.2.0"
-utoipa-swagger-ui = "4.0.0"
+utoipa-swagger-ui = "6.0.0"
 uuid = "^1.8.0"
 
 wasm-bindgen = "^0.2.92"
@@ -250,3 +257,11 @@ yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
+assert_cmd = "2.0.14"
+escargot = "0.5.10"
+fantoccini = "0.19.3"
+gethostname = "0.4.3"
+gloo-timers = "0.3.0"
+jsonschema = "0.17.1"
+petgraph = "0.6.4"
+wasm-timer = "0.2.5"

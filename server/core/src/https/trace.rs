@@ -1,6 +1,5 @@
 //! Reimplementation of tower-http's DefaultMakeSpan that only runs at "INFO" level for our own needs.
 
-use axum::http::Request;
 use kanidm_proto::constants::KOPID;
 use sketching::event_dynamic_lvl;
 use tower_http::LatencyUnit;
@@ -25,7 +24,7 @@ impl Default for DefaultMakeSpanKanidmd {
 }
 
 impl<B> tower_http::trace::MakeSpan<B> for DefaultMakeSpanKanidmd {
-    fn make_span(&mut self, request: &Request<B>) -> Span {
+    fn make_span(&mut self, request: &axum::http::Request<B>) -> Span {
         // Needs to be at info to ensure that there is always a span for each
         // tracing event to hook into.
         tracing::span!(
@@ -68,7 +67,7 @@ impl Default for DefaultOnResponseKanidmd {
 impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
     fn on_response(
         self,
-        response: &axum::response::Response<B>,
+        response: &axum::http::Response<B>,
         latency: std::time::Duration,
         _span: &Span,
     ) {

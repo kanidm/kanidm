@@ -17,11 +17,12 @@ doctest = false
 
 [dependencies]
 async-trait = { workspace = true }
-axum = { workspace = true }
-axum-auth = "0.4.1"
+axum = { workspace = true, features = ["form"] }
+axum-auth = { workspace = true }
 axum-csp = { workspace = true }
-axum-macros = "0.3.8"
-axum-server = { version = "0.5.1", features = ["tls-openssl"] }
+axum-extra = { workspace = true, features = ["typed-header"] }
+axum-macros = { workspace = true }
+axum-server = { workspace = true, features = ["tls-openssl"] }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
@@ -32,6 +33,7 @@ futures-util = { workspace = true }
 hashbrown = { workspace = true }
 http = { workspace = true }
 hyper = { workspace = true }
+hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }
 kanidmd_lib = { workspace = true }
@@ -51,8 +53,8 @@ tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
-tower-http = { version = "0.4.4", features = [
+tower = { workspace = true, features = ["tokio-stream", "tracing"] }
+tower-http = { workspace = true, features = [
     "compression-gzip",
     "fs",
     "tokio",
