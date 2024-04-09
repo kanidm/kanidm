@@ -1,6 +1,6 @@
 # Orca - A Kanidm Load Testing Tool
 
-Make a profile
+Make a profile.toml
 
 ```shell
 orca setup-wizard --idm-admin-password ... \

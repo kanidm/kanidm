@@ -1,5 +1,4 @@
 use crate::error::Error;
-use crate::model::ActorRole;
 use crate::state::*;
 use crate::stats::{BasicStatistics, TestPhase};
 
@@ -44,20 +43,9 @@ pub struct EventRecord {
 pub enum EventDetail {
     Login,
     Logout,
-    PersonGet,
-    PersonSet,
+    PersonSetSelfMail,
     PersonReauth,
     Error,
-}
-
-impl From<ActorRole> for EventDetail {
-    fn from(value: ActorRole) -> Self {
-        match value {
-            ActorRole::AttributeReader => EventDetail::PersonGet,
-            ActorRole::AttributeWriter => EventDetail::PersonSet,
-            ActorRole::LazyActor => EventDetail::Logout,
-        }
-    }
 }
 
 #[derive(Clone, Debug)]
@@ -83,6 +71,7 @@ async fn execute_inner(
             return Err(Error::Interrupt);
         }
     }
+    info!("warmup time passed, statistics will now be collected ...");
 
     let start = Instant::now();
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::Start(start)) {
@@ -108,6 +97,7 @@ async fn execute_inner(
                 // Until we add other signal types, any event is
                 // either Ok(Signal::Stop) or Err(_), both of which indicate
                 // we need to stop immediately.
+                debug!("Interrupt");
                 return Err(Error::Interrupt);
             }
         }
@@ -119,7 +109,7 @@ async fn execute_inner(
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::End(end)) {
         error!(
             ?crossbeam_err,
-            "Unable to signal statistics collector to start"
+            "Unable to signal statistics collector to end"
         );
         return Err(Error::Crossbeam);
     }

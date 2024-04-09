@@ -3,12 +3,11 @@ use crate::kani::KanidmOrcaClient;
 use crate::model::ActorRole;
 use crate::profile::Profile;
 use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
-use rand::distributions::{Alphanumeric, DistString};
-use rand::seq::SliceRandom;
+use rand::distributions::{Alphanumeric, DistString, Uniform};
+use rand::seq::{index, SliceRandom};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
-use std::borrow::Borrow;
 use std::collections::BTreeSet;
 
 const PEOPLE_PREFIX: &str = "person";
@@ -55,19 +54,20 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
 
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
-    // todo! may need a random username vec for later stuff
 
-    // PHASE 2 - generate groups for integration access, assign roles to groups
-    // actually these are just groups to decide what each person is supposed to do with their life
-    let groups = vec![
-        Group::new(
-            ActorRole::AttributeReader,
-            BTreeSet::from(["idm_people_pii_read".to_string()]),
-        ),
-        Group::new(
-            ActorRole::AttributeWriter,
-            BTreeSet::from(["idm_people_self_write_mail".to_string()]),
-        ),
+    // PHASE 2 - generate groups for integration access, assign roles to groups.
+    // These decide what each person is supposed to do with their life.
+    let mut groups = vec![
+        Group {
+            name: "role_people_pii_reader".to_string(),
+            role: ActorRole::PeoplePiiReader,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_self_write_mail".to_string(),
+            role: ActorRole::PeopleSelfWriteMail,
+            ..Default::default()
+        },
     ];
 
     // PHASE 3 - generate persons
@@ -103,48 +103,18 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let password = random_password(&mut seeded_rng);
 
-        // //God forbid me but I didn't want to bother with matrixes as input
-        // // Bare in mind that actually these probabilities are not so random: the first 4 represent the
-        // // prob of each transition if we are in the Unauthenticated state, so we obv will have 0 prob to unauthenticate ourselves,
-        // // and also 0 prob to update our account.
-        // // The last 4 values refer to the authenticated scenario: here we will have 0 prob to authenticate, since we already did that, but we have some
-        // // non-0 prob of doing everything else.
-        // let model = Model::Markov {
-        //     distributions_matrix: [0.5, 0., 0.5, 0., 0., 0.5, 0.25, 0.25],
-        //     rng_seed: None,
-        //     normal_dist_mean_and_std_dev: None,
-        // };
+        let member_of = BTreeSet::new();
+        let roles = BTreeSet::new();
 
-        let mut member_of = BTreeSet::new();
-        // TODO: add a proper option to pick the model inside the profile.toml
-        let model = if false {
-            let number_of_groups_to_add = seeded_rng.gen_range(0..groups.len());
+        let model = Model::Basic;
 
-            for group in groups.choose_multiple(&mut seeded_rng, number_of_groups_to_add) {
-                member_of.insert(String::from(Into::<&'static str>::into(
-                    group.name.borrow(),
-                )));
-            }
-
-            Model::ConditionalReadWriteAttr {
-                member_of: member_of.clone(),
-            }
-        } else {
-            Model::ReadWriteAttr
-        };
-
-        for group in groups.iter() {
-            member_of.insert(String::from(Into::<&'static str>::into(
-                group.name.borrow(),
-            )));
-        }
         // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
-
         let p = Person {
             preflight_state: PreflightState::Present,
             username: username.clone(),
             display_name,
+            roles,
             member_of,
             credential: Credential::Password { plain: password },
             model,
@@ -154,6 +124,45 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         person_usernames.insert(username.clone());
         persons.push(p);
+    }
+
+    // Now, assign persons to roles.
+    //
+    // We do this by iterating through our roles, and then assigning
+    // them a baseline of required accounts with some variation. This
+    // way in each test it's guaranteed that *at least* one person
+    // to each role always will exist and be operational.
+
+    for group in groups.iter_mut() {
+        // For now, our baseline is 50%. We can adjust this in future per
+        // role for example.
+        let baseline = persons.len() / 2;
+        let inverse = persons.len() - baseline;
+        // Randomly add extra from the inverse
+        let extra = Uniform::new(0, inverse);
+        let persons_to_choose = baseline + seeded_rng.sample(extra);
+
+        assert!(persons_to_choose <= persons.len());
+
+        debug!(?persons_to_choose);
+
+        let person_index = index::sample(&mut seeded_rng, persons.len(), persons_to_choose);
+
+        // Order doesn't matter, lets optimise for linear lookup.
+        let mut person_index = person_index.into_vec();
+        person_index.sort_unstable();
+
+        for p_idx in person_index {
+            let person = persons.get_mut(p_idx).unwrap();
+
+            // Add the person to the group.
+            group.members.insert(person.username.clone());
+
+            // Add the reverse links, this allows the person in the test
+            // to know their roles
+            person.member_of.insert(group.name.clone());
+            person.roles.insert(group.role.clone());
+        }
     }
 
     // PHASE 4 - generate groups for user modification rights

@@ -2,7 +2,6 @@ use crate::error::Error;
 use crate::kani;
 use crate::state::*;
 
-use std::borrow::Borrow;
 use std::sync::Arc;
 
 async fn apply_flags(client: Arc<kani::KanidmOrcaClient>, flags: &[Flag]) -> Result<(), Error> {
@@ -36,24 +35,34 @@ async fn preflight_person(
         }
     }
 
-    for group in person.member_of.iter() {
-        client.add_members_to_group(&person.username, group).await?
+    // For each role we are part of, did we have other permissions required to fufil that?
+    for role in &person.roles {
+        if let Some(need_groups) = role.requires_membership_to() {
+            for group_name in need_groups {
+                client
+                    .group_add_members(&group_name, &[person.username.as_str()])
+                    .await?;
+            }
+        }
     }
 
     Ok(())
 }
 
 async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> Result<(), Error> {
-    if client.group_exists(group.name.borrow().into()).await? {
-        // Do nothing? Do we need to create them later?
+    if client.group_exists(group.name.as_str()).await? {
+        // Do nothing? Do we need to reset them later?
     } else {
-        client.group_create(group.name.borrow().into()).await?;
-        for parent_group in group.member_of.iter() {
-            client
-                .add_members_to_group(group.name.borrow().into(), parent_group)
-                .await?
-        }
+        client.group_create(group.name.as_str()).await?;
     }
+
+    // We can submit all the members in one go.
+
+    let members = group.members.iter().map(|s| s.as_str()).collect::<Vec<_>>();
+
+    client
+        .group_set_members(group.name.as_str(), members.as_slice())
+        .await?;
 
     Ok(())
 }
@@ -66,12 +75,6 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     apply_flags(client.clone(), state.preflight_flags.as_slice()).await?;
 
     let mut tasks = Vec::with_capacity(state.persons.len());
-
-    // Create groups
-    for group in state.groups.into_iter() {
-        let c = client.clone();
-        tasks.push(tokio::spawn(preflight_group(c, group)))
-    }
 
     // Create persons.
     for person in state.persons.into_iter() {
@@ -89,6 +92,19 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     }
 
     // Create groups.
+    let mut tasks = Vec::with_capacity(state.groups.len());
+
+    for group in state.groups.into_iter() {
+        let c = client.clone();
+        tasks.push(tokio::spawn(preflight_group(c, group)))
+    }
+
+    for task in tasks {
+        task.await.map_err(|tokio_err| {
+            error!(?tokio_err, "Failed to join task");
+            Error::Tokio
+        })??;
+    }
 
     // Create integrations.
 

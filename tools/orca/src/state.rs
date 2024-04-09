@@ -1,5 +1,6 @@
 use crate::error::Error;
 use crate::model::{ActorModel, ActorRole};
+use crate::models;
 use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
@@ -54,47 +55,36 @@ pub enum Flag {
     DisableAllPersonsMFAPolicy,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub enum PreflightState {
+    #[default]
     Present,
     Absent,
 }
 
+/// A model defines *how* an actors makes it's choices. For example the choices
+/// could be purely random, they could be a linear pattern, or they could have
+/// some set of weights related to choices they make.
+///
+/// Some models can *restrict* the set of choices that an actor may make.
+///
+/// This compliments ActorRoles, which define the extended actions an Actor may
+/// choose to perform. If ActorRoles are present, the model MAY choose to use
+/// these roles to perform extended operations.
 #[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
+    AuthOnly,
+    /// A simple linear executor that does actions in a loop.
     #[default]
     Basic,
-    // Markov {
-    //     distributions_matrix: [f64; DISTR_MATRIX_SIZE],
-    //     rng_seed: Option<u64>,
-    //     normal_dist_mean_and_std_dev: Option<(f64, f64)>,
-    // },
-    ReadWriteAttr,
-    ConditionalReadWriteAttr {
-        member_of: BTreeSet<String>,
-    },
 }
 
 impl Model {
     pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
         Ok(match self {
-            Model::Basic => Box::new(crate::models::basic::ActorBasic::new()),
-            // Model::Markov {
-            //     distributions_matrix,
-            //     rng_seed,
-            //     normal_dist_mean_and_std_dev,
-            // } => Box::new(crate::models::markov::ActorMarkov::new(
-            //     distributions_matrix,
-            //     rng_seed,
-            //     normal_dist_mean_and_std_dev,
-            // )?),
-            Model::ReadWriteAttr => Box::new(crate::models::read_write_attr::ActorReadWrite::new()),
-            Model::ConditionalReadWriteAttr { member_of } => Box::new(
-                crate::models::conditional_read_write_attr::ActorConditionalReadWrite::new(
-                    member_of,
-                ),
-            ),
+            Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
+            Model::Basic => Box::new(models::basic::ActorBasic::new()),
         })
     }
 }
@@ -110,19 +100,15 @@ pub struct Person {
     pub username: String,
     pub display_name: String,
     pub member_of: BTreeSet<String>,
+    pub roles: BTreeSet<ActorRole>,
     pub credential: Credential,
     pub model: Model,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Group {
-    pub name: ActorRole,
-    pub member_of: BTreeSet<String>,
-}
-
-impl Group {
-    pub fn new(name: ActorRole, member_of: BTreeSet<String>) -> Self {
-        Group { name, member_of }
-    }
+    pub name: String,
+    pub preflight_state: PreflightState,
+    pub role: ActorRole,
+    pub members: BTreeSet<String>,
 }

@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]

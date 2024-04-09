@@ -47,6 +47,7 @@ impl DataCollector for BasicStatistics {
                     break start;
                 }
                 Some(TestPhase::End(_)) => {
+                    error!("invalid state");
                     // Invalid state.
                     return Err(Error::InvalidState);
                 }
@@ -69,12 +70,15 @@ impl DataCollector for BasicStatistics {
                     break end;
                 }
                 Some(TestPhase::StopNow) => {
+                    warn!("requested to stop now!");
                     // We have been told to stop immediately.
                     return Ok(());
                 }
                 None => thread::sleep(Duration::from_millis(100)),
             }
         };
+
+        info!("start statistics processing ...");
 
         let mut count: usize = 0;
         let mut optimes = Vec::new();

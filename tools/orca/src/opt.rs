@@ -50,13 +50,7 @@ enum OrcaOpt {
         /// This allows deterministic regeneration of a test state file.
         seed: Option<i64>,
 
-        // TODO: make this thing work in a decent manner
-        //
-        // #[clap(long)]
-        /// Optional person model. Allows to choose between different kind of user behaviors
-        // user_model: Model,
-
-        // Todo - support the extra uris field for replicated tests.
+        // TODO - support the extra uris field for replicated tests.
         #[clap(long = "profile")]
         /// The configuration file path to update (or create)
         profile_path: PathBuf,
