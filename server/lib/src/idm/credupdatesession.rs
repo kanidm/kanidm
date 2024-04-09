@@ -866,7 +866,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let token_enc = self
             .qs_write
             .get_domain_key_object_handle()?
-            .jwe_encrypt(&token_jwe, ct)?;
+            .jwe_a128gcm_encrypt(&token_jwe, ct)?;
 
         let status: CredentialUpdateSessionStatus = (&session).into();
 

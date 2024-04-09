@@ -214,6 +214,13 @@ impl KeyObjectManagement {
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
+                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA128GCM.into())
+                {
+                    trace!(?key_object_uuid, "Adding a128gcm to key object");
+                    key_object.jwe_a128gcm_assert(valid_from, &txn_cid)?;
+                    key_object.jwe_a128gcm_assert(Duration::ZERO, &txn_cid)?;
+                }
+
                 // Turn that object into it's entry template to create. I think we need to make this
                 // some kind of merge_vs?
                 key_object.into_valuesets()?.into_iter().try_for_each(

@@ -71,6 +71,7 @@ impl KeyProviderInternal {
         debug!(?uuid, "Loading key object ...");
 
         let mut jws_es256: Option<KeyObjectInternalJwtEs256> = None;
+        let mut jwe_a128gcm: Option<KeyObjectInternalJwtA128GCM> = None;
 
         if let Some(key_internal_map) = entry
             .get_ava_set(Attribute::KeyInternalData)
@@ -129,6 +130,21 @@ impl KeyProviderInternal {
     }
 }
 
+#[derive(Default, Clone)]
+struct KeyObjectInternalJwtEs256 {
+    // active signing keys are in a BTreeMap indexed by their valid_from
+    // time so that we can retrieve the active key.
+    //
+    // We don't need to worry about manipulating this at runtime, since any expiry
+    // event will cause the keyObject to reload, which will reflect to this map.
+    active: BTreeMap<u64, ()>,
+
+    // All keys are stored by their KeyId for fast lookup. Only valid or retained
+    // keys can be used to decrypt
+    all: BTreeMap<KeyId, InternalJweA128GCM>,
+}
+
+
 #[derive(Clone)]
 enum InternalJwtEs256Status {
     Valid {
@@ -160,9 +176,6 @@ struct KeyObjectInternalJwtEs256 {
     //
     // We don't need to worry about manipulating this at runtime, since any expiry
     // event will cause the keyObject to reload, which will reflect to this map.
-
-    // QUESTION: If we're worried about memory this could be an Rc or a
-    // KeyId
     active: BTreeMap<u64, JwsEs256Signer>,
 
     // All keys are stored by their KeyId for fast lookup. Keys internally have a
@@ -480,6 +493,7 @@ pub struct KeyObjectInternal {
     provider: Arc<KeyProviderInternal>,
     uuid: Uuid,
     jws_es256: Option<KeyObjectInternalJwtEs256>,
+    jwe_a128gcm: Option<KeyObjectInternalJweA128GCM>,
     // If you add more types here you need to add these to rotate
     // and revoke.
 }
@@ -510,30 +524,13 @@ impl KeyObjectT for KeyObjectInternal {
         Box::new(self.clone())
     }
 
-    fn jws_es256_import(
-        &mut self,
-        import_keys: &SmolSet<[Vec<u8>; 1]>,
-        valid_from: Duration,
-        cid: &Cid,
-    ) -> Result<(), OperationError> {
-        let koi = self
-            .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
-
-        koi.import(import_keys, valid_from, cid)
-    }
-
-    fn jws_es256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
-        let koi = self
-            .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
-
-        koi.assert_active(valid_from, cid)
-    }
-
     fn rotate_keys(&mut self, rotation_time: Duration, cid: &Cid) -> Result<(), OperationError> {
         if let Some(jws_es256_object) = &mut self.jws_es256 {
             jws_es256_object.new_active(rotation_time, cid)?;
+        }
+
+        if let Some(jwe_a128_gcm) = &mut self.jwe_a128gcm {
+            jwe_a128_gcm.new_active(rotation_time, cid)?;
         }
 
         Ok(())
@@ -549,6 +546,12 @@ impl KeyObjectT for KeyObjectInternal {
 
             if let Some(jws_es256_object) = &mut self.jws_es256 {
                 if jws_es256_object.revoke(revoke_key_id, cid)? {
+                    has_revoked = true;
+                }
+            };
+
+            if let Some(jwe_a128_gcm) = &mut self.jwe_a128gcm {
+                if jwe_a128_gcm.revoke(revoke_key_id, cid)? {
                     has_revoked = true;
                 }
             };
@@ -596,16 +599,66 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
-    fn jwe_encrypt(
-        &self,
-        _jwe: &Jwe,
-        _current_time: Duration,
-    ) -> Result<JweCompact, OperationError> {
-        todo!();
+    fn jws_es256_import(
+        &mut self,
+        import_keys: &SmolSet<[Vec<u8>; 1]>,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
+        let koi = self
+            .jws_es256
+            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+
+        koi.import(import_keys, valid_from, cid)
     }
 
-    fn jwe_decrypt(&self, _jwec: &JweCompact) -> Result<Jwe, OperationError> {
-        todo!();
+    fn jws_es256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jws_es256
+            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+
+        koi.assert_active(valid_from, cid)
+    }
+
+    fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
+        let (alg, enc) = jwec.get_alg_enc();
+
+        match (alg, enc) {
+            (JweAlg::A128KW, JweEnc::A128GCM) => {
+                if let Some(jwe_a128_gcm) = &self.jws_es256 {
+                    jwe_a128_gcm.verify(jwec)
+                } else {
+                    error!(provider_uuid = ?self.uuid, "jwe a128gcm not available on this provider");
+                    Err(OperationError::KP0033KeyProviderNoSuchKey)
+                }
+            }
+            (unsupported_alg, unsupported_enc) => {
+                // unsupported rn.
+                error!(provider_uuid = ?self.uuid, ?unsupported_alg, ?unsupported_enc, "algorithm+encryption not available on this provider");
+                Err(OperationError::KP0019KeyProviderUnsupportedAlgorithm)
+            }
+        }
+    }
+
+    fn jwe_a128gcm_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let koi = self
+            .jwe_a128gcm
+            .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
+
+        koi.assert_active(valid_from, cid)
+    }
+
+    fn jwe_a128gcm_encrypt(
+        &self,
+        jwe: &Jwe,
+        current_time: Duration,
+    ) -> Result<JweCompact, OperationError> {
+        if let Some(jwe_a128_gcm) = &self.jwe_a128gcm {
+            jwe_a128_gcm.encrypt(jwe, current_time)
+        } else {
+            error!(provider_uuid = ?self.uuid, "jwe a128gcm not available on this provider");
+            Err(OperationError::KP0032KeyProviderNoSuchKey)
+        }
     }
 
     #[cfg(test)]
@@ -623,14 +676,22 @@ impl KeyObjectT for KeyObjectInternal {
         let key_iter = self
             .jws_es256
             .iter()
-            .flat_map(|jws_es256| jws_es256.to_key_iter());
+            .flat_map(|jws_es256| jws_es256.to_key_iter())
+            .chain(|| {
+                self
+                .jwe_a128gcm
+                .iter()
+                .flat_map(|jwe_a128gcm| jwe_a128gcm.to_key_iter())
+            });
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
         let mut attrs = Vec::with_capacity(3);
+
         attrs.push((
             Attribute::Class,
             ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
         ));
+
         attrs.push((
             Attribute::KeyProvider,
             ValueSetRefer::new(self.provider.uuid()) as ValueSet,

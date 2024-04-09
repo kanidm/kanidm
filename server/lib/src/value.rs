@@ -1074,7 +1074,8 @@ pub struct Oauth2Session {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyUsage {
-    JwtEs256,
+    JwsEs256,
+    JweA128GCM,
 }
 
 impl fmt::Display for KeyUsage {

@@ -895,6 +895,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
         ];
 

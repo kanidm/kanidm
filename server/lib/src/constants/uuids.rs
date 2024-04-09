@@ -298,6 +298,8 @@ pub const UUID_SCHEMA_ATTR_KEY_ACTION_REVOKE: Uuid = uuid!("00000000-0000-0000-0
 pub const UUID_SCHEMA_ATTR_KEY_ACTION_ROTATE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000172");
 pub const UUID_SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000173");
+pub const UUID_SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000174");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

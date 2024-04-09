@@ -242,4 +242,5 @@ pub const ENTRYCLASS_KEY_PROVIDER: &str = "key_provider";
 pub const ENTRYCLASS_KEY_PROVIDER_INTERNAL: &str = "key_provider_internal";
 pub const ENTRYCLASS_KEY_OBJECT: &str = "key_object";
 pub const ENTRYCLASS_KEY_OBJECT_JWT_ES256: &str = "key_object_jwt_es256";
+pub const ENTRYCLASS_KEY_OBJECT_JWE_A128GCM: &str = "key_object_jwe_a128gcm";
 pub const ENTRYCLASS_KEY_OBJECT_INTERNAL: &str = "key_object_internal";

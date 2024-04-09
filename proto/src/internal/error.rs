@@ -173,6 +173,9 @@ pub enum OperationError {
     KP0029KeyObjectSignerToVerifier,
     KP0030KeyObjectPublicToDer,
     KP0031KeyObjectNotFound,
+    KP0032KeyProviderNoSuchKey,
+    KP0033KeyProviderNoSuchKey,
+    KP0034KeyProviderUnsupportedAlgorithm,
 
     // Plugins
     PL0001GidOverlapsSystemRange,

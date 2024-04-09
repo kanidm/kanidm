@@ -1274,6 +1274,16 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6: SchemaClass = SchemaClass 
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM,
+    name: EntryClass::KeyObjectJweA128GCM.into(),
+    description: "A marker class indicating that this keyobject must provide jwe aes-256-gcm capability.".to_string(),
+    systemsupplements: vec![
+        EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_KEY_OBJECT_INTERNAL,
     name: EntryClass::KeyObjectInternal.into(),

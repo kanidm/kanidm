@@ -28,7 +28,9 @@ pub trait KeyObjectT {
 
     fn jws_verify(&self, jwsc: &JwsCompact) -> Result<Jws, OperationError>;
 
-    fn jwe_encrypt(&self, jwe: &Jwe, current_time: Duration) -> Result<JweCompact, OperationError>;
+    fn jwe_a128gcm_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError>;
+
+    fn jwe_a128gcm_encrypt(&self, jwe: &Jwe, current_time: Duration) -> Result<JweCompact, OperationError>;
 
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 
