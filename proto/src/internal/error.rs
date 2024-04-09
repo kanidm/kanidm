@@ -176,6 +176,18 @@ pub enum OperationError {
     KP0032KeyProviderNoSuchKey,
     KP0033KeyProviderNoSuchKey,
     KP0034KeyProviderUnsupportedAlgorithm,
+    KP0035KeyObjectJweA128GCMGeneration,
+    KP0036KeyObjectPrivateToBytes,
+    KP0037KeyObjectImportJweA128GCMInvalid,
+    KP0038KeyObjectImportJweA128GCMInvalid,
+    KP0039KeyObjectJweNotAssociated,
+    KP0040KeyObjectJweInvalid,
+    KP0041KeyObjectJweRevoked,
+    KP0042KeyObjectNoActiveEncryptionKeys,
+    KP0043KeyObjectJweA128GCMEncryption,
+    KP0044KeyObjectJwsPublicJwk,
+
+
 
     // Plugins
     PL0001GidOverlapsSystemRange,

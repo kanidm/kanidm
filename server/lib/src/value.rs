@@ -1084,7 +1084,8 @@ impl fmt::Display for KeyUsage {
             f,
             "{}",
             match self {
-                KeyUsage::JwtEs256 => "jwt_es256",
+                KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JweA128GCM => "jwe_a128gcm",
             }
         )
     }

@@ -7,11 +7,12 @@ use smolset::SmolSet;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use compact_jwt::compact::JweCompact;
+use compact_jwt::compact::{JweAlg, JweCompact, JweEnc};
+use compact_jwt::crypto::{JweA128GCMEncipher, JweA128KWEncipher};
 use compact_jwt::jwe::Jwe;
 use compact_jwt::traits::*;
 use compact_jwt::{
-    JwaAlg, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner, JwsSignerToVerifier,
+    JwaAlg, Jwk, Jws, JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSigner, JwsSignerToVerifier,
 };
 
 use std::ops::Bound::{Included, Unbounded};
@@ -59,6 +60,7 @@ impl KeyProviderInternal {
             provider,
             uuid,
             jws_es256: None,
+            jwe_a128gcm: None,
         }))
     }
 
@@ -71,7 +73,7 @@ impl KeyProviderInternal {
         debug!(?uuid, "Loading key object ...");
 
         let mut jws_es256: Option<KeyObjectInternalJwtEs256> = None;
-        let mut jwe_a128gcm: Option<KeyObjectInternalJwtA128GCM> = None;
+        let mut jwe_a128gcm: Option<KeyObjectInternalJweA128GCM> = None;
 
         if let Some(key_internal_map) = entry
             .get_ava_set(Attribute::KeyInternalData)
@@ -90,11 +92,23 @@ impl KeyProviderInternal {
             {
                 trace!(?uuid, ?usage, ?status, ?key_id);
                 match usage {
-                    KeyUsage::JwtEs256 => {
+                    KeyUsage::JwsEs256 => {
                         let jws_es256_ref =
                             jws_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
 
                         jws_es256_ref.load(
+                            key_id,
+                            *status,
+                            status_cid.clone(),
+                            der,
+                            *valid_from,
+                        )?;
+                    }
+                    KeyUsage::JweA128GCM => {
+                        let jwe_a128gcm_ref = jwe_a128gcm
+                            .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
+
+                        jwe_a128gcm_ref.load(
                             key_id,
                             *status,
                             status_cid.clone(),
@@ -110,6 +124,7 @@ impl KeyProviderInternal {
             provider,
             uuid,
             jws_es256,
+            jwe_a128gcm,
         })))
     }
 
@@ -130,20 +145,230 @@ impl KeyProviderInternal {
     }
 }
 
+#[derive(Clone)]
+enum InternalJweA128GCMStatus {
+    Valid {
+        cipher: JweA128KWEncipher,
+        key: Vec<u8>,
+    },
+    Retained {
+        cipher: JweA128KWEncipher,
+        key: Vec<u8>,
+    },
+    Revoked,
+}
+
+#[derive(Clone)]
+struct InternalJweA128GCM {
+    valid_from: u64,
+    status: InternalJweA128GCMStatus,
+    status_cid: Cid,
+}
+
 #[derive(Default, Clone)]
-struct KeyObjectInternalJwtEs256 {
+struct KeyObjectInternalJweA128GCM {
     // active signing keys are in a BTreeMap indexed by their valid_from
     // time so that we can retrieve the active key.
     //
     // We don't need to worry about manipulating this at runtime, since any expiry
     // event will cause the keyObject to reload, which will reflect to this map.
-    active: BTreeMap<u64, ()>,
+    active: BTreeMap<u64, JweA128KWEncipher>,
 
     // All keys are stored by their KeyId for fast lookup. Only valid or retained
     // keys can be used to decrypt
     all: BTreeMap<KeyId, InternalJweA128GCM>,
 }
 
+impl KeyObjectInternalJweA128GCM {
+    fn get_valid_cipher(&self, time: Duration) -> Option<&JweA128KWEncipher> {
+        let ct_secs = time.as_secs();
+
+        trace!(active = ?self.active);
+
+        self.active
+            .range((Unbounded, Included(ct_secs)))
+            .next_back()
+            .map(|(_time, cipher)| cipher)
+    }
+
+    fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        if self.get_valid_cipher(valid_from).is_none() {
+            // This means there is no active signing key, so we need to create one.
+            self.new_active(valid_from, cid)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn new_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+        let valid_from = valid_from.as_secs();
+
+        let cipher = JweA128KWEncipher::new().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to generate new jwe a128 encryption key");
+            OperationError::KP0035KeyObjectJweA128GCMGeneration
+        })?;
+
+        let key = cipher.key_bytes().map_err(|jwt_error| {
+            error!(?jwt_error, "Unable to access new jwe a128 encryption key");
+            OperationError::KP0036KeyObjectPrivateToBytes
+        })?;
+
+        let key = Vec::from(key);
+
+        let kid = cipher.kid().to_string();
+
+        self.active.insert(valid_from, cipher.clone());
+
+        self.all.insert(
+            kid,
+            InternalJweA128GCM {
+                valid_from,
+                status: InternalJweA128GCMStatus::Valid { cipher, key },
+                status_cid: cid.clone(),
+            },
+        );
+
+        Ok(())
+    }
+
+    fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
+        self.all.iter().map(|(key_id, internal_jwe)| {
+            let usage = KeyUsage::JweA128GCM;
+
+            let valid_from = internal_jwe.valid_from;
+            let status_cid = internal_jwe.status_cid.clone();
+
+            let (status, der) = match &internal_jwe.status {
+                InternalJweA128GCMStatus::Valid { cipher: _, key } => {
+                    (KeyStatus::Valid, key.clone())
+                }
+                InternalJweA128GCMStatus::Retained { cipher: _, key } => {
+                    (KeyStatus::Retained, key.clone())
+                }
+                InternalJweA128GCMStatus::Revoked => (KeyStatus::Revoked, Vec::with_capacity(0)),
+            };
+
+            (
+                key_id.clone(),
+                KeyInternalData {
+                    usage,
+                    valid_from,
+                    der,
+                    status,
+                    status_cid,
+                },
+            )
+        })
+    }
+
+    fn revoke(&mut self, revoke_key_id: &KeyId, cid: &Cid) -> Result<bool, OperationError> {
+        if let Some(key_to_revoke) = self.all.get_mut(revoke_key_id) {
+            key_to_revoke.status = InternalJweA128GCMStatus::Revoked;
+            key_to_revoke.status_cid = cid.clone();
+
+            let valid_from = key_to_revoke.valid_from;
+
+            // Remove it from the active set.
+            self.active.remove(&valid_from);
+
+            Ok(true)
+        } else {
+            // We didn't revoke anything
+            Ok(false)
+        }
+    }
+
+    fn load(
+        &mut self,
+        id: &str,
+        status: KeyStatus,
+        status_cid: Cid,
+        der: &[u8],
+        valid_from: u64,
+    ) -> Result<(), OperationError> {
+        let id: KeyId = id.to_string();
+
+        let status = match status {
+            KeyStatus::Valid => {
+                let cipher = JweA128KWEncipher::try_from(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load A128GCM retained cipher");
+                    OperationError::KP0037KeyObjectImportJweA128GCMInvalid
+                })?;
+
+                self.active.insert(valid_from, cipher.clone());
+
+                InternalJweA128GCMStatus::Valid {
+                    cipher,
+                    key: der.to_vec(),
+                }
+            }
+            KeyStatus::Retained => {
+                let cipher = JweA128KWEncipher::try_from(der).map_err(|err| {
+                    error!(?err, ?id, "Unable to load A128GCM retained cipher");
+                    OperationError::KP0038KeyObjectImportJweA128GCMInvalid
+                })?;
+
+                InternalJweA128GCMStatus::Retained {
+                    cipher,
+                    key: der.to_vec(),
+                }
+            }
+            KeyStatus::Revoked => InternalJweA128GCMStatus::Revoked,
+        };
+
+        let internal_jwe = InternalJweA128GCM {
+            valid_from,
+            status,
+            status_cid,
+        };
+
+        self.all.insert(id, internal_jwe);
+
+        Ok(())
+    }
+
+    fn decipher(&self, jwec: &JweCompact) -> Result<Jwe, OperationError> {
+        let internal_jwe = jwec
+            .kid()
+            .and_then(|kid| {
+                debug!(?kid);
+                self.all.get(kid)
+            })
+            .ok_or_else(|| {
+                error!("JWE is encrypted by a key that is not present in this KeyObject");
+                for pres_kid in self.all.keys() {
+                    debug!(?pres_kid);
+                }
+                OperationError::KP0039KeyObjectJweNotAssociated
+            })?;
+
+        match &internal_jwe.status {
+            InternalJweA128GCMStatus::Valid { cipher, .. }
+            | InternalJweA128GCMStatus::Retained { cipher, .. } => {
+                cipher.decipher(jwec).map_err(|jwt_err| {
+                    error!(?jwt_err, "Failed to decrypt jwe");
+                    OperationError::KP0040KeyObjectJweInvalid
+                })
+            }
+            InternalJweA128GCMStatus::Revoked => {
+                error!("The key used to encrypt this JWE has been revoked.");
+                Err(OperationError::KP0041KeyObjectJweRevoked)
+            }
+        }
+    }
+
+    fn encipher(&self, jwe: &Jwe, current_time: Duration) -> Result<JweCompact, OperationError> {
+        let Some(cipher) = self.get_valid_cipher(current_time) else {
+            error!("No encryption keys available. This may indicate that no keys are valid yet!");
+            return Err(OperationError::KP0042KeyObjectNoActiveEncryptionKeys);
+        };
+
+        cipher.encipher::<JweA128GCMEncipher>(jwe).map_err(|err| {
+            error!(?err, "Unable to sign jwe");
+            OperationError::KP0043KeyObjectJweA128GCMEncryption
+        })
+    }
+}
 
 #[derive(Clone)]
 enum InternalJwtEs256Status {
@@ -393,7 +618,7 @@ impl KeyObjectInternalJwtEs256 {
 
     fn to_key_iter(&self) -> impl Iterator<Item = (KeyId, KeyInternalData)> + '_ {
         self.all.iter().map(|(key_id, internal_jwt)| {
-            let usage = KeyUsage::JwtEs256;
+            let usage = KeyUsage::JwsEs256;
 
             let valid_from = internal_jwt.valid_from;
             let status_cid = internal_jwt.status_cid.clone();
@@ -433,10 +658,6 @@ impl KeyObjectInternalJwtEs256 {
             return Err(OperationError::KP0020KeyObjectNoActiveSigningKeys);
         };
 
-        debug!("=====================================================================");
-        debug!(kid = ?signing_key.get_kid());
-        debug!(kid = ?signing_key.get_legacy_kid());
-
         signing_key.sign(jws).map_err(|jwt_err| {
             error!(?jwt_err, "Unable to sign jws");
             OperationError::KP0021KeyObjectJwsEs256Signature
@@ -470,6 +691,23 @@ impl KeyObjectInternalJwtEs256 {
                 error!("The key used to sign this JWS has been revoked.");
                 Err(OperationError::KP0023KeyObjectJwsKeyRevoked)
             }
+        }
+    }
+
+    fn public_jwk(&self, key_id: &str) -> Result<Option<Jwk>, OperationError> {
+        if let Some(key_to_check) = self.all.get(key_id) {
+            match &key_to_check.status {
+                InternalJwtEs256Status::Valid { verifier, .. }
+                | InternalJwtEs256Status::Retained { verifier, .. } => {
+                    verifier.public_key_as_jwk().map(Some).map_err(|err| {
+                        error!(?err, "Unable to construct public JWK.");
+                        OperationError::KP0044KeyObjectJwsPublicJwk
+                    })
+                }
+                InternalJwtEs256Status::Revoked { .. } => Ok(None),
+            }
+        } else {
+            Ok(None)
         }
     }
 
@@ -599,6 +837,14 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
+    fn jws_public_jwk(&self, kid: &str) -> Result<Option<Jwk>, OperationError> {
+        if let Some(jws_es256_object) = &self.jws_es256 {
+            jws_es256_object.public_jwk(kid)
+        } else {
+            Ok(None)
+        }
+    }
+
     fn jws_es256_import(
         &mut self,
         import_keys: &SmolSet<[Vec<u8>; 1]>,
@@ -625,8 +871,8 @@ impl KeyObjectT for KeyObjectInternal {
 
         match (alg, enc) {
             (JweAlg::A128KW, JweEnc::A128GCM) => {
-                if let Some(jwe_a128_gcm) = &self.jws_es256 {
-                    jwe_a128_gcm.verify(jwec)
+                if let Some(jwe_a128_gcm) = &self.jwe_a128gcm {
+                    jwe_a128_gcm.decipher(jwec)
                 } else {
                     error!(provider_uuid = ?self.uuid, "jwe a128gcm not available on this provider");
                     Err(OperationError::KP0033KeyProviderNoSuchKey)
@@ -640,7 +886,11 @@ impl KeyObjectT for KeyObjectInternal {
         }
     }
 
-    fn jwe_a128gcm_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
+    fn jwe_a128gcm_assert(
+        &mut self,
+        valid_from: Duration,
+        cid: &Cid,
+    ) -> Result<(), OperationError> {
         let koi = self
             .jwe_a128gcm
             .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
@@ -654,7 +904,7 @@ impl KeyObjectT for KeyObjectInternal {
         current_time: Duration,
     ) -> Result<JweCompact, OperationError> {
         if let Some(jwe_a128_gcm) = &self.jwe_a128gcm {
-            jwe_a128_gcm.encrypt(jwe, current_time)
+            jwe_a128_gcm.encipher(jwe, current_time)
         } else {
             error!(provider_uuid = ?self.uuid, "jwe a128gcm not available on this provider");
             Err(OperationError::KP0032KeyProviderNoSuchKey)
@@ -677,12 +927,11 @@ impl KeyObjectT for KeyObjectInternal {
             .jws_es256
             .iter()
             .flat_map(|jws_es256| jws_es256.to_key_iter())
-            .chain(|| {
-                self
-                .jwe_a128gcm
-                .iter()
-                .flat_map(|jwe_a128gcm| jwe_a128gcm.to_key_iter())
-            });
+            .chain(
+                self.jwe_a128gcm
+                    .iter()
+                    .flat_map(|jwe_a128gcm| jwe_a128gcm.to_key_iter()),
+            );
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
         let mut attrs = Vec::with_capacity(3);

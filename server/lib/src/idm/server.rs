@@ -1942,6 +1942,7 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
+    use crate::server::keys::KeyProvidersTransaction;
     use crate::value::SessionState;
     use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
@@ -3371,19 +3372,28 @@ mod tests {
         let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
 
-        // Need to add a way to get the jwk by kid here.
-        assert!(false);
+        let mut idms_prox_read = idms.proxy_read().await;
 
-        let jws_validator =
-            JwsEs256Verifier::try_from(uat_unverified.get_jwk_pubkey().unwrap()).unwrap();
+        let token_kid = uat_unverified.kid().expect("no key id present");
+
+        let uat_jwk = idms_prox_read
+            .qs_read
+            .get_key_providers()
+            .get_key_object(UUID_DOMAIN_INFO)
+            .and_then(|object| {
+                object
+                    .jws_public_jwk(&token_kid)
+                    .expect("Unable to access uat jwk")
+            })
+            .expect("No jwk by this kid");
+
+        let jws_validator = JwsEs256Verifier::try_from(&uat_jwk).unwrap();
 
         let uat_inner: UserAuthToken = jws_validator
             .verify(&uat_unverified)
             .unwrap()
             .from_json()
             .unwrap();
-
-        let mut idms_prox_read = idms.proxy_read().await;
 
         // Check it's valid.
         idms_prox_read

@@ -1548,7 +1548,7 @@ mod tests {
     use crate::value::KeyStatus;
     use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::traits::JwsVerifiable;
-    use compact_jwt::{Jws, JwsCompact, JwsSigner};
+    use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
     use std::sync::Arc;
@@ -1697,14 +1697,19 @@ mod tests {
             .scim_sync_generate_token(&gte, ct)
             .expect("failed to generate new scim sync token");
 
-        let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(
-                Attribute::Name,
-                PartialValue::new_iname("test_scim_sync")
-            )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]),
-        );
-        assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+        let revoke_kid = sync_token.kid().expect("token does not contain a key id");
+
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_append(
+                    Attribute::KeyActionRevoke.into(),
+                    Value::HexString(revoke_kid.to_string()),
+                ),
+            )
+            .expect("Unable to revoke key");
+
         assert!(idms_prox_write.commit().is_ok());
 
         let mut idms_prox_read = idms.proxy_read().await;
@@ -1718,11 +1723,6 @@ mod tests {
             .qs_read
             .internal_search_uuid(sync_uuid)
             .expect("Unable to access sync entry");
-
-        let jws_key = sync_entry
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .cloned()
-            .expect("Missing attribute: jws_es256_private_key");
 
         let sync_tokens = sync_entry
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
@@ -1745,6 +1745,8 @@ mod tests {
         };
 
         let token = Jws::into_json(&scim_sync_token).expect("Unable to serialise forged token");
+
+        let jws_key = JwsEs256Signer::generate_es256().expect("Unable to create signer");
 
         let forged_token = jws_key.sign(&token).expect("Unable to sign forged token");
 

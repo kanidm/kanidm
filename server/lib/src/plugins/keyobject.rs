@@ -214,7 +214,8 @@ impl KeyObjectManagement {
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
-                if entry.attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA128GCM.into())
+                if entry
+                    .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA128GCM.into())
                 {
                     trace!(?key_object_uuid, "Adding a128gcm to key object");
                     key_object.jwe_a128gcm_assert(valid_from, &txn_cid)?;

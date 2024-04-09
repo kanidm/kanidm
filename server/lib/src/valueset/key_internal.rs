@@ -83,7 +83,8 @@ impl ValueSetKeyInternal {
                         // Type cast, for now, these are both Vec<u8>
                         let id: KeyId = id;
                         let usage = match usage {
-                            DbValueKeyUsage::JwtEs256 => KeyUsage::JwtEs256,
+                            DbValueKeyUsage::JwsEs256 => KeyUsage::JwsEs256,
+                            DbValueKeyUsage::JweA128GCM => KeyUsage::JweA128GCM,
                         };
                         let status_cid = status_cid.into();
                         let status = match status {
@@ -134,7 +135,8 @@ impl ValueSetKeyInternal {
                 )| {
                     let id: String = id.clone();
                     let usage = match usage {
-                        KeyUsage::JwtEs256 => DbValueKeyUsage::JwtEs256,
+                        KeyUsage::JwsEs256 => DbValueKeyUsage::JwsEs256,
+                        KeyUsage::JweA128GCM => DbValueKeyUsage::JweA128GCM,
                     };
                     let status_cid = status_cid.into();
                     let status = match status {
@@ -393,7 +395,7 @@ mod tests {
     #[test]
     fn test_valueset_key_internal_purge_trim() {
         let kid = "test".to_string();
-        let usage = KeyUsage::JwtEs256;
+        let usage = KeyUsage::JwsEs256;
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
@@ -428,7 +430,7 @@ mod tests {
     #[test]
     fn test_valueset_key_internal_merge_left() {
         let kid = "test".to_string();
-        let usage = KeyUsage::JwtEs256;
+        let usage = KeyUsage::JwsEs256;
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
@@ -462,7 +464,7 @@ mod tests {
     #[test]
     fn test_valueset_key_internal_merge_right() {
         let kid = "test".to_string();
-        let usage = KeyUsage::JwtEs256;
+        let usage = KeyUsage::JwsEs256;
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
@@ -497,7 +499,7 @@ mod tests {
     #[test]
     fn test_valueset_key_internal_repl_merge_left() {
         let kid = "test".to_string();
-        let usage = KeyUsage::JwtEs256;
+        let usage = KeyUsage::JwsEs256;
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let zero_cid = Cid::new_zero();
@@ -560,7 +562,7 @@ mod tests {
     #[test]
     fn test_valueset_key_internal_repl_merge_right() {
         let kid = "test".to_string();
-        let usage = KeyUsage::JwtEs256;
+        let usage = KeyUsage::JwsEs256;
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let zero_cid = Cid::new_zero();
