@@ -1402,12 +1402,17 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
     // Decode it?
     let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let jws_verifier = JwsEs256Verifier::try_from(
-        token_unverified
-            .get_jwk_pubkey()
-            .expect("No pubkey in token"),
-    )
-    .expect("Unable to build verifier");
+    let key_id = token_unverified
+        .kid()
+        .expect("token does not have a key id");
+    assert!(token_unverified.get_jwk_pubkey().is_none());
+
+    let jwk = rsclient
+        .get_public_jwk(key_id)
+        .await
+        .expect("Unable to get jwk");
+
+    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
 
     let token = jws_verifier
         .verify(&token_unverified)
@@ -1604,9 +1609,15 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
 
-    let jws_verifier =
-        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
-            .expect("Unable to build verifier");
+    let key_id = jwt.kid().expect("token does not have a key id");
+    assert!(jwt.get_jwk_pubkey().is_none());
+
+    let jwk = rsclient
+        .get_public_jwk(key_id)
+        .await
+        .expect("Unable to get jwk");
+
+    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
 
     let token: UserAuthToken = jws_verifier
         .verify(&jwt)
@@ -1813,9 +1824,15 @@ async fn start_password_session(
 
     let jwt = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
 
-    let jws_verifier =
-        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
-            .expect("Unable to build verifier");
+    let key_id = jwt.kid().expect("token does not have a key id");
+    assert!(jwt.get_jwk_pubkey().is_none());
+
+    let jwk = rsclient
+        .get_public_jwk(key_id)
+        .await
+        .expect("Unable to get jwk");
+
+    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
 
     let uat: UserAuthToken = jws_verifier
         .verify(&jwt)

@@ -1,4 +1,4 @@
-use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
@@ -29,7 +29,6 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
 
-    println!("{:?}", a);
     let sync_entry = a.expect("No sync account was created?!");
 
     // Shouldn't have a cred portal.
@@ -77,12 +76,17 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
 
     let token_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
 
-    let jws_verifier = JwsEs256Verifier::try_from(
-        token_unverified
-            .get_jwk_pubkey()
-            .expect("No pubkey in token"),
-    )
-    .expect("Unable to build verifier");
+    let key_id = token_unverified
+        .kid()
+        .expect("token does not have a key id");
+    assert!(token_unverified.get_jwk_pubkey().is_none());
+
+    let jwk = rsclient
+        .get_public_jwk(key_id)
+        .await
+        .expect("Unable to get jwk");
+
+    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
 
     let token = jws_verifier
         .verify(&token_unverified)

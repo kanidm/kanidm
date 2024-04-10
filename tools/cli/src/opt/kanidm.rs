@@ -1402,4 +1402,7 @@ pub enum KanidmClientOpt {
 pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
+
+    /// Select the instance name you wish to connect to
+    pub instance: Option<String>,
 }

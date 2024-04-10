@@ -194,6 +194,7 @@ impl Modify for SecurityAddon {
         super::v1_scim::sync_account_token_post,
         super::v1_scim::sync_account_token_delete,
         super::v1::debug_ipinfo,
+        super::v1::public_jwk_key_id_get,
 
     ),
     components(
@@ -276,7 +277,6 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
-
 
             WebError,
         )
