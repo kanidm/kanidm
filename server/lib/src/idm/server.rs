@@ -4,7 +4,7 @@ use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use compact_jwt::JwsCompact;
+use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
 use concread::hashmap::HashMap;
 use kanidm_proto::internal::{
@@ -51,6 +51,7 @@ use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::server::keys::KeyProvidersTransaction;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Session, SessionState};
 
@@ -1325,6 +1326,16 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
+    pub fn jws_public_jwk(&mut self, key_id: &str) -> Result<Jwk, OperationError> {
+        self.qs_read
+            .get_key_providers()
+            .get_key_object_handle(UUID_DOMAIN_INFO)
+            // If there is no domain info, error.
+            .ok_or(OperationError::NoMatchingEntries)
+            .and_then(|key_object| key_object.jws_public_jwk(key_id))
+            .and_then(|maybe_key: Option<Jwk>| maybe_key.ok_or(OperationError::NoMatchingEntries))
+    }
+
     pub fn get_radiusauthtoken(
         &mut self,
         rate: &RadiusAuthTokenEvent,

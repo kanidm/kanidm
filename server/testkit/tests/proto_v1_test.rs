@@ -18,7 +18,7 @@ use tracing::{debug, trace};
 
 use std::str::FromStr;
 
-use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use webauthn_authenticator_rs::softpasskey::SoftPasskey;
 use webauthn_authenticator_rs::WebauthnAuthenticator;
 
@@ -1678,9 +1678,15 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
 
     let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
 
-    let jws_verifier =
-        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
-            .expect("Unable to build verifier");
+    let key_id = jwt.kid().expect("token does not have a key id");
+    assert!(jwt.get_jwk_pubkey().is_none());
+
+    let jwk = rsclient
+        .get_public_jwk(key_id)
+        .await
+        .expect("Unable to get jwk");
+
+    let jws_verifier = JwsEs256Verifier::try_from(&jwk).expect("Unable to build verifier");
 
     let uat: UserAuthToken = jws_verifier
         .verify(&jwt)
@@ -1718,9 +1724,9 @@ async fn test_server_user_auth_reauthentication(rsclient: KanidmClient) {
 
     let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
 
-    let jws_verifier =
-        JwsEs256Verifier::try_from(jwt.get_jwk_pubkey().expect("No pubkey in token"))
-            .expect("Unable to build verifier");
+    let key_id_2 = jwt.kid().expect("token does not have a key id");
+    assert_eq!(key_id, key_id_2);
+    assert!(jwt.get_jwk_pubkey().is_none());
 
     let uat: UserAuthToken = jws_verifier
         .verify(&jwt)

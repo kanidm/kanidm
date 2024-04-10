@@ -49,7 +49,7 @@ pub(crate) async fn oauth2_get(
     tag = "v1/oauth2",
     operation_id = "oauth2_basic_post"
 )]
-// TODO: what does this actually do? :D
+/// Create a new Confidential OAuth2 client that authenticates with Http Basic.
 pub(crate) async fn oauth2_basic_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -76,7 +76,7 @@ pub(crate) async fn oauth2_basic_post(
     tag = "v1/oauth2",
     operation_id = "oauth2_public_post"
 )]
-// TODO: what does this actually do? :D
+/// Create a new Public OAuth2 client
 pub(crate) async fn oauth2_public_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,

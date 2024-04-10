@@ -21,7 +21,7 @@ use regex::Regex;
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
 
-use compact_jwt::{JweCompact, JwsCompact};
+use compact_jwt::{JweCompact, Jwk, JwsCompact};
 
 use kanidmd_lib::be::BackendTransaction;
 use kanidmd_lib::prelude::*;
@@ -1513,6 +1513,22 @@ impl QueryServerReadV1 {
                 admin_error!("Invalid identity: {:?}", e);
                 e
             })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    /// Retrieve a public jwk
+    pub async fn handle_public_jwk_get(
+        &self,
+        key_id: String,
+        eventid: Uuid,
+    ) -> Result<Jwk, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await;
+
+        idms_prox_read.jws_public_jwk(key_id.as_str())
     }
 
     #[instrument(

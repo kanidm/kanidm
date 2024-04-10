@@ -187,8 +187,6 @@ pub enum OperationError {
     KP0043KeyObjectJweA128GCMEncryption,
     KP0044KeyObjectJwsPublicJwk,
 
-
-
     // Plugins
     PL0001GidOverlapsSystemRange,
 }

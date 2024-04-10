@@ -6,7 +6,7 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
-use compact_jwt::{Jws, JwsSigner};
+use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
@@ -2908,8 +2908,37 @@ pub async fn debug_ipinfo(
     Ok(Json::from(vec![ip_addr]))
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/jwk/{key_id}",
+    responses(
+        (status=200, body=Jwk, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/jwk",
+    operation_id = "public_jwk_key_id_get"
+)]
+pub async fn public_jwk_key_id_get(
+    State(state): State<ServerState>,
+    Path(key_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> Result<Json<Jwk>, WebError> {
+    if key_id.len() > 64 {
+        // Fast path to reject long KeyIDs
+        return Err(WebError::from(OperationError::NoMatchingEntries));
+    }
+    state
+        .qe_r_ref
+        .handle_public_jwk_get(key_id, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
 fn cacheable_routes(state: ServerState) -> Router<ServerState> {
     Router::new()
+        .route("/v1/jwk/:key_id", get(public_jwk_key_id_get))
         .route(
             "/v1/person/:id/_radius/_token",
             get(person_id_radius_token_get),

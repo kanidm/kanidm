@@ -24,6 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use compact_jwt::Jwk;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
@@ -1472,6 +1473,11 @@ impl KanidmClient {
 
     pub async fn auth_valid(&self) -> Result<(), ClientError> {
         self.perform_get_request(V1_AUTH_VALID).await
+    }
+
+    pub async fn get_public_jwk(&self, key_id: &str) -> Result<Jwk, ClientError> {
+        self.perform_get_request(&format!("/v1/jwk/{}", key_id))
+            .await
     }
 
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {

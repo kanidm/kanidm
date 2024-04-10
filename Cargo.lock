@@ -836,7 +836,7 @@ dependencies = [
  "base64 0.21.7",
  "base64urlsafedata",
  "hex",
- "kanidm-hsm-crypto",
+ "kanidm-hsm-crypto 0.2.0",
  "openssl",
  "serde",
  "serde_json",
@@ -2952,6 +2952,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm-hsm-crypto"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10b3ed8e86cda3da4f274c677a3057d567bd7b715a0feb06a656e55cc75faf5e"
+dependencies = [
+ "argon2",
+ "hex",
+ "openssl",
+ "serde",
+ "tracing",
+ "zeroize",
+]
+
+[[package]]
 name = "kanidm-ipa-sync"
 version = "1.2.0-dev"
 dependencies = [
@@ -3016,6 +3030,7 @@ dependencies = [
 name = "kanidm_client"
 version = "1.2.0-dev"
 dependencies = [
+ "compact_jwt 0.4.0-dev",
  "hyper",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
@@ -3039,7 +3054,7 @@ dependencies = [
  "base64 0.21.7",
  "base64urlsafedata",
  "hex",
- "kanidm-hsm-crypto",
+ "kanidm-hsm-crypto 0.1.6",
  "kanidm_proto",
  "openssl",
  "openssl-sys",
@@ -3122,7 +3137,7 @@ dependencies = [
  "csv",
  "futures",
  "hashbrown 0.14.3",
- "kanidm-hsm-crypto",
+ "kanidm-hsm-crypto 0.1.6",
  "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_lib_crypto",
