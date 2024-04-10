@@ -277,11 +277,9 @@ impl ValueSetT for ValueSetKeyInternal {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().map(|(kid, key_object)| {
-            let kid_hex = hex::encode(kid);
-
             format!(
                 "{}: {} {} {}",
-                kid_hex, key_object.status, key_object.usage, key_object.valid_from
+                kid, key_object.status, key_object.usage, key_object.valid_from
             )
         }))
     }

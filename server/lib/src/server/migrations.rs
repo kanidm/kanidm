@@ -941,7 +941,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.reload()?;
 
         // Update the domain entry to contain it's key object, which can now be generated.
-        let idm_data = [E_DOMAIN_INFO_DL6.clone().into()];
+        let idm_data = [
+            IDM_ACP_DOMAIN_ADMIN_DL6.clone().into(),
+            E_DOMAIN_INFO_DL6.clone().into(),
+        ];
         idm_data
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
@@ -949,6 +952,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(?err, "migrate_domain_5_to_6 -> Error");
                 err
             })?;
+
+        // At this point we reload to show the new key objects on the domain.
+        self.reload()?;
 
         // Migrate the domain key to a retained key on the key object.
         let domain_es256_private_key = self.get_domain_es256_private_key().map_err(|err| {

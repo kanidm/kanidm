@@ -1944,9 +1944,12 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_domain_reset_token_key(&self) -> Result<(), ClientError> {
-        self.perform_delete_request("/v1/domain/_attr/es256_private_key_der")
-            .await
+    pub async fn idm_domain_revoke_key(&self, key_id: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/domain/_attr/key_action_revoke",
+            vec![key_id.to_string()],
+        )
+        .await
     }
 
     // ==== schema

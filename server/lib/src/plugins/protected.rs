@@ -28,6 +28,8 @@ lazy_static! {
         m.insert(Attribute::DomainLdapBasedn);
         m.insert(Attribute::FernetPrivateKeyStr);
         m.insert(Attribute::Es256PrivateKeyDer);
+        m.insert(Attribute::KeyActionRevoke);
+        m.insert(Attribute::KeyActionRotate);
         m.insert(Attribute::IdVerificationEcKey);
         m.insert(Attribute::BadlistPassword);
         m.insert(Attribute::DeniedName);

@@ -60,5 +60,11 @@ fn main() {
 
     tracing::debug!("Using {} worker threads", par_count);
 
+    /*
+    let instance: &str = opt.instance
+        .as_deref()
+        .unwrap_or("default");
+    */
+
     rt.block_on(async { opt.commands.exec().await });
 }

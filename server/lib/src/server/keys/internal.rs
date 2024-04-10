@@ -194,6 +194,7 @@ impl KeyObjectInternalJweA128GCM {
     fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         if self.get_valid_cipher(valid_from).is_none() {
             // This means there is no active signing key, so we need to create one.
+            warn!("no active jwe a128gcm found, creating a new one ...");
             self.new_active(valid_from, cid)
         } else {
             Ok(())
@@ -421,6 +422,7 @@ impl KeyObjectInternalJwtEs256 {
     fn assert_active(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         if self.get_valid_signer(valid_from).is_none() {
             // This means there is no active signing key, so we need to create one.
+            warn!("no active jwt es256 found, creating a new one ...");
             self.new_active(valid_from, cid)
         } else {
             Ok(())

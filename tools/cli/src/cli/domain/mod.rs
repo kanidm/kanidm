@@ -7,8 +7,8 @@ impl DomainOpt {
             DomainOpt::SetDisplayName(copt) => copt.copt.debug,
             DomainOpt::SetLdapBasedn { copt, .. }
             | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. }
-            | DomainOpt::Show(copt)
-            | DomainOpt::ResetTokenKey(copt) => copt.debug,
+            | DomainOpt::RevokeKey { copt, .. }
+            | DomainOpt::Show(copt) => copt.debug,
         }
     }
 
@@ -53,9 +53,9 @@ impl DomainOpt {
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
-            DomainOpt::ResetTokenKey(copt) => {
+            DomainOpt::RevokeKey { copt, key_id } => {
                 let client = copt.to_client(OpType::Write).await;
-                match client.idm_domain_reset_token_key().await {
+                match client.idm_domain_revoke_key(key_id).await {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, copt.output_mode),
                 }

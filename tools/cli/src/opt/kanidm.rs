@@ -1147,10 +1147,14 @@ pub enum DomainOpt {
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
-    #[clap(name = "reset-token-key")]
-    /// Reset this domain token signing key. This will cause all user sessions to be
+    #[clap(name = "revoke-key")]
+    /// Revoke a key by it's key id. This will cause all user sessions to be
     /// invalidated (logged out).
-    ResetTokenKey(CommonOpt),
+    RevokeKey {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        key_id: String,
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -1403,6 +1407,9 @@ pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
 
+    /*
     /// Select the instance name you wish to connect to
     pub instance: Option<String>,
+    */
 }
+

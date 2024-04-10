@@ -206,19 +206,13 @@ impl KeyObjectManagement {
                 {
                     // Assert that this object has a valid es256 key present. Post revoke, it may NOT
                     // be present. This differs to rotate, in that the assert verifes we have at least
-                    // *one* key that is valid from right now.
-                    trace!(?key_object_uuid, "Adding es256 to key object");
-                    key_object.jws_es256_assert(valid_from, &txn_cid)?;
-                    // And assert a key that is valid from time 0. This is needed for tests but also
-                    // in case the clock steps back a long way. It establishes a baseline/fallback.
+                    // *one* key that is valid in all conditions.
                     key_object.jws_es256_assert(Duration::ZERO, &txn_cid)?;
                 }
 
                 if entry
                     .attribute_equality(Attribute::Class, &EntryClass::KeyObjectJweA128GCM.into())
                 {
-                    trace!(?key_object_uuid, "Adding a128gcm to key object");
-                    key_object.jwe_a128gcm_assert(valid_from, &txn_cid)?;
                     key_object.jwe_a128gcm_assert(Duration::ZERO, &txn_cid)?;
                 }
 
