@@ -1001,8 +1001,6 @@ mod tests {
         // Create a new key object
         let key_object_uuid = Uuid::new_v4();
 
-        trace!("AAAAAAAAAAAAAAA");
-
         write_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
@@ -1012,8 +1010,6 @@ mod tests {
                 (Attribute::Uuid, Value::Uuid(key_object_uuid))
             )])
             .expect("Unable to create new key object");
-
-        trace!("BBBBBBBBBBBBBBbb");
 
         // Reload to trigger the key object to reload.
         write_txn.reload().expect("Unable to reload transaction");

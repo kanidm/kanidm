@@ -785,7 +785,7 @@ lazy_static! {
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
         (Attribute::Version, Value::Uint32(19))
@@ -798,7 +798,7 @@ Attribute::Description,
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
@@ -813,7 +813,7 @@ Attribute::Description,
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );

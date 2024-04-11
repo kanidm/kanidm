@@ -443,7 +443,7 @@ pub static ref SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY: SchemaAttribute = SchemaAttrib
     ..Default::default()
 };
 
-// TO BE REMOVED.
+// TO BE REMOVED IN A FUTURE RELEASE
 pub static ref SCHEMA_ATTR_PRIVATE_COOKIE_KEY: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_PRIVATE_COOKIE_KEY,
     name: Attribute::PrivateCookieKey.into(),
