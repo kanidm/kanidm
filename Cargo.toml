@@ -48,7 +48,7 @@ repository = "https://github.com/kanidm/kanidm/"
 ## As Kanidm maintains a number of libraries, sometimes during development we need to override them
 ## with local or git versions. This patch table allows quick uncommenting to achieve that.
 
-compact_jwt = { path = "../compact_jwt" }
+# compact_jwt = { path = "../compact_jwt" }
 # concread = { path = "../concread" }
 
 # idlset = { path = "../idlset" }
