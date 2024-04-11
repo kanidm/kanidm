@@ -99,7 +99,6 @@ pub struct Person {
     pub preflight_state: PreflightState,
     pub username: String,
     pub display_name: String,
-    pub member_of: BTreeSet<String>,
     pub roles: BTreeSet<ActorRole>,
     pub credential: Credential,
     pub model: Model,

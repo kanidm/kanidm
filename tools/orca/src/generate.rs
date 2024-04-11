@@ -103,7 +103,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let password = random_password(&mut seeded_rng);
 
-        let member_of = BTreeSet::new();
         let roles = BTreeSet::new();
 
         let model = Model::Basic;
@@ -115,7 +114,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             username: username.clone(),
             display_name,
             roles,
-            member_of,
             credential: Credential::Password { plain: password },
             model,
         };
@@ -160,7 +158,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
             // Add the reverse links, this allows the person in the test
             // to know their roles
-            person.member_of.insert(group.name.clone());
             person.roles.insert(group.role.clone());
         }
     }
