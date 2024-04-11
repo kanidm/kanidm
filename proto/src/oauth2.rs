@@ -137,13 +137,13 @@ where
     pub sub: Uuid,
     /// client_id of the oauth2 rp
     pub aud: String,
-    /// Expiry in utc epoch seconds
+    /// Expiry in UTC epoch seconds
     pub exp: i64,
     /// Not valid before.
     pub nbf: i64,
     /// Issued at time.
     pub iat: i64,
-    /// -- not used.
+    /// -- NOT used, but part of the spec.
     pub jti: Option<String>,
     pub client_id: String,
     #[serde(flatten)]
@@ -168,7 +168,7 @@ pub struct OAuth2RFC9068TokenExtensions {
     pub parent_session_id: Option<Uuid>,
 }
 
-/// The respons for an access token
+/// The response for an access token
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {

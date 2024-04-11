@@ -1136,7 +1136,7 @@ impl QueryServerReadV1 {
         let session_token = JweCompact::from_str(&session_token.token)
             .map(|token_enc| CredentialUpdateSessionToken { token_enc })
             .map_err(|err| {
-                error!(?err, "malformed token");
+                error!(?err, "Invalid Token - Must be a compact JWE");
                 OperationError::InvalidRequestState
             })?;
 
