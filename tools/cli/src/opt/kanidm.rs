@@ -57,6 +57,9 @@ pub struct CommonOpt {
     /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
+    /// Select the instance name you wish to connect to
+    #[clap(short='I', long="instance", env = "KANIDM_INSTANCE")]
+    pub instance: Option<String>,
     /// The URL of the kanidm instance
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
@@ -1406,10 +1409,5 @@ pub enum KanidmClientOpt {
 pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
-
-    /*
-    /// Select the instance name you wish to connect to
-    pub instance: Option<String>,
-    */
 }
 

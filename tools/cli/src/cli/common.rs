@@ -30,8 +30,10 @@ impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
 
+        let instance_name: Option<&str> = self.instance.as_deref();
+
         let client_builder = KanidmClientBuilder::new()
-            .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
+            .read_options_from_optional_instance_config(DEFAULT_CLIENT_CONFIG_PATH, instance_name)
             .map_err(|e| {
                 error!(
                     "Failed to parse config ({:?}) -- {:?}",
@@ -40,7 +42,7 @@ impl CommonOpt {
                 e
             })
             .and_then(|cb| {
-                cb.read_options_from_optional_config(&config_path)
+                cb.read_options_from_optional_instance_config(&config_path, instance_name)
                     .map_err(|e| {
                         error!("Failed to parse config ({:?}) -- {:?}", config_path, e);
                         e
@@ -98,7 +100,7 @@ impl CommonOpt {
 
     async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
-        let instance_name = "default";
+
         // Read the token file.
         let token_store = match read_tokens(&client.get_token_cache_path()) {
             Ok(t) => t,
@@ -108,7 +110,7 @@ impl CommonOpt {
             }
         };
 
-        let Some(token_instance) = token_store.instances(instance_name) else {
+        let Some(token_instance) = token_store.instances(&self.instance) else {
             error!(
                 "No valid authentication tokens found. Please login with the 'login' subcommand."
             );
@@ -194,7 +196,10 @@ impl CommonOpt {
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    match prompt_for_username_get_values(&client.get_token_cache_path()) {
+                    match prompt_for_username_get_values(
+                        &client.get_token_cache_path(),
+                        &self.instance,
+                    ) {
                         Ok(tuple) => tuple,
                         Err(msg) => {
                             error!("Error: {}", msg);
@@ -330,9 +335,8 @@ impl CommonOpt {
 /// Used to reduce duplication in implementing [prompt_for_username_get_username] and `prompt_for_username_get_token`
 pub fn prompt_for_username_get_values(
     token_cache_path: &str,
+    instance_name: &Option<String>,
 ) -> Result<(String, JwsCompact), String> {
-    let instance_name = "default";
-
     let token_store = match read_tokens(token_cache_path) {
         Ok(value) => value,
         _ => return Err("Error retrieving authentication token store".to_string()),
@@ -382,8 +386,11 @@ pub fn prompt_for_username_get_values(
 /// This parses the token store and prompts the user to select their username, returns the username as a String
 ///
 /// Powered by [prompt_for_username_get_values]
-pub fn prompt_for_username_get_username(token_cache_path: &str) -> Result<String, String> {
-    match prompt_for_username_get_values(token_cache_path) {
+pub fn prompt_for_username_get_username(
+    token_cache_path: &str,
+    instance_name: &Option<String>,
+) -> Result<String, String> {
+    match prompt_for_username_get_values(token_cache_path, instance_name) {
         Ok(value) => {
             let (f_user, _) = value;
             Ok(f_user)

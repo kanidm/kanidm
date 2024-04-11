@@ -100,15 +100,15 @@ impl TokenInstance {
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct TokenStore {
-    instances: BTreeMap<String, TokenInstance>,
+    instances: BTreeMap<Option<String>, TokenInstance>,
 }
 
 impl TokenStore {
-    pub fn instances(&self, name: &str) -> Option<&TokenInstance> {
+    pub fn instances(&self, name: &Option<String>) -> Option<&TokenInstance> {
         self.instances.get(name)
     }
 
-    pub fn instances_mut(&mut self, name: &str) -> Option<&mut TokenInstance> {
+    pub fn instances_mut(&mut self, name: &Option<String>) -> Option<&mut TokenInstance> {
         self.instances.get_mut(name)
     }
 }
@@ -338,9 +338,8 @@ async fn process_auth_state(
     mut allowed: Vec<AuthAllowed>,
     mut client: KanidmClient,
     maybe_password: &Option<String>,
+    instance_name: &Option<String>,
 ) {
-    let instance_name = "default";
-
     loop {
         debug!("Allowed mechanisms -> {:?}", allowed);
         // What auth can proceed?
@@ -410,10 +409,7 @@ async fn process_auth_state(
     let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_default();
 
     // Select our token instance. Create it if empty.
-    let token_instance = tokens
-        .instances
-        .entry(instance_name.to_string())
-        .or_default();
+    let token_instance = tokens.instances.entry(instance_name.clone()).or_default();
 
     // Add our new one
     let (spn, tonk) = match client.get_token().await {
@@ -555,8 +551,10 @@ impl LoginOpt {
                 std::process::exit(1);
             });
 
+        let instance_name = &self.copt.instance;
+
         // We now have the first auth state, so we can proceed until complete.
-        process_auth_state(allowed, client, &self.password).await;
+        process_auth_state(allowed, client, &self.password, instance_name).await;
     }
 }
 
@@ -568,12 +566,14 @@ impl ReauthOpt {
     pub async fn exec(&self) {
         let client = self.copt.to_client(OpType::Read).await;
 
+        let instance_name = &self.copt.instance;
+
         let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
             error!("Error during reauthentication begin phase: {:?}", e);
             std::process::exit(1);
         });
 
-        process_auth_state(allowed, client, &None).await;
+        process_auth_state(allowed, client, &None, instance_name).await;
     }
 }
 
@@ -583,7 +583,7 @@ impl LogoutOpt {
     }
 
     pub async fn exec(&self) {
-        let instance_name = "default";
+        let instance_name = &self.copt.instance;
 
         let spn: String = if self.local_only {
             // For now we just remove this from the token store.
@@ -593,7 +593,10 @@ impl LogoutOpt {
                 None => {
                     // check if we're in a tty
                     if std::io::stdin().is_terminal() {
-                        match prompt_for_username_get_username(&self.copt.get_token_cache_path()) {
+                        match prompt_for_username_get_username(
+                            &self.copt.get_token_cache_path(),
+                            instance_name,
+                        ) {
                             Ok(value) => value,
                             Err(msg) => {
                                 error!("{}", msg);
@@ -693,14 +696,14 @@ impl SessionOpt {
     }
 
     pub async fn exec(&self) {
-        let instance_name = "default";
-
         match self {
             SessionOpt::List(copt) => {
                 let token_store = read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
                     error!("Error retrieving authentication token store");
                     std::process::exit(1);
                 });
+
+                let instance_name = &copt.instance;
 
                 let Some(token_instance) = token_store.instances(instance_name) else {
                     return;
@@ -717,6 +720,8 @@ impl SessionOpt {
                         error!("Error retrieving authentication token store");
                         std::process::exit(1);
                     });
+
+                let instance_name = &copt.instance;
 
                 let Some(token_instance) = token_store.instances_mut(instance_name) else {
                     error!("No tokens for instance");
