@@ -34,7 +34,7 @@ impl TryFrom<u8> for TotpDigits {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             6 => Ok(TotpDigits::Six),
-            8 => Ok(TotpDigits::Six),
+            8 => Ok(TotpDigits::Eight),
             _ => Err(()),
         }
     }
