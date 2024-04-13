@@ -1151,7 +1151,7 @@ pub enum DomainOpt {
     /// Show information about this system's domain
     Show(CommonOpt),
     #[clap(name = "revoke-key")]
-    /// Revoke a key by it's key id. This will cause all user sessions to be
+    /// Revoke a key by its key id. This will cause all user sessions to be
     /// invalidated (logged out).
     RevokeKey {
         #[clap(flatten)]

@@ -2250,15 +2250,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             s_claims,
             claims: extra_claims,
         })
-
-        /*
-        // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
-        Oauth2TokenType::ClientAccess { .. } => {
-            warn!("OpenID userinfo introspection of client access tokens is not currently supported.");
-            Err(Oauth2Error::InvalidToken)
-        }
-        Oauth2TokenType::Refresh { .. } => Err(Oauth2Error::InvalidToken),
-        */
     }
 
     #[instrument(level = "debug", skip_all)]
