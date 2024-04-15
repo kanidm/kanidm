@@ -191,10 +191,11 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_online_auth_init(
+    async fn unix_user_online_auth_init<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _keystore: &mut D,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
@@ -292,27 +293,30 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_offline_auth_init(
+    async fn unix_user_offline_auth_init<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
+        _keystore: &mut D,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
-    /*
-    async fn unix_user_offline_auth_step(
+    async fn unix_user_offline_auth_step<D: KeyStoreTxn + Send>(
         &self,
         _account_id: &str,
+        _token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
+        _keystore: &mut D,
+        _tpm: &mut tpm::BoxedDynTpm,
+        _machine_key: &tpm::MachineKey,
         _online_at_init: bool,
     ) -> Result<AuthResult, IdpError> {
         // We need any cached credentials here.
-        todo!();
+        Err(IdpError::BadRequest)
     }
-    */
 
     async fn unix_group_get(
         &self,

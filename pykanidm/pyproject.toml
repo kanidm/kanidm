@@ -37,15 +37,15 @@ pylint-pytest = "^1.1.7"
 pytest-asyncio = "^0.23.6"
 pytest-mock = "^3.14.0"
 pytest-aiohttp = "^1.0.5"
-black = "^24.3.0"
+black = "^24.4.0"
 mkdocs = "^1.5.3"
-mkdocs-material = "^9.5.16"
-mkdocstrings = "^0.24.1"
-mkdocstrings-python = "^1.9.0"
+mkdocs-material = "^9.5.17"
+mkdocstrings = "^0.24.3"
+mkdocstrings-python = "^1.9.2"
 pook = "^1.4.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.3.5"
+ruff = ">=0.0.230,<0.3.8"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
