@@ -4,10 +4,10 @@ use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
 use axum::extract::{Path, Query, State};
 use axum::http::header::{
-    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, AUTHORIZATION, CONTENT_TYPE,
-    LOCATION, WWW_AUTHENTICATE,
+    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
+    WWW_AUTHENTICATE,
 };
-use axum::http::{HeaderMap, HeaderValue, StatusCode};
+use axum::http::{HeaderValue, StatusCode};
 use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
@@ -478,30 +478,22 @@ async fn oauth2_authorise_reject(
 }
 
 #[axum_macros::debug_handler]
-#[instrument(skip(state, kopid, headers), level = "DEBUG")]
+#[instrument(skip(state, kopid, client_auth_info), level = "DEBUG")]
 pub async fn oauth2_token_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    headers: HeaderMap,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(tok_req): Form<AccessTokenRequest>,
 ) -> impl IntoResponse {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
 
-    // Get the authz header (if present). Not all exchange types require this.
-    let client_authz = headers
-        .get("authorization")
-        .and_then(|hv| hv.to_str().ok())
-        .and_then(|h| h.split(' ').last())
-        .map(str::to_string);
-
     // Do we change the method/path we take here based on the type of requested
     // grant? Should we cease the delayed/async session update here and just opt
     // for a wr txn?
-
     match state
         .qe_w_ref
-        .handle_oauth2_token_exchange(client_authz, tok_req, kopid.eventid)
+        .handle_oauth2_token_exchange(client_auth_info, tok_req, kopid.eventid)
         .await
     {
         Ok(tok_res) => (
@@ -609,39 +601,12 @@ pub async fn oauth2_token_introspect_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    headers: HeaderMap,
     Form(intr_req): Form<AccessTokenIntrospectRequest>,
 ) -> impl IntoResponse {
-    let client_authz = match client_auth_info.bearer_token {
-        Some(val) => val,
-        None => {
-            error!("Bearer Authentication Not Provided, trying basic");
-            match headers.get(AUTHORIZATION) {
-                Some(val) => {
-                    // LOL THIS IS HILARIOUSLY TERRIBLE BUT WE PARSE THE RAW OK
-                    #[allow(clippy::unwrap_used)]
-                    val.to_str()
-                        .unwrap()
-                        .strip_prefix("Basic ")
-                        .unwrap()
-                        .to_string()
-                }
-                None => {
-                    #[allow(clippy::unwrap_used)]
-                    return Response::builder()
-                        .status(StatusCode::UNAUTHORIZED)
-                        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                        .body(Body::from("Invalid Bearer Authorisation"))
-                        .unwrap();
-                }
-            }
-        }
-    };
     request_trace!("Introspect Request - {:?}", intr_req);
-
     let res = state
         .qe_r_ref
-        .handle_oauth2_token_introspect(client_authz, intr_req, kopid.eventid)
+        .handle_oauth2_token_introspect(client_auth_info, intr_req, kopid.eventid)
         .await;
 
     match res {
@@ -700,24 +665,11 @@ pub async fn oauth2_token_revoke_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(intr_req): Form<TokenRevokeRequest>,
 ) -> impl IntoResponse {
-    // TODO: we should handle the session-based auth bit here I think maybe possibly there's no tests
-    let client_authz = match client_auth_info.bearer_token {
-        Some(val) => val,
-        None => {
-            return (
-                StatusCode::UNAUTHORIZED,
-                [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-                "",
-            )
-                .into_response();
-        }
-    };
-
     request_trace!("Revoke Request - {:?}", intr_req);
 
     let res = state
         .qe_w_ref
-        .handle_oauth2_token_revoke(client_authz, intr_req, kopid.eventid)
+        .handle_oauth2_token_revoke(client_auth_info, intr_req, kopid.eventid)
         .await;
 
     match res {

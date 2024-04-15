@@ -223,6 +223,21 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
+    /// level.
+    #[cfg(test)]
+    pub(crate) fn internal_apply_domain_migration(
+        &mut self,
+        to_level: u32,
+    ) -> Result<(), OperationError> {
+        assert!(to_level > self.get_domain_version());
+        self.internal_modify_uuid(
+            UUID_DOMAIN_INFO,
+            &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(to_level)),
+        )
+        .and_then(|()| self.reload())
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
         let res = Entry::from_proto_entry_str(e_str, self)
@@ -689,12 +704,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "migrate 16 to 17 -> result");
         }
         debug_assert!(res.is_ok());
-        res?;
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
+        res
     }
 
     #[instrument(level = "info", skip_all)]
@@ -872,8 +882,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
         ];
 
         idm_schema_classes
@@ -886,17 +909,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        let idm_access_controls = [
+        let idm_data = [
             // Update access controls.
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
+            // Add the internal key provider.
+            E_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
         ];
-        self.reload()?;
 
-        idm_access_controls
+        idm_data
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
@@ -904,7 +928,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
-        // all the built-in objects get a builtin class
+        // all existing built-in objects get a builtin class
         let filter = f_lt(
             Attribute::Uuid,
             PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),
@@ -912,6 +936,66 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
 
         self.internal_modify(&filter!(filter), &modlist)?;
+
+        // Reload such that the new default key provider is loaded.
+        self.reload()?;
+
+        // Update the domain entry to contain it's key object, which can now be generated.
+        let idm_data = [
+            IDM_ACP_DOMAIN_ADMIN_DL6.clone().into(),
+            E_DOMAIN_INFO_DL6.clone().into(),
+        ];
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        // At this point we reload to show the new key objects on the domain.
+        self.reload()?;
+
+        // Migrate the domain key to a retained key on the key object.
+        let domain_es256_private_key = self.get_domain_es256_private_key().map_err(|err| {
+            error!(?err, "migrate_domain_5_to_6 -> Error");
+            err
+        })?;
+
+        // Migrate all service/scim account keys to the domain key for verification.
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+        let entry_keys_to_migrate = self.internal_search(filter)?;
+
+        let mut modlist = Vec::with_capacity(1 + entry_keys_to_migrate.len());
+
+        modlist.push(Modify::Present(
+            Attribute::KeyActionImportJwsEs256.into(),
+            Value::PrivateBinary(domain_es256_private_key),
+        ));
+
+        for entry in entry_keys_to_migrate {
+            // In these entries, the keys are in JwsEs256PrivateKey.
+            if let Some(jws_signer) =
+                entry.get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
+            {
+                let es256_private_key = jws_signer.private_key_to_der().map_err(|err| {
+                    error!(?err, uuid = ?entry.get_display_id(), "unable to convert signer to der");
+                    OperationError::InvalidValueState
+                })?;
+
+                modlist.push(Modify::Present(
+                    Attribute::KeyActionImportJwsEs256.into(),
+                    Value::PrivateBinary(es256_private_key),
+                ));
+            }
+        }
+
+        let modlist = ModifyList::new_list(modlist);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
 
         Ok(())
     }
@@ -1007,6 +1091,48 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // =========== Apply changes ==============
+
+        // Do this before schema change since domain info has cookie key
+        // as may at this point.
+        //
+        // Domain info should have the attribute private cookie key removed.
+        let modlist = ModifyList::new_list(vec![
+            Modify::Purged(Attribute::PrivateCookieKey.into()),
+            Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+            Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+        ]);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
+
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+
+        let modlist =
+            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]);
+
+        self.internal_modify(&filter, &modlist)?;
+
+        // Now update schema
+
+        let idm_schema_classes = [
+            SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        // Post schema changes.
 
         Ok(())
     }
@@ -1275,15 +1401,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
         debug_assert!(res.is_ok());
-        res?;
-
-        // Some attributes we don't want to stomp if they already exist. So we conditionally
-        // modify them.
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
+        res
     }
 }
 
@@ -1478,6 +1596,50 @@ mod tests {
         let _entry = write_txn
             .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
             .expect("unable to newly migrated schema entry");
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_6)]
+    async fn test_migrations_dl6_dl7(server: &QueryServer) {
+        // Assert our instance was setup to version 6
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_6);
+
+        // per migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(domain_entry.attribute_pres(Attribute::PrivateCookieKey));
+
+        // Set the version to 7.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_7),
+                ),
+            )
+            .expect("Unable to set domain level to version 7");
+
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        // post migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(!domain_entry.attribute_pres(Attribute::PrivateCookieKey));
 
         write_txn.commit().expect("Unable to commit");
     }

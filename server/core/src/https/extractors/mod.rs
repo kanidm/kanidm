@@ -11,6 +11,9 @@ use hyper::server::conn::AddrStream;
 use kanidm_proto::constants::X_FORWARDED_FOR;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 
+use compact_jwt::JwsCompact;
+use std::str::FromStr;
+
 use std::net::{IpAddr, SocketAddr};
 
 use crate::https::ServerState;
@@ -125,26 +128,41 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             addr.ip()
         };
 
-        let bearer_token = if let Some(header) = parts.headers.get(AUTHORISATION) {
-            header
+        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
+            if let Some((authz_type, authz_data)) = header
                 .to_str()
                 .map_err(|err| {
-                    warn!(?err, "Invalid bearer token, ignoring");
+                    warn!(?err, "Invalid authz header, ignoring");
                 })
                 .ok()
                 .and_then(|s| s.split_once(' '))
-                .map(|(_, s)| s.to_string())
-                .or_else(|| {
-                    warn!("bearer token format invalid, ignoring");
-                    None
-                })
+            {
+                let authz_type = authz_type.to_lowercase();
+
+                if authz_type == "basic" {
+                    (Some(authz_data.to_string()), None)
+                } else if authz_type == "bearer" {
+                    if let Some(jwsc) = JwsCompact::from_str(authz_data).ok() {
+                        (None, Some(jwsc))
+                    } else {
+                        warn!("bearer jws invalid");
+                        (None, None)
+                    }
+                } else {
+                    warn!("authorisation header invalid, ignoring");
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
         } else {
-            None
+            (None, None)
         };
 
         Ok(VerifiedClientInformation(ClientAuthInfo {
             source: Source::Https(ip_addr),
             bearer_token,
+            basic_authz,
             client_cert,
         }))
     }

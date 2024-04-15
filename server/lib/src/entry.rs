@@ -1099,7 +1099,6 @@ impl Entry<EntryIncremental, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-    // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
             .get(Attribute::Uuid.as_ref())
@@ -3300,6 +3299,18 @@ where
             let _ = existing_vs.merge(&vs);
         } else {
             self.attrs.insert(attr.into(), vs);
+        }
+    }
+
+    /// Merge the content from the new ValueSet into the existing ValueSet. If no existing
+    /// ValueSet is present, then these data are inserted.
+    pub fn merge_ava_set(&mut self, attr: Attribute, vs: ValueSet) -> Result<(), OperationError> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        if let Some(existing_vs) = self.attrs.get_mut(attr.as_ref()) {
+            existing_vs.merge(&vs)
+        } else {
+            self.attrs.insert(attr.into(), vs);
+            Ok(())
         }
     }
 

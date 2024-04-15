@@ -24,6 +24,7 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use compact_jwt::Jwk;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
@@ -73,18 +74,9 @@ pub enum ClientError {
     UntrustedCertificate(String),
 }
 
+/// Settings describing a single instance.
 #[derive(Debug, Deserialize, Serialize)]
-/// This struct is what Kanidm uses for parsing the client configuration at runtime.
-///
-/// # Configuration file inheritance
-///
-/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
-///
-/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
-/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
-/// 3. All of these may be overridden by setting environment variables.
-///
-pub struct KanidmClientConfig {
+pub struct KanidmClientConfigInstance {
     /// The URL of the server, ie `https://example.com`.
     ///
     /// Environment variable is `KANIDM_URL`. Yeah, we know.
@@ -101,6 +93,25 @@ pub struct KanidmClientConfig {
     ///
     /// Environment variable is `KANIDM_CA_PATH`.
     pub ca_path: Option<String>,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+/// This struct is what Kanidm uses for parsing the client configuration at runtime.
+///
+/// # Configuration file inheritance
+///
+/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
+///
+/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
+/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
+/// 3. All of these may be overridden by setting environment variables.
+///
+pub struct KanidmClientConfig {
+    #[serde(flatten)]
+    default: KanidmClientConfigInstance,
+
+    #[serde(flatten)]
+    instances: BTreeMap<String, KanidmClientConfigInstance>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -249,7 +260,7 @@ impl KanidmClientBuilder {
         })
     }
 
-    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ClientError> {
+    fn apply_config_options(self, kcc: KanidmClientConfigInstance) -> Result<Self, ClientError> {
         let KanidmClientBuilder {
             address,
             verify_ca,
@@ -289,7 +300,19 @@ impl KanidmClientBuilder {
         self,
         config_path: P,
     ) -> Result<Self, ClientError> {
-        debug!("Attempting to load configuration from {:#?}", &config_path);
+        self.read_options_from_optional_instance_config(config_path, None)
+    }
+
+    pub fn read_options_from_optional_instance_config<P: AsRef<Path> + std::fmt::Debug>(
+        self,
+        config_path: P,
+        instance: Option<&str>,
+    ) -> Result<Self, ClientError> {
+        debug!(
+            "Attempting to load {} instance configuration from {:#?}",
+            instance.unwrap_or("default"),
+            &config_path
+        );
 
         // We have to check the .exists case manually, because there are some weird overlayfs
         // issues in docker where when the file does NOT exist, but we "open it" we get an
@@ -342,12 +365,25 @@ impl KanidmClientBuilder {
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        let config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
+        let mut config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        self.apply_config_options(config)
+        if let Some(instance_name) = instance {
+            if let Some(instance_config) = config.instances.remove(instance_name) {
+                self.apply_config_options(instance_config)
+            } else {
+                let emsg = format!(
+                    "instance {} does not exist in config file {:?}",
+                    instance_name, config_path
+                );
+                error!(%emsg);
+                Err(ClientError::ConfigParseIssue(emsg))
+            }
+        } else {
+            self.apply_config_options(config.default)
+        }
     }
 
     pub fn address(self, address: String) -> Self {
@@ -1474,6 +1510,11 @@ impl KanidmClient {
         self.perform_get_request(V1_AUTH_VALID).await
     }
 
+    pub async fn get_public_jwk(&self, key_id: &str) -> Result<Jwk, ClientError> {
+        self.perform_get_request(&format!("/v1/jwk/{}", key_id))
+            .await
+    }
+
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
         let response = self.client.get(self.make_url("/v1/self"));
 
@@ -1938,9 +1979,12 @@ impl KanidmClient {
             .await
     }
 
-    pub async fn idm_domain_reset_token_key(&self) -> Result<(), ClientError> {
-        self.perform_delete_request("/v1/domain/_attr/es256_private_key_der")
-            .await
+    pub async fn idm_domain_revoke_key(&self, key_id: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            "/v1/domain/_attr/key_action_revoke",
+            vec![key_id.to_string()],
+        )
+        .await
     }
 
     // ==== schema

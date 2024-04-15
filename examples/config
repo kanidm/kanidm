@@ -2,3 +2,7 @@
 uri = "https://idm.example.com"
 verify_ca = true
 verify_hostnames = true
+
+# Alternate instances can be specified and used with -I <name> to the cli tools.
+["name"]
+uri = "https://alternate.example.com"

@@ -1,8 +1,7 @@
 use std::env;
-use std::str::FromStr;
 
 use async_recursion::async_recursion;
-use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
+use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
@@ -31,8 +30,10 @@ impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde(DEFAULT_CLIENT_CONFIG_PATH_HOME).into_owned();
 
+        let instance_name: Option<&str> = self.instance.as_deref();
+
         let client_builder = KanidmClientBuilder::new()
-            .read_options_from_optional_config(DEFAULT_CLIENT_CONFIG_PATH)
+            .read_options_from_optional_instance_config(DEFAULT_CLIENT_CONFIG_PATH, instance_name)
             .map_err(|e| {
                 error!(
                     "Failed to parse config ({:?}) -- {:?}",
@@ -41,7 +42,7 @@ impl CommonOpt {
                 e
             })
             .and_then(|cb| {
-                cb.read_options_from_optional_config(&config_path)
+                cb.read_options_from_optional_instance_config(&config_path, instance_name)
                     .map_err(|e| {
                         error!("Failed to parse config ({:?}) -- {:?}", config_path, e);
                         e
@@ -99,8 +100,9 @@ impl CommonOpt {
 
     async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
+
         // Read the token file.
-        let tokens = match read_tokens(&client.get_token_cache_path()) {
+        let token_store = match read_tokens(&client.get_token_cache_path()) {
             Ok(t) => t,
             Err(_e) => {
                 error!("Error retrieving authentication token store");
@@ -108,19 +110,20 @@ impl CommonOpt {
             }
         };
 
-        if tokens.is_empty() {
+        let Some(token_instance) = token_store.instances(&self.instance) else {
             error!(
                 "No valid authentication tokens found. Please login with the 'login' subcommand."
             );
             return Err(ToClientError::Other);
-        }
+        };
 
         // If we have a username, use that to select tokens
-        let (spn, token) = match &self.username {
+        let (spn, jwsc) = match &self.username {
             Some(filter_username) => {
                 let possible_token = if filter_username.contains('@') {
                     // If there is an @, it's an spn so just get the token directly.
-                    tokens
+                    token_instance
+                        .tokens()
                         .get(filter_username)
                         .map(|t| (filter_username.clone(), t.clone()))
                 } else {
@@ -135,7 +138,8 @@ impl CommonOpt {
                         filter_username_with_hostname
                     );
 
-                    let mut token_refs: Vec<_> = tokens
+                    let mut token_refs: Vec<_> = token_instance
+                        .tokens()
                         .iter()
                         .filter(|(t, _)| *t == &filter_username_with_hostname)
                         .map(|(k, v)| (k.clone(), v.clone()))
@@ -148,9 +152,11 @@ impl CommonOpt {
                         // otherwise let's try the fallback
                         let filter_username = format!("{}@", filter_username);
                         // Filter for tokens that match the pattern
-                        let mut token_refs: Vec<_> = tokens
-                            .into_iter()
+                        let mut token_refs: Vec<_> = token_instance
+                            .tokens()
+                            .iter()
                             .filter(|(t, _)| t.starts_with(&filter_username))
+                            .map(|(s, j)| (s.clone(), j.clone()))
                             .collect();
 
                         match token_refs.len() {
@@ -177,16 +183,23 @@ impl CommonOpt {
                 }
             }
             None => {
-                if tokens.len() == 1 {
+                if token_instance.tokens().len() == 1 {
                     #[allow(clippy::expect_used)]
-                    let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
+                    let (f_uname, f_token) = token_instance
+                        .tokens()
+                        .iter()
+                        .next()
+                        .expect("Memory Corruption");
                     // else pick the first token
                     debug!("Using cached token for name {}", f_uname);
                     (f_uname.clone(), f_token.clone())
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    match prompt_for_username_get_values(&client.get_token_cache_path()) {
+                    match prompt_for_username_get_values(
+                        &client.get_token_cache_path(),
+                        &self.instance,
+                    ) {
                         Ok(tuple) => tuple,
                         Err(msg) => {
                             error!("Error: {}", msg);
@@ -197,26 +210,23 @@ impl CommonOpt {
             }
         };
 
-        let jwsc = match JwsCompact::from_str(&token) {
-            Ok(jwtu) => jwtu,
-            Err(e) => {
-                error!("Unable to parse token - {:?}", e);
-                return Err(ToClientError::Other);
-            }
+        let Some(key_id) = jwsc.kid() else {
+            error!("token invalid, not key id associated");
+            return Err(ToClientError::Other);
+        };
+
+        let Some(pub_jwk) = token_instance.keys().get(key_id) else {
+            error!("token invalid, no cached jwk available");
+            return Err(ToClientError::Other);
         };
 
         // Is the token (probably) valid?
-        let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
-            match JwsEs256Verifier::try_from(pub_jwk) {
-                Ok(verifier) => verifier,
-                Err(err) => {
-                    error!(?err, "Unable to configure jws verifier");
-                    return Err(ToClientError::Other);
-                }
+        let jws_verifier = match JwsEs256Verifier::try_from(pub_jwk) {
+            Ok(verifier) => verifier,
+            Err(err) => {
+                error!(?err, "Unable to configure jws verifier");
+                return Err(ToClientError::Other);
             }
-        } else {
-            error!("Unable to access token public key");
-            return Err(ToClientError::Other);
         };
 
         match jws_verifier.verify(&jwsc).and_then(|jws| {
@@ -259,7 +269,7 @@ impl CommonOpt {
         };
 
         // Set it into the client
-        client.set_token(token).await;
+        client.set_token(jwsc.to_string()).await;
 
         Ok(client)
     }
@@ -323,17 +333,26 @@ impl CommonOpt {
 /// This parses the token store and prompts the user to select their username, returns the username/token as a tuple of Strings
 ///
 /// Used to reduce duplication in implementing [prompt_for_username_get_username] and `prompt_for_username_get_token`
-pub fn prompt_for_username_get_values(token_cache_path: &str) -> Result<(String, String), String> {
-    let tokens = match read_tokens(token_cache_path) {
+pub fn prompt_for_username_get_values(
+    token_cache_path: &str,
+    instance_name: &Option<String>,
+) -> Result<(String, JwsCompact), String> {
+    let token_store = match read_tokens(token_cache_path) {
         Ok(value) => value,
         _ => return Err("Error retrieving authentication token store".to_string()),
     };
-    if tokens.is_empty() {
+
+    let Some(token_instance) = token_store.instances(instance_name) else {
+        error!("No tokens in store, quitting!");
+        std::process::exit(1);
+    };
+
+    if token_instance.tokens().is_empty() {
         error!("No tokens in store, quitting!");
         std::process::exit(1);
     }
     let mut options = Vec::new();
-    for option in tokens.iter() {
+    for option in token_instance.tokens().iter() {
         options.push(String::from(option.0));
     }
     let user_select = Select::with_theme(&ColorfulTheme::default())
@@ -350,12 +369,12 @@ pub fn prompt_for_username_get_values(token_cache_path: &str) -> Result<(String,
     };
     debug!("Index of the chosen menu item: {:?}", selection);
 
-    match tokens.iter().nth(selection) {
+    match token_instance.tokens().iter().nth(selection) {
         Some(value) => {
             let (f_uname, f_token) = value;
             debug!("Using cached token for name {}", f_uname);
             debug!("Cached token: {}", f_token);
-            Ok((f_uname.to_string(), f_token.to_string()))
+            Ok((f_uname.to_string(), f_token.clone()))
         }
         None => {
             error!("Memory corruption trying to read token store, quitting!");
@@ -367,8 +386,11 @@ pub fn prompt_for_username_get_values(token_cache_path: &str) -> Result<(String,
 /// This parses the token store and prompts the user to select their username, returns the username as a String
 ///
 /// Powered by [prompt_for_username_get_values]
-pub fn prompt_for_username_get_username(token_cache_path: &str) -> Result<String, String> {
-    match prompt_for_username_get_values(token_cache_path) {
+pub fn prompt_for_username_get_username(
+    token_cache_path: &str,
+    instance_name: &Option<String>,
+) -> Result<String, String> {
+    match prompt_for_username_get_values(token_cache_path, instance_name) {
         Ok(value) => {
             let (f_user, _) = value;
             Ok(f_user)

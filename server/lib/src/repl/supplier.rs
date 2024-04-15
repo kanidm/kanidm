@@ -206,11 +206,12 @@ impl<'a> QueryServerReadTransaction<'a> {
         });
 
         let (meta_entries, entries): (Vec<_>, Vec<_>) = rem_entries.into_iter().partition(|e| {
-            e.get_ava_set(Attribute::Uuid)
-                .map(|uset| {
-                    uset.contains(&PVUUID_DOMAIN_INFO as &PartialValue)
-                        || uset.contains(&PVUUID_SYSTEM_INFO as &PartialValue)
-                        || uset.contains(&PVUUID_SYSTEM_CONFIG as &PartialValue)
+            e.get_ava_set(Attribute::Class)
+                .map(|cls| {
+                    cls.contains(&EntryClass::DomainInfo.into() as &PartialValue)
+                        || cls.contains(&EntryClass::SystemInfo.into() as &PartialValue)
+                        || cls.contains(&EntryClass::SystemConfig.into() as &PartialValue)
+                        || cls.contains(&EntryClass::KeyProvider.into() as &PartialValue)
                 })
                 .unwrap_or(false)
         });
@@ -285,28 +286,26 @@ impl<'a> QueryServerReadTransaction<'a> {
         // - We must exclude certain entries and attributes!
         //   * schema defines what we exclude!
 
-        let schema_filter = filter!(f_or!([
+        let schema_filter_inner = f_or!([
             f_eq(Attribute::Class, EntryClass::AttributeType.into()),
             f_eq(Attribute::Class, EntryClass::ClassType.into()),
-        ]));
+        ]);
 
-        let meta_filter = filter!(f_or!([
-            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-            f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-            f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
-        ]));
+        let schema_filter = filter!(schema_filter_inner.clone());
+
+        let meta_filter_inner = f_or!([
+            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
+            f_eq(Attribute::Class, EntryClass::SystemInfo.into()),
+            f_eq(Attribute::Class, EntryClass::SystemConfig.into()),
+            f_eq(Attribute::Class, EntryClass::KeyProvider.into()),
+        ]);
+
+        let meta_filter = filter!(meta_filter_inner.clone());
 
         let entry_filter = filter_all!(f_or!([
             f_and!([
                 f_pres(Attribute::Class),
-                f_andnot(f_or(vec![
-                    // These are from above!
-                    f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-                    f_eq(Attribute::Class, EntryClass::ClassType.into()),
-                    f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
-                ])),
+                f_andnot(f_or(vec![schema_filter_inner, meta_filter_inner])),
             ]),
             f_eq(Attribute::Class, EntryClass::Tombstone.into()),
             f_eq(Attribute::Class, EntryClass::Recycled.into()),

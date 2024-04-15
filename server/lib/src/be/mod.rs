@@ -1539,7 +1539,10 @@ impl<'a> BackendWriteTransaction<'a> {
                                 idl.insert_id(e_id);
                                 if cfg!(debug_assertions)
                                     && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
-                                        trace!("{:?}", idl);
+                                        // This means a duplicate UUID has appeared in the index.
+                                        if idl.len() > 1 {
+                                            trace!(duplicate_idl = ?idl, ?idx_key);
+                                        }
                                         debug_assert!(idl.len() <= 1);
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
@@ -1559,7 +1562,10 @@ impl<'a> BackendWriteTransaction<'a> {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
                                 if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
-                                        trace!("{:?}", idl);
+                                        // This means a duplicate UUID has appeared in the index.
+                                        if idl.len() > 1 {
+                                            trace!(duplicate_idl = ?idl, ?idx_key);
+                                        }
                                         debug_assert!(idl.len() <= 1);
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)

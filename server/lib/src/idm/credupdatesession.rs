@@ -26,6 +26,8 @@ use crate::prelude::*;
 use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
+use compact_jwt::compact::JweCompact;
+use compact_jwt::jwe::JweBuilder;
 
 use super::accountpolicy::ResolvedAccountPolicy;
 
@@ -59,7 +61,7 @@ struct CredentialUpdateSessionTokenInner {
 
 #[derive(Debug)]
 pub struct CredentialUpdateSessionToken {
-    pub token_enc: String,
+    pub token_enc: JweCompact,
 }
 
 /// The current state of MFA registration
@@ -850,10 +852,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             mfaregstate: MfaRegState::None,
         };
 
-        let status: CredentialUpdateSessionStatus = (&session).into();
-
-        let session = Arc::new(Mutex::new(session));
-
         let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
 
         let token = CredentialUpdateSessionTokenInner { sessionid, max_ttl };
@@ -863,7 +861,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let token_enc = self.domain_keys.token_enc_key.encrypt(&token_data);
+        let token_jwe = JweBuilder::from(token_data).build();
+
+        let token_enc = self
+            .qs_write
+            .get_domain_key_object_handle()?
+            .jwe_a128gcm_encrypt(&token_jwe, ct)?;
+
+        let status: CredentialUpdateSessionStatus = (&session).into();
+
+        let session = Arc::new(Mutex::new(session));
 
         // Point of no return
 
@@ -1195,15 +1202,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         OperationError,
     > {
         let session_token: CredentialUpdateSessionTokenInner = self
-            .domain_keys
-            .token_enc_key
-            .decrypt(&cust.token_enc)
+            .qs_write
+            .get_domain_key_object_handle()?
+            .jwe_decrypt(&cust.token_enc)
             .map_err(|e| {
                 admin_error!(?e, "Failed to decrypt credential update session request");
                 OperationError::SessionExpired
             })
             .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
+                data.from_json().map_err(|e| {
                     admin_error!(err = ?e, "Failed to deserialise credential update session request");
                     OperationError::SerdeJsonError
                 })
@@ -1492,15 +1499,15 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         ct: Duration,
     ) -> Result<CredentialUpdateSessionMutex, OperationError> {
         let session_token: CredentialUpdateSessionTokenInner = self
-            .domain_keys
-            .token_enc_key
-            .decrypt(&cust.token_enc)
+            .qs_read
+            .get_domain_key_object_handle()?
+            .jwe_decrypt(&cust.token_enc)
             .map_err(|e| {
                 admin_error!(?e, "Failed to decrypt credential update session request");
                 OperationError::SessionExpired
             })
             .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
+                data.from_json().map_err(|e| {
                     admin_error!(err = ?e, "Failed to deserialise credential update session request");
                     OperationError::SerdeJsonError
                 })
@@ -2310,6 +2317,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use compact_jwt::JwsCompact;
     use std::time::Duration;
 
     use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
@@ -2545,7 +2553,7 @@ mod tests {
         idms_delayed: &mut IdmServerDelayed,
         pw: &str,
         ct: Duration,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -2599,7 +2607,7 @@ mod tests {
         pw: &str,
         token: &Totp,
         ct: Duration,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -2665,7 +2673,7 @@ mod tests {
         pw: &str,
         code: &str,
         ct: Duration,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -2733,7 +2741,7 @@ mod tests {
         wa: &mut WebauthnAuthenticator<T>,
         origin: Url,
         ct: Duration,
-    ) -> Option<String> {
+    ) -> Option<JwsCompact> {
         let mut idms_auth = idms.auth().await;
 
         let auth_init = AuthEvent::named_init("testperson");

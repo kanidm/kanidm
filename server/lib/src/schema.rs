@@ -236,6 +236,10 @@ impl SchemaAttribute {
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
+
+            SyntaxType::HexString => matches!(v, PartialValue::HexString(_)),
+            SyntaxType::KeyInternal => matches!(v, PartialValue::HexString(_)),
+
             SyntaxType::WebauthnAttestationCaList => false,
         };
         if r {
@@ -297,6 +301,8 @@ impl SchemaAttribute {
                 SyntaxType::WebauthnAttestationCaList => {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
+                SyntaxType::KeyInternal => matches!(v, Value::KeyInternal { .. }),
+                SyntaxType::HexString => matches!(v, Value::HexString(_)),
             };
         if r {
             Ok(())
