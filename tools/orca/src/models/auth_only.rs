@@ -14,20 +14,20 @@ enum State {
     Authenticated,
 }
 
-pub struct ActorBasic {
+pub struct ActorAuthOnly {
     state: State,
 }
 
-impl ActorBasic {
+impl ActorAuthOnly {
     pub fn new() -> Self {
-        ActorBasic {
+        ActorAuthOnly {
             state: State::Unauthenticated,
         }
     }
 }
 
 #[async_trait]
-impl ActorModel for ActorBasic {
+impl ActorModel for ActorAuthOnly {
     async fn transition(
         &mut self,
         client: &KanidmClient,
@@ -43,16 +43,16 @@ impl ActorModel for ActorBasic {
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
+            _ => Err(Error::InvalidState),
         }?;
 
-        // Given the result, make a choice about what text.
-        self.next_state(result);
+        self.next_state(transition.action, result);
 
         Ok(event)
     }
 }
 
-impl ActorBasic {
+impl ActorAuthOnly {
     fn next_transition(&mut self) -> Transition {
         match self.state {
             State::Unauthenticated => Transition {
@@ -66,20 +66,19 @@ impl ActorBasic {
         }
     }
 
-    fn next_state(&mut self, result: TransitionResult) {
-        // Is this a design flaw? We probably need to know what the state was that we
-        // requested to move to?
-        match (&self.state, result) {
-            (State::Unauthenticated, TransitionResult::Ok) => {
+    fn next_state(&mut self, action: TransitionAction, result: TransitionResult) {
+        match (&self.state, action, result) {
+            (State::Unauthenticated, TransitionAction::Login, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
-            (State::Unauthenticated, TransitionResult::Error) => {
+            (State::Authenticated, TransitionAction::Logout, TransitionResult::Ok) => {
                 self.state = State::Unauthenticated;
             }
-            (State::Authenticated, TransitionResult::Ok) => {
-                self.state = State::Unauthenticated;
+            // Shouldn't be reachable?
+            (_, _, TransitionResult::Ok) => {
+                unreachable!();
             }
-            (State::Authenticated, TransitionResult::Error) => {
+            (_, _, TransitionResult::Error) => {
                 self.state = State::Unauthenticated;
             }
         }

@@ -5,7 +5,7 @@ pub enum Error {
     KanidmClient,
     ProfileBuilder,
     Tokio,
-    Interupt,
+    Interrupt,
     Crossbeam,
     InvalidState,
 }

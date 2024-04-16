@@ -50,7 +50,7 @@ enum OrcaOpt {
         /// This allows deterministic regeneration of a test state file.
         seed: Option<i64>,
 
-        // Todo - support the extra uris field for replicated tests.
+        // TODO - support the extra uris field for replicated tests.
         #[clap(long = "profile")]
         /// The configuration file path to update (or create)
         profile_path: PathBuf,

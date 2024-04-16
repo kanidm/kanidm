@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
@@ -26,7 +26,7 @@ mod error;
 mod generate;
 mod kani;
 mod model;
-mod model_basic;
+mod models;
 mod populate;
 mod profile;
 mod run;

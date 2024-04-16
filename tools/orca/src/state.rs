@@ -1,10 +1,10 @@
 use crate::error::Error;
-use crate::model::ActorModel;
+use crate::model::{ActorModel, ActorRole};
+use crate::models;
 use crate::profile::Profile;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
-
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
@@ -16,7 +16,7 @@ pub struct State {
     // ----------------------------
     pub preflight_flags: Vec<Flag>,
     pub persons: Vec<Person>,
-    // groups: Vec<Group>,
+    pub groups: Vec<Group>,
     // oauth_clients: Vec<Oauth2Clients>,
 }
 
@@ -55,23 +55,37 @@ pub enum Flag {
     DisableAllPersonsMFAPolicy,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 pub enum PreflightState {
+    #[default]
     Present,
     Absent,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// A model defines *how* an actors makes it's choices. For example the choices
+/// could be purely random, they could be a linear pattern, or they could have
+/// some set of weights related to choices they make.
+///
+/// Some models can *restrict* the set of choices that an actor may make.
+///
+/// This compliments ActorRoles, which define the extended actions an Actor may
+/// choose to perform. If ActorRoles are present, the model MAY choose to use
+/// these roles to perform extended operations.
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
+    AuthOnly,
+    /// A simple linear executor that does actions in a loop.
+    #[default]
     Basic,
 }
 
 impl Model {
-    pub fn as_dyn_object(&self) -> Box<dyn ActorModel + Send> {
-        match self {
-            Model::Basic => Box::new(crate::model_basic::ActorBasic::new()),
-        }
+    pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
+        Ok(match self {
+            Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
+            Model::Basic => Box::new(models::basic::ActorBasic::new()),
+        })
     }
 }
 
@@ -85,7 +99,15 @@ pub struct Person {
     pub preflight_state: PreflightState,
     pub username: String,
     pub display_name: String,
-    pub member_of: BTreeSet<String>,
+    pub roles: BTreeSet<ActorRole>,
     pub credential: Credential,
     pub model: Model,
+}
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct Group {
+    pub name: String,
+    pub preflight_state: PreflightState,
+    pub role: ActorRole,
+    pub members: BTreeSet<String>,
 }

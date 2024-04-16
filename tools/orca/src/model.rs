@@ -3,13 +3,16 @@ use crate::run::{EventDetail, EventRecord};
 use crate::state::*;
 use std::time::{Duration, Instant};
 
-use kanidm_client::KanidmClient;
+use kanidm_client::{ClientError, KanidmClient};
 
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 pub enum TransitionAction {
     Login,
     Logout,
+    PrivilegeReauth,
+    WriteAttributePersonMail,
 }
 
 // Is this the right way? Should transitions/delay be part of the actor model? Should
@@ -31,8 +34,26 @@ pub enum TransitionResult {
     Ok,
     // We need to re-authenticate, the session expired.
     // AuthenticationNeeded,
-    // An error occured.
+    // An error occurred.
     Error,
+}
+
+#[derive(Debug, Clone, Default, Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd)]
+pub enum ActorRole {
+    #[default]
+    None,
+    PeoplePiiReader,
+    PeopleSelfWriteMail,
+}
+
+impl ActorRole {
+    pub fn requires_membership_to(&self) -> Option<&[&str]> {
+        match self {
+            ActorRole::None => None,
+            ActorRole::PeoplePiiReader => Some(&["idm_people_pii_read"]),
+            ActorRole::PeopleSelfWriteMail => Some(&["idm_people_self_write_mail"]),
+        }
+    }
 }
 
 #[async_trait]
@@ -57,31 +78,59 @@ pub async fn login(
                 .await
         }
     };
-    let end = Instant::now();
 
-    let duration = end.duration_since(start);
+    let duration = Instant::now().duration_since(start);
+    Ok(parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::Login,
+        start,
+        duration,
+    ))
+}
 
-    match result {
-        Ok(_) => Ok((
-            TransitionResult::Ok,
-            EventRecord {
-                start,
-                duration,
-                details: EventDetail::Authentication,
-            },
-        )),
-        Err(client_err) => {
-            debug!(?client_err);
-            Ok((
-                TransitionResult::Error,
-                EventRecord {
-                    start,
-                    duration,
-                    details: EventDetail::Error,
-                },
-            ))
-        }
-    }
+pub async fn person_set_self_mail(
+    client: &KanidmClient,
+    person: &Person,
+    values: &[&str],
+) -> Result<(TransitionResult, EventRecord), Error> {
+    // Should we measure the time of each call rather than the time with multiple calls?
+    let person_username = person.username.as_str();
+
+    let start = Instant::now();
+    let result = client
+        .idm_person_account_set_attr(person_username, "mail", values)
+        .await;
+
+    let duration = Instant::now().duration_since(start);
+    let parsed_result = parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonSetSelfMail,
+        start,
+        duration,
+    );
+
+    Ok(parsed_result)
+}
+
+pub async fn privilege_reauth(
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    let start = Instant::now();
+
+    let result = match &person.credential {
+        Credential::Password { plain } => client.reauth_simple_password(plain.as_str()).await,
+    };
+
+    let duration = Instant::now().duration_since(start);
+
+    let parsed_result = parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonReauth,
+        start,
+        duration,
+    );
+    Ok(parsed_result)
 }
 
 pub async fn logout(
@@ -90,29 +139,41 @@ pub async fn logout(
 ) -> Result<(TransitionResult, EventRecord), Error> {
     let start = Instant::now();
     let result = client.logout().await;
-    let end = Instant::now();
+    let duration = Instant::now().duration_since(start);
 
-    let duration = end.duration_since(start);
+    Ok(parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::Logout,
+        start,
+        duration,
+    ))
+}
 
+fn parse_call_result_into_transition_result_and_event_record<T>(
+    result: Result<T, ClientError>,
+    details: EventDetail,
+    start: Instant,
+    duration: Duration,
+) -> (TransitionResult, EventRecord) {
     match result {
-        Ok(_) => Ok((
+        Ok(_) => (
             TransitionResult::Ok,
             EventRecord {
                 start,
                 duration,
-                details: EventDetail::Logout,
+                details,
             },
-        )),
+        ),
         Err(client_err) => {
             debug!(?client_err);
-            Ok((
+            (
                 TransitionResult::Error,
                 EventRecord {
                     start,
                     duration,
                     details: EventDetail::Error,
                 },
-            ))
+            )
         }
     }
 }
