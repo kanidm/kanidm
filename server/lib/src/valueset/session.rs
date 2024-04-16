@@ -411,6 +411,10 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn trim(&mut self, trim_cid: &Cid) {
+        // There might be a neater way to do this with less iterations. The problem
+        // is we can't just check on what was in b/older, because then we miss
+        // trimmable content from the local map. So once the merge is complete we
+        // do a pass for trim.
         self.map.retain(|_, session| {
             match &session.state {
                 SessionState::RevokedAt(cid) if cid < trim_cid => {
@@ -660,44 +664,33 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
-        if let Some(b) = older.as_session_map() {
-            // We can't just do merge maps here, we have to be aware of the
-            // session.state value and what it currently is set to.
-            let mut map = self.map.clone();
-            for (k_other, v_other) in b.iter() {
-                if let Some(v_self) = map.get_mut(k_other) {
-                    // We only update if lower. This is where RevokedAt
-                    // always proceeds other states, and lower revoked
-                    // cids will always take effect.
-                    if v_other.state > v_self.state {
-                        *v_self = v_other.clone();
-                    }
-                } else {
-                    // Not present, just insert.
-                    map.insert(*k_other, v_other.clone());
+        // If the older value has a different type - return nothing, we
+        // just take the newer value.
+        let Some(b) = older.as_session_map() else {
+            return None;
+        };
+        // We can't just do merge maps here, we have to be aware of the
+        // session.state value and what it currently is set to.
+        let mut map = self.map.clone();
+        for (k_other, v_other) in b.iter() {
+            if let Some(v_self) = map.get_mut(k_other) {
+                // We only update if lower. This is where RevokedAt
+                // always proceeds other states, and lower revoked
+                // cids will always take effect.
+                if v_other.state > v_self.state {
+                    *v_self = v_other.clone();
                 }
+            } else {
+                // Not present, just insert.
+                map.insert(*k_other, v_other.clone());
             }
-            // There might be a neater way to do this with less iterations. The problem
-            // is we can't just check on what was in b/older, because then we miss
-            // trimmable content from the local map. So once the merge is complete we
-            // do a pass for trim.
-            map.retain(|_, session| {
-                match &session.state {
-                    SessionState::RevokedAt(cid) if cid < trim_cid => {
-                        // This value is past the replication trim window and can now safely
-                        // be removed
-                        false
-                    }
-                    // Retain all else
-                    _ => true,
-                }
-            });
-            Some(Box::new(ValueSetSession { map }))
-        } else {
-            // The older value has a different type - return nothing, we
-            // just take the newer value.
-            None
         }
+
+        let mut vs = Box::new(ValueSetSession { map });
+
+        vs.trim(trim_cid);
+
+        Some(vs)
     }
 }
 
@@ -1067,6 +1060,10 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn trim(&mut self, trim_cid: &Cid) {
+        // There might be a neater way to do this with less iterations. The problem
+        // is we can't just check on what was in b/older, because then we miss
+        // trimmable content from the local map. So once the merge is complete we
+        // do a pass for trim.
         self.map.retain(|_, session| {
             match &session.state {
                 SessionState::RevokedAt(cid) if cid < trim_cid => {
@@ -1292,22 +1289,12 @@ impl ValueSetT for ValueSetOauth2Session {
                     map.insert(*k_other, v_other.clone());
                 }
             }
-            // There might be a neater way to do this with less iterations. The problem
-            // is we can't just check on what was in b/older, because then we miss
-            // trimmable content from the local map. So once the merge is complete we
-            // do a pass for trim.
-            map.retain(|_, session| {
-                match &session.state {
-                    SessionState::RevokedAt(cid) if cid < trim_cid => {
-                        // This value is past the replication trim window and can now safely
-                        // be removed
-                        false
-                    }
-                    // Retain all else
-                    _ => true,
-                }
-            });
-            Some(Box::new(ValueSetOauth2Session { map, rs_filter }))
+
+            let mut vs = Box::new(ValueSetOauth2Session { map, rs_filter });
+
+            vs.trim(trim_cid);
+
+            Some(vs)
         } else {
             // The older value has a different type - return nothing, we
             // just take the newer value.

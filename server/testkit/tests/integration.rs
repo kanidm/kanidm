@@ -1,13 +1,11 @@
 //! Integration tests using browser automation
 
-// use std::process::Output;
-
-// use tempfile::tempdir;
-
+use compact_jwt::{traits::JwsVerifiable, JwsCompact};
 use kanidm_client::KanidmClient;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_testkit::login_put_admin_idm_admins;
-// use testkit_macros::cli_kanidm;
+
+use std::str::FromStr;
 
 /// Tries to handle closing the webdriver session if there's an error
 #[allow(unused_macros)]
@@ -210,7 +208,14 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_domain_reset_token_key(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;
-    assert!(rsclient.idm_domain_reset_token_key().await.is_ok());
+
+    let token = rsclient.get_token().await.expect("No bearer token present");
+
+    let jwt = JwsCompact::from_str(&token).expect("Failed to parse jwt");
+
+    let key_id = jwt.kid().expect("token does not have a key id");
+
+    assert!(rsclient.idm_domain_revoke_key(&key_id).await.is_ok());
 }
 
 #[kanidmd_testkit::test]

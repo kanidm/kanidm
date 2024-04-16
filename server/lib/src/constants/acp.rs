@@ -935,6 +935,61 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_DOMAIN_ADMIN_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_domain_admin",
+        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
+        description: "Builtin IDM Control for granting domain info administration locally",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_DOMAIN_INFO.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::DomainDisplayName,
+            Attribute::DomainName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::DomainUuid,
+            // Grants read access to the key object.
+            // But this means we have to specify every type of key object?
+            // Future william problem ...
+            Attribute::KeyInternalData,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::Version,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainSsid,
+            Attribute::DomainLdapBasedn,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SYNC_ACCOUNT_MANAGE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,

@@ -21,6 +21,7 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
+use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
@@ -34,12 +35,14 @@ pub use self::cred::{
 };
 pub use self::datetime::ValueSetDateTime;
 pub use self::eckey::ValueSetEcKeyPrivate;
+pub use self::hexstring::ValueSetHexString;
 use self::image::ValueSetImage;
 pub use self::iname::ValueSetIname;
 pub use self::index::ValueSetIndex;
 pub use self::iutf8::ValueSetIutf8;
 pub use self::json::ValueSetJsonFilter;
 pub use self::jws::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
+pub use self::key_internal::{KeyInternalData, ValueSetKeyInternal};
 pub use self::nsuniqueid::ValueSetNsUniqueId;
 pub use self::oauth::{
     OauthClaimMapping, ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap,
@@ -65,12 +68,14 @@ mod cid;
 mod cred;
 mod datetime;
 pub mod eckey;
+mod hexstring;
 pub mod image;
 mod iname;
 mod index;
 mod iutf8;
 mod json;
 mod jws;
+mod key_internal;
 mod nsuniqueid;
 mod oauth;
 mod restricted;
@@ -367,6 +372,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_oauthclaim_map(&self) -> Option<&BTreeMap<String, OauthClaimMapping>> {
+        None
+    }
+
+    fn as_key_internal_map(&self) -> Option<&BTreeMap<KeyId, KeyInternalData>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_hexstring_set(&self) -> Option<&BTreeSet<String>> {
+        debug_assert!(false);
         None
     }
 
@@ -684,7 +699,9 @@ pub fn from_result_value_iter(
         | Value::OauthClaimMap(_, _)
         | Value::OauthClaimValue(_, _, _)
         | Value::JwsKeyEs256(_)
-        | Value::JwsKeyRs256(_) => {
+        | Value::JwsKeyRs256(_)
+        | Value::HexString(_)
+        | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }
@@ -751,6 +768,17 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
         Value::OauthClaimValue(name, group, claims) => {
             ValueSetOauthClaimMap::new_value(name, group, claims)
         }
+        Value::HexString(s) => ValueSetHexString::new(s),
+
+        Value::KeyInternal {
+            id,
+            usage,
+            valid_from,
+            status,
+            status_cid,
+            der,
+        } => ValueSetKeyInternal::new(id, usage, valid_from, status, status_cid, der),
+
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -812,6 +840,8 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
             ValueSetWebauthnAttestationCaList::from_dbvs2(ca_list)
         }
         DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
+        DbValueSetV2::KeyInternal(set) => ValueSetKeyInternal::from_dbvs2(set),
+        DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
     }
 }
 
@@ -862,5 +892,7 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
             ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
         }
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
+        ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
+        ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
     }
 }

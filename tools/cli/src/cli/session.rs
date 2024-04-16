@@ -6,7 +6,9 @@ use std::io::{self, BufReader, BufWriter, ErrorKind, IsTerminal, Write};
 use std::path::PathBuf;
 use std::str::FromStr;
 
-use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
+use compact_jwt::{
+    traits::JwsVerifiable, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError,
+};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::Select;
 use kanidm_client::{ClientError, KanidmClient};
@@ -21,7 +23,95 @@ use crate::common::prompt_for_username_get_username;
 use crate::webauthn::get_authenticator;
 use crate::{CommonOpt, LoginOpt, LogoutOpt, ReauthOpt, SessionOpt};
 
+use serde::{Deserialize, Serialize};
+
 static TOKEN_DIR: &str = "~/.cache";
+
+#[derive(Debug, Serialize, Clone, Deserialize, Default)]
+pub struct TokenInstance {
+    keys: BTreeMap<String, Jwk>,
+    tokens: BTreeMap<String, JwsCompact>,
+}
+
+impl TokenInstance {
+    pub fn tokens(&self) -> &BTreeMap<String, JwsCompact> {
+        &self.tokens
+    }
+
+    pub fn keys(&self) -> &BTreeMap<String, Jwk> {
+        &self.keys
+    }
+
+    pub fn valid_uats(&self) -> BTreeMap<String, UserAuthToken> {
+        self.tokens
+            .iter()
+            .filter_map(|(u, jwsc)| {
+                // Ignore if it has no key id.
+                let key_id = jwsc.kid()?;
+
+                // Ignore if we can't verify
+                let pub_jwk = self.keys.get(key_id)?;
+
+                let jws_verifier = JwsEs256Verifier::try_from(pub_jwk)
+                    .map_err(|e| {
+                        error!(?e, "Unable to configure jws verifier");
+                    })
+                    .ok()?;
+
+                jws_verifier
+                    .verify(jwsc)
+                    .and_then(|jws| {
+                        jws.from_json::<UserAuthToken>().map_err(|serde_err| {
+                            error!(?serde_err);
+                            JwtError::InvalidJwt
+                        })
+                    })
+                    .map_err(|e| {
+                        error!(?e, "Unable to verify token signature, may be corrupt");
+                    })
+                    .map(|uat| (u.clone(), uat))
+                    .ok()
+            })
+            .collect()
+    }
+
+    pub fn cleanup(&mut self, now: time::OffsetDateTime) -> usize {
+        // It's not optimal to do this in this way, but we can't double borrow.
+        let retain = self.valid_uats();
+
+        let start_len = self.tokens.len();
+
+        self.tokens.retain(|spn, _tonk| {
+            if let Some(uat) = retain.get(spn) {
+                if let Some(exp) = uat.expiry {
+                    // Retain if expiry is in future aka greater than now
+                    exp > now
+                } else {
+                    true
+                }
+            } else {
+                false
+            }
+        });
+
+        start_len - self.tokens.len()
+    }
+}
+
+#[derive(Debug, Serialize, Clone, Deserialize, Default)]
+pub struct TokenStore {
+    instances: BTreeMap<Option<String>, TokenInstance>,
+}
+
+impl TokenStore {
+    pub fn instances(&self, name: &Option<String>) -> Option<&TokenInstance> {
+        self.instances.get(name)
+    }
+
+    pub fn instances_mut(&mut self, name: &Option<String>) -> Option<&mut TokenInstance> {
+        self.instances.get_mut(name)
+    }
+}
 
 impl CommonOpt {
     fn get_token_cache_path(&self) -> String {
@@ -33,14 +123,14 @@ impl CommonOpt {
 }
 
 #[allow(clippy::result_unit_err)]
-pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
+pub fn read_tokens(token_path: &str) -> Result<TokenStore, ()> {
     let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
     if !token_path.exists() {
         debug!(
             "Token cache file path {:?} does not exist, returning an empty token store.",
             token_path
         );
-        return Ok(BTreeMap::new());
+        return Ok(Default::default());
     }
 
     debug!("Attempting to read tokens from {:?}", &token_path);
@@ -64,7 +154,7 @@ pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
                         token_path.display(),
                         e
                     );
-                    return Ok(BTreeMap::new());
+                    return Ok(Default::default());
                 }
             };
         }
@@ -73,7 +163,7 @@ pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
 
     // Else try to read
     serde_json::from_reader(reader).map_err(|e| {
-        error!(
+        warn!(
             "JSON/IO error reading tokens from {:?} -> {:?}",
             &token_path, e
         );
@@ -81,7 +171,7 @@ pub fn read_tokens(token_path: &str) -> Result<BTreeMap<String, String>, ()> {
 }
 
 #[allow(clippy::result_unit_err)]
-pub fn write_tokens(tokens: &BTreeMap<String, String>, token_path: &str) -> Result<(), ()> {
+pub fn write_tokens(tokens: &TokenStore, token_path: &str) -> Result<(), ()> {
     let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
     let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
 
@@ -248,6 +338,7 @@ async fn process_auth_state(
     mut allowed: Vec<AuthAllowed>,
     mut client: KanidmClient,
     maybe_password: &Option<String>,
+    instance_name: &Option<String>,
 ) {
     loop {
         debug!("Allowed mechanisms -> {:?}", allowed);
@@ -314,11 +405,11 @@ async fn process_auth_state(
         // Loop again.
     }
 
-    // Read the current tokens
-    let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_else(|_| {
-        error!("Error retrieving authentication token store");
-        std::process::exit(1);
-    });
+    // Read the current tokens. If we can't read them, IGNORE!!!
+    let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_default();
+
+    // Select our token instance. Create it if empty.
+    let token_instance = tokens.instances.entry(instance_name.clone()).or_default();
 
     // Add our new one
     let (spn, tonk) = match client.get_token().await {
@@ -331,17 +422,35 @@ async fn process_auth_state(
                 }
             };
 
-            let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
-                match JwsEs256Verifier::try_from(pub_jwk) {
-                    Ok(verifier) => verifier,
+            let Some(key_id) = jwsc.kid() else {
+                error!("JWS invalid, not key id associated");
+                std::process::exit(1);
+            };
+
+            // Okay, lets check the jwk now.
+            let pub_jwk = if let Some(pub_jwk) = token_instance.keys.get(key_id).cloned() {
+                pub_jwk
+            } else {
+                // Get it from the server.
+                let pub_jwk = match client.get_public_jwk(&key_id).await {
+                    Ok(pj) => pj,
                     Err(err) => {
-                        error!(?err, "Unable to configure jws verifier");
+                        error!(?err, "Unable to retrieve jwk from server");
                         std::process::exit(1);
                     }
+                };
+                token_instance
+                    .keys
+                    .insert(key_id.to_string(), pub_jwk.clone());
+                pub_jwk
+            };
+
+            let jws_verifier = match JwsEs256Verifier::try_from(&pub_jwk) {
+                Ok(verifier) => verifier,
+                Err(err) => {
+                    error!(?err, "Unable to configure jws verifier");
+                    std::process::exit(1);
                 }
-            } else {
-                error!("Unable to access token public key");
-                std::process::exit(1);
             };
 
             let tonk = match jws_verifier.verify(&jwsc).and_then(|jws| {
@@ -358,8 +467,8 @@ async fn process_auth_state(
             };
 
             let spn = tonk.spn;
-            // Return the un-parsed token
-            (spn, t)
+            // Return the original jws
+            (spn, jwsc)
         }
         None => {
             error!("Error retrieving client session");
@@ -367,7 +476,7 @@ async fn process_auth_state(
         }
     };
 
-    tokens.insert(spn.clone(), tonk);
+    token_instance.tokens.insert(spn.clone(), tonk);
 
     // write them out.
     if write_tokens(&tokens, &client.get_token_cache_path()).is_err() {
@@ -442,8 +551,10 @@ impl LoginOpt {
                 std::process::exit(1);
             });
 
+        let instance_name = &self.copt.instance;
+
         // We now have the first auth state, so we can proceed until complete.
-        process_auth_state(allowed, client, &self.password).await;
+        process_auth_state(allowed, client, &self.password, instance_name).await;
     }
 }
 
@@ -455,12 +566,14 @@ impl ReauthOpt {
     pub async fn exec(&self) {
         let client = self.copt.to_client(OpType::Read).await;
 
+        let instance_name = &self.copt.instance;
+
         let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
             error!("Error during reauthentication begin phase: {:?}", e);
             std::process::exit(1);
         });
 
-        process_auth_state(allowed, client, &None).await;
+        process_auth_state(allowed, client, &None, instance_name).await;
     }
 }
 
@@ -470,6 +583,8 @@ impl LogoutOpt {
     }
 
     pub async fn exec(&self) {
+        let instance_name = &self.copt.instance;
+
         let spn: String = if self.local_only {
             // For now we just remove this from the token store.
             let mut _tmp_username = String::new();
@@ -478,7 +593,10 @@ impl LogoutOpt {
                 None => {
                     // check if we're in a tty
                     if std::io::stdin().is_terminal() {
-                        match prompt_for_username_get_username(&self.copt.get_token_cache_path()) {
+                        match prompt_for_username_get_username(
+                            &self.copt.get_token_cache_path(),
+                            instance_name,
+                        ) {
                             Ok(value) => value,
                             Err(msg) => {
                                 error!("{}", msg);
@@ -551,8 +669,13 @@ impl LogoutOpt {
             std::process::exit(1);
         });
 
+        let Some(token_instance) = tokens.instances.get_mut(instance_name) else {
+            println!("No sessions for {}", spn);
+            return;
+        };
+
         // Remove our old one
-        if tokens.remove(&spn).is_some() {
+        if token_instance.tokens.remove(&spn).is_some() {
             // write them out.
             if let Err(_e) = write_tokens(&tokens, &self.copt.get_token_cache_path()) {
                 error!("Error persisting authentication token store");
@@ -572,84 +695,48 @@ impl SessionOpt {
         }
     }
 
-    fn read_valid_tokens(token_cache_path: &str) -> BTreeMap<String, (String, UserAuthToken)> {
-        read_tokens(token_cache_path)
-            .unwrap_or_else(|_| {
-                error!("Error retrieving authentication token store");
-                std::process::exit(1);
-            })
-            .into_iter()
-            .filter_map(|(u, t)| {
-                let jwsc = JwsCompact::from_str(&t)
-                    .map_err(|e| {
-                        error!(?e, "Unable to parse token from str");
-                    })
-                    .ok()?;
-
-                let jws_verifier = jwsc.get_jwk_pubkey().and_then(|pub_jwk| {
-                    JwsEs256Verifier::try_from(pub_jwk)
-                        .map_err(|e| {
-                            error!(?e, "Unable to configure jws verifier");
-                        })
-                        .ok()
-                })?;
-
-                jws_verifier
-                    .verify(&jwsc)
-                    .and_then(|jws| {
-                        jws.from_json::<UserAuthToken>().map_err(|serde_err| {
-                            error!(?serde_err);
-                            JwtError::InvalidJwt
-                        })
-                    })
-                    .map_err(|e| {
-                        error!(?e, "Unable to verify token signature, may be corrupt");
-                    })
-                    .map(|uat| (u, (t, uat)))
-                    .ok()
-            })
-            .collect()
-    }
-
     pub async fn exec(&self) {
         match self {
             SessionOpt::List(copt) => {
-                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
-                for (_, uat) in tokens.values() {
+                let token_store = read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
+                    error!("Error retrieving authentication token store");
+                    std::process::exit(1);
+                });
+
+                let instance_name = &copt.instance;
+
+                let Some(token_instance) = token_store.instances(instance_name) else {
+                    return;
+                };
+
+                for (_, uat) in token_instance.valid_uats() {
                     println!("---");
                     println!("{}", uat);
                 }
             }
             SessionOpt::Cleanup(copt) => {
-                let tokens = Self::read_valid_tokens(&copt.get_token_cache_path());
-                let start_len = tokens.len();
+                let mut token_store =
+                    read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
+                        error!("Error retrieving authentication token store");
+                        std::process::exit(1);
+                    });
+
+                let instance_name = &copt.instance;
+
+                let Some(token_instance) = token_store.instances_mut(instance_name) else {
+                    error!("No tokens for instance");
+                    std::process::exit(1);
+                };
 
                 let now = time::OffsetDateTime::now_utc();
+                let change = token_instance.cleanup(now);
 
-                let tokens: BTreeMap<_, _> = tokens
-                    .into_iter()
-                    .filter_map(|(u, (t, uat))| {
-                        if let Some(exp) = uat.expiry {
-                            if now >= exp {
-                                //Expired
-                                None
-                            } else {
-                                Some((u, t))
-                            }
-                        } else {
-                            Some((u, t))
-                        }
-                    })
-                    .collect();
-
-                let end_len = tokens.len();
-
-                if let Err(_e) = write_tokens(&tokens, &copt.get_token_cache_path()) {
+                if let Err(_e) = write_tokens(&token_store, &copt.get_token_cache_path()) {
                     error!("Error persisting authentication token store");
                     std::process::exit(1);
                 };
 
-                println!("Removed {} sessions", start_len - end_len);
+                println!("Removed {} sessions", change);
             }
         }
     }

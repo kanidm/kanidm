@@ -96,6 +96,7 @@ fn do_memberof(
     Ok(())
 }
 
+// This is how you know the good code is here.
 #[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,

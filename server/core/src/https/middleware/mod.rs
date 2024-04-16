@@ -5,6 +5,7 @@ use axum::{
 };
 use kanidm_proto::constants::{KOPID, KVERSION};
 use uuid::Uuid;
+
 pub(crate) mod caching;
 pub(crate) mod compression;
 pub(crate) mod hsts_header;

@@ -1,6 +1,7 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
+use crate::server::ChangeFlag;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -219,35 +220,51 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 
-        if !self.changed_acp {
-            self.changed_acp = cand
+        if !self.changed_flags.contains(ChangeFlag::ACP)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
+        {
+            self.changed_flags.insert(ChangeFlag::ACP)
         }
-        if !self.changed_oauth2 {
-            self.changed_oauth2 = cand
+
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
-                });
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
-        if !self.changed_sync_agreement {
-            self.changed_sync_agreement = cand
+
+        if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::KEY_MATERIAL)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_MATERIAL)
         }
 
         trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-            changed_sync_agreement = ?self.changed_sync_agreement
+            changed = ?self.changed_flags.iter_names().collect::<Vec<_>>(),
         );
 
         Ok(true)
@@ -369,6 +386,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if meta_changed {
             self.reload_domain_info().map_err(|e| {
                 error!("Failed to reload domain info");
+                e
+            })?;
+            self.reload_system_config().map_err(|e| {
+                error!("Failed to reload system configuration");
                 e
             })?;
         }
@@ -579,10 +600,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // Mark that everything changed so that post commit hooks function as expected.
-        self.changed_schema = true;
-        self.changed_acp = true;
-        self.changed_oauth2 = true;
-        self.changed_domain = true;
+        self.changed_flags.insert(
+            ChangeFlag::SCHEMA
+                | ChangeFlag::ACP
+                | ChangeFlag::OAUTH2
+                | ChangeFlag::DOMAIN
+                | ChangeFlag::SYSTEM_CONFIG
+                | ChangeFlag::SYNC_AGREEMENT
+                | ChangeFlag::KEY_MATERIAL,
+        );
 
         // That's it! We are GOOD to go!
 

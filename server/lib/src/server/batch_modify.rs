@@ -1,4 +1,4 @@
-use super::QueryServerWriteTransaction;
+use super::{ChangeFlag, QueryServerWriteTransaction};
 use crate::prelude::*;
 use crate::server::Plugins;
 use hashbrown::HashMap;
@@ -184,36 +184,77 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // We have finished all plugs and now have a successful operation - flag if
         // schema or acp requires reload. Remember, this is a modify, so we need to check
         // pre and post cands.
-        if !self.changed_schema {
-            self.changed_schema = norm_cand
+        if !self.changed_flags.contains(ChangeFlag::SCHEMA)
+            && norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::ClassType.into())
                         || e.attribute_equality(Attribute::Class, &EntryClass::AttributeType.into())
-                });
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::SCHEMA)
         }
-        if !self.changed_acp {
-            self.changed_acp = norm_cand
+
+        if !self.changed_flags.contains(ChangeFlag::ACP)
+            && norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
-                });
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::ACP)
         }
-        if !self.changed_oauth2 {
-            self.changed_oauth2 = norm_cand
+
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2)
+            && norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
-                });
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
-        if !self.changed_domain {
-            self.changed_domain = norm_cand
+
+        if !self.changed_flags.contains(ChangeFlag::DOMAIN)
+            && norm_cand
                 .iter()
                 .chain(pre_candidates.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO));
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_DOMAIN_INFO))
+        {
+            self.changed_flags.insert(ChangeFlag::DOMAIN)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Uuid, &PVUUID_SYSTEM_CONFIG))
+        {
+            self.changed_flags.insert(ChangeFlag::SYSTEM_CONFIG)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::KEY_MATERIAL)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_MATERIAL)
         }
 
         self.changed_uuid.extend(
@@ -224,10 +265,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         );
 
         trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
+            changed = ?self.changed_flags.iter_names().collect::<Vec<_>>(),
         );
 
         // return

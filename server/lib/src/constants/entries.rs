@@ -100,6 +100,11 @@ pub enum Attribute {
     IpaNtHash,
     IpaSshPubKey,
     JwsEs256PrivateKey,
+    KeyActionRotate,
+    KeyActionRevoke,
+    KeyActionImportJwsEs256,
+    KeyInternalData,
+    KeyProvider,
     LastModifiedCid,
     LdapAllowUnixPwBind,
     /// An LDAP Compatible emailAddress
@@ -290,6 +295,11 @@ impl TryFrom<String> for Attribute {
             ATTR_IPANTHASH => Attribute::IpaNtHash,
             ATTR_IPASSHPUBKEY => Attribute::IpaSshPubKey,
             ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
+            ATTR_KEY_ACTION_ROTATE => Attribute::KeyActionRotate,
+            ATTR_KEY_ACTION_REVOKE => Attribute::KeyActionRevoke,
+            ATTR_KEY_ACTION_IMPORT_JWS_ES256 => Attribute::KeyActionImportJwsEs256,
+            ATTR_KEY_INTERNAL_DATA => Attribute::KeyInternalData,
+            ATTR_KEY_PROVIDER => Attribute::KeyProvider,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
             ATTR_LDAP_ALLOW_UNIX_PW_BIND => Attribute::LdapAllowUnixPwBind,
             ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
@@ -456,6 +466,11 @@ impl From<Attribute> for &'static str {
             Attribute::IpaNtHash => ATTR_IPANTHASH,
             Attribute::IpaSshPubKey => ATTR_IPASSHPUBKEY,
             Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
+            Attribute::KeyActionRotate => ATTR_KEY_ACTION_ROTATE,
+            Attribute::KeyActionRevoke => ATTR_KEY_ACTION_REVOKE,
+            Attribute::KeyActionImportJwsEs256 => ATTR_KEY_ACTION_IMPORT_JWS_ES256,
+            Attribute::KeyInternalData => ATTR_KEY_INTERNAL_DATA,
+            Attribute::KeyProvider => ATTR_KEY_PROVIDER,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
             Attribute::LdapAllowUnixPwBind => ATTR_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,
@@ -608,6 +623,12 @@ pub enum EntryClass {
     DynGroup,
     ExtensibleObject,
     Group,
+    KeyProvider,
+    KeyProviderInternal,
+    KeyObject,
+    KeyObjectJwtEs256,
+    KeyObjectJweA128GCM,
+    KeyObjectInternal,
     MemberOf,
     OAuth2ResourceServer,
     OAuth2ResourceServerBasic,
@@ -655,6 +676,12 @@ impl From<EntryClass> for &'static str {
             EntryClass::DynGroup => ATTR_DYNGROUP,
             EntryClass::ExtensibleObject => "extensibleobject",
             EntryClass::Group => ATTR_GROUP,
+            EntryClass::KeyProvider => ENTRYCLASS_KEY_PROVIDER,
+            EntryClass::KeyProviderInternal => ENTRYCLASS_KEY_PROVIDER_INTERNAL,
+            EntryClass::KeyObject => ENTRYCLASS_KEY_OBJECT,
+            EntryClass::KeyObjectJwtEs256 => ENTRYCLASS_KEY_OBJECT_JWT_ES256,
+            EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
+            EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
             EntryClass::MemberOf => "memberof",
             EntryClass::OAuth2ResourceServer => "oauth2_resource_server",
             EntryClass::OAuth2ResourceServerBasic => "oauth2_resource_server_basic",
@@ -758,7 +785,7 @@ lazy_static! {
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
         (Attribute::Version, Value::Uint32(19))
@@ -771,7 +798,22 @@ Attribute::Description,
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
+
+    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            Attribute::Description,
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );

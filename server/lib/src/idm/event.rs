@@ -1,5 +1,6 @@
 use crate::idm::AuthState;
 use crate::prelude::*;
+use compact_jwt::JwsCompact;
 use kanidm_proto::v1::{AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep};
 
 #[cfg(test)]
@@ -266,11 +267,11 @@ impl LdapAuthEvent {
 }
 
 pub struct LdapTokenAuthEvent {
-    pub token: String,
+    pub token: JwsCompact,
 }
 
 impl LdapTokenAuthEvent {
-    pub fn from_parts(token: String) -> Result<Self, OperationError> {
+    pub fn from_parts(token: JwsCompact) -> Result<Self, OperationError> {
         Ok(LdapTokenAuthEvent { token })
     }
 }

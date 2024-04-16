@@ -52,6 +52,8 @@ In general Kanidm requires that your resource server supports:
 - PKCE S256 code verification
 - OIDC only - JWT ES256 for token signatures
 
+Kanidm issues tokens that are rfc9068 JWT's allowing client introspection.
+
 Kanidm will expose its OAuth2 APIs at the following URLs:
 
 - user auth url: `https://idm.example.com/ui/oauth2`

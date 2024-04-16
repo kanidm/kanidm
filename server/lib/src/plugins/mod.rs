@@ -19,6 +19,7 @@ pub(crate) mod dyngroup;
 mod eckeygen;
 pub(crate) mod gidnumber;
 mod jwskeygen;
+mod keyobject;
 mod memberof;
 mod namehistory;
 mod protected;
@@ -230,6 +231,7 @@ impl Plugins {
         base::Base::pre_create_transform(qs, cand, ce)?;
         valuedeny::ValueDeny::pre_create_transform(qs, cand, ce)?;
         cred_import::CredImport::pre_create_transform(qs, cand, ce)?;
+        keyobject::KeyObjectManagement::pre_create_transform(qs, cand, ce)?;
         jwskeygen::JwsKeygen::pre_create_transform(qs, cand, ce)?;
         gidnumber::GidNumber::pre_create_transform(qs, cand, ce)?;
         domain::Domain::pre_create_transform(qs, cand, ce)?;
@@ -272,6 +274,7 @@ impl Plugins {
         valuedeny::ValueDeny::pre_modify(qs, pre_cand, cand, me)?;
         cred_import::CredImport::pre_modify(qs, pre_cand, cand, me)?;
         jwskeygen::JwsKeygen::pre_modify(qs, pre_cand, cand, me)?;
+        keyobject::KeyObjectManagement::pre_modify(qs, pre_cand, cand, me)?;
         gidnumber::GidNumber::pre_modify(qs, pre_cand, cand, me)?;
         domain::Domain::pre_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_modify(qs, pre_cand, cand, me)?;
@@ -307,6 +310,7 @@ impl Plugins {
         valuedeny::ValueDeny::pre_batch_modify(qs, pre_cand, cand, me)?;
         cred_import::CredImport::pre_batch_modify(qs, pre_cand, cand, me)?;
         jwskeygen::JwsKeygen::pre_batch_modify(qs, pre_cand, cand, me)?;
+        keyobject::KeyObjectManagement::pre_batch_modify(qs, pre_cand, cand, me)?;
         gidnumber::GidNumber::pre_batch_modify(qs, pre_cand, cand, me)?;
         domain::Domain::pre_batch_modify(qs, pre_cand, cand, me)?;
         spn::Spn::pre_batch_modify(qs, pre_cand, cand, me)?;
@@ -418,6 +422,7 @@ impl Plugins {
         run_verify_plugin!(qs, results, valuedeny::ValueDeny);
         run_verify_plugin!(qs, results, attrunique::AttrUnique);
         run_verify_plugin!(qs, results, refint::ReferentialIntegrity);
+        run_verify_plugin!(qs, results, keyobject::KeyObjectManagement);
         run_verify_plugin!(qs, results, dyngroup::DynGroup);
         run_verify_plugin!(qs, results, memberof::MemberOf);
         run_verify_plugin!(qs, results, spn::Spn);

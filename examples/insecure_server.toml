@@ -9,7 +9,7 @@ tls_client_ca = "/tmp/kanidm/client_ca"
 
 #   The log level of the server. May be one of info, debug, trace
 #
-#   NOTE: this is overridden by environment variables at runtime
+#   NOTE: this is overridden by KANIDM_LOG_LEVEL environment variable
 #   Defaults to "info"
 #
 log_level = "info"

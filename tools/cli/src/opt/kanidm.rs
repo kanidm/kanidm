@@ -57,6 +57,9 @@ pub struct CommonOpt {
     /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
+    /// Select the instance name you wish to connect to
+    #[clap(short='I', long="instance", env = "KANIDM_INSTANCE")]
+    pub instance: Option<String>,
     /// The URL of the kanidm instance
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
@@ -1147,10 +1150,14 @@ pub enum DomainOpt {
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
-    #[clap(name = "reset-token-key")]
-    /// Reset this domain token signing key. This will cause all user sessions to be
+    #[clap(name = "revoke-key")]
+    /// Revoke a key by its key id. This will cause all user sessions to be
     /// invalidated (logged out).
-    ResetTokenKey(CommonOpt),
+    RevokeKey {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        key_id: String,
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -1403,3 +1410,4 @@ pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
 }
+
