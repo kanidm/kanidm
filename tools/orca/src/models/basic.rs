@@ -51,6 +51,12 @@ impl ActorModel for ActorBasic {
                 let values = &[mail.as_str()];
                 model::person_set_self_mail(client, person, values).await
             }
+            TransitionAction::ReadSelfAccount => {
+                model::person_get_self_account(client, person).await
+            }
+            TransitionAction::ReadSelfMemberOf => {
+                model::person_get_self_memberof(client, person).await
+            }
         }?;
 
         self.next_state(transition.action, result);
@@ -61,28 +67,43 @@ impl ActorModel for ActorBasic {
 
 impl ActorBasic {
     fn next_transition(&mut self, roles: &BTreeSet<ActorRole>) -> Transition {
+        let logout_transition = Transition {
+            delay: Some(Duration::from_secs(5)),
+            action: TransitionAction::Logout,
+        };
         match self.state {
             State::Unauthenticated => Transition {
                 delay: None,
                 action: TransitionAction::Login,
             },
+            // Doing some tests with more people I noticed that if the delay is too low somehow??! the server could start processing the reauth request before
+            // the auth one, yielding an error,
+            // TODO!!: understand why that happens
             State::Authenticated => Transition {
-                delay: Some(Duration::from_millis(100)),
+                delay: Some(Duration::from_millis(1000)),
                 action: TransitionAction::PrivilegeReauth,
             },
-            State::AuthenticatedWithReauth => {
-                if roles.contains(&ActorRole::PeopleSelfWriteMail) {
-                    Transition {
+            // Since this is the basic model we don't want to get too fancy and do too many things, but since the struct Person
+            // already comes with a BTreeSet of roles we don't want to change that, so we arbitrarily choose to use just the first role
+            // (which is always deterministic thanks to the rng seed used to choose the roles)
+            State::AuthenticatedWithReauth => match roles.first() {
+                Some(role) => match role {
+                    ActorRole::PeopleSelfWriteMail => Transition {
                         delay: Some(Duration::from_millis(200)),
                         action: TransitionAction::WriteAttributePersonMail,
-                    }
-                } else {
-                    Transition {
-                        delay: Some(Duration::from_secs(5)),
-                        action: TransitionAction::Logout,
-                    }
-                }
-            }
+                    },
+                    ActorRole::PeopleSelfReadProfile => Transition {
+                        delay: Some(Duration::from_millis(150)),
+                        action: TransitionAction::ReadSelfAccount,
+                    },
+                    ActorRole::PeopleSelfReadMemberOf => Transition {
+                        delay: Some(Duration::from_millis(330)),
+                        action: TransitionAction::ReadSelfMemberOf,
+                    },
+                    ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
+                },
+                None => logout_transition,
+            },
         }
     }
 
@@ -98,7 +119,9 @@ impl ActorBasic {
             }
             (
                 State::AuthenticatedWithReauth,
-                TransitionAction::WriteAttributePersonMail,
+                TransitionAction::WriteAttributePersonMail
+                | TransitionAction::ReadSelfAccount
+                | TransitionAction::ReadSelfMemberOf,
                 TransitionResult::Ok,
             ) => {
                 self.state = State::AuthenticatedWithReauth;

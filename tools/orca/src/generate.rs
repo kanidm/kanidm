@@ -68,6 +68,16 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             role: ActorRole::PeopleSelfWriteMail,
             ..Default::default()
         },
+        Group {
+            name: "role_people_self_read_account".to_string(),
+            role: ActorRole::PeopleSelfReadProfile,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_self_read_memberof".to_string(),
+            role: ActorRole::PeopleSelfReadMemberOf,
+            ..Default::default()
+        },
     ];
 
     // PHASE 3 - generate persons
@@ -107,7 +117,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let model = Model::Basic;
 
-        // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
         let p = Person {
             preflight_state: PreflightState::Present,
@@ -132,9 +141,9 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // to each role always will exist and be operational.
 
     for group in groups.iter_mut() {
-        // For now, our baseline is 50%. We can adjust this in future per
+        // For now, our baseline is 20%. We can adjust this in future per
         // role for example.
-        let baseline = persons.len() / 2;
+        let baseline = persons.len() / 5;
         let inverse = persons.len() - baseline;
         // Randomly add extra from the inverse
         let extra = Uniform::new(0, inverse);
