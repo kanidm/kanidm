@@ -507,7 +507,7 @@ impl Component for Oauth2App {
             }
             State::ErrInvalidRequest => do_alert_error(
                 "Invalid request",
-                Some("Please close this window and try again again from the beginning."),
+                Some("Please close this window and try again from the beginning."),
                 false,
             ),
         };

@@ -39,13 +39,13 @@ pytest-mock = "^3.14.0"
 pytest-aiohttp = "^1.0.5"
 black = "^24.4.0"
 mkdocs = "^1.5.3"
-mkdocs-material = "^9.5.17"
+mkdocs-material = "^9.5.18"
 mkdocstrings = "^0.24.3"
-mkdocstrings-python = "^1.9.2"
+mkdocstrings-python = "^1.10.0"
 pook = "^1.4.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.3.8"
+ruff = ">=0.0.230,<0.4.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
