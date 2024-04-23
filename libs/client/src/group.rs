@@ -107,7 +107,6 @@ impl KanidmClient {
         id: &str,
         values: &[T],
     ) -> Result<(), ClientError> {
-        // let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(&format!("/v1/group/{}/_attr/mail", id), values)
             .await
     }
