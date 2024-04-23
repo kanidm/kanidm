@@ -425,7 +425,38 @@ impl ValueSetT for ValueSetSession {
                 // Retain all else
                 _ => true,
             }
-        })
+        });
+
+        // Now, assert that there are fewer or equal sessions to the limit.
+        if self.map.len() > SESSION_MAXIMUM {
+            // At this point we will force a number of sessions to be removed. This
+            // is replication safe since other replicas will also be performing
+            // the same operation on merge, since we trim by session issuance order.
+
+            // This is a "slow path". This is becase we optimise session storage
+            // based on fast session lookup, so now we need to actually create an
+            // index based on time. We need to also clone here since we need to mutate
+            // self.map which would violate mut/imut.
+
+            warn!(
+                "entry has exceeded session_maximum limit ({:?}), force trimming will occur",
+                SESSION_MAXIMUM
+            );
+
+            let time_idx: BTreeMap<OffsetDateTime, Uuid> = self
+                .map
+                .iter()
+                .map(|(session_id, session)| (session.issued_at.clone(), *session_id))
+                .collect();
+
+            let to_take = self.map.len() - SESSION_MAXIMUM;
+
+            time_idx.values().take(to_take).for_each(|session_id| {
+                warn!(?session_id, "force trimmed");
+                self.map.remove(session_id);
+            });
+        }
+        // And we're done.
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -1682,7 +1713,7 @@ impl ValueSetT for ValueSetApiToken {
 
 #[cfg(test)]
 mod tests {
-    use super::{ValueSetOauth2Session, ValueSetSession};
+    use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
     use crate::prelude::{IdentityId, SessionScope, Uuid};
     use crate::repl::cid::Cid;
     use crate::value::{Oauth2Session, Session, SessionState};
@@ -1969,6 +2000,51 @@ mod tests {
         assert!(!sessions.contains_key(&zero_uuid));
         assert!(!sessions.contains_key(&one_uuid));
         assert!(sessions.contains_key(&two_uuid));
+    }
+
+    #[test]
+    fn test_valueset_session_limit_trim() {
+        // Create a session that will be trimmed.
+        let zero_uuid = Uuid::new_v4();
+        let zero_cid = Cid::new_zero();
+        let issued_at = OffsetDateTime::UNIX_EPOCH;
+
+        let session_iter = std::iter::once((
+            zero_uuid,
+            Session {
+                state: SessionState::NeverExpires,
+                label: "hacks".to_string(),
+                issued_at,
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
+            },
+        ))
+        .chain((0..SESSION_MAXIMUM).into_iter().map(|_| {
+            (
+                Uuid::new_v4(),
+                Session {
+                    state: SessionState::NeverExpires,
+                    label: "hacks".to_string(),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            )
+        }));
+
+        let mut vs_a: ValueSet = ValueSetSession::from_iter(session_iter).unwrap();
+
+        assert!(vs_a.len() > SESSION_MAXIMUM);
+
+        vs_a.trim(&zero_cid);
+
+        assert!(vs_a.len() == SESSION_MAXIMUM);
+
+        let sessions = vs_a.as_session_map().expect("Unable to access sessions");
+
+        assert!(!sessions.contains_key(&zero_uuid));
     }
 
     #[test]
