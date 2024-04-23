@@ -151,3 +151,6 @@ pub const DEFAULT_LIMIT_FILTER_MAX_ELEMENTS: u64 = 32;
 
 /// The maximum amount of recursion allowed in a filter.
 pub const DEFAULT_LIMIT_FILTER_DEPTH_MAX: u64 = 12;
+
+/// The maximum number of sessions allowed on a single entry.
+pub(crate) const SESSION_MAXIMUM: usize = 48;
