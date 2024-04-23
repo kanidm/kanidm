@@ -13,6 +13,8 @@ pub enum TransitionAction {
     Logout,
     PrivilegeReauth,
     WriteAttributePersonMail,
+    ReadSelfAccount,
+    ReadSelfMemberOf,
 }
 
 // Is this the right way? Should transitions/delay be part of the actor model? Should
@@ -44,12 +46,16 @@ pub enum ActorRole {
     None,
     PeoplePiiReader,
     PeopleSelfWriteMail,
+    PeopleSelfReadProfile,
+    PeopleSelfReadMemberOf,
 }
 
 impl ActorRole {
     pub fn requires_membership_to(&self) -> Option<&[&str]> {
         match self {
-            ActorRole::None => None,
+            ActorRole::None
+            | ActorRole::PeopleSelfReadProfile
+            | ActorRole::PeopleSelfReadMemberOf => None,
             ActorRole::PeoplePiiReader => Some(&["idm_people_pii_read"]),
             ActorRole::PeopleSelfWriteMail => Some(&["idm_people_self_write_mail"]),
         }
@@ -144,6 +150,38 @@ pub async fn logout(
     Ok(parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::Logout,
+        start,
+        duration,
+    ))
+}
+
+pub async fn person_get_self_account(
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    let start = Instant::now();
+    let result = client.idm_person_account_get(&person.username).await;
+    let duration = Instant::now().duration_since(start);
+    Ok(parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonGetSelfAccount,
+        start,
+        duration,
+    ))
+}
+
+pub async fn person_get_self_memberof(
+    client: &KanidmClient,
+    person: &Person,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    let start = Instant::now();
+    let result = client
+        .idm_person_account_get_attr(&person.username, "memberof")
+        .await;
+    let duration = Instant::now().duration_since(start);
+    Ok(parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonGetSelfMemberOf,
         start,
         duration,
     ))

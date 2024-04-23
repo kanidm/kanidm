@@ -40,7 +40,7 @@ async fn preflight_person(
         if let Some(need_groups) = role.requires_membership_to() {
             for group_name in need_groups {
                 client
-                    .group_add_members(&group_name, &[person.username.as_str()])
+                    .group_add_members(group_name, &[person.username.as_str()])
                     .await?;
             }
         }
