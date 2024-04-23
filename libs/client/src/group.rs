@@ -97,4 +97,22 @@ impl KanidmClient {
         )
         .await
     }
+
+    pub async fn idm_group_purge_mail(&self, id: &str) -> Result<(), ClientError> {
+        self.idm_group_purge_attr(id, "mail").await
+    }
+
+    pub async fn idm_group_set_mail<T: serde::Serialize>(
+        &self,
+        id: &str,
+        values: &[T],
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(&format!("/v1/group/{}/_attr/mail", id), values)
+            .await
+    }
+
+    pub async fn idm_group_get_mail(&self, id: &str) -> Result<Option<Vec<String>>, ClientError> {
+        self.perform_get_request(&format!("/v1/group/{}/_attr/mail", id))
+            .await
+    }
 }

@@ -16,6 +16,7 @@ impl GroupOpt {
             GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
+            GroupOpt::SetMail { copt, .. } => copt.debug,
             GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
@@ -143,6 +144,22 @@ impl GroupOpt {
                 {
                     Err(e) => handle_client_error(e, gcopt.copt.output_mode),
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
+                }
+            }
+            GroupOpt::SetMail { copt, name, mail } => {
+                let client = copt.to_client(OpType::Write).await;
+
+                let result = if mail.is_empty() {
+                    client.idm_group_purge_mail(name.as_str()).await
+                } else {
+                    client
+                        .idm_group_set_mail(name.as_str(), mail.as_slice())
+                        .await
+                };
+
+                match result {
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(_) => println!("Successfully set mail for group {}", name.as_str()),
                 }
             }
             GroupOpt::SetEntryManagedBy {

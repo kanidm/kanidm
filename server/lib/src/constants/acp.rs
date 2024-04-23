@@ -1331,6 +1331,29 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_ACCOUNT_MAIL_READ_DL6: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_account_mail_read",
+        uuid: UUID_IDM_ACP_ACCOUNT_MAIL_READ_V1,
+        description: "Builtin IDM Control for reading account and group mail attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_MAIL_READ]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Or(vec![
+                match_class_filter!(EntryClass::Account),
+                match_class_filter!(EntryClass::Group),
+            ]),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![Attribute::Mail],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1499,6 +1522,7 @@ lazy_static! {
             Attribute::Spn,
             Attribute::Uuid,
             Attribute::Description,
+            Attribute::Mail,
             Attribute::Member,
             Attribute::DynMember,
             Attribute::EntryManagedBy,
@@ -1508,6 +1532,7 @@ lazy_static! {
             Attribute::Name,
             Attribute::Uuid,
             Attribute::Description,
+            Attribute::Mail,
             Attribute::Member,
             Attribute::EntryManagedBy,
         ],
@@ -1518,11 +1543,13 @@ lazy_static! {
         modify_present_attrs: vec![
             Attribute::Name,
             Attribute::Description,
+            Attribute::Mail,
             Attribute::Member,
         ],
         modify_removed_attrs: vec![
             Attribute::Name,
             Attribute::Description,
+            Attribute::Mail,
             Attribute::Member,
         ],
         ..Default::default()

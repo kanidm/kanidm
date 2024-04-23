@@ -207,6 +207,32 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
     assert!(members.is_none());
 
+    // Add a mail attribute.
+    rsclient
+        .idm_group_set_mail(
+            "demo_group",
+            &["primary@example.com", "secondary@example.com"],
+        )
+        .await
+        .unwrap();
+
+    let mail_addrs = rsclient.idm_group_get_mail("demo_group").await.unwrap();
+
+    assert_eq!(
+        mail_addrs,
+        Some(vec![
+            "primary@example.com".to_string(),
+            "secondary@example.com".to_string()
+        ])
+    );
+
+    // Purge the mail addrs.
+    rsclient.idm_group_purge_mail("demo_group").await.unwrap();
+
+    let mail_addrs = rsclient.idm_group_get_mail("demo_group").await.unwrap();
+
+    assert_eq!(mail_addrs, None);
+
     // Delete the group
     rsclient.idm_group_delete("demo_group").await.unwrap();
     let g_list_3 = rsclient.idm_group_list().await.unwrap();

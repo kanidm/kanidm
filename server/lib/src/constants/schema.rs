@@ -768,6 +768,24 @@ pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_GROUP_DL6: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_GROUP,
+    name: EntryClass::Group.into(),
+    description: "Object representation of a group".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::Member.into(),
+        Attribute::GrantUiHint.into(),
+        Attribute::Description.into(),
+        Attribute::Mail.into(),
+    ],
+    systemmust: vec![
+        Attribute::Name.into(),
+        Attribute::Spn.into()],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_DYNGROUP,
     name: EntryClass::DynGroup.into(),
