@@ -76,9 +76,6 @@ impl ActorBasic {
                 delay: None,
                 action: TransitionAction::Login,
             },
-            // Doing some tests with more people I noticed that if the delay is too low somehow??! the server could start processing the reauth request before
-            // the auth one, yielding an error,
-            // TODO!!: understand why that happens
             State::Authenticated => Transition {
                 delay: Some(Duration::from_millis(1000)),
                 action: TransitionAction::PrivilegeReauth,
