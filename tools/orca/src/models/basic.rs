@@ -86,15 +86,15 @@ impl ActorBasic {
             State::AuthenticatedWithReauth => match roles.first() {
                 Some(role) => match role {
                     ActorRole::PeopleSelfWriteMail => Transition {
-                        delay: Some(Duration::from_millis(200)),
+                        delay: Some(Duration::from_millis(300)),
                         action: TransitionAction::WriteAttributePersonMail,
                     },
                     ActorRole::PeopleSelfReadProfile => Transition {
-                        delay: Some(Duration::from_millis(150)),
+                        delay: Some(Duration::from_millis(450)),
                         action: TransitionAction::ReadSelfAccount,
                     },
                     ActorRole::PeopleSelfReadMemberOf => Transition {
-                        delay: Some(Duration::from_millis(330)),
+                        delay: Some(Duration::from_millis(500)),
                         action: TransitionAction::ReadSelfMemberOf,
                     },
                     ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
