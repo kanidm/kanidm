@@ -59,6 +59,11 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // These decide what each person is supposed to do with their life.
     let mut groups = vec![
         Group {
+            name: "role_people_self_set_password".to_string(),
+            role: ActorRole::PeopleSelfSetPassword,
+            ..Default::default()
+        },
+        Group {
             name: "role_people_pii_reader".to_string(),
             role: ActorRole::PeoplePiiReader,
             ..Default::default()

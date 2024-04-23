@@ -46,6 +46,7 @@ pub enum EventDetail {
     PersonSetSelfMail,
     PersonGetSelfAccount,
     PersonGetSelfMemberOf,
+    PersonSelfSetPassword,
     PersonReauth,
     Error,
 }
