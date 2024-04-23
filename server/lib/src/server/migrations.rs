@@ -891,6 +891,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_GROUP_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
@@ -914,6 +915,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
             // Add the internal key provider.

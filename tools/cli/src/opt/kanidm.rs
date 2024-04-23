@@ -256,6 +256,16 @@ pub enum GroupOpt {
     /// set operation.
     #[clap(name = "set-members")]
     SetMembers(GroupNamedMembers),
+    /// Set the exact list of mail addresses that this group is associated with. The first
+    /// mail address in the list is the `primary` and the remainder are aliases. Setting
+    /// an empty list will clear the mail attribute.
+    #[clap(name = "set-mail")]
+    SetMail {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        mail: Vec<String>,
+    },
     /// Set a new entry-managed-by for this group.
     #[clap(name = "set-entry-manager")]
     SetEntryManagedBy {
