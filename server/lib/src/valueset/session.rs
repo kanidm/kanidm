@@ -22,8 +22,6 @@ pub struct ValueSetSession {
     map: BTreeMap<Uuid, Session>,
 }
 
-const SESSION_MAXIMUM: usize = 48;
-
 impl ValueSetSession {
     pub fn new(u: Uuid, m: Session) -> Box<Self> {
         let mut map = BTreeMap::new();
