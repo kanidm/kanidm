@@ -10,10 +10,24 @@ actions.
 The project ships default access controls which are designed to limit and isolate the privileges of
 accounts whenever possible.
 
-This separation is the reason why `admin` and `idm_admin` exist as separate accounts. There are two
+This separation is the reason why `admins` and `idm_admins` exist as separate groups. There are two
 distinct access silos within Kanidm. Access to manage Kanidm as a service (such as application
 integrations and domain naming) and access to manage people and groups. This is to limit the
 possible harm that an attacker may make if they gain access to these roles.
+
+## Assigning Permissions to Persons
+
+Kanidm supports [privilege access mode](../accounts/authentication_and_credentials.md) so that
+high-level permissions can be assigned to users who must reauthenticate before using those
+privileges. The privileges then are only accessible for a short period of time. This can allow you
+to assign high level permissions to regular persions accounts rather than requiring separete
+privilege access accounts (PAA) or privileged access workstations (PAW).
+
+## Assigning Permissions to Service Accounts
+
+Service account tokens can be issued with read-only or read-write flags, where read-only tokens are
+unable to modify content of Kanidm. This can allow the service account to have higher level
+permissions assigned but only usable with a short lived or isolate read-write token.
 
 ## Permission Delegation
 
