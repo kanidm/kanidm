@@ -213,6 +213,7 @@ impl LdapServer {
                 }
             };
 
+            let mut no_attrs = false;
             let mut all_attrs = false;
             let mut all_op_attrs = false;
 
@@ -229,12 +230,28 @@ impl LdapServer {
                         // map all vattrs.
                         all_attrs = true;
                         all_op_attrs = true;
+                    } else if a == "1.1" {
+                        /*
+                         *  ref https://www.rfc-editor.org/rfc/rfc4511#section-4.5.1.8
+                         *
+                         *  A list containing only the OID "1.1" indicates that no
+                         *  attributes are to be returned. If "1.1" is provided with other
+                         *  attributeSelector values, the "1.1" attributeSelector is
+                         *  ignored. This OID was chosen because it does not (and can not)
+                         *  correspond to any attribute in use.
+                         */
+                        if sr.attrs.len() == 1 {
+                            no_attrs = true;
+                        }
                     }
                 })
             }
 
             // We need to retain this to know what the client requested.
-            let (k_attrs, l_attrs) = if all_op_attrs {
+            let (k_attrs, l_attrs) = if no_attrs {
+                // Request no attributes and no mapped attributes.
+                (None, Vec::with_capacity(0))
+            } else if all_op_attrs {
                 // We need all attrs, and we do a full v_attr map.
                 (None, ldap_all_vattrs())
             } else if all_attrs {
@@ -261,7 +278,7 @@ impl LdapServer {
                     .attrs
                     .iter()
                     .filter_map(|a| {
-                        if a == "*" || a == "+" {
+                        if a == "*" || a == "+" || a == "1.1" {
                             None
                         } else {
                             Some(a.to_lowercase())
@@ -835,7 +852,7 @@ mod tests {
             $dn:expr,
             $($item:expr),*
         ) => {{
-            assert!($entry.dn == $dn);
+            assert_eq!($entry.dn, $dn);
             // Build a set from the attrs.
             let mut attrs = HashSet::new();
             for a in $entry.attributes.iter() {
@@ -1257,6 +1274,96 @@ mod tests {
                     (Attribute::Name, "testperson1"),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    // Test behaviour of the 1.1 attribute.
+    #[idm_test]
+    async fn test_ldap_one_dot_one_attribute(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // If we request only 1.1, we get no attributes.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec!["1.1".to_string()],
+        };
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_eq!(
+                    lsre.dn.as_str(),
+                    "spn=testperson1@example.com,dc=example,dc=com"
+                );
+                assert!(lsre.attributes.is_empty());
+            }
+            _ => assert!(false),
+        };
+
+        // If we request 1.1 and another attr, 1.1 is IGNORED.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "1.1".to_string(),
+                // This should be present.
+                Attribute::EntryUuid.to_string(),
+            ],
+        };
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
                     (
                         Attribute::EntryUuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
