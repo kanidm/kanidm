@@ -33,6 +33,8 @@
   - [Account Policy](accounts/account_policy.md)
   - [POSIX Accounts and Groups](accounts/posix_accounts_and_groups.md)
 
+- [Access Control](access_control/intro.md)
+
 - [Service Integrations](integrations/readme.md)
   - [PAM and nsswitch](integrations/pam_and_nsswitch.md)
     - [SUSE / OpenSUSE](integrations/pam_and_nsswitch/suse.md)
@@ -56,8 +58,6 @@
 - [Synchronisation](sync/concepts.md)
   - [FreeIPA](sync/freeipa.md)
   - [LDAP](sync/ldap.md)
-
-- [Access Control](access_control/intro.md)
 
 # Support
 
