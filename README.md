@@ -54,7 +54,6 @@ All interactions with the project are covered by our [code of conduct].
 When we develop features, we follow our project's guidelines on [rights and ethics].
 
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-
 [rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/developer_ethics.md
 
 ## Getting in Contact / Questions
@@ -63,7 +62,6 @@ We have a Matrix-powered [gitter community channel] where project members are al
 and answer questions. Alternately you can open a new [GitHub discussion].
 
 [gitter community channel]: https://app.gitter.im/#/room/#kanidm_community:gitter.im
-
 [github discussion]: https://github.com/kanidm/kanidm/discussions
 
 ## What does Kanidm mean?
