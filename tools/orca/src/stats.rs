@@ -1,5 +1,5 @@
 use crate::error::Error;
-use crate::run::EventRecord;
+use crate::run::{EventDetail, EventRecord};
 use crossbeam::queue::{ArrayQueue, SegQueue};
 use std::sync::Arc;
 use std::thread;
@@ -22,6 +22,26 @@ pub trait DataCollector {
     ) -> Result<(), Error>;
 }
 
+enum OpKind {
+    WriteOp,
+    ReadOp,
+    Other, //TODO! does this make sense?
+}
+
+impl From<EventDetail> for OpKind {
+    fn from(value: EventDetail) -> Self {
+        match value {
+            EventDetail::PersonGetSelfMemberOf | EventDetail::PersonGetSelfAccount => {
+                OpKind::ReadOp
+            }
+            EventDetail::PersonSetSelfMail | EventDetail::PersonSelfSetPassword => OpKind::WriteOp,
+            EventDetail::Error
+            | EventDetail::Login
+            | EventDetail::Logout
+            | EventDetail::PersonReauth => OpKind::Other,
+        }
+    }
+}
 pub struct BasicStatistics {}
 
 impl BasicStatistics {
@@ -80,8 +100,8 @@ impl DataCollector for BasicStatistics {
 
         info!("start statistics processing ...");
 
-        let mut count: usize = 0;
-        let mut optimes = Vec::new();
+        let mut readop_times = Vec::new();
+        let mut writeop_times = Vec::new();
 
         // We will drain this now.
         while let Some(event_record) = stats_queue.pop() {
@@ -90,20 +110,36 @@ impl DataCollector for BasicStatistics {
                 continue;
             }
 
-            count += 1;
-
-            optimes.push(event_record.duration.as_secs_f64());
+            match OpKind::from(event_record.details) {
+                OpKind::ReadOp => {
+                    readop_times.push(event_record.duration.as_secs_f64());
+                }
+                OpKind::WriteOp => {
+                    writeop_times.push(event_record.duration.as_secs_f64());
+                }
+                OpKind::Other => {}
+            }
         }
 
-        info!("Received {} events", count);
+        info!("Received {} read events", readop_times.len());
 
-        let distrib: Normal<f64> = Normal::from_data(&optimes);
-        let sd = distrib.variance().sqrt();
+        let readop_distrib: Normal<f64> = Normal::from_data(&readop_times);
+        let sd = readop_distrib.variance().sqrt();
 
-        info!("mean: {} seconds", distrib.mean());
-        info!("variance: {}", distrib.variance());
+        info!("mean: {} seconds", readop_distrib.mean());
+        info!("variance: {}", readop_distrib.variance());
         info!("SD: {} seconds", sd);
-        info!("95%: {}", distrib.mean() + (2.0 * sd));
+        info!("95%: {}", readop_distrib.mean() + (2.0 * sd));
+
+        info!("Received {} write events", writeop_times.len());
+
+        let writeop_distrib: Normal<f64> = Normal::from_data(&writeop_times);
+        let sd = writeop_distrib.variance().sqrt();
+
+        info!("mean: {} seconds", writeop_distrib.mean());
+        info!("variance: {}", writeop_distrib.variance());
+        info!("SD: {} seconds", sd);
+        info!("95%: {}", writeop_distrib.mean() + (2.0 * sd));
 
         debug!("Ended statistics collector");
 
