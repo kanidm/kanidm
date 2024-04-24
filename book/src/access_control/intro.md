@@ -27,7 +27,7 @@ privilege access accounts (PAA) or privileged access workstations (PAW).
 
 Service account tokens can be issued with read-only or read-write flags, where read-only tokens are
 unable to modify content of Kanidm. This can allow the service account to have higher level
-permissions assigned but only usable with a short lived or isolate read-write token.
+permissions assigned but only usable with a short lived or isolated read-write token.
 
 ## Permission Delegation
 
