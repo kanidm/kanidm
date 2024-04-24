@@ -44,6 +44,7 @@ This is a list of supported features and standards within Kanidm.
   - RBAC scope mapping
 - [RFC6819 OAauth 2.0 Threat Model and Security Considerations](https://www.rfc-editor.org/rfc/rfc6819)
 - [RFC7009 Token Revocation](https://datatracker.ietf.org/doc/html/rfc7009)
+- [RFC7662 OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662)
 - [RFC7636 Proof Key for Code Exchange (SHA256 Only)](https://www.rfc-editor.org/rfc/rfc7636)
 - [RFC8414 OAuth 2.0 Authorisation Server Metadata](https://www.rfc-editor.org/rfc/rfc8414)
 - [RFC9068 OAuth 2.0 JWT Access Tokens](https://www.rfc-editor.org/rfc/rfc9068)
