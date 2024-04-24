@@ -15,7 +15,7 @@ connect.
 OAuth2 uses a number of terms in surprising ways that makes it often unclear and difficult to
 understand.
 
-A user wishes to access a service (resource, resource server) through an oauth2 client. The client
+A user wishes to access a service (resource, resource server) through an OAuth2 client. The client
 does not have an active session for the user so it redirects to the authorisation server (Kanidm) to
 determine if the user should be allowed to proceed, and has the appropriate permissions (scopes) for
 the requested resources.
@@ -26,7 +26,7 @@ the authorisation server makes a decision if it allows the authorisation to proc
 then prompted to consent to the authorisation from the authorisation server to the client as some
 identity information may be revealed by granting this consent.
 
-If successful and consent given, the user is redirected back to the client with an authorisation
+If successful and consent is given, the user is redirected back to the client with an authorisation
 code. The client then contacts the authorisation server directly with this code and exchanges it for
 a valid OAuth token.
 
@@ -110,7 +110,7 @@ The second is supplemental scope mappings. These function the same as scope maps
 a group provides a set of scopes to the account. However these scopes are NOT consulted during
 authorisation decisions made by Kanidm. These scopes exists to allow optional properties to be
 provided (such as personal information about a subset of accounts to be revealed) or so that the
-service may make it's own authorisation decisions based on the provided scopes.
+service may make its own authorisation decisions based on the provided scopes.
 
 This use of scopes is the primary means to control who can access what resources. These access
 decisions can take place either on Kanidm or the service.
