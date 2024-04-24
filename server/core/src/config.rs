@@ -186,7 +186,11 @@ impl ServerConfig {
             } else {
                 eprintln!("📜 No config file found at {:?}", config_path.as_ref());
             }
-        }
+        } else {
+            eprintln!(
+                "WARNING: No configuration path was provided, relying on environment variables."
+            );
+        };
 
         // build from the environment variables
         let res = config.try_from_env().map_err(|e| {
