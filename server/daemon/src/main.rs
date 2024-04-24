@@ -24,6 +24,7 @@ use sketching::LogLevel;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
@@ -319,7 +320,26 @@ async fn kanidm_main() -> ExitCode {
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
 
-    let sconfig = match ServerConfig::new(opt.config_path()) {
+    let Ok(default_config_path) = PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")) else {
+        eprintln!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_DEFAULT_CONFIG_PATH value");
+        return ExitCode::FAILURE;
+    };
+
+    let maybe_config_path = if let Some(p) = opt.config_path() {
+        Some(p)
+    } else {
+        // The user didn't ask for a file, lets check if the default path exists?
+        if default_config_path.exists() {
+            // It does, lets use it.
+            Some(default_config_path)
+        } else {
+            // No default config, and no config specified, lets assume the user
+            // has selected environment variables.
+            None
+        }
+    };
+
+    let sconfig = match ServerConfig::new(maybe_config_path) {
         Ok(c) => Some(c),
         Err(e) => {
             config_error.push(format!("Config Parse failure {:?}", e));

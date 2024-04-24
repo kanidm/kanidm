@@ -100,16 +100,20 @@ impl TokenInstance {
 
 #[derive(Debug, Serialize, Clone, Deserialize, Default)]
 pub struct TokenStore {
-    instances: BTreeMap<Option<String>, TokenInstance>,
+    instances: BTreeMap<String, TokenInstance>,
 }
 
 impl TokenStore {
     pub fn instances(&self, name: &Option<String>) -> Option<&TokenInstance> {
-        self.instances.get(name)
+        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+
+        self.instances.get(&n_lookup)
     }
 
     pub fn instances_mut(&mut self, name: &Option<String>) -> Option<&mut TokenInstance> {
-        self.instances.get_mut(name)
+        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+
+        self.instances.get_mut(&n_lookup)
     }
 }
 
@@ -409,7 +413,8 @@ async fn process_auth_state(
     let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_default();
 
     // Select our token instance. Create it if empty.
-    let token_instance = tokens.instances.entry(instance_name.clone()).or_default();
+    let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
+    let token_instance = tokens.instances.entry(n_lookup).or_default();
 
     // Add our new one
     let (spn, tonk) = match client.get_token().await {
@@ -480,6 +485,7 @@ async fn process_auth_state(
 
     // write them out.
     if write_tokens(&tokens, &client.get_token_cache_path()).is_err() {
+        trace!(?tokens);
         error!("Error persisting authentication token store");
         std::process::exit(1);
     };
@@ -669,7 +675,8 @@ impl LogoutOpt {
             std::process::exit(1);
         });
 
-        let Some(token_instance) = tokens.instances.get_mut(instance_name) else {
+        let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
+        let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
             println!("No sessions for {}", spn);
             return;
         };
