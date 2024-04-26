@@ -32,8 +32,8 @@ Kanidm supports:
 - RADIUS for network and VPN authentication
 - Read-only LDAPs gateway for Legacy Systems
 - Complete CLI tooling for Administration
-- A WebUI for user self-service
 - Two node high availability using database replication
+- A WebUI for user self-service
 
 </details>
 
