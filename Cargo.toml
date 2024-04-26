@@ -37,7 +37,7 @@ authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
 ]
-rust-version = "1.66"
+rust-version = "1.77"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
@@ -61,12 +61,12 @@ repository = "https://github.com/kanidm/kanidm/"
 # scim_proto = { path = "../scim/proto" }
 # scim_proto = { git = "https://github.com/kanidm/scim.git"  }
 
-base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
-webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
-webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
-webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
-webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
-sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "5f4db4172f8e22aedc68c282d177e98db2b1892f" }
+base64urlsafedata = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
+webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
+webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
+webauthn-rs-core = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
+webauthn-rs-proto = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
+sshkey-attest = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "24b6ad8e41e336b4b6554b6e8e171c929952bf73" }
 
 # base64urlsafedata = { path = "../webauthn-rs/base64urlsafedata" }
 # webauthn-authenticator-rs = { path = "../webauthn-rs/webauthn-authenticator-rs" }
