@@ -20,9 +20,14 @@ This is the first stable release of the Kanidm Identity Management project. We w
 one in our community who has supported to the project to this point with their invaluable
 contributions, comments, questions, feedback and support.
 
-Importantly this release makes a number of changes to our projects support processes. You should
+Importantly this release makes a number of changes to our project's support processes. You should
 review our [support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md)
 as this may have important effects on your distribution or upgrades in future.
+
+### 1.2.0 Important Changes
+
+- On upgrade all OAuth2 sessions and user sessions will be reset due to changes in cryptographic key handling. This does not affect api tokens.
+- There is a maximum limit of 48 interactive sessions for persons where older sessions are automatically removed.
 
 ### 1.2.0 Release Highlights
 
