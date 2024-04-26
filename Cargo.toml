@@ -32,7 +32,7 @@ members = [
 ]
 
 [workspace.package]
-version = "1.2.0-dev"
+version = "1.2.0-pre"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
