@@ -37,6 +37,19 @@ practice. This can allow account hijacking, privilege escalation, credential dis
 information leaks and more. The entire path between a client and the server must be protected at all
 times.
 
+There are a variety of ways that you can configure TLS between your load balancer and Kanidm.
+Ultimately, any option that maintains the confidentiality and integrity of the communication will
+suffice. Some options include, but are not limited to:
+
+- Generating a self-signed certificate
+  - Utilize certificate pinning to ensure that the load balancer only trusts connections made with
+  that particular certificate
+- Not terminating TLS / TLS passthrough / TCP proxy
+- Running your own certificate authority (CA)
+
+The "best" option for you will depend on a number of factors, including your threat model and the
+specifc load balancer you are using.
+
 ## OAuth2
 
 [RFC6819 - OAuth2 Threat Model and Security Considerations](https://www.rfc-editor.org/rfc/rfc6819)
