@@ -11,7 +11,6 @@ use axum::extract::{Path, State};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use axum_auth::AuthBearer;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -247,10 +246,8 @@ async fn scim_sync_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    AuthBearer(bearer): AuthBearer,
 ) -> Result<Json<ScimSyncState>, WebError> {
     // Given the token, what is it's connected sync state?
-    trace!(?bearer);
     state
         .qe_r_ref
         .handle_scim_sync_status(client_auth_info, kopid.eventid)

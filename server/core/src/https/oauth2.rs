@@ -477,6 +477,19 @@ async fn oauth2_authorise_reject(
     }
 }
 
+#[axum::async_trait]
+impl axum::extract::FromRequest<ServerState, axum::body::Body> for Form<AccessTokenRequest> {
+    type Rejection = &'static str;
+
+    #[instrument(level = "debug", skip(state))]
+    async fn from_request(
+        request: axum::extract::Request,
+        state: &ServerState,
+    ) -> Result<Self, Self::Rejection> {
+        todo!()
+    }
+}
+
 #[axum_macros::debug_handler]
 #[instrument(skip(state, kopid, client_auth_info), level = "DEBUG")]
 pub async fn oauth2_token_post(
