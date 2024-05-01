@@ -1009,7 +1009,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             hasher.update(code_verifier.as_bytes());
             let code_verifier_hash: Vec<u8> = hasher.finish().to_vec();
 
-            if code_challenge.0 != code_verifier_hash {
+            if code_challenge != code_verifier_hash {
                 security_info!(
                     "PKCE code verification failed - this may indicate malicious activity"
                 );
@@ -2607,7 +2607,6 @@ mod tests {
     use std::str::FromStr;
     use std::time::Duration;
 
-    use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
         JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcUnverified,
@@ -2658,7 +2657,7 @@ mod tests {
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
                 pkce_request: Some(PkceRequest {
-                    code_challenge: Base64UrlSafeData($code_challenge),
+                    code_challenge: $code_challenge.into(),
                     code_challenge_method: CodeChallengeMethod::S256,
                 }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -3129,7 +3128,7 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let pkce_request = Some(PkceRequest {
-            code_challenge: Base64UrlSafeData(code_challenge),
+            code_challenge: code_challenge.into(),
             code_challenge_method: CodeChallengeMethod::S256,
         });
 
@@ -4851,7 +4850,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge: code_challenge.into(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -4911,7 +4910,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge: code_challenge.into(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5132,7 +5131,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                code_challenge: code_challenge.clone().into(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
@@ -5914,7 +5913,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge: code_challenge.into(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),

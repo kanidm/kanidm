@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use base64urlsafedata::Base64UrlSafeData;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 
 use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
@@ -590,7 +590,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             (ScimSyncState::Active { cookie }, Some(sync_cookie)) => {
                 // Check cookies.
-                if cookie.0 != sync_cookie {
+                if cookie != sync_cookie {
                     // Invalid
                     error!(
                         "Invalid Sync State - Active, but agreement has divegent external cookie."
@@ -933,8 +933,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         })
                         .and_then(|secret| match secret {
                             ScimSimpleAttr::String(value) => {
-                                Base64UrlSafeData::try_from(value.as_str())
-                                    .map(|b| b.into())
+                                STANDARD.decode(value.as_str())
                                     .map_err(|_| {
                                         error!("Invalid secret attribute - must be base64 string");
                                         OperationError::InvalidAttribute(format!(
@@ -1482,7 +1481,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = match to_state {
             ScimSyncState::Active { cookie } => ModifyList::new_purge_and_set(
                 Attribute::SyncCookie,
-                Value::PrivateBinary(cookie.0.clone()),
+                Value::PrivateBinary(cookie.to_vec()),
             ),
             ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie),
         };
@@ -1532,7 +1531,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         Ok(
             match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
                 Some(b) => ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(b.to_vec()),
+                    cookie: b.to_vec().into(),
                 },
                 None => ScimSyncState::Refresh,
             },
@@ -1546,7 +1545,6 @@ mod tests {
     use crate::prelude::*;
     use crate::server::keys::KeyProvidersTransaction;
     use crate::value::KeyStatus;
-    use base64urlsafedata::Base64UrlSafeData;
     use compact_jwt::traits::JwsVerifiable;
     use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
@@ -1911,7 +1909,7 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Refresh,
             entries: Vec::default(),
@@ -1940,7 +1938,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
@@ -2008,7 +2006,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
@@ -2048,7 +2046,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries,
             retain: ScimSyncRetentionMode::Ignore,
@@ -2251,7 +2249,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
@@ -2275,10 +2273,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
@@ -2318,7 +2316,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
@@ -2357,7 +2355,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
@@ -2399,7 +2397,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::default(),
@@ -2434,7 +2432,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
                 ScimEntry {
@@ -2470,10 +2468,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2518,7 +2516,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
                 ScimEntry {
@@ -2554,10 +2552,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![]),
@@ -2616,7 +2614,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
@@ -2640,10 +2638,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2678,7 +2676,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: Vec::default(),
             retain: ScimSyncRetentionMode::Ignore,
@@ -2693,10 +2691,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Ignore,
