@@ -40,7 +40,7 @@ impl ValueSetJwsKeyEs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsEs256Signer::from_es256_der(b.0.as_slice()).map_err(|e| {
+                JwsEs256Signer::from_es256_der(b.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing ES256 DER");
                     OperationError::InvalidValueState
                 })
@@ -229,7 +229,7 @@ impl ValueSetJwsKeyRs256 {
         let set = data
             .iter()
             .map(|b| {
-                JwsRs256Signer::from_rs256_der(b.0.as_slice()).map_err(|e| {
+                JwsRs256Signer::from_rs256_der(b.as_slice()).map_err(|e| {
                     debug!(?e, "Error occurred parsing RS256 DER");
                     OperationError::InvalidValueState
                 })

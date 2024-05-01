@@ -129,7 +129,7 @@ impl TryFrom<&ReplTotpV1> for Totp {
         let digits = TotpDigits::try_from(value.digits)?;
 
         Ok(Totp {
-            secret: value.key.0.clone(),
+            secret: value.key.to_vec(),
             step: value.step,
             algo,
             digits,

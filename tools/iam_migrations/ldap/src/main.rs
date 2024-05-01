@@ -315,7 +315,7 @@ async fn run_sync(
 
     let cookie = match &scim_sync_status {
         ScimSyncState::Refresh => None,
-        ScimSyncState::Active { cookie } => Some(cookie.0.clone()),
+        ScimSyncState::Active { cookie } => Some(cookie.to_vec()),
     };
 
     let filter = sync_config.ldap_filter.clone();
