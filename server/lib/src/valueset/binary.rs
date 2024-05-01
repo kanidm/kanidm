@@ -31,7 +31,7 @@ impl ValueSetPrivateBinary {
     }
 
     pub fn from_repl_v1(data: &[Base64UrlSafeData]) -> Result<ValueSet, OperationError> {
-        let set = data.iter().map(|b| b.0.clone()).collect();
+        let set = data.iter().map(|b| b.to_vec()).collect();
         Ok(Box::new(ValueSetPrivateBinary { set }))
     }
 
@@ -182,7 +182,7 @@ impl ValueSetPublicBinary {
     }
 
     pub fn from_repl_v1(data: &[(String, Base64UrlSafeData)]) -> Result<ValueSet, OperationError> {
-        let map = data.iter().map(|(k, v)| (k.clone(), v.0.clone())).collect();
+        let map = data.iter().map(|(k, v)| (k.clone(), v.to_vec())).collect();
         Ok(Box::new(ValueSetPublicBinary { map }))
     }
 
