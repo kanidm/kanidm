@@ -18,6 +18,7 @@ use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
+use axum::body::Body;
 use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
 use axum::http::{HeaderMap, HeaderValue, Request};
 use axum::middleware::{from_fn, from_fn_with_state};
@@ -600,7 +601,10 @@ pub(crate) async fn handle_conn(
 
             debug!(?client_conn_info);
 
-            let svc = tower::MakeService::make_service(&mut app, client_conn_info);
+            let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
+                &mut app,
+                client_conn_info,
+            );
 
             let svc = svc.await.map_err(|e| {
                 error!("Failed to build HTTP response: {:?}", e);

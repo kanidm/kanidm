@@ -13,7 +13,7 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Form, Json, Router};
-use axum_macros::debug_handler;
+// use axum_macros::debug_handler;
 use compact_jwt::{JwkKeySet, OidcToken};
 use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
@@ -480,7 +480,7 @@ async fn oauth2_authorise_reject(
 #[axum_macros::debug_handler]
 #[instrument(skip(state, kopid, client_auth_info), level = "DEBUG")]
 pub async fn oauth2_token_post(
-    headers: HeaderMap,
+    // headers: axum::http::HeaderMap,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -556,7 +556,7 @@ pub async fn oauth2_rfc8414_metadata_get(
     }
 }
 
-#[debug_handler]
+// #[debug_handler]
 pub async fn oauth2_openid_userinfo_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
