@@ -19,7 +19,6 @@ mod error;
 
 use crate::config::{Config, EntryConfig};
 use crate::error::SyncError;
-use base64urlsafedata::Base64UrlSafeData;
 use chrono::Utc;
 use clap::Parser;
 use cron::Schedule;
@@ -354,7 +353,7 @@ async fn run_sync(
 
     let cookie = match &scim_sync_status {
         ScimSyncState::Refresh => None,
-        ScimSyncState::Active { cookie } => Some(cookie.0.clone()),
+        ScimSyncState::Active { cookie } => Some(cookie.to_vec()),
     };
 
     let is_initialise = cookie.is_none();
@@ -1025,13 +1024,8 @@ fn ipa_to_totp(sync_entry: &LdapSyncReplEntry) -> Option<ScimTotp> {
         .entry
         .attrs
         .get("ipatokenotpkey")
-        .and_then(|v| v.first())
-        .and_then(|s| {
-            // Decode, and then make it urlsafe.
-            Base64UrlSafeData::try_from(s.as_str())
-                .ok()
-                .map(|b| b.to_string())
-        })
+        .and_then(|v| v.first().cloned())
+        // This is a base64 string at this point
         .or_else(|| {
             warn!("Invalid ipatokenotpkey");
             None

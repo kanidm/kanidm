@@ -507,8 +507,8 @@ impl TryFrom<&ReplPasswordV1> for Password {
                     t_cost: *t_cost,
                     p_cost: *p_cost,
                     version: *version,
-                    salt: salt.0.clone(),
-                    key: key.0.clone(),
+                    salt: salt.to_vec(),
+                    key: key.to_vec(),
                 },
             }),
             ReplPasswordV1::ARGON2ID {
@@ -524,39 +524,39 @@ impl TryFrom<&ReplPasswordV1> for Password {
                     t_cost: *t_cost,
                     p_cost: *p_cost,
                     version: *version,
-                    salt: salt.0.clone(),
-                    key: key.0.clone(),
+                    salt: salt.to_vec(),
+                    key: key.to_vec(),
                 },
             }),
             ReplPasswordV1::PBKDF2 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::PBKDF2_SHA1 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA1(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2_SHA1(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA512(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2_SHA512(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA1 { hash } => Ok(Password {
-                material: Kdf::SHA1(hash.0.clone()),
+                material: Kdf::SHA1(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA1 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA1(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA1(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA256 { hash } => Ok(Password {
-                material: Kdf::SHA256(hash.0.clone()),
+                material: Kdf::SHA256(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA256 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA256(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA256(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA512 { hash } => Ok(Password {
-                material: Kdf::SHA512(hash.0.clone()),
+                material: Kdf::SHA512(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA512(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA512(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::NT_MD4 { hash } => Ok(Password {
-                material: Kdf::NT_MD4(hash.0.clone()),
+                material: Kdf::NT_MD4(hash.to_vec()),
             }),
         }
     }
