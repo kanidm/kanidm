@@ -98,6 +98,21 @@ impl CommonOpt {
         })
     }
 
+    /// Pull the instance name from the CLI options otherwise fall back to using the client's hostname
+    pub(crate) fn get_instance_name(&self, client: &KanidmClient) -> Result<String, ToClientError> {
+        let instance_name = match self.instance.clone() {
+            Some(name) => name,
+            None => match client.get_origin().host_str() {
+                Some(val) => val.to_string(),
+                None => {
+                    error!("No instance name specified and couldn't parse the hostname from the origin URL");
+                    return Err(ToClientError::Other);
+                }
+            },
+        };
+        Ok(instance_name)
+    }
+
     async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
 
@@ -110,7 +125,7 @@ impl CommonOpt {
             }
         };
 
-        let Some(token_instance) = token_store.instances(&self.instance) else {
+        let Some(token_instance) = token_store.instance(&self.get_instance_name(&client)?) else {
             error!(
                 "No valid authentication tokens found. Please login with the 'login' subcommand."
             );
@@ -198,7 +213,7 @@ impl CommonOpt {
                     // so we'll prompt the user to select one
                     match prompt_for_username_get_values(
                         &client.get_token_cache_path(),
-                        &self.instance,
+                        &self.get_instance_name(&client)?,
                     ) {
                         Ok(tuple) => tuple,
                         Err(msg) => {
@@ -335,14 +350,14 @@ impl CommonOpt {
 /// Used to reduce duplication in implementing [prompt_for_username_get_username] and `prompt_for_username_get_token`
 pub fn prompt_for_username_get_values(
     token_cache_path: &str,
-    instance_name: &Option<String>,
+    instance_name: &str,
 ) -> Result<(String, JwsCompact), String> {
     let token_store = match read_tokens(token_cache_path) {
         Ok(value) => value,
         _ => return Err("Error retrieving authentication token store".to_string()),
     };
 
-    let Some(token_instance) = token_store.instances(instance_name) else {
+    let Some(token_instance) = token_store.instance(instance_name) else {
         error!("No tokens in store, quitting!");
         std::process::exit(1);
     };
@@ -388,7 +403,7 @@ pub fn prompt_for_username_get_values(
 /// Powered by [prompt_for_username_get_values]
 pub fn prompt_for_username_get_username(
     token_cache_path: &str,
-    instance_name: &Option<String>,
+    instance_name: &str,
 ) -> Result<String, String> {
     match prompt_for_username_get_values(token_cache_path, instance_name) {
         Ok(value) => {

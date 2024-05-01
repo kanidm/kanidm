@@ -104,16 +104,20 @@ pub struct TokenStore {
 }
 
 impl TokenStore {
-    pub fn instances(&self, name: &Option<String>) -> Option<&TokenInstance> {
-        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+    /// Ask the user to select an instance name
+    pub(crate) fn user_select_instance(&self) -> Option<String> {
+        let options = self.instances.keys().cloned().collect::<Vec<String>>();
+        let selection = get_index_choice_dialoguer("Please select an instance", &options);
 
-        self.instances.get(&n_lookup)
+        options.get(selection).cloned()
     }
 
-    pub fn instances_mut(&mut self, name: &Option<String>) -> Option<&mut TokenInstance> {
-        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+    pub fn instance(&self, name: &str) -> Option<&TokenInstance> {
+        self.instances.get(name)
+    }
 
-        self.instances.get_mut(&n_lookup)
+    pub fn instance_mut(&mut self, name: &str) -> Option<&mut TokenInstance> {
+        self.instances.get_mut(name)
     }
 }
 
@@ -176,6 +180,15 @@ pub fn read_tokens(token_path: &str) -> Result<TokenStore, ()> {
 
 #[allow(clippy::result_unit_err)]
 pub fn write_tokens(tokens: &TokenStore, token_path: &str) -> Result<(), ()> {
+    // test we can serialize things before trying to write it into the file, else it writes a corrupted file
+    if let Err(err) = serde_json::to_string_pretty(&tokens) {
+        error!(
+            "Error serializing tokens to JSON, can't update local token cache! Error: {:?}",
+            err
+        );
+        return Err(());
+    }
+
     let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
     let token_path = PathBuf::from(shellexpand::tilde(token_path).into_owned());
 
@@ -215,6 +228,7 @@ pub fn write_tokens(tokens: &TokenStore, token_path: &str) -> Result<(), ()> {
     #[cfg(target_family = "unix")]
     let _ = unsafe { umask(before) };
 
+    // now we can write it to the file
     let writer = BufWriter::new(file);
     serde_json::to_writer_pretty(writer, tokens).map_err(|e| {
         error!(
@@ -225,7 +239,7 @@ pub fn write_tokens(tokens: &TokenStore, token_path: &str) -> Result<(), ()> {
 }
 
 /// An interactive dialog to choose from given options
-fn get_index_choice_dialoguer(msg: &str, options: &[String]) -> usize {
+pub(crate) fn get_index_choice_dialoguer(msg: &str, options: &[String]) -> usize {
     let user_select = Select::with_theme(&ColorfulTheme::default())
         .with_prompt(msg)
         .default(0)
@@ -342,7 +356,7 @@ async fn process_auth_state(
     mut allowed: Vec<AuthAllowed>,
     mut client: KanidmClient,
     maybe_password: &Option<String>,
-    instance_name: &Option<String>,
+    instance_name: &str,
 ) {
     loop {
         debug!("Allowed mechanisms -> {:?}", allowed);
@@ -413,8 +427,10 @@ async fn process_auth_state(
     let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_default();
 
     // Select our token instance. Create it if empty.
-    let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
-    let token_instance = tokens.instances.entry(n_lookup).or_default();
+    let token_instance = tokens
+        .instances
+        .entry(instance_name.to_string())
+        .or_default();
 
     // Add our new one
     let (spn, tonk) = match client.get_token().await {
@@ -437,7 +453,7 @@ async fn process_auth_state(
                 pub_jwk
             } else {
                 // Get it from the server.
-                let pub_jwk = match client.get_public_jwk(&key_id).await {
+                let pub_jwk = match client.get_public_jwk(key_id).await {
                     Ok(pj) => pj,
                     Err(err) => {
                         error!(?err, "Unable to retrieve jwk from server");
@@ -557,7 +573,14 @@ impl LoginOpt {
                 std::process::exit(1);
             });
 
-        let instance_name = &self.copt.instance;
+        let instance_name = &self
+            .copt
+            .get_instance_name(&client)
+            .map_err(|err| {
+                error!("Error getting instance name: {:?}", err);
+                std::process::exit(1);
+            })
+            .expect("How'd you get here?");
 
         // We now have the first auth state, so we can proceed until complete.
         process_auth_state(allowed, client, &self.password, instance_name).await;
@@ -572,7 +595,14 @@ impl ReauthOpt {
     pub async fn exec(&self) {
         let client = self.copt.to_client(OpType::Read).await;
 
-        let instance_name = &self.copt.instance;
+        let instance_name = &self
+            .copt
+            .get_instance_name(&client)
+            .map_err(|err| {
+                error!("Error getting instance name: {:?}", err);
+                std::process::exit(1);
+            })
+            .expect("How'd you get here?");
 
         let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
             error!("Error during reauthentication begin phase: {:?}", e);
@@ -589,11 +619,24 @@ impl LogoutOpt {
     }
 
     pub async fn exec(&self) {
-        let instance_name = &self.copt.instance;
+        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
+            error!("Error retrieving authentication token store");
+            std::process::exit(1);
+        });
+
+        let instance_name = match self.copt.instance.clone() {
+            Some(val) => val,
+            None => match tokens.user_select_instance() {
+                Some(val) => val,
+                None => {
+                    error!("No instances to select from");
+                    std::process::exit(1);
+                }
+            },
+        };
 
         let spn: String = if self.local_only {
             // For now we just remove this from the token store.
-            let mut _tmp_username = String::new();
             match &self.copt.username {
                 Some(value) => value.clone(),
                 None => {
@@ -601,7 +644,7 @@ impl LogoutOpt {
                     if std::io::stdin().is_terminal() {
                         match prompt_for_username_get_username(
                             &self.copt.get_token_cache_path(),
-                            instance_name,
+                            &instance_name,
                         ) {
                             Ok(value) => value,
                             Err(msg) => {
@@ -625,14 +668,12 @@ impl LogoutOpt {
                 }
             };
             // Parse it for the username.
-
             if let Err(e) = client.logout().await {
                 error!("Failed to logout - {:?}", e);
                 std::process::exit(1);
             }
 
             // Server acked the logout, lets proceed with the local cleanup now.
-
             let jwsc = match JwsCompact::from_str(&token) {
                 Ok(j) => j,
                 Err(err) => {
@@ -641,17 +682,21 @@ impl LogoutOpt {
                 }
             };
 
-            let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
-                match JwsEs256Verifier::try_from(pub_jwk) {
+            let jws_verifier = match jwsc.get_jwk_pubkey() {
+                Some(pub_jwk) => match JwsEs256Verifier::try_from(pub_jwk) {
                     Ok(verifier) => verifier,
                     Err(err) => {
                         error!(?err, "Unable to configure jws verifier");
                         std::process::exit(1);
                     }
+                },
+                None => {
+                    // TODO: this is failing due to some issue I don't *quite* understand
+                    error!("Unable to access token public key");
+                    trace!("Using jwsc: {:?}", jwsc);
+                    trace!("Using token: {:?}", token);
+                    std::process::exit(1);
                 }
-            } else {
-                error!("Unable to access token public key");
-                std::process::exit(1);
             };
 
             let uat = match jws_verifier.verify(&jwsc).and_then(|jws| {
@@ -670,13 +715,7 @@ impl LogoutOpt {
             uat.spn
         };
 
-        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
-            error!("Error retrieving authentication token store");
-            std::process::exit(1);
-        });
-
-        let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
-        let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
+        let Some(token_instance) = tokens.instances.get_mut(&instance_name) else {
             println!("No sessions for {}", spn);
             return;
         };
@@ -705,14 +744,25 @@ impl SessionOpt {
     pub async fn exec(&self) {
         match self {
             SessionOpt::List(copt) => {
-                let token_store = read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
-                    error!("Error retrieving authentication token store");
-                    std::process::exit(1);
-                });
+                let token_store: TokenStore = read_tokens(&copt.get_token_cache_path())
+                    .unwrap_or_else(|_| {
+                        error!("Error retrieving authentication token store");
+                        std::process::exit(1);
+                    });
 
-                let instance_name = &copt.instance;
+                let instance_name = match copt.instance.clone() {
+                    Some(val) => val,
+                    None => match token_store.user_select_instance() {
+                        Some(val) => val,
+                        None => {
+                            error!("No isntance selected!");
+                            std::process::exit(1);
+                        }
+                    },
+                };
 
-                let Some(token_instance) = token_store.instances(instance_name) else {
+                let Some(token_instance) = token_store.instance(&instance_name) else {
+                    error!("Couldn't find instance {} in store!", instance_name);
                     return;
                 };
 
@@ -724,19 +774,26 @@ impl SessionOpt {
             SessionOpt::Cleanup(copt) => {
                 let mut token_store =
                     read_tokens(&copt.get_token_cache_path()).unwrap_or_else(|_| {
-                        error!("Error retrieving authentication token store");
+                        error!("Error loading authentication token store");
                         std::process::exit(1);
                     });
 
-                let instance_name = &copt.instance;
-
-                let Some(token_instance) = token_store.instances_mut(instance_name) else {
-                    error!("No tokens for instance");
-                    std::process::exit(1);
-                };
-
                 let now = time::OffsetDateTime::now_utc();
-                let change = token_instance.cleanup(now);
+                let mut token_instances: Vec<&mut TokenInstance> = match copt.instance.clone() {
+                    Some(instance) => match token_store.instance_mut(&instance) {
+                        Some(store) => vec![store],
+                        None => {
+                            error!("No tokens for instance");
+                            std::process::exit(1);
+                        }
+                    },
+                    None => token_store.instances.values_mut().collect(),
+                };
+                let mut change = 0;
+
+                token_instances.iter_mut().for_each(|store| {
+                    change += store.cleanup(now);
+                });
 
                 if let Err(_e) = write_tokens(&token_store, &copt.get_token_cache_path()) {
                     error!("Error persisting authentication token store");
