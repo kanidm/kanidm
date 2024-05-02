@@ -277,6 +277,8 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
+            // terrible workaround for other things
+            response_schema::SchemaJwk,
 
             WebError,
         )

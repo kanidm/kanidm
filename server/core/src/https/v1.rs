@@ -2912,7 +2912,7 @@ pub async fn debug_ipinfo(
     get,
     path = "/v1/jwk/{key_id}",
     responses(
-        (status=200, body=Jwk, content_type="application/json"),
+        (status=200, body=SchemaJwk, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),

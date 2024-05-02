@@ -91,3 +91,7 @@ pub(crate) struct Result {}
 #[derive(Debug, Clone, ToSchema)]
 // TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
 pub(crate) struct ScimEntry {}
+
+// TODO: this is actually a `compact_jwt::Jwk` which doesn't implement the `ToSchema` trait.
+#[derive(Debug, Clone, ToSchema)]
+pub(crate) struct SchemaJwk {}
