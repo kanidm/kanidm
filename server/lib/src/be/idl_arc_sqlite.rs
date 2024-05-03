@@ -342,7 +342,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
 
-    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
+    #[allow(dead_code)]
+    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
 
     fn get_idl(
         &mut self,
