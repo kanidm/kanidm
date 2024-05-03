@@ -65,6 +65,8 @@ done
 
 ../../scripts/setup_dev_environment.sh
 
+echo "Attempting to log out of idm_admin@localhost"
+cargo run --bin kanidm logout -D idm_admin@localhost
 
 if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
