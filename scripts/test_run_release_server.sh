@@ -65,12 +65,14 @@ done
 
 ../../scripts/setup_dev_environment.sh
 
-echo "Attempting to log out of idm_admin@localhost"
-cargo run --bin kanidm logout -D idm_admin@localhost
-
+# return to the "base" dir
 if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
 fi
+
+echo "Attempting to log out of idm_admin@localhost"
+cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
+cargo run --bin kanidm logout -D idm_admin@localhost
 
 echo "Running the OpenAPI schema checks"
 
