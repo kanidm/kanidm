@@ -63,7 +63,7 @@ while true; do
     fi
 done
 
-../../scripts/setup_dev_environment.sh
+../../scripts/setup_dev_environment.sh || killall kanidmd
 
 # return to the "base" dir
 if [ -n "$CURRENT_DIR" ]; then
@@ -72,14 +72,14 @@ fi
 
 echo "Attempting to log out of idm_admin@localhost"
 cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
-cargo run --bin kanidm logout -D idm_admin@localhost
+cargo run --bin kanidm logout -D idm_admin@localhost || killall kanidmd
 
 echo "Running the OpenAPI schema checks"
 
-bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
+bash -c ./scripts/openapi_tests/check_openapi_spec.sh || killall kanidmd
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
-    kill $(pgrep kanidmd)
+    pgrep kanidmd | xargs -n1 kill
 fi
