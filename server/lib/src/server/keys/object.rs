@@ -6,6 +6,9 @@ use std::collections::BTreeSet;
 use uuid::Uuid;
 
 pub type KeyObject = Box<dyn KeyObjectT + Send + Sync + 'static>;
+
+// currently only used in testing, so no need to to exist until then
+#[cfg(test)]
 pub type KeyObjectRef<'a> = &'a (dyn KeyObjectT + Send + Sync + 'static);
 
 pub trait KeyObjectT {
