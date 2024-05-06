@@ -16,6 +16,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   rust_build:
+    timeout-minutes: 60
     runs-on: ubuntu-latest
     env:
       SCCACHE_GHA_ENABLED: true
