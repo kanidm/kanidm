@@ -70,6 +70,15 @@ if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
 fi
 
+
+KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
+KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
+
+export KANIDM_CONFIG_FILE
+export KANIDM_URL
+export KANIDM_CA_PATH
+
 echo "Attempting to log out of idm_admin@localhost"
 cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
 cargo run --bin kanidm logout --config examples/insecure_server.toml -D idm_admin@localhost || killall kanidmd
