@@ -855,7 +855,7 @@ impl KeyObjectT for KeyObjectInternal {
     ) -> Result<(), OperationError> {
         let koi = self
             .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+            .get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
         koi.import(import_keys, valid_from, cid)
     }
@@ -863,7 +863,7 @@ impl KeyObjectT for KeyObjectInternal {
     fn jws_es256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         let koi = self
             .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+            .get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
         koi.assert_active(valid_from, cid)
     }
@@ -895,7 +895,7 @@ impl KeyObjectT for KeyObjectInternal {
     ) -> Result<(), OperationError> {
         let koi = self
             .jwe_a128gcm
-            .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
+            .get_or_insert_with(KeyObjectInternalJweA128GCM::default);
 
         koi.assert_active(valid_from, cid)
     }

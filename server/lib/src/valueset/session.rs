@@ -446,7 +446,7 @@ impl ValueSetT for ValueSetSession {
             let time_idx: BTreeMap<OffsetDateTime, Uuid> = self
                 .map
                 .iter()
-                .map(|(session_id, session)| (session.issued_at.clone(), *session_id))
+                .map(|(session_id, session)| (session.issued_at, *session_id))
                 .collect();
 
             let to_take = self.map.len() - SESSION_MAXIMUM;
