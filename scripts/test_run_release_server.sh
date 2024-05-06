@@ -72,7 +72,7 @@ fi
 
 echo "Attempting to log out of idm_admin@localhost"
 cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
-cargo run --bin kanidm logout -D idm_admin@localhost || killall kanidmd
+cargo run --bin kanidm logout --config examples/insecure_server.toml -D idm_admin@localhost || killall kanidmd
 
 echo "Running the OpenAPI schema checks"
 
