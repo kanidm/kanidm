@@ -70,12 +70,11 @@ if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
 fi
 
-echo "Attempting to log out of idm_admin@localhost"
-cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
-cargo run --bin kanidm logout -D idm_admin@localhost || killall kanidmd
+# echo "Attempting to log out of idm_admin@localhost"
+# cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
+# cargo run --bin kanidm logout -D idm_admin@localhost || killall kanidmd
 
 echo "Running the OpenAPI schema checks"
-
 bash -c ./scripts/openapi_tests/check_openapi_spec.sh || killall kanidmd
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
