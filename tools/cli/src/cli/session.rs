@@ -108,11 +108,7 @@ impl TokenStore {
     pub(crate) fn user_select_instance(&self) -> Option<String> {
         let options = self.instances.keys().cloned().collect::<Vec<String>>();
 
-        let selection = if options.len() == 1 {
-            0
-        } else {
-            get_index_choice_dialoguer("Please select an instance", &options)
-        };
+        let selection = get_index_choice_dialoguer("Please select an instance", &options);
 
         options.get(selection).cloned()
     }
@@ -565,11 +561,7 @@ impl LoginOpt {
                     options.push(val.to_string());
                 }
                 let msg = "Please choose how you want to authenticate:";
-                let selection = if options.len() == 1 {
-                    0
-                } else {
-                    get_index_choice_dialoguer(msg, &options)
-                };
+                let selection = get_index_choice_dialoguer(msg, &options);
 
                 #[allow(clippy::expect_used)]
                 mechs
