@@ -15,6 +15,7 @@ Kanidm currently is packaged for the following systems:
 - NixOS
 - Fedora 38
 - CentOS Stream 9
+- Ubuntu
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
 
@@ -55,6 +56,16 @@ brew install kanidm
 ### Arch Linux
 
 [Kanidm on AUR](https://aur.archlinux.org/packages?O=0&K=kanidm)
+
+### Ubuntu
+
+```bash
+sudo mkdir -p /etc/apt/trusted.gpg.d/
+curl -s --compressed "https://kanidm.github.io/kanidm_ppa/KEY.gpg" | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/kanidm_ppa.gpg >/dev/null
+sudo curl -s --compressed -o /etc/apt/sources.list.d/kanidm_ppa.list "https://kanidm.github.io/kanidm_ppa/kanidm_ppa.list"
+sudo apt update
+sudo apt install kanidm
+```
 
 ### NixOS
 
