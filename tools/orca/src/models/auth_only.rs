@@ -75,6 +75,7 @@ impl ActorAuthOnly {
                 self.state = State::Unauthenticated;
             }
             // Shouldn't be reachable?
+            #[allow(clippy::unreachable)]
             (_, _, TransitionResult::Ok) => {
                 unreachable!();
             }

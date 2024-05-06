@@ -258,7 +258,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.map.keys().map(|kid| hex::encode(kid)).collect()
+        self.map.keys().map(hex::encode).collect()
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -313,8 +313,8 @@ impl ValueSetT for ValueSetKeyInternal {
             )| {
                 Value::KeyInternal {
                     id: id.clone(),
-                    usage: usage.clone(),
-                    status: status.clone(),
+                    usage: *usage,
+                    status: *status,
                     status_cid: status_cid.clone(),
                     der: der.clone(),
                     valid_from: *valid_from,

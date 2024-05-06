@@ -936,20 +936,17 @@ impl KeyObjectT for KeyObjectInternal {
             );
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
-        let mut attrs = Vec::with_capacity(3);
-
-        attrs.push((
-            Attribute::Class,
-            ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
-        ));
-
-        attrs.push((
-            Attribute::KeyProvider,
-            ValueSetRefer::new(self.provider.uuid()) as ValueSet,
-        ));
-
-        attrs.push((Attribute::KeyInternalData, key_vs));
-        Ok(attrs)
+        Ok(vec![
+            (
+                Attribute::Class,
+                ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
+            ),
+            (
+                Attribute::KeyProvider,
+                ValueSetRefer::new(self.provider.uuid()) as ValueSet,
+            ),
+            (Attribute::KeyInternalData, key_vs),
+        ])
     }
 }
 
