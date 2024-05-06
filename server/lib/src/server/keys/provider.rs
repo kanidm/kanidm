@@ -9,7 +9,10 @@ use std::ops::Deref;
 use std::sync::Arc;
 
 use super::internal::KeyProviderInternal;
-use super::object::{KeyObject, KeyObjectRef};
+use super::object::KeyObject;
+
+#[cfg(test)]
+use super::object::KeyObjectRef;
 
 #[derive(Clone)]
 pub enum KeyProvider {
@@ -119,8 +122,10 @@ impl KeyProviders {
 }
 
 pub trait KeyProvidersTransaction {
+    #[cfg(test)]
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
 
+    #[cfg(test)]
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
 
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>>;
@@ -131,6 +136,7 @@ pub struct KeyProvidersReadTransaction {
 }
 
 impl KeyProvidersTransaction for KeyProvidersReadTransaction {
+    #[cfg(test)]
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider> {
         self.inner
             .deref()
@@ -139,6 +145,7 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
             .map(|k| k.as_ref())
     }
 
+    #[cfg(test)]
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
         self.inner
             .deref()
@@ -161,6 +168,7 @@ pub struct KeyProvidersWriteTransaction<'a> {
 }
 
 impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
+    #[cfg(test)]
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider> {
         self.inner
             .deref()
@@ -169,6 +177,7 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
             .map(|k| k.as_ref())
     }
 
+    #[cfg(test)]
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef> {
         self.inner
             .deref()

@@ -163,17 +163,17 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
-    fn pre_repl_incremental(
-        _qs: &mut QueryServerWriteTransaction,
-        _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
-    ) -> Result<(), OperationError> {
-        admin_error!(
-            "plugin {} has an unimplemented pre_repl_incremental!",
-            Self::id()
-        );
-        debug_assert!(false);
-        Err(OperationError::InvalidState)
-    }
+    // fn pre_repl_incremental(
+    //     _qs: &mut QueryServerWriteTransaction,
+    //     _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],
+    // ) -> Result<(), OperationError> {
+    //     admin_error!(
+    //         "plugin {} has an unimplemented pre_repl_incremental!",
+    //         Self::id()
+    //     );
+    //     debug_assert!(false);
+    //     Err(OperationError::InvalidState)
+    // }
 
     fn post_repl_incremental_conflict(
         _qs: &mut QueryServerWriteTransaction,
