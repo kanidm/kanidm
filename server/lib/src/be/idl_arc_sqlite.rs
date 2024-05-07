@@ -149,16 +149,16 @@ macro_rules! get_identry_raw {
     }};
 }
 
-macro_rules! exists_idx {
-    (
-        $self:expr,
-        $attr:expr,
-        $itype:expr
-    ) => {{
-        // As a cache we have no concept of this, so we just bypass to the db.
-        $self.db.exists_idx($attr, $itype)
-    }};
-}
+// macro_rules! exists_idx {
+//     (
+//         $self:expr,
+//         $attr:expr,
+//         $itype:expr
+//     ) => {{
+//         // As a cache we have no concept of this, so we just bypass to the db.
+//         $self.db.exists_idx($attr, $itype)
+//     }};
+// }
 
 macro_rules! get_idl {
     (
@@ -342,8 +342,7 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
 
-    #[allow(dead_code)]
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
 
     fn get_idl(
         &mut self,
@@ -398,9 +397,9 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         get_identry_raw!(self, idl)
     }
 
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
-        exists_idx!(self, attr, itype)
-    }
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
+    //     exists_idx!(self, attr, itype)
+    // }
 
     #[instrument(level = "trace", skip_all)]
     fn get_idl(
@@ -493,9 +492,9 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         get_identry_raw!(self, idl)
     }
 
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
-        exists_idx!(self, attr, itype)
-    }
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
+    //     exists_idx!(self, attr, itype)
+    // }
 
     #[instrument(level = "trace", skip_all)]
     fn get_idl(

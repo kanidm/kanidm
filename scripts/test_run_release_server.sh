@@ -71,7 +71,7 @@ if [ -n "$CURRENT_DIR" ]; then
 fi
 
 
-KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
+KANIDM_CONFIG_FILE="examples/insecure_server.toml"
 KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
