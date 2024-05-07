@@ -26,12 +26,14 @@ use crate::value::{IndexType, Value};
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
 
+/// Logs the sqlite error and then returns [OperationError::SqliteError]
 #[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 pub(super) fn sqlite_error(e: rusqlite::Error) -> OperationError {
     admin_error!(?e, "SQLite Error");
     OperationError::SqliteError
 }
 
+/// Logs the serde_json error and then returns [OperationError::SerdeJsonError]
 #[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 pub(super) fn serde_json_error(e: serde_json::Error) -> OperationError {
     admin_error!(?e, "Serde JSON Error");
@@ -1574,7 +1576,7 @@ impl IdlSqliteWriteTransaction {
         // | schema   | 1       |
         // ----------------------
         //
-        // This allows each component to initialise on it's own, be
+        // This allows each component to initialise on its own, be
         // rolled back individually, by upgraded in isolation, and more
         //
         // NEVER CHANGE THIS DEFINITION.

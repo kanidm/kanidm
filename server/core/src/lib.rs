@@ -60,6 +60,7 @@ use crate::interval::IntervalActor;
 
 // === internal setup helpers
 
+/// Sets up the database backend with no VACUUM on startup
 fn setup_backend(config: &Configuration, schema: &Schema) -> Result<Backend, OperationError> {
     setup_backend_vacuum(config, schema, false)
 }
