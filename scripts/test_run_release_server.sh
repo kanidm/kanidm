@@ -81,7 +81,7 @@ export KANIDM_CA_PATH
 
 echo "Attempting to log out of idm_admin@localhost"
 cd "$(dirname "$(cargo locate-project --workspace | jq -r .root)")" || exit 1
-cargo run --bin kanidm logout -D idm_admin@localhost
+RUST_LOG=DEBUG cargo run --bin kanidm logout -D idm_admin@localhost
 
 echo "Last result: $?"
 
