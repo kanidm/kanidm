@@ -110,6 +110,9 @@ ${KANIDM} group add-members "${TEST_GROUP}" "${TEST_USER_NAME}" -D "${IDM_ADMIN_
 echo "Enable experimental UI for admin idm_admin ${TEST_USER_NAME}"
 ${KANIDM} group add-members idm_ui_enable_experimental_features "${IDM_ADMIN_USER}" "${TEST_USER_NAME}" -D "${IDM_ADMIN_USER}"
 
+echo "Checking user details"
+${KANIDM} person get "${TEST_USER_NAME}" -D "${IDM_ADMIN_USER}"
+
 # create oauth2 rp for kanidm.com
 echo "Creating the kanidm.com OAuth2 RP"
 ${KANIDM} system oauth2 create "kanidm_com" "Kanidm.com" "https://kanidm.com" -D "${IDM_ADMIN_USER}"
