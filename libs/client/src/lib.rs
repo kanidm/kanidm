@@ -633,6 +633,13 @@ impl KanidmClient {
             return;
         }
 
+        if response.status() == StatusCode::BAD_GATEWAY {
+            // don't need to check versions when there's an intermediary reporting connectivity
+            debug!("Bad Gateway error in response - version check skipped.");
+            *guard = false;
+            return;
+        }
+
         let ver = response
             .headers()
             .get(KVERSION)
