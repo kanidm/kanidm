@@ -640,7 +640,7 @@ impl KanidmClient {
             return;
         }
 
-        let ver = response
+        let ver: &str = response
             .headers()
             .get(KVERSION)
             .and_then(|hv| hv.to_str().ok())
@@ -2034,4 +2034,20 @@ impl KanidmClient {
         self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
             .await
     }
+}
+
+#[tokio::test]
+async fn test_no_client_version_check_on_502() {
+    let res = reqwest::Response::from(
+        hyper::Response::builder()
+            .status(502)
+            .body(hyper::Body::empty())
+            .unwrap(),
+    );
+    let client = KanidmClientBuilder::new()
+        .address("http://localhost:8080".to_string())
+        .build()
+        .expect("Failed to build client");
+    eprintln!("This should pass because we are returning 502 and shouldn't check version...");
+    client.expect_version(&res).await;
 }
