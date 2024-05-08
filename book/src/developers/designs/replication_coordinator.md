@@ -127,7 +127,7 @@ server to be "authoritative".
 ### KRC Configuration
 
 The KRC is implied as a server node by the *lack* of a `krc_client` configuration. This informs
-the node that it must not contact other nodes for it's replication topology, and it prepares the node
+the node that it must not contact other nodes for its replication topology, and it prepares the node
 for serving that replication metadata. This is analgous to a single node operation configuration.
 
 ```
@@ -151,21 +151,21 @@ krc_url = https://kanidmd_a
 krc_ca_dir = /path/to/ca_dir
 ```
 
-The domain will automatically add a `Default Site`. The KRC implies it's own membership to "Default Site"
-and it will internally add itself to the`Default Site`
+The domain will automatically add a `Default Site`. The KRC implies its own membership to "Default Site"
+and it will internally add itself to the `Default Site`.
 
 The KRC can then issue Tokens that define which Site a new replica should join. Initially we will
 only allow `Default Site` (and will disallow creation of other sites).
 
-The new replica will load it's krc token from the environment variable `KANIDMD_KRC_TOKEN_PATH`. This
+The new replica will load its KRC token from the environment variable `KANIDMD_KRC_TOKEN_PATH`. This
 value will contain a file path where the JWT is stored. This is compatible with systemd credentials and
 docker secrets. By default the value if unset will be defined by a profile default
 (`/etc/kanidm/krc.token` or `/data/krc.token`).
 
 A new replica can then contact the `krc_url` validating the presented TLS chain with the roots
 from `krc_ca_dir` to assert the legitimacy of the KRC. Only once these are asserted, then the
-KRC token can be sent to the instance as a `Bearer` token. The new replica will also provide it's
-mTLS certificate and it's server uuid.
+KRC token can be sent to the instance as a `Bearer` token. The new replica will also provide its
+mTLS certificate and its server UUID.
 
 
 Once validated, the KRC will create or update the server's replica entry. The replica entry
@@ -190,7 +190,7 @@ If a server's entry in the database is marked to be `Revoked` then it will remai
 be inelligible for replication participation. This is to allow for forced removal of a potentially compromised node.
 
 
-The KRC will periodically examine it's RUV. For any server entry whose UUID is not contained in the RUV, and whose
+The KRC will periodically examine its RUV. For any server entry whose UUID is not contained in the RUV, and whose
 "time first seen + trime window" is less than now, then the server entry will be REMOVED for inactivity
 since it has now been trimmed from the RUV.
 
@@ -228,7 +228,7 @@ Imagine the following example. Here, Node A is acting as the KRC.
 This would allow Node A to be aware of B, C, D and then create a full mesh.
 
 We wish to decommision Node A and promote Node B to become the new KRC. Imagine at this point
-we cut over Node D to point it's KRC at Node B.
+we cut over Node D to point its KRC at Node B.
 
 ```
 ┌─────────────────┐                ┌─────────────────┐
@@ -254,7 +254,7 @@ we cut over Node D to point it's KRC at Node B.
 └─────────────────┘                └─────────────────┘
 ```
 
-Since we still have the Server Entry records in the Default Site on bothe Node A and Node B, then
+Since we still have the Server Entry records in the Default Site on both Node A and Node B, then
 all nodes will continue to participate in full mesh, and will update certificates as required.
 
 Since all servers would still be updating their RUV's and by proxy, updating RUV's to their partners
