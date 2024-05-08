@@ -633,9 +633,11 @@ impl KanidmClient {
             return;
         }
 
-        if response.status() == StatusCode::BAD_GATEWAY {
+        if response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::GATEWAY_TIMEOUT
+        {
             // don't need to check versions when there's an intermediary reporting connectivity
-            debug!("Bad Gateway error in response - version check skipped.");
+            debug!("Gateway error in response - we're going through a proxy so the version check is skipped.");
             *guard = false;
             return;
         }
@@ -2040,7 +2042,20 @@ impl KanidmClient {
 async fn test_no_client_version_check_on_502() {
     let res = reqwest::Response::from(
         hyper::Response::builder()
-            .status(502)
+            .status(StatusCode::GATEWAY_TIMEOUT)
+            .body(hyper::Body::empty())
+            .unwrap(),
+    );
+    let client = KanidmClientBuilder::new()
+        .address("http://localhost:8080".to_string())
+        .build()
+        .expect("Failed to build client");
+    eprintln!("This should pass because we are returning 504 and shouldn't check version...");
+    client.expect_version(&res).await;
+
+    let res = reqwest::Response::from(
+        hyper::Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
             .body(hyper::Body::empty())
             .unwrap(),
     );
