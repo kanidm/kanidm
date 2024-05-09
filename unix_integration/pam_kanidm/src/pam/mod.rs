@@ -342,7 +342,7 @@ impl PamHooks for PamKanidm {
                             return err;
                         }
                     }
-                    let cred = match conv.send(PAM_PROMPT_ECHO_OFF, "Code") {
+                    let cred = match conv.send(PAM_PROMPT_ECHO_OFF, "Code: ") {
                         Ok(password) => match password {
                             Some(cred) => cred,
                             None => {
@@ -414,7 +414,7 @@ impl PamHooks for PamKanidm {
                     let mut pin;
                     let mut confirm;
                     loop {
-                        pin = match conv.send(PAM_PROMPT_ECHO_OFF, "New PIN") {
+                        pin = match conv.send(PAM_PROMPT_ECHO_OFF, "New PIN: ") {
                             Ok(password) => match password {
                                 Some(cred) => cred,
                                 None => {
@@ -428,7 +428,7 @@ impl PamHooks for PamKanidm {
                             }
                         };
 
-                        confirm = match conv.send(PAM_PROMPT_ECHO_OFF, "Confirm PIN") {
+                        confirm = match conv.send(PAM_PROMPT_ECHO_OFF, "Confirm PIN: ") {
                             Ok(password) => match password {
                                 Some(cred) => cred,
                                 None => {
@@ -473,7 +473,7 @@ impl PamHooks for PamKanidm {
                     let cred = if let Some(cred) = consume_authtok {
                         cred
                     } else {
-                        match conv.send(PAM_PROMPT_ECHO_OFF, "PIN") {
+                        match conv.send(PAM_PROMPT_ECHO_OFF, "PIN: ") {
                             Ok(password) => match password {
                                 Some(cred) => cred,
                                 None => {
