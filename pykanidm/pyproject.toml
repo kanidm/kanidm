@@ -45,7 +45,7 @@ mkdocstrings-python = "^1.10.0"
 pook = "^1.4.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.4.4"
+ruff = ">=0.0.230,<0.4.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
