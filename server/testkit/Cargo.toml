@@ -59,11 +59,11 @@ fantoccini = { version = "0.19.3" }
 futures = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
 openssl = { workspace = true }
-petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
+petgraph = { version = "0.6.5", features = ["serde", "serde-1"] }
 serde_json = { workspace = true }
 time = { workspace = true }
 tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.17.1"
+jsonschema = "0.18.0"
