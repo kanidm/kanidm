@@ -24,7 +24,7 @@ This will affect replication in two ways
 First, it means the RUV of a server node can move backwards. This requires
 us to limit changelog trimming of events to events that have expired by time
 rather than events that are fully resolved. This way within the changelog
-trim window, a server can be downgraded, and it's RUV move backwards, but the missing updates will be "replayed" backwards to it.
+trim window, a server can be downgraded, and its RUV move backwards, but the missing updates will be "replayed" backwards to it.
 
 Second, it means we have to consider making replication either version (typed)
 data agnostic *or* have CSN's represent a dataset version from the server which gates or blocks replication events from newer to older instances until *they* are upgraded.

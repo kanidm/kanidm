@@ -56,7 +56,7 @@ dc=example,dc=com. Within this search base, we show the same content from dc=exa
 when you have a group for allowing access to the application, but then still need other groups
 reflected into the subtree. In this case, if we limited the view to application access only, we
 wouldn't be displaying the non-access groups that the application may still rely on. Ultimately, in
-this case the application needs to make it's own authorisation decisions to an extend. Kanidm can
+this case the application needs to make its own authorisation decisions to an extend. Kanidm can
 limit which users are members of the access allowed group as only they can bind still as an extra
 layer of defence)
 

@@ -91,13 +91,13 @@ The type defines the possible operations of the Key Object but not how the opera
 A key object MAY have multiple Key Types.
 
 Key Objects also must define their structure related to their Key Provider. For example a possible
-TPM Key Provider needs to store it's Public and Private components in the Key Object, where our
+TPM Key Provider needs to store its Public and Private components in the Key Object, where our
 internal provider needs to store the DER portions of the keys.
 
 Between the type and the provider, this provides a concrete way to determine how a key needs to be
 used.
 
-For each private/public key pair, or each symmetric key, a record of it's status (valid, retained,
+For each private/public key pair, or each symmetric key, a record of its status (valid, retained,
 expired, revoked)
 
 In the valid state, a key has a validity "from" a point in time. The latest `valid_from` attribute
@@ -223,7 +223,7 @@ pkcs11 problem, not a problem for this change.
 In the future we need to consider how to perform a migration from internal keys to HSM's in a non
 disruptive manner.
 
-The design presented above associates a Key Object with it's Key Provider. There isn't a way to mix
+The design presented above associates a Key Object with its Key Provider. There isn't a way to mix
 Key Objects with multiple possible providers.
 
 However, we _can_ create a migration helper object. This would be a Key Object / Key Provider that

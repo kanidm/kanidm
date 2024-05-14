@@ -258,7 +258,7 @@ that the CID: (3, A) must be sent. The entry x is sent to R again.
         (002, B): [x, ...]
     ]
 
-Now, Server B now connects to A and supplies it's changes. Since the changes on B happen *before*
+Now, Server B now connects to A and supplies its changes. Since the changes on B happen *before*
 the changes on A, the CID slots between the existing changes (and an update resolution would take
 place, which is out of scope of this part of the design).
 
@@ -331,7 +331,7 @@ move to tombstone, again which triggers the above.
 However, we must now discuss the tomstone purging process.
 
 A tombstone would store the CID upon which it was ... well - tombstoned. As a result, the entry
-itself is aware of it's state.
+itself is aware of its state.
 
 The tombstone purge process would work by detecting the MIN RUV of all replicas. If the MIN RUV
 is greater than the tombstone CID, then it must be true that all replicas HAVE the tombstone as

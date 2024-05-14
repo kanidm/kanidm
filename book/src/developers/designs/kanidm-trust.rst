@@ -62,7 +62,7 @@ properties we want lets write some down.
 * Forwardable Credentials - once you issue a token in one domain can it forward to another and authenticate you
 * Credential Siloing - are credentials (pw, private keys) only stored in your home domain
 * PII Limits - limit the transmission of personal information
-* Group Management - can you add a trusted account to a local group to manage it's access?
+* Group Management - can you add a trusted account to a local group to manage its access?
 * Invite un-trusted domain - can you invite accounts to use resources from domains you don't know about?
 * Fully distributed - openid style, where any openid server could be a trusted provided
 * Client Switched - Is it up to the client to trust different domains? Or is it a server side issue?
@@ -86,7 +86,7 @@ So with a lot of though, I'm going to go with fractional replication.
 * PII limit - I want this as you can control who-has-what PII on the system side.
 * Group Mgmt - I want this as it enables rbac and familiar group management locally for remote and local entries.
 * Invite Ext - On the fence - cool idea, but not sure how it fits into kanidm with trusts.
-* Distributed - I don't want this because it's model is really different to what kani is trying to be
+* Distributed - I don't want this because its model is really different to what kani is trying to be
 * Client Switched - I don't want this because clients should only know they trust an IDM silo, and that does the rest.
 
 But there are some things I want:
@@ -314,10 +314,10 @@ Webauthn requires correct presentation of a domain name that matches the TLS nam
 that is being connected to. Because of this it may not be possible to proxy Webauthn through
 in a trust scenario, requiring clients to need to directly authenticate to the trusted domain.
 
-Oauth
+OAuth
 =====
 
-Oauth may support some trust resources of it's own, that may support or help the Webauthn cases. This
+OAuth may support some trust resources of its own, that may support or help the Webauthn cases. This
 should be investigated.
 
 An alternate solution to these two is that when domain A wants to issue oauth to a user in domain b

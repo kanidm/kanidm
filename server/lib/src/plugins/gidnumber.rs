@@ -114,7 +114,7 @@ fn apply_gidnumber<T: Clone>(
                 // most people don't even use systemd nspawn anyway ...
                 //
                 // I made this design choice to avoid a tunable that may confuse people to
-                // it's purpose. This way things "just work" for imports and existing systems
+                // its purpose. This way things "just work" for imports and existing systems
                 // but we do the right thing in the future.
                 || (GID_NSPAWN_MIN..=GID_NSPAWN_MAX).contains(&gid)
                 || (GID_UNUSED_D_MIN..=GID_UNUSED_D_MAX).contains(&gid)
