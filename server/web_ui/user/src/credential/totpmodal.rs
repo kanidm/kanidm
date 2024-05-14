@@ -398,12 +398,7 @@ impl Component for TotpModalApp {
                     >
                     // TODO: the wording on this needs some improving.
                       <label for="totp_uri" class="form-label">{ "If your application accepts a URL, copy the one below" }</label>
-                      <input
-                        class="form-control"
-                        required=false
-                        type="text"
-                        value={secret.to_uri()}
-                       />
+                      <code>{secret.to_uri()}</code>
 
                       <label for="totp-label" class="form-label">{ "Enter a name for your TOTP" }</label>
                       <input
