@@ -103,7 +103,9 @@ This will reflect the `node_url` in the certificate.
 
 kanidmd replication get-certificate
 
-For each node, a replication configuration is created in json. For A pulling from B.
+For each node, a replication configuration is created in json.
+
+For A pulling from B.
 
 ```
 [replication."repl://kanidmd_b:8444"]
@@ -126,7 +128,7 @@ server to be "authoritative".
 
 ### KRC Configuration
 
-The KRC is implied as a server node by the *lack* of a `krc_client` configuration. This informs
+The KRC is enabled as a replication parameter. This informs
 the node that it must not contact other nodes for its replication topology, and it prepares the node
 for serving that replication metadata. This is analgous to a single node operation configuration.
 
@@ -134,8 +136,11 @@ for serving that replication metadata. This is analgous to a single node operati
 [replication]
 origin = "repl://kanidmd_a:8444"
 bindaddress = "[::]:8444"
-# krc_url
-# krc_ca_dir
+
+krc_enable = true
+
+# krc_url -- unset
+# krc_ca_dir -- unset
 ```
 
 All other nodes will have a configuration of:
@@ -144,6 +149,8 @@ All other nodes will have a configuration of:
 [replication]
 origin = "repl://kanidmd_b:8444"
 bindaddress = "[::]:8444"
+
+# krc_enable -- unset / false
 
 # krc_url = https://private.name.of.krc.node
 krc_url = https://kanidmd_a
@@ -176,7 +183,6 @@ This will additionally add the "time first seen" to the server entry.
 
 From this, for each server in the replication site associated to the token, the KRC will provide
 a replication config map to the new replica providing all URL's and mTLS certs.
-
 
 Anytime the replica checks in, if the KRC replication map has changed a new one will be provided,
 or the response will be `None` for no changes.
