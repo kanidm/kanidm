@@ -111,7 +111,7 @@ impl DaemonClientBlocking {
                     }
                 }
                 Err(e) => {
-                    error!("Steam read failure -> {:?}", e);
+                    error!("Stream read failure from {:?} -> {:?}", &self.stream, e);
                     // Failure!
                     return Err(Box::new(e));
                 }
