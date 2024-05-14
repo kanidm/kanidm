@@ -919,7 +919,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
             // Add the internal key provider.
-            E_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
+            E_KEY_PROVIDER_INTERNAL_DL6.clone(),
         ];
 
         idm_data
@@ -942,10 +942,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Reload such that the new default key provider is loaded.
         self.reload()?;
 
-        // Update the domain entry to contain it's key object, which can now be generated.
+        // Update the domain entry to contain its key object, which can now be generated.
         let idm_data = [
             IDM_ACP_DOMAIN_ADMIN_DL6.clone().into(),
-            E_DOMAIN_INFO_DL6.clone().into(),
+            E_DOMAIN_INFO_DL6.clone(),
         ];
         idm_data
             .into_iter()

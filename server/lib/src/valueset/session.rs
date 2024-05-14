@@ -446,7 +446,7 @@ impl ValueSetT for ValueSetSession {
             let time_idx: BTreeMap<OffsetDateTime, Uuid> = self
                 .map
                 .iter()
-                .map(|(session_id, session)| (session.issued_at.clone(), *session_id))
+                .map(|(session_id, session)| (session.issued_at, *session_id))
                 .collect();
 
             let to_take = self.map.len() - SESSION_MAXIMUM;
@@ -697,9 +697,7 @@ impl ValueSetT for ValueSetSession {
     fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
         // If the older value has a different type - return nothing, we
         // just take the newer value.
-        let Some(b) = older.as_session_map() else {
-            return None;
-        };
+        let b = older.as_session_map()?;
         // We can't just do merge maps here, we have to be aware of the
         // session.state value and what it currently is set to.
         let mut map = self.map.clone();

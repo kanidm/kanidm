@@ -101,7 +101,7 @@ macro_rules! try_from_entry {
 
         let cred = $value
             .get_ava_single_credential(Attribute::UnixPassword)
-            .map(|v| v.clone());
+            .cloned();
 
         let radius_secret = $value
             .get_ava_single_secret(Attribute::RadiusSecret)

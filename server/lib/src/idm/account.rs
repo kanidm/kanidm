@@ -99,7 +99,7 @@ macro_rules! try_from_entry {
 
         let primary = $value
             .get_ava_single_credential(Attribute::PrimaryCredential)
-            .map(|v| v.clone());
+            .cloned();
 
         let passkeys = $value
             .get_ava_passkeys(Attribute::PassKeys)
@@ -173,7 +173,7 @@ macro_rules! try_from_entry {
 
             let ucred = $value
                 .get_ava_single_credential(Attribute::UnixPassword)
-                .map(|v| v.clone());
+                .cloned();
 
             let _shell = $value
                 .get_ava_single_iutf8(Attribute::LoginShell)
