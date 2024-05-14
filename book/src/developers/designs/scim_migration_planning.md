@@ -13,8 +13,8 @@ We refer to a "synchronisation" as meaning a complete successful extract, transf
 
 There are three expected methods of using the synchronisation tools for Kanidm
 
-- Kanidm as a "read only" portal allowing access to it's specific features and integrations. This is
-  less of a migration, and more of a way to "feed" data into Kanidm without relying on it's internal
+- Kanidm as a "read only" portal allowing access to its specific features and integrations. This is
+  less of a migration, and more of a way to "feed" data into Kanidm without relying on its internal
   administration features.
 - "Big Bang" migration. This is where all the data from another IDM is synchronised in a single
   execution and applications are swapped to Kanidm. This is rare in larger deployments, but may be
@@ -89,7 +89,7 @@ successor" to LDAP, and aligns with Kani's design. SCIM allows structured data t
 (unlike LDAP which is simply strings). Because of this SCIM will allow us to expose more complex
 types that previously we have not been able to provide.
 
-The largest benefit to SCIM's model is it's ability to perform "batched" operations, which work with
+The largest benefit to SCIM's model is its ability to perform "batched" operations, which work with
 Kanidm's transactional model to ensure that during load events, that content is always valid and
 correct.
 
@@ -147,7 +147,7 @@ first operation of the batch request. Failure to do so will result in an error.
 
 ### Schema and Attributes
 
-SCIM defines a number of "generic" schemas for User's and Group's. Kanidm will provide it's own
+SCIM defines a number of "generic" schemas for User's and Group's. Kanidm will provide its own
 schema definitions that extend or replace these. TBD.
 
 ## Post Migration Concerns
@@ -213,7 +213,7 @@ such that the subsequent operations are all "modifications" rather than mixed cr
 
 For each entry in the sync request, if an entry with that uuid exists retrieve it.
 
-- If an entry exists in the database, assert that it's sync\_parent\_uuid is the same as our
+- If an entry exists in the database, assert that its sync\_parent\_uuid is the same as our
   agreements.
   - If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject the
     operation.

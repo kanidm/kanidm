@@ -25,7 +25,7 @@ and acronyms when they are used, this may be a useful reference if something fee
   their database content.
 - UAT - User Authentication Token. This is a token issue by Kanidm to an account after it has
   authenticated.
-- SPN - Security Principal Name. This is a name of an account comprising it's name and domain name.
+- SPN - Security Principal Name. This is a name of an account comprising its name and domain name.
   This allows distinction between accounts with identical names over a trust boundary
 
 ## Internals
@@ -43,4 +43,4 @@ and acronyms when they are used, this may be a useful reference if something fee
 - acp - an Access Control Profile which defines a set of privileges that are granted to receivers to
   affect target entries.
 - role - A term used to express a group that is the receiver of an access control profile allowing
-  it's members to affect the target entries.
+  its members to affect the target entries.

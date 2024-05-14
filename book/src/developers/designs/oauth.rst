@@ -1,8 +1,8 @@
-Oauth + Scopes + Claims
+OAuth + Scopes + Claims
 -----------------------
 
-Oauth is a web authorisation protocol that allows "single sign on". It's key to note
-oauth is authorisation, not authentication, as the protocol in it's default forms
+OAuth is a web authorisation protocol that allows "single sign on". It's key to note
+OAuth is authorisation, not authentication, as the protocol in its default forms
 do not provide identity or authentication information, only information that
 an entity is authorised for the requested resources.
 

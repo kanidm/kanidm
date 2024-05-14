@@ -130,9 +130,9 @@ differ however, but generally Kanidm is much faster than FreeIPA).
 <details>
   <summary>Keycloak</summary>
 
-Keycloak is an OIDC/OAuth2/SAML provider. It allows you to layer on WebAuthn to existing IDM systems.
-Keycloak can operate as a stand-alone IDM but generally is a component attached to an existing LDAP
-server or similar.
+Keycloak is an OIDC/OAuth2/SAML provider. It allows you to layer on WebAuthn to existing IDM
+systems. Keycloak can operate as a stand-alone IDM but generally is a component attached to an
+existing LDAP server or similar.
 
 Keycloak requires a significant amount of configuration and experience to deploy. It allows high
 levels of customisation to every detail of its authentication work flows, which makes it harder to

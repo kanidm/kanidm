@@ -105,19 +105,19 @@ fn apply_gidnumber<T: Clone>(
             }
         } else {
             // If they provided us with a gid number, ensure it's in a safe range.
-            if (gid >= GID_REGULAR_USER_MIN && gid <= GID_REGULAR_USER_MAX)
-                || (gid >= GID_UNUSED_A_MIN && gid <= GID_UNUSED_A_MAX)
-                || (gid >= GID_UNUSED_B_MIN && gid <= GID_UNUSED_B_MAX)
-                || (gid >= GID_UNUSED_C_MIN && gid <= GID_UNUSED_C_MAX)
+            if (GID_REGULAR_USER_MIN..=GID_REGULAR_USER_MAX).contains(&gid)
+                || (GID_UNUSED_A_MIN..=GID_UNUSED_A_MAX).contains(&gid)
+                || (GID_UNUSED_B_MIN..= GID_UNUSED_B_MAX).contains(&gid)
+                || (GID_UNUSED_C_MIN..=GID_UNUSED_C_MAX).contains(&gid)
                 // We won't ever generate an id in the nspawn range, but we do secretly allow
                 // it to be set for compatability with services like freeipa or openldap. TBH
                 // most people don't even use systemd nspawn anyway ...
                 //
                 // I made this design choice to avoid a tunable that may confuse people to
-                // it's purpose. This way things "just work" for imports and existing systems
+                // its purpose. This way things "just work" for imports and existing systems
                 // but we do the right thing in the future.
-                || (gid >= GID_NSPAWN_MIN && gid <= GID_NSPAWN_MAX)
-                || (gid >= GID_UNUSED_D_MIN && gid <= GID_UNUSED_D_MAX)
+                || (GID_NSPAWN_MIN..=GID_NSPAWN_MAX).contains(&gid)
+                || (GID_UNUSED_D_MIN..=GID_UNUSED_D_MAX).contains(&gid)
             {
                 Ok(())
             } else {

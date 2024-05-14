@@ -28,7 +28,7 @@ is important to limit where the tokens are used and monitor and revoke them effe
 
 In addition, old refresh tokens should not be able to be used once exchanged, they should be "at
 most once". If this is not enforced then old refresh tokens can be used to gain access to sessions
-even if the associated access token was expired by many hours and it's refresh token was already
+even if the associated access token was expired by many hours and its refresh token was already
 used.
 
 This is supported by

@@ -183,9 +183,9 @@ Origin Task? Single Node Operation Runner? Yes I'm trying to make silly acronyms
 
 > Still not fully sure about the KRC config yet. More thinking needed!
 
-The KRC is configured with it's URL and certificates.
+The KRC is configured with its URL and certificates.
 
-```
+```toml
 [krc_config]
 origin = https://krc.example.com
 tls_chain = /path/to/tls/chain

@@ -37,7 +37,7 @@ has access to cookies from `a.example.com` and `example.com`.
 
 For this reason your Kanidm host (or hosts) should be on a unique subdomain, with no other services
 registered under that subdomain. For example, consider `idm.example.com` as a subdomain for
-exclusive use of Kanidm. This is _inverse_ to Active Directory which often has it's domain name
+exclusive use of Kanidm. This is _inverse_ to Active Directory which often has its domain name
 selected to be the parent (toplevel) domain (`example.com`).
 
 Failure to use a unique subdomain may allow cookies to leak to other entities within your domain,

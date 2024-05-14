@@ -28,7 +28,7 @@ pub enum ScimSyncRetentionMode {
     /// All entries that have their uuid present in this set are retained.
     /// Anything not present will be deleted.
     Retain(Vec<Uuid>),
-    /// Any entry with it's uuid in this set will be deleted. Anything not
+    /// Any entry with its UUID in this set will be deleted. Anything not
     /// present will be retained.
     Delete(Vec<Uuid>),
 }

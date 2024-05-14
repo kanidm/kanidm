@@ -185,7 +185,7 @@ Webauthn Challenges. For more details see: https://fy.blackhats.net.au/blog/html
 AuthSession
 -----------
 
-Once these other changes are made, AuthSession will need to be simplified but it's core state machines
+Once these other changes are made, AuthSession will need to be simplified but its core state machines
 will remain mostly unchanged. This set of changes will likely result in the AuthSession being much
 clearer due to the enforcement of credential presentation order instead of the current design that
 may allow "all in one" submissions.

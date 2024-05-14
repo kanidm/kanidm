@@ -99,7 +99,7 @@ eap {
 	#  http://www.securiteam.com/tools/5TP012ACKE.html
 	#
 	#  Cisco LEAP uses the MS-CHAP algorithm (but not
-	#  the MS-CHAP attributes) to perform it's authentication.
+	#  the MS-CHAP attributes) to perform its authentication.
 	#
 	#  As a result, LEAP *requires* access to the plain-text
 	#  User-Password, or the NT-Password attributes.
@@ -884,7 +884,7 @@ eap {
 		#
 		#  If 'cipher_list' is set here, it will over-ride the
 		#  'cipher_list' configuration from the 'tls-common'
-		#  configuration.  The EAP-FAST module has it's own
+		#  configuration.  The EAP-FAST module has its own
 		#  over-ride for 'cipher_list' because the
 		#  specifications mandata a different set of ciphers
 		#  than are used by the other EAP methods.

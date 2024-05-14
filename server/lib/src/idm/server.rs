@@ -1475,7 +1475,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .feedback()
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
-                .map(|v| v.clone())
+                .cloned()
                 .map_err(|e| {
                     security_info!("zxcvbn returned no feedback when score < 3");
                     e

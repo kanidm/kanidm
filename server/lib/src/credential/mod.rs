@@ -95,7 +95,7 @@ impl BackupCodes {
 /// the auth as the password of B was incorrect. Additionally, while A only needs the "password",
 /// B requires both the password and otp to be valid.
 ///
-/// In this way, each Credential provides it's own password requirements and policy, and requires
+/// In this way, each Credential provides its own password requirements and policy, and requires
 /// some metadata to support this such as it's source and strength etc.
 pub struct Credential {
     // policy: Policy,

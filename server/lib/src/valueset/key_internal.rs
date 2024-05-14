@@ -160,25 +160,25 @@ impl ValueSetKeyInternal {
 }
 
 impl ValueSetT for ValueSetKeyInternal {
-    fn insert_checked(&mut self, value: crate::value::Value) -> Result<bool, OperationError> {
-        match value {
-            // I'm not sure we ever need to actually push this?
-            /*
-            Value::KeyInternal {
-                id,
-                usage,
-                valid_from,
-                status,
-                der,
-            } => {
-                todo!();
-            }
-            */
-            _ => {
-                debug_assert!(false);
-                Err(OperationError::InvalidValueState)
-            }
+    fn insert_checked(&mut self, _value: crate::value::Value) -> Result<bool, OperationError> {
+        // match value {
+        // I'm not sure we ever need to actually push this?
+        /*
+        Value::KeyInternal {
+            id,
+            usage,
+            valid_from,
+            status,
+            der,
+        } => {
+            todo!();
         }
+        */
+        // _ => {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
+        // }
+        // }
     }
 
     fn clear(&mut self) {
@@ -258,7 +258,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.map.keys().map(|kid| hex::encode(kid)).collect()
+        self.map.keys().map(hex::encode).collect()
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -313,8 +313,8 @@ impl ValueSetT for ValueSetKeyInternal {
             )| {
                 Value::KeyInternal {
                     id: id.clone(),
-                    usage: usage.clone(),
-                    status: status.clone(),
+                    usage: *usage,
+                    status: *status,
                     status_cid: status_cid.clone(),
                     der: der.clone(),
                     valid_from: *valid_from,
@@ -358,9 +358,7 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
-        let Some(b) = older.as_key_internal_map() else {
-            return None;
-        };
+        let b = older.as_key_internal_map()?;
 
         let mut map = self.map.clone();
 

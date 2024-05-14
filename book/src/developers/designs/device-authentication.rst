@@ -117,7 +117,7 @@ Summary
 ^^^^^^^
 
 For most people setting up MFA is an annoying process especially when you want to allow your accounts
-to be portable between multiple devices. At it's core, it's a failure of authentication providers
+to be portable between multiple devices. At its core, it's a failure of authentication providers
 to consider devices as part of their authentication workflow and how humans interact with these
 services.
 
@@ -182,7 +182,7 @@ On a mobile device we should NOT require a password to be entered to the account
 the password rules we attempt to enforce in Kanidm should create passwords that are *not* memorisable
 meaning that the user is likely to store this in a password manager. Since the password manager
 is already on the mobile device, then compromise of the device yields access to the password, nullifying
-it's security benefit.
+its security benefit.
 
 Since we require UV required, this means the credential is a self contained MFA of possession of the
 device, and authentication to the device (biometric, password/pin). Devices today contain hardware
