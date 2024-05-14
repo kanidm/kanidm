@@ -90,18 +90,28 @@ This mode is unlikely to be developed as it does not match the way that replicat
 
 There are two nodes, A and B.
 
-The administrator configures the kanidm server with replication urls
+The administrator configures both kanidm servers with replication urls.
 
 ```
+# Server A
 [replication]
 origin = "repl://kanidmd_a:8444"
+bindaddress = "[::]:8444"
+```
+
+```
+# Server B
+[replication]
+origin = "repl://kanidmd_b:8444"
 bindaddress = "[::]:8444"
 ```
 
 The administrator extracts their replication certificates with the kanidmd binary admin features.
 This will reflect the `node_url` in the certificate.
 
+```
 kanidmd replication get-certificate
+```
 
 For each node, a replication configuration is created in json.
 
@@ -128,9 +138,9 @@ server to be "authoritative".
 
 ### KRC Configuration
 
-The KRC is enabled as a replication parameter. This informs
-the node that it must not contact other nodes for its replication topology, and it prepares the node
-for serving that replication metadata. This is analgous to a single node operation configuration.
+The KRC is enabled as a replication parameter. This informs the node that it must not contact other
+nodes for its replication topology, and it prepares the node for serving that replication metadata.
+This is analgous to a single node operation configuration.
 
 ```
 [replication]
@@ -158,52 +168,50 @@ krc_url = https://kanidmd_a
 krc_ca_dir = /path/to/ca_dir
 ```
 
-The domain will automatically add a `Default Site`. The KRC implies its own membership to "Default Site"
-and it will internally add itself to the `Default Site`.
+The domain will automatically add a `Default Site`. The KRC implies its own membership to "Default
+Site" and it will internally add itself to the `Default Site`.
 
 The KRC can then issue Tokens that define which Site a new replica should join. Initially we will
 only allow `Default Site` (and will disallow creation of other sites).
 
 The new replica will load its KRC token from the environment variable `KANIDMD_KRC_TOKEN_PATH`. This
-value will contain a file path where the JWT is stored. This is compatible with systemd credentials and
-docker secrets. By default the value if unset will be defined by a profile default
+value will contain a file path where the JWT is stored. This is compatible with systemd credentials
+and docker secrets. By default the value if unset will be defined by a profile default
 (`/etc/kanidm/krc.token` or `/data/krc.token`).
 
-A new replica can then contact the `krc_url` validating the presented TLS chain with the roots
-from `krc_ca_dir` to assert the legitimacy of the KRC. Only once these are asserted, then the
-KRC token can be sent to the instance as a `Bearer` token. The new replica will also provide its
-mTLS certificate and its server UUID.
+A new replica can then contact the `krc_url` validating the presented TLS chain with the roots from
+`krc_ca_dir` to assert the legitimacy of the KRC. Only once these are asserted, then the KRC token
+can be sent to the instance as a `Bearer` token. The new replica will also provide its mTLS
+certificate and its server UUID.
 
-
-Once validated, the KRC will create or update the server's replica entry. The replica entry
-in the database will contain the active mTLS cert of the replica and a reference to the replication
-site that the token referenced.
+Once validated, the KRC will create or update the server's replica entry. The replica entry in the
+database will contain the active mTLS cert of the replica and a reference to the replication site
+that the token referenced.
 
 This will additionally add the "time first seen" to the server entry.
 
-From this, for each server in the replication site associated to the token, the KRC will provide
-a replication config map to the new replica providing all URL's and mTLS certs.
+From this, for each server in the replication site associated to the token, the KRC will provide a
+replication config map to the new replica providing all URL's and mTLS certs.
 
-Anytime the replica checks in, if the KRC replication map has changed a new one will be provided,
-or the response will be `None` for no changes.
+Anytime the replica checks in, if the KRC replication map has changed a new one will be provided, or
+the response will be `None` for no changes.
 
 To determine no changes we use a "generation". This is where any change to a replication site or
-server entries will increment the generation counter. This allows us to detect when a client requires
-a new configuration or not.
+server entries will increment the generation counter. This allows us to detect when a client
+requires a new configuration or not.
 
+If a server's entry in the database is marked to be `Revoked` then it will remain in the database,
+but be inelligible for replication participation. This is to allow for forced removal of a
+potentially compromised node.
 
-If a server's entry in the database is marked to be `Revoked` then it will remain in the database, but
-be inelligible for replication participation. This is to allow for forced removal of a potentially compromised node.
-
-
-The KRC will periodically examine its RUV. For any server entry whose UUID is not contained in the RUV, and whose
-"time first seen + trime window" is less than now, then the server entry will be REMOVED for inactivity
-since it has now been trimmed from the RUV.
+The KRC will periodically examine its RUV. For any server entry whose UUID is not contained in the
+RUV, and whose "time first seen + trime window" is less than now, then the server entry will be
+REMOVED for inactivity since it has now been trimmed from the RUV.
 
 ### Moving the Replication Coordinator Role
 
-Since the coordinator is part of a kanidmd server, there must be a process to move the KRC to another
-node.
+Since the coordinator is part of a kanidmd server, there must be a process to move the KRC to
+another node.
 
 Imagine the following example. Here, Node A is acting as the KRC.
 
@@ -233,8 +241,8 @@ Imagine the following example. Here, Node A is acting as the KRC.
 
 This would allow Node A to be aware of B, C, D and then create a full mesh.
 
-We wish to decommision Node A and promote Node B to become the new KRC. Imagine at this point
-we cut over Node D to point its KRC at Node B.
+We wish to decommision Node A and promote Node B to become the new KRC. Imagine at this point we cut
+over Node D to point its KRC at Node B.
 
 ```
 ┌─────────────────┐                ┌─────────────────┐
@@ -260,14 +268,13 @@ we cut over Node D to point its KRC at Node B.
 └─────────────────┘                └─────────────────┘
 ```
 
-Since we still have the Server Entry records in the Default Site on both Node A and Node B, then
-all nodes will continue to participate in full mesh, and will update certificates as required.
+Since we still have the Server Entry records in the Default Site on both Node A and Node B, then all
+nodes will continue to participate in full mesh, and will update certificates as required.
 
 Since all servers would still be updating their RUV's and by proxy, updating RUV's to their partners
 then no nodes will be trimmed from the topology.
 
 This allows a time window where servers can be moved from Node A to Node B.
-
 
 ### Gruesome Details
 
@@ -290,6 +297,7 @@ No TOKEN -> Implies KRC role.
 ```
 
 Client Process
+
 ```
 connect to KRC
 - provide token for site binding
@@ -306,6 +314,7 @@ connect to KRC
 ```
 
 KRC Process
+
 ```
 - Validate Token
 - is server_uuid present as a server entry?
@@ -316,9 +325,7 @@ KRC Process
 - compare domain_uuid + generation
     - if different supply config
     - else None (no change)
-
 ```
-
 
 ### FUTURE: Possible Read Only nodes
 
