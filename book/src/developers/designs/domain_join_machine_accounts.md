@@ -68,7 +68,7 @@ establish and maintain this trust relationship.
 3. The join token is yielded to the Kanidm UNIX daemon which submits its signing key to the Kanidm
    server.
 4. The kanidm server verifies the submission and creates a machine account.
-5. The kanidm unix daemon now uses it's signing key to sign a challenge that is submitted with all
+5. The Kanidm UNIX daemon now uses its signing key to sign a challenge that is submitted with all
    requests to the kanidm server.
 
 Extra

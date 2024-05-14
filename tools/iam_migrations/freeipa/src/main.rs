@@ -1165,6 +1165,7 @@ fn main() {
         .build()
         .expect("Failed to initialise tokio runtime!");
 
+    #[cfg(debug_assertions)]
     tracing::debug!("Using {} worker threads", par_count);
 
     rt.block_on(async move { driver_main(opt).await });

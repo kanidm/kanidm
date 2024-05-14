@@ -105,13 +105,13 @@ pub struct TokenStore {
 
 impl TokenStore {
     pub fn instances(&self, name: &Option<String>) -> Option<&TokenInstance> {
-        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+        let n_lookup = name.clone().unwrap_or_default();
 
         self.instances.get(&n_lookup)
     }
 
     pub fn instances_mut(&mut self, name: &Option<String>) -> Option<&mut TokenInstance> {
-        let n_lookup = name.clone().unwrap_or_else(|| "".to_string());
+        let n_lookup = name.clone().unwrap_or_default();
 
         self.instances.get_mut(&n_lookup)
     }
@@ -413,7 +413,7 @@ async fn process_auth_state(
     let mut tokens = read_tokens(&client.get_token_cache_path()).unwrap_or_default();
 
     // Select our token instance. Create it if empty.
-    let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
+    let n_lookup = instance_name.clone().unwrap_or_default();
     let token_instance = tokens.instances.entry(n_lookup).or_default();
 
     // Add our new one
@@ -437,7 +437,7 @@ async fn process_auth_state(
                 pub_jwk
             } else {
                 // Get it from the server.
-                let pub_jwk = match client.get_public_jwk(&key_id).await {
+                let pub_jwk = match client.get_public_jwk(key_id).await {
                     Ok(pj) => pj,
                     Err(err) => {
                         error!(?err, "Unable to retrieve jwk from server");
@@ -675,7 +675,7 @@ impl LogoutOpt {
             std::process::exit(1);
         });
 
-        let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
+        let n_lookup = instance_name.clone().unwrap_or_default();
         let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
             println!("No sessions for {}", spn);
             return;

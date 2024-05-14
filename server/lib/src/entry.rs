@@ -1315,7 +1315,7 @@ type IdxDiff<'a> =
     Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
-    /// If this entry has ever been committed to disk, retrieve it's database id number.
+    /// If this entry has ever been committed to disk, retrieve its database id number.
     pub fn get_id(&self) -> u64 {
         self.state.id
     }
@@ -1368,7 +1368,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         compare_attrs(&self.attrs, &rhs.attrs)
     }
 
-    /// Serialise this entry to it's Database format ready for storage.
+    /// Serialise this entry to its Database format ready for storage.
     pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
@@ -1418,8 +1418,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, extract it's primary security prinicple name, or if not present
-    /// extract it's name, and if that's not present, extract it's uuid.
+    /// Given this entry, extract its primary security principal name, or if not present
+    /// extract its name, and if that's not present, extract its uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
@@ -1433,7 +1433,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
+    /// Given this entry, determine its relative distinguished named for LDAP compatibility.
     ///
     /// See also - `get_display_id`
     pub(crate) fn get_uuid2rdn(&self) -> String {

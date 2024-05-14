@@ -1336,7 +1336,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let expiry = odt_ct + Duration::from_secs(OAUTH2_ACCESS_TOKEN_EXPIRY as u64);
         let expires_in = OAUTH2_ACCESS_TOKEN_EXPIRY;
         let refresh_expiry = iat + OAUTH_REFRESH_TOKEN_EXPIRY as i64;
-        let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY as u64);
+        let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
 
         let scope = if scopes.is_empty() {
             None

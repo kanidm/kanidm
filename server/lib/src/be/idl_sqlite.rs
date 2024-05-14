@@ -1574,7 +1574,7 @@ impl IdlSqliteWriteTransaction {
         // | schema   | 1       |
         // ----------------------
         //
-        // This allows each component to initialise on it's own, be
+        // This allows each component to initialise on its own, be
         // rolled back individually, by upgraded in isolation, and more
         //
         // NEVER CHANGE THIS DEFINITION.

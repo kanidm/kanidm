@@ -772,7 +772,7 @@ async fn repl_acceptor(
 
         // ⚠️  CRITICAL - Both verifications here are needed. PEER requests
         // the client cert to be sent. FAIL_IF_NO_PEER_CERT triggers an
-        // error if the cert is NOT present. FAIL_IF_NO_PEER_CERT on it's own
+        // error if the cert is NOT present. FAIL_IF_NO_PEER_CERT on its own
         // DOES NOTHING.
         let mut verify = SslVerifyMode::PEER;
         verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);

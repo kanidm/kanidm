@@ -256,7 +256,7 @@ impl Plugin for AttrUnique {
         //
         // Because of this we have some key properties that we can observe.
         //
-        // Every node when it makes a change with regard to it's own content is already compliant
+        // Every node when it makes a change with regard to its own content is already compliant
         // to attribute uniqueness. This means the consumers db content before we begin is
         // fully consistent.
         //

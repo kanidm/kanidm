@@ -1270,7 +1270,7 @@ impl QueryServer {
             resolve_filter_cache,
             dyngroup_cache,
             cid_max,
-            key_providers: key_providers,
+            key_providers,
         })
     }
 

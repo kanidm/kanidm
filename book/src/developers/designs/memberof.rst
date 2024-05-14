@@ -12,7 +12,7 @@ The major one is that the question is generally framed "what groups is this pers
 a member of". This is true in terms of application access checks (is user in group Y?), nss' calls
 ie 'id name'. As a result, we want to have our data for our user and groups in a close locality.
 Given the design of the KaniDM system, where we generally frame and present user id tokens, it
-is upon the user that we want to keep the reference to it's groups.
+is upon the user that we want to keep the reference to its groups.
 
 Now at this point one could consider "Why not just store the groups on the user in the first place?".
 There is a security benefit to the relationship of "groups have members" rather than "users are

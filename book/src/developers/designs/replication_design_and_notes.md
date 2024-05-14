@@ -276,7 +276,7 @@ latter entry will be moved to the conflict state instead.
 
 The same process occurs with the same results when the reverse incremental operation occurs to
 server B where it receives the entry with the earlier creation from A. It will order the events and
-"conflict" it's local copy of the entry.
+"conflict" its local copy of the entry.
 
 ### Attribute
 

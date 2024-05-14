@@ -155,11 +155,7 @@ impl KeyProvidersTransaction for KeyProvidersReadTransaction {
     }
 
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>> {
-        self.inner
-            .deref()
-            .objects
-            .get(&key_object_uuid)
-            .map(|k| k.clone())
+        self.inner.deref().objects.get(&key_object_uuid).cloned()
     }
 }
 
@@ -187,11 +183,7 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
     }
 
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>> {
-        self.inner
-            .deref()
-            .objects
-            .get(&key_object_uuid)
-            .map(|k| k.clone())
+        self.inner.deref().objects.get(&key_object_uuid).cloned()
     }
 }
 

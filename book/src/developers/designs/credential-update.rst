@@ -60,7 +60,7 @@ Only one credential update process may exist at a time for a user. Attempts to c
 credential update session while an existing session exists is rejected until the previous session
 is committed or timed out.
 
-The credential update session can be rejected by the user, canceling it's progress.
+The credential update session can be rejected by the user, canceling its progress.
 
 A credential update session IS tied to a single server, similar to authentication.
 
@@ -69,7 +69,7 @@ on the users account so they can see and audit the change.
 
 If an intent token is used, the uuid of the intent token becomes the uuid of the credential update session.
 
-If an intent token is exchanged, and it's uuid already exists in the history-log of the account, the
+If an intent token is exchanged, and its uuid already exists in the history-log of the account, the
 intent token is rejected.
 
 Credential Update Process

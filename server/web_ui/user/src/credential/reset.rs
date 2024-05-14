@@ -377,7 +377,7 @@ impl CredentialResetApp {
             attested_passkeys_allowed_devices,
         } = status;
 
-        let (username, domain) = spn.split_once('@').unwrap_or(("", &spn));
+        let (username, domain) = spn.split_once('@').unwrap_or(("", spn));
         let names = format!("{} ({})", displayname, username);
         let cb = self.cb.clone();
 
