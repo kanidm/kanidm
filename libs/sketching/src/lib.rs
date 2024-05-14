@@ -1,6 +1,7 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
+use std::fmt::Display;
 use std::str::FromStr;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -125,13 +126,13 @@ impl FromStr for LogLevel {
     }
 }
 
-impl ToString for LogLevel {
-    fn to_string(&self) -> String {
-        match self {
-            LogLevel::Info => "info".to_string(),
-            LogLevel::Debug => "debug".to_string(),
-            LogLevel::Trace => "trace".to_string(),
-        }
+impl Display for LogLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LogLevel::Info => "info",
+            LogLevel::Debug => "debug",
+            LogLevel::Trace => "trace",
+        })
     }
 }
 
