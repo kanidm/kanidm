@@ -8,6 +8,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::fmt;
+use std::fmt::Display;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -24,11 +25,11 @@ pub enum AccountType {
     ServiceAccount,
 }
 
-impl ToString for AccountType {
-    fn to_string(&self) -> String {
+impl Display for AccountType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AccountType::Person => "person".to_string(),
-            AccountType::ServiceAccount => "service_account".to_string(),
+            AccountType::Person => f.write_str("person"),
+            AccountType::ServiceAccount => f.write_str("service_account"),
         }
     }
 }
