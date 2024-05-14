@@ -52,7 +52,7 @@ pub async fn do_request<JV: AsRef<JsValue>>(
     body: Option<JV>,
 ) -> Result<(Option<String>, u16, JsValue, Headers), FetchError> {
     let mut opts = RequestInit::new();
-    opts.method(&method.to_string());
+    opts.method(method.as_ref());
     opts.mode(RequestMode::SameOrigin);
     opts.credentials(web_sys::RequestCredentials::SameOrigin);
 
@@ -135,7 +135,7 @@ impl AsRef<str> for RequestMethod {
 
 impl Display for RequestMethod {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.as_ref())
+        f.write_str(self.as_ref())
     }
 }
 
