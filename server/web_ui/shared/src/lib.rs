@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use constants::CONTENT_TYPE;
 use error::FetchError;
 use gloo::console;
@@ -121,13 +123,19 @@ pub enum RequestMethod {
     PUT,
 }
 
-impl ToString for RequestMethod {
-    fn to_string(&self) -> String {
+impl AsRef<str> for RequestMethod {
+    fn as_ref(&self) -> &str {
         match self {
-            RequestMethod::PUT => "PUT".to_string(),
-            RequestMethod::POST => "POST".to_string(),
-            RequestMethod::GET => "GET".to_string(),
+            RequestMethod::PUT => "PUT",
+            RequestMethod::POST => "POST",
+            RequestMethod::GET => "GET",
         }
+    }
+}
+
+impl Display for RequestMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.as_ref())
     }
 }
 
@@ -153,15 +161,15 @@ pub enum SessionStatus {
     Error { emsg: String, kopid: Option<String> },
 }
 
-impl ToString for SessionStatus {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for SessionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match self {
             SessionStatus::TokenValid => "SessionStatus::TokenValid".to_string(),
             SessionStatus::LoginRequired => "SessionStatus::LoginRequired".to_string(),
             SessionStatus::Error { emsg, kopid } => {
                 format!("SessionStatus::Error: {} {:?}", emsg, kopid)
             }
-        }
+        })
     }
 }
 

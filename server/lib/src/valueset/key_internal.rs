@@ -160,25 +160,25 @@ impl ValueSetKeyInternal {
 }
 
 impl ValueSetT for ValueSetKeyInternal {
-    fn insert_checked(&mut self, value: crate::value::Value) -> Result<bool, OperationError> {
-        match value {
-            // I'm not sure we ever need to actually push this?
-            /*
-            Value::KeyInternal {
-                id,
-                usage,
-                valid_from,
-                status,
-                der,
-            } => {
-                todo!();
-            }
-            */
-            _ => {
-                debug_assert!(false);
-                Err(OperationError::InvalidValueState)
-            }
+    fn insert_checked(&mut self, _value: crate::value::Value) -> Result<bool, OperationError> {
+        // match value {
+        // I'm not sure we ever need to actually push this?
+        /*
+        Value::KeyInternal {
+            id,
+            usage,
+            valid_from,
+            status,
+            der,
+        } => {
+            todo!();
         }
+        */
+        // _ => {
+        debug_assert!(false);
+        Err(OperationError::InvalidValueState)
+        // }
+        // }
     }
 
     fn clear(&mut self) {
@@ -313,8 +313,8 @@ impl ValueSetT for ValueSetKeyInternal {
             )| {
                 Value::KeyInternal {
                     id: id.clone(),
-                    usage,
-                    status,
+                    usage: *usage,
+                    status: *status,
                     status_cid: status_cid.clone(),
                     der: der.clone(),
                     valid_from: *valid_from,
