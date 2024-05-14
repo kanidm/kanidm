@@ -13,7 +13,7 @@ considerations you should be aware of for production deployments.
 ### Get the software
 
 ```bash
-docker pull kanidm/server:latest
+docker pull docker.io/kanidm/server:latest
 ```
 
 ### Configure the container
@@ -24,7 +24,7 @@ docker create --name kanidmd \
   -p 443:8443 \
   -p 636:3636 \
   -v kanidmd:/data \
-  kanidm/server:latest
+  docker.io/kanidm/kanidm/server:latest
 ```
 
 ### Configure the server
@@ -45,7 +45,7 @@ docker cp server.toml kanidmd:/data/server.toml
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
-  kanidm/server:latest \
+  docker.io/kanidm/server:latest \
   kanidmd cert-generate
 ```
 

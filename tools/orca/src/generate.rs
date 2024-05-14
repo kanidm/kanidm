@@ -12,11 +12,11 @@ use std::collections::BTreeSet;
 
 const PEOPLE_PREFIX: &str = "person";
 
-#[derive(Debug)]
-pub struct PartialGroup {
-    pub name: String,
-    pub members: BTreeSet<String>,
-}
+// #[derive(Debug)]
+// pub struct PartialGroup {
+//     pub name: String,
+//     pub members: BTreeSet<String>,
+// }
 
 fn random_name(prefix: &str, rng: &mut ChaCha8Rng) -> String {
     let suffix = Alphanumeric.sample_string(rng, 8).to_lowercase();

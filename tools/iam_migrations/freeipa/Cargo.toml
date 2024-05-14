@@ -12,7 +12,6 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [dependencies]
-base64urlsafedata = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 chrono = { workspace = true }
 cron = { workspace = true }

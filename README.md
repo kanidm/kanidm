@@ -19,7 +19,8 @@ way to the largest enterprise needs.
 
 If you want to host your own authentication service, then Kanidm is for you!
 
-<details><summary>Supported Features</summary>
+<details>
+  <summary>Supported Features</summary>
 
 Kanidm supports:
 
@@ -74,7 +75,9 @@ Kanidm is pronounced as "kar - nee - dee - em".
 
 ## Comparison with other services
 
-<details><summary>LLDAP</summary>
+<details>
+  <summary>LLDAP</summary>
+  
 [LLDAP](https://github.com/nitnelave/lldap) is a similar project aiming for a small and easy to
 administer LDAP server with a web administration portal. Both projects use the
 [Kanidm LDAP bindings](https://github.com/kanidm/ldap3), and have many similar ideas.
@@ -107,7 +110,9 @@ richer feature set.
 
 </details>
 
-<details><summary>FreeIPA</summary>
+<details>
+  <summary>FreeIPA</summary>
+
 FreeIPA is another identity management service for Linux/Unix, and ships a huge number of features
 from LDAP, Kerberos, DNS, Certificate Authority, and more.
 
@@ -122,7 +127,9 @@ differ however, but generally Kanidm is much faster than FreeIPA).
 
 </details>
 
-<details><summary>Keycloak</summary>
+<details>
+  <summary>Keycloak</summary>
+
 Keycloak is an OIDC/OAuth2/SAML provider. It allows you to layer on WebAuthn to existing IDM systems.
 Keycloak can operate as a stand-alone IDM but generally is a component attached to an existing LDAP
 server or similar.

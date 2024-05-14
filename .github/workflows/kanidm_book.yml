@@ -41,6 +41,8 @@ jobs:
             | awk '{print $1}' \
             | sort -t. -k3n,3 -k4n,4 \
             | awk -F'/' '{print $NF}' \
+            | grep -E '^[[:digit:]]\.[[:digit:]]\.[[:digit:]]' \
+            | sort -t. \
             | tail -n1)" >> $GITHUB_OUTPUT
         id: branchname
       - name: Move redirector page
