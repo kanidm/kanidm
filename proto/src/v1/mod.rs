@@ -27,10 +27,10 @@ pub enum AccountType {
 
 impl Display for AccountType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AccountType::Person => f.write_str("person"),
-            AccountType::ServiceAccount => f.write_str("service_account"),
-        }
+        f.write_str(match self {
+            AccountType::Person => "person",
+            AccountType::ServiceAccount => "service_account",
+        })
     }
 }
 
