@@ -94,6 +94,16 @@ impl ReplicationConfiguration {
         self.manual.insert(url, config);
     }
 
+    pub fn try_update_peer_from_cli(
+        &mut self,
+        _url: Url,
+        _peer_type: Option<&str>,
+        _peer_certificate: Option<&str>,
+        _automatic_refresh: &Option<bool>,
+    ) -> Result<(), String> {
+        todo!("iterate through the options and update the config etc etc")
+    }
+
     pub fn try_add_peer_from_cli(
         &mut self,
         url: Url,

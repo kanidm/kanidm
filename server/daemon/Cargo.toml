@@ -42,6 +42,7 @@ toml = { workspace = true }
 tempfile = { workspace = true }
 tracing = { workspace = true }
 serde_json.workspace = true
+toml_edit = { version = "0.22.12", features = ["serde"] }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true

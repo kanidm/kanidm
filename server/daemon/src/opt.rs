@@ -82,6 +82,9 @@ enum ReplicationCommands {
         /// Update the peer type
         #[clap(short = 't', long)]
         peer_type: Option<String>,
+        /// Enable automatic refresh
+        #[clap(short, long, action)]
+        automatic_refresh: Option<bool>,
     },
 }
 

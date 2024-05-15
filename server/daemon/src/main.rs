@@ -655,9 +655,24 @@ async fn kanidm_main(
                 bind_address,
             } => {
                 // load the config
-                config.update_config_for_server_mode(&sconfig);
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let config_contents = match std::fs::read_to_string(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to read config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
 
-                let mut repl_config = match config.repl_config.clone() {
+                let mut repl_config = match new_config.repl_config.clone() {
                     Some(mutating_config) => mutating_config,
                     None => ReplicationConfiguration::default(),
                 };
@@ -670,18 +685,11 @@ async fn kanidm_main(
                     }
                 };
 
-                // save the config back
-                config.update_replication_config(Some(repl_config));
-                let serverconfig: ServerConfig = match config.try_into() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to serialize configuration: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
+                new_config.repl_config = Some(repl_config);
 
+                // save the config back
                 let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
+                match new_config.save(&output_path) {
                     Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
                     Err(err) => {
                         error!(
@@ -701,11 +709,6 @@ async fn kanidm_main(
                 automatic_refresh,
             } => {
                 // parse the URI to check it's valid
-
-                // load the config
-                config.update_config_for_server_mode(&sconfig);
-
-                // check if the uri is there
                 let peer_uri = match Url::parse(peer_uri) {
                     Ok(u) => u,
                     Err(e) => {
@@ -714,18 +717,36 @@ async fn kanidm_main(
                     }
                 };
 
-                let mut mutating_config = match config.repl_config.clone() {
-                    Some(mutating_config) => {
-                        if mutating_config.manual.contains_key(&peer_uri) {
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let config_contents = match std::fs::read_to_string(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to read config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                let mut repl_config = match new_config.repl_config.clone() {
+                    Some(repl_config) => {
+                        if repl_config.manual.contains_key(&peer_uri) {
                             error!("Peer URI already exists in configuration");
                             return ExitCode::FAILURE;
                         }
-                        mutating_config
+                        repl_config
                     }
                     None => ReplicationConfiguration::default(),
                 };
 
-                if let Err(errr) = mutating_config.try_add_peer_from_cli(
+                if let Err(errr) = repl_config.try_add_peer_from_cli(
                     peer_uri,
                     peer_type,
                     partner_cert,
@@ -735,18 +756,10 @@ async fn kanidm_main(
                     return ExitCode::FAILURE;
                 }
 
-                // save the config back
-                config.update_replication_config(Some(mutating_config));
-                let serverconfig: ServerConfig = match config.try_into() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to serialize configuration: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
+                new_config.repl_config = Some(repl_config);
 
                 let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
+                match new_config.save(&output_path) {
                     Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
                     Err(err) => {
                         error!(
@@ -772,34 +785,37 @@ async fn kanidm_main(
                 };
 
                 // load the config
-                config.update_config_for_server_mode(&sconfig);
-
-                let mutating_config = match config.repl_config.clone() {
-                    Some(mut mutating_config) => {
-                        if !mutating_config.delete_peer(&peer_uri) {
-                            error!("Peer {} wasn't found in config!", peer_uri);
-                            return ExitCode::FAILURE;
-                        }
-                        mutating_config
-                    }
-                    None => {
-                        error!("No replication config was found!");
-                        return ExitCode::FAILURE;
-                    }
-                };
-
-                // save the config back
-                config.update_replication_config(Some(mutating_config));
-                let serverconfig: ServerConfig = match config.try_into() {
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let config_contents = match std::fs::read_to_string(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
-                        error!("Failed to serialize configuration: {:?}", e);
+                        error!("Failed to read config file: {:?}", e);
                         return ExitCode::FAILURE;
                     }
                 };
+                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                if new_config.repl_config.is_none() {
+                    error!("No replication configuration found in config file");
+                    return ExitCode::FAILURE;
+                } else {
+                    let mut repl_config = new_config.repl_config.unwrap();
+                    if !repl_config.delete_peer(&peer_uri) {
+                        error!("Peer URI not found in configuration");
+                        return ExitCode::FAILURE;
+                    }
+                    new_config.repl_config = Some(repl_config);
+                }
 
                 let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
+
+                match new_config.save(&output_path) {
                     Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
                     Err(err) => {
                         error!(
@@ -815,9 +831,10 @@ async fn kanidm_main(
                 commonopts,
                 peer_uri,
                 peer_type,
-                partner_cert: _,
+                partner_cert,
+                automatic_refresh,
             } => {
-                let _peer_uri = match Url::parse(peer_uri) {
+                let peer_uri = match Url::parse(peer_uri) {
                     Ok(u) => u,
                     Err(e) => {
                         error!("Invalid URI: {}", e);
@@ -833,23 +850,45 @@ async fn kanidm_main(
                 }
 
                 // load the config
-                config.update_config_for_server_mode(&sconfig);
-
-                let serverconfig: ServerConfig = match config.try_into() {
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let config_contents = match std::fs::read_to_string(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
-                        error!("Failed to serialize configuration: {:?}", e);
+                        error!("Failed to read config file: {:?}", e);
                         return ExitCode::FAILURE;
                     }
                 };
+                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let mut repl_config = match new_config.repl_config {
+                    Some(mutating_config) => mutating_config,
+                    None => ReplicationConfiguration::default(),
+                };
+                if let Err(err) = repl_config.try_update_peer_from_cli(
+                    peer_uri,
+                    peer_type.as_deref(),
+                    partner_cert.as_deref(),
+                    automatic_refresh,
+                ) {
+                    error!("Failed to update peer: {:?}", err);
+                    return ExitCode::FAILURE;
+                }
 
-                let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
-                    Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
+                // save back the config
+                new_config.repl_config = Some(repl_config);
+
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
                     Err(err) => {
                         error!(
                             "Failed to write config to {}: {:?}",
-                            &output_path.display(),
+                            &config_path.display(),
                             err
                         );
                         return ExitCode::FAILURE;
