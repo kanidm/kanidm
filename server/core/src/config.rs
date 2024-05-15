@@ -780,6 +780,7 @@ impl TryFrom<Configuration> for ServerConfig {
             db_arc_size: value.db_arc_size,
             repl_config: value.repl_config,
             otel_grpc_url: value.otel_grpc_url,
+            thread_count: value.threads.into(),
         })
     }
 }

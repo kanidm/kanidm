@@ -12,7 +12,7 @@ use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
-use nonempty::NonEmpty;
+use nonempty::{nonempty, NonEmpty};
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -496,10 +496,7 @@ impl CredHandler {
                                         admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
-                                CredState::Continue(Box::new(NonEmpty {
-                                    head: AuthAllowed::Password,
-                                    tail: Vec::with_capacity(0),
-                                }))
+                                CredState::Continue(Box::new(nonempty![AuthAllowed::Password]))
                             }
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -526,10 +523,7 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
-                            CredState::Continue(Box::new(NonEmpty {
-                                head: AuthAllowed::Password,
-                                tail: Vec::with_capacity(0),
-                            }))
+                            CredState::Continue(Box::new(nonempty![AuthAllowed::Password]))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!(
@@ -552,10 +546,7 @@ impl CredHandler {
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            CredState::Continue(Box::new(NonEmpty {
-                                head: AuthAllowed::Password,
-                                tail: Vec::with_capacity(0),
-                            }))
+                            CredState::Continue(Box::new(nonempty![AuthAllowed::Password]))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
@@ -949,15 +940,12 @@ impl AuthSession {
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             if asd.account.is_anonymous() {
-                AuthSessionState::Init(NonEmpty {
-                    head: CredHandler::Anonymous {
-                        cred_id: asd.account.uuid,
-                    },
-                    tail: Vec::with_capacity(0),
-                })
+                AuthSessionState::Init(nonempty![CredHandler::Anonymous {
+                    cred_id: asd.account.uuid,
+                }])
             } else {
                 // What's valid to use in this context?
-                let mut handlers = Vec::with_capacity(0);
+                let mut handlers = Vec::new();
 
                 // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
                 // to do to be able to check for pw / mfa etc.
@@ -1481,7 +1469,7 @@ impl AuthSession {
         match &self.state {
             AuthSessionState::Success
             | AuthSessionState::Denied(_)
-            | AuthSessionState::InProgress(_) => Vec::with_capacity(0),
+            | AuthSessionState::InProgress(_) => Vec::new(),
             AuthSessionState::Init(handlers) => {
                 // Iterate over the handlers into what mechs they are
                 // and filter to unique?

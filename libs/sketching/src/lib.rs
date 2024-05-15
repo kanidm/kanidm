@@ -107,13 +107,11 @@ impl EventTag {
 }
 
 #[derive(Clone, Copy, Deserialize, Serialize, Debug, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     #[default]
-    #[serde(rename = "info")]
     Info,
-    #[serde(rename = "debug")]
     Debug,
-    #[serde(rename = "trace")]
     Trace,
 }
 

@@ -49,6 +49,7 @@ pub struct Oauth2App {
 pub enum Oauth2Msg {
     LoginRequired,
     LoginProceed,
+    #[allow(dead_code)]
     ConsentGranted(String),
     TokenValid,
     Consent {
