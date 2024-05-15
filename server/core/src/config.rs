@@ -779,3 +779,16 @@ impl TryFrom<Configuration> for ServerConfig {
         })
     }
 }
+
+#[test]
+fn test_serverconfig_load_raw() {
+    let test_file_path = format!(
+        "{}/../../examples/insecure_server.toml",
+        env!("CARGO_MANIFEST_DIR"),
+    );
+    if let Err(err) =
+        ServerConfig::load_raw(PathBuf::from_str(&test_file_path).expect("Failed to parse path"))
+    {
+        panic!("error: {:?}", err);
+    };
+}
