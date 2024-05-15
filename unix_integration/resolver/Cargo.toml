@@ -75,7 +75,8 @@ selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
-toml = { workspace = true }
+
+toml_edit = { workspace = true, features = ["serde"] }
 tokio = { workspace = true, features = [
     "rt",
     "fs",

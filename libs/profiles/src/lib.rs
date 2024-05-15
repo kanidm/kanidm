@@ -73,7 +73,7 @@ pub fn apply_profile() {
         .decode(contents)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
-    let profile_cfg: ProfileConfig = toml::from_slice(&data)
+    let profile_cfg: ProfileConfig = toml_edit::de::from_slice(&data)
         .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
     // We have to setup for our pkg version to be passed into things correctly

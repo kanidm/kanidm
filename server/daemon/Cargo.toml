@@ -38,12 +38,13 @@ reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
-toml = { workspace = true }
+toml_edit = { workspace = true, features = ["serde"] }
+
+opentelemetry = { workspace = true, features = ["logs"] }
+opentelemetry_api = { workspace = true, features = ["logs"] }
 tempfile = { workspace = true }
 tracing = { workspace = true }
 serde_json.workspace = true
-toml_edit = { version = "0.22.12", features = ["serde"] }
-
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true
 prctl.workspace = true

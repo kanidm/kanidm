@@ -374,7 +374,7 @@ impl KanidmClientBuilder {
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        let mut config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
+        let mut config: KanidmClientConfig = toml_edit::de::from_str(&contents).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;

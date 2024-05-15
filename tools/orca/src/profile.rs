@@ -203,7 +203,7 @@ impl ProfileBuilder {
 
 impl Profile {
     pub fn write_to_path(&self, path: &Path) -> Result<(), Error> {
-        let file_contents = toml::to_string(self).map_err(|toml_err| {
+        let file_contents = toml_edit::ser::to_string(self).map_err(|toml_err| {
             error!(?toml_err);
             Error::SerdeToml
         })?;
@@ -224,7 +224,7 @@ impl TryFrom<&Path> for Profile {
             Error::Io
         })?;
 
-        toml::from_str(&file_contents).map_err(|toml_err| {
+        toml_edit::de::from_str(&file_contents).map_err(|toml_err| {
             error!(?toml_err);
             Error::SerdeToml
         })

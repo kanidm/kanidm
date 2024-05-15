@@ -177,7 +177,7 @@ impl ServerConfig {
                 })?;
 
                 // if we *can* load the config we'll set config to that.
-                match toml::from_str::<ServerConfig>(contents.as_str()) {
+                match toml_edit::de::from_str::<ServerConfig>(contents.as_str()) {
                     Err(err) => {
                         eprintln!(
                             "Unable to parse config from '{:?}': {:?}",

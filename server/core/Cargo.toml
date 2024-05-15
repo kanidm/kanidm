@@ -53,7 +53,7 @@ time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
-toml = { workspace = true }
+toml_edit = { workspace = true, features = ["serde"] }
 tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
 tower-http = { version = "0.5.2", features = [
     "compression-gzip",
@@ -77,8 +77,6 @@ utoipa = { workspace = true, features = [
     "uuid",
 ] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
-toml_edit = { version = "0.22.12", features = ["serde"] }
-
 [dev-dependencies]
 walkdir = { workspace = true }
 tempfile = { workspace = true }

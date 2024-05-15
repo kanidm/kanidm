@@ -82,7 +82,7 @@ async fn driver_main(opt: Opt) -> Result<(), ()> {
         return Err(());
     };
 
-    let sync_config: Config = match toml::from_str(contents.as_str()) {
+    let sync_config: Config = match toml_edit::de::from_str(contents.as_str()) {
         Ok(c) => c,
         Err(e) => {
             eprintln!(
