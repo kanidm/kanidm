@@ -612,27 +612,28 @@ async fn kanidm_main(
                 origin_uri,
             } => {
                 // load the config
-                config.update_config_for_server_mode(&sconfig);
-
-                let mut repl_config = match config.repl_config.clone() {
-                    Some(repl_config) => repl_config,
-                    None => ReplicationConfiguration::default(),
-                };
-
-                repl_config.origin = match Url::parse(&origin_uri) {
-                    Ok(u) => u,
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let config_contents = match std::fs::read_to_string(&config_path) {
+                    Ok(c) => c,
                     Err(e) => {
-                        error!("Invalid Origin URL: {}", e);
+                        error!("Failed to read config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+                let mut serverconfig: ServerConfig = match toml_edit::de::from_str(&config_contents)
+                {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
                         return ExitCode::FAILURE;
                     }
                 };
 
-                // save the config back
-                config.update_replication_config(Some(repl_config));
-                let serverconfig: ServerConfig = match config.try_into() {
-                    Ok(c) => c,
+                serverconfig.repl_config.as_mut().unwrap().origin = match origin_uri.parse() {
+                    Ok(u) => u,
                     Err(e) => {
-                        error!("Failed to serialize configuration: {:?}", e);
+                        error!("Invalid Origin URI: {}", e);
                         return ExitCode::FAILURE;
                     }
                 };
@@ -664,7 +665,8 @@ async fn kanidm_main(
                         return ExitCode::FAILURE;
                     }
                 };
-                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                let mut serverconfig: ServerConfig = match toml_edit::de::from_str(&config_contents)
+                {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
@@ -672,7 +674,7 @@ async fn kanidm_main(
                     }
                 };
 
-                let mut repl_config = match new_config.repl_config.clone() {
+                let mut repl_config = match serverconfig.repl_config.clone() {
                     Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
                 };
@@ -685,11 +687,11 @@ async fn kanidm_main(
                     }
                 };
 
-                new_config.repl_config = Some(repl_config);
+                serverconfig.repl_config = Some(repl_config);
 
                 // save the config back
                 let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match new_config.save(&output_path) {
+                match serverconfig.save(&output_path) {
                     Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
                     Err(err) => {
                         error!(
