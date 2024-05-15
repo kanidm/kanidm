@@ -113,16 +113,16 @@ This question is normally asked because people want to setup multiple Kanidm ser
 single database.
 
 Kanidm does not use SQL as a _database_. Kanidm uses SQL as a durable key-value store and Kanidm
-implements it's own database, caching, querying, optimisation and indexing on top of that key-value
+implements its own database, caching, querying, optimisation and indexing on top of that key-value
 store.
 
-As a result, because Kanidm specifically implements it's own cache layer above the key-value store
+As a result, because Kanidm specifically implements its own cache layer above the key-value store
 (sqlite in this example) then if you were to connect two Kanidm instances to the same key-value
-store, as each server has it's own cache layer and they are not in contact, it is possible for
-writes on one server to never be observed by the second, and if the second were to then write over
-those entries it will cause loss of the changes from the first server.
+store, as each server has its own cache layer and they are not in contact, it is possible for writes
+on one server to never be observed by the second, and if the second were to then write over those
+entries it will cause loss of the changes from the first server.
 
-Kanidm now implements it's own eventually consistent distributed replication which also removes the
+Kanidm now implements its own eventually consistent distributed replication which also removes the
 need for external databases to be considered.
 
 ## Why aren't snaps launching with `home_alias` set?

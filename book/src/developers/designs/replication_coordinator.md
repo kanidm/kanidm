@@ -49,31 +49,6 @@ configures the state of replication across the topology.
        └────────────────┘                                └────────────────┘
 ```
 
-The KRC issues configuration tokens. These are JWT's that are signed by the KRC.
-
-A configuration token is _not_ unique to a node. It can be copied between many nodes. This allows
-stateless deployments where nodes can be spun up and provided their replication config.
-
-The node is provided with the KRC TLS CA, and a configuration token.
-
-The node when configured contacts the KRC with its configuration token as bearer authentication. The
-KRC uses this to determine and issue a replication configuration. Because the configuration token is
-signed by the KRC, a fraudulent configuration token can _not_ be used by an attacker to fraudulently
-subscribe a kanidm node. Because the KRC is contacted over TLS this gives the node strong assurances
-of the legitimacy of the KRC due to TLS certificate validation and pinning.
-
-The KRC must be able to revoke replication configuration tokens in case of a token disclosure.
-
-The node sends its KRC token, server UUID, and server repl public key to the KRC.
-
-The configuration token defines the replication group identifier of that node. The KRC uses the
-configuration token _and_ the servers UUID to assign replication metadata to the node. The KRC
-issues a replication configuration to the node.
-
-The replication configuration defines the nodes that the server should connect to, as well as
-providing the public keys that are required for that node to perform replication. These are
-elaborated on in node configuration.
-
 ## Kanidm Node Configuration
 
 There are some limited cases where an administrator may wish to _manually_ define replication
@@ -98,7 +73,8 @@ All replicas require:
 
 ### Pull mode
 
-This is the standard and preferred mode. The map contains for each node to pull from.
+This is the standard mode. The map contains for each node to pull replication data from. This
+logically maps to the implementation of the underlying replication mechanism.
 
 - the url of the node's replication endpoint.
 - The self-signed node certificate to be pinned for the connection.
@@ -106,11 +82,7 @@ This is the standard and preferred mode. The map contains for each node to pull 
 
 ### Push mode
 
-This mode is only available in manual configurations, and should only be used as a last resort.
-
-- The url of the nodes replication endpoint.
-- The self-signed node certificate to be pinned for the connection.
-- If a refresh required message would be sent, if the node should be force-refreshed next cycle.
+This mode is unlikely to be developed as it does not match the way that replication works.
 
 ## Worked examples
 
@@ -118,175 +90,246 @@ This mode is only available in manual configurations, and should only be used as
 
 There are two nodes, A and B.
 
-The administrator configures the kanidm server with replication urls
+The administrator configures both kanidm servers with replication urls.
 
 ```
+# Server A
 [replication]
-node_url = https://private.name.of.node
+origin = "repl://kanidmd_a:8444"
+bindaddress = "[::]:8444"
+```
+
+```
+# Server B
+[replication]
+origin = "repl://kanidmd_b:8444"
+bindaddress = "[::]:8444"
 ```
 
 The administrator extracts their replication certificates with the kanidmd binary admin features.
 This will reflect the `node_url` in the certificate.
 
+```
 kanidmd replication get-certificate
+```
 
-For each node, a replication configuration is created in json. For A pulling from B.
+For each node, a replication configuration is created in json.
+
+For A pulling from B.
 
 ```
-[
-  { "pull":
-    {
-      url: "https://node-b.private-name",
-      publiccert: "pem certificate from B",
-      automatic_refresh: false
-    }
-  },
-  { "allow-pull":
-    {
-      clientcert: "pem certificate from B"
-    }
-  }
-]
+[replication."repl://kanidmd_b:8444"]
+type = "mutual-pull"
+partner_cert = "M..."
+automatic_refresh = false
 ```
 
 For B pulling from A.
 
 ```
-[
-  { "pull":
-    {
-      url: "https://node-a.private-name",
-      publiccert: "pem certificate from A",
-      automatic_refresh: false
-    }
-  },
-  { "allow-pull":
-    {
-      clientcert: "pem certificate from A"
-    }
-  }
-]
+[replication."repl://kanidmd_a:8444"]
+type = "mutual-pull"
+partner_cert = "M..."
+automatic_refresh = true
 ```
 
 Notice that automatic refresh only goes from A -> B and not the other way around. This allows one
 server to be "authoritative".
 
-TODO: The node configuration will also need to list nodes that can do certain tasks. An example of
-these tasks is that to prevent "update storms" a limited set of nodes should be responsible for
-recycling and tombstoning of entries. These should be defined as tasks in the replication
-configuration, so that the KRC can later issue out which nodes are responsible for those processes.
-
-These are analogous to the AD FSMO roles, but I think we need a different name for them. Single Node
-Origin Task? Single Node Operation Runner? Yes I'm trying to make silly acronyms.
-
 ### KRC Configuration
 
-> Still not fully sure about the KRC config yet. More thinking needed!
-
-The KRC is configured with it's URL and certificates.
-
-```
-[krc_config]
-origin = https://krc.example.com
-tls_chain = /path/to/tls/chain
-tls_key = /path/to/tls/key
-```
-
-The KRC is also configured with replication groups.
+The KRC is enabled as a replication parameter. This informs the node that it must not contact other
+nodes for its replication topology, and it prepares the node for serving that replication metadata.
+This is analgous to a single node operation configuration.
 
 ```
-  [origin_nodes]
-  # This group never auto refreshes - they are authoritative.
-  mesh = full
+[replication]
+origin = "repl://kanidmd_a:8444"
+bindaddress = "[::]:8444"
 
-  [replicas_syd]
-  # Every node has two links inside of this group.
-  mesh = 2
-  # at least 2 nodes in this group link externally.
-  linkcount = 2
-  linkto = [ "origin_nodes" ]
+krc_enable = true
 
-  [replicas_bne]
-  # Every node has one link inside of this group.
-  mesh = 1
-  # at least 1 node in this group link externally.
-  linkcount = 1
-  linkto = [ "origin_nodes" ]
+# krc_url -- unset
+# krc_ca_dir -- unset
 ```
 
-This would yield the following arrangement.
+All other nodes will have a configuration of:
 
 ```
-                      ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
-                        origin_nodes                       │
-                      │
-                          ┌────────┐         ┌────────┐    │
-                      │   │        │         │        │
-                          │   O1   │◀───────▶│   O2   │    │
-                      │   │        │         │        │
-                          └────────┘◀───┬───▶└────────┘    │
-                      │        ▲        │         ▲
-                               │        │         │        │
-                      │        │        │         │
-                               ▼        │         ▼        │
-                      │   ┌────────┐◀───┴───▶┌────────┐
-                          │        │         │        │    │
-                      │   │   O3   │◀───────▶│   O4   │◀─────────────────────────────┐
-                          │        │         │        │    │                         │
-                      │   └────────┘         └────────┘                              │
-                               ▲                  ▲        │                         │
-                      └ ─ ─ ─ ─│─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─                          │
-                               │                  │                                  │
-                               │                  │                                  │
-                               │                  │                                  │
-                            ┌──┘                  │                                  │
-                            │                     │                                  │
-                            │                     │                                  │
-┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─             │      ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┼ ─ ─ ─ ─
-  replicas_bne              │        │            │        replicas_syd              │        │
-│                           │                     │      │                           │
-    ┌────────┐         ┌────────┐    │            │          ┌────────┐         ┌────────┐    │
-│   │        │         │        │                 │      │   │        │         │        │
-    │   B1   │◀───────▶│   B2   │    │            └──────────│   S1   │◀───────▶│   S2   │    │
-│   │        │         │        │                        │   │        │         │        │
-    └────────┘         └────────┘    │                       └────────┘         └────────┘    │
-│                           ▲                            │        ▲                  ▲
-                            │        │                            │                  │        │
-│                           │                            │        │                  │
-                            ▼        │                            ▼                  ▼        │
-│   ┌────────┐         ┌────────┐                        │   ┌────────┐         ┌────────┐
-    │        │         │        │    │                       │        │         │        │    │
-│   │   B3   │◀───────▶│   B4   │                        │   │   S3   │◀───────▶│   S4   │
-    │        │         │        │    │                       │        │         │        │    │
-│   └────────┘         └────────┘                        │   └────────┘         └────────┘
-                                     │                                                        │
-└ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─                    └ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─
+[replication]
+origin = "repl://kanidmd_b:8444"
+bindaddress = "[::]:8444"
+
+# krc_enable -- unset / false
+
+# krc_url = https://private.name.of.krc.node
+krc_url = https://kanidmd_a
+# must contain ca that signs kanidmd_a's tls_chain.
+krc_ca_dir = /path/to/ca_dir
 ```
 
-!!! TBD - How to remove / decomission nodes?
+The domain will automatically add a `Default Site`. The KRC implies its own membership to "Default
+Site" and it will internally add itself to the `Default Site`.
 
-I think origin nodes are persistent and must be manually defined. Will this require configuration of
-their server uuid in the config?
+The KRC can then issue Tokens that define which Site a new replica should join. Initially we will
+only allow `Default Site` (and will disallow creation of other sites).
 
-Auto-node groups need to check in with periodic elements, and missed checkins.
+The new replica will load its KRC token from the environment variable `KANIDMD_KRC_TOKEN_PATH`. This
+value will contain a file path where the JWT is stored. This is compatible with systemd credentials
+and docker secrets. By default the value if unset will be defined by a profile default
+(`/etc/kanidm/krc.token` or `/data/krc.token`).
 
-Checkins need to send ruv? This will allow the KRC to detect nodes that are stale.
+A new replica can then contact the `krc_url` validating the presented TLS chain with the roots from
+`krc_ca_dir` to assert the legitimacy of the KRC. Only once these are asserted, then the KRC token
+can be sent to the instance as a `Bearer` token. The new replica will also provide its mTLS
+certificate and its server UUID.
 
-If a node misses checkins after a certain period they should be removed from the KRC knowledge?
+Once validated, the KRC will create or update the server's replica entry. The replica entry in the
+database will contain the active mTLS cert of the replica and a reference to the replication site
+that the token referenced.
 
-R/O nodes could removed after x days of failed checkins, without much consequence.
+This will additionally add the "time first seen" to the server entry.
 
-R/W nodes on the other hand it's a bit trickier to know if they should be automatically removed.
+From this, for each server in the replication site associated to the token, the KRC will provide a
+replication config map to the new replica providing all URL's and mTLS certs.
 
-Or is delete of nodes a manual cleanup / triggers clean-ruv?
+Anytime the replica checks in, if the KRC replication map has changed a new one will be provided, or
+the response will be `None` for no changes.
 
-Should replication maps have "priorities" to make it a tree so that if nodes are offline then it can
-auto-re-route? Should they have multiple paths? Want to avoid excess links/loops/disconnections of
-nodes.
+To determine no changes we use a "generation". This is where any change to a replication site or
+server entries will increment the generation counter. This allows us to detect when a client
+requires a new configuration or not.
 
-I think some more thought is needed here. Possibly a node state machine.
+If a server's entry in the database is marked to be `Revoked` then it will remain in the database,
+but be inelligible for replication participation. This is to allow for forced removal of a
+potentially compromised node.
 
-I think for R/O nodes, we need to define how R/W will pass through. I can see a possibility like
+The KRC will periodically examine its RUV. For any server entry whose UUID is not contained in the
+RUV, and whose "time first seen + trime window" is less than now, then the server entry will be
+REMOVED for inactivity since it has now been trimmed from the RUV.
+
+### Moving the Replication Coordinator Role
+
+Since the coordinator is part of a kanidmd server, there must be a process to move the KRC to
+another node.
+
+Imagine the following example. Here, Node A is acting as the KRC.
+
+```
+┌─────────────────┐                ┌─────────────────┐
+│                 │                │                 │
+│                 │                │                 │
+│     Node A      │◀───────────────│     Node B      │
+│                 │                │                 │
+│                 │                │                 │
+└─────────────────┘                └─────────────────┘
+         ▲     ▲
+         │     │
+         │     │
+         │     └────────────────────────────┐
+         │                                  │
+         │                                  │
+         │                                  │
+┌─────────────────┐                ┌─────────────────┐
+│                 │                │                 │
+│                 │                │                 │
+│     Node C      │                │     Node D      │
+│                 │                │                 │
+│                 │                │                 │
+└─────────────────┘                └─────────────────┘
+```
+
+This would allow Node A to be aware of B, C, D and then create a full mesh.
+
+We wish to decommision Node A and promote Node B to become the new KRC. Imagine at this point we cut
+over Node D to point its KRC at Node B.
+
+```
+┌─────────────────┐                ┌─────────────────┐
+│                 │                │                 │
+│                 │                │                 │
+│     Node A      │                │     Node B      │
+│                 │                │                 │
+│                 │                │                 │
+└─────────────────┘                └─────────────────┘
+         ▲                                  ▲
+         │                                  │
+         │                                  │
+         │                                  │
+         │                                  │
+         │                                  │
+         │                                  │
+┌─────────────────┐                ┌─────────────────┐
+│                 │                │                 │
+│                 │                │                 │
+│     Node C      │                │     Node D      │
+│                 │                │                 │
+│                 │                │                 │
+└─────────────────┘                └─────────────────┘
+```
+
+Since we still have the Server Entry records in the Default Site on both Node A and Node B, then all
+nodes will continue to participate in full mesh, and will update certificates as required.
+
+Since all servers would still be updating their RUV's and by proxy, updating RUV's to their partners
+then no nodes will be trimmed from the topology.
+
+This allows a time window where servers can be moved from Node A to Node B.
+
+### Gruesome Details
+
+Server Start Up Process
+
+```
+Token is read from a file defined in the env.
+	works with systemd + docker secrets
+
+Token is JWT with HS256. (OR JWE + AES-GCM)
+
+Read the token
+- if token domain_uuid != our domain_uuid -> set status to "waiting"
+    - empty replication config map
+- if token domain_uuid == domain_uuid -> status to "ok"
+    - use cached replication config map
+
+No TOKEN -> Implies KRC role.
+- Set status to "ok", we are the domain_uuid source.
+```
+
+Client Process
+
+```
+connect to KRC
+- provide token for site binding
+- submit my server_uuid
+- submit my public cert with the request
+- submit current domain_uuid + generation if possible
+
+- reply from KRC -> repl config map.
+    - config_map contains issuing KRC server uuid.
+    - if config_map generation > current config_map
+        - reload config.
+    - if config_map == None
+      - current map remains valid.
+```
+
+KRC Process
+
+```
+- Validate Token
+- is server_uuid present as a server entry?
+    - if no: add it with site association
+    - if yes: verify site associated to token
+- is server_uuid certificate the same as before?
+    - if no: replace it.
+- compare domain_uuid + generation
+    - if different supply config
+    - else None (no change)
+```
+
+### FUTURE: Possible Read Only nodes
+
+For R/O nodes, we need to define how R/W will pass through. I can see a possibility like
 
 ```
                                 No direct line

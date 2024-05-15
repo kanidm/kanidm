@@ -94,7 +94,7 @@ impl KeyProviderInternal {
                 match usage {
                     KeyUsage::JwsEs256 => {
                         let jws_es256_ref =
-                            jws_es256.get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+                            jws_es256.get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
                         jws_es256_ref.load(
                             key_id,
@@ -105,8 +105,8 @@ impl KeyProviderInternal {
                         )?;
                     }
                     KeyUsage::JweA128GCM => {
-                        let jwe_a128gcm_ref = jwe_a128gcm
-                            .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
+                        let jwe_a128gcm_ref =
+                            jwe_a128gcm.get_or_insert_with(KeyObjectInternalJweA128GCM::default);
 
                         jwe_a128gcm_ref.load(
                             key_id,
@@ -855,7 +855,7 @@ impl KeyObjectT for KeyObjectInternal {
     ) -> Result<(), OperationError> {
         let koi = self
             .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+            .get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
         koi.import(import_keys, valid_from, cid)
     }
@@ -863,7 +863,7 @@ impl KeyObjectT for KeyObjectInternal {
     fn jws_es256_assert(&mut self, valid_from: Duration, cid: &Cid) -> Result<(), OperationError> {
         let koi = self
             .jws_es256
-            .get_or_insert_with(|| KeyObjectInternalJwtEs256::default());
+            .get_or_insert_with(KeyObjectInternalJwtEs256::default);
 
         koi.assert_active(valid_from, cid)
     }
@@ -895,7 +895,7 @@ impl KeyObjectT for KeyObjectInternal {
     ) -> Result<(), OperationError> {
         let koi = self
             .jwe_a128gcm
-            .get_or_insert_with(|| KeyObjectInternalJweA128GCM::default());
+            .get_or_insert_with(KeyObjectInternalJweA128GCM::default);
 
         koi.assert_active(valid_from, cid)
     }
@@ -936,20 +936,17 @@ impl KeyObjectT for KeyObjectInternal {
             );
         let key_vs = ValueSetKeyInternal::from_key_iter(key_iter)? as ValueSet;
 
-        let mut attrs = Vec::with_capacity(3);
-
-        attrs.push((
-            Attribute::Class,
-            ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
-        ));
-
-        attrs.push((
-            Attribute::KeyProvider,
-            ValueSetRefer::new(self.provider.uuid()) as ValueSet,
-        ));
-
-        attrs.push((Attribute::KeyInternalData, key_vs));
-        Ok(attrs)
+        Ok(vec![
+            (
+                Attribute::Class,
+                ValueSetIutf8::new(EntryClass::KeyObjectInternal.into()) as ValueSet,
+            ),
+            (
+                Attribute::KeyProvider,
+                ValueSetRefer::new(self.provider.uuid()) as ValueSet,
+            ),
+            (Attribute::KeyInternalData, key_vs),
+        ])
     }
 }
 

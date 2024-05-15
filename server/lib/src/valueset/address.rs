@@ -255,7 +255,7 @@ impl ValueSetEmailAddress {
 
     pub fn push(&mut self, a: String, primary: bool) -> bool {
         if primary {
-            self.primary = a.clone();
+            self.primary.clone_from(&a);
         }
         self.set.insert(a)
     }
@@ -318,7 +318,7 @@ impl ValueSetT for ValueSetEmailAddress {
             Value::EmailAddress(a, p) => {
                 // if the set was empty, we need to force update primary.
                 if p || self.set.is_empty() {
-                    self.primary = a.clone();
+                    self.primary.clone_from(&a);
                 }
                 Ok(self.set.insert(a))
             }

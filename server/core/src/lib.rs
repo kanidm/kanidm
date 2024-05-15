@@ -1040,7 +1040,7 @@ pub async fn create_server_core(
         }
     };
 
-    // If we have replication configured, setup the listener with it's initial replication
+    // If we have replication configured, setup the listener with its initial replication
     // map (if any).
     let (maybe_repl_handle, maybe_repl_ctrl_tx) = match &config.repl_config {
         Some(rc) => {

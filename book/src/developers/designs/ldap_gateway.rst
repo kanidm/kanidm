@@ -2,7 +2,7 @@ LDAP Gateway
 ------------
 
 LDAP is a legacy protocol for accessing directory (user, group, other) data over a network. Despite
-it's complex nature, it has been the staple of authentication and authorisation for many years, where
+its complex nature, it has been the staple of authentication and authorisation for many years, where
 many enterprise or unix focused applications are guaranteed to integrate with LDAP (even contrast to
 newer systems like SAML/OAuth).
 
@@ -116,7 +116,7 @@ gecos: This needs synthesisation from displayname
 
 homeDirectory: This needs to match the rules in kanidm_unix_int, especially once trusts are added (likely to be uuid based).
 
-Kanidm is closest to rfc2307bis due to the structure of it's memberOf attributes and other
+Kanidm is closest to rfc2307bis due to the structure of its memberOf attributes and other
 elements, so this is what we will "look like" but may not strictly conform to.
 
 

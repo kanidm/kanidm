@@ -160,7 +160,7 @@ text=If you are creating an OpenID Connect (OIDC) client you <b>MUST</b> provide
 > associated claims will be added.
 >
 > - profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username,
-  > profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+>   profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
 > - email - (email, email\_verified)
 > - address - (address)
 > - phone - (phone\_number, phone\_number\_verified)

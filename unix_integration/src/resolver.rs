@@ -1,6 +1,7 @@
 // use async_trait::async_trait;
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
+use std::fmt::Display;
 use std::num::NonZeroUsize;
 use std::ops::{Add, DerefMut, Sub};
 use std::path::Path;
@@ -82,12 +83,12 @@ where
     nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
 
-impl ToString for Id {
-    fn to_string(&self) -> String {
-        match self {
-            Id::Name(s) => s.clone(),
+impl Display for Id {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match self {
+            Id::Name(s) => s.to_string(),
             Id::Gid(g) => g.to_string(),
-        }
+        })
     }
 }
 

@@ -456,7 +456,6 @@ impl AccessControlProfile {
             // targetscope, and turn to real filter
             let targetscope_f: ProtoFilter = value
                 .get_ava_single_protofilter(Attribute::AcpTargetScope)
-                // .map(|pf| pf.clone())
                 .cloned()
                 .ok_or_else(|| {
                     admin_error!("Missing {}", Attribute::AcpTargetScope);

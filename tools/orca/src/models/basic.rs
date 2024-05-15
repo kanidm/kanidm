@@ -129,6 +129,7 @@ impl ActorBasic {
             (_, TransitionAction::Logout, TransitionResult::Ok) => {
                 self.state = State::Unauthenticated;
             }
+            #[allow(clippy::unreachable)]
             (_, _, TransitionResult::Ok) => {
                 unreachable!();
             }

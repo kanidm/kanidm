@@ -86,7 +86,7 @@ impl Plugin for KeyObjectManagement {
             Err(e) => return vec![e],
         };
 
-        let errs = key_objects
+        key_objects
             .into_iter()
             .filter_map(|key_object_entry| {
                 let object_uuid = key_object_entry.get_uuid();
@@ -125,10 +125,8 @@ impl Plugin for KeyObjectManagement {
 
                 None
             })
-            .map(|err| Err(err))
-            .collect::<Vec<_>>();
-
-        errs
+            .map(Err)
+            .collect::<Vec<_>>()
     }
 }
 

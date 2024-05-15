@@ -1598,7 +1598,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                 .feedback()
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
-                .map(|v| v.clone())
+                .cloned()
                 .map_err(|e| {
                     security_info!("zxcvbn returned no feedback when score < 3 -> {:?}", e);
                     // Return some generic feedback when the password is this bad.

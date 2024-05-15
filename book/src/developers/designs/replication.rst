@@ -175,7 +175,7 @@ have applied to create that entity. As a result id2entry can be considered as an
 state cache.
 
 The true stable storage and representation for an entry will exist in a separate Entry
-Change Log type. Each entry will have it's own internal changelog that represents the
+Change Log type. Each entry will have its own internal changelog that represents the
 changes that have occurred in the entries lifetime and it's relevant state at that time.
 
 The reason for making a per-entry change log is to allow fine grained testing of the
@@ -408,7 +408,7 @@ So now we know that we must send A T7 to T8 and B T11 to T16 for this replica to
 to the state we hold.
 
 You may notice the "min" and "max". The purpose of this is to show how far we may rewind our
-changelog - we have changes from min to max. If a server provides it's ruv, and it's max
+changelog - we have changes from min to max. If a server provides its ruv, and its max
 is lower than our min, we must consider that server has been disconnected for "too long" and
 we are unable to supply changes until an administrator intervenes.
 
