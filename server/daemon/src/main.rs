@@ -614,15 +614,7 @@ async fn kanidm_main(
                 // load the config
                 let config_path = commonopts.config_path.clone().unwrap_or_default();
                 // read the config
-                let config_contents = match std::fs::read_to_string(&config_path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to read config file: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
-                let mut serverconfig: ServerConfig = match toml_edit::de::from_str(&config_contents)
-                {
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
@@ -630,7 +622,7 @@ async fn kanidm_main(
                     }
                 };
 
-                serverconfig.repl_config.as_mut().unwrap().origin = match origin_uri.parse() {
+                new_config.repl_config.as_mut().unwrap().origin = match origin_uri.parse() {
                     Ok(u) => u,
                     Err(e) => {
                         error!("Invalid Origin URI: {}", e);
@@ -638,13 +630,12 @@ async fn kanidm_main(
                     }
                 };
 
-                let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
-                    Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
                     Err(err) => {
                         error!(
                             "Failed to write config to {}: {:?}",
-                            &output_path.display(),
+                            &config_path.display(),
                             err
                         );
                         return ExitCode::FAILURE;
@@ -658,15 +649,7 @@ async fn kanidm_main(
                 // load the config
                 let config_path = commonopts.config_path.clone().unwrap_or_default();
                 // read the config
-                let config_contents = match std::fs::read_to_string(&config_path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to read config file: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
-                let mut serverconfig: ServerConfig = match toml_edit::de::from_str(&config_contents)
-                {
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
@@ -674,7 +657,7 @@ async fn kanidm_main(
                     }
                 };
 
-                let mut repl_config = match serverconfig.repl_config.clone() {
+                let mut repl_config = match new_config.repl_config.clone() {
                     Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
                 };
@@ -687,16 +670,15 @@ async fn kanidm_main(
                     }
                 };
 
-                serverconfig.repl_config = Some(repl_config);
+                new_config.repl_config = Some(repl_config);
 
                 // save the config back
-                let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match serverconfig.save(&output_path) {
-                    Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
                     Err(err) => {
                         error!(
                             "Failed to write config to {}: {:?}",
-                            &output_path.display(),
+                            &config_path.display(),
                             err
                         );
                         return ExitCode::FAILURE;
@@ -721,15 +703,8 @@ async fn kanidm_main(
 
                 // load the config
                 let config_path = commonopts.config_path.clone().unwrap_or_default();
-                // read the config
-                let config_contents = match std::fs::read_to_string(&config_path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to read config file: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
-                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
@@ -760,13 +735,12 @@ async fn kanidm_main(
 
                 new_config.repl_config = Some(repl_config);
 
-                let output_path = commonopts.config_path.clone().unwrap_or_default();
-                match new_config.save(&output_path) {
-                    Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
                     Err(err) => {
                         error!(
                             "Failed to write config to {}: {:?}",
-                            &output_path.display(),
+                            &config_path.display(),
                             err
                         );
                         return ExitCode::FAILURE;
@@ -788,21 +762,14 @@ async fn kanidm_main(
 
                 // load the config
                 let config_path = commonopts.config_path.clone().unwrap_or_default();
-                // read the config
-                let config_contents = match std::fs::read_to_string(&config_path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to read config file: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
-                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
                         return ExitCode::FAILURE;
                     }
                 };
+
                 if new_config.repl_config.is_none() {
                     error!("No replication configuration found in config file");
                     return ExitCode::FAILURE;
@@ -815,14 +782,12 @@ async fn kanidm_main(
                     new_config.repl_config = Some(repl_config);
                 }
 
-                let output_path = commonopts.config_path.clone().unwrap_or_default();
-
-                match new_config.save(&output_path) {
-                    Ok(_) => info!("Wrote configuration to {}", &output_path.display()),
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
                     Err(err) => {
                         error!(
                             "Failed to write config to {}: {:?}",
-                            &output_path.display(),
+                            &config_path.display(),
                             err
                         );
                         return ExitCode::FAILURE;
@@ -851,21 +816,14 @@ async fn kanidm_main(
 
                 // load the config
                 let config_path = commonopts.config_path.clone().unwrap_or_default();
-                // read the config
-                let config_contents = match std::fs::read_to_string(&config_path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        error!("Failed to read config file: {:?}", e);
-                        return ExitCode::FAILURE;
-                    }
-                };
-                let mut new_config: ServerConfig = match toml_edit::de::from_str(&config_contents) {
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
                     Ok(c) => c,
                     Err(e) => {
                         error!("Failed to parse config file: {:?}", e);
                         return ExitCode::FAILURE;
                     }
                 };
+
                 let mut repl_config = match new_config.repl_config {
                     Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
