@@ -14,13 +14,13 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sketching::LogLevel;
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OnlineBackup {
     /// The destination folder for your backups, defaults to the db_path dir if not set
     pub path: Option<String>,
@@ -88,7 +88,7 @@ pub struct TlsConfiguration {
 ///
 /// NOTE: not all flags or values from the internal [Configuration] object are exposed via this structure
 /// to prevent certain settings being set (e.g. integration test modes)
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
     /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
@@ -421,9 +421,22 @@ impl ServerConfig {
     pub fn get_db_arc_size(&self) -> Option<usize> {
         self.db_arc_size
     }
+
+    /// Write the config to disk
+    pub fn save(&self, path: &PathBuf) -> Result<(), std::io::Error> {
+        let toml = toml_edit::ser::to_string_pretty(self).map_err(|e| {
+            eprintln!("Failed to serialize config to TOML: {:?}", e);
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to serialize config to TOML",
+            )
+        })?;
+
+        std::fs::write(path, toml)
+    }
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
 pub enum ServerRole {
     #[default]
     WriteReplica,
@@ -732,5 +745,41 @@ impl Configuration {
     // which is configured with available parallelism.
     pub fn update_threads_count(&mut self, threads: usize) {
         self.threads = std::cmp::min(self.threads, threads);
+    }
+}
+
+impl TryFrom<Configuration> for ServerConfig {
+    type Error = String;
+
+    fn try_from(value: Configuration) -> Result<Self, Self::Error> {
+        Ok(ServerConfig {
+            domain: Some(value.domain),
+            origin: Some(value.origin),
+            db_path: Some(value.db_path),
+            tls_chain: value
+                .tls_config
+                .as_ref()
+                .map(|c| c.chain.to_string_lossy().to_string()),
+            tls_key: value
+                .tls_config
+                .as_ref()
+                .map(|c| c.key.to_string_lossy().to_string()),
+            tls_client_ca: value
+                .tls_config
+                .as_ref()
+                .and_then(|c| c.client_ca.as_ref())
+                .map(|c| c.to_string_lossy().to_string()),
+            bindaddress: Some(value.address),
+            ldapbindaddress: value.ldapaddress,
+            role: value.role,
+            log_level: Some(value.log_level),
+            online_backup: value.online_backup,
+            trust_x_forward_for: Some(value.trust_x_forward_for),
+            db_fs_type: value.db_fs_type,
+            adminbindpath: Some(value.adminbindpath),
+            db_arc_size: value.db_arc_size,
+            repl_config: value.repl_config,
+            otel_grpc_url: value.otel_grpc_url,
+        })
     }
 }

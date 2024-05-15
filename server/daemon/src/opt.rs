@@ -27,6 +27,65 @@ struct RestoreOpt {
 }
 
 #[derive(Debug, Subcommand)]
+enum ReplicationCommands {
+    /// Set the local origin URI
+    #[clap(name = "set-origin")]
+    SetOrigin {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// The URI of the server to set as the origin
+        origin_uri: String,
+    },
+    /// Set the local bind address
+    #[clap(name = "set-bindaddress")]
+    SetBind {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// The address to set, eg `127.0.0.1:8444`
+        bind_address: String,
+    },
+
+    /// Add new peer to the config
+    #[clap(name = "add-peer")]
+    Add {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// Eg: `repl://peer.example.com:8080`
+        peer_uri: String,
+        /// Type of peer, one of `allow-pull`, `pull`, `mutual-pull`
+        peer_type: String,
+        /// Base64 encoded x509 public certificate
+        partner_cert: String,
+        /// Enable automatic refresh
+        #[clap(short, long, action)]
+        automatic_refresh: bool,
+    },
+    #[clap(name = "delete-peer")]
+    /// Remove a peer by URI from the server configuration
+    Delete {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+
+        /// Eg: `repl://peer.example.com:8080`
+        peer_uri: String,
+    },
+    #[clap(name = "update-peer")]
+    /// Update a peer in the server configuration
+    Update {
+        #[clap(flatten)]
+        commonopts: CommonOpt,
+        /// Eg: `repl://peer.example.com:8080`
+        peer_uri: String,
+        /// Base64 encoded x509 public certificate
+        #[clap(short, long)]
+        partner_cert: Option<String>,
+        /// Update the peer type
+        #[clap(short = 't', long)]
+        peer_type: Option<String>,
+    },
+}
+
+#[derive(Debug, Subcommand)]
 enum DomainSettingsCmds {
     /// Show the current domain
     #[clap(name = "show")]
@@ -48,14 +107,14 @@ enum DomainSettingsCmds {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️
     /// - Raise the functional level of this domain to the maximum available.
     #[clap(name = "raise")]
     Raise {
         #[clap(flatten)]
         commonopts: CommonOpt,
     },
-    /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
+    /// ⚠️  Do not use this command unless directed by a project member. ⚠️
     /// - Rerun migrations of this domains database, optionally nominating the level
     ///   to start from.
     #[clap(name = "remigrate")]
@@ -168,6 +227,15 @@ impl KanidmdParser {
     /// Returns the configuration path that was specified on the command line, if any.
     fn config_path(&self) -> Option<PathBuf> {
         match self.commands {
+            KanidmdOpt::Replication { ref commands, .. } => match commands {
+                ReplicationCommands::SetOrigin { ref commonopts, .. }
+                | ReplicationCommands::SetBind { ref commonopts, .. }
+                | ReplicationCommands::Add { ref commonopts, .. }
+                | ReplicationCommands::Delete { ref commonopts, .. }
+                | ReplicationCommands::Update { ref commonopts, .. } => {
+                    commonopts.config_path.clone()
+                }
+            },
             KanidmdOpt::Server(ref c) => c.config_path.clone(),
             KanidmdOpt::ConfigTest(ref c) => c.config_path.clone(),
             KanidmdOpt::CertGenerate(ref c) => c.config_path.clone(),
@@ -205,7 +273,9 @@ impl KanidmdParser {
             KanidmdOpt::DomainSettings { ref commands } => match commands {
                 DomainSettingsCmds::Show { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Change { ref commonopts } => commonopts.config_path.clone(),
-                DomainSettingsCmds::UpgradeCheck { ref commonopts } => commonopts.config_path.clone(),
+                DomainSettingsCmds::UpgradeCheck { ref commonopts } => {
+                    commonopts.config_path.clone()
+                }
                 DomainSettingsCmds::Raise { ref commonopts } => commonopts.config_path.clone(),
                 DomainSettingsCmds::Remigrate { ref commonopts, .. } => {
                     commonopts.config_path.clone()
@@ -277,6 +347,13 @@ enum KanidmdOpt {
     DomainSettings {
         #[clap(subcommand)]
         commands: DomainSettingsCmds,
+    },
+
+    /// Replication management
+    #[clap(name = "replication")]
+    Replication {
+        #[clap(subcommand)]
+        commands: ReplicationCommands,
     },
 
     /// Load the server config and check services are listening

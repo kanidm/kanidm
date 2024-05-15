@@ -178,7 +178,7 @@ impl ImageValue {
 }
 
 #[repr(u32)]
-#[derive(Debug, Copy, Clone, Deserialize, Default, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Deserialize, Serialize, Default, Eq, PartialEq)]
 #[serde(rename_all = "lowercase")]
 /// Filesystem type object, used for tuning database parameters.
 pub enum FsType {

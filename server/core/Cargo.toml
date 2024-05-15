@@ -77,6 +77,7 @@ utoipa = { workspace = true, features = [
     "uuid",
 ] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+toml_edit = { version = "0.22.12", features = ["serde"] }
 
 [dev-dependencies]
 walkdir = { workspace = true }
