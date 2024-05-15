@@ -615,7 +615,7 @@ async fn kanidm_main(
                 config.update_config_for_server_mode(&sconfig);
 
                 let mut repl_config = match config.repl_config.clone() {
-                    Some(mutating_config) => mutating_config,
+                    Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
                 };
 
@@ -673,7 +673,7 @@ async fn kanidm_main(
                 };
 
                 let mut repl_config = match new_config.repl_config.clone() {
-                    Some(mutating_config) => mutating_config,
+                    Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
                 };
 
@@ -842,11 +842,9 @@ async fn kanidm_main(
                     }
                 };
 
-                if let Some(peer_type) = peer_type {
-                    if !kanidmd_core::repl::RepNodeConfig::is_valid_type(peer_type) {
-                        error!("Invalid peer type: {}", peer_type);
-                        return ExitCode::FAILURE;
-                    }
+                if !kanidmd_core::repl::RepNodeConfig::is_valid_type(peer_type) {
+                    error!("Invalid peer type: {}", peer_type);
+                    return ExitCode::FAILURE;
                 }
 
                 // load the config
@@ -867,13 +865,19 @@ async fn kanidm_main(
                     }
                 };
                 let mut repl_config = match new_config.repl_config {
-                    Some(mutating_config) => mutating_config,
+                    Some(repl_config) => repl_config,
                     None => ReplicationConfiguration::default(),
                 };
-                if let Err(err) = repl_config.try_update_peer_from_cli(
+
+                if !repl_config.manual.contains_key(&peer_uri) {
+                    error!("Peer URI not found in configuration");
+                    return ExitCode::FAILURE;
+                }
+
+                if let Err(err) = repl_config.try_add_peer_from_cli(
                     peer_uri,
-                    peer_type.as_deref(),
-                    partner_cert.as_deref(),
+                    peer_type,
+                    partner_cert,
                     automatic_refresh,
                 ) {
                     error!("Failed to update peer: {:?}", err);

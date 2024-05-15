@@ -77,14 +77,12 @@ enum ReplicationCommands {
         /// Eg: `repl://peer.example.com:8080`
         peer_uri: String,
         /// Base64 encoded x509 public certificate
-        #[clap(short, long)]
-        partner_cert: Option<String>,
+        partner_cert: String,
         /// Update the peer type
-        #[clap(short = 't', long)]
-        peer_type: Option<String>,
+        peer_type: String,
         /// Enable automatic refresh
         #[clap(short, long, action)]
-        automatic_refresh: Option<bool>,
+        automatic_refresh: bool,
     },
 }
 
