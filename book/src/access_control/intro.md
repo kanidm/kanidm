@@ -55,8 +55,9 @@ services.
 
 ## Default Permission Groups
 
-Kanidm ships with default permission groups. You can use these to enable accounts to perform certain
-tasks within Kanidm as required.
+Kanidm ships with default permission groups. You can use these to enable (or disable) accounts to
+performing certain actions or tasks within Kanidm as required by modifying the memberships of these
+groups.
 
 | group name                   | description                                                             |
 | ---------------------------- | ----------------------------------------------------------------------- |
@@ -69,6 +70,7 @@ tasks within Kanidm as required.
 | `idm_people_on_boarding`     | create (but not modify) persons. Intended for use with service accounts |
 | `idm_people_pii_read`        | allow read to personally identifying information                        |
 | `idm_people_self_write_mail` | allow self-modification of the mail attribute                           |
+| `idm_people_self_name_write` | allow self-modification of the name related attributes                  |
 | `idm_radius_servers`         | read user radius secrets. Intended for use with service accounts        |
 | `idm_radius_service_admins`  | create and reset user radius secrets, and allow users to access radius  |
 | `idm_recycle_bin_admins`     | modify and restore entries from the recycle bin                         |

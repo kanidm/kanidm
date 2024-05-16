@@ -622,7 +622,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        // Post schema changes.
+        // Update access controls
+        let idm_data = [
+            BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
+                .clone()
+                .try_into()?,
+            IDM_ACP_SELF_WRITE_DL7.clone().into(),
+            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
 
         Ok(())
     }
