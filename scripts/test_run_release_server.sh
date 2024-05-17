@@ -98,7 +98,7 @@ while true; do
     fi
 done
 
-export KANIDM="cargo run --${BUILD_MODE} --manifest-path ../../Cargo.toml --bin kanidm -- "
+export KANIDM="cargo run --${BUILD_MODE} --bin kanidm -- "
 
 # now we start checking things again
 ${KANIDM} person create testuser2 testuser2
