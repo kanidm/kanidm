@@ -60,6 +60,7 @@ pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 /// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
+
 /// Deprcated as of 1.3.0
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 
@@ -71,18 +72,22 @@ pub const DOMAIN_LEVEL_6: DomainVersion = 6;
 /// Deprcated as of 1.5.0
 pub const DOMAIN_LEVEL_7: DomainVersion = 7;
 
+/// Domain Level introduced with 1.4.0.
+/// Deprcated as of 1.6.0
+pub const DOMAIN_LEVEL_8: DomainVersion = 8;
+
 // The minimum level that we can re-migrate from
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level
-pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
+pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 // The maximum supported domain functional level
-pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 
 // On test builds define to 60 seconds
 #[cfg(test)]
