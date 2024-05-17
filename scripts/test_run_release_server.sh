@@ -52,6 +52,10 @@ KANIDM_CONFIG_FILE="../../examples/insecure_server.toml"
 KANIDM_URL="$(rg origin "${KANIDM_CONFIG_FILE}" | awk '{print $NF}' | tr -d '"')"
 KANIDM_CA_PATH="/tmp/kanidm/ca.pem"
 
+export KANIDM_CONFIG_FILE
+export KANIDM_URL
+export KANIDM_CA_PATH
+
 while true; do
     echo "Waiting for the server to start... testing ${KANIDM_URL}"
     curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}/status" >/dev/null && break
@@ -79,3 +83,24 @@ sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
     kill $(pgrep kanidmd)
 fi
+
+
+
+while true; do
+    echo "Waiting for the server to start... testing ${KANIDM_URL}"
+    curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}/status" >/dev/null && break
+    sleep 2
+    ATTEMPT="$((ATTEMPT + 1))"
+    if [ "${ATTEMPT}" -gt 3 ]; then
+        echo "Kanidmd failed to start!"
+        exit 1
+    fi
+done
+
+KANIDM="cargo run ${BUILD_MODE} --manifest-path ../../Cargo.toml --bin kanidm -- "
+
+# now we start checking things again
+${KANIDM} person create testuser2 testuser2
+
+${KANIDM} group get idm_all_persons --output json
+${KANIDM} group get idm_all_persons --output json  | jq .dynmember | grep -c testuser2 || exit 1
