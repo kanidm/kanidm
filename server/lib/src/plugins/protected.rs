@@ -564,9 +564,6 @@ mod tests {
                 "domain_name": ["example.net.au"],
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"],
-                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,
@@ -607,9 +604,6 @@ mod tests {
                 "domain_name": ["example.net.au"],
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"],
-                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,
@@ -640,9 +634,6 @@ mod tests {
                 "domain_name": ["example.net.au"],
                 "domain_display_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "fernet_private_key_str": ["ABCD"],
-                "es256_private_key_der" : ["MTIz"],
-                "private_cookie_key" : ["MTIz"],
                 "version": ["1"]
             }
         }"#,
