@@ -56,6 +56,13 @@ export KANIDM_CONFIG_FILE
 export KANIDM_URL
 export KANIDM_CA_PATH
 
+
+echo "Running the server..."
+cargo run --bin kanidmd --release server  &
+KANIDMD_PID=$!
+echo "Kanidm PID: ${KANIDMD_PID}"
+
+
 while true; do
     echo "Waiting for the server to start... testing ${KANIDM_URL}"
     curl --cacert "${KANIDM_CA_PATH}" -fs "${KANIDM_URL}/status" >/dev/null && break
