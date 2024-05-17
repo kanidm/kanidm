@@ -85,12 +85,6 @@ fi
 
 # bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
 
-echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
-sleep "${WAIT_TIMER}"
-if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
-    kill $(pgrep kanidmd)
-fi
-
 
 
 while true; do
@@ -111,3 +105,12 @@ ${KANIDM} person create testuser2 testuser2
 
 ${KANIDM} group get idm_all_persons --output json
 ${KANIDM} group get idm_all_persons --output json  | jq .dynmember | grep -c testuser2 || exit 1
+
+
+
+
+echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
+sleep "${WAIT_TIMER}"
+if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
+    kill $(pgrep kanidmd)
+fi
