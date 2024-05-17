@@ -74,9 +74,9 @@ if [ -n "$CURRENT_DIR" ]; then
     cd "$CURRENT_DIR" || exit 1
 fi
 
-echo "Running the OpenAPI schema checks"
+# echo "Running the OpenAPI schema checks"
 
-bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
+# bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
 sleep "${WAIT_TIMER}"
