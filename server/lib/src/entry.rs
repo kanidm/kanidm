@@ -635,6 +635,10 @@ impl Entry<EntryInit, EntryNew> {
         self.add_ava_int(attr, value);
     }
 
+    pub fn remove_ava(&mut self, attr: Attribute) {
+        self.attrs.remove(attr.as_ref());
+    }
+
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
     pub fn set_ava<T>(&mut self, attr: Attribute, iter: T)
     where

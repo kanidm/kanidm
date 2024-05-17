@@ -69,7 +69,7 @@ groups.
 | `idm_people_admins`          | create and modify persons                                               |
 | `idm_people_on_boarding`     | create (but not modify) persons. Intended for use with service accounts |
 | `idm_people_pii_read`        | allow read to personally identifying information                        |
-| `idm_people_self_write_mail` | allow self-modification of the mail attribute                           |
+| `idm_people_self_mail_write` | allow self-modification of the mail attribute                           |
 | `idm_people_self_name_write` | allow self-modification of the name related attributes                  |
 | `idm_radius_servers`         | read user radius secrets. Intended for use with service accounts        |
 | `idm_radius_service_admins`  | create and reset user radius secrets, and allow users to access radius  |

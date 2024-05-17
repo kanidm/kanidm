@@ -1143,7 +1143,7 @@ lazy_static! {
         name: "idm_people_self_acp_write_mail",
         uuid: UUID_IDM_ACP_PEOPLE_SELF_WRITE_MAIL,
         description: "Builtin IDM Control for self write of mail for people accounts.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_WRITE_MAIL]),
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_MAIL_WRITE]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
             match_class_filter!(EntryClass::Account).clone(),

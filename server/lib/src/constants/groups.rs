@@ -262,7 +262,16 @@ lazy_static! {
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail",
         description: "Builtin IDM Group for people accounts to update their own mail.",
-        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL,
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
+        members: Vec::new(),
+        ..Default::default()
+    };
+
+    /// Self-write of mail
+    pub static ref IDM_PEOPLE_SELF_MAIL_WRITE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_mail_write",
+        description: "Builtin IDM Group for people accounts to update their own mail.",
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
         members: Vec::new(),
         ..Default::default()
     };
