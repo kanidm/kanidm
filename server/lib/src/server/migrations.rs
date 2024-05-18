@@ -161,11 +161,28 @@ impl QueryServer {
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base entries here.
         if db_domain_version == 0 {
+            // In this path because we create the dyn groups they are immediately added to the
+            // dyngroup cache and begin to operate.
             write_txn.initialise_idm()?;
-        }
+        } else {
+            // #2756 - if we *aren't* creating the base IDM entries, then we
+            // need to force dyn groups to reload since we're now at schema
+            // ready. This is done indiretly by ... reloading the schema again.
+            //
+            // This is because dyngroups don't load until server phase >= schemaready
+            // and the reload path for these is either a change in the dyngroup entry
+            // itself or a change to schema reloading. Since we aren't changing the
+            // dyngroup here, we have to go via the schema reload path.
+            write_txn.force_schema_reload();
+        };
 
         // Reload as init idm affects access controls.
         write_txn.reload()?;
+
+        // # 2756 - automate the fix for dyngroups
+        if system_info_version < 20 {
+            write_txn.migrate_19_to_20()?;
+        }
 
         // Domain info is now ready and reloaded, we can proceed.
         write_txn.set_phase(ServerPhase::DomainInfoReady);
@@ -732,6 +749,28 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 "Domain level has been temporarily lowered to {}",
                 DOMAIN_LEVEL_2
             );
+        })
+    }
+
+    #[instrument(level = "info", skip_all)]
+    /// Automate fix for #2756 - touch all dyngroups to force them to re-consider and re-write
+    /// their members.
+    pub fn migrate_19_to_20(&mut self) -> Result<(), OperationError> {
+        admin_warn!("starting 19 to 20 migration.");
+
+        debug_assert!(*self.phase >= ServerPhase::SchemaReady);
+
+        let filter = filter!(f_eq(
+            Attribute::Class,
+            EntryClass::DynGroup.into()
+        ));
+        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::DynGroup.into())]);
+
+        self.internal_modify(
+            &filter, &modlist
+        )
+        .map(|()| {
+            info!("forced dyngroups to re-calculate memberships");
         })
     }
 

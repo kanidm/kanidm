@@ -163,6 +163,7 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
+    #[allow(dead_code)]
     fn pre_repl_incremental(
         _qs: &mut QueryServerWriteTransaction,
         _cand: &mut [(EntryIncrementalCommitted, Arc<EntrySealedCommitted>)],

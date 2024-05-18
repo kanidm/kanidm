@@ -13,6 +13,7 @@ use std::collections::BTreeSet;
 const PEOPLE_PREFIX: &str = "person";
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct PartialGroup {
     pub name: String,
     pub members: BTreeSet<String>,
