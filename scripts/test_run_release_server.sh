@@ -77,14 +77,6 @@ done
 ../../scripts/setup_dev_environment.sh
 
 
-if [ -n "$CURRENT_DIR" ]; then
-    cd "$CURRENT_DIR" || exit 1
-fi
-
-# echo "Running the OpenAPI schema checks"
-
-# bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
-
 echo "Killing kanidmd to test restart"
 
 while [ "$(pgrep kanidmd | wc -l)" -ne 0 ]; do
@@ -117,6 +109,15 @@ ${KANIDM} group get idm_all_persons --output json
 ${KANIDM} group get idm_all_persons --output json  | jq .dynmember | grep -c testuser2 || exit 1
 
 
+if [ -n "$CURRENT_DIR" ]; then
+    cd "$CURRENT_DIR" || exit 1
+fi
+
+
+# echo "Running the OpenAPI schema checks"
+
+# bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
+
 
 
 echo "Waiting ${WAIT_TIMER} seconds and terminating Kanidmd"
@@ -124,3 +125,5 @@ sleep "${WAIT_TIMER}"
 if [ "$(pgrep kanidmd | wc -l)" -gt 0 ]; then
     kill $(pgrep kanidmd)
 fi
+
+
