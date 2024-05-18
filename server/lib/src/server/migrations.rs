@@ -40,8 +40,6 @@ impl QueryServer {
             .initialise_schema_core()
             .and_then(|_| write_txn.reload())?;
 
-        write_txn.reload()?;
-
         // This is what tells us if the domain entry existed before or not. This
         // is now the primary method of migrations and version detection.
         let db_domain_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
@@ -84,8 +82,20 @@ impl QueryServer {
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base entries here.
         if db_domain_version == 0 {
+            // In this path because we create the dyn groups they are immediately added to the
+            // dyngroup cache and begin to operate.
             write_txn.initialise_idm()?;
-        }
+        } else {
+            // #2756 - if we *aren't* creating the base IDM entries, then we
+            // need to force dyn groups to reload since we're now at schema
+            // ready. This is done indiretly by ... reloading the schema again.
+            //
+            // This is because dyngroups don't load until server phase >= schemaready
+            // and the reload path for these is either a change in the dyngroup entry
+            // itself or a change to schema reloading. Since we aren't changing the
+            // dyngroup here, we have to go via the schema reload path.
+            write_txn.force_schema_reload();
+        };
 
         // Reload as init idm affects access controls.
         write_txn.reload()?;
