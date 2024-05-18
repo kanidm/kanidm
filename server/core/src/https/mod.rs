@@ -3,6 +3,7 @@ pub(crate) mod errors;
 
 mod extractors;
 mod generic;
+pub(crate) mod htmx;
 mod javascript;
 mod manifest;
 pub(crate) mod middleware;
@@ -144,6 +145,8 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
         for (filepath, filetype, dynamic) in [
             ("shared.js", Some("module".to_string()), false),
             ("external/bootstrap.bundle.min.js", None, false),
+            ("external/htmx.min.js", None, true),
+            ("external/htmx-client-side-templates.js", None, true),
             ("external/viz.js", None, true),
         ] {
             // let's set up the list of non-wasm-module js files we want to serve

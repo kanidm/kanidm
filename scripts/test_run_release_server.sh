@@ -85,7 +85,17 @@ fi
 
 # bash -c ./scripts/openapi_tests/check_openapi_spec.sh || exit 1
 
+echo "Killing kanidmd to test restart"
 
+while [ "$(pgrep kanidmd | wc -l)" -ne 0 ]; do
+    killall kanidmd
+done
+
+
+echo "Running the server..."
+cargo run --bin kanidmd --release server  &
+KANIDMD_PID=$!
+echo "Kanidm PID: ${KANIDMD_PID}"
 
 while true; do
     echo "Waiting for the server to start... testing ${KANIDM_URL}"

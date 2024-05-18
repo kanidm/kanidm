@@ -1,0 +1,17 @@
+{ex}
+
+<script src="/css/client-side-templates.js"></script>
+
+<table>
+    <thead>
+        <th>Group Name</th>
+        <th>Group Description</th>
+    </thead>
+
+    <tbody>
+        <tr hx-get="/api/groups" hx-trigger="load">
+            <td>{name}</td>
+            <td>{description}</td>
+        </tr>
+    </tbody>
+</table>

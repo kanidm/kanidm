@@ -74,6 +74,8 @@ utoipa = { workspace = true, features = [
     "uuid",
 ] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
+askama = { version = "0.12.1", features = ["with-axum", "serde"] }
+askama_axum = "0.4.0"
 
 [dev-dependencies]
 walkdir = { workspace = true }
