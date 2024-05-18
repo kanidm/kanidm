@@ -119,8 +119,10 @@ impl KeyProviders {
 }
 
 pub trait KeyProvidersTransaction {
+    #[allow(dead_code)]
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider>;
 
+    #[allow(dead_code)]
     fn get_key_object(&self, key_object_uuid: Uuid) -> Option<KeyObjectRef>;
 
     fn get_key_object_handle(&self, key_object_uuid: Uuid) -> Option<Arc<KeyObject>>;
