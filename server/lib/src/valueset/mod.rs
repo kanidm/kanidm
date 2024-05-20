@@ -895,5 +895,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
         ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
         ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
+        ReplAttrV1::ApplicationPassword { .. } => todo!(),
     }
 }
