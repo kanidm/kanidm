@@ -304,6 +304,7 @@ pub const UUID_SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM: Uuid =
 pub const UUID_SCHEMA_ATTR_PATCH_LEVEL: Uuid = uuid!("00000000-0000-0000-0000-ffff00000175");
 pub const UUID_SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000176");
+pub const UUID_SCHEMA_CLASS_APPLICATION: Uuid = uuid!("00000000-0000-0000-0000-ffff00000177");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

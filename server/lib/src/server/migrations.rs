@@ -682,6 +682,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL7.clone().into(),
         ];
 
         idm_schema_classes
