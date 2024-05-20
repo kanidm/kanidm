@@ -2209,3 +2209,51 @@ lazy_static! {
         ..Default::default()
     };
 }
+
+// Application Create/Manage
+//   needs to be able to assign to entry managed by
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_MANAGE_DL7: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_application_manage",
+        uuid: UUID_IDM_ACP_APPLICATION_MANAGE_V1,
+        description: "Builtin IDM Control for managing LDAP applications",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_APPLICATION_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::LinkedGroup,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Description,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::LinkedGroup,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Application
+        ],
+        ..Default::default()
+    };
+}
