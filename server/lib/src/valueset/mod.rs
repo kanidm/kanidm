@@ -690,6 +690,7 @@ pub fn from_result_value_iter(
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::WebauthnAttestationCaList(_)
         | Value::PhoneNumber(_, _)
+        | Value::ApplicationPassword(_, _)
         | Value::Passkey(_, _, _)
         | Value::AttestedPasskey(_, _, _)
         | Value::TotpSecret(_, _)
@@ -783,6 +784,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }
+        Value::ApplicationPassword(_, _) => todo!(),
     };
 
     for v in iter {
