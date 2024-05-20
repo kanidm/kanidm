@@ -745,7 +745,7 @@ impl Account {
         policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
-        let vap = Value::ApplicationPassword(ap.uuid, ap);
+        let vap = Value::ApplicationPassword(ap);
         Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
     }
 }
