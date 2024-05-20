@@ -1,5 +1,5 @@
 use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
-use crate::credential::apppwd::ApplicationPassword;
+use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
 use crate::repl::proto::{ReplApplicationPassword, ReplAttrV1};
 use crate::schema::SchemaAttribute;
@@ -14,6 +14,29 @@ pub struct ValueSetApplicationPassword {
     // btreeset.remove takes a full ApplicationPassword
     // struct.
     map: BTreeMap<Uuid, Vec<ApplicationPassword>>,
+}
+
+impl ValueSetApplicationPassword {
+    pub fn from_repl_v1(data: &[ReplApplicationPassword]) -> Result<ValueSet, OperationError> {
+        let mut map: BTreeMap<Uuid, Vec<ApplicationPassword>> = BTreeMap::new();
+        for ap in data {
+            let ap = match ap {
+                ReplApplicationPassword::V1 {
+                    refer,
+                    application_refer,
+                    label,
+                    password,
+                } => ApplicationPassword {
+                    uuid: *refer,
+                    application: *application_refer,
+                    label: label.to_string(),
+                    password: Password::try_from(password).expect("Failed to parse"),
+                },
+            };
+            map.entry(ap.application).or_default().push(ap);
+        }
+        Ok(Box::new(ValueSetApplicationPassword { map }))
+    }
 }
 
 impl ValueSetT for ValueSetApplicationPassword {
