@@ -131,6 +131,7 @@ bitflags::bitflags! {
         const SYSTEM_CONFIG =  0b0001_0000;
         const SYNC_AGREEMENT = 0b0010_0000;
         const KEY_MATERIAL   = 0b0100_0000;
+        const APPLICATION    = 0b1000_0000;
     }
 }
 
@@ -971,6 +972,13 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,
             EntryClass::OAuth2ResourceServer.into(),
+        )))
+    }
+
+    fn get_ldap_applications_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::Application.into(),
         )))
     }
 
@@ -1985,6 +1993,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
+    }
+
+    #[inline]
+    pub(crate) fn get_changed_app(&self) -> bool {
+        self.changed_flags.contains(ChangeFlag::APPLICATION)
     }
 
     #[inline]

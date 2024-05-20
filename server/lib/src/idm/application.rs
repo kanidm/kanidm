@@ -3,7 +3,13 @@ use crate::idm::account::Account;
 use crate::idm::event::LdapApplicationAuthEvent;
 use crate::idm::server::{IdmServerAuthTransaction, IdmServerTransaction};
 use crate::prelude::*;
+use concread::cowcell::*;
+use hashbrown::HashMap;
+use kanidm_proto::internal::OperationError;
+use std::sync::Arc;
+use uuid::Uuid;
 
+#[derive(Clone)]
 pub(crate) struct Application {
     pub uuid: Uuid,
     pub name: String,
@@ -11,6 +17,7 @@ pub(crate) struct Application {
 }
 
 impl Application {
+    #[cfg(test)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         _qs: &mut QueryServerReadTransaction,
@@ -43,6 +50,92 @@ impl Application {
     }
 }
 
+#[derive(Clone)]
+struct LdapApplicationsInner {
+    set: HashMap<String, Application>,
+}
+
+pub struct LdapApplications {
+    inner: CowCell<LdapApplicationsInner>,
+}
+
+pub struct LdapApplicationsReadTransaction {
+    inner: CowCellReadTxn<LdapApplicationsInner>,
+}
+
+pub struct LdapApplicationsWriteTransaction<'a> {
+    inner: CowCellWriteTxn<'a, LdapApplicationsInner>,
+}
+
+impl<'a> LdapApplicationsWriteTransaction<'a> {
+    pub fn reload(&mut self, value: Vec<Arc<EntrySealedCommitted>>) -> Result<(), OperationError> {
+        let app_set: Result<HashMap<_, _>, _> = value
+            .into_iter()
+            .map(|ent| {
+                if !ent.attribute_equality(Attribute::Class, &EntryClass::Application.into()) {
+                    error!("Missing class application");
+                    return Err(OperationError::InvalidEntryState);
+                }
+
+                let uuid = ent.get_uuid();
+                let name = ent
+                    .get_ava_single_iname(Attribute::Name)
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidValueState)?;
+                let linked_group = ent.get_ava_single_refer(Attribute::LinkedGroup);
+
+                let app = Application {
+                    uuid,
+                    name: name.clone(),
+                    linked_group,
+                };
+
+                Ok((name, app))
+            })
+            .collect();
+
+        let new_inner = LdapApplicationsInner { set: app_set? };
+        self.inner.replace(new_inner);
+
+        Ok(())
+    }
+
+    pub fn commit(self) {
+        self.inner.commit();
+    }
+}
+
+impl LdapApplications {
+    pub fn read(&self) -> LdapApplicationsReadTransaction {
+        LdapApplicationsReadTransaction {
+            inner: self.inner.read(),
+        }
+    }
+
+    pub fn write(&self) -> LdapApplicationsWriteTransaction {
+        LdapApplicationsWriteTransaction {
+            inner: self.inner.write(),
+        }
+    }
+}
+
+impl TryFrom<Vec<Arc<EntrySealedCommitted>>> for LdapApplications {
+    type Error = OperationError;
+
+    fn try_from(value: Vec<Arc<EntrySealedCommitted>>) -> Result<Self, Self::Error> {
+        let apps = LdapApplications {
+            inner: CowCell::new(LdapApplicationsInner {
+                set: HashMap::new(),
+            }),
+        };
+
+        let mut apps_wr = apps.write();
+        apps_wr.reload(value)?;
+        apps_wr.commit();
+        Ok(apps)
+    }
+}
+
 impl<'a> IdmServerAuthTransaction<'a> {
     pub async fn application_auth_ldap(
         &mut self,
@@ -67,7 +160,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
 
         let account: Account =
-            Account::try_from_entry_ro(&usr_entry, self.get_qs_txn()).map_err(|e| {
+            Account::try_from_entry_ro(&usr_entry, &mut self.qs_read).map_err(|e| {
                 admin_error!("Failed to search account {:?}", e);
                 e
             })?;
@@ -76,29 +169,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Err(OperationError::InvalidUuid);
         }
 
-        let application: Application = self
-            .get_qs_txn()
-            .internal_search(filter!(f_and!([
-                f_eq(Attribute::Class, EntryClass::Application.into()),
-                f_eq(
-                    Attribute::Name,
-                    PartialValue::new_iname(lae.application.as_str())
-                )
-            ])))
-            .and_then(|mut vs| match vs.pop() {
-                Some(entry) if vs.is_empty() => Ok(entry),
-                _ => {
-                    admin_error!(
-                        ?lae.application,
-                        "entries was empty, or matched multiple results for name"
-                    );
-                    Err(OperationError::NotAuthenticated)
-                }
-            })
-            .and_then(|entry| Application::try_from_entry_ro(&entry, self.get_qs_txn()))
-            .map_err(|e| {
-                admin_error!("Failed to search application {:?}", e);
-                e
+        let application = self
+            .ldap_applications
+            .inner
+            .set
+            .get(&lae.application)
+            .ok_or_else(|| {
+                admin_info!("Application {:?} not found", lae.application);
+                OperationError::NoMatchingEntries
             })?;
 
         // Check linked group membership

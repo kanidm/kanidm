@@ -242,6 +242,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
 
+        if !self.changed_flags.contains(ChangeFlag::APPLICATION)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::Application.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::APPLICATION)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
             && cand
                 .iter()
@@ -629,6 +640,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 | ChangeFlag::ACP
                 | ChangeFlag::OAUTH2
                 | ChangeFlag::DOMAIN
+                | ChangeFlag::APPLICATION
                 | ChangeFlag::SYSTEM_CONFIG
                 | ChangeFlag::SYNC_AGREEMENT
                 | ChangeFlag::KEY_MATERIAL,
