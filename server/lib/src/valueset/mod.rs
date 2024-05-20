@@ -842,6 +842,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
         DbValueSetV2::KeyInternal(set) => ValueSetKeyInternal::from_dbvs2(set),
         DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
+        DbValueSetV2::ApplicationPassword(_) => todo!(),
     }
 }
 
