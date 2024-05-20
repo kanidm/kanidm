@@ -241,6 +241,7 @@ impl SchemaAttribute {
             SyntaxType::KeyInternal => matches!(v, PartialValue::HexString(_)),
 
             SyntaxType::WebauthnAttestationCaList => false,
+            SyntaxType::ApplicationPassword => matches!(v, PartialValue::Refer(_)),
         };
         if r {
             Ok(())
@@ -303,6 +304,7 @@ impl SchemaAttribute {
                 }
                 SyntaxType::KeyInternal => matches!(v, Value::KeyInternal { .. }),
                 SyntaxType::HexString => matches!(v, Value::HexString(_)),
+                SyntaxType::ApplicationPassword => matches!(v, Value::ApplicationPassword(..)),
             };
         if r {
             Ok(())

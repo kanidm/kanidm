@@ -275,6 +275,7 @@ pub enum SyntaxType {
     OauthClaimMap = 37,
     KeyInternal = 38,
     HexString = 39,
+    ApplicationPassword = 40,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -323,6 +324,7 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
             "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
             "HEX_STRING" => Ok(SyntaxType::HexString),
+            "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
             _ => Err(()),
         }
     }
@@ -371,6 +373,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
             SyntaxType::KeyInternal => "KEY_INTERNAL",
             SyntaxType::HexString => "HEX_STRING",
+            SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
         })
     }
 }
