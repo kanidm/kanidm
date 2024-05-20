@@ -450,7 +450,7 @@ impl LdapServer {
                     usr_uuid,
                     pw.to_string(),
                 )?;
-                idm_auth.application_auth_ldap(&lae).await?
+                idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
 
@@ -855,7 +855,7 @@ mod tests {
 
     use super::{LdapServer, LdapSession};
     use crate::idm::application::GenerateApplicationPasswordEvent;
-    use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::idm::event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent};
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -1484,6 +1484,144 @@ mod tests {
             )
             .await;
         assert!(res.is_err());
+    }
+
+    // For testing the timeouts
+    // We need times on this scale
+    //    not yet valid <-> valid from time <-> current_time <-> expire time <-> expired
+    const TEST_CURRENT_TIME: u64 = 6000;
+    const TEST_NOT_YET_VALID_TIME: u64 = TEST_CURRENT_TIME - 240;
+    const TEST_VALID_FROM_TIME: u64 = TEST_CURRENT_TIME - 120;
+    const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
+    const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
+
+    async fn set_account_valid_time(idms: &IdmServer, acct: Uuid) {
+        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
+
+        let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
+        let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
+
+        let me = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(acct))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::AccountExpire.into(), v_expire),
+                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
+            ]),
+        );
+        assert!(idms_write.qs_write.modify(&me).is_ok());
+        idms_write.commit().expect("Must not fail");
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_valid_from_expire(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let usr_name = "testuser1";
+
+        let grp1_uuid = Uuid::new_v4();
+        let grp1_name = "testgroup1";
+
+        let app1_uuid = Uuid::new_v4();
+        let app1_name = "testapp1";
+
+        let pass_app1: String;
+
+        // Setup person, group, application and app password
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(usr_name)),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s(usr_name)),
+                (Attribute::DisplayName, Value::new_utf8s(usr_name))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp1_name)),
+                (Attribute::Uuid, Value::Uuid(grp1_uuid)),
+                (Attribute::Member, Value::Refer(usr_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app1_name)),
+                (Attribute::Uuid, Value::Uuid(app1_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app1_uuid,
+                "label".to_string(),
+            );
+            pass_app1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // Any account that is not yet valid / expired can't auth.
+        // Set the valid bounds high/low
+        // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
+        set_account_valid_time(idms, usr_uuid).await;
+
+        let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+        let time = Duration::from_secs(TEST_CURRENT_TIME);
+        let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+        let mut idms_auth = idms.auth().await;
+        let lae = LdapApplicationAuthEvent::from_parts(app1_name, usr_uuid, pass_app1)
+            .expect("Failed to build auth event");
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time_low)
+            .await
+            .expect_err("Authentication succeeded");
+        assert!(r1 == OperationError::SessionExpired);
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time)
+            .await
+            .expect("Failed auth");
+        assert!(r1.is_some());
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time_high)
+            .await
+            .expect_err("Authentication succeeded");
+        assert!(r1 == OperationError::SessionExpired);
     }
 
     macro_rules! assert_entry_contains {
