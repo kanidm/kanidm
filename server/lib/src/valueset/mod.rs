@@ -17,7 +17,7 @@ use webauthn_rs::prelude::Passkey as PasskeyV4;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
@@ -61,6 +61,7 @@ pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
 
 mod address;
+mod apppwd;
 mod auditlogstring;
 mod binary;
 mod bool;
@@ -381,6 +382,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_hexstring_set(&self) -> Option<&BTreeSet<String>> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_application_password_map(&self) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
         debug_assert!(false);
         None
     }
