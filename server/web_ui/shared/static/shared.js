@@ -51,7 +51,7 @@ export function init_graphviz(graph_src) {
  * @param {string} graph_src dot language graph source
  */
 function start_graphviz(graph_src) {
-    Viz.instance().then(function(viz) {
+    Viz.instance().then(function (viz) {
         const graphContainer = document.getElementById("graph-container");
         if (graphContainer)
             graphContainer.replaceChildren(viz.renderSVGElement(graph_src))

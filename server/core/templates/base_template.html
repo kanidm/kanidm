@@ -5,7 +5,7 @@
         <meta charset="utf-8" />
         <meta name="theme-color" content="white" />
         <meta name="viewport" content="width=device-width" />
-        <title>{}</title>
+        <title>Kanidm title goes here</title>
 
         <link rel="icon" href="/pkg/img/favicon.png" />
         <link rel="manifest" href="/manifest.webmanifest" />
@@ -20,17 +20,41 @@
             integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" />
         <link rel="stylesheet" href="/pkg/style.css" />
 
-        {}
+        <!-- {% block scripts %}{{ scripts|safe }}{% endblock %} -->
 
+        <!-- todo: conditionally load the js -->
+
+        <script async src="/pkg/external/bootstrap.bundle.min.js"
+            integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"></script>
+        <script src="/pkg/external/htmx.min.js"
+            integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2" />
+        <script src="/pkg/external/htmx-client-side-templates.js"
+            integrity="sha384-UFoZU2py/0EQf37hFN8iBaIC0ojoD9OfXOzMm8uWB16qd6EEQUhhz7cCifKJFsRi" /></script>
+        <!-- <script src="/pkg/external/viz.js"
+            integrity="sha384-URBHx/89iDas90V6s3Ec33PIAeGZ91+dHTyBYeYgyj8kYCQvx9iYKcQ3NurLpcRE" />
+        -->
+        <!-- <script  src="/pkg/external/nunjucks.min.js" integrity="sha384-ZNWDztJihcuTdvvOj/69bJWcalk3vWhHhurVe78xxAbMM8A8rmHY5+eTDWIjWC7Q"
+            crossorigin="anonymous" /></script> -->
+
+            <script src="/pkg/external/mustache.js"></script>
+
+        <script async src="/pkg/shared.js"
+            integrity="sha384-pkjktoYrBVzBHTA67YS2RpYcrpHKNAswJv8MymCGOKYqTLgzH4VRowoi4//Jkwj5"
+            type="module"></script>
+        <script src="/pkg/stuff.js"></script>
     </head>
-    <body class="flex-column d-flex h-100">
+    <body>
+        %% block content %%
+
         <main class="flex-shrink-0 form-signin">
+
             <center>
                 <img src="/pkg/img/logo-square.svg" alt="Kanidm"
                     class="kanidm_logo" />
                 <h3>Kanidm is loading, please wait... </h3>
             </center>
         </main>
+        %% endblock %%
         <footer class="footer mt-auto py-3 bg-light text-end">
             <div class="container">
                 <span class="text-muted">Powered by <a
@@ -38,4 +62,7 @@
             </div>
         </footer>
     </body>
+
+    %% block template %%
+    %% endblock %%
 </html>

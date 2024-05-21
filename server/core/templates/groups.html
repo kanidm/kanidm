@@ -1,17 +1,27 @@
-{ex}
+%% extends "base_template.html" %%
 
-<script src="/css/client-side-templates.js"></script>
+%% block content %%
+<main class="flex">
+    <h1> Groups</h1>
+    <div hx-ext="client-side-templates">
+        <div hx-get="/v1/group" hx-trigger="load delay:500ms"
+            hx-swap="innerHTML"
+            hx-target="#content"
+            mustache-array-template="foo">
+            <p id="content">Loading...</p>
 
-<table>
-    <thead>
-        <th>Group Name</th>
-        <th>Group Description</th>
-    </thead>
+        </div>
+    </div>
+</main>
 
-    <tbody>
-        <tr hx-get="/api/groups" hx-trigger="load">
-            <td>{name}</td>
-            <td>{description}</td>
-        </tr>
-    </tbody>
-</table>
+%% endblock content %%
+
+%% block template %%
+<template id="foo">
+    {{#data}}
+    <p>
+        {{ description }}
+    </p>
+    {{/data}}
+</template>
+%% endblock %%

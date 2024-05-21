@@ -104,6 +104,18 @@ pub struct JavaScriptFiles {
     selected: HashMap<String, JavaScriptFile>,
 }
 
+impl JavaScriptFiles {
+    pub(crate) fn as_header_tags(&self) -> String {
+        let mut tags = Vec::new();
+        for jsfile in self.all_pages.iter() {
+            tags.push(jsfile.as_tag());
+        }
+        for jsfile in self.selected.values() {
+            tags.push(jsfile.as_tag());
+        }
+        tags.join("\n")
+    }
+}
 pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
     let mut all_pages: Vec<JavaScriptFile> = Vec::new();
     let mut selected: HashMap<String, JavaScriptFile> = HashMap::new();
@@ -144,10 +156,12 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
 
         for (filepath, filetype, dynamic) in [
             ("shared.js", Some("module".to_string()), false),
+            ("stuff.js", Some("module".to_string()), false),
             ("external/bootstrap.bundle.min.js", None, false),
             ("external/htmx.min.js", None, true),
             ("external/htmx-client-side-templates.js", None, true),
             ("external/viz.js", None, true),
+            ("external/mustache.js", None, true),
         ] {
             // let's set up the list of non-wasm-module js files we want to serve
             // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
@@ -256,6 +270,7 @@ pub async fn create_https_server(
                 // user UI app is the catch-all
                 .nest("/ui", ui::spa_router_user_ui())
                 // login flows app
+                .nest("/ui/htmx", htmx::htmx_router())
                 .nest("/ui/login", ui::spa_router_login_flows())
                 .nest("/ui/reauth", ui::spa_router_login_flows())
                 .nest("/ui/oauth2", ui::spa_router_login_flows())

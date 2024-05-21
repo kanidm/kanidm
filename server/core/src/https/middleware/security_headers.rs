@@ -11,7 +11,7 @@ const PERMISSIONS_POLICY_VALUE: &str = "fullscreen=(), geolocation=()";
 const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
 
 pub async fn security_headers_layer<B>(
-    State(state): State<ServerState>,
+    State(_state): State<ServerState>,
     request: Request<B>,
     next: Next<B>,
 ) -> Response {
@@ -20,7 +20,7 @@ pub async fn security_headers_layer<B>(
 
     // add the Content-Security-Policy header, which defines how contact will be accessed/run based on the source URL
     let headers = response.headers_mut();
-    headers.insert(header::CONTENT_SECURITY_POLICY, state.csp_header);
+    // headers.insert(header::CONTENT_SECURITY_POLICY, state.csp_header);
 
     // X-Content-Type-Options tells the browser if it's OK to "sniff" or guess the content type of a response
     //

@@ -14,9 +14,11 @@ use crate::https::ServerState; // bring trait in scope
 struct GroupList {
     // the name of the struct can be anything
     domain_display_name: String,
+    scripts: String,
+    content: String,
 }
 #[allow(dead_code)]
-async fn group_list(
+pub(crate) async fn group_list(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> Html<String> {
@@ -24,6 +26,9 @@ async fn group_list(
 
     let group_list = GroupList {
         domain_display_name,
+        scripts: state.js_files.as_header_tags(),
+        content: "Hello, world!".to_string(),
     }; // instantiate your struct
+
     group_list.render().unwrap().into()
 }
