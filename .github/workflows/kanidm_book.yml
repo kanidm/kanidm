@@ -104,7 +104,7 @@ jobs:
           path: ./docs/
         env:
           ACTIONS_RUNNER_DEBUG: true
-      - name: Download stble artifact
+      - name: Download stable artifact
         uses: actions/download-artifact@v4
         with:
           name: "individual${{ needs.pre_deploy.outputs.latest }}"
@@ -120,10 +120,7 @@ jobs:
           find $(pwd) -name '*.tar.gz' -ls -exec tar zxvf "{}" \;
           echo "Carrying on..."
           mkdir -p docs
-          cd docs && cp -R "$(git branch -a  \
-            | awk '{print $1}' \
-            | sort -t. -k3n,3 -k4n,4 \
-            | awk -F'/' '{print $NF}' | tail -n1)/" stable && cd ..
+          cd docs && cp -R "${{ needs.pre_deploy.outputs.latest}}" stable && cd ..
           ls -la docs/
           echo "Cleaning up docs archives"
           rm docs/*.tar.gz
