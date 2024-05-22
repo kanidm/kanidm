@@ -15,7 +15,6 @@ vendor.tar.*
 *.patch
 tools/orca/example_profiles/small/orca-edited.toml
 /docs/
-.vscode/
 # webui things we don't need
 *.d.ts
 
@@ -39,3 +38,7 @@ scripts/oauth_proxy/client.secret
 scripts/oauth_proxy/envfile
 # local config things
 .envrc
+
+# IDEs
+.idea/
+.vscode/

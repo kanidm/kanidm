@@ -11,6 +11,8 @@ assignees: ''
 
 ### I expected the following
 
+### This happened instead
+
 ### Kanidm version details
 
 - Output of `kanidm(d) version`:
