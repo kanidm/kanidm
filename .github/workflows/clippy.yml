@@ -33,8 +33,7 @@ jobs:
             libssl-dev \
             pkg-config \
             tpm-udev \
-            tss2
-          find / -name tss2-sys.pc
+            libtss2-dev
 
       - name: "Run clippy (ignores errors, this is just a check)"
         run: cargo clippy --all-features --all-targets
