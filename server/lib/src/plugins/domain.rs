@@ -125,6 +125,8 @@ impl Domain {
                     e.add_ava(Attribute::FernetPrivateKeyStr, v);
                 }
 
+                error!(vers = ?qs.get_domain_version());
+
                 if qs.get_domain_version() < DOMAIN_LEVEL_6 && !e.attribute_pres(Attribute::Es256PrivateKeyDer) {
                     security_info!("regenerating domain es256 private key");
                     let der = JwsEs256Signer::generate_es256()

@@ -153,6 +153,7 @@ libsqlite3-sys = "^0.25.2"
 lodepng = "3.10.1"
 lru = "^0.8.1"
 mathru = "^0.13.0"
+mimalloc = "0.1.42"
 notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
@@ -206,8 +207,6 @@ syn = { version = "2.0.53", features = ["full"] }
 tempfile = "3.10.1"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
-
-tikv-jemallocator = "0.5"
 
 tokio = "^1.36.0"
 tokio-openssl = "^0.6.4"

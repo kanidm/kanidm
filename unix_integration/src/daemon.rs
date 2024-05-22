@@ -53,6 +53,9 @@ use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
+#[global_allocator]
+static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
 //=== the codec
 
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);

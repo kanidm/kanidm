@@ -12,7 +12,7 @@
 
 #[cfg(not(target_family = "windows"))]
 #[global_allocator]
-static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.

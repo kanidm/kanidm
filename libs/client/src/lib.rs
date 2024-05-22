@@ -27,8 +27,7 @@ use std::time::Duration;
 use compact_jwt::Jwk;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
-    KVERSION,
+    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
@@ -186,7 +185,6 @@ pub struct KanidmClient {
     pub(crate) origin: Url,
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: RwLock<Option<String>>,
-    pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
     /// Where to store the tokens when you auth, only modify in testing.
     token_cache_path: String,
@@ -528,7 +526,6 @@ impl KanidmClientBuilder {
             builder: self,
             bearer_token: RwLock::new(None),
             origin,
-            auth_session_id: RwLock::new(None),
             check_version: Mutex::new(true),
             token_cache_path,
         })
@@ -761,16 +758,6 @@ impl KanidmClient {
             }
         };
 
-        // If we have a session header, set it now.
-        let response = {
-            let sguard = self.auth_session_id.read().await;
-            if let Some(sessionid) = &(*sguard) {
-                response.header(KSESSIONID, sessionid)
-            } else {
-                response
-            }
-        };
-
         let response = response
             .send()
             .await
@@ -779,16 +766,6 @@ impl KanidmClient {
         self.expect_version(&response).await;
 
         // If we have a sessionid header in the response, get it now.
-
-        let headers = response.headers();
-
-        {
-            let mut sguard = self.auth_session_id.write().await;
-            *sguard = headers
-                .get(KSESSIONID)
-                .and_then(|hv| hv.to_str().ok().map(str::to_string));
-        }
-
         let opid = self.get_kopid_from_response(&response);
 
         match response.status() {

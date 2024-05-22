@@ -25,12 +25,13 @@ use axum::response::Redirect;
 use axum::routing::*;
 use axum::Router;
 use axum_csp::{CspDirectiveType, CspValue};
-use axum_macros::FromRef;
+use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
 use hashbrown::HashMap;
 use hyper::server::accept::Accept;
 use hyper::server::conn::{AddrStream, Http};
 use kanidm_proto::constants::KSESSIONID;
+use kanidm_proto::internal::COOKIE_AUTH_SESSION_ID;
 use kanidmd_lib::idm::ClientCertInfo;
 use kanidmd_lib::status::StatusActor;
 use openssl::nid;
@@ -57,7 +58,7 @@ use crate::CoreAction;
 
 use self::v1::SessionId;
 
-#[derive(Clone, FromRef)]
+#[derive(Clone)]
 pub struct ServerState {
     pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
@@ -68,6 +69,9 @@ pub struct ServerState {
     pub js_files: JavaScriptFiles,
     pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
+    pub domain: String,
+    // This is set to true by default, and is only false on integration tests.
+    pub secure_cookies: bool,
 }
 
 impl ServerState {
@@ -85,15 +89,24 @@ impl ServerState {
         }
     }
 
-    fn get_current_auth_session_id(&self, headers: &HeaderMap) -> Option<Uuid> {
+    #[instrument(level = "trace", skip_all)]
+    fn get_current_auth_session_id(&self, headers: &HeaderMap, jar: &CookieJar) -> Option<Uuid> {
         // We see if there is a signed header copy first.
         headers
             .get(KSESSIONID)
             .and_then(|hv| {
+                trace!("trying header");
                 // Get the first header value.
                 hv.to_str().ok()
             })
-            .and_then(|s| self.reinflate_uuid_from_bytes(s))
+            .or_else(|| {
+                trace!("trying cookie");
+                jar.get(COOKIE_AUTH_SESSION_ID).map(|c| c.value())
+            })
+            .and_then(|s| {
+                trace!(id_jws = %s);
+                self.reinflate_uuid_from_bytes(s)
+            })
     }
 }
 
@@ -239,6 +252,8 @@ pub async fn create_https_server(
         js_files,
         trust_x_forward_for,
         csp_header: csp_header.finish(),
+        domain: config.domain.clone(),
+        secure_cookies: config.integration_test_config.is_none(),
     };
 
     let static_routes = match config.role {

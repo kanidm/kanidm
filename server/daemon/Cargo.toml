@@ -28,6 +28,7 @@ fs2 = { workspace = true }
 futures = { workspace = true }
 
 clap = { workspace = true, features = ["env"] }
+mimalloc = { workspace = true }
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
@@ -51,7 +52,6 @@ whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
-tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
 serde = { workspace = true, features = ["derive"] }

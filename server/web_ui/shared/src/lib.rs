@@ -5,19 +5,18 @@ use error::FetchError;
 use gloo::console;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::constants::KOPID;
-use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
-use models::{clear_bearer_token, get_bearer_token};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
 
-use gloo::storage::{SessionStorage as TemporaryStorage, Storage};
 use yew::{html, Html};
 
 use crate::constants::{CSS_ALERT_WARNING, IMG_LOGO_SQUARE};
+use crate::models::clear_bearer_token;
 
 pub mod constants;
 pub mod error;
@@ -26,23 +25,6 @@ pub mod macros;
 pub mod models;
 pub mod ui;
 pub mod utils;
-
-const AUTH_SESSION_ID: &str = "auth_session_id";
-
-pub fn pop_auth_session_id() -> Option<String> {
-    let l: Result<String, _> = TemporaryStorage::get(AUTH_SESSION_ID);
-    #[cfg(debug_assertions)]
-    console::debug!(format!("auth_session_id -> {:?}", l).as_str());
-    TemporaryStorage::delete(AUTH_SESSION_ID);
-    l.ok()
-}
-
-pub fn push_auth_session_id(r: String) {
-    TemporaryStorage::set(AUTH_SESSION_ID, r).expect_throw(&format!(
-        "failed to set {} in temporary storage",
-        AUTH_SESSION_ID
-    ));
-}
 
 /// Build and send a request to the backend, with some standard headers and pull back
 /// (kopid, status, json, headers)
@@ -70,29 +52,11 @@ pub async fn do_request<JV: AsRef<JsValue>>(
         .set(CONTENT_TYPE, APPLICATION_JSON)
         .expect_throw("failed to set content-type header");
 
-    if let Some(sessionid) = pop_auth_session_id() {
-        request
-            .headers()
-            .set(KSESSIONID, &sessionid)
-            .expect_throw(&format!("failed to set {} header", KSESSIONID));
-    }
-
-    if let Some(bearer_token) = get_bearer_token() {
-        request
-            .headers()
-            .set("authorization", &bearer_token)
-            .expect_throw("failed to set authorization header");
-    }
-
     let window = utils::window();
     let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
     let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
     let status = resp.status();
     let headers: Headers = resp.headers();
-
-    if let Some(sessionid) = headers.get(KSESSIONID).ok().flatten() {
-        push_auth_session_id(sessionid);
-    }
 
     let kopid = headers.get(KOPID).ok().flatten();
 
