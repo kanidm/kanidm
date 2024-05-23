@@ -84,7 +84,7 @@ impl Domain {
                     .get_ava_single_iutf8(Attribute::DomainLdapBasedn) {
 
                     if !DOMAIN_LDAP_BASEDN_RE.is_match(basedn) {
-                        error!("Invalid {}. Must pass regex \"{}\"", Attribute::DomainLdapBasedn, *DOMAIN_LDAP_BASEDN_RE);
+                        error!("Invalid {} '{}'. Must pass regex \"{}\"", Attribute::DomainLdapBasedn,basedn, *DOMAIN_LDAP_BASEDN_RE);
                         return Err(OperationError::InvalidState);
                     }
                 }

@@ -454,6 +454,8 @@ impl FromStr for ServerRole {
 pub struct IntegrationTestConfig {
     pub admin_user: String,
     pub admin_password: String,
+    pub idm_admin_user: String,
+    pub idm_admin_password: String,
 }
 
 #[derive(Debug, Clone)]

@@ -864,13 +864,26 @@ pub async fn create_server_core(
     match &config.integration_test_config {
         Some(itc) => {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
-            // We need to get the admin pw.
-            match idms_prox_write.recover_account("admin", Some(&itc.admin_password)) {
+            // We need to set the admin pw.
+            match idms_prox_write.recover_account(&itc.admin_user, Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {
                     error!(
-                        "Unable to configure INTEGRATION TEST admin account -> {:?}",
-                        e
+                        "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                        &itc.admin_user, e
+                    );
+                    return Err(());
+                }
+            };
+            // set the idm_admin account password
+            match idms_prox_write
+                .recover_account(&itc.idm_admin_user, Some(&itc.idm_admin_password))
+            {
+                Ok(_) => {}
+                Err(e) => {
+                    error!(
+                        "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                        &itc.idm_admin_user, e
                     );
                     return Err(());
                 }

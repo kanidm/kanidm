@@ -62,6 +62,8 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     let int_config = Box::new(IntegrationTestConfig {
         admin_user: ADMIN_TEST_USER.to_string(),
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
+        idm_admin_user: IDM_ADMIN_TEST_USER.to_string(),
+        idm_admin_password: IDM_ADMIN_TEST_PASSWORD.to_string(),
     });
 
     let addr = format!("http://localhost:{}", port);
