@@ -901,7 +901,9 @@ pub trait BackendTransaction {
 
         let keyhandles = idlayer.get_key_handles()?;
 
-        let bak = DbBackup::V4 {
+        let bak = DbBackup::V5 {
+            // remember env is evaled at compile time.
+            version: env!("KANIDM_PKG_SERIES").to_string(),
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
@@ -1756,8 +1758,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let (dbentries, repl_meta) = match dbbak {
-            DbBackup::V1(dbentries) => (dbentries, None),
+        let (dbentries, repl_meta, maybe_version) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1768,7 +1770,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                (entries, None)
+                (entries, None, None)
             }
             DbBackup::V3 {
                 db_s_uuid,
@@ -1782,7 +1784,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                (entries, None)
+                (entries, None, None)
             }
             DbBackup::V4 {
                 db_s_uuid,
@@ -1797,8 +1799,34 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                (entries, Some(repl_meta))
+                (entries, Some(repl_meta), None)
             }
+            DbBackup::V5 {
+                version,
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta), Some(version))
+            }
+        };
+
+        if let Some(version) = maybe_version {
+            if version != env!("KANIDM_PKG_SERIES") {
+                error!("The provided backup data is from server version {} and is unable to be restored on this instance ({})", version, env!("KANIDM_PKG_SERIES"));
+                return Err(OperationError::DB0001MismatchedRestoreVersion);
+            }
+        } else {
+            error!("The provided backup data is from an older server version and is unable to be restored.");
+            return Err(OperationError::DB0002MismatchedRestoreVersion);
         };
 
         // Rebuild the RUV from the backup.
@@ -2587,31 +2615,12 @@ mod tests {
 
             // Now here, we need to tamper with the file.
             let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
+            trace!(?serialized_string);
             let mut dbbak: DbBackup = serde_json::from_str(&serialized_string).unwrap();
 
             match &mut dbbak {
-                DbBackup::V1(_) => {
-                    // We no longer use these format versions!
-                    unreachable!()
-                }
-                DbBackup::V2 {
-                    db_s_uuid: _,
-                    db_d_uuid: _,
-                    db_ts_max: _,
-                    entries,
-                } => {
-                    let _ = entries.pop();
-                }
-                DbBackup::V3 {
-                    db_s_uuid: _,
-                    db_d_uuid: _,
-                    db_ts_max: _,
-                    keyhandles: _,
-                    entries,
-                } => {
-                    let _ = entries.pop();
-                }
-                DbBackup::V4 {
+                DbBackup::V5 {
+                    version: _,
                     db_s_uuid: _,
                     db_d_uuid: _,
                     db_ts_max: _,
@@ -2620,6 +2629,10 @@ mod tests {
                     entries,
                 } => {
                     let _ = entries.pop();
+                }
+                _ => {
+                    // We no longer use these format versions!
+                    unreachable!()
                 }
             };
 

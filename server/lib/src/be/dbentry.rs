@@ -56,18 +56,15 @@ pub struct DbEntry {
 #[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum DbBackup {
-    V1(Vec<DbEntry>),
-    V2 {
-        db_s_uuid: Uuid,
-        db_d_uuid: Uuid,
-        db_ts_max: Duration,
-        entries: Vec<DbEntry>,
-    },
-    V3 {
+    // Because of untagged, this has to be in order of newest
+    // to oldest as untagged does a first-match when deserialising.
+    V5 {
+        version: String,
         db_s_uuid: Uuid,
         db_d_uuid: Uuid,
         db_ts_max: Duration,
         keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
+        repl_meta: DbReplMeta,
         entries: Vec<DbEntry>,
     },
     V4 {
@@ -78,6 +75,20 @@ pub enum DbBackup {
         repl_meta: DbReplMeta,
         entries: Vec<DbEntry>,
     },
+    V3 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        keyhandles: BTreeMap<KeyHandleId, KeyHandle>,
+        entries: Vec<DbEntry>,
+    },
+    V2 {
+        db_s_uuid: Uuid,
+        db_d_uuid: Uuid,
+        db_ts_max: Duration,
+        entries: Vec<DbEntry>,
+    },
+    V1(Vec<DbEntry>),
 }
 
 fn from_vec_dbval1(attr_val: NonEmpty<DbValueV1>) -> Result<DbValueSetV2, OperationError> {

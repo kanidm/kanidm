@@ -146,8 +146,8 @@ elements in a simpler and correct way out of the box in comparison.
 <details>
   <summary>Rauthy</summary>
 
-Rauthy is a minimal OIDC provider. It supports WebAuthn just like Kanidm - they actually use our library
-for it!
+Rauthy is a minimal OIDC provider. It supports WebAuthn just like Kanidm - they actually use our
+library for it!
 
 Rauthy only provides support for OIDC and so is unable to support other use cases like RADIUS and
 unix authentication.
@@ -160,15 +160,15 @@ then Kanidm will support those.
 <details>
   <summary>Authentik / Authelia / Zitadel</summary>
 
-Authentik is an IDM provider written in Python and, Authelia and Zitadel are written in Go.
-all similar to Kanidm in the features it offers but notably all have weaker support for
-unix authentication and do not support the same level of authentication policy as Kanidm. Notably,
-all are missing WebAuthn Attestation.
+Authentik is an IDM provider written in Python and, Authelia and Zitadel are written in Go. all
+similar to Kanidm in the features it offers but notably all have weaker support for unix
+authentication and do not support the same level of authentication policy as Kanidm. Notably, all
+are missing WebAuthn Attestation.
 
 All three use an external SQL server such as PostgreSQL. This can create a potential single source
 of failure and performance limitation compared to Kanidm which opted to write our own high
-performance database and replication system instead based on our experience with enterprise
-LDAP servers.
+performance database and replication system instead based on our experience with enterprise LDAP
+servers.
 
 </details>
 
