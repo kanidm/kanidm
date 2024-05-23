@@ -67,6 +67,7 @@ pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 /// Domain Level introduced with 1.2.0.
 /// Deprcated as of 1.4.0
 pub const DOMAIN_LEVEL_6: DomainVersion = 6;
+pub const PATCH_LEVEL_1: u32 = 1;
 
 /// Domain Level introduced with 1.3.0.
 /// Deprcated as of 1.5.0
@@ -84,6 +85,7 @@ pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The target supported domain functional level
 pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_1;
 // The maximum supported domain functional level
 pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 // The maximum supported domain functional level

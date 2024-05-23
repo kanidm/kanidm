@@ -105,11 +105,12 @@ impl QueryServer {
 
         // This is the start of domain info related migrations which we will need in future
         // to handle replication. Due to the access control rework, and the addition of "managed by"
-        // syntax, we need to ensure both node "fence" replication from each other. We do this
+        // syntax, we need to ensure both nodes "fence" replication from each other. We do this
         // by changing domain infos to be incompatible during this phase.
 
         // The reloads will have populated this structure now.
         let domain_info_version = write_txn.get_domain_version();
+        let domain_patch_level = write_txn.get_domain_patch_level();
         debug!(?db_domain_version, "After setting internal domain info");
 
         if domain_info_version < domain_target_level {
@@ -124,6 +125,10 @@ impl QueryServer {
                 .map(|()| {
                     warn!("Domain level has been raised to {}", domain_target_level);
                 })?;
+
+            // Reload if anything in migrations requires it - this triggers the domain migrations
+            // which in turn can trigger schema reloads etc.
+            write_txn.reload()?;
         } else {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
@@ -137,12 +142,26 @@ impl QueryServer {
             // We did not already need a version migration as above
             if option_env!("KANIDM_PRE_RELEASE").is_some() && !cfg!(test) {
                 write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
+                write_txn.reload()?;
             }
         }
 
-        // Reload if anything in migrations requires it - this triggers the domain migrations
-        // which in turn can trigger schema reloads etc.
-        write_txn.reload()?;
+        if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
+            write_txn
+                .internal_modify_uuid(
+                    UUID_DOMAIN_INFO,
+                    &ModifyList::new_purge_and_set(
+                        Attribute::PatchLevel,
+                        Value::new_uint32(DOMAIN_TGT_PATCH_LEVEL),
+                    ),
+                )
+                .map(|()| {
+                    warn!("Domain level has been raised to {}", domain_target_level);
+                })?;
+
+            // Run the patch migrations
+            write_txn.reload()?;
+        };
 
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
@@ -615,8 +634,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(&filter, &modlist)?;
 
         // Now update schema
-
         let idm_schema_classes = [
+            SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
@@ -635,6 +654,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Post schema changes.
 
         Ok(())
+    }
+
+    /// Patch Application - This triggers a one-shot fixup task for issue #2756
+    /// to correct the content of dyngroups after the dyngroups are now loaded.
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_patch_level_1(&mut self) -> Result<(), OperationError> {
+        admin_warn!("applying domain patch 1.");
+
+        debug_assert!(*self.phase >= ServerPhase::SchemaReady);
+
+        let filter = filter!(f_eq(Attribute::Class, EntryClass::DynGroup.into()));
+        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::DynGroup.into())]);
+
+        self.internal_modify(&filter, &modlist).map(|()| {
+            info!("forced dyngroups to re-calculate memberships");
+        })
     }
 
     /// Migration domain level 7 to 8

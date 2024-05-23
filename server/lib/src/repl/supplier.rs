@@ -225,6 +225,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let schema = self.get_schema();
         let domain_version = self.d_info.d_vers;
+        let domain_patch_level = self.d_info.d_patch_level;
         let domain_uuid = self.d_info.d_uuid;
 
         let schema_entries: Vec<_> = schema_entries
@@ -249,6 +250,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Build the incremental context.
         Ok(ReplIncrementalContext::V1 {
             domain_version,
+            domain_patch_level,
             domain_uuid,
             ranges,
             schema_entries,
