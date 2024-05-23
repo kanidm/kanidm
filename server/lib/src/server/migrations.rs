@@ -88,7 +88,7 @@ impl QueryServer {
         } else {
             // #2756 - if we *aren't* creating the base IDM entries, then we
             // need to force dyn groups to reload since we're now at schema
-            // ready. This is done indiretly by ... reloading the schema again.
+            // ready. This is done indirectly by ... reloading the schema again.
             //
             // This is because dyngroups don't load until server phase >= schemaready
             // and the reload path for these is either a change in the dyngroup entry
