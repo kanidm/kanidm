@@ -52,9 +52,9 @@ impl QueryServer {
 
         debug!(?db_domain_version, "Before setting internal domain info");
 
-        // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
-        // the base-schema here.
         if db_domain_version == 0 {
+            // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
+            // the base-schema here.
             write_txn.initialise_schema_idm()?;
 
             write_txn.reload()?;
@@ -64,6 +64,13 @@ impl QueryServer {
             // very early in the bootstrap process, and very few entries exist,
             // reindexing is very fast here.
             write_txn.reindex()?;
+        } else {
+            // Domain info was present, so we need to reflect that in our server
+            // domain structures. If we don't do this, the in memory domain level
+            // is stuck at 0 which can confuse init domain info below.
+            write_txn.force_domain_reload();
+
+            write_txn.reload()?;
         }
 
         // Indicate the schema is now ready, which allows dyngroups to work when they

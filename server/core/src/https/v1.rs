@@ -6,6 +6,7 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
@@ -15,7 +16,8 @@ use uuid::Uuid;
 use kanidm_proto::internal::{
     ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
     CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
-    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
+    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken, COOKIE_AUTH_SESSION_ID,
+    COOKIE_BEARER_TOKEN,
 };
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
@@ -208,12 +210,14 @@ pub async fn logout(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<Json<()>, WebError> {
+    jar: CookieJar,
+) -> Result<Response, WebError> {
     state
         .qe_w_ref
         .handle_logout(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
+        .map(|json| (jar, json).into_response())
         .map_err(WebError::from)
 }
 
@@ -2730,6 +2734,7 @@ pub async fn applinks_get(
 pub async fn reauth(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
 ) -> Result<Response, WebError> {
@@ -2739,7 +2744,7 @@ pub async fn reauth(
         .handle_reauth(client_auth_info, obj, kopid.eventid)
         .await;
     debug!("ReAuth result: {:?}", inter);
-    auth_session_state_management(state, inter)
+    auth_session_state_management(state, jar, inter)
 }
 
 #[utoipa::path(
@@ -2757,6 +2762,7 @@ pub async fn reauth(
 pub async fn auth(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -2765,8 +2771,9 @@ pub async fn auth(
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
 
-    let maybe_sessionid = state.get_current_auth_session_id(&headers);
+    let maybe_sessionid = state.get_current_auth_session_id(&headers, &jar);
     debug!("Session ID: {:?}", maybe_sessionid);
+
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
@@ -2775,12 +2782,13 @@ pub async fn auth(
         .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
-    auth_session_state_management(state, inter)
+    auth_session_state_management(state, jar, inter)
 }
 
 #[instrument(skip(state))]
 fn auth_session_state_management(
     state: ServerState,
+    mut jar: CookieJar,
     inter: Result<AuthResult, OperationError>,
 ) -> Result<Response, WebError> {
     let mut auth_session_id_tok = None;
@@ -2793,8 +2801,7 @@ fn auth_session_state_management(
             // Do some response/state management.
             match auth_state {
                 AuthState::Choose(allowed) => {
-                    debug!("🧩 -> AuthState::Choose"); // TODO: this should be ... less work
-                                                       // Ensure the auth-session-id is set
+                    debug!("🧩 -> AuthState::Choose");
                     let kref = &state.jws_signer;
                     let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
                         error!(?e);
@@ -2835,6 +2842,24 @@ fn auth_session_state_management(
 
                     match issue {
                         AuthIssueSession::Token => Ok(ProtoAuthState::Success(token.to_string())),
+                        AuthIssueSession::Cookie => {
+                            // Update jar
+                            let token_str = token.to_string();
+                            let mut bearer_cookie =
+                                Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
+                            bearer_cookie.set_secure(state.secure_cookies);
+                            bearer_cookie.set_same_site(SameSite::Lax);
+                            bearer_cookie.set_http_only(true);
+                            // We set a domain here because it allows subdomains
+                            // of the idm to share the cookie. If domain was incorrect
+                            // then webauthn won't work anyway!
+                            bearer_cookie.set_domain(state.domain.clone());
+                            bearer_cookie.set_path("/");
+                            jar = jar
+                                .add(bearer_cookie)
+                                .remove(Cookie::named(COOKIE_AUTH_SESSION_ID));
+                            Ok(ProtoAuthState::Success(token_str))
+                        }
                     }
                 }
                 AuthState::Denied(reason) => {
@@ -2849,7 +2874,23 @@ fn auth_session_state_management(
 
     // if the sessionid was injected into our cookie, set it in the header too.
     res.map(|response| {
-        let mut res = Json::from(response).into_response();
+        jar = if let Some(token) = auth_session_id_tok.clone() {
+            let mut token_cookie = Cookie::new(COOKIE_AUTH_SESSION_ID, token);
+            token_cookie.set_secure(state.secure_cookies);
+            token_cookie.set_same_site(SameSite::Strict);
+            token_cookie.set_http_only(true);
+            // Not setting domains limits the cookie to precisely this
+            // url that was used.
+            // token_cookie.set_domain(state.domain.clone());
+            jar.add(token_cookie)
+        } else {
+            jar
+        };
+
+        trace!(?jar);
+
+        let mut res = (jar, Json::from(response)).into_response();
+
         match auth_session_id_tok {
             Some(tok) => {
                 match HeaderValue::from_str(&tok) {

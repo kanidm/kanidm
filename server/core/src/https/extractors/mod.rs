@@ -7,8 +7,12 @@ use axum::{
     },
     RequestPartsExt,
 };
+
+use axum_extra::extract::cookie::CookieJar;
+
 use hyper::server::conn::AddrStream;
 use kanidm_proto::constants::X_FORWARDED_FOR;
+use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
 
 use compact_jwt::JwsCompact;
@@ -156,7 +160,14 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                 (None, None)
             }
         } else {
-            (None, None)
+            // Only if there are no credentials in bearer, do we examine cookies.
+            let jar = CookieJar::from_headers(&parts.headers);
+
+            let value: Option<&str> = jar.get(COOKIE_BEARER_TOKEN).map(|c| c.value());
+
+            let maybe_bearer = value.and_then(|authz_data| JwsCompact::from_str(authz_data).ok());
+
+            (None, maybe_bearer)
         };
 
         Ok(VerifiedClientInformation(ClientAuthInfo {
