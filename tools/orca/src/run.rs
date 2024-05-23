@@ -26,7 +26,7 @@ async fn actor_person(
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
         let event = model.transition(&client, &person).await?;
-
+        debug!("Pushed event to queue!");
         stats_queue.push(event);
     }
 
@@ -129,7 +129,9 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
     let c_stats_queue = stats_queue.clone();
     let c_stats_ctrl = stats_ctrl.clone();
 
-    let mut dyn_data_collector = BasicStatistics::new();
+    let node_count = 1 + state.profile.extra_uris().len();
+    let mut dyn_data_collector =
+        BasicStatistics::new(state.persons.len(), state.groups.len(), node_count);
 
     let stats_task =
         tokio::task::spawn_blocking(move || dyn_data_collector.run(c_stats_queue, c_stats_ctrl));

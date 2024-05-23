@@ -1,6 +1,9 @@
 use crate::error::Error;
 use crate::run::{EventDetail, EventRecord};
+use chrono::Local;
 use crossbeam::queue::{ArrayQueue, SegQueue};
+use csv::Writer;
+use serde::Serialize;
 use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
@@ -42,12 +45,24 @@ impl From<EventDetail> for OpKind {
         }
     }
 }
-pub struct BasicStatistics {}
+pub struct BasicStatistics {
+    person_count: usize,
+    group_count: usize,
+    node_count: usize,
+}
 
 impl BasicStatistics {
     #[allow(clippy::new_ret_no_self)]
-    pub fn new() -> Box<dyn DataCollector + Send> {
-        Box::new(BasicStatistics {})
+    pub fn new(
+        person_count: usize,
+        group_count: usize,
+        node_count: usize,
+    ) -> Box<dyn DataCollector + Send> {
+        Box::new(BasicStatistics {
+            person_count,
+            group_count,
+            node_count,
+        })
     }
 }
 
@@ -120,29 +135,91 @@ impl DataCollector for BasicStatistics {
                 OpKind::Other => {}
             }
         }
+        let stats = StatsContainer::new(
+            &readop_times,
+            &writeop_times,
+            self.node_count,
+            self.person_count,
+            self.group_count,
+        );
 
-        info!("Received {} read events", readop_times.len());
+        info!(
+            "Server configuration was: {} nodes, {} users and {} groups",
+            self.node_count, self.person_count, self.group_count
+        );
 
-        let readop_distrib: Normal<f64> = Normal::from_data(&readop_times);
-        let sd = readop_distrib.variance().sqrt();
+        info!("Received {} read events", stats.read_events);
 
-        info!("mean: {} seconds", readop_distrib.mean());
-        info!("variance: {}", readop_distrib.variance());
-        info!("SD: {} seconds", sd);
-        info!("95%: {}", readop_distrib.mean() + (2.0 * sd));
+        info!("mean: {} seconds", stats.read_mean);
+        info!("variance: {}", stats.read_variance);
+        info!("SD: {} seconds", stats.read_sd);
+        info!("95%: {}", stats.read_95);
 
-        info!("Received {} write events", writeop_times.len());
+        info!("Received {} write events", stats.write_events);
 
-        let writeop_distrib: Normal<f64> = Normal::from_data(&writeop_times);
-        let sd = writeop_distrib.variance().sqrt();
+        info!("mean: {} seconds", stats.write_mean);
+        info!("variance: {}", stats.write_variance);
+        info!("SD: {} seconds", stats.write_sd);
+        info!("95%: {}", stats.write_95);
 
-        info!("mean: {} seconds", writeop_distrib.mean());
-        info!("variance: {}", writeop_distrib.variance());
-        info!("SD: {} seconds", sd);
-        info!("95%: {}", writeop_distrib.mean() + (2.0 * sd));
+        let now = Local::now();
+        let filepath = format!("orca-run-{}.csv", now.to_rfc3339());
+
+        info!("Now saving stats as '{filepath}'");
+
+        let mut wrt = Writer::from_path(filepath).map_err(|_| Error::Io)?;
+        wrt.serialize(stats).map_err(|_| Error::Io)?;
 
         debug!("Ended statistics collector");
 
         Ok(())
+    }
+}
+
+#[derive(Serialize)]
+struct StatsContainer {
+    node_count: usize,
+    person_count: usize,
+    group_count: usize,
+    read_events: usize,
+    read_sd: f64,
+    read_mean: f64,
+    read_variance: f64,
+    read_95: f64,
+    write_events: usize,
+    write_sd: f64,
+    write_mean: f64,
+    write_variance: f64,
+    write_95: f64,
+}
+
+impl StatsContainer {
+    fn new(
+        readop_times: &Vec<f64>,
+        writeop_times: &Vec<f64>,
+        node_count: usize,
+        person_count: usize,
+        group_count: usize,
+    ) -> Self {
+        let readop_distrib: Normal<f64> = Normal::from_data(&readop_times);
+        let read_sd = readop_distrib.variance().sqrt();
+        let writeop_distrib: Normal<f64> = Normal::from_data(&writeop_times);
+        let write_sd = writeop_distrib.variance().sqrt();
+
+        StatsContainer {
+            person_count,
+            group_count,
+            node_count,
+            read_events: readop_times.len(),
+            read_sd: readop_distrib.variance().sqrt(),
+            read_mean: readop_distrib.mean(),
+            read_variance: readop_distrib.variance(),
+            read_95: readop_distrib.mean() + (2.0 * read_sd),
+            write_events: writeop_times.len(),
+            write_sd: writeop_distrib.variance().sqrt(),
+            write_mean: writeop_distrib.mean(),
+            write_variance: writeop_distrib.variance(),
+            write_95: writeop_distrib.mean() + (2.0 * write_sd),
+        }
     }
 }
