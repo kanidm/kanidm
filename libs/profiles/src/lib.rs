@@ -97,6 +97,14 @@ pub fn apply_profile() {
         println!("cargo:rustc-env=KANIDM_PRE_RELEASE=1");
     }
 
+    // For some checks we only want the series (i.e. exclude the patch version).
+    let version_major = env!("CARGO_PKG_VERSION_MAJOR");
+    let version_minor = env!("CARGO_PKG_VERSION_MINOR");
+    println!(
+        "cargo:rustc-env=KANIDM_PKG_SERIES={}.{}",
+        version_major, version_minor
+    );
+
     match profile_cfg.cpu_flags {
         CpuOptLevel::apple_m1 => println!("cargo:rustc-env=RUSTFLAGS=-Ctarget-cpu=apple_m1"),
         CpuOptLevel::none => {}

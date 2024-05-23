@@ -4,6 +4,9 @@ With any Identity Management (IDM) software, it's important you have the capabil
 case of a disaster - be that physical damage or a mistake. Kanidm supports backup and restore of the
 database with three methods.
 
+It is important that you only attempt to restore data with the same version of the server that the
+backup originated from.
+
 ## Method 1 - Automatic Backup
 
 Automatic backups can be generated online by a `kanidmd server` instance by including the

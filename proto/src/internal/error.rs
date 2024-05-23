@@ -132,6 +132,10 @@ pub enum OperationError {
     // Value Errors
     VL0001ValueSshPublicKeyString,
 
+    // DB low level errors.
+    DB0001MismatchedRestoreVersion,
+    DB0002MismatchedRestoreVersion,
+
     // SCIM
     SC0001IncomingSshPublicKey,
     // Migration
