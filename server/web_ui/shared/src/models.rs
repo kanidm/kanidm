@@ -14,21 +14,6 @@ const LOGIN_REMEMBER_ME: &str = "login_remember_me";
 const RETURN_LOCATION: &str = "return_location";
 const OAUTH2_AUTHORIZATION_REQUEST: &str = "oauth2_authorisation_request";
 
-/// Store the bearer token `r` in local storage
-pub fn set_bearer_token(r: String) {
-    LocalStorage::set(BEARER_TOKEN, r).expect_throw(&format!("failed to set {}", BEARER_TOKEN));
-}
-
-pub fn get_bearer_token() -> Option<String> {
-    let l: Result<String, _> = LocalStorage::get(BEARER_TOKEN);
-    #[cfg(debug_assertions)]
-    console::debug!(&format!(
-        "login_hint::get_login_remember_me -> present={:?}",
-        l.is_ok()
-    ));
-    l.ok()
-}
-
 pub fn clear_bearer_token() {
     #[cfg(debug_assertions)]
     console::debug!("clearing the bearer token from local storage");

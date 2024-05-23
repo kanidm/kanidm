@@ -27,6 +27,7 @@ hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 mathru = { workspace = true }
+mimalloc = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -36,9 +37,6 @@ toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
-
-[target.'cfg(not(target_family = "windows"))'.dependencies]
-tikv-jemallocator = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

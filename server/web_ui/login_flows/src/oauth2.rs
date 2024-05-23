@@ -15,8 +15,8 @@ use yew_router::prelude::*;
 
 use super::router::LoginRoute;
 use kanidmd_web_ui_shared::models::{
-    get_bearer_token, pop_oauth2_authorisation_request, push_login_hint,
-    push_oauth2_authorisation_request, push_return_location,
+    pop_oauth2_authorisation_request, push_login_hint, push_oauth2_authorisation_request,
+    push_return_location,
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 
@@ -166,12 +166,14 @@ impl Oauth2App {
             .set(CONTENT_TYPE, APPLICATION_JSON)
             .expect_throw("failed to set header");
 
+        /*
         if let Some(bearer_token) = get_bearer_token() {
             request
                 .headers()
                 .set("authorization", &bearer_token)
                 .expect_throw("failed to set authorisation header");
         }
+        */
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;

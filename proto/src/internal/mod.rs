@@ -24,6 +24,9 @@ pub use self::error::*;
 pub use self::raw::*;
 pub use self::token::*;
 
+pub const COOKIE_AUTH_SESSION_ID: &str = "auth-session-id";
+pub const COOKIE_BEARER_TOKEN: &str = "bearer";
+
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 /// This is a description of a linked or connected application for a user. This is
 /// used in the UI to render applications on the dashboard for a user to access.
