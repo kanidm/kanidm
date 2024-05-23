@@ -750,7 +750,9 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         match session {
-            LdapSession::UnixBind(uuid) => self.process_uuid_to_identity(uuid, ct, source),
+            LdapSession::UnixBind(uuid) | LdapSession::ApplicationPasswordBind(_, uuid) => {
+                self.process_uuid_to_identity(uuid, ct, source)
+            }
             LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
             LdapSession::ApiToken(apit) => {
                 let entry = self

@@ -729,7 +729,10 @@ impl Account {
                     return Ok(Some(LdapBoundToken {
                         spn: self.spn.clone(),
                         session_id,
-                        effective_session: LdapSession::UnixBind(self.uuid),
+                        effective_session: LdapSession::ApplicationPasswordBind(
+                            application.uuid,
+                            self.uuid,
+                        ),
                     }));
                 }
             }

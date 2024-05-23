@@ -38,6 +38,7 @@ pub enum LdapSession {
     UnixBind(Uuid),
     UserAuthToken(UserAuthToken),
     ApiToken(ApiToken),
+    ApplicationPasswordBind(Uuid, Uuid),
 }
 
 #[derive(Debug, Clone)]
