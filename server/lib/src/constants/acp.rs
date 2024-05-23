@@ -1143,7 +1143,7 @@ lazy_static! {
         name: "idm_people_self_acp_write_mail",
         uuid: UUID_IDM_ACP_PEOPLE_SELF_WRITE_MAIL,
         description: "Builtin IDM Control for self write of mail for people accounts.",
-        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_WRITE_MAIL]),
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_MAIL_WRITE]),
         target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Person).clone(),
             match_class_filter!(EntryClass::Account).clone(),
@@ -1231,6 +1231,39 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_SELF_WRITE_DL7: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_write",
+        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write - required for people to update their own credentials in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::UserAuthTokenSession,
+        ],
+        modify_present_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SELF_NAME_WRITE_V1: BuiltinAcp = BuiltinAcp{
         name: "idm_acp_self_name_write",
         uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
@@ -1247,6 +1280,36 @@ lazy_static! {
         ],
         modify_present_attrs: vec![
             Attribute::Name,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SELF_NAME_WRITE_DL7: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_name_write",
+        uuid: UUID_IDM_ACP_SELF_NAME_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write of name - required for people to update their own identities in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_PEOPLE_SELF_NAME_WRITE] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::SelfUuid,
+            match_class_filter!(EntryClass::Person).clone(),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone(),
+        ])),
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::LegalName,
         ],
         ..Default::default()
     };
