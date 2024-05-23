@@ -178,6 +178,18 @@ lazy_static! {
         ..Default::default()
     };
 
+    /// Builtin IDM Group for granting people the ability to write to their own name attributes.
+    pub static ref BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_name_write",
+        description: "Builtin IDM Group denoting users that can write to their own name attributes.",
+        uuid: UUID_IDM_PEOPLE_SELF_NAME_WRITE,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![
+            UUID_IDM_ALL_PERSONS
+        ],
+        ..Default::default()
+    };
+
     pub static ref BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS: BuiltinGroup = BuiltinGroup {
         name: "idm_service_account_admins",
         description: "Builtin Service Account Administration Group.",
@@ -250,7 +262,16 @@ lazy_static! {
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail",
         description: "Builtin IDM Group for people accounts to update their own mail.",
-        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL,
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
+        members: Vec::new(),
+        ..Default::default()
+    };
+
+    /// Self-write of mail
+    pub static ref IDM_PEOPLE_SELF_MAIL_WRITE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_mail_write",
+        description: "Builtin IDM Group for people accounts to update their own mail.",
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
         members: Vec::new(),
         ..Default::default()
     };
