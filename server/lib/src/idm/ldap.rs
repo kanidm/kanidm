@@ -650,6 +650,7 @@ mod tests {
 
     use super::{LdapServer, LdapSession};
     use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::idm::server::IdmServerTransaction;
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -682,6 +683,23 @@ mod tests {
             .unwrap()
             .unwrap();
         assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        {
+            let mut idms_prox_read = idms.proxy_read().await;
+            let ident = idms_prox_read.validate_ldap_session(
+                &admin_t.effective_session,
+                Source::Internal,
+                duration_from_epoch_now(),
+            );
+            assert!(ident.is_ok());
+            let ident = ident.unwrap();
+            assert!(matches!(ident.origin, IdentType::User(_)));
+            let identity_id = IdentityId::from(&ident.origin);
+            match identity_id {
+                IdentityId::User(uuid) => assert!(uuid == UUID_ADMIN),
+                _ => assert!(false),
+            }
+        }
+
         let admin_t = ldaps
             .do_bind(idms, "admin@example.com", TEST_PASSWORD)
             .await

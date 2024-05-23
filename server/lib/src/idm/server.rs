@@ -686,22 +686,10 @@ pub trait IdmServerTransaction<'a> {
     ) -> Result<Identity, OperationError> {
         match session {
             LdapSession::UnixBind(uuid) => {
-                let anon_entry = self
-                    .get_qs_txn()
-                    .internal_search_uuid(UUID_ANONYMOUS)
-                    .map_err(|e| {
-                        admin_error!("Failed to validate ldap session -> {:?}", e);
-                        e
-                    })?;
-
-                let entry = if *uuid == UUID_ANONYMOUS {
-                    anon_entry.clone()
-                } else {
-                    self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
-                        admin_error!("Failed to start auth ldap -> {:?}", e);
-                        e
-                    })?
-                };
+                let entry = self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
+                    admin_error!("Failed to start auth ldap -> {:?}", e);
+                    e
+                })?;
 
                 if Account::check_within_valid_time(
                     ct,
@@ -717,7 +705,7 @@ pub trait IdmServerTransaction<'a> {
                     let session_id = Uuid::new_v4();
 
                     Ok(Identity {
-                        origin: IdentType::User(IdentUser { entry: anon_entry }),
+                        origin: IdentType::User(IdentUser { entry }),
                         source,
                         session_id,
                         scope: AccessScope::ReadOnly,
