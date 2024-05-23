@@ -231,6 +231,11 @@ mod tests {
             Attribute::DirectMemberOf,
             Value::Refer(UUID_IDM_ALL_ACCOUNTS),
         );
+        // Indirectly via all persons
+        e.add_ava(
+            Attribute::MemberOf,
+            Value::Refer(UUID_IDM_PEOPLE_SELF_NAME_WRITE),
+        );
         // we also add the name_history ava!
         e.add_ava(
             Attribute::NameHistory,
