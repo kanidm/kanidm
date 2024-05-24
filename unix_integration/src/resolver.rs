@@ -66,6 +66,7 @@ pub struct Resolver {
     hmac_key: HmacKey,
 
     // A local passwd/shadow resolver.
+
     // A set of remote resolvers
     client: Box<dyn IdProvider + Sync + Send>,
 
@@ -146,14 +147,11 @@ impl Resolver {
             })?;
 
         // Ask the client what keys it wants the HSM to configure.
-        // make a key store
-        // let mut ks = KeyStore::new(&mut dbtxn);
 
         let result = client
             .configure_hsm_keys(&mut (&mut dbtxn).into(), hsm_lock.deref_mut(), &machine_key)
             .await;
 
-        // drop(ks);
         drop(hsm_lock);
 
         result.map_err(|err| {
