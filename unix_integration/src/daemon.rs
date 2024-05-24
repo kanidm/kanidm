@@ -191,7 +191,7 @@ async fn handle_task_client(
 
 async fn handle_client(
     sock: UnixStream,
-    cachelayer: Arc<Resolver<KanidmProvider>>,
+    cachelayer: Arc<Resolver>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
@@ -431,9 +431,7 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(
-    cachelayer: &Resolver<KanidmProvider>,
-) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -925,7 +923,7 @@ async fn main() -> ExitCode {
 
             let cl_inner = match Resolver::new(
                 db,
-                idprovider,
+                Box::new(idprovider),
                 hsm,
                 machine_key,
                 cfg.cache_timeout,

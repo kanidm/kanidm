@@ -40,7 +40,7 @@ where
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient) {
+async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
     sketching::test_init();
 
     let mut counter = 0;
@@ -125,7 +125,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
 
     let cachelayer = Resolver::new(
         db,
-        idprovider,
+        Box::new(idprovider),
         hsm,
         machine_key,
         300,

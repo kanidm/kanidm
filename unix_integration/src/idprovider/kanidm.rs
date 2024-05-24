@@ -85,9 +85,9 @@ impl From<UnixGroupToken> for GroupToken {
 
 #[async_trait]
 impl IdProvider for KanidmProvider {
-    async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
+    async fn configure_hsm_keys(
         &self,
-        keystore: &mut D,
+        keystore: &mut KeyStoreTxn,
         tpm: &mut tpm::BoxedDynTpm,
         machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
@@ -191,11 +191,11 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_online_auth_init<D: KeyStoreTxn + Send>(
+    async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
@@ -204,12 +204,12 @@ impl IdProvider for KanidmProvider {
         Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
-    async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(
+    async fn unix_user_online_auth_step(
         &self,
         account_id: &str,
         cred_handler: &mut AuthCredHandler,
         pam_next_req: PamAuthRequest,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
@@ -293,23 +293,23 @@ impl IdProvider for KanidmProvider {
         }
     }
 
-    async fn unix_user_offline_auth_init<D: KeyStoreTxn + Send>(
+    async fn unix_user_offline_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError> {
         // Not sure that I need to do much here?
         Ok((AuthRequest::Password, AuthCredHandler::Password))
     }
 
-    async fn unix_user_offline_auth_step<D: KeyStoreTxn + Send>(
+    async fn unix_user_offline_auth_step(
         &self,
         _account_id: &str,
         _token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _online_at_init: bool,

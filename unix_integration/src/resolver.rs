@@ -58,16 +58,17 @@ pub enum AuthSession {
     Denied,
 }
 
-pub struct Resolver<I>
-where
-    I: IdProvider + Sync,
-{
+pub struct Resolver {
     // Generic / modular types.
     db: Db,
     hsm: Mutex<BoxedDynTpm>,
     machine_key: MachineKey,
     hmac_key: HmacKey,
-    client: I,
+
+    // A local passwd/shadow resolver.
+    // A set of remote resolvers
+    client: Box<dyn IdProvider + Sync + Send>,
+
     // Types to update still.
     state: Mutex<CacheState>,
     pam_allow_groups: BTreeSet<String>,
@@ -92,14 +93,11 @@ impl Display for Id {
     }
 }
 
-impl<I> Resolver<I>
-where
-    I: IdProvider + Sync,
-{
+impl Resolver {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         db: Db,
-        client: I,
+        client: Box<dyn IdProvider + Sync + Send>,
         hsm: BoxedDynTpm,
         machine_key: MachineKey,
         // cache timeout
@@ -152,7 +150,7 @@ where
         // let mut ks = KeyStore::new(&mut dbtxn);
 
         let result = client
-            .configure_hsm_keys(&mut dbtxn, hsm_lock.deref_mut(), &machine_key)
+            .configure_hsm_keys(&mut (&mut dbtxn).into(), hsm_lock.deref_mut(), &machine_key)
             .await;
 
         // drop(ks);
@@ -900,7 +898,7 @@ where
                 .unix_user_online_auth_init(
                     account_id,
                     token.as_ref(),
-                    &mut dbtxn,
+                    &mut (&mut dbtxn).into(),
                     hsm_lock.deref_mut(),
                     &self.machine_key,
                     &shutdown_rx,
@@ -911,7 +909,7 @@ where
 
             // Can the auth proceed offline?
             self.client
-                .unix_user_offline_auth_init(account_id, token.as_ref(), &mut dbtxn)
+                .unix_user_offline_auth_init(account_id, token.as_ref(), &mut (&mut dbtxn).into())
                 .await
         };
 
@@ -972,7 +970,7 @@ where
                         account_id,
                         cred_handler,
                         pam_next_req,
-                        &mut dbtxn,
+                        &mut (&mut dbtxn).into(),
                         hsm_lock.deref_mut(),
                         &self.machine_key,
                         shutdown_rx,
@@ -1077,7 +1075,7 @@ where
                                 token,
                                 cred_handler,
                                 pam_next_req,
-                                &mut dbtxn,
+                                &mut (&mut dbtxn).into(),
                                 hsm_lock.deref_mut(),
                                 &self.machine_key,
                                 online_at_init,

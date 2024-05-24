@@ -104,18 +104,6 @@ pub trait CacheTxn {
     fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError>;
 }
 
-pub trait KeyStoreTxn {
-    fn get_tagged_hsm_key<K: DeserializeOwned>(
-        &mut self,
-        tag: &str,
-    ) -> Result<Option<K>, CacheError>;
-
-    fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K)
-        -> Result<(), CacheError>;
-
-    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError>;
-}
-
 pub struct Db {
     conn: Mutex<Connection>,
     crypto_policy: CryptoPolicy,
@@ -125,6 +113,16 @@ pub struct DbTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
     crypto_policy: &'a CryptoPolicy,
+}
+
+pub struct KeyStoreTxn<'a, 'b> {
+    db: &'b mut DbTxn<'a>,
+}
+
+impl<'a, 'b> From<&'b mut DbTxn<'a>> for KeyStoreTxn<'a, 'b> {
+    fn from(db: &'b mut DbTxn<'a>) -> Self {
+        Self { db }
+    }
 }
 
 #[derive(Debug)]
@@ -312,7 +310,28 @@ impl<'a> DbTxn<'a> {
     }
 }
 
-impl<'a> KeyStoreTxn for DbTxn<'a> {
+impl<'a, 'b> KeyStoreTxn<'a, 'b> {
+    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
+        &mut self,
+        tag: &str,
+    ) -> Result<Option<K>, CacheError> {
+        self.db.get_tagged_hsm_key(tag)
+    }
+
+    pub fn insert_tagged_hsm_key<K: Serialize>(
+        &mut self,
+        tag: &str,
+        key: &K,
+    ) -> Result<(), CacheError> {
+        self.db.insert_tagged_hsm_key(tag, key)
+    }
+
+    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError> {
+        self.db.delete_tagged_hsm_key(tag)
+    }
+}
+
+impl<'a> DbTxn<'a> {
     fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
         tag: &str,
