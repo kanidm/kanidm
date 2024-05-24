@@ -693,6 +693,55 @@ pub trait IdmServerTransaction<'a> {
         })
     }
 
+    fn process_uuid_to_identity(
+        &mut self,
+        uuid: &Uuid,
+        ct: Duration,
+        source: Source,
+    ) -> Result<Identity, OperationError> {
+        let anon_entry = self
+            .get_qs_txn()
+            .internal_search_uuid(UUID_ANONYMOUS)
+            .map_err(|e| {
+                admin_error!("Failed to validate ldap session -> {:?}", e);
+                e
+            })?;
+
+        let entry = if *uuid == UUID_ANONYMOUS {
+            anon_entry.clone()
+        } else {
+            self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
+                admin_error!("Failed to start auth ldap -> {:?}", e);
+                e
+            })?
+        };
+
+        if Account::check_within_valid_time(
+            ct,
+            entry
+                .get_ava_single_datetime(Attribute::AccountValidFrom)
+                .as_ref(),
+            entry
+                .get_ava_single_datetime(Attribute::AccountExpire)
+                .as_ref(),
+        ) {
+            // Good to go
+            let limits = Limits::default();
+            let session_id = Uuid::new_v4();
+
+            Ok(Identity {
+                origin: IdentType::User(IdentUser { entry: anon_entry }),
+                source,
+                session_id,
+                scope: AccessScope::ReadOnly,
+                limits,
+            })
+        } else {
+            // Nope, expired
+            Err(OperationError::SessionExpired)
+        }
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &mut self,
@@ -701,49 +750,7 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         match session {
-            LdapSession::UnixBind(uuid) => {
-                let anon_entry = self
-                    .get_qs_txn()
-                    .internal_search_uuid(UUID_ANONYMOUS)
-                    .map_err(|e| {
-                        admin_error!("Failed to validate ldap session -> {:?}", e);
-                        e
-                    })?;
-
-                let entry = if *uuid == UUID_ANONYMOUS {
-                    anon_entry.clone()
-                } else {
-                    self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
-                        admin_error!("Failed to start auth ldap -> {:?}", e);
-                        e
-                    })?
-                };
-
-                if Account::check_within_valid_time(
-                    ct,
-                    entry
-                        .get_ava_single_datetime(Attribute::AccountValidFrom)
-                        .as_ref(),
-                    entry
-                        .get_ava_single_datetime(Attribute::AccountExpire)
-                        .as_ref(),
-                ) {
-                    // Good to go
-                    let limits = Limits::default();
-                    let session_id = Uuid::new_v4();
-
-                    Ok(Identity {
-                        origin: IdentType::User(IdentUser { entry: anon_entry }),
-                        source,
-                        session_id,
-                        scope: AccessScope::ReadOnly,
-                        limits,
-                    })
-                } else {
-                    // Nope, expired
-                    Err(OperationError::SessionExpired)
-                }
-            }
+            LdapSession::UnixBind(uuid) => self.process_uuid_to_identity(uuid, ct, source),
             LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
             LdapSession::ApiToken(apit) => {
                 let entry = self
