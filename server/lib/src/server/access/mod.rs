@@ -235,28 +235,28 @@ pub trait AccessControlsTransaction<'a> {
         // }
     }
 
-    // Contains all the way to eval acps to entries
-    #[instrument(level = "debug", name = "access::search_filter_entries", skip_all)]
-    fn search_filter_entries(
+    #[instrument(level = "debug", name = "access::filter_entries", skip_all)]
+    fn filter_entries(
         &self,
-        se: &SearchEvent,
+        ident: &Identity,
+        filter_orig: &Filter<FilterValid>,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         // Prepare some shared resources.
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
-        let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
+        let requested_attrs: BTreeSet<&str> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp = self.search_related_acp(&se.ident);
+        let related_acp = self.search_related_acp(ident);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
-                match apply_search_access(&se.ident, related_acp.as_slice(), e) {
+                match apply_search_access(ident, related_acp.as_slice(), e) {
                     SearchResult::Denied => false,
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
@@ -283,6 +283,16 @@ pub trait AccessControlsTransaction<'a> {
         }
 
         Ok(allowed_entries)
+    }
+
+    // Contains all the way to eval acps to entries
+    #[inline(always)]
+    fn search_filter_entries(
+        &self,
+        se: &SearchEvent,
+        entries: Vec<Arc<EntrySealedCommitted>>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.filter_entries(&se.ident, &se.filter_orig, entries)
     }
 
     #[instrument(
