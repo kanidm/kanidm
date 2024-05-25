@@ -274,7 +274,7 @@ impl ServerConfig {
                     self.origin = Some(value.to_string());
                 }
                 "DB_PATH" => {
-                    self.origin = Some(value.to_string());
+                    self.db_path = Some(value.to_string());
                 }
                 "TLS_CHAIN" => {
                     self.tls_chain = Some(value.to_string());
