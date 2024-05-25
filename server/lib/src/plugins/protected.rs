@@ -107,7 +107,7 @@ impl Plugin for Protected {
                 if a == Attribute::Class.as_ref()
                     && PROTECTED_ENTRYCLASSES.iter().any(|c| v == &c.to_value())
                 {
-                    admin_warn!("Rejecting operationl during pre_modify check");
+                    admin_warn!("Rejecting operation during pre_modify check");
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     Ok(())
