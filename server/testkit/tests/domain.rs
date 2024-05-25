@@ -1,18 +1,17 @@
 use kanidm_client::KanidmClient;
 use kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
-use kanidmd_testkit::{IDM_ADMIN_TEST_PASSWORD, IDM_ADMIN_TEST_USER};
 
 #[kanidmd_testkit::test]
 async fn test_idm_set_ldap_allow_unix_password_bind(rsclient: KanidmClient) {
     rsclient
-        .auth_simple_password(IDM_ADMIN_TEST_USER, IDM_ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await
         .expect("Failed to login as admin");
     rsclient
         .idm_set_ldap_allow_unix_password_bind(true)
         .await
-        .expect("Failed to set ldap allow unix password bind to true");
+        .expect("Failed to set LDAP allow unix password bind to true");
 }
 #[kanidmd_testkit::test]
 async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
