@@ -1955,7 +1955,7 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_put_request(
             &format!("{}{}", "/v1/domain/_attr/", ATTR_LDAP_ALLOW_UNIX_PW_BIND),
-            vec![enable],
+            vec![enable.to_string()],
         )
         .await
     }

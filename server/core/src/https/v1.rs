@@ -2411,23 +2411,9 @@ pub async fn domain_attr_put(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(attr): Path<String>,
-    Json(values): Json<Vec<serde_json::Value>>,
+    Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
-
-    let values: Vec<String> = values
-        .into_iter()
-        .map(|v| {
-            #[allow(clippy::expect_used)]
-            if v.is_boolean() {
-                v.as_bool()
-                    .map(|b| b.to_string())
-                    .expect("Failed to un-wrap thing we already identified as a boolean!")
-            } else {
-                v.as_str().unwrap().to_string()
-            }
-        })
-        .collect::<Vec<_>>();
 
     json_rest_event_put_attr(
         state,
