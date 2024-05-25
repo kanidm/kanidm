@@ -82,7 +82,7 @@ impl Plugin for Protected {
                 .iter()
                 .any(|c| cand.attribute_equality(Attribute::Class, &c.to_partialvalue()))
             {
-                admin_warn!("Rejecting operation during pre_create check");
+                trace!("Rejecting operation during pre_create check");
                 Err(OperationError::SystemProtectedObject)
             } else {
                 Ok(())
@@ -107,7 +107,7 @@ impl Plugin for Protected {
                 if a == Attribute::Class.as_ref()
                     && PROTECTED_ENTRYCLASSES.iter().any(|c| v == &c.to_value())
                 {
-                    admin_warn!("Rejecting operation during pre_modify check");
+                    trace!("Rejecting operation during pre_modify check");
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     Ok(())
@@ -184,7 +184,7 @@ impl Plugin for Protected {
                     if a == Attribute::Class.as_ref()
                         && PROTECTED_ENTRYCLASSES.iter().any(|c| v == &c.to_value())
                     {
-                        admin_warn!("Rejecting operation during pre_batch_modify check");
+                        trace!("Rejecting operation during pre_batch_modify check");
                         Err(OperationError::SystemProtectedObject)
                     } else {
                         Ok(())
@@ -262,7 +262,7 @@ impl Plugin for Protected {
                 .iter()
                 .any(|c| cand.attribute_equality(Attribute::Class, &c.to_partialvalue()))
             {
-                admin_warn!("Rejecting operation during pre_delete check");
+                trace!("Rejecting operation during pre_delete check");
                 Err(OperationError::SystemProtectedObject)
             } else {
                 Ok(())
