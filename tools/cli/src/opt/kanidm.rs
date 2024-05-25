@@ -782,8 +782,8 @@ pub struct ReauthOpt {
 pub struct LogoutOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long, hide = true)]
-    /// Do not send the logout to the server - only remove the session token locally
+    #[clap(short, long)]
+    /// Do not send a logout request to the server - only remove the session token locally.
     local_only: bool,
 }
 
