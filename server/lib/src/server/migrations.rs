@@ -193,7 +193,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_migrate_or_create_ignore_attrs(e, &[])
     }
 
-    /// This is the same as [internal_migrate_or_create] but it will ignore the specified
+    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create] but it will ignore the specified
     /// list of attributes, so that if an admin has modified those values then we don't
     /// stomp them.
     #[instrument(level = "trace", skip_all)]

@@ -1604,6 +1604,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
+            trace!("Unable to use anonymous to change UNIX account password");
             return Err(OperationError::SystemProtectedObject);
         }
 
