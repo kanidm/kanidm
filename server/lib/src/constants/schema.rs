@@ -690,6 +690,14 @@ pub static ref SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6: SchemaAttribute = Sc
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_PATCH_LEVEL_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_PATCH_LEVEL,
+    name: Attribute::PatchLevel.into(),
+    description: "".to_string(),
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -1074,6 +1082,7 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL7: SchemaClass = SchemaClass {
         Attribute::DomainSsid.into(),
         Attribute::DomainLdapBasedn.into(),
         Attribute::LdapAllowUnixPwBind.into(),
+        Attribute::PatchLevel.into(),
     ],
     systemmust: vec![
         Attribute::Name.into(),

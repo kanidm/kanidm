@@ -149,6 +149,7 @@ pub const ATTR_OBJECTCLASS: &str = "objectclass";
 pub const ATTR_OTHER_NO_INDEX: &str = "other-no-index";
 pub const ATTR_PASSKEYS: &str = "passkeys";
 pub const ATTR_PASSWORD_IMPORT: &str = "password_import";
+pub const ATTR_PATCH_LEVEL: &str = "patch_level";
 pub const ATTR_PHANTOM: &str = "phantom";
 pub const ATTR_PRIMARY_CREDENTIAL: &str = "primary_credential";
 pub const ATTR_TOTP_IMPORT: &str = "totp_import";

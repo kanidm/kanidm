@@ -72,6 +72,7 @@ pub struct DomainInfo {
     pub(crate) d_name: String,
     pub(crate) d_display: String,
     pub(crate) d_vers: DomainVersion,
+    pub(crate) d_patch_level: u32,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
 }
 
@@ -191,6 +192,8 @@ pub trait QueryServerTransaction<'a> {
     fn denied_names(&self) -> &HashSet<String>;
 
     fn get_domain_version(&self) -> DomainVersion;
+
+    fn get_domain_patch_level(&self) -> u32;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -1067,6 +1070,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         self.d_info.d_vers
     }
 
+    fn get_domain_patch_level(&self) -> u32 {
+        self.d_info.d_patch_level
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1213,6 +1220,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         self.d_info.d_vers
     }
 
+    fn get_domain_patch_level(&self) -> u32 {
+        self.d_info.d_patch_level
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1256,6 +1267,7 @@ impl QueryServer {
             // Start with our level as zero.
             // This will be reloaded from the DB shortly :)
             d_vers: DOMAIN_LEVEL_0,
+            d_patch_level: 0,
             d_name: domain_name.clone(),
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
@@ -1786,25 +1798,37 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_domain_info_version(&mut self) -> Result<(), OperationError> {
-        let domain_info_version = self
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_uint32(Attribute::Version)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|err| {
-                error!(?err, "Error getting domain version");
-                err
+        let domain_info = self.internal_search_uuid(UUID_DOMAIN_INFO).map_err(|err| {
+            error!(?err, "Error getting domain info");
+            err
+        })?;
+
+        let domain_info_version = domain_info
+            .get_ava_single_uint32(Attribute::Version)
+            .ok_or_else(|| {
+                error!("domain info missing attribute version");
+                OperationError::InvalidEntryState
             })?;
+
+        let domain_info_patch_level = domain_info
+            .get_ava_single_uint32(Attribute::PatchLevel)
+            .unwrap_or(0);
 
         // We have to set the domain version here so that features which check for it
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
         let mut_d_info = self.d_info.get_mut();
         let previous_version = mut_d_info.d_vers;
+        let previous_patch_level = mut_d_info.d_patch_level;
         mut_d_info.d_vers = domain_info_version;
+        mut_d_info.d_patch_level = domain_info_patch_level;
 
-        if previous_version == domain_info_version || *self.phase < ServerPhase::DomainInfoReady {
+        // We must both be at the correct domain version *and* the correct patch level. If we are
+        // not, then we only proceed to migrate *if* our server boot phase is correct.
+        if (previous_version == domain_info_version
+            && previous_patch_level == domain_info_patch_level)
+            || *self.phase < ServerPhase::DomainInfoReady
+        {
             return Ok(());
         }
 
@@ -1828,6 +1852,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if previous_version <= DOMAIN_LEVEL_6 && domain_info_version >= DOMAIN_LEVEL_7 {
             self.migrate_domain_6_to_7()?;
+        }
+
+        // Similar to the older system info migration handler, these allow "one shot" fixes
+        // to be issued and run by bumping the patch level.
+        if previous_patch_level <= PATCH_LEVEL_1 && domain_info_patch_level >= PATCH_LEVEL_1 {
+            self.migrate_domain_patch_level_1()?;
         }
 
         if previous_version <= DOMAIN_LEVEL_7 && domain_info_version >= DOMAIN_LEVEL_8 {

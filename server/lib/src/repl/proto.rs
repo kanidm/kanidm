@@ -752,6 +752,8 @@ pub enum ReplIncrementalContext {
     UnwillingToSupply,
     V1 {
         domain_version: DomainVersion,
+        #[serde(default)]
+        domain_patch_level: u32,
         domain_uuid: Uuid,
         // We need to send the current state of the ranges to populate into
         // the ranges so that lookups and ranges work properly, and the

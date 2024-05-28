@@ -145,6 +145,7 @@ pub enum Attribute {
     OtherNoIndex,
     PassKeys,
     PasswordImport,
+    PatchLevel,
     Phantom,
     PrimaryCredential,
     PrivateCookieKey,
@@ -341,6 +342,7 @@ impl TryFrom<String> for Attribute {
             ATTR_OTHER_NO_INDEX => Attribute::OtherNoIndex,
             ATTR_PASSKEYS => Attribute::PassKeys,
             ATTR_PASSWORD_IMPORT => Attribute::PasswordImport,
+            ATTR_PATCH_LEVEL => Attribute::PatchLevel,
             ATTR_PHANTOM => Attribute::Phantom,
             ATTR_PRIMARY_CREDENTIAL => Attribute::PrimaryCredential,
             ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
@@ -512,6 +514,7 @@ impl From<Attribute> for &'static str {
             Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
             Attribute::PassKeys => ATTR_PASSKEYS,
             Attribute::PasswordImport => ATTR_PASSWORD_IMPORT,
+            Attribute::PatchLevel => ATTR_PATCH_LEVEL,
             Attribute::Phantom => ATTR_PHANTOM,
             Attribute::PrimaryCredential => ATTR_PRIMARY_CREDENTIAL,
             Attribute::PrivateCookieKey => ATTR_PRIVATE_COOKIE_KEY,
@@ -788,7 +791,7 @@ lazy_static! {
             Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        (Attribute::Version, Value::Uint32(19))
+        (Attribute::Version, Value::Uint32(20))
     );
 
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(

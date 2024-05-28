@@ -296,6 +296,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
             ReplIncrementalContext::V1 {
                 domain_version,
+                domain_patch_level,
                 domain_uuid,
                 ranges,
                 schema_entries,
@@ -303,6 +304,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 entries,
             } => self.consumer_apply_changes_v1(
                 *domain_version,
+                *domain_patch_level,
                 *domain_uuid,
                 ranges,
                 schema_entries,
@@ -316,6 +318,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn consumer_apply_changes_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
+        ctx_domain_patch_level: u32,
         ctx_domain_uuid: Uuid,
         ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: &[ReplIncrementalEntryV1],
@@ -327,6 +330,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
             error!("Unable to proceed with consumer incremental - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        };
+
+        let domain_patch_level = self.get_domain_patch_level();
+
+        if ctx_domain_patch_level != domain_patch_level {
+            error!("Unable to proceed with consumer incremental - incoming domain patch level is not equal to our patch level. {} != {}", ctx_domain_patch_level, domain_patch_level);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         };
 
