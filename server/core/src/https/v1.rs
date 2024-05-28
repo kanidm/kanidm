@@ -344,6 +344,15 @@ pub async fn json_rest_event_post_id_attr(
         .map_err(WebError::from)
 }
 
+// Okay, so a put normally needs
+///  * filter of what we are working on (id + class)
+///  * a `Map<String, Vec<String>>` that we turn into a modlist.
+///
+/// OR
+///  * filter of what we are working on (id + class)
+///  * a `Vec<String>` that we are changing
+///  * the attr name  (as a param to this in path)
+///
 pub async fn json_rest_event_put_attr(
     state: ServerState,
     id: String,
@@ -376,27 +385,6 @@ pub async fn json_rest_event_post_attr(
         .await
         .map(Json::from)
         .map_err(WebError::from)
-}
-
-// Okay, so a put normally needs
-///  * filter of what we are working on (id + class)
-///  * a `Map<String, Vec<String>>` that we turn into a modlist.
-///
-/// OR
-///  * filter of what we are working on (id + class)
-///  * a `Vec<String>` that we are changing
-///  * the attr name  (as a param to this in path)
-///
-pub async fn json_rest_event_put_id_attr(
-    state: ServerState,
-    id: String,
-    attr: String,
-    filter: Filter<FilterInvalid>,
-    values: Vec<String>,
-    kopid: KOpId,
-    client_auth_info: ClientAuthInfo,
-) -> Result<Json<()>, WebError> {
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 pub async fn json_rest_event_delete_id_attr(
@@ -2304,7 +2292,7 @@ pub async fn group_id_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
@@ -2426,6 +2414,7 @@ pub async fn domain_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
+
     json_rest_event_put_attr(
         state,
         STR_UUID_DOMAIN_INFO.to_string(),

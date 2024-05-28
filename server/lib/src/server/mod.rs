@@ -315,10 +315,36 @@ pub trait QueryServerTransaction<'a> {
 
         let lims = ee.get_limits();
 
-        be_txn.exists(lims, &vfr).map_err(|e| {
-            admin_error!(?e, "backend failure");
-            OperationError::Backend
-        })
+        if ee.ident.is_internal() {
+            // We take a fast-path on internal because we can skip loading entries
+            // at all in this case.
+            be_txn.exists(lims, &vfr).map_err(|e| {
+                admin_error!(?e, "backend failure");
+                OperationError::Backend
+            })
+        } else {
+            // For external idents, we need to load the entries else we can't apply
+            // access controls to them.
+            let res = self.get_be_txn().search(lims, &vfr).map_err(|e| {
+                admin_error!(?e, "backend failure");
+                OperationError::Backend
+            })?;
+
+            // ⚠️  Compare / Exists is annoying security wise. It has the
+            // capability to easily leak information based on comparisons
+            // that have been made. In the external account case, we need
+            // to filter entries as a result.
+
+            // Apply ACP before we return the bool state.
+            let access = self.get_accesscontrols();
+            access
+                .filter_entries(&ee.ident, &ee.filter_orig, res)
+                .map_err(|e| {
+                    admin_error!(?e, "Unable to access filter entries");
+                    e
+                })
+                .map(|entries| !entries.is_empty())
+        }
     }
 
     fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {

@@ -34,6 +34,7 @@ This is a list of supported features and standards within Kanidm.
   - search
   - filter
   - whoami
+  - compare
 - LDAPS (LDAP over TLS)
 
 # OAuth2 / OpenID Connect

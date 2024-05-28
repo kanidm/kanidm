@@ -25,9 +25,12 @@ use std::path::Path;
 use std::time::Duration;
 
 use compact_jwt::Jwk;
+
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KVERSION,
+    APPLICATION_JSON, ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID,
+    ATTR_ENTRY_MANAGED_BY, ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME,
+    CLIENT_TOKEN_CACHE, KOPID, KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
@@ -71,6 +74,7 @@ pub enum ClientError {
     ConfigParseIssue(String),
     CertParseIssue(String),
     UntrustedCertificate(String),
+    InvalidRequest(String),
 }
 
 /// Settings describing a single instance.
@@ -864,6 +868,10 @@ impl KanidmClient {
 
         match response.status() {
             reqwest::StatusCode::OK => {}
+            reqwest::StatusCode::UNPROCESSABLE_ENTITY => {
+                return Err(ClientError::InvalidRequest(format!("Something about the request content was invalid, check the server logs for further information. Operation ID: {} Error: {:?}",opid, response.text().await.ok() )))
+            }
+
             unexpect => {
                 return Err(ClientError::Http(
                     unexpect,
@@ -1927,16 +1935,16 @@ impl KanidmClient {
         new_display_name: &str,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            "/v1/domain/_attr/domain_display_name",
-            vec![new_display_name.to_string()],
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_DISPLAY_NAME),
+            vec![new_display_name],
         )
         .await
     }
 
     pub async fn idm_domain_set_ldap_basedn(&self, new_basedn: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            "/v1/domain/_attr/domain_ldap_basedn",
-            vec![new_basedn.to_string()],
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_LDAP_BASEDN),
+            vec![new_basedn],
         )
         .await
     }
@@ -1945,12 +1953,15 @@ impl KanidmClient {
         &self,
         enable: bool,
     ) -> Result<(), ClientError> {
-        self.perform_put_request("/v1/domain/_attr/ldap_allow_unix_pw_bind", vec![enable])
-            .await
+        self.perform_put_request(
+            &format!("{}{}", "/v1/domain/_attr/", ATTR_LDAP_ALLOW_UNIX_PW_BIND),
+            vec![enable.to_string()],
+        )
+        .await
     }
 
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
-        self.perform_get_request("/v1/domain/_attr/domain_ssid")
+        self.perform_get_request(&format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID))
             .await
             .and_then(|mut r: Vec<String>|
                 // Get the first result
@@ -1961,13 +1972,16 @@ impl KanidmClient {
     }
 
     pub async fn idm_domain_set_ssid(&self, ssid: &str) -> Result<(), ClientError> {
-        self.perform_put_request("/v1/domain/_attr/domain_ssid", vec![ssid.to_string()])
-            .await
+        self.perform_put_request(
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID),
+            vec![ssid.to_string()],
+        )
+        .await
     }
 
     pub async fn idm_domain_revoke_key(&self, key_id: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            "/v1/domain/_attr/key_action_revoke",
+            &format!("/v1/domain/_attr/{}", ATTR_KEY_ACTION_REVOKE),
             vec![key_id.to_string()],
         )
         .await

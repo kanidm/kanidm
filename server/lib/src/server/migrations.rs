@@ -219,13 +219,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
+        self.internal_migrate_or_create_ignore_attrs(e, &[])
+    }
+
+    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create] but it will ignore the specified
+    /// list of attributes, so that if an admin has modified those values then we don't
+    /// stomp them.
+    #[instrument(level = "trace", skip_all)]
+    pub fn internal_migrate_or_create_ignore_attrs(
+        &mut self,
+        mut e: Entry<EntryInit, EntryNew>,
+        attrs: &[Attribute],
+    ) -> Result<(), OperationError> {
+        trace!("operating on {:?}", e.get_uuid());
 
         let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
             return Err(OperationError::FilterGeneration);
         };
 
-        trace!("internal_migrate_or_create search {:?}", filt);
+        trace!("search {:?}", filt);
 
         let results = self.internal_search(filt.clone())?;
 
@@ -233,11 +245,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // It does not exist. Create it.
             self.internal_create(vec![e])
         } else if results.len() == 1 {
+            // For each ignored attr, we remove it from entry.
+            for attr in attrs.iter() {
+                e.remove_ava(*attr);
+            }
+
             // If the thing is subset, pass
             match e.gen_modlist_assert(&self.schema) {
                 Ok(modlist) => {
                     // Apply to &results[0]
-                    trace!("Generated modlist -> {:?}", modlist);
+                    trace!(?modlist);
                     self.internal_modify(&filt, &modlist)
                 }
                 Err(e) => Err(OperationError::SchemaViolation(e)),
@@ -651,7 +668,36 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        // Post schema changes.
+        // Update access controls
+        let idm_data = [
+            BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
+                .clone()
+                .try_into()?,
+            IDM_PEOPLE_SELF_MAIL_WRITE_DL7.clone().try_into()?,
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| {
+                self.internal_migrate_or_create_ignore_attrs(entry, &[Attribute::Member])
+            })
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        let idm_data = [
+            IDM_ACP_SELF_WRITE_DL7.clone().into(),
+            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
 
         Ok(())
     }

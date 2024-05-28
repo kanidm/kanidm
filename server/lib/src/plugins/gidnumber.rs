@@ -13,7 +13,7 @@ use crate::utils::uuid_to_gid_u32;
 /// system uids from 0 - 1000, and many others give user ids between 1000 to
 /// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
 ///
-/// Per https://systemd.io/UIDS-GIDS/, systemd claims a huge chunk of this
+/// Per <https://systemd.io/UIDS-GIDS/>, systemd claims a huge chunk of this
 /// space to itself. As a result we can't allocate between 65536 and u32 max
 /// because systemd takes most of the usable range for its own containers,
 /// and half the range is probably going to trigger linux kernel issues.

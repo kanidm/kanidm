@@ -24,6 +24,8 @@ use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 const ADMIN_TEST_USER: &str = "admin";
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
+const IDM_ADMIN_TEST_USER: &str = "idm_admin";
+const IDM_ADMIN_TEST_PASSWORD: &str = "integration test idm_admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
 const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
@@ -58,6 +60,8 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver<KanidmProvider>, KanidmClient)
     let int_config = Box::new(IntegrationTestConfig {
         admin_user: ADMIN_TEST_USER.to_string(),
         admin_password: ADMIN_TEST_PASSWORD.to_string(),
+        idm_admin_user: IDM_ADMIN_TEST_USER.to_string(),
+        idm_admin_password: IDM_ADMIN_TEST_PASSWORD.to_string(),
     });
 
     // Setup the config ...

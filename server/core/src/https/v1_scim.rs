@@ -3,7 +3,7 @@ use super::errors::WebError;
 use super::middleware::KOpId;
 use super::v1::{
     json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
-    json_rest_event_put_id_attr,
+    json_rest_event_put_attr,
 };
 use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
@@ -298,7 +298,7 @@ pub async fn sync_account_id_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 /// When you want the kitchen Sink

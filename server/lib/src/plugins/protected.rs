@@ -17,30 +17,47 @@ pub struct Protected {}
 
 lazy_static! {
     static ref ALLOWED_ATTRS: HashSet<Attribute> = {
-        let mut m = HashSet::with_capacity(32);
+        let attrs = vec![
         // Allow modification of some schema class types to allow local extension
         // of schema types.
-        //
-        m.insert(Attribute::Must);
-        m.insert(Attribute::May);
-        // Allow modification of some domain info types for local configuration.
-        m.insert(Attribute::DomainSsid);
-        m.insert(Attribute::DomainLdapBasedn);
-        m.insert(Attribute::FernetPrivateKeyStr);
-        m.insert(Attribute::Es256PrivateKeyDer);
-        m.insert(Attribute::KeyActionRevoke);
-        m.insert(Attribute::KeyActionRotate);
-        m.insert(Attribute::IdVerificationEcKey);
-        m.insert(Attribute::BadlistPassword);
-        m.insert(Attribute::DeniedName);
-        m.insert(Attribute::DomainDisplayName);
-        // Allow modification of account policy values for dyngroups
-        m.insert(Attribute::AuthSessionExpiry);
-        m.insert(Attribute::PrivilegeExpiry);
-        m.insert(Attribute::CredentialTypeMinimum);
-        m.insert(Attribute::WebauthnAttestationCaList);
+        Attribute::Must,
+        Attribute::May,
+        // modification of some domain info types for local configuratiomn.
+        Attribute::DomainSsid,
+        Attribute::DomainLdapBasedn,
+        Attribute::LdapAllowUnixPwBind,
+        Attribute::FernetPrivateKeyStr,
+        Attribute::Es256PrivateKeyDer,
+        Attribute::KeyActionRevoke,
+        Attribute::KeyActionRotate,
+        Attribute::IdVerificationEcKey,
+        Attribute::BadlistPassword,
+        Attribute::DeniedName,
+        Attribute::DomainDisplayName,
+        // modification of account policy values for dyngroup.
+        Attribute::AuthSessionExpiry,
+        Attribute::PrivilegeExpiry,
+        Attribute::CredentialTypeMinimum,
+        Attribute::WebauthnAttestationCaList,
+        ];
+
+        let mut m = HashSet::with_capacity(attrs.len());
+        m.extend(attrs);
+
         m
     };
+
+    static ref PROTECTED_ENTRYCLASSES: Vec<EntryClass> =
+        vec![
+            EntryClass::System,
+            EntryClass::DomainInfo,
+            EntryClass::SystemInfo,
+            EntryClass::SystemConfig,
+            EntryClass::DynGroup,
+            EntryClass::SyncObject,
+            EntryClass::Tombstone,
+            EntryClass::Recycled,
+        ];
 }
 
 impl Plugin for Protected {
@@ -61,14 +78,11 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
+            if PROTECTED_ENTRYCLASSES
+                .iter()
+                .any(|c| cand.attribute_equality(Attribute::Class, &c.to_partialvalue()))
             {
+                trace!("Rejecting operation during pre_create check");
                 Err(OperationError::SystemProtectedObject)
             } else {
                 Ok(())
@@ -91,15 +105,9 @@ impl Plugin for Protected {
         me.modlist.iter().try_fold((), |(), m| match m {
             Modify::Present(a, v) => {
                 if a == Attribute::Class.as_ref()
-                    && (v == &EntryClass::System.to_value()
-                        || v == &EntryClass::DomainInfo.to_value()
-                        || v == &EntryClass::SystemInfo.into()
-                        || v == &EntryClass::SystemConfig.to_value()
-                        || v == &EntryClass::DynGroup.to_value()
-                        || v == &EntryClass::SyncObject.to_value()
-                        || v == &EntryClass::Tombstone.to_value()
-                        || v == &EntryClass::Recycled.to_value())
+                    && PROTECTED_ENTRYCLASSES.iter().any(|c| v == &c.to_value())
                 {
+                    trace!("Rejecting operation during pre_modify check");
                     Err(OperationError::SystemProtectedObject)
                 } else {
                     Ok(())
@@ -144,7 +152,10 @@ impl Plugin for Protected {
                 let attr: Attribute = a.try_into()?;
                 match ALLOWED_ATTRS.contains(&attr) {
                     true => Ok(()),
-                    false => Err(OperationError::SystemProtectedObject),
+                    false => {
+                        trace!("If you're getting this, you need to modify the ALLOWED_ATTRS list");
+                        Err(OperationError::SystemProtectedObject)
+                    }
                 }
             } else {
                 // Was not a mod needing checking
@@ -171,15 +182,9 @@ impl Plugin for Protected {
             .try_fold((), |(), m| match m {
                 Modify::Present(a, v) => {
                     if a == Attribute::Class.as_ref()
-                        && (v == &EntryClass::System.to_value()
-                            || v == &EntryClass::DomainInfo.to_value()
-                            || v == &EntryClass::SystemInfo.to_value()
-                            || v == &EntryClass::SystemConfig.to_value()
-                            || v == &EntryClass::DynGroup.to_value()
-                            || v == &EntryClass::SyncObject.to_value()
-                            || v == &EntryClass::Tombstone.to_value()
-                            || v == &EntryClass::Recycled.to_value())
+                        && PROTECTED_ENTRYCLASSES.iter().any(|c| v == &c.to_value())
                     {
+                        trace!("Rejecting operation during pre_batch_modify check");
                         Err(OperationError::SystemProtectedObject)
                     } else {
                         Ok(())
@@ -227,7 +232,11 @@ impl Plugin for Protected {
                     let attr: Attribute = a.try_into()?;
                     match ALLOWED_ATTRS.contains(&attr) {
                         true => Ok(()),
-                        false => Err(OperationError::SystemProtectedObject),
+                        false => {
+
+                        trace!("Rejecting operation during pre_batch_modify check, if you're getting this check ALLOWED_ATTRS");
+                            Err(OperationError::SystemProtectedObject)
+                        },
                     }
                 } else {
                     // Was not a mod needing checking
@@ -249,14 +258,11 @@ impl Plugin for Protected {
         }
 
         cand.iter().try_fold((), |(), cand| {
-            if cand.attribute_equality(Attribute::Class, &EntryClass::System.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DomainInfo.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemInfo.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::SystemConfig.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::Recycled.into())
-                || cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into())
+            if PROTECTED_ENTRYCLASSES
+                .iter()
+                .any(|c| cand.attribute_equality(Attribute::Class, &c.to_partialvalue()))
             {
+                trace!("Rejecting operation during pre_delete check");
                 Err(OperationError::SystemProtectedObject)
             } else {
                 Ok(())
