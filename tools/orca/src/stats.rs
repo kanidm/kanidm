@@ -135,6 +135,22 @@ impl DataCollector for BasicStatistics {
                 OpKind::Other => {}
             }
         }
+
+        if readop_times.is_empty() && writeop_times.is_empty() {
+            error!("For some weird reason no read and write operations were recorded, exiting...");
+            return Err(Error::InvalidState);
+        }
+
+        if writeop_times.is_empty() {
+            error!("For some weird reason no write operations were recorded, exiting...");
+            return Err(Error::InvalidState);
+        }
+
+        if readop_times.is_empty() {
+            error!("For some weird reason no read operations were recorded, exiting...");
+            return Err(Error::InvalidState);
+        }
+
         let stats = StatsContainer::new(
             &readop_times,
             &writeop_times,
