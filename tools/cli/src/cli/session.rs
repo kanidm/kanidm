@@ -641,17 +641,20 @@ impl LogoutOpt {
                 Ok(j) => j,
                 Err(err) => {
                     error!(?err, "Unable to parse token");
+                    info!("The token can be removed locally with `--local-only`");
                     std::process::exit(1);
                 }
             };
 
             let Some(key_id) = jwsc.kid() else {
                 error!("Invalid token, missing KeyID");
+                info!("The token can be removed locally with `--local-only`");
                 std::process::exit(1);
             };
 
             let Some(pub_jwk) = token_instance.keys().get(key_id) else {
                 error!("Invalid instance, no signing keys are available");
+                info!("The token can be removed locally with `--local-only`");
                 std::process::exit(1);
             };
 
@@ -659,6 +662,7 @@ impl LogoutOpt {
                 Ok(verifier) => verifier,
                 Err(err) => {
                     error!(?err, "Unable to configure jws verifier");
+                    info!("The token can be removed locally with `--local-only`");
                     std::process::exit(1);
                 }
             };
@@ -666,12 +670,14 @@ impl LogoutOpt {
             let uat = match jws_verifier.verify(&jwsc).and_then(|jws| {
                 jws.from_json::<UserAuthToken>().map_err(|serde_err| {
                     error!(?serde_err);
+                    info!("The token can be removed locally with `--local-only`");
                     JwtError::InvalidJwt
                 })
             }) {
                 Ok(uat) => uat,
                 Err(e) => {
                     error!(?e, "Unable to verify token signature, may be corrupt");
+                    info!("The token can be removed locally with `--local-only`");
                     std::process::exit(1);
                 }
             };
