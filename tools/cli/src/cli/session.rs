@@ -589,7 +589,17 @@ impl LogoutOpt {
     }
 
     pub async fn exec(&self) {
+        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
+            error!("Error retrieving authentication token store");
+            std::process::exit(1);
+        });
+
         let instance_name = &self.copt.instance;
+        let n_lookup = instance_name.clone().unwrap_or_default();
+        let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
+            println!("No sessions for instance {}", n_lookup);
+            return;
+        };
 
         let spn: String = if self.local_only {
             // For now we just remove this from the token store.
@@ -624,61 +634,63 @@ impl LogoutOpt {
                     std::process::exit(1);
                 }
             };
-            // Parse it for the username.
 
-            if let Err(e) = client.logout().await {
-                error!("Failed to logout - {:?}", e);
-                std::process::exit(1);
-            }
-
-            // Server acked the logout, lets proceed with the local cleanup now.
-
+            // Parse it for the SPN. Annoying but it's what we have to do
+            // because we don't know what token was used in the lower to client calls.
             let jwsc = match JwsCompact::from_str(&token) {
                 Ok(j) => j,
                 Err(err) => {
                     error!(?err, "Unable to parse token");
+                    info!("The token can be removed locally with `--local-only`");
                     std::process::exit(1);
                 }
             };
 
-            let jws_verifier = if let Some(pub_jwk) = jwsc.get_jwk_pubkey() {
-                match JwsEs256Verifier::try_from(pub_jwk) {
-                    Ok(verifier) => verifier,
-                    Err(err) => {
-                        error!(?err, "Unable to configure jws verifier");
-                        std::process::exit(1);
-                    }
-                }
-            } else {
-                error!("Unable to access token public key");
+            let Some(key_id) = jwsc.kid() else {
+                error!("Invalid token, missing KeyID");
+                info!("The token can be removed locally with `--local-only`");
                 std::process::exit(1);
+            };
+
+            let Some(pub_jwk) = token_instance.keys().get(key_id) else {
+                error!("Invalid instance, no signing keys are available");
+                info!("The token can be removed locally with `--local-only`");
+                std::process::exit(1);
+            };
+
+            let jws_verifier = match JwsEs256Verifier::try_from(pub_jwk) {
+                Ok(verifier) => verifier,
+                Err(err) => {
+                    error!(?err, "Unable to configure jws verifier");
+                    info!("The token can be removed locally with `--local-only`");
+                    std::process::exit(1);
+                }
             };
 
             let uat = match jws_verifier.verify(&jwsc).and_then(|jws| {
                 jws.from_json::<UserAuthToken>().map_err(|serde_err| {
                     error!(?serde_err);
+                    info!("The token can be removed locally with `--local-only`");
                     JwtError::InvalidJwt
                 })
             }) {
                 Ok(uat) => uat,
                 Err(e) => {
                     error!(?e, "Unable to verify token signature, may be corrupt");
+                    info!("The token can be removed locally with `--local-only`");
                     std::process::exit(1);
                 }
             };
 
+            // Now we know we have a valid(ish) token, call the server to do the logout.
+            if let Err(e) = client.logout().await {
+                error!("Failed to logout - {:?}", e);
+                std::process::exit(1);
+            }
+
+            // Server acked the logout, lets proceed with the local cleanup now, return
+            // the spn so the outer parts know what to remove.
             uat.spn
-        };
-
-        let mut tokens = read_tokens(&self.copt.get_token_cache_path()).unwrap_or_else(|_| {
-            error!("Error retrieving authentication token store");
-            std::process::exit(1);
-        });
-
-        let n_lookup = instance_name.clone().unwrap_or_else(|| "".to_string());
-        let Some(token_instance) = tokens.instances.get_mut(&n_lookup) else {
-            println!("No sessions for {}", spn);
-            return;
         };
 
         // Remove our old one
