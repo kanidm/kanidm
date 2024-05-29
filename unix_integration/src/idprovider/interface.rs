@@ -86,7 +86,10 @@ pub enum AuthRequest {
         data: DeviceAuthorizationResponse,
     },
     MFACode {
+        /// Message to display to the user.
         msg: String,
+        /// Interval in seconds between poll attemts.
+        polling_interval: u32,
     },
     MFAPoll {
         /// Message to display to the user.
@@ -110,7 +113,13 @@ impl Into<PamAuthResponse> for AuthRequest {
             AuthRequest::DeviceAuthorizationGrant { data } => {
                 PamAuthResponse::DeviceAuthorizationGrant { data }
             }
-            AuthRequest::MFACode { msg } => PamAuthResponse::MFACode { msg },
+            AuthRequest::MFACode {
+                msg,
+                polling_interval,
+            } => PamAuthResponse::MFACode {
+                msg,
+                polling_interval,
+            },
             AuthRequest::MFAPoll {
                 msg,
                 polling_interval,

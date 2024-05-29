@@ -41,7 +41,10 @@ pub enum PamAuthResponse {
     },
     /// PAM must prompt for an authentication code
     MFACode {
+        /// Initial message to display as the polling begins.
         msg: String,
+        /// Seconds between polling attempts.
+        polling_interval: u32,
     },
     /// PAM will poll for an external response
     MFAPoll {

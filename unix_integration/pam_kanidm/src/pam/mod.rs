@@ -332,6 +332,7 @@ impl PamHooks for PamKanidm {
                 },
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFACode {
                     msg,
+                    polling_interval,
                 }) => {
                     match conv.send(PAM_TEXT_INFO, &msg) {
                         Ok(_) => {}
@@ -356,12 +357,28 @@ impl PamHooks for PamKanidm {
                         }
                     };
 
-                    // Now setup the request for the next loop.
-                    timeout = cfg.unix_sock_timeout;
-                    req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFACode {
-                        cred,
-                    });
-                    continue;
+                    loop {
+                        thread::sleep(Duration::from_secs(polling_interval.into()));
+                        timeout = cfg.unix_sock_timeout;
+                        req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFACode {
+                            cred: cred.clone(),
+                        });
+
+                        // Counter intuitive, but we don't need a max poll attempts here because
+                        // if the resolver goes away, then this will error on the sock and
+                        // will shutdown. This allows the resolver to dynamically extend the
+                        // timeout if needed, and removes logic from the front end.
+                        match_sm_auth_client_response!(
+                            daemon_client.call_and_wait(&req, timeout), opts,
+                            ClientResponse::PamAuthenticateStepResponse(
+                                    PamAuthResponse::MFAPollWait,
+                            ) => {
+                                // Continue polling if the daemon says to wait
+                                continue;
+                            }
+                        );
+
+                    }
                 },
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFAPoll {
                     msg,
