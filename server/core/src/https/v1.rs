@@ -2846,7 +2846,7 @@ fn auth_session_state_management(
                             bearer_cookie.set_path("/");
                             jar = jar
                                 .add(bearer_cookie)
-                                .remove(Cookie::named(COOKIE_AUTH_SESSION_ID));
+                                .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
                             Ok(ProtoAuthState::Success(token_str))
                         }
                     }
