@@ -12,7 +12,7 @@ use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
-use nonempty::{nonempty, NonEmpty};
+use nonempty::NonEmpty;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -88,7 +88,7 @@ enum AuthIntent {
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
     Success { auth_type: AuthType, cred_id: Uuid },
-    Continue(NonEmpty<AuthAllowed>),
+    Continue(Box<NonEmpty<AuthAllowed>>),
     Denied(&'static str),
 }
 
@@ -496,7 +496,12 @@ impl CredHandler {
                                         admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
-                                CredState::Continue(nonempty![AuthAllowed::Password])
+                                CredState::Continue(Box::new(
+                                    NonEmpty {
+                                        head: AuthAllowed::Password,
+                                        tail: Vec::with_capacity(0),
+                                    }
+                                ))
                             }
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -523,7 +528,12 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
-                            CredState::Continue(nonempty![AuthAllowed::Password])
+                            CredState::Continue(Box::new(
+                                NonEmpty {
+                                    head: AuthAllowed::Password,
+                                    tail: Vec::with_capacity(0),
+                                }
+                            ))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!(
@@ -546,7 +556,12 @@ impl CredHandler {
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            CredState::Continue(nonempty![AuthAllowed::Password])
+                            CredState::Continue(Box::new(
+                                NonEmpty {
+                                    head: AuthAllowed::Password,
+                                    tail: Vec::with_capacity(0),
+                                }
+                            ))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
@@ -940,9 +955,12 @@ impl AuthSession {
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             if asd.account.is_anonymous() {
-                AuthSessionState::Init(nonempty![CredHandler::Anonymous {
-                    cred_id: asd.account.uuid,
-                }])
+                AuthSessionState::Init(NonEmpty {
+                    head: CredHandler::Anonymous {
+                        cred_id: asd.account.uuid,
+                    },
+                    tail: Vec::with_capacity(0),
+                })
             } else {
                 // What's valid to use in this context?
                 let mut handlers = Vec::new();

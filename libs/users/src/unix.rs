@@ -25,9 +25,6 @@ pub fn get_user_name_by_uid(uid: uid_t) -> Option<OsString> {
     let mut buf = vec![0; 2048];
     let mut result = ptr::null_mut::<c_passwd>();
 
-    #[cfg(feature = "logging")]
-    trace!("Running getpwuid_r for user #{}", uid);
-
     loop {
         let r =
             unsafe { libc::getpwuid_r(uid, &mut passwd, buf.as_mut_ptr(), buf.len(), &mut result) };

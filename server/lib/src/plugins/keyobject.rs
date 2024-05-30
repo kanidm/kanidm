@@ -216,9 +216,12 @@ impl KeyObjectManagement {
 
                 // Turn that object into it's entry template to create. I think we need to make this
                 // some kind of merge_vs?
-                key_object.into_valuesets()?.into_iter().try_for_each(
-                    |(attribute, valueset)| entry.merge_ava_set(attribute, valueset),
-                )?;
+                key_object
+                    .as_valuesets()?
+                    .into_iter()
+                    .try_for_each(|(attribute, valueset)| {
+                        entry.merge_ava_set(attribute, valueset)
+                    })?;
 
                 Ok(())
             })

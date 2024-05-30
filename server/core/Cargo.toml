@@ -41,6 +41,8 @@ kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
+opentelemetry = { workspace = true, features = ["logs"] }
+# opentelemetry_api = { workspace = true, features = ["logs"] }
 rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }

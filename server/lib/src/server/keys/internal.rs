@@ -924,7 +924,7 @@ impl KeyObjectT for KeyObjectInternal {
         Ok(None)
     }
 
-    fn into_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError> {
+    fn as_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError> {
         let key_iter = self
             .jws_es256
             .iter()
