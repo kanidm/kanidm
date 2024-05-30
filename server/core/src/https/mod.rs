@@ -593,7 +593,6 @@ pub(crate) async fn handle_conn(
 
             debug!(?client_conn_info);
 
-            // let svc = tower::MakeService::make_service(&mut app, client_conn_info);
             let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
                 &mut app,
                 client_conn_info,
