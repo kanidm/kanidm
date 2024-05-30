@@ -1029,10 +1029,10 @@ impl Default for AccessControls {
     fn default() -> Self {
         AccessControls {
             inner: CowCell::new(AccessControlsInner {
-                acps_search: Vec::new(),
-                acps_create: Vec::new(),
-                acps_modify: Vec::new(),
-                acps_delete: Vec::new(),
+                acps_search: Vec::with_capacity(0),
+                acps_create: Vec::with_capacity(0),
+                acps_modify: Vec::with_capacity(0),
+                acps_delete: Vec::with_capacity(0),
                 sync_agreements: HashMap::default(),
             }),
             // Allow the expect, if this fails it represents a programming/development

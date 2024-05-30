@@ -113,7 +113,7 @@ mod tests {
 
     #[test]
     fn test_pre_create_oauth2_secrets() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let uuid = Uuid::new_v4();
         let e: Entry<EntryInit, EntryNew> = entry_init!(

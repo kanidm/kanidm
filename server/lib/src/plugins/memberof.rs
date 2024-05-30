@@ -337,7 +337,7 @@ impl Plugin for MemberOf {
 
     #[instrument(level = "debug", name = "memberof::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(0);
 
         let filt_in = filter!(f_pres(Attribute::Class));
 
@@ -620,7 +620,7 @@ mod tests {
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
 
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         let create = vec![ea, eb];
         run_create_test!(
             Ok(()),
@@ -651,7 +651,7 @@ mod tests {
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
 
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
         run_create_test!(
             Ok(()),
@@ -703,7 +703,7 @@ mod tests {
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
         ec.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
 
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec];
         run_create_test!(
             Ok(()),
@@ -761,7 +761,7 @@ mod tests {
 
         ed.add_ava(Attribute::Member, Value::new_refer_s(UUID_A).unwrap());
 
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         let create = vec![ea, eb, ec, ed];
         run_create_test!(
             Ok(()),

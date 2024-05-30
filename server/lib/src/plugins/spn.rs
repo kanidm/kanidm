@@ -103,7 +103,7 @@ impl Plugin for Spn {
             Err(e) => return vec![e],
         };
 
-        let mut r = Vec::new();
+        let mut r = Vec::with_capacity(0);
 
         for e in all_cand {
             let Some(g_spn) = e.generate_spn(&domain_name) else {
@@ -233,7 +233,7 @@ mod tests {
         );
 
         let create = vec![e];
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
 
         run_create_test!(
             Ok(()),
@@ -286,7 +286,7 @@ mod tests {
         );
 
         let create = vec![e];
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
 
         run_create_test!(
             Ok(()),

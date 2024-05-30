@@ -593,7 +593,7 @@ pub trait SchemaTransaction {
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute>;
 
     fn validate(&self) -> Vec<Result<(), ConsistencyError>> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(0);
 
         let class_snapshot = self.get_classes();
         let attribute_snapshot = self.get_attributes();
@@ -2227,7 +2227,7 @@ impl Schema {
         let s = Schema {
             classes: CowCell::new(HashMap::with_capacity(128)),
             attributes: CowCell::new(HashMap::with_capacity(128)),
-            unique_cache: CowCell::new(Vec::new()),
+            unique_cache: CowCell::new(Vec::with_capacity(0)),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
         // let mut sw = task::block_on(s.write());

@@ -904,9 +904,9 @@ dependencies = [
 
 [[package]]
 name = "concread"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4539869aeea73afd414cc1750eceada0d042764f2d28873d74fbbd81610bffe"
+checksum = "23bef63c371d1b3da7e61e7b72e5757f070131a399f2eb60edc2d8bb8102249a"
 dependencies = [
  "ahash 0.8.11",
  "arc-swap",
@@ -2830,9 +2830,9 @@ checksum = "b9e0384b61958566e926dc50660321d12159025e767c18e043daf26b70104c39"
 
 [[package]]
 name = "idlset"
-version = "0.2.4"
+version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "340756d15be4b22d5e501bad90a9f68fcdc6b9b7d2f6d6afe350645e9839dac6"
+checksum = "ef858150272c6cce9db3710a171edf5d3e8844d38680d7657e9b1698efe8d97b"
 dependencies = [
  "serde",
  "serde_derive",

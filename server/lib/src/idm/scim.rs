@@ -1177,7 +1177,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get all the classes.
         debug!("Schemas valid - Proceeding with entry {}", scim_ent.id);
 
-        let mut mods = Vec::new();
+        let mut mods = Vec::with_capacity(0);
 
         mods.push(Modify::Assert(
             Attribute::SyncParentUuid,
@@ -1912,7 +1912,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Refresh,
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Ignore,
         };
 
@@ -2319,7 +2319,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![Uuid::new_v4()]),
         };
 
@@ -2358,7 +2358,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
@@ -2400,7 +2400,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
@@ -2678,7 +2678,7 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Ignore,
         };
 

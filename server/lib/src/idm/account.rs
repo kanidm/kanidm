@@ -912,7 +912,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
-                        Ok(Vec::new())
+                        Ok(Vec::with_capacity(0))
                     })
             }
             Err(e) => Err(e),

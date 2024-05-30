@@ -115,7 +115,7 @@ fn enforce_unique<VALID, STATE>(
     }
 
     // Now do an internal search on name and !uuid for each
-    let mut cand_filters = Vec::new();
+    let mut cand_filters = Vec::with_capacity(0);
     for ((attr, v), uuid) in cand_attr.iter() {
         // and[ attr eq k, andnot [ uuid eq v ]]
         // Basically this says where name but also not self.
@@ -476,7 +476,7 @@ impl Plugin for AttrUnique {
             schema.get_attributes_unique()
         };
 
-        let mut res: Vec<Result<(), ConsistencyError>> = Vec::new();
+        let mut res: Vec<Result<(), ConsistencyError>> = Vec::with_capacity(0);
 
         if get_cand_attr_set(&all_cand, uniqueattrs).is_err() {
             res.push(Err(ConsistencyError::DuplicateUniqueAttribute))
@@ -529,7 +529,7 @@ mod tests {
         );
 
         let create = vec![e.clone(), e];
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
 
         run_create_test!(
             Err(OperationError::Plugin(PluginError::AttrUnique(

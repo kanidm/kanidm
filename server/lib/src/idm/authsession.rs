@@ -496,12 +496,10 @@ impl CredHandler {
                                         admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
-                                CredState::Continue(Box::new(
-                                    NonEmpty {
-                                        head: AuthAllowed::Password,
-                                        tail: Vec::with_capacity(0),
-                                    }
-                                ))
+                                CredState::Continue(Box::new(NonEmpty {
+                                    head: AuthAllowed::Password,
+                                    tail: Vec::with_capacity(0),
+                                }))
                             }
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -528,12 +526,10 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
-                            CredState::Continue(Box::new(
-                                NonEmpty {
-                                    head: AuthAllowed::Password,
-                                    tail: Vec::with_capacity(0),
-                                }
-                            ))
+                            CredState::Continue(Box::new(NonEmpty {
+                                head: AuthAllowed::Password,
+                                tail: Vec::with_capacity(0),
+                            }))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!(
@@ -556,12 +552,10 @@ impl CredHandler {
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            CredState::Continue(Box::new(
-                                NonEmpty {
-                                    head: AuthAllowed::Password,
-                                    tail: Vec::with_capacity(0),
-                                }
-                            ))
+                            CredState::Continue(Box::new(NonEmpty {
+                                head: AuthAllowed::Password,
+                                tail: Vec::with_capacity(0),
+                            }))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
@@ -963,7 +957,7 @@ impl AuthSession {
                 })
             } else {
                 // What's valid to use in this context?
-                let mut handlers = Vec::new();
+                let mut handlers = Vec::with_capacity(0);
 
                 // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
                 // to do to be able to check for pw / mfa etc.
@@ -1487,7 +1481,7 @@ impl AuthSession {
         match &self.state {
             AuthSessionState::Success
             | AuthSessionState::Denied(_)
-            | AuthSessionState::InProgress(_) => Vec::new(),
+            | AuthSessionState::InProgress(_) => Vec::with_capacity(0),
             AuthSessionState::Init(handlers) => {
                 // Iterate over the handlers into what mechs they are
                 // and filter to unique?

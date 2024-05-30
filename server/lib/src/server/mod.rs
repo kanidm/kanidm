@@ -824,7 +824,7 @@ pub trait QueryServerTransaction<'a> {
                 .collect();
             v
         } else if let Some(r_map) = value.as_oauthclaim_map() {
-            let mut v = Vec::new();
+            let mut v = Vec::with_capacity(0);
             for (claim_name, mapping) in r_map.iter() {
                 for (group_ref, claims) in mapping.values() {
                     let join_char = mapping.join().to_str();
@@ -1133,7 +1133,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // If anything error to this point we can't trust the verifications below. From
         // here we can just amass results.
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(0);
 
         // Verify all our entries. Weird flex I know, but it's needed for verifying
         // the entry changelogs are consistent to their entries.
