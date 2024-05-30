@@ -16,52 +16,48 @@ mod v1_scim;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
+use self::v1::SessionId;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
-use axum::body::Body;
-use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::http::{HeaderMap, HeaderValue, Request};
-use axum::middleware::{from_fn, from_fn_with_state};
-use axum::response::Redirect;
-use axum::routing::*;
-use axum::Router;
+use crate::CoreAction;
+
+use axum::{
+    body::Body,
+    extract::connect_info::IntoMakeServiceWithConnectInfo,
+    http::{HeaderMap, HeaderValue, Request},
+    middleware::{from_fn, from_fn_with_state},
+    response::Redirect,
+    routing::*,
+    Router,
+};
+
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
+use futures::pin_mut;
 use hashbrown::HashMap;
 use hyper::body::Incoming;
-// use hyper::server::accept::Accept;
-// use hyper::server::conn::{AddrStream, Http};
 use hyper_util::rt::{TokioExecutor, TokioIo};
-use kanidm_proto::constants::KSESSIONID;
-use kanidm_proto::internal::COOKIE_AUTH_SESSION_ID;
-use kanidmd_lib::idm::ClientCertInfo;
-use kanidmd_lib::status::StatusActor;
+use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
+use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
 use openssl::nid;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
 use openssl::x509::X509;
+
 use sketching::*;
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::broadcast,
+};
 use tokio_openssl::SslStream;
 use tower::Service;
-
-// use futures_util::future::poll_fn;
-use futures::pin_mut;
-use tokio::net::TcpListener;
+use tower_http::{services::ServeDir, trace::TraceLayer};
+use uuid::Uuid;
 
 use std::fs;
 use std::io::{ErrorKind, Read};
 use std::path::PathBuf;
 use std::pin::Pin;
-// use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
-use tokio::net::TcpStream;
-use tokio::sync::broadcast;
-use tower_http::services::ServeDir;
-use tower_http::trace::TraceLayer;
-use uuid::Uuid;
-
-use crate::CoreAction;
-
-use self::v1::SessionId;
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -536,28 +532,12 @@ async fn server_loop(
     }
 
     let tls_acceptor = tls_builder.build();
-
-    /*
-    let protocol = Arc::new(Http::new());
-    let mut listener =
-        hyper::server::conn::AddrIncoming::from_listener(listener).map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to create listener: {:?}", err),
-            )
-        })?;
-    */
     pin_mut!(listener);
 
     loop {
-        // if let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
         if let Ok((stream, addr)) = listener.accept().await {
             let tls_acceptor = tls_acceptor.clone();
             let app = app.clone();
-
-            // let svc = tower::MakeService::make_service(&mut app, &stream);
-            // tokio::spawn(handle_conn(tls_acceptor, stream, svc, protocol.clone()));
-            // tokio::spawn(handle_conn(tls_acceptor, stream, app, protocol.clone()));
             tokio::spawn(handle_conn(tls_acceptor, stream, app, addr));
         }
     }
@@ -566,19 +546,14 @@ async fn server_loop(
 /// This handles an individual connection.
 pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
-    // stream: AddrStream,
     stream: TcpStream,
-    // svc: ResponseFuture<Router, ClientConnInfo>,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-    // protocol: Arc<Http>,
     addr: SocketAddr,
 ) -> Result<(), std::io::Error> {
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
-
-    // let addr = stream.remote_addr();
 
     let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
         error!("Failed to create TLS stream: {:?}", e);
@@ -628,16 +603,6 @@ pub(crate) async fn handle_conn(
                 error!("Failed to build HTTP response: {:?}", e);
                 std::io::Error::from(ErrorKind::Other)
             })?;
-
-            /*
-            protocol
-                .serve_connection(tls_stream, svc)
-                .await
-                .map_err(|e| {
-                    debug!("Failed to complete connection: {:?}", e);
-                    std::io::Error::from(ErrorKind::ConnectionAborted)
-                })
-            */
 
             // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
             // `TokioIo` converts between them.

@@ -91,7 +91,6 @@ async-recursion = "1.1.0"
 async-trait = "^0.1.78"
 axum = { version = "0.7.5", features = [
     "form",
-    # "http2",
     "json",
     "macros",
     "multipart",
