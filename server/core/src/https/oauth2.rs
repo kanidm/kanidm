@@ -2,19 +2,21 @@ use super::errors::WebError;
 use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
-use axum::extract::{Path, Query, State};
-use axum::http::header::{
-    ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
-    WWW_AUTHENTICATE,
+use axum::{
+    body::Body,
+    extract::{Path, Query, State},
+    http::header::{
+        ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
+        WWW_AUTHENTICATE,
+    },
+    http::{HeaderValue, StatusCode},
+    middleware::from_fn,
+    response::{IntoResponse, Response},
+    routing::{get, post},
+    Extension, Form, Json, Router,
 };
-use axum::http::{HeaderValue, StatusCode};
-use axum::middleware::from_fn;
-use axum::response::{IntoResponse, Response};
-use axum::routing::{get, post};
-use axum::{Extension, Form, Json, Router};
 use axum_macros::debug_handler;
 use compact_jwt::{JwkKeySet, OidcToken};
-use hyper::Body;
 use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
 };

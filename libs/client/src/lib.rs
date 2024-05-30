@@ -2032,9 +2032,9 @@ impl KanidmClient {
 #[tokio::test]
 async fn test_no_client_version_check_on_502() {
     let res = reqwest::Response::from(
-        hyper::Response::builder()
+        http::Response::builder()
             .status(StatusCode::GATEWAY_TIMEOUT)
-            .body(hyper::Body::empty())
+            .body("")
             .unwrap(),
     );
     let client = KanidmClientBuilder::new()
@@ -2045,9 +2045,9 @@ async fn test_no_client_version_check_on_502() {
     client.expect_version(&res).await;
 
     let res = reqwest::Response::from(
-        hyper::Response::builder()
+        http::Response::builder()
             .status(StatusCode::BAD_GATEWAY)
-            .body(hyper::Body::empty())
+            .body("")
             .unwrap(),
     );
     let client = KanidmClientBuilder::new()

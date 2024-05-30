@@ -16,47 +16,48 @@ mod v1_scim;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
+use self::v1::SessionId;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
-use axum::extract::connect_info::IntoMakeServiceWithConnectInfo;
-use axum::http::{HeaderMap, HeaderValue};
-use axum::middleware::{from_fn, from_fn_with_state};
-use axum::response::Redirect;
-use axum::routing::*;
-use axum::Router;
-use axum_csp::{CspDirectiveType, CspValue};
+use crate::CoreAction;
+
+use axum::{
+    body::Body,
+    extract::connect_info::IntoMakeServiceWithConnectInfo,
+    http::{HeaderMap, HeaderValue, Request},
+    middleware::{from_fn, from_fn_with_state},
+    response::Redirect,
+    routing::*,
+    Router,
+};
+
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
+use futures::pin_mut;
 use hashbrown::HashMap;
-use hyper::server::accept::Accept;
-use hyper::server::conn::{AddrStream, Http};
-use kanidm_proto::constants::KSESSIONID;
-use kanidm_proto::internal::COOKIE_AUTH_SESSION_ID;
-use kanidmd_lib::idm::ClientCertInfo;
-use kanidmd_lib::status::StatusActor;
+use hyper::body::Incoming;
+use hyper_util::rt::{TokioExecutor, TokioIo};
+use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
+use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
 use openssl::nid;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
 use openssl::x509::X509;
-use sketching::*;
-use tokio_openssl::SslStream;
 
-use futures_util::future::poll_fn;
-use tokio::net::TcpListener;
+use sketching::*;
+use tokio::{
+    net::{TcpListener, TcpStream},
+    sync::broadcast,
+};
+use tokio_openssl::SslStream;
+use tower::Service;
+use tower_http::{services::ServeDir, trace::TraceLayer};
+use uuid::Uuid;
 
 use std::fs;
 use std::io::{ErrorKind, Read};
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::sync::Arc;
 use std::{net::SocketAddr, str::FromStr};
-use tokio::sync::broadcast;
-use tower_http::services::ServeDir;
-use tower_http::trace::TraceLayer;
-use uuid::Uuid;
-
-use crate::CoreAction;
-
-use self::v1::SessionId;
 
 #[derive(Clone)]
 pub struct ServerState {
@@ -213,34 +214,28 @@ pub async fn create_https_server(
         .into_iter()
         .map(|f| f.hash)
         .collect::<Vec<String>>();
-    let mut js_directives: Vec<CspValue> = js_directives
-        .into_iter()
-        .map(|value| CspValue::Sha384 { value })
-        .collect();
-    js_directives.extend(vec![CspValue::UnsafeEval, CspValue::SelfSite]);
 
-    let csp_header = axum_csp::CspSetBuilder::new()
-        // default-src 'self';
-        .add(CspDirectiveType::DefaultSrc, vec![CspValue::SelfSite])
-        // form-action https: 'self';
-        .add(
-            CspDirectiveType::FormAction,
-            vec![CspValue::SelfSite, CspValue::SchemeHttps],
-        )
-        // base-uri 'self';
-        .add(
-            CspDirectiveType::BaseUri,
-            vec![CspValue::SelfSite, CspValue::SchemeHttps],
-        )
-        // worker-src 'none';
-        .add(CspDirectiveType::WorkerSource, vec![CspValue::None])
-        // frame-ancestors 'none'
-        .add(CspDirectiveType::FrameAncestors, vec![CspValue::None])
-        .add(CspDirectiveType::ScriptSource, js_directives)
-        .add(
-            CspDirectiveType::ImgSrc,
-            vec![CspValue::SelfSite, CspValue::SchemeData],
-        );
+    let js_checksums: String = js_directives
+        .iter()
+        .map(|value| format!(" 'sha384-{}'", value))
+        .collect();
+
+    let csp_header = format!(
+        concat!(
+            "base-uri 'self' https:; ",
+            "default-src 'self'; ",
+            "form-action 'self' https:;",
+            "frame-ancestors 'none'; ",
+            "img-src 'self' data:; ",
+            "worker-src 'none'; ",
+            "script-src 'self' 'unsafe-eval'{};"
+        ),
+        js_checksums
+    );
+
+    let csp_header = HeaderValue::from_str(&csp_header).map_err(|err| {
+        error!(?err, "Unable to generate content security policy");
+    })?;
 
     let trust_x_forward_for = config.trust_x_forward_for;
 
@@ -251,7 +246,7 @@ pub async fn create_https_server(
         jws_signer,
         js_files,
         trust_x_forward_for,
-        csp_header: csp_header.finish(),
+        csp_header,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
     };
@@ -537,23 +532,13 @@ async fn server_loop(
     }
 
     let tls_acceptor = tls_builder.build();
+    pin_mut!(listener);
 
-    let protocol = Arc::new(Http::new());
-    let mut listener =
-        hyper::server::conn::AddrIncoming::from_listener(listener).map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to create listener: {:?}", err),
-            )
-        })?;
     loop {
-        if let Some(Ok(stream)) = poll_fn(|cx| Pin::new(&mut listener).poll_accept(cx)).await {
+        if let Ok((stream, addr)) = listener.accept().await {
             let tls_acceptor = tls_acceptor.clone();
             let app = app.clone();
-
-            // let svc = tower::MakeService::make_service(&mut app, &stream);
-            // tokio::spawn(handle_conn(tls_acceptor, stream, svc, protocol.clone()));
-            tokio::spawn(handle_conn(tls_acceptor, stream, app, protocol.clone()));
+            tokio::spawn(handle_conn(tls_acceptor, stream, app, addr));
         }
     }
 }
@@ -561,17 +546,14 @@ async fn server_loop(
 /// This handles an individual connection.
 pub(crate) async fn handle_conn(
     acceptor: SslAcceptor,
-    stream: AddrStream,
-    // svc: ResponseFuture<Router, ClientConnInfo>,
+    stream: TcpStream,
     mut app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-    protocol: Arc<Http>,
+    addr: SocketAddr,
 ) -> Result<(), std::io::Error> {
     let ssl = Ssl::new(acceptor.context()).map_err(|e| {
         error!("Failed to create TLS context: {:?}", e);
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
-
-    let addr = stream.remote_addr();
 
     let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
         error!("Failed to create TLS stream: {:?}", e);
@@ -611,15 +593,33 @@ pub(crate) async fn handle_conn(
 
             debug!(?client_conn_info);
 
-            let svc = tower::MakeService::make_service(&mut app, client_conn_info);
+            let svc = tower::MakeService::<ClientConnInfo, hyper::Request<Body>>::make_service(
+                &mut app,
+                client_conn_info,
+            );
 
             let svc = svc.await.map_err(|e| {
                 error!("Failed to build HTTP response: {:?}", e);
                 std::io::Error::from(ErrorKind::Other)
             })?;
 
-            protocol
-                .serve_connection(tls_stream, svc)
+            // Hyper has its own `AsyncRead` and `AsyncWrite` traits and doesn't use tokio.
+            // `TokioIo` converts between them.
+            let stream = TokioIo::new(tls_stream);
+
+            // Hyper also has its own `Service` trait and doesn't use tower. We can use
+            // `hyper::service::service_fn` to create a hyper `Service` that calls our app through
+            // `tower::Service::call`.
+            let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+                // We have to clone `tower_service` because hyper's `Service` uses `&self` whereas
+                // tower's `Service` requires `&mut self`.
+                //
+                // We don't need to call `poll_ready` since `Router` is always ready.
+                svc.clone().call(request)
+            });
+
+            hyper_util::server::conn::auto::Builder::new(TokioExecutor::new())
+                .serve_connection_with_upgrades(stream, hyper_service)
                 .await
                 .map_err(|e| {
                     debug!("Failed to complete connection: {:?}", e);

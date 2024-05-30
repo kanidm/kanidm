@@ -5,12 +5,12 @@ use axum::{
     http::{
         header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
     },
+    serve::IncomingStream,
     RequestPartsExt,
 };
 
 use axum_extra::extract::cookie::CookieJar;
 
-use hyper::server::conn::AddrStream;
 use kanidm_proto::constants::X_FORWARDED_FOR;
 use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
@@ -192,8 +192,17 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
     }
 }
 
-impl<'a> Connected<&'a AddrStream> for ClientConnInfo {
-    fn connect_info(target: &'a AddrStream) -> Self {
+impl Connected<SocketAddr> for ClientConnInfo {
+    fn connect_info(addr: SocketAddr) -> Self {
+        ClientConnInfo {
+            addr,
+            client_cert: None,
+        }
+    }
+}
+
+impl Connected<IncomingStream<'_>> for ClientConnInfo {
+    fn connect_info(target: IncomingStream<'_>) -> Self {
         ClientConnInfo {
             addr: target.remote_addr(),
             client_cert: None,
