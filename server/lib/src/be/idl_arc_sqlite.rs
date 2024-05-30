@@ -86,7 +86,7 @@ macro_rules! get_identry {
         $idl:expr,
         $is_read_op:expr
     ) => {{
-        let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::new();
+        let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::with_capacity(0);
         match $idl {
             IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                 let mut nidl = IDLBitRange::new();

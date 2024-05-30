@@ -263,7 +263,7 @@ lazy_static! {
         name: "idm_people_self_write_mail",
         description: "Builtin IDM Group for people accounts to update their own mail.",
         uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         ..Default::default()
     };
 
@@ -272,7 +272,7 @@ lazy_static! {
         name: "idm_people_self_mail_write",
         description: "Builtin IDM Group for people accounts to update their own mail.",
         uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         ..Default::default()
     };
 }
@@ -283,7 +283,7 @@ lazy_static! {
         name: "idm_all_persons",
         description: "Builtin IDM dynamic group containing all persons.",
         uuid: UUID_IDM_ALL_PERSONS,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         dyngroup: true,
         dyngroup_filter: Some(
             Filter::And(vec![
@@ -304,7 +304,7 @@ lazy_static! {
         name: "idm_all_accounts",
         description: "Builtin IDM dynamic group containing all entries that can authenticate.",
         uuid: UUID_IDM_ALL_ACCOUNTS,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         dyngroup: true,
         dyngroup_filter: Some(
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),

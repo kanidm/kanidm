@@ -21,9 +21,9 @@
 #![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
-#[cfg(all(jemallocator, test, not(target_family = "windows")))]
+#[cfg(test)]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[macro_use]
 extern crate rusqlite;

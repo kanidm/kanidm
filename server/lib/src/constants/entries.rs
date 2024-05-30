@@ -858,7 +858,7 @@ impl From<BuiltinAccount> for Account {
             displayname: value.displayname.to_string(),
             spn: format!("{}@example.com", value.name),
             mail_primary: None,
-            mail: Vec::new(),
+            mail: Vec::with_capacity(0),
             ..Default::default()
         }
     }

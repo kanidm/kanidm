@@ -290,7 +290,7 @@ pub trait BackendTransaction {
             FilterResolved::Or(l, _) => {
                 // Importantly if this has no inner elements, this returns
                 // an empty list.
-                let mut plan = Vec::new();
+                let mut plan = Vec::with_capacity(0);
                 let mut result = IDLBitRange::new();
                 let mut partial = false;
                 let mut threshold = false;
@@ -535,7 +535,7 @@ pub trait BackendTransaction {
                 // for fully indexed existence queries, such as from refint.
 
                 // This has a lot in common with an And and Or but not really quite either.
-                let mut plan = Vec::new();
+                let mut plan = Vec::with_capacity(0);
                 let mut result = IDLBitRange::new();
                 // For each filter in l
                 for f in l.iter() {
@@ -632,7 +632,7 @@ pub trait BackendTransaction {
             e
         })?;
 
-        let entries_filtered = match idl {
+        let mut entries_filtered = match idl {
             IdList::AllIds => trace_span!("be::search<entry::ftest::allids>").in_scope(|| {
                 entries
                     .into_iter()
@@ -665,6 +665,9 @@ pub trait BackendTransaction {
             admin_error!("filter (search) is resolved and greater than search_max_results allowed by resource limits");
             return Err(OperationError::ResourceLimit);
         }
+
+        // Trim any excess capacity if needed
+        entries_filtered.shrink_to_fit();
 
         Ok(entries_filtered)
     }
@@ -851,7 +854,7 @@ pub trait BackendTransaction {
         if r.is_err() {
             vec![r]
         } else {
-            Vec::new()
+            Vec::with_capacity(0)
         }
     }
 
@@ -2258,7 +2261,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Create");
 
-            let empty_result = be.create(&CID_ZERO, Vec::new());
+            let empty_result = be.create(&CID_ZERO, Vec::with_capacity(0));
             trace!("{:?}", empty_result);
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
@@ -2759,7 +2762,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "not-exist",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2767,7 +2770,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             let uuid_p_idl = be
@@ -2861,7 +2864,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "william",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2869,7 +2872,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Presence,
                 "_",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2877,7 +2880,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2885,7 +2888,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Presence,
                 "_",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             assert!(be.name2uuid("william") == Ok(None));
@@ -3129,14 +3132,14 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
             idl_state!(
                 be,
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "william",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
@@ -3303,7 +3306,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3319,7 +3322,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3334,7 +3337,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");

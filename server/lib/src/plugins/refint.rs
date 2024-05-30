@@ -317,7 +317,7 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(0);
         // For all cands
         for c in &all_cand {
             // For all reference in each cand.
@@ -473,7 +473,7 @@ mod tests {
         );
 
         let create = vec![e];
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         run_create_test!(
             Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
                 "Uuid referenced not found in database".to_string()
@@ -530,7 +530,7 @@ mod tests {
     // The create references itself - allow
     #[test]
     fn test_create_uuid_reference_self() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{

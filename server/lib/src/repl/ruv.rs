@@ -907,7 +907,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
     pub fn trim_up_to(&mut self, cid: &Cid) -> Result<IDLBitRange, OperationError> {
         trace!(trim_up_to_cid = ?cid);
         let mut idl = IDLBitRange::new();
-        let mut remove_suuid = Vec::default();
+        let mut remove_suuid = Vec::with_capacity(0);
 
         // Here we can use the for_each here to be trimming the
         // range set since that is not ordered by time, we need

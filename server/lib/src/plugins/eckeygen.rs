@@ -104,7 +104,7 @@ mod tests {
             (Attribute::Description, Value::new_utf8s("testperson")),
             (Attribute::DisplayName, Value::new_utf8s("Test Person"))
         );
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let create = vec![ea];
         run_create_test!(

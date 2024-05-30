@@ -44,7 +44,7 @@ pub trait KeyObjectT {
 
     fn jwe_decrypt(&self, jwec: &JweCompact) -> Result<Jwe, OperationError>;
 
-    fn into_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError>;
+    fn as_valuesets(&self) -> Result<Vec<(Attribute, ValueSet)>, OperationError>;
 
     fn duplicate(&self) -> KeyObject;
 

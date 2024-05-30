@@ -200,7 +200,7 @@ mod tests {
             (Attribute::Description, Value::new_utf8s("testperson")),
             (Attribute::DisplayName, Value::new_utf8s("old name person"))
         );
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
         let create = vec![ea];
         run_create_test!(
             Ok(()),
@@ -223,7 +223,7 @@ mod tests {
 
     #[test]
     fn name_purge_and_set_with_filled_history() {
-        let mut cids: Vec<Cid> = Vec::new();
+        let mut cids: Vec<Cid> = Vec::with_capacity(0);
         for i in 1..AUDIT_LOG_STRING_CAPACITY {
             cids.push(Cid::new(
                 uuid!("d2b496bd-8493-47b7-8142-f568b5cf47e1"),

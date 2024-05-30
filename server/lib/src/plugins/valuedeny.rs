@@ -61,7 +61,7 @@ impl Plugin for ValueDeny {
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let denied_names = qs.denied_names().clone();
 
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(0);
 
         for denied_name in denied_names {
             let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname(&denied_name)));

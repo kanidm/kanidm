@@ -346,14 +346,8 @@ impl CryptoPolicy {
                             .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
                             .unwrap_or(ARGON2_MIN_RAM_KIB);
 
-                        // Floor and Ceil
-                        m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
-                            ARGON2_MAX_RAM_KIB
-                        } else if m_adjust < ARGON2_MIN_RAM_KIB {
-                            ARGON2_MIN_RAM_KIB
-                        } else {
-                            m_adjust
-                        };
+                        // Clamp the value
+                        m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.

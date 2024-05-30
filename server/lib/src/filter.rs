@@ -356,8 +356,8 @@ pub enum FilterPlan {
 /// * `Or`. Contains multiple filters and asserts at least one is true.
 /// * `And`. Contains multiple filters and asserts all of them are true.
 /// * `AndNot`. This is different to a "logical not" operation. This asserts that a condition is not
-/// true in the current candidate set. A search of `AndNot` alone will yield not results, but an
-/// `AndNot` in an `And` query will assert that a condition can not hold.
+///   true in the current candidate set. A search of `AndNot` alone will yield not results, but an
+///   `AndNot` in an `And` query will assert that a condition can not hold.
 ///
 /// `Filter`s for security reasons are validated by the schema to assert all requested attributes
 /// are valid and exist in the schema so that they can have their indexes correctly used. This avoids

@@ -10,6 +10,7 @@
 
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+#![warn(unused_imports)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]

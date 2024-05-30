@@ -330,7 +330,7 @@ mod tests {
     // check create where no uuid
     #[test]
     fn test_pre_create_no_uuid() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -366,7 +366,7 @@ mod tests {
     // check unparsable uuid
     #[test]
     fn test_pre_create_uuid_invalid() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -396,7 +396,7 @@ mod tests {
     // check entry where uuid is empty list
     #[test]
     fn test_pre_create_uuid_empty() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let mut e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -429,7 +429,7 @@ mod tests {
     // check create where provided uuid is valid. It should be unchanged.
     #[test]
     fn test_pre_create_uuid_valid() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -468,7 +468,7 @@ mod tests {
 
     #[test]
     fn test_pre_create_uuid_valid_multi() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -534,7 +534,7 @@ mod tests {
     #[test]
     fn test_pre_create_double_uuid() {
         // Test adding two entries with the same uuid
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
@@ -737,7 +737,7 @@ mod tests {
     #[test]
     fn test_protected_uuid_does_not_exist() {
         // Test that internal create of "does not exist" will fail.
-        let preload = Vec::new();
+        let preload = Vec::with_capacity(0);
 
         let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{

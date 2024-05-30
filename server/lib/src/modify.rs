@@ -87,7 +87,7 @@ impl ModifyList<ModifyInvalid> {
     pub fn new() -> Self {
         ModifyList {
             valid: ModifyInvalid,
-            mods: Vec::new(),
+            mods: Vec::with_capacity(0),
         }
     }
 
@@ -137,7 +137,7 @@ impl ModifyList<ModifyInvalid> {
         pe: &ProtoEntry,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let mut mods = Vec::new();
+        let mut mods = Vec::with_capacity(0);
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.

@@ -395,7 +395,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::default();
+        let der = Vec::with_capacity(0);
 
         let mut vs_a: ValueSet =
             ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
@@ -430,7 +430,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::default();
+        let der = Vec::with_capacity(0);
 
         let mut vs_a: ValueSet = ValueSetKeyInternal::new(
             kid.clone(),
@@ -464,7 +464,7 @@ mod tests {
         let valid_from = 0;
         let status = KeyStatus::Valid;
         let status_cid = Cid::new_zero();
-        let der = Vec::default();
+        let der = Vec::with_capacity(0);
 
         let vs_a: ValueSet = ValueSetKeyInternal::new(
             kid.clone(),
@@ -501,7 +501,7 @@ mod tests {
         let zero_cid = Cid::new_zero();
         let one_cid = Cid::new_count(1);
         let two_cid = Cid::new_count(2);
-        let der = Vec::default();
+        let der = Vec::with_capacity(0);
 
         let kid_2 = "key_2".to_string();
 
@@ -564,7 +564,7 @@ mod tests {
         let zero_cid = Cid::new_zero();
         let one_cid = Cid::new_count(1);
         let two_cid = Cid::new_count(2);
-        let der = Vec::default();
+        let der = Vec::with_capacity(0);
 
         let kid_2 = "key_2".to_string();
 
