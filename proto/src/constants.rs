@@ -117,6 +117,7 @@ pub const ATTR_KEY_PROVIDER: &str = "key_provider";
 pub const ATTR_LAST_MODIFIED_CID: &str = "last_modified_cid";
 pub const ATTR_LDAP_ALLOW_UNIX_PW_BIND: &str = "ldap_allow_unix_pw_bind";
 pub const ATTR_LEGALNAME: &str = "legalname";
+pub const ATTR_LINKEDGROUP: &str = "linked_group";
 pub const ATTR_LOGINSHELL: &str = "loginshell";
 pub const ATTR_MAIL: &str = "mail";
 pub const ATTR_MAY: &str = "may";

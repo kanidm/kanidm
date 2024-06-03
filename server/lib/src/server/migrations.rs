@@ -683,6 +683,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_APPLICATION_DL7.clone().into(),
+            SCHEMA_ATTR_LINKED_GROUP_DL7.clone().into(),
         ];
 
         idm_schema_classes

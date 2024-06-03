@@ -706,6 +706,17 @@ pub static ref SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_LINKED_GROUP_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LINKED_GROUP,
+    name: Attribute::LinkedGroup.into(),
+    description: "A reference to the group linked to the entry".to_string(),
+
+    multivalue: false,
+    sync_allowed: false,
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -1338,7 +1349,7 @@ pub static ref SCHEMA_CLASS_APPLICATION_DL7: SchemaClass = SchemaClass {
     name: EntryClass::Application.into(),
 
     description: "The class representing an application".to_string(),
-    systemmust: vec![Attribute::Name.into()],
+    systemmust: vec![Attribute::Name.into(), Attribute::LinkedGroup.into()],
     systemmay: vec![Attribute::Description.into()],
     systemsupplements: vec![EntryClass::ServiceAccount.into()],
     ..Default::default()
