@@ -717,6 +717,16 @@ pub static ref SCHEMA_ATTR_LINKED_GROUP_DL7: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_APPLICATION_PASSWORD,
+    name: Attribute::ApplicationPassword.into(),
+    description: "A set of application passwords".to_string(),
+
+    multivalue: true,
+    syntax: SyntaxType::ApplicationPassword,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -754,6 +764,33 @@ pub static ref SCHEMA_CLASS_PERSON_DL5: SchemaClass = SchemaClass {
         Attribute::OAuth2Session.into(),
         Attribute::Mail.into(),
         Attribute::LegalName.into(),
+    ],
+    systemmust: vec![
+        Attribute::IdVerificationEcKey.into()
+    ],
+    systemexcludes: vec![EntryClass::ServiceAccount.into(), EntryClass::Application.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_PERSON_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_PERSON,
+    name: EntryClass::Person.into(),
+    description: "Object representation of a person".to_string(),
+
+    sync_allowed: true,
+    systemmay: vec![
+        Attribute::PrimaryCredential.into(),
+        Attribute::PassKeys.into(),
+        Attribute::AttestedPasskeys.into(),
+        Attribute::CredentialUpdateIntentToken.into(),
+        Attribute::SshPublicKey.into(),
+        Attribute::RadiusSecret.into(),
+        Attribute::OAuth2ConsentScopeMap.into(),
+        Attribute::UserAuthTokenSession.into(),
+        Attribute::OAuth2Session.into(),
+        Attribute::Mail.into(),
+        Attribute::LegalName.into(),
+        Attribute::ApplicationPassword.into(),
     ],
     systemmust: vec![
         Attribute::IdVerificationEcKey.into()
