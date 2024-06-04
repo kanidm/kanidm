@@ -40,32 +40,32 @@ impl IntoResponse for WebError {
                 (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             }
             WebError::OperationError(inner) => {
-                match &inner {
+                let (code, headers) = match &inner {
                     OperationError::NotAuthenticated | OperationError::SessionExpired => {
                         // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
                         (
                             StatusCode::UNAUTHORIZED,
                             Some([("WWW-Authenticate", "Bearer"); 1]),
-                            inner.to_string(),
                         )
                     }
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        (StatusCode::FORBIDDEN, None, inner.to_string())
+                        (StatusCode::FORBIDDEN, None)
                     }
-                    OperationError::NoMatchingEntries => {
-                        (StatusCode::NOT_FOUND, None, inner.to_string())
-                    }
+                    OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
-                    | OperationError::SchemaViolation(_) => {
-                        (StatusCode::BAD_REQUEST, None, inner.to_string())
+                    | OperationError::SchemaViolation(_)
+                    | OperationError::CU0003WebauthnUserNotVerified => {
+                        (StatusCode::BAD_REQUEST, None)
                     }
-                    OperationError::CU0003WebauthnUserNotVerified => {
-                        (StatusCode::BAD_REQUEST, None, inner.to_string())
-                    }
-                    _ => (StatusCode::INTERNAL_SERVER_ERROR, None, inner.to_string()),
+                    _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
+                };
+                let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
+
+                match headers {
+                    Some(headers) => (code, headers, body).into_response(),
+                    None => (code, body).into_response(),
                 }
-                .into_response()
             }
         }
     }
