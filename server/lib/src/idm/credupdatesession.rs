@@ -2099,7 +2099,12 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     .finish_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
                         error!(eclass=?e, emsg=%e, "Unable to complete passkey registration");
-                        OperationError::Webauthn
+                        match e {
+                            WebauthnError::UserNotVerified => {
+                                OperationError::CU0003WebauthnUserNotVerified
+                            }
+                            _ => OperationError::CU0002WebauthnRegistrationError,
+                        }
                     });
 
                 // The reg is done. Clean up state before returning errors.
@@ -2220,13 +2225,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     .webauthn
                     .finish_attested_passkey_registration(reg, pk_reg)
                     .map_err(|e| {
-                        error!(eclass=?e, emsg=%e, "Unable to complete passkey registration");
+                        error!(eclass=?e, emsg=%e, "Unable to complete attested passkey registration");
 
                         match e {
                             WebauthnError::AttestationChainNotTrusted(_)
                             | WebauthnError::AttestationNotVerifiable => {
                                 OperationError::CU0001WebauthnAttestationNotTrusted
-                            }
+                            },
+                            WebauthnError::UserNotVerified => {
+                                OperationError::CU0003WebauthnUserNotVerified
+                            },
                             _ => OperationError::CU0002WebauthnRegistrationError,
                         }
                     });

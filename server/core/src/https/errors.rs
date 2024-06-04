@@ -40,12 +40,11 @@ impl IntoResponse for WebError {
                 (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             }
             WebError::OperationError(inner) => {
-                let (response_code, headers) = match &inner {
+                let (code, headers) = match &inner {
                     OperationError::NotAuthenticated | OperationError::SessionExpired => {
                         // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
                         (
                             StatusCode::UNAUTHORIZED,
-                            // Some([("WWW-Authenticate", "Bearer")]),
                             Some([("WWW-Authenticate", "Bearer"); 1]),
                         )
                     }
@@ -55,14 +54,17 @@ impl IntoResponse for WebError {
                     OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
-                    | OperationError::SchemaViolation(_) => (StatusCode::BAD_REQUEST, None),
+                    | OperationError::SchemaViolation(_)
+                    | OperationError::CU0003WebauthnUserNotVerified => {
+                        (StatusCode::BAD_REQUEST, None)
+                    }
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
                 };
-                let body =
-                    serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner));
+                let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
+
                 match headers {
-                    Some(headers) => (response_code, headers, body).into_response(),
-                    None => (response_code, body).into_response(),
+                    Some(headers) => (code, headers, body).into_response(),
+                    None => (code, body).into_response(),
                 }
             }
         }

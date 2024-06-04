@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -127,6 +129,7 @@ pub enum OperationError {
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
+    CU0003WebauthnUserNotVerified,
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     // Value Errors
@@ -202,4 +205,161 @@ impl PartialEq for OperationError {
         // anyway.
         std::mem::discriminant(self) == std::mem::discriminant(other)
     }
+}
+
+impl Display for OperationError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let mut output = format!("{:?}", self)
+            .split("::")
+            .last()
+            .unwrap_or("")
+            .to_string();
+
+        if let Some(msg) = self.message() {
+            output += &format!(" - {}", msg);
+        };
+        f.write_str(&output)
+    }
+}
+
+impl OperationError {
+    /// Return the message associated with the error if there is one.
+    fn message(&self) -> Option<&'static str> {
+        match self {
+            OperationError::SessionExpired => None,
+            OperationError::EmptyRequest => None,
+            OperationError::Backend => None,
+            OperationError::NoMatchingEntries => None,
+            OperationError::NoMatchingAttributes => None,
+            OperationError::CorruptedEntry(_) => None,
+            OperationError::CorruptedIndex(_) => None,
+            OperationError::ConsistencyError(_) => None,
+            OperationError::SchemaViolation(_) => None,
+            OperationError::Plugin(_) => None,
+            OperationError::FilterGeneration => None,
+            OperationError::FilterUuidResolution => None,
+            OperationError::InvalidAttributeName(_) => None,
+            OperationError::InvalidAttribute(_) => None,
+            OperationError::InvalidDbState => None,
+            OperationError::InvalidCacheState => None,
+            OperationError::InvalidValueState => None,
+            OperationError::InvalidEntryId => None,
+            OperationError::InvalidRequestState => None,
+            OperationError::InvalidSyncState => None,
+            OperationError::InvalidState => None,
+            OperationError::InvalidEntryState => None,
+            OperationError::InvalidUuid => None,
+            OperationError::InvalidReplChangeId => None,
+            OperationError::InvalidAcpState(_) => None,
+            OperationError::InvalidSchemaState(_) => None,
+            OperationError::InvalidAccountState(_) => None,
+            OperationError::MissingEntries => None,
+            OperationError::ModifyAssertionFailed => None,
+            OperationError::BackendEngine => None,
+            OperationError::SqliteError => None,
+            OperationError::FsError => None,
+            OperationError::SerdeJsonError => None,
+            OperationError::SerdeCborError => None,
+            OperationError::AccessDenied => None,
+            OperationError::NotAuthenticated => None,
+            OperationError::NotAuthorised => None,
+            OperationError::InvalidAuthState(_) => None,
+            OperationError::InvalidSessionState => None,
+            OperationError::SystemProtectedObject => None,
+            OperationError::SystemProtectedAttribute => None,
+            OperationError::PasswordQuality(_) => None,
+            OperationError::CryptographyError => None,
+            OperationError::ResourceLimit => None,
+            OperationError::QueueDisconnected => None,
+            OperationError::Webauthn => None,
+            OperationError::Wait(_) => None,
+            OperationError::ReplReplayFailure => None,
+            OperationError::ReplEntryNotChanged => None,
+            OperationError::ReplInvalidRUVState => None,
+            OperationError::ReplDomainLevelUnsatisfiable => None,
+            OperationError::ReplDomainUuidMismatch => None,
+            OperationError::ReplServerUuidSplitDataState => None,
+            OperationError::TransactionAlreadyCommitted => None,
+            OperationError::ValueDenyName => None,
+            OperationError::CU0002WebauthnRegistrationError => None,
+            OperationError::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
+            OperationError::CU0001WebauthnAttestationNotTrusted => None,
+            OperationError::VS0001IncomingReplSshPublicKey => None,
+            OperationError::VL0001ValueSshPublicKeyString => None,
+            OperationError::SC0001IncomingSshPublicKey => None,
+            OperationError::MG0001InvalidReMigrationLevel => None,
+            OperationError::MG0002RaiseDomainLevelExceedsMaximum => None,
+            OperationError::MG0003ServerPhaseInvalidForMigration => None,
+            OperationError::DB0001MismatchedRestoreVersion => None,
+            OperationError::DB0002MismatchedRestoreVersion => None,
+            OperationError::MG0004DomainLevelInDevelopment => None,
+            OperationError::MG0005GidConstraintsNotMet => None,
+            OperationError::KP0001KeyProviderNotLoaded => None,
+            OperationError::KP0002KeyProviderInvalidClass => None,
+            OperationError::KP0003KeyProviderInvalidType => None,
+            OperationError::KP0004KeyProviderMissingAttributeName => None,
+            OperationError::KP0005KeyProviderDuplicate => None,
+            OperationError::KP0006KeyObjectJwtEs256Generation => None,
+            OperationError::KP0007KeyProviderDefaultNotAvailable => None,
+            OperationError::KP0008KeyObjectMissingUuid => None,
+            OperationError::KP0009KeyObjectPrivateToDer => None,
+            OperationError::KP0010KeyObjectSignerToVerifier => None,
+            OperationError::KP0011KeyObjectMissingClass => None,
+            OperationError::KP0012KeyObjectMissingProvider => None,
+            OperationError::KP0012KeyProviderNotLoaded => None,
+            OperationError::KP0013KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0014KeyObjectSignerToVerifier => None,
+            OperationError::KP0015KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0016KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0017KeyProviderNoSuchKey => None,
+            OperationError::KP0018KeyProviderNoSuchKey => None,
+            OperationError::KP0019KeyProviderUnsupportedAlgorithm => None,
+            OperationError::KP0020KeyObjectNoActiveSigningKeys => None,
+            OperationError::KP0021KeyObjectJwsEs256Signature => None,
+            OperationError::KP0022KeyObjectJwsNotAssociated => None,
+            OperationError::KP0023KeyObjectJwsKeyRevoked => None,
+            OperationError::KP0024KeyObjectJwsInvalid => None,
+            OperationError::KP0025KeyProviderNotAvailable => None,
+            OperationError::KP0026KeyObjectNoSuchKey => None,
+            OperationError::KP0027KeyObjectPublicToDer => None,
+            OperationError::KP0028KeyObjectImportJwsEs256DerInvalid => None,
+            OperationError::KP0029KeyObjectSignerToVerifier => None,
+            OperationError::KP0030KeyObjectPublicToDer => None,
+            OperationError::KP0031KeyObjectNotFound => None,
+            OperationError::KP0032KeyProviderNoSuchKey => None,
+            OperationError::KP0033KeyProviderNoSuchKey => None,
+            OperationError::KP0034KeyProviderUnsupportedAlgorithm => None,
+            OperationError::KP0035KeyObjectJweA128GCMGeneration => None,
+            OperationError::KP0036KeyObjectPrivateToBytes => None,
+            OperationError::KP0037KeyObjectImportJweA128GCMInvalid => None,
+            OperationError::KP0038KeyObjectImportJweA128GCMInvalid => None,
+            OperationError::KP0039KeyObjectJweNotAssociated => None,
+            OperationError::KP0040KeyObjectJweInvalid => None,
+            OperationError::KP0041KeyObjectJweRevoked => None,
+            OperationError::KP0042KeyObjectNoActiveEncryptionKeys => None,
+            OperationError::KP0043KeyObjectJweA128GCMEncryption => None,
+            OperationError::KP0044KeyObjectJwsPublicJwk => None,
+            OperationError::PL0001GidOverlapsSystemRange => None,
+        }
+    }
+}
+
+#[test]
+fn test_operationerror_as_nice_string() {
+    assert_eq!(
+        OperationError::CU0001WebauthnAttestationNotTrusted.to_string(),
+        "CU0001WebauthnAttestationNotTrusted".to_string()
+    );
+    assert_eq!(
+        OperationError::CU0003WebauthnUserNotVerified.to_string(),
+        "CU0003WebauthnUserNotVerified - User Verification bit not set while registering credential, you may need to configure a PIN on this device.".to_string()
+    );
+    assert_eq!(
+        OperationError::SessionExpired.to_string(),
+        "SessionExpired".to_string()
+    );
+    assert_eq!(
+        OperationError::CorruptedEntry(12345).to_string(),
+        "CorruptedEntry(12345)".to_string()
+    );
 }
