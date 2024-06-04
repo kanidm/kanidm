@@ -23,7 +23,7 @@ macro_rules! handle_error {
 
 /// Tries to get the webdriver client, trying the default chromedriver port if the default selenium port doesn't work
 #[allow(dead_code)]
-#[cfg(all(feature = "webdriver", any(test, debug_assertions)))]
+// #[cfg(all(feature = "webdriver", any(test, debug_assertions)))]
 async fn get_webdriver_client() -> fantoccini::Client {
     use fantoccini::wd::Capabilities;
     use serde_json::json;
@@ -42,7 +42,7 @@ async fn get_webdriver_client() -> fantoccini::Client {
             Err(_) => {
                 // trying the default chromedriver port
                 eprintln!("Couldn't connect on 4444, trying 9515");
-                fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new())
+                fantoccini::ClientBuilder::native()
                     .connect("http://localhost:9515")
                     .await
                     .unwrap()
@@ -56,7 +56,7 @@ async fn get_webdriver_client() -> fantoccini::Client {
             }
         });
         let cap: Capabilities = serde_json::from_value(cap).unwrap();
-        fantoccini::ClientBuilder::new(hyper_tls::HttpsConnector::new())
+        fantoccini::ClientBuilder::native()
             .capabilities(cap)
             .connect("http://localhost:9515")
             .await
