@@ -28,19 +28,17 @@ use compact_jwt::Jwk;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID,
-    ATTR_ENTRY_MANAGED_BY, ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME,
-    CLIENT_TOKEN_CACHE, KOPID, KVERSION,
+    ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
+    ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID,
+    KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
-use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
-use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -704,13 +702,7 @@ impl KanidmClient {
         dest: &str,
         request: &R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
-
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(request);
 
         let response = response
             .send()
@@ -744,13 +736,8 @@ impl KanidmClient {
         request: R,
     ) -> Result<T, ClientError> {
         trace!("perform_auth_post_request connecting to {}", dest);
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(&request);
 
         // If we have a bearer token, set it now.
         let response = {
@@ -794,12 +781,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -841,12 +823,8 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
+        let response = self.client.put(self.make_url(dest)).json(&request);
 
-        let response = self
-            .client
-            .put(self.make_url(dest))
-            .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
@@ -857,7 +835,6 @@ impl KanidmClient {
         };
 
         let response = response
-            .body(req_string)
             .send()
             .await
             .map_err(|err| self.handle_response_error(err))?;
@@ -892,12 +869,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .patch(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.patch(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -980,7 +952,7 @@ impl KanidmClient {
             .client
             .delete(self.make_url(dest))
             // empty-ish body that makes the parser happy
-            .json(&json!([]));
+            .json(&serde_json::json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
