@@ -23,7 +23,7 @@ macro_rules! handle_error {
 
 /// Tries to get the webdriver client, trying the default chromedriver port if the default selenium port doesn't work
 #[allow(dead_code)]
-// #[cfg(all(feature = "webdriver", any(test, debug_assertions)))]
+#[cfg(all(feature = "webdriver", any(test, debug_assertions)))]
 async fn get_webdriver_client() -> fantoccini::Client {
     use fantoccini::wd::Capabilities;
     use serde_json::json;
