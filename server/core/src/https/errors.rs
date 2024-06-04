@@ -46,38 +46,24 @@ impl IntoResponse for WebError {
                         (
                             StatusCode::UNAUTHORIZED,
                             Some([("WWW-Authenticate", "Bearer"); 1]),
-                            serde_json::to_string(&inner)
-                                .unwrap_or_else(|_err| format!("{:?}", inner)),
+                            inner.to_string(),
                         )
                     }
-                    OperationError::SystemProtectedObject | OperationError::AccessDenied => (
-                        StatusCode::FORBIDDEN,
-                        None,
-                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
-                    ),
-                    OperationError::NoMatchingEntries => (
-                        StatusCode::NOT_FOUND,
-                        None,
-                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
-                    ),
+                    OperationError::SystemProtectedObject | OperationError::AccessDenied => {
+                        (StatusCode::FORBIDDEN, None, inner.to_string())
+                    }
+                    OperationError::NoMatchingEntries => {
+                        (StatusCode::NOT_FOUND, None, inner.to_string())
+                    }
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
-                    | OperationError::SchemaViolation(_) => (
-                        StatusCode::BAD_REQUEST,
-                        None,
-                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
-                    ),
-                    OperationError::CU0003WebauthnUserNotVerified => (
-                        StatusCode::BAD_REQUEST,
-                        None,
-                        serde_json::to_string(&inner.variant_as_nice_string())
-                            .unwrap_or_else(|_err| format!("{:?}", inner)),
-                    ),
-                    _ => (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        None,
-                        serde_json::to_string(&inner).unwrap_or_else(|_err| format!("{:?}", inner)),
-                    ),
+                    | OperationError::SchemaViolation(_) => {
+                        (StatusCode::BAD_REQUEST, None, inner.to_string())
+                    }
+                    OperationError::CU0003WebauthnUserNotVerified => {
+                        (StatusCode::BAD_REQUEST, None, inner.to_string())
+                    }
+                    _ => (StatusCode::INTERNAL_SERVER_ERROR, None, inner.to_string()),
                 }
                 .into_response()
             }

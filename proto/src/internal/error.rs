@@ -1,3 +1,5 @@
+use std::fmt::{Display, Formatter};
+
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -205,41 +207,23 @@ impl PartialEq for OperationError {
     }
 }
 
-impl OperationError {
-    /// This is bad but I don't feel that bad.
-    ///
-    /// It takes something like `CU0001WebauthnAttestationNotTrusted` and turns it
-    /// into `CU0001 - Webauthn Attestation Not Trusted` if it can, otherwise you just get the normal
-    /// debug format with spaces
-    ///
-    /// Probably shouldn't use this with any of the complex types because it'll get weird quick!
-    pub fn variant_as_nice_string(&self) -> String {
-        let asstr = format!("{:?}", self);
-        let asstr = asstr.split("::").last().unwrap();
-        let parser = regex::Regex::new(r"^(?P<errcode>[A-Z]{2}\d{4})(?P<therest>.*)")
-            .expect("Failed to parse regex!");
+impl Display for OperationError {
+    fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        let mut output = format!("{:?}", self)
+            .split("::")
+            .last()
+            .unwrap_or("")
+            .to_string();
 
-        let splitter = regex::Regex::new(r"([A-Z])").expect("Failed to parse splitter regex!");
-        match parser.captures(asstr) {
-            Some(caps) => {
-                let mut nice_string = splitter.replace_all(&caps["therest"], " $1").to_string();
-                while nice_string.contains("  ") {
-                    nice_string = nice_string.replace("  ", " ");
-                }
-                let message = match self.message() {
-                    Some(val) => format!(" - {}", val),
-                    None => "".to_string(),
-                };
-
-                format!("{} - {}{}", &caps["errcode"], nice_string.trim(), message)
-            }
-            None => {
-                let nice_string = splitter.replace_all(asstr, " $1").to_string();
-                nice_string.trim().to_string()
-            }
-        }
+        if let Some(msg) = self.message() {
+            output += &format!(" - {}", msg);
+        };
+        f.write_str(&output)
     }
+}
 
+impl OperationError {
+    /// Return the message associated with the error if there is one.
     fn message(&self) -> Option<&'static str> {
         match self {
             OperationError::SessionExpired => None,
@@ -296,17 +280,66 @@ impl OperationError {
             OperationError::ReplDomainUuidMismatch => None,
             OperationError::ReplServerUuidSplitDataState => None,
             OperationError::TransactionAlreadyCommitted => None,
-            OperationError::GidOverlapsSystemMin(_) => None,
             OperationError::ValueDenyName => None,
             OperationError::CU0002WebauthnRegistrationError => None,
             OperationError::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
-                OperationError::CU0001WebauthnAttestationNotTrusted => None,
+            OperationError::CU0001WebauthnAttestationNotTrusted => None,
             OperationError::VS0001IncomingReplSshPublicKey => None,
             OperationError::VL0001ValueSshPublicKeyString => None,
             OperationError::SC0001IncomingSshPublicKey => None,
             OperationError::MG0001InvalidReMigrationLevel => None,
             OperationError::MG0002RaiseDomainLevelExceedsMaximum => None,
             OperationError::MG0003ServerPhaseInvalidForMigration => None,
+            OperationError::DB0001MismatchedRestoreVersion => None,
+            OperationError::DB0002MismatchedRestoreVersion => None,
+            OperationError::MG0004DomainLevelInDevelopment => None,
+            OperationError::MG0005GidConstraintsNotMet => None,
+            OperationError::KP0001KeyProviderNotLoaded => None,
+            OperationError::KP0002KeyProviderInvalidClass => None,
+            OperationError::KP0003KeyProviderInvalidType => None,
+            OperationError::KP0004KeyProviderMissingAttributeName => None,
+            OperationError::KP0005KeyProviderDuplicate => None,
+            OperationError::KP0006KeyObjectJwtEs256Generation => None,
+            OperationError::KP0007KeyProviderDefaultNotAvailable => None,
+            OperationError::KP0008KeyObjectMissingUuid => None,
+            OperationError::KP0009KeyObjectPrivateToDer => None,
+            OperationError::KP0010KeyObjectSignerToVerifier => None,
+            OperationError::KP0011KeyObjectMissingClass => None,
+            OperationError::KP0012KeyObjectMissingProvider => None,
+            OperationError::KP0012KeyProviderNotLoaded => None,
+            OperationError::KP0013KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0014KeyObjectSignerToVerifier => None,
+            OperationError::KP0015KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0016KeyObjectJwsEs256DerInvalid => None,
+            OperationError::KP0017KeyProviderNoSuchKey => None,
+            OperationError::KP0018KeyProviderNoSuchKey => None,
+            OperationError::KP0019KeyProviderUnsupportedAlgorithm => None,
+            OperationError::KP0020KeyObjectNoActiveSigningKeys => None,
+            OperationError::KP0021KeyObjectJwsEs256Signature => None,
+            OperationError::KP0022KeyObjectJwsNotAssociated => None,
+            OperationError::KP0023KeyObjectJwsKeyRevoked => None,
+            OperationError::KP0024KeyObjectJwsInvalid => None,
+            OperationError::KP0025KeyProviderNotAvailable => None,
+            OperationError::KP0026KeyObjectNoSuchKey => None,
+            OperationError::KP0027KeyObjectPublicToDer => None,
+            OperationError::KP0028KeyObjectImportJwsEs256DerInvalid => None,
+            OperationError::KP0029KeyObjectSignerToVerifier => None,
+            OperationError::KP0030KeyObjectPublicToDer => None,
+            OperationError::KP0031KeyObjectNotFound => None,
+            OperationError::KP0032KeyProviderNoSuchKey => None,
+            OperationError::KP0033KeyProviderNoSuchKey => None,
+            OperationError::KP0034KeyProviderUnsupportedAlgorithm => None,
+            OperationError::KP0035KeyObjectJweA128GCMGeneration => None,
+            OperationError::KP0036KeyObjectPrivateToBytes => None,
+            OperationError::KP0037KeyObjectImportJweA128GCMInvalid => None,
+            OperationError::KP0038KeyObjectImportJweA128GCMInvalid => None,
+            OperationError::KP0039KeyObjectJweNotAssociated => None,
+            OperationError::KP0040KeyObjectJweInvalid => None,
+            OperationError::KP0041KeyObjectJweRevoked => None,
+            OperationError::KP0042KeyObjectNoActiveEncryptionKeys => None,
+            OperationError::KP0043KeyObjectJweA128GCMEncryption => None,
+            OperationError::KP0044KeyObjectJwsPublicJwk => None,
+            OperationError::PL0001GidOverlapsSystemRange => None,
         }
     }
 }
@@ -314,19 +347,19 @@ impl OperationError {
 #[test]
 fn test_operationerror_as_nice_string() {
     assert_eq!(
-        OperationError::CU0001WebauthnAttestationNotTrusted.variant_as_nice_string(),
-        "CU0001 - Webauthn Attestation Not Trusted".to_string()
+        OperationError::CU0001WebauthnAttestationNotTrusted.to_string(),
+        "CU0001WebauthnAttestationNotTrusted".to_string()
     );
     assert_eq!(
-        OperationError::CU0003WebauthnUserNotVerified.variant_as_nice_string(),
-        "CU0003 - Webauthn User Not Verified - User Verification bit not set while registering credential, you may need to configure a PIN on this device.".to_string()
+        OperationError::CU0003WebauthnUserNotVerified.to_string(),
+        "CU0003WebauthnUserNotVerified - User Verification bit not set while registering credential, you may need to configure a PIN on this device.".to_string()
     );
     assert_eq!(
-        OperationError::SessionExpired.variant_as_nice_string(),
-        "Session Expired".to_string()
+        OperationError::SessionExpired.to_string(),
+        "SessionExpired".to_string()
     );
     assert_eq!(
-        OperationError::CorruptedEntry(12345).variant_as_nice_string(),
-        "Corrupted Entry(12345)".to_string()
+        OperationError::CorruptedEntry(12345).to_string(),
+        "CorruptedEntry(12345)".to_string()
     );
 }
