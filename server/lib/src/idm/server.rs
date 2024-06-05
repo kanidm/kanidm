@@ -726,8 +726,17 @@ pub trait IdmServerTransaction<'a> {
                 .as_ref(),
         ) {
             // Good to go
-            let limits = Limits::default();
+            let mut limits = Limits::default();
             let session_id = Uuid::new_v4();
+
+            // Update limits from account policy
+            let (_account, account_policy) = Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+            if let Some(max_results) = account_policy.limit_search_max_results() {
+                limits.search_max_results = max_results as usize;
+            }
+            if let Some(max_filter) = account_policy.limit_search_max_filter_test() {
+                limits.search_max_filter_test = max_filter as usize;
+            }
 
             // Users via LDAP are always only granted anonymous rights unless
             // they auth with an api-token
