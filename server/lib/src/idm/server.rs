@@ -729,6 +729,8 @@ pub trait IdmServerTransaction<'a> {
             let limits = Limits::default();
             let session_id = Uuid::new_v4();
 
+            // Users via LDAP are always only granted anonymous rights unless
+            // they auth with an api-token
             Ok(Identity {
                 origin: IdentType::User(IdentUser { entry: anon_entry }),
                 source,
