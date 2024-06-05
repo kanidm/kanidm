@@ -99,7 +99,7 @@ impl IdProvider for KanidmProvider {
 
         if id_key.is_none() {
             let loadable_id_key = tpm
-                .identity_key_create(machine_key, tpm::KeyAlgorithm::Ecdsa256)
+                .identity_key_create(machine_key, None, tpm::KeyAlgorithm::Ecdsa256)
                 .map_err(|tpm_err| {
                     error!(?tpm_err);
                     IdpError::Tpm
