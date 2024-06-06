@@ -217,9 +217,9 @@ impl StatsContainer {
         person_count: usize,
         group_count: usize,
     ) -> Self {
-        let readop_distrib: Normal<f64> = Normal::from_data(&readop_times);
+        let readop_distrib: Normal<f64> = Normal::from_data(readop_times);
         let read_sd = readop_distrib.variance().sqrt();
-        let writeop_distrib: Normal<f64> = Normal::from_data(&writeop_times);
+        let writeop_distrib: Normal<f64> = Normal::from_data(writeop_times);
         let write_sd = writeop_distrib.variance().sqrt();
 
         StatsContainer {
