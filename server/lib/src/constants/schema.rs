@@ -701,7 +701,7 @@ pub static ref SCHEMA_ATTR_PATCH_LEVEL_DL7: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT,
     name: Attribute::DomainDevelopmentTaint.into(),
-    description: "".to_string(),
+    description: "A flag to show that the domain has been run on a development build, and will need additional work to upgrade/migrate.".to_string(),
     syntax: SyntaxType::Boolean,
     ..Default::default()
 };
