@@ -77,7 +77,8 @@ pub const DOMAIN_LEVEL_7: DomainVersion = 7;
 /// Deprcated as of 1.6.0
 pub const DOMAIN_LEVEL_8: DomainVersion = 8;
 
-// The minimum level that we can re-migrate from
+// The minimum level that we can re-migrate from.
+// This should be DOMAIN_TGT_LEVEL minus 2
 pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
@@ -88,7 +89,7 @@ pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_1;
 // The maximum supported domain functional level
 pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
-// The maximum supported domain functional level
+// The next maximum supported domain functional level
 pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 
 // On test builds define to 60 seconds

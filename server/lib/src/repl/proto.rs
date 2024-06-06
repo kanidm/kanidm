@@ -733,6 +733,7 @@ impl ReplIncrementalEntryV1 {
 pub enum ReplRefreshContext {
     V1 {
         domain_version: DomainVersion,
+        domain_devel: bool,
         domain_uuid: Uuid,
         // We need to send the current state of the ranges to populate into
         // the ranges so that lookups and ranges work properly.

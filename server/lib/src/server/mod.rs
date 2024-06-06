@@ -73,6 +73,7 @@ pub struct DomainInfo {
     pub(crate) d_display: String,
     pub(crate) d_vers: DomainVersion,
     pub(crate) d_patch_level: u32,
+    pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
 }
 
@@ -194,6 +195,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_version(&self) -> DomainVersion;
 
     fn get_domain_patch_level(&self) -> u32;
+
+    fn get_domain_development_taint(&self) -> bool;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -1074,6 +1077,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         self.d_info.d_patch_level
     }
 
+    fn get_domain_development_taint(&self) -> bool {
+        self.d_info.d_devel_taint
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1224,6 +1231,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         self.d_info.d_patch_level
     }
 
+    fn get_domain_development_taint(&self) -> bool {
+        self.d_info.d_devel_taint
+    }
+
     fn get_domain_uuid(&self) -> Uuid {
         self.d_info.d_uuid
     }
@@ -1272,6 +1283,8 @@ impl QueryServer {
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
             d_display: domain_name,
+            // Automatically derive our current taint mode based on the PRERELEASE setting.
+            d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
         }));
 
@@ -1814,6 +1827,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .get_ava_single_uint32(Attribute::PatchLevel)
             .unwrap_or(0);
 
+        // If we have moved from stable to dev, this triggers the taint. If we
+        // are moving from dev to stable, the db will be true triggering the
+        // taint flag. If we are stable to stable this will be false.
+        let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
+        let domain_info_devel_taint = current_devel_flag
+            || domain_info
+                .get_ava_single_bool(Attribute::DomainDevelopmentTaint)
+                .unwrap_or_default();
+
         // We have to set the domain version here so that features which check for it
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
@@ -1822,6 +1844,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let previous_patch_level = mut_d_info.d_patch_level;
         mut_d_info.d_vers = domain_info_version;
         mut_d_info.d_patch_level = domain_info_patch_level;
+        mut_d_info.d_devel_taint = domain_info_devel_taint;
 
         // We must both be at the correct domain version *and* the correct patch level. If we are
         // not, then we only proceed to migrate *if* our server boot phase is correct.
