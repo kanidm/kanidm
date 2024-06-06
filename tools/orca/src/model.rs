@@ -46,7 +46,7 @@ pub enum ActorRole {
     #[default]
     None,
     PeoplePiiReader,
-    PeopleSelfWriteMail,
+    PeopleSelfMailWrite,
     PeopleSelfReadProfile,
     PeopleSelfReadMemberOf,
     PeopleSelfSetPassword,
@@ -60,7 +60,7 @@ impl ActorRole {
             | ActorRole::PeopleSelfReadMemberOf
             | ActorRole::PeopleSelfSetPassword => None,
             ActorRole::PeoplePiiReader => Some(&["idm_people_pii_read"]),
-            ActorRole::PeopleSelfWriteMail => Some(&["idm_people_self_write_mail"]),
+            ActorRole::PeopleSelfMailWrite => Some(&["idm_people_self_mail_write"]),
         }
     }
 }

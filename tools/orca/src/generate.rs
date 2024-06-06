@@ -70,7 +70,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         },
         Group {
             name: "role_people_self_write_mail".to_string(),
-            role: ActorRole::PeopleSelfWriteMail,
+            role: ActorRole::PeopleSelfMailWrite,
             ..Default::default()
         },
         Group {

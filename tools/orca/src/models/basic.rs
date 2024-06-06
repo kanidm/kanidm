@@ -90,8 +90,8 @@ impl ActorBasic {
             // (which is always deterministic thanks to the rng seed used to choose the roles)
             State::AuthenticatedWithReauth => match roles.first() {
                 Some(role) => match role {
-                    ActorRole::PeopleSelfWriteMail => Transition {
-                        delay: Some(Duration::from_millis(300)),
+                    ActorRole::PeopleSelfMailWrite => Transition {
+                        delay: Some(Duration::from_millis(200)),
                         action: TransitionAction::WriteAttributePersonMail,
                     },
                     ActorRole::PeopleSelfReadProfile => Transition {
