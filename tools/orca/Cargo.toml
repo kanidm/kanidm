@@ -19,10 +19,10 @@ doctest = false
 
 [dependencies]
 async-trait = { workspace = true }
-chrono.workspace = true
+chrono = { workspace = true }
 clap = { workspace = true }
 crossbeam = { workspace = true }
-csv.workspace = true
+csv = { workspace = true }
 futures-util = { workspace = true, features = ["sink"] }
 hashbrown = { workspace = true }
 kanidm_client = { workspace = true }
