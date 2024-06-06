@@ -28,7 +28,7 @@ pub trait DataCollector {
 enum OpKind {
     WriteOp,
     ReadOp,
-    Other, //TODO! does this make sense?
+    Auth, //TODO! does this make sense?
 }
 
 impl From<EventDetail> for OpKind {
@@ -41,7 +41,7 @@ impl From<EventDetail> for OpKind {
             EventDetail::Error
             | EventDetail::Login
             | EventDetail::Logout
-            | EventDetail::PersonReauth => OpKind::Other,
+            | EventDetail::PersonReauth => OpKind::Auth,
         }
     }
 }
@@ -132,7 +132,7 @@ impl DataCollector for BasicStatistics {
                 OpKind::WriteOp => {
                     writeop_times.push(event_record.duration.as_secs_f64());
                 }
-                OpKind::Other => {}
+                OpKind::Auth => {}
             }
         }
 
