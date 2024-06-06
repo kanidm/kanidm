@@ -66,6 +66,11 @@ impl QueryServer {
             // Domain info was present, so we need to reflect that in our server
             // domain structures. If we don't do this, the in memory domain level
             // is stuck at 0 which can confuse init domain info below.
+            //
+            // This also is where the former domain taint flag will be loaded to
+            // d_info so that if the *previous* execution of the database was
+            // a devel version, we'll still trigger the forced remigration in
+            // in the case that we are moving from dev -> stable.
             write_txn.force_domain_reload();
 
             write_txn.reload()?;
@@ -111,7 +116,13 @@ impl QueryServer {
         // The reloads will have populated this structure now.
         let domain_info_version = write_txn.get_domain_version();
         let domain_patch_level = write_txn.get_domain_patch_level();
-        debug!(?db_domain_version, "After setting internal domain info");
+        let domain_development_taint = write_txn.get_domain_development_taint();
+        debug!(
+            ?db_domain_version,
+            ?domain_patch_level,
+            ?domain_development_taint,
+            "After setting internal domain info"
+        );
 
         if domain_info_version < domain_target_level {
             write_txn
@@ -129,7 +140,7 @@ impl QueryServer {
             // Reload if anything in migrations requires it - this triggers the domain migrations
             // which in turn can trigger schema reloads etc.
             write_txn.reload()?;
-        } else {
+        } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
             // do a single domain version bump, and continue to extend the migrations
@@ -140,10 +151,8 @@ impl QueryServer {
             // we are NOT in a test environment
             // AND
             // We did not already need a version migration as above
-            if option_env!("KANIDM_PRE_RELEASE").is_some() && !cfg!(test) {
-                write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
-                write_txn.reload()?;
-            }
+            write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
+            write_txn.reload()?;
         }
 
         if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
@@ -159,9 +168,25 @@ impl QueryServer {
                     warn!("Domain level has been raised to {}", domain_target_level);
                 })?;
 
-            // Run the patch migrations
+            // Run the patch migrations if any.
             write_txn.reload()?;
         };
+
+        // Now set the db/domain devel taint flag to match our current release status
+        // if it changes. This is what breaks the cycle of db taint from dev -> stable
+        let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
+        if current_devel_flag {
+            warn!("Domain Development Taint mode is enabled");
+        }
+        if domain_development_taint != current_devel_flag {
+            write_txn.internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::DomainDevelopmentTaint,
+                    Value::Bool(current_devel_flag),
+                ),
+            )?;
+        }
 
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
@@ -653,6 +678,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Now update schema
         let idm_schema_classes = [
             SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
+            SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),

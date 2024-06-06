@@ -75,6 +75,7 @@ pub const ATTR_DESCRIPTION: &str = "description";
 pub const ATTR_DIRECTMEMBEROF: &str = "directmemberof";
 pub const ATTR_DISPLAYNAME: &str = "displayname";
 pub const ATTR_DN: &str = "dn";
+pub const ATTR_DOMAIN_DEVELOPMENT_TAINT: &str = "domain_development_taint";
 pub const ATTR_DOMAIN_DISPLAY_NAME: &str = "domain_display_name";
 pub const ATTR_DOMAIN_LDAP_BASEDN: &str = "domain_ldap_basedn";
 pub const ATTR_DOMAIN_NAME: &str = "domain_name";
