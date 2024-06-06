@@ -83,7 +83,7 @@ fn search_filter_entry<'a>(
             return AccessResult::Grant;
         }
         IdentType::Synch(_) => {
-            security_critical!(uuid = ?entry.get_display_id(), "Blocking sync check");
+            security_debug!(uuid = ?entry.get_display_id(), "Blocking sync check");
             return AccessResult::Denied;
         }
         IdentType::User(_) => {}
@@ -92,7 +92,9 @@ fn search_filter_entry<'a>(
 
     match ident.access_scope() {
         AccessScope::Synchronise => {
-            security_access!("denied ❌ - identity access scope is not permitted to search");
+            security_debug!(
+                "denied ❌ - identity access scope 'Synchronise' is not permitted to search"
+            );
             return AccessResult::Denied;
         }
         AccessScope::ReadOnly | AccessScope::ReadWrite => {
@@ -144,7 +146,6 @@ fn search_filter_entry<'a>(
             match &acs.target_condition {
                 AccessControlTargetCondition::Scope(f_res) => {
                     if !entry.entry_match_no_index(f_res) {
-                        // should this be `security_access`?
                         security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "entry DOES NOT match acs");
                         return None
                     }
@@ -185,7 +186,7 @@ fn search_oauth2_filter_entry<'a>(
                 .unwrap_or(false);
 
             if contains_o2_rs && contains_o2_scope_member {
-                security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
+                security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(
                     Attribute::Class.as_ref(),
@@ -240,7 +241,7 @@ fn search_sync_account_filter_entry<'a>(
 
                     if sync_source_match {
                         // We finally got here!
-                        security_access!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronsied account from this sync account");
+                        security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronsied account from this sync account");
 
                         return AccessResult::Allow(btreeset!(
                             Attribute::Class.as_ref(),
