@@ -114,5 +114,5 @@ Adding the user to the `idm_people_self_write_mail` group, as shown below, allow
 their own mail.
 
 ```bash
-kanidm group add-members idm_people_self_write_mail_priv demo_user --name idm_admin
+kanidm group add-members idm_people_self_write_mail demo_user --name idm_admin
 ```
