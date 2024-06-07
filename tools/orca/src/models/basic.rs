@@ -57,6 +57,11 @@ impl ActorModel for ActorBasic {
             TransitionAction::ReadSelfMemberOf => {
                 model::person_get_self_memberof(client, person).await
             }
+            TransitionAction::SetSelfPassword => {
+                // I know it's dumb but here we just re-set the same password because it's the simplest thing to do
+                let Credential::Password { plain } = &person.credential;
+                model::person_set_self_password(client, person, plain).await
+            }
         }?;
 
         self.next_state(transition.action, result);
@@ -76,9 +81,6 @@ impl ActorBasic {
                 delay: None,
                 action: TransitionAction::Login,
             },
-            // Doing some tests with more people I noticed that if the delay is too low somehow??! the server could start processing the reauth request before
-            // the auth one, yielding an error,
-            // TODO!!: understand why that happens
             State::Authenticated => Transition {
                 delay: Some(Duration::from_millis(1000)),
                 action: TransitionAction::PrivilegeReauth,
@@ -88,17 +90,21 @@ impl ActorBasic {
             // (which is always deterministic thanks to the rng seed used to choose the roles)
             State::AuthenticatedWithReauth => match roles.first() {
                 Some(role) => match role {
-                    ActorRole::PeopleSelfWriteMail => Transition {
+                    ActorRole::PeopleSelfMailWrite => Transition {
                         delay: Some(Duration::from_millis(200)),
                         action: TransitionAction::WriteAttributePersonMail,
                     },
                     ActorRole::PeopleSelfReadProfile => Transition {
-                        delay: Some(Duration::from_millis(150)),
+                        delay: Some(Duration::from_millis(450)),
                         action: TransitionAction::ReadSelfAccount,
                     },
                     ActorRole::PeopleSelfReadMemberOf => Transition {
-                        delay: Some(Duration::from_millis(330)),
+                        delay: Some(Duration::from_millis(500)),
                         action: TransitionAction::ReadSelfMemberOf,
+                    },
+                    ActorRole::PeopleSelfSetPassword => Transition {
+                        delay: Some(Duration::from_secs(2)),
+                        action: TransitionAction::SetSelfPassword,
                     },
                     ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
                 },
@@ -121,7 +127,8 @@ impl ActorBasic {
                 State::AuthenticatedWithReauth,
                 TransitionAction::WriteAttributePersonMail
                 | TransitionAction::ReadSelfAccount
-                | TransitionAction::ReadSelfMemberOf,
+                | TransitionAction::ReadSelfMemberOf
+                | TransitionAction::SetSelfPassword,
                 TransitionResult::Ok,
             ) => {
                 self.state = State::AuthenticatedWithReauth;

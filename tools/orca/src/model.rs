@@ -15,6 +15,7 @@ pub enum TransitionAction {
     WriteAttributePersonMail,
     ReadSelfAccount,
     ReadSelfMemberOf,
+    SetSelfPassword,
 }
 
 // Is this the right way? Should transitions/delay be part of the actor model? Should
@@ -45,9 +46,10 @@ pub enum ActorRole {
     #[default]
     None,
     PeoplePiiReader,
-    PeopleSelfWriteMail,
+    PeopleSelfMailWrite,
     PeopleSelfReadProfile,
     PeopleSelfReadMemberOf,
+    PeopleSelfSetPassword,
 }
 
 impl ActorRole {
@@ -55,9 +57,10 @@ impl ActorRole {
         match self {
             ActorRole::None
             | ActorRole::PeopleSelfReadProfile
-            | ActorRole::PeopleSelfReadMemberOf => None,
+            | ActorRole::PeopleSelfReadMemberOf
+            | ActorRole::PeopleSelfSetPassword => None,
             ActorRole::PeoplePiiReader => Some(&["idm_people_pii_read"]),
-            ActorRole::PeopleSelfWriteMail => Some(&["idm_people_self_write_mail"]),
+            ActorRole::PeopleSelfMailWrite => Some(&["idm_people_self_mail_write"]),
         }
     }
 }
@@ -111,6 +114,30 @@ pub async fn person_set_self_mail(
     let parsed_result = parse_call_result_into_transition_result_and_event_record(
         result,
         EventDetail::PersonSetSelfMail,
+        start,
+        duration,
+    );
+
+    Ok(parsed_result)
+}
+
+pub async fn person_set_self_password(
+    client: &KanidmClient,
+    person: &Person,
+    pw: &str,
+) -> Result<(TransitionResult, EventRecord), Error> {
+    // Should we measure the time of each call rather than the time with multiple calls?
+    let person_username = person.username.as_str();
+
+    let start = Instant::now();
+    let result = client
+        .idm_person_account_primary_credential_set_password(person_username, pw)
+        .await;
+
+    let duration = Instant::now().duration_since(start);
+    let parsed_result = parse_call_result_into_transition_result_and_event_record(
+        result,
+        EventDetail::PersonSelfSetPassword,
         start,
         duration,
     );
