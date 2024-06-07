@@ -3,6 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
+use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
 use kanidm_proto::internal::ImageValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
@@ -28,6 +29,7 @@ pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
+pub use self::certificate::ValueSetCertificate;
 pub use self::cid::ValueSetCid;
 pub use self::cred::{
     ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
@@ -64,6 +66,7 @@ mod address;
 mod auditlogstring;
 mod binary;
 mod bool;
+mod certificate;
 mod cid;
 mod cred;
 mod datetime;
@@ -612,6 +615,16 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn to_certificate_single(&self) -> Option<&Certificate> {
+        debug_assert!(false);
+        None
+    }
+
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Certificate>> {
+        debug_assert!(false);
+        None
+    }
+
     fn repl_merge_valueset(
         &self,
         _older: &ValueSet,
@@ -701,6 +714,7 @@ pub fn from_result_value_iter(
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_)
         | Value::HexString(_)
+        | Value::Certificate(_)
         | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
@@ -778,6 +792,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             status_cid,
             der,
         } => ValueSetKeyInternal::new(id, usage, valid_from, status, status_cid, der),
+        Value::Certificate(certificate) => ValueSetCertificate::new(certificate)?,
 
         Value::PhoneNumber(_, _) => {
             debug_assert!(false);
@@ -842,6 +857,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
         DbValueSetV2::KeyInternal(set) => ValueSetKeyInternal::from_dbvs2(set),
         DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
+        DbValueSetV2::Certificate(set) => ValueSetCertificate::from_dbvs2(set),
     }
 }
 
@@ -894,5 +910,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
         ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
         ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
+        ReplAttrV1::Certificate { set } => ValueSetCertificate::from_repl_v1(set),
     }
 }

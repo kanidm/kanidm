@@ -24,6 +24,7 @@ pub(crate) mod unix;
 
 use crate::server::identity::Source;
 use compact_jwt::JwsCompact;
+use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
 use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
 use std::fmt;
 
@@ -55,8 +56,8 @@ pub struct ClientAuthInfo {
 
 #[derive(Debug, Clone)]
 pub struct ClientCertInfo {
-    pub subject_key_id: Option<Vec<u8>>,
-    pub cn: Option<String>,
+    pub public_key_s256: Sha256Digest,
+    pub certificate: Certificate,
 }
 
 #[cfg(test)]
