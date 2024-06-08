@@ -706,6 +706,24 @@ pub static ref SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_REFERS,
+    name: Attribute::Refers.into(),
+    description: "A reference to linked object".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_CERTIFICATE_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_CERTIFICATE,
+    name: Attribute::Certificate.into(),
+    description: "An x509 Certificate".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::Certificate,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
