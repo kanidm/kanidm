@@ -1351,4 +1351,18 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+// =========================================
+
+pub static ref SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_CLIENT_CERTIFICATE,
+    name: EntryClass::ClientCertificate.into(),
+    description: "A client authentication certificate".to_string(),
+    systemmay: vec![],
+    systemmust: vec![
+        Attribute::Certificate.into(),
+        Attribute::Refers.into(),
+    ],
+    ..Default::default()
+};
+
 );

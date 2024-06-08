@@ -701,6 +701,7 @@ pub fn from_result_value_iter(
         Value::EcKeyPrivate(k) => ValueSetEcKeyPrivate::new(&k),
         Value::Image(imagevalue) => image::ValueSetImage::new(imagevalue),
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
+        Value::Certificate(c) => ValueSetCertificate::new(c)?,
         Value::WebauthnAttestationCaList(_)
         | Value::PhoneNumber(_, _)
         | Value::Passkey(_, _, _)
@@ -714,7 +715,6 @@ pub fn from_result_value_iter(
         | Value::JwsKeyEs256(_)
         | Value::JwsKeyRs256(_)
         | Value::HexString(_)
-        | Value::Certificate(_)
         | Value::KeyInternal { .. } => {
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);

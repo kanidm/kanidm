@@ -2240,7 +2240,7 @@ lazy_static! {
         modify_removed_attrs: vec![Attribute::Certificate, Attribute::Refers,],
         modify_present_attrs: vec![Attribute::Certificate, Attribute::Refers,],
         create_attrs: vec![Attribute::Class, Attribute::Certificate, Attribute::Refers,],
-        create_classes: vec![EntryClass::ClientCertificate,],
+        create_classes: vec![EntryClass::Object, EntryClass::ClientCertificate,],
         ..Default::default()
     };
 }

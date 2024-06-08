@@ -239,6 +239,8 @@ pub async fn json_rest_event_get(
         .map_err(WebError::from)
 }
 
+/// Common event handler to search and retrieve entries with a name or id
+/// and return the result as json proto entries
 pub async fn json_rest_event_get_id(
     state: ServerState,
     id: String,
@@ -254,6 +256,24 @@ pub async fn json_rest_event_get_id(
         .handle_internalsearch(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+/// Common event handler to search and retrieve entries that reference another
+/// entry by the value of name or id and return the result as json proto entries
+pub async fn json_rest_event_get_refers_id(
+    state: ServerState,
+    refers_id: String,
+    filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    state
+        .qe_r_ref
+        .handle_search_refers(client_auth_info, filter, refers_id, attrs, kopid.eventid)
+        .await
         .map(Json::from)
         .map_err(WebError::from)
 }
@@ -654,6 +674,59 @@ pub async fn person_id_delete(
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
+}
+
+// == person -> certificates
+
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_certificate",
+    responses(
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/person/certificate",
+    operation_id = "person_get_id_certificate",
+)]
+pub async fn person_get_id_certificate(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ClientCertificate.into()));
+    json_rest_event_get_refers_id(state, id, filter, None, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_certificate",
+    responses(
+        DefaultApiResponse,
+    ),
+    request_body=ProtoEntry,
+    security(("token_jwt" = [])),
+    tag = "v1/person/certificate",
+    operation_id = "person_post_id_certificate",
+)]
+/// Expects the following fields in the attrs field of the req: [certificate]
+///
+/// The person's id will be added implicitly as a reference.
+pub async fn person_post_id_certificate(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(mut obj): Json<ProtoEntry>,
+) -> Result<Json<()>, WebError> {
+    let classes: Vec<String> = vec![
+        EntryClass::ClientCertificate.into(),
+        EntryClass::Object.into(),
+    ];
+    obj.attrs.insert(Attribute::Refers.to_string(), vec![id]);
+
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 // // == account ==
@@ -3085,16 +3158,14 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
                 .post(person_id_post_attr)
                 .delete(person_id_delete_attr),
         )
-        // .route("/v1/person/:id/_lock", get(|| async { "TODO" }))
-        // .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
+        .route(
+            "/v1/person/:id/_certificate",
+            get(person_get_id_certificate).post(person_post_id_certificate),
+        )
         .route(
             "/v1/person/:id/_credential/_status",
             get(person_get_id_credential_status),
         )
-        // .route(
-        //     "/v1/person/:id/_credential/:cid/_lock",
-        //     get(|| async { "TODO" }),
-        // )
         .route(
             "/v1/person/:id/_credential/_update",
             get(person_id_credential_update_get),

@@ -470,6 +470,65 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
+    pub async fn handle_search_refers(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        filter: Filter<FilterInvalid>,
+        uuid_or_name: String,
+        attrs: Option<Vec<String>>,
+        eventid: Uuid,
+    ) -> Result<Vec<ProtoEntry>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
+
+        // Update the filter with the target_uuid
+        let filter = Filter::join_parts_and(
+            filter,
+            filter_all!(f_eq(Attribute::Refers, PartialValue::Refer(target_uuid))),
+        );
+
+        // Make an event from the request
+        let srch = match SearchEvent::from_internal_message(
+            ident,
+            &filter,
+            attrs.as_deref(),
+            &mut idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin internal api search: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        trace!(?srch, "Begin event");
+
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(entries) => SearchResult::new(&mut idms_prox_read.qs_read, &entries)
+                .map(|ok_sr| ok_sr.into_proto_array()),
+            Err(e) => Err(e),
+        }
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalsearchrecycled(
         &self,
         client_auth_info: ClientAuthInfo,

@@ -6,7 +6,11 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
-    x509_cert::{der::Decode, x509_public_key_s256, Certificate},
+    x509_cert::{
+        der::{Decode, Encode, EncodePem},
+        pem::LineEnding,
+        x509_public_key_s256, Certificate,
+    },
     Sha256Digest,
 };
 
@@ -65,6 +69,24 @@ impl ValueSetCertificate {
         Ok(Box::new(ValueSetCertificate { map }))
     }
 
+    fn to_vec_dbvs(&self) -> Vec<DbValueCertificate> {
+        self.map
+            .iter()
+            .filter_map(|(pk_s256, cert)| {
+                cert.to_der()
+                    .map_err(|der_err| {
+                        error!(
+                            ?pk_s256,
+                            ?der_err,
+                            "Failed to serialise certificate to der. This value will be dropped!"
+                        );
+                    })
+                    .ok()
+            })
+            .map(|certificate_der| DbValueCertificate::V1 { certificate_der })
+            .collect()
+    }
+
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
         T: IntoIterator<Item = Certificate>,
@@ -117,8 +139,18 @@ impl ValueSetT for ValueSetCertificate {
         }
     }
 
-    fn contains(&self, _pv: &PartialValue) -> bool {
-        todo!();
+    fn contains(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::HexString(hs) => {
+                let mut buf = Sha256Digest::default();
+                if hex::decode_to_slice(&hs, &mut buf).is_ok() {
+                    self.map.contains_key(&buf)
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
     }
 
     fn substring(&self, _pv: &PartialValue) -> bool {
@@ -154,22 +186,21 @@ impl ValueSetT for ValueSetCertificate {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        // Box::new(self.set.iter().map(|_| "private_binary".to_string()))
-        todo!()
+        Box::new(self.map.iter().filter_map(|(pk_s256, cert)| {
+            cert.to_pem(LineEnding::LF)
+                .ok()
+                .map(|pem| format!("{}\n{}", hex::encode(pk_s256), pem))
+        }))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        // DbValueSetV2::PrivateBinary(self.set.iter().cloned().collect())
-        todo!()
+        let data = self.to_vec_dbvs();
+        DbValueSetV2::Certificate(data)
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {
-        /*
-        ReplAttrV1::PrivateBinary {
-            set: self.set.iter().cloned().map(|b| b.into()).collect(),
-        }
-        */
-        todo!()
+        let set = self.to_vec_dbvs();
+        ReplAttrV1::Certificate { set }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

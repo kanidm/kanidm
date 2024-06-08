@@ -31,7 +31,7 @@ sha2 = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tracing = { workspace = true }
 uuid = { workspace = true }
-x509-cert = { workspace = true }
+x509-cert = { workspace = true, features = ["pem"] }
 
 [dev-dependencies]
 sketching = { workspace = true }

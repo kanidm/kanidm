@@ -1,6 +1,7 @@
 use crate::Sha256Digest;
 
 pub use ::x509_cert::der;
+pub use ::x509_cert::der::pem;
 pub use ::x509_cert::Certificate;
 
 use ::sha2::{Digest, Sha256};
