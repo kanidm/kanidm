@@ -225,7 +225,11 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let schema = self.get_schema();
         let domain_version = self.d_info.d_vers;
-        let domain_patch_level = self.d_info.d_patch_level;
+        let domain_patch_level = if self.d_info.d_devel_taint {
+            u32::MAX
+        } else {
+            self.d_info.d_patch_level
+        };
         let domain_uuid = self.d_info.d_uuid;
 
         let schema_entries: Vec<_> = schema_entries
@@ -268,6 +272,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         //
         // * the current domain version
         let domain_version = self.d_info.d_vers;
+        let domain_devel = self.d_info.d_devel_taint;
         let domain_uuid = self.d_info.d_uuid;
 
         let trim_cid = self.trim_cid().clone();
@@ -355,6 +360,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         Ok(ReplRefreshContext::V1 {
             domain_version,
+            domain_devel,
             domain_uuid,
             ranges,
             schema_entries,
