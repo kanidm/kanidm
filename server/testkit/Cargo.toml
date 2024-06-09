@@ -53,7 +53,7 @@ kanidm_build_profiles = { workspace = true }
 [dev-dependencies]
 assert_cmd = "2.0.14"
 compact_jwt = { workspace = true }
-escargot = "0.5.10"
+escargot = "0.5.11"
 # used for webdriver testing
 fantoccini = { version = "0.19.3" }
 futures = { workspace = true }

@@ -104,8 +104,8 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.4.2"
 bytes = "^1.5.0"
-clap = { version = "^4.5.3", features = ["derive", "env"] }
-clap_complete = "^4.5.1"
+clap = { version = "^4.5.6", features = ["derive", "env"] }
+clap_complete = "^4.5.5"
 # Forced by saffron/cron
 chrono = "^0.4.35"
 compact_jwt = { version = "^0.4.1", default-features = false }
@@ -179,7 +179,7 @@ qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
 rand_chacha = "0.3.1"
-regex = "1.10.3"
+regex = "1.10.5"
 reqwest = { version = "0.12.4", default-features = false, features = [
     "cookies",
     "json",
