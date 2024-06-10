@@ -37,6 +37,7 @@
 - Jinna Kiisuo (jinnatar)
 - Merlijn Verstraete (ToxicMushroom)
 - Tobias Krischer (tobikris)
+- Daniil Egortsev (playhardgopro)
 
 ## Acknowledgements
 

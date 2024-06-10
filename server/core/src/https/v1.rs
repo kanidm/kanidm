@@ -1238,7 +1238,7 @@ pub async fn account_user_auth_token_delete(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/v1/credential/_exchange_intent",
     params(
     ),
@@ -1263,7 +1263,7 @@ pub async fn credential_update_exchange_intent(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/v1/credential/_status",
     responses(
         (status=200), // TODO: define response
