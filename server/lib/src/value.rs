@@ -33,7 +33,7 @@ use webauthn_rs::prelude::{
 
 use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
@@ -275,6 +275,7 @@ pub enum SyntaxType {
     OauthClaimMap = 37,
     KeyInternal = 38,
     HexString = 39,
+    ApplicationPassword = 40,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -323,6 +324,7 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
             "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
             "HEX_STRING" => Ok(SyntaxType::HexString),
+            "APPLICATION_PASSWORD" => Ok(SyntaxType::ApplicationPassword),
             _ => Err(()),
         }
     }
@@ -371,6 +373,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
             SyntaxType::KeyInternal => "KEY_INTERNAL",
             SyntaxType::HexString => "HEX_STRING",
+            SyntaxType::ApplicationPassword => "APPLICATION_PASSWORD",
         })
     }
 }
@@ -1181,6 +1184,8 @@ pub enum Value {
     },
 
     HexString(String),
+
+    ApplicationPassword(ApplicationPassword),
 }
 
 impl PartialEq for Value {
@@ -1988,6 +1993,10 @@ impl Value {
             Value::AuditLogString(_, s) => {
                 Value::validate_str_escapes(s) && Value::validate_singleline(s)
             }
+            Value::ApplicationPassword(ap) => {
+                Value::validate_str_escapes(&ap.label) && Value::validate_singleline(&ap.label)
+            }
+
             // These have stricter validators so not needed.
             Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,

@@ -115,6 +115,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.changed_flags.insert(ChangeFlag::ACP)
         }
+
+        if !self.changed_flags.contains(ChangeFlag::APPLICATION)
+            && del_cand.iter().any(|e| {
+                e.attribute_equality(Attribute::Class, &EntryClass::Application.into())
+            })
+        {
+            self.changed_flags.insert(ChangeFlag::APPLICATION)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::OAUTH2)
             && del_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())

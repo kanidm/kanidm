@@ -207,6 +207,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.changed_flags.insert(ChangeFlag::ACP)
         }
 
+        if !self.changed_flags.contains(ChangeFlag::APPLICATION)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::Application.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::APPLICATION)
+        }
+
+
         if !self.changed_flags.contains(ChangeFlag::OAUTH2)
             && norm_cand
                 .iter()

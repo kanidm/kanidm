@@ -367,6 +367,15 @@ lazy_static! {
         ],
         ..Default::default()
     };
+
+    pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_ldap_application_admins",
+        description: "Builtin Application Administration Group.",
+        uuid: UUID_IDM_APPLICATION_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 }
 
 /// Make a list of all the non-admin BuiltinGroup's that are created by default, doing it in a standard-ish way so we can use it around the platform
@@ -386,6 +395,7 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_PEOPLE_PII_READ,
         &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
         &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
+        &BUILTIN_GROUP_APPLICATION_ADMINS,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,

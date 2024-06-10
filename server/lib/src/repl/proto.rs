@@ -328,6 +328,16 @@ pub struct ReplApiTokenV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+pub enum ReplApplicationPassword {
+    V1 {
+        refer: Uuid,
+        application_refer: Uuid,
+        label: String,
+        password: ReplPasswordV1,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum ReplAttrV1 {
     Address {
         set: Vec<ReplAddressV1>,
@@ -458,6 +468,9 @@ pub enum ReplAttrV1 {
     },
     HexString {
         set: Vec<String>,
+    },
+    ApplicationPassword {
+        set: Vec<ReplApplicationPassword>,
     },
 }
 

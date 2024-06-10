@@ -682,6 +682,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL7.clone().into(),
+            SCHEMA_ATTR_LINKED_GROUP_DL7.clone().into(),
+            SCHEMA_CLASS_PERSON_DL7.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL7.clone().into(),
         ];
 
         idm_schema_classes
@@ -715,6 +719,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_data = [
             IDM_ACP_SELF_WRITE_DL7.clone().into(),
             IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        let idm_data = [
+            // Update access controls.
+            IDM_ACP_APPLICATION_MANAGE_DL7.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7.clone().into(),
         ];
 
         idm_data

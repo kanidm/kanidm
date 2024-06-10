@@ -17,7 +17,7 @@ use webauthn_rs::prelude::Passkey as PasskeyV4;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 
 use crate::be::dbvalue::DbValueSetV2;
-use crate::credential::{totp::Totp, Credential};
+use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::{cid::Cid, proto::ReplAttrV1};
 use crate::schema::SchemaAttribute;
@@ -25,6 +25,7 @@ use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
+use self::apppwd::ValueSetApplicationPassword;
 pub use self::auditlogstring::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
 pub use self::binary::{ValueSetPrivateBinary, ValueSetPublicBinary};
 pub use self::bool::ValueSetBool;
@@ -61,6 +62,7 @@ pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
 
 mod address;
+mod apppwd;
 mod auditlogstring;
 mod binary;
 mod bool;
@@ -385,6 +387,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_application_password_map(&self) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
+        debug_assert!(false);
+        None
+    }
+
     fn to_value_single(&self) -> Option<Value> {
         if self.len() != 1 {
             None
@@ -690,6 +697,7 @@ pub fn from_result_value_iter(
         Value::CredentialType(c) => ValueSetCredentialType::new(c),
         Value::WebauthnAttestationCaList(_)
         | Value::PhoneNumber(_, _)
+        | Value::ApplicationPassword(_)
         | Value::Passkey(_, _, _)
         | Value::AttestedPasskey(_, _, _)
         | Value::TotpSecret(_, _)
@@ -783,6 +791,7 @@ pub fn from_value_iter(mut iter: impl Iterator<Item = Value>) -> Result<ValueSet
             debug_assert!(false);
             return Err(OperationError::InvalidValueState);
         }
+        Value::ApplicationPassword(ap) => ValueSetApplicationPassword::new(ap),
     };
 
     for v in iter {
@@ -842,6 +851,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::OauthClaimMap(set) => ValueSetOauthClaimMap::from_dbvs2(set),
         DbValueSetV2::KeyInternal(set) => ValueSetKeyInternal::from_dbvs2(set),
         DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
+        DbValueSetV2::ApplicationPassword(set) => ValueSetApplicationPassword::from_dbvs2(set),
     }
 }
 
@@ -894,5 +904,6 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
         ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
         ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
+        ReplAttrV1::ApplicationPassword { set } => ValueSetApplicationPassword::from_repl_v1(set),
     }
 }
