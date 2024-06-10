@@ -730,6 +730,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_data = [
             // Update access controls.
             IDM_ACP_APPLICATION_MANAGE_DL7.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7.clone().into(),
         ];
 
         idm_data

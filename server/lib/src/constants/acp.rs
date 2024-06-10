@@ -2236,11 +2236,13 @@ lazy_static! {
             Attribute::Uuid,
             Attribute::Description,
             Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
         ],
         create_attrs: vec![
             Attribute::Class,
             Attribute::Name,
             Attribute::Description,
+            Attribute::EntryManagedBy,
         ],
         modify_removed_attrs: vec![
             Attribute::Description,
@@ -2253,6 +2255,41 @@ lazy_static! {
         create_classes: vec![
             EntryClass::Object,
             EntryClass::Application
+        ],
+        ..Default::default()
+    };
+
+    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_application_entry_manager",
+        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER_V1,
+        description: "Builtin IDM Control for allowing EntryManager to read and modify applications",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        // Any application
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::Description,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Description,
+            Attribute::LinkedGroup,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Description,
+            Attribute::LinkedGroup,
         ],
         ..Default::default()
     };

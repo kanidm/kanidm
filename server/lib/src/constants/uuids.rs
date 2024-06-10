@@ -423,6 +423,8 @@ pub const UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_V1: Uuid = uuid!("00000000-0000-0000-
 pub const UUID_KEY_PROVIDER_INTERNAL: Uuid = uuid!("00000000-0000-0000-0000-ffffff000070");
 
 pub const UUID_IDM_ACP_APPLICATION_MANAGE_V1: Uuid = uuid!("00000000-0000-0000-0000-ffffff000071");
+pub const UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER_V1: Uuid =
+    uuid!("00000000-0000-0000-0000-ffffff000072");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");
