@@ -390,8 +390,6 @@ pub async fn create_https_server(
 
         };
 
-        opentelemetry::global::shutdown_tracer_provider();
-
         info!("Stopped {}", super::TaskName::HttpsServer);
     }))
 }
