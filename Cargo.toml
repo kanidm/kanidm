@@ -85,8 +85,8 @@ codegen-units = 1
 #
 # cargo test [-- --test-threads=1]
 #
-# Parallel Maximum: 12GB
-# Single Maximum: 8GB
+# Parallel Maximum: 1GB
+# Single Maximum: 0.2GB
 [profile.dev]
 debug = true
 lto = false
