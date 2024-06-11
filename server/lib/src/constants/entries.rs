@@ -31,7 +31,7 @@ fn test_valueattribute_round_trip() {
     let the_list = all::<Attribute>().collect::<Vec<_>>();
     for attr in the_list {
         let s: &'static str = attr.into();
-        let attr2 = Attribute::try_from(s.to_string()).unwrap();
+        let attr2 = Attribute::try_from(s).unwrap();
         assert!(attr == attr2);
     }
 }
@@ -217,26 +217,18 @@ impl From<&Attribute> for &'static str {
     }
 }
 
-impl TryFrom<&str> for Attribute {
-    type Error = OperationError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.to_string())
-    }
-}
-
 impl TryFrom<&AttrString> for Attribute {
     type Error = OperationError;
 
     fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.to_string())
+        Attribute::try_from(value.as_str())
     }
 }
 
-impl TryFrom<String> for Attribute {
+impl<'a> TryFrom<&'a str> for Attribute {
     type Error = OperationError;
-    fn try_from(val: String) -> Result<Self, OperationError> {
-        let res = match val.as_str() {
+    fn try_from(val: &'a str) -> Result<Self, OperationError> {
+        let res = match val {
             ATTR_ACCOUNT => Attribute::Account,
             ATTR_ACCOUNT_EXPIRE => Attribute::AccountExpire,
             ATTR_ACCOUNT_VALID_FROM => Attribute::AccountValidFrom,
@@ -402,7 +394,7 @@ impl TryFrom<String> for Attribute {
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
             _ => {
                 trace!("Failed to convert {} to Attribute", val);
-                return Err(OperationError::InvalidAttributeName(val));
+                return Err(OperationError::InvalidAttributeName(val.to_string()));
             }
         };
         Ok(res)
@@ -610,7 +602,7 @@ impl<'a> serde::Deserialize<'a> for Attribute {
         D: serde::Deserializer<'a>,
     {
         let s = String::deserialize(deserializer)?;
-        Attribute::try_from(s).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
+        Attribute::try_from(s.as_str()).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
     }
 }
 

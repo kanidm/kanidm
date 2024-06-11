@@ -19,6 +19,10 @@ path = "src/main.rs"
 test = true
 doctest = false
 
+[features]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
+
 [dependencies]
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
@@ -27,6 +31,7 @@ sketching = { workspace = true }
 fs2 = { workspace = true }
 futures = { workspace = true }
 
+dhat = { workspace = true, optional = true }
 clap = { workspace = true, features = ["env"] }
 mimalloc = { workspace = true }
 reqwest = { workspace = true }

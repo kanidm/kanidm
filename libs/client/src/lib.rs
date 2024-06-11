@@ -122,6 +122,7 @@ pub struct KanidmClientBuilder {
     verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
+    request_timeout: Option<u64>,
     use_system_proxies: bool,
     /// Where to store auth tokens, only use in testing!
     token_cache_path: Option<String>,
@@ -142,6 +143,10 @@ impl Display for KanidmClientBuilder {
         match self.connect_timeout {
             Some(value) => writeln!(f, "connect_timeout: {}", value)?,
             None => writeln!(f, "connect_timeout: unset")?,
+        }
+        match self.request_timeout {
+            Some(value) => writeln!(f, "request_timeout: {}", value)?,
+            None => writeln!(f, "request_timeout: unset")?,
         }
         writeln!(f, "use_system_proxies: {}", self.use_system_proxies)?;
         writeln!(
@@ -166,6 +171,7 @@ fn test_kanidmclientbuilder_display() {
         verify_hostnames: true,
         ca: None,
         connect_timeout: Some(420),
+        request_timeout: Some(69),
         use_system_proxies: true,
         token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
     };
@@ -211,6 +217,7 @@ impl KanidmClientBuilder {
             verify_hostnames: true,
             ca: None,
             connect_timeout: None,
+            request_timeout: None,
             use_system_proxies: true,
             token_cache_path: None,
         }
@@ -267,6 +274,7 @@ impl KanidmClientBuilder {
             verify_hostnames,
             ca,
             connect_timeout,
+            request_timeout,
             use_system_proxies,
             token_cache_path,
         } = self;
@@ -291,6 +299,7 @@ impl KanidmClientBuilder {
             verify_hostnames,
             ca,
             connect_timeout,
+            request_timeout,
             use_system_proxies,
             token_cache_path,
         })
@@ -416,6 +425,13 @@ impl KanidmClientBuilder {
         }
     }
 
+    pub fn request_timeout(self, secs: u64) -> Self {
+        KanidmClientBuilder {
+            request_timeout: Some(secs),
+            ..self
+        }
+    }
+
     pub fn no_proxy(self) -> Self {
         KanidmClientBuilder {
             use_system_proxies: false,
@@ -502,7 +518,12 @@ impl KanidmClientBuilder {
 
         let client_builder = match &self.connect_timeout {
             Some(secs) => client_builder
-                .connect_timeout(Duration::from_secs(*secs))
+                .connect_timeout(Duration::from_secs(*secs)),
+            None => client_builder,
+        };
+
+        let client_builder = match &self.request_timeout {
+            Some(secs) => client_builder
                 .timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };

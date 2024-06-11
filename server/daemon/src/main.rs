@@ -10,8 +10,14 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+
+#[cfg(not(feature = "dhat-heap"))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.
@@ -283,6 +289,9 @@ fn main() -> ExitCode {
         error!(?code, "CRITICAL: Unable to set prctl flags");
         return ExitCode::FAILURE;
     }
+
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::new_heap();
 
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

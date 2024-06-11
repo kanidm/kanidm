@@ -1,6 +1,14 @@
-[profile.release]
-debug = true
-lto = "thin"
+[workspace.package]
+version = "1.3.0-dev"
+authors = [
+    "William Brown <william@blackhats.net.au>",
+    "James Hodgkinson <james@terminaloutcomes.com>",
+]
+rust-version = "1.77"
+edition = "2021"
+license = "MPL-2.0"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
 
 [workspace]
 resolver = "2"
@@ -31,18 +39,64 @@ members = [
     "libs/users",
 ]
 
-[workspace.package]
-version = "1.3.0-dev"
-authors = [
-    "William Brown <william@blackhats.net.au>",
-    "James Hodgkinson <james@terminaloutcomes.com>",
-]
-rust-version = "1.77"
-edition = "2021"
-license = "MPL-2.0"
-homepage = "https://github.com/kanidm/kanidm/"
-repository = "https://github.com/kanidm/kanidm/"
+# Below follows some guides/estimates to system resources consumed during a build.
+# Most of these values are over-estimates and are just rough observations.
+#
+# These were tested on a 10core M1 Max.
+# Parallel Linking Maximum = an estimate of how much ram will be consumed at peak
+#   while the build is linking multiple binaries in parallel
+# Single Largest Binary Maximum = an estamite of how much ram is conusmed by the
+#   single largest binary during linking. This would reflect a single threaded
+#   build ram maximum.
+# Time = estimate on how long the build may take.
 
+# cargo build --release
+#
+# Parallel Linking Maximum: 6GB
+# Single Largest Binary Maximum: 5GB
+# Time: ~6 minutes
+[profile.release]
+debug = true
+strip = "none"
+lto = "thin"
+opt-level = 3
+codegen-units = 32
+
+[profile.release.build-override]
+debug = false
+opt-level = 0
+codegen-units = 256
+
+# cargo build --profile release-lto
+#
+# Parallel Linking Maximum: 24GB
+# Single Largest Binary Maximum: 16GB
+# Time: ~11 minutes
+[profile.release-lto]
+inherits = "release"
+lto = "fat"
+codegen-units = 1
+
+# cargo build
+#
+# Parallel Linking Maximum: 4GB
+# Single Largest Binary Maximum: 3GB
+# Time: ~2 minutes
+#
+# cargo test [-- --test-threads=1]
+#
+# Parallel Maximum: 12GB
+# Single Maximum: 8GB
+[profile.dev]
+debug = true
+lto = false
+opt-level = 0
+codegen-units = 256
+
+[profile.dev.build-override]
+debug = true
+opt-level = 0
+codegen-units = 256
 
 [patch.crates-io]
 ## As Kanidm maintains a number of libraries, sometimes during development we need to override them
@@ -115,6 +169,7 @@ crossbeam = "0.8.4"
 criterion = "^0.5.1"
 csv = "1.3.0"
 dialoguer = "0.10.4"
+dhat = "0.3.3"
 dyn-clone = "^1.0.17"
 fernet = "^0.2.1"
 filetime = "^0.2.23"

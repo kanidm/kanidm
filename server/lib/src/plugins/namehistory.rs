@@ -53,7 +53,7 @@ impl NameHistory {
                             // as of now we're interested just in the name so we use Iname
                             match post_name {
                                 Value::Iname(n) => post.add_ava_if_not_exist(
-                                    ava_name.try_into()?,
+                                    ava_name.as_str().try_into()?,
                                     Value::AuditLogString(cid.clone(), n),
                                 ),
                                 _ => return Err(OperationError::InvalidValueState),
@@ -77,7 +77,7 @@ impl NameHistory {
                         let ava_name = Self::get_ava_name(history_attr);
                         match name {
                             Value::Iname(n) => cand.add_ava_if_not_exist(
-                                ava_name.try_into()?,
+                                ava_name.as_str().try_into()?,
                                 Value::AuditLogString(cid.clone(), n),
                             ),
                             _ => return Err(OperationError::InvalidValueState),

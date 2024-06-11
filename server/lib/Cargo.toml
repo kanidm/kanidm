@@ -25,12 +25,18 @@ harness = false
 name = "image_benches"
 harness = false
 
+[features]
+# default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
+
 [dependencies]
 base64 = { workspace = true }
 base64urlsafedata = { workspace = true }
 bitflags = { workspace = true }
 compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
 concread = { workspace = true }
+dhat = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
 enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
@@ -97,9 +103,6 @@ svg = { workspace = true }
 # because windows really can't build without the bundled one
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }
-
-[features]
-# default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
 compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_release_without_verify"] }

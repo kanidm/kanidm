@@ -803,6 +803,7 @@ async fn main() -> ExitCode {
             }
 
             let cb = cb.connect_timeout(cfg.conn_timeout);
+            let cb = cb.request_timeout(cfg.request_timeout);
 
             let rsclient = match cb.build() {
                 Ok(rsc) => rsc,

@@ -136,9 +136,15 @@ pub(crate) fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
             let body = async {
                 let test_config = #default_config_struct;
 
+                #[cfg(feature = "dhat-heap")]
+                let _profiler = dhat::Profiler::new_heap();
+
                 let test_server = crate::testkit::setup_test(test_config).await;
 
                 #test_fn(&test_server).await;
+
+                #[cfg(feature = "dhat-heap")]
+                drop(_profiler);
 
                 // Any needed teardown?
                 // Clear the cache before we verify.
@@ -224,9 +230,15 @@ pub(crate) fn qs_pair_test(args: &TokenStream, item: TokenStream) -> TokenStream
             let body = async {
                 let test_config = #default_config_struct;
 
+                #[cfg(feature = "dhat-heap")]
+                let _profiler = dhat::Profiler::new_heap();
+
                 let (server_a, server_b) = crate::testkit::setup_pair_test(test_config).await;
 
                 #test_fn(&server_a, &server_b).await;
+
+                #[cfg(feature = "dhat-heap")]
+                drop(_profiler);
 
                 // Any needed teardown?
                 assert!(server_a.clear_cache().await.is_ok());
@@ -323,9 +335,15 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
             let body = async {
                 let test_config = #default_config_struct;
 
+                #[cfg(feature = "dhat-heap")]
+                let _profiler = dhat::Profiler::new_heap();
+
                 let (test_server, mut idms_delayed, mut idms_audit)  = crate::testkit::setup_idm_test(test_config).await;
 
                 #test_fn(#test_fn_args).await;
+
+                #[cfg(feature = "dhat-heap")]
+                drop(_profiler);
 
                 // Any needed teardown?
                 // assert!(test_server.clear_cache().await.is_ok());
