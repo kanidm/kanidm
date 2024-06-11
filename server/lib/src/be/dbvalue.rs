@@ -620,6 +620,11 @@ pub enum DbValueKeyInternal {
     },
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueCertificate {
+    V1 { certificate_der: Vec<u8> },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
@@ -777,6 +782,8 @@ pub enum DbValueSetV2 {
     KeyInternal(Vec<DbValueKeyInternal>),
     #[serde(rename = "HS")]
     HexString(Vec<String>),
+    #[serde(rename = "X509")]
+    Certificate(Vec<DbValueCertificate>),
 }
 
 impl DbValueSetV2 {
@@ -828,6 +835,7 @@ impl DbValueSetV2 {
             DbValueSetV2::CredentialType(set) => set.len(),
             DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
             DbValueSetV2::KeyInternal(set) => set.len(),
+            DbValueSetV2::Certificate(set) => set.len(),
         }
     }
 

@@ -34,6 +34,12 @@ use kanidm_hsm_crypto::{HmacKey, Tpm};
 pub mod mtls;
 pub mod prelude;
 pub mod serialise;
+pub mod x509_cert;
+
+pub use sha2;
+
+pub type Sha256Digest =
+    sha2::digest::generic_array::GenericArray<u8, sha2::digest::typenum::consts::U32>;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;

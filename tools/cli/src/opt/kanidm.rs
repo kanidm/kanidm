@@ -532,6 +532,24 @@ pub enum AccountValidity {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AccountCertificate {
+    #[clap(name = "status")]
+    Status {
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap(name = "create")]
+    Create {
+        account_id: String,
+        certificate_path: PathBuf,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+
+}
+
+#[derive(Debug, Subcommand)]
 pub enum AccountUserAuthToken {
     /// Show the status of logged in sessions associated to this account.
     #[clap(name = "status")]
@@ -603,6 +621,11 @@ pub enum PersonOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+    #[clap(name = "certificate", hide = true)]
+    Certificate {
+        #[clap(subcommand)]
+        commands: AccountCertificate,
+    }
 }
 
 #[derive(Debug, Subcommand)]

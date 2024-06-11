@@ -39,9 +39,10 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
-use openssl::nid;
 use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
 use openssl::x509::X509;
+
+use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 
 use sketching::*;
 use tokio::{
@@ -554,8 +555,8 @@ pub(crate) async fn handle_conn(
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
 
-    let mut tls_stream = SslStream::new(ssl, stream).map_err(|e| {
-        error!("Failed to create TLS stream: {:?}", e);
+    let mut tls_stream = SslStream::new(ssl, stream).map_err(|err| {
+        error!(?err, "Failed to create TLS stream");
         std::io::Error::from(ErrorKind::ConnectionAborted)
     })?;
 
@@ -565,25 +566,28 @@ pub(crate) async fn handle_conn(
             let client_cert = if let Some(peer_cert) = tls_stream.ssl().peer_certificate() {
                 // TODO: This is where we should be checking the CRL!!!
 
-                let subject_key_id = peer_cert
-                    .subject_key_id()
-                    .map(|ski| ski.as_slice().to_vec());
+                // Extract the cert from openssl to x509-cert which is a better
+                // parser to handle the various extensions.
 
-                let cn = if let Some(cn) = peer_cert
-                    .subject_name()
-                    .entries_by_nid(nid::Nid::COMMONNAME)
-                    .next()
-                {
-                    String::from_utf8(cn.data().as_slice().to_vec())
-                        .map_err(|err| {
-                            warn!(?err, "client certificate CN contains invalid utf-8 - the CN will be ignored!");
-                        })
-                        .ok()
-                } else {
-                    None
-                };
+                let cert_der = peer_cert.to_der().map_err(|ossl_err| {
+                    error!(?ossl_err, "unable to process x509 certificate as DER");
+                    std::io::Error::from(ErrorKind::ConnectionAborted)
+                })?;
 
-                Some(ClientCertInfo { subject_key_id, cn })
+                let certificate = Certificate::from_der(&cert_der).map_err(|ossl_err| {
+                    error!(?ossl_err, "unable to process DER certificate to x509");
+                    std::io::Error::from(ErrorKind::ConnectionAborted)
+                })?;
+
+                let public_key_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+                    error!("subject public key bitstring is not octet aligned");
+                    std::io::Error::from(ErrorKind::ConnectionAborted)
+                })?;
+
+                Some(ClientCertInfo {
+                    public_key_s256,
+                    certificate,
+                })
             } else {
                 None
             };

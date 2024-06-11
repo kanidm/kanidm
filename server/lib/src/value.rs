@@ -17,6 +17,7 @@ use std::time::Duration;
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use hashbrown::HashSet;
+use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
 use openssl::ec::EcKey;
@@ -275,6 +276,7 @@ pub enum SyntaxType {
     OauthClaimMap = 37,
     KeyInternal = 38,
     HexString = 39,
+    Certificate = 40,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -323,6 +325,7 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
             "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
             "HEX_STRING" => Ok(SyntaxType::HexString),
+            "CERTIFICATE" => Ok(SyntaxType::Certificate),
             _ => Err(()),
         }
     }
@@ -371,6 +374,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
             SyntaxType::KeyInternal => "KEY_INTERNAL",
             SyntaxType::HexString => "HEX_STRING",
+            SyntaxType::Certificate => "CERTIFICATE",
         })
     }
 }
@@ -1181,6 +1185,8 @@ pub enum Value {
     },
 
     HexString(String),
+
+    Certificate(Certificate),
 }
 
 impl PartialEq for Value {
@@ -1469,6 +1475,10 @@ impl Value {
         } else {
             None
         }
+    }
+
+    pub fn new_certificate_s(cert_str: &str) -> Option<Self> {
+        Certificate::from_pem(cert_str).map(Value::Certificate).ok()
     }
 
     /// Want a `Value::Image`? use this!
@@ -2008,6 +2018,7 @@ impl Value {
 
             Value::PhoneNumber(_, _) => true,
             Value::Address(_) => true,
+            Value::Certificate(_) => true,
 
             Value::Uuid(_)
             | Value::Bool(_)

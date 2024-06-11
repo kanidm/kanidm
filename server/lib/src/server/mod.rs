@@ -658,6 +658,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute("Internal keys are generated and not able to be set.".to_string())),
                     SyntaxType::HexString => Value::new_hex_string_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid hex string syntax".to_string())),
+                    SyntaxType::Certificate => Value::new_certificate_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
                 }
             }
             None => {
@@ -781,10 +783,10 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
-                    SyntaxType::HexString | SyntaxType::KeyInternal => {
+                    SyntaxType::HexString | SyntaxType::KeyInternal | SyntaxType::Certificate => {
                         PartialValue::new_hex_string_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute(
-                                "Invalid key identifer syntax, expected hex string".to_string(),
+                                "Invalid syntax, expected hex string".to_string(),
                             )
                         })
                     }

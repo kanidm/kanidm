@@ -2209,3 +2209,38 @@ lazy_static! {
         ..Default::default()
     };
 }
+
+lazy_static! {
+    pub static ref IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_hp_client_certificate_manager",
+        uuid: UUID_IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER,
+        description: "Builtin IDM Control for allowing client certificate management.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_CLIENT_CERTIFICATE_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                EntryClass::Class.to_string(),
+                EntryClass::ClientCertificate.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Certificate,
+            Attribute::Refers,
+        ],
+        modify_removed_attrs: vec![Attribute::Certificate, Attribute::Refers,],
+        modify_present_attrs: vec![Attribute::Certificate, Attribute::Refers,],
+        create_attrs: vec![Attribute::Class, Attribute::Certificate, Attribute::Refers,],
+        create_classes: vec![EntryClass::Object, EntryClass::ClientCertificate,],
+        ..Default::default()
+    };
+}

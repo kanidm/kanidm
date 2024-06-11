@@ -1,6 +1,7 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueCertificate;
 use crate::be::dbvalue::DbValueImage;
 use crate::be::dbvalue::DbValueKeyInternal;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
@@ -458,6 +459,9 @@ pub enum ReplAttrV1 {
     },
     HexString {
         set: Vec<String>,
+    },
+    Certificate {
+        set: Vec<DbValueCertificate>,
     },
 }
 

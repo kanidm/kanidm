@@ -367,10 +367,8 @@ pub trait IdmServerTransaction<'a> {
         } = client_auth_info;
 
         match (client_cert, bearer_token) {
-            (Some(_client_cert_info), _) => {
-                // TODO: Cert validation here.
-                warn!("Unable to process client certificate identity");
-                Err(OperationError::NotAuthenticated)
+            (Some(client_cert_info), _) => {
+                self.client_certificate_to_identity(&client_cert_info, ct, source)
             }
             (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
                 Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
@@ -385,6 +383,9 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
+    /// This function is not using in authentication flows - it is a reflector of the
+    /// current session state to allow a user-auth-token to be presented to the
+    /// user via the whoami call.
     #[instrument(level = "info", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
@@ -399,10 +400,8 @@ pub trait IdmServerTransaction<'a> {
         } = client_auth_info;
 
         match (client_cert, bearer_token) {
-            (Some(_client_cert_info), _) => {
-                // TODO: Cert validation here.
-                warn!("Unable to process client certificate identity");
-                Err(OperationError::NotAuthenticated)
+            (Some(client_cert_info), _) => {
+                self.client_certificate_to_user_auth_token(&client_cert_info, ct)
             }
             (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
                 Token::UserAuthToken(uat) => Ok(uat),
@@ -675,6 +674,135 @@ pub trait IdmServerTransaction<'a> {
             scope,
             limits,
         })
+    }
+
+    fn client_cert_info_entry(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let pks256 = hex::encode(&client_cert_info.public_key_s256);
+        // Using the certificate hash, find our matching cert.
+        let mut maybe_cert_entries = self.get_qs_txn().internal_search(filter!(f_eq(
+            Attribute::Certificate,
+            PartialValue::HexString(pks256.clone())
+        )))?;
+
+        let maybe_cert_entry = maybe_cert_entries.pop();
+
+        if let Some(cert_entry) = maybe_cert_entry {
+            if maybe_cert_entries.is_empty() {
+                Ok(cert_entry)
+            } else {
+                debug!(?pks256, "Multiple certificates matched, unable to proceed.");
+                Err(OperationError::NotAuthenticated)
+            }
+        } else {
+            debug!(?pks256, "No certificates were able to be mapped.");
+            Err(OperationError::NotAuthenticated)
+        }
+    }
+
+    /// Given a certificate, validate it and discover the associated entry that
+    /// the certificate relates to. Currently, this relies on mapping the public
+    /// key sha256 to a stored client certificate, which then links to the owner.
+    ///
+    /// In the future we *could* consider alternate mapping strategies such as
+    /// subjectAltName or subject DN, but these have subtle security risks and
+    /// configuration challenges, so binary mapping is the simplest - and safest -
+    /// option today.
+    #[instrument(level = "debug", skip_all)]
+    fn client_certificate_to_identity(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+        ct: Duration,
+        source: Source,
+    ) -> Result<Identity, OperationError> {
+        let cert_entry = self.client_cert_info_entry(client_cert_info)?;
+
+        // This is who the certificate belongs to.
+        let refers_uuid = cert_entry
+            .get_ava_single_refer(Attribute::Refers)
+            .ok_or_else(|| {
+                warn!("Invalid certificate entry, missing refers");
+                OperationError::InvalidState
+            })?;
+
+        // Now get the related entry.
+        let entry = self.get_qs_txn().internal_search_uuid(refers_uuid)?;
+
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        // Is the account in it's valid window?
+        if !account.is_within_valid_time(ct) {
+            // Nope, expired
+            return Err(OperationError::SessionExpired);
+        };
+
+        // scope is related to the cert. For now, default to RO.
+        let scope = AccessScope::ReadOnly;
+
+        let mut limits = Limits::default();
+        // Apply the limits from the account policy
+        if let Some(lim) = account_policy
+            .limit_search_max_results()
+            .and_then(|v| v.try_into().ok())
+        {
+            limits.search_max_results = lim;
+        }
+        if let Some(lim) = account_policy
+            .limit_search_max_filter_test()
+            .and_then(|v| v.try_into().ok())
+        {
+            limits.search_max_filter_test = lim;
+        }
+
+        let certificate_uuid = cert_entry.get_uuid();
+
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            source,
+            // session_id is the certificate uuid.
+            session_id: certificate_uuid,
+            scope,
+            limits,
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn client_certificate_to_user_auth_token(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+        ct: Duration,
+    ) -> Result<UserAuthToken, OperationError> {
+        let cert_entry = self.client_cert_info_entry(client_cert_info)?;
+
+        // This is who the certificate belongs to.
+        let refers_uuid = cert_entry
+            .get_ava_single_refer(Attribute::Refers)
+            .ok_or_else(|| {
+                warn!("Invalid certificate entry, missing refers");
+                OperationError::InvalidState
+            })?;
+
+        // Now get the related entry.
+        let entry = self.get_qs_txn().internal_search_uuid(refers_uuid)?;
+
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        // Is the account in it's valid window?
+        if !account.is_within_valid_time(ct) {
+            // Nope, expired
+            return Err(OperationError::SessionExpired);
+        };
+
+        let certificate_uuid = cert_entry.get_uuid();
+        let session_is_rw = false;
+
+        account
+            .client_cert_info_to_userauthtoken(certificate_uuid, session_is_rw, ct, &account_policy)
+            .ok_or(OperationError::InvalidState)
     }
 
     #[instrument(level = "debug", skip_all)]

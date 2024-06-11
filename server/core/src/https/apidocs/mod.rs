@@ -97,6 +97,8 @@ impl Modify for SecurityAddon {
         super::v1::person_id_put_attr,
         super::v1::person_id_post_attr,
         super::v1::person_id_delete_attr,
+        super::v1::person_get_id_certificate,
+        super::v1::person_post_id_certificate,
         super::v1::person_get_id_credential_status,
         super::v1::person_id_credential_update_get,
         super::v1::person_id_credential_update_intent_get,

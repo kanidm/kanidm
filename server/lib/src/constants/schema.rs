@@ -706,6 +706,24 @@ pub static ref SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_REFERS,
+    name: Attribute::Refers.into(),
+    description: "A reference to linked object".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::ReferenceUuid,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_CERTIFICATE_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_CERTIFICATE,
+    name: Attribute::Certificate.into(),
+    description: "An x509 Certificate".to_string(),
+    multivalue: false,
+    syntax: SyntaxType::Certificate,
+    ..Default::default()
+};
+
 // === classes ===
 
 pub static ref SCHEMA_CLASS_PERSON: SchemaClass = SchemaClass {
@@ -1329,6 +1347,20 @@ pub static ref SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6: SchemaClass = SchemaClass {
     ],
     systemsupplements: vec![
         EntryClass::KeyObject.into(),
+    ],
+    ..Default::default()
+};
+
+// =========================================
+
+pub static ref SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_CLIENT_CERTIFICATE,
+    name: EntryClass::ClientCertificate.into(),
+    description: "A client authentication certificate".to_string(),
+    systemmay: vec![],
+    systemmust: vec![
+        Attribute::Certificate.into(),
+        Attribute::Refers.into(),
     ],
     ..Default::default()
 };

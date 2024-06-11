@@ -679,9 +679,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
             SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
+            SCHEMA_ATTR_REFERS_DL7.clone().into(),
+            SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
         ];
 
         idm_schema_classes
@@ -700,6 +703,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .clone()
                 .try_into()?,
             IDM_PEOPLE_SELF_MAIL_WRITE_DL7.clone().try_into()?,
+            BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7
+                .clone()
+                .try_into()?,
+            IDM_HIGH_PRIVILEGE_DL7.clone().try_into()?,
         ];
 
         idm_data
@@ -715,6 +722,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_data = [
             IDM_ACP_SELF_WRITE_DL7.clone().into(),
             IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
         ];
 
         idm_data
