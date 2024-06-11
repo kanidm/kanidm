@@ -517,14 +517,12 @@ impl KanidmClientBuilder {
         };
 
         let client_builder = match &self.connect_timeout {
-            Some(secs) => client_builder
-                .connect_timeout(Duration::from_secs(*secs)),
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };
 
         let client_builder = match &self.request_timeout {
-            Some(secs) => client_builder
-                .timeout(Duration::from_secs(*secs)),
+            Some(secs) => client_builder.timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };
 
