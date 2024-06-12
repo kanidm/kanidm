@@ -127,13 +127,13 @@ fn delete_filter_entry<'a>(
             }
         };
 
+        let entry_name = entry.get_display_id();
         security_access!(
-            entry_uuid = ?entry.get_uuid(),
+            %entry_name,
             acs = %acd.acp.acp.name,
             "entry matches acs"
         );
-        // It matches, so we can delete this!
-        trace!("passed");
+
         true
     }); // any related_acp
 
