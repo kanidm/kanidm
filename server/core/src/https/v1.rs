@@ -2847,7 +2847,8 @@ pub async fn auth(
     auth_session_state_management(state, jar, inter)
 }
 
-#[instrument(skip(state))]
+// Disable on any level except trace to stop leaking tokens
+#[instrument(level = "trace", skip_all)]
 fn auth_session_state_management(
     state: ServerState,
     mut jar: CookieJar,

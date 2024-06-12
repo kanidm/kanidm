@@ -588,7 +588,7 @@ pub trait BackendTransaction {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
 
-        debug!(filter_optimised = ?filt);
+        trace!(filter_optimised = ?filt);
 
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
@@ -682,7 +682,7 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        debug!(filter_optimised = ?filt);
+        trace!(filter_optimised = ?filt);
 
         // Using the indexes, resolve the IdList here, or AllIds.
         // Also get if the filter was 100% resolved or not.

@@ -21,9 +21,13 @@
 #![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "dhat-heap")))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(all(test, feature = "dhat-heap"))]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 #[macro_use]
 extern crate rusqlite;

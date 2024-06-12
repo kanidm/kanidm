@@ -2022,7 +2022,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // If the server is in a late phase of start up or is
             // operational, then a reindex may be required. After the reindex, the schema
             // must also be reloaded so that slope optimisation indexes are loaded correctly.
-            if *self.phase >= ServerPhase::DomainInfoReady {
+            if *self.phase >= ServerPhase::Running {
                 self.reindex()?;
                 self.reload_schema()?;
             }

@@ -31,7 +31,8 @@ pub struct TrustedClientIp(pub IpAddr);
 impl FromRequestParts<ServerState> for TrustedClientIp {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(level = "debug", skip(state))]
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ServerState,
@@ -88,7 +89,8 @@ pub struct VerifiedClientInformation(pub ClientAuthInfo);
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(level = "debug", skip(state))]
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ServerState,

@@ -21,6 +21,7 @@ async fn preflight_person(
 
     if client.person_exists(&person.username).await? {
         // Do nothing? Do we need to reset them later?
+        return Ok(());
     } else {
         client
             .person_create(&person.username, &person.display_name)
@@ -74,36 +75,63 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     // Apply any flags if they exist.
     apply_flags(client.clone(), state.preflight_flags.as_slice()).await?;
 
-    let mut tasks = Vec::with_capacity(state.persons.len());
+    let state_persons_len = state.persons.len();
+
+    let mut tasks = Vec::with_capacity(state_persons_len);
 
     // Create persons.
     for person in state.persons.into_iter() {
         let c = client.clone();
-        tasks.push(tokio::spawn(preflight_person(c, person)))
+        // Write operations are single threaded in Kanidm, so we don't need to attempt
+        // to parallelise that here.
+        // tasks.push(tokio::spawn(preflight_person(c, person)))
+        tasks.push(preflight_person(c, person))
     }
 
-    for task in tasks {
-        task.await.map_err(|tokio_err| {
-            error!(?tokio_err, "Failed to join task");
-            Error::Tokio
-        })??;
-        // The double ? isn't a mistake, it's because this is Result<Result<T, E>, E>
-        // and flatten is nightly.
-    }
+    let tasks_par = tasks.split_off(state_persons_len / 2);
+
+    let left = tokio::spawn(async move {
+        for (i, task) in tasks.into_iter().enumerate() {
+            let _ = task.await;
+            if i % 500 == 0 {
+                eprint!(".");
+            }
+        }
+    });
+    let right = tokio::spawn(async move {
+        for (i, task) in tasks_par.into_iter().enumerate() {
+            let _ = task.await;
+            if i % 500 == 0 {
+                eprint!(".");
+            }
+        }
+    });
+
+    left.await.map_err(|tokio_err| {
+        error!(?tokio_err, "Failed to join task");
+        Error::Tokio
+    })?;
+    right.await.map_err(|tokio_err| {
+        error!(?tokio_err, "Failed to join task");
+        Error::Tokio
+    })?;
 
     // Create groups.
     let mut tasks = Vec::with_capacity(state.groups.len());
 
     for group in state.groups.into_iter() {
         let c = client.clone();
-        tasks.push(tokio::spawn(preflight_group(c, group)))
+        // Write operations are single threaded in Kanidm, so we don't need to attempt
+        // to parallelise that here.
+        // tasks.push(tokio::spawn(preflight_group(c, group)))
+        tasks.push(preflight_group(c, group))
     }
 
     for task in tasks {
-        task.await.map_err(|tokio_err| {
-            error!(?tokio_err, "Failed to join task");
-            Error::Tokio
-        })??;
+        task.await?;
+        /*
+        task.await
+        */
     }
 
     // Create integrations.

@@ -20,6 +20,7 @@ impl KanidmOrcaClient {
             .address(profile.control_uri().to_string())
             .danger_accept_invalid_hostnames(true)
             .danger_accept_invalid_certs(true)
+            .request_timeout(1200)
             .build()
             .map_err(|err| {
                 error!(?err, "Unable to create kanidm client");

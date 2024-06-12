@@ -133,9 +133,14 @@ impl IdmServer {
         qs: QueryServer,
         origin: &str,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
-        // This is calculated back from:
-        //  100 password auths / thread -> 0.010 sec per op
-        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(10));
+        let crypto_policy = if cfg!(test) {
+            CryptoPolicy::danger_test_minimum()
+        } else {
+            // This is calculated back from:
+            //  100 password auths / thread -> 0.010 sec per op
+            CryptoPolicy::time_target(Duration::from_millis(10))
+        };
+
         let (async_tx, async_rx) = unbounded();
         let (audit_tx, audit_rx) = unbounded();
 

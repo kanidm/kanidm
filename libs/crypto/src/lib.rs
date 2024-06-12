@@ -234,6 +234,19 @@ impl CryptoPolicy {
         }
     }
 
+    pub fn danger_test_minimum() -> Self {
+        CryptoPolicy {
+            pbkdf2_cost: 1000,
+            argon2id_params: Params::new(
+                Params::MIN_M_COST,
+                Params::MIN_T_COST,
+                Params::MIN_P_COST,
+                None,
+            )
+            .unwrap_or_default(),
+        }
+    }
+
     pub fn time_target(target_time: Duration) -> Self {
         const PBKDF2_BENCH_FACTOR: usize = 10;
 

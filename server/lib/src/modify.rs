@@ -141,7 +141,7 @@ impl ModifyList<ModifyInvalid> {
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.
-            let attr: Attribute = (attr.clone()).try_into()?;
+            let attr: Attribute = attr.as_str().try_into()?;
             mods.push(m_purge(attr));
             // Now if there are vals, push those too.
             // For each value we want to now be present.

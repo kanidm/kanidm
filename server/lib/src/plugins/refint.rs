@@ -104,7 +104,7 @@ impl ReferentialIntegrity {
                 .flat_map(|u| ref_types.values().filter_map(move |r_type| {
                     let value_attribute = r_type.name.to_string();
                     // For everything that references the uuid's in the deleted set.
-                    let val: Result<Attribute, OperationError> = value_attribute.try_into();
+                    let val: Result<Attribute, OperationError> = value_attribute.as_str().try_into();
                     // error!("{:?}", val);
                     let res = match val {
                         Ok(val) => {

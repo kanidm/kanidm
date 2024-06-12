@@ -20,7 +20,8 @@ pub use {tracing, tracing_forest, tracing_subscriber};
 /// Start up the logging for test mode.
 pub fn test_init() {
     let filter = EnvFilter::from_default_env()
-        .add_directive(LevelFilter::TRACE.into())
+        // Skipping trace on tests by default saves a *TON* of ram.
+        .add_directive(LevelFilter::INFO.into())
         // escargot builds cargo packages while we integration test and is SUPER noisy.
         .add_directive(
             "escargot=ERROR"
