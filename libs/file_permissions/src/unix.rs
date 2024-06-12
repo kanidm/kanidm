@@ -6,6 +6,9 @@ use std::os::linux::fs::MetadataExt;
 #[cfg(target_os = "macos")]
 use std::os::macos::fs::MetadataExt;
 
+#[cfg(target_os = "illumos")]
+use std::os::illumos::fs::MetadataExt;
+
 use kanidm_utils_users::{get_current_gid, get_current_uid};
 
 use std::fmt;

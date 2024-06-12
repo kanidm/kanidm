@@ -67,7 +67,6 @@ kanidm_proto = { workspace = true }
 kanidm-hsm-crypto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
-mimalloc = { workspace = true }
 notify-debouncer-full = { workspace = true }
 rpassword = { workspace = true }
 rusqlite = { workspace = true }
@@ -97,6 +96,9 @@ prctl.workspace = true
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
+
+[target.'cfg(not(target_os = "illumos"))'.dependencies]
+mimalloc = { workspace = true }
 
 [dev-dependencies]
 kanidmd_core = { workspace = true }

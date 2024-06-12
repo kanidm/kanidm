@@ -109,8 +109,10 @@ compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_r
 criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
-mimalloc = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
+
+[target.'cfg(not(target_os = "illumos"))'.dev-dependencies]
+mimalloc = { workspace = true }
 
 [build-dependencies]
 hashbrown = { workspace = true }

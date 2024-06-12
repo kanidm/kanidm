@@ -10,7 +10,7 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(not(feature = "dhat-heap"))]
+#[cfg(not(any(feature = "dhat-heap", target_os = "illumos")))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
@@ -20,7 +20,7 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.
-use fs2::FileExt;
+use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
