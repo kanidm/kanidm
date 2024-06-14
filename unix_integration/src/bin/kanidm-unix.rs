@@ -25,7 +25,7 @@ use kanidm_unix_common::unix_proto::{
 // use std::io;
 use std::path::PathBuf;
 
-include!("./opt/tool.rs");
+include!("../opt/tool.rs");
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

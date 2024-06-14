@@ -19,28 +19,28 @@ tpm = ["kanidm-hsm-crypto/tpm"]
 
 [[bin]]
 name = "kanidm_unixd"
-path = "src/daemon.rs"
+path = "src/bin/kanidm_unixd.rs"
 required-features = ["unix"]
 test = true
 doctest = false
 
 [[bin]]
 name = "kanidm_unixd_tasks"
-path = "src/tasks_daemon.rs"
+path = "src/bin/kanidm_unixd_tasks.rs"
 required-features = ["unix"]
 test = true
 doctest = false
 
 [[bin]]
 name = "kanidm_ssh_authorizedkeys"
-path = "src/ssh_authorizedkeys.rs"
+path = "src/bin/kanidm_ssh_authorizedkeys.rs"
 required-features = ["unix"]
 test = true
 doctest = false
 
 [[bin]]
 name = "kanidm-unix"
-path = "src/tool.rs"
+path = "src/bin/kanidm-unix.rs"
 required-features = ["unix"]
 test = true
 doctest = false

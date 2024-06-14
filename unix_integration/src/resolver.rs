@@ -12,7 +12,7 @@ use lru::LruCache;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
-use crate::db::{Cache, CacheTxn, Db};
+use crate::db::{Cache, Db};
 use crate::idprovider::interface::{
     AuthCacheAction,
     AuthCredHandler,

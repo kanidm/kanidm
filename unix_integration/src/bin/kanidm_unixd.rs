@@ -27,7 +27,7 @@ use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::db::{Cache, CacheTxn, Db};
+use kanidm_unix_common::db::{Cache, Db};
 use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
 // use kanidm_unix_common::idprovider::interface::AuthSession;
 use kanidm_unix_common::resolver::Resolver;
