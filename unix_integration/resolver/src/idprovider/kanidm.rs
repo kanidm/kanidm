@@ -19,7 +19,7 @@ use super::interface::{
     IdpError,
     UserToken,
 };
-use crate::unix_proto::PamAuthRequest;
+use kanidm_unix_common::unix_proto::PamAuthRequest;
 
 const TAG_IDKEY: &str = "idkey";
 

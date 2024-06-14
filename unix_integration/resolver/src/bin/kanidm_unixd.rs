@@ -27,13 +27,12 @@ use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::db::{Cache, Db};
-use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
-// use kanidm_unix_common::idprovider::interface::AuthSession;
-use kanidm_unix_common::resolver::Resolver;
-use kanidm_unix_common::unix_config::{HsmType, KanidmUnixdConfig};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+use kanidm_unix_resolver::db::{Cache, Db};
+use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::resolver::Resolver;
+use kanidm_unix_resolver::unix_config::{HsmType, KanidmUnixdConfig};
 
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;

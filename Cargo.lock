@@ -3397,15 +3397,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "kanidm_unix_common"
+version = "1.3.0-dev"
+dependencies = [
+ "bytes",
+ "csv",
+ "futures",
+ "kanidm_build_profiles",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tracing",
+]
+
+[[package]]
 name = "kanidm_unix_int"
 version = "1.3.0-dev"
 dependencies = [
  "async-trait",
- "base64urlsafedata 0.5.0",
  "bytes",
  "clap",
  "clap_complete",
- "csv",
  "futures",
  "hashbrown 0.14.5",
  "kanidm-hsm-crypto",
@@ -3414,11 +3428,11 @@ dependencies = [
  "kanidm_lib_crypto",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
+ "kanidm_unix_common",
  "kanidm_utils_users",
  "kanidmd_core",
  "kanidmd_testkit",
  "libc",
- "libsqlite3-sys",
  "lru",
  "mimalloc",
  "notify-debouncer-full",
@@ -4118,7 +4132,7 @@ dependencies = [
 name = "nss_kanidm"
 version = "1.3.0-dev"
 dependencies = [
- "kanidm_unix_int",
+ "kanidm_unix_common",
  "lazy_static",
  "libc",
  "libnss",
@@ -4533,7 +4547,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 name = "pam_kanidm"
 version = "1.3.0-dev"
 dependencies = [
- "kanidm_unix_int",
+ "kanidm_unix_common",
  "libc",
  "pkg-config",
  "tracing",

@@ -25,7 +25,9 @@ use crate::idprovider::interface::{
     UserToken,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
-use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse};
+use kanidm_unix_common::unix_proto::{
+    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse,
+};
 
 use kanidm_hsm_crypto::{BoxedDynTpm, HmacKey, MachineKey, Tpm};
 

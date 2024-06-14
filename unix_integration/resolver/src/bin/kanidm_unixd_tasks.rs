@@ -21,8 +21,8 @@ use std::{fs, io};
 use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
+use kanidm_unix_resolver::unix_config::KanidmUnixdConfig;
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
 use sketching::tracing_forest::traits::*;
@@ -35,7 +35,7 @@ use tokio_util::codec::{Decoder, Encoder, Framed};
 use walkdir::WalkDir;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
-use kanidm_unix_common::selinux_util;
+use crate::selinux_util;
 
 struct TaskCodec;
 

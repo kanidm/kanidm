@@ -10,10 +10,10 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::db::{Cache, Db};
-use kanidm_unix_common::idprovider::interface::Id;
-use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
-use kanidm_unix_common::resolver::Resolver;
+use kanidm_unix_resolver::db::{Cache, Db};
+use kanidm_unix_resolver::idprovider::interface::Id;
+use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::resolver::Resolver;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};

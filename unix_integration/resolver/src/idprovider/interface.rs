@@ -1,6 +1,8 @@
 use crate::db::KeyStoreTxn;
-use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
+use kanidm_unix_common::unix_proto::{
+    DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use uuid::Uuid;

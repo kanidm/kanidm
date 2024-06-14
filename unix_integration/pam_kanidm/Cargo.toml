@@ -16,7 +16,7 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int = { workspace = true }
+kanidm_unix_common = { workspace = true }
 libc = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing = { workspace = true }

@@ -18,12 +18,6 @@ extern crate tracing;
 extern crate rusqlite;
 
 #[cfg(target_family = "unix")]
-pub mod client;
-#[cfg(target_family = "unix")]
-pub mod client_sync;
-#[cfg(target_family = "unix")]
-pub mod constants;
-#[cfg(target_family = "unix")]
 pub mod db;
 #[cfg(target_family = "unix")]
 pub mod idprovider;
@@ -33,7 +27,3 @@ pub mod resolver;
 pub mod selinux_util;
 #[cfg(target_family = "unix")]
 pub mod unix_config;
-#[cfg(target_family = "unix")]
-pub mod unix_passwd;
-#[cfg(target_family = "unix")]
-pub mod unix_proto;
