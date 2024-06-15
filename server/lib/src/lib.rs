@@ -21,7 +21,7 @@
 #![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
-#[cfg(all(test, not(feature = "dhat-heap")))]
+#[cfg(all(test, not(any(feature = "dhat-heap", target_os = "illumos"))))]
 #[global_allocator]
 static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 

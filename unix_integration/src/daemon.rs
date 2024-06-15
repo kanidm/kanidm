@@ -53,6 +53,7 @@ use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
 
 use notify_debouncer_full::{new_debouncer, notify::RecursiveMode, notify::Watcher};
 
+#[cfg(not(target_os = "illumos"))]
 #[global_allocator]
 static ALLOC: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
