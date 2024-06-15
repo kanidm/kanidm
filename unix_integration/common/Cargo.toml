@@ -28,7 +28,7 @@ futures = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 toml = { workspace = true }
-tokio = { workspace = true, features = ["time","net"] }
+tokio = { workspace = true, features = ["time","net","macros"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
 
