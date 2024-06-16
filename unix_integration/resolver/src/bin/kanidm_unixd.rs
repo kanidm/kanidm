@@ -27,13 +27,12 @@ use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::db::{Cache, CacheTxn, Db};
-use kanidm_unix_common::idprovider::kanidm::KanidmProvider;
-// use kanidm_unix_common::idprovider::interface::AuthSession;
-use kanidm_unix_common::resolver::Resolver;
-use kanidm_unix_common::unix_config::{HsmType, KanidmUnixdConfig};
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+use kanidm_unix_resolver::db::{Cache, Db};
+use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::resolver::Resolver;
+use kanidm_unix_resolver::unix_config::{HsmType, KanidmUnixdConfig};
 
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
@@ -191,7 +190,7 @@ async fn handle_task_client(
 
 async fn handle_client(
     sock: UnixStream,
-    cachelayer: Arc<Resolver<KanidmProvider>>,
+    cachelayer: Arc<Resolver>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
     debug!("Accepted connection");
@@ -431,9 +430,7 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(
-    cachelayer: &Resolver<KanidmProvider>,
-) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
@@ -925,7 +922,7 @@ async fn main() -> ExitCode {
 
             let cl_inner = match Resolver::new(
                 db,
-                idprovider,
+                Box::new(idprovider),
                 hsm,
                 machine_key,
                 cfg.cache_timeout,

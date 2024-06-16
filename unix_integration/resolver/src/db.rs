@@ -47,75 +47,6 @@ pub enum CacheError {
     Tpm,
 }
 
-pub trait CacheTxn {
-    fn migrate(&mut self) -> Result<(), CacheError>;
-
-    fn commit(self) -> Result<(), CacheError>;
-
-    fn invalidate(&mut self) -> Result<(), CacheError>;
-
-    fn clear(&mut self) -> Result<(), CacheError>;
-
-    fn clear_hsm(&mut self) -> Result<(), CacheError>;
-
-    fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError>;
-
-    fn insert_hsm_machine_key(
-        &mut self,
-        machine_key: &LoadableMachineKey,
-    ) -> Result<(), CacheError>;
-
-    fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacKey>, CacheError>;
-
-    fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError>;
-
-    fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError>;
-
-    fn get_accounts(&mut self) -> Result<Vec<UserToken>, CacheError>;
-
-    fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), CacheError>;
-
-    fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), CacheError>;
-
-    fn update_account_password(
-        &mut self,
-        a_uuid: Uuid,
-        cred: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
-    ) -> Result<(), CacheError>;
-
-    fn check_account_password(
-        &mut self,
-        a_uuid: Uuid,
-        cred: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
-    ) -> Result<bool, CacheError>;
-
-    fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError>;
-
-    fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError>;
-
-    fn get_groups(&mut self) -> Result<Vec<GroupToken>, CacheError>;
-
-    fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), CacheError>;
-
-    fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError>;
-}
-
-pub trait KeyStoreTxn {
-    fn get_tagged_hsm_key<K: DeserializeOwned>(
-        &mut self,
-        tag: &str,
-    ) -> Result<Option<K>, CacheError>;
-
-    fn insert_tagged_hsm_key<K: Serialize>(&mut self, tag: &str, key: &K)
-        -> Result<(), CacheError>;
-
-    fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError>;
-}
-
 pub struct Db {
     conn: Mutex<Connection>,
     crypto_policy: CryptoPolicy,
@@ -125,6 +56,16 @@ pub struct DbTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
     crypto_policy: &'a CryptoPolicy,
+}
+
+pub struct KeyStoreTxn<'a, 'b> {
+    db: &'b mut DbTxn<'a>,
+}
+
+impl<'a, 'b> From<&'b mut DbTxn<'a>> for KeyStoreTxn<'a, 'b> {
+    fn from(db: &'b mut DbTxn<'a>) -> Self {
+        Self { db }
+    }
 }
 
 #[derive(Debug)]
@@ -312,7 +253,28 @@ impl<'a> DbTxn<'a> {
     }
 }
 
-impl<'a> KeyStoreTxn for DbTxn<'a> {
+impl<'a, 'b> KeyStoreTxn<'a, 'b> {
+    pub fn get_tagged_hsm_key<K: DeserializeOwned>(
+        &mut self,
+        tag: &str,
+    ) -> Result<Option<K>, CacheError> {
+        self.db.get_tagged_hsm_key(tag)
+    }
+
+    pub fn insert_tagged_hsm_key<K: Serialize>(
+        &mut self,
+        tag: &str,
+        key: &K,
+    ) -> Result<(), CacheError> {
+        self.db.insert_tagged_hsm_key(tag, key)
+    }
+
+    pub fn delete_tagged_hsm_key(&mut self, tag: &str) -> Result<(), CacheError> {
+        self.db.delete_tagged_hsm_key(tag)
+    }
+}
+
+impl<'a> DbTxn<'a> {
     fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
         tag: &str,
@@ -380,8 +342,8 @@ impl<'a> KeyStoreTxn for DbTxn<'a> {
     }
 }
 
-impl<'a> CacheTxn for DbTxn<'a> {
-    fn migrate(&mut self) -> Result<(), CacheError> {
+impl<'a> DbTxn<'a> {
+    pub fn migrate(&mut self) -> Result<(), CacheError> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
             .prepare("PRAGMA journal_mode=WAL;")
@@ -488,7 +450,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         Ok(())
     }
 
-    fn commit(mut self) -> Result<(), CacheError> {
+    pub fn commit(mut self) -> Result<(), CacheError> {
         // debug!("Committing BE txn");
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
@@ -502,7 +464,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map_err(|e| self.sqlite_error("commit", &e))
     }
 
-    fn invalidate(&mut self) -> Result<(), CacheError> {
+    pub fn invalidate(&mut self) -> Result<(), CacheError> {
         self.conn
             .execute("UPDATE group_t SET expiry = 0", [])
             .map_err(|e| self.sqlite_error("update group_t", &e))?;
@@ -514,7 +476,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         Ok(())
     }
 
-    fn clear(&mut self) -> Result<(), CacheError> {
+    pub fn clear(&mut self) -> Result<(), CacheError> {
         self.conn
             .execute("DELETE FROM memberof_t", [])
             .map_err(|e| self.sqlite_error("delete memberof_t", &e))?;
@@ -530,7 +492,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         Ok(())
     }
 
-    fn clear_hsm(&mut self) -> Result<(), CacheError> {
+    pub fn clear_hsm(&mut self) -> Result<(), CacheError> {
         self.clear()?;
 
         self.conn
@@ -544,7 +506,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         Ok(())
     }
 
-    fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError> {
+    pub fn get_hsm_machine_key(&mut self) -> Result<Option<LoadableMachineKey>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'mk'")
@@ -565,7 +527,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn insert_hsm_machine_key(
+    pub fn insert_hsm_machine_key(
         &mut self,
         machine_key: &LoadableMachineKey,
     ) -> Result<(), CacheError> {
@@ -589,7 +551,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacKey>, CacheError> {
+    pub fn get_hsm_hmac_key(&mut self) -> Result<Option<LoadableHmacKey>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT value FROM hsm_int_t WHERE key = 'hmac'")
@@ -610,7 +572,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
+    pub fn insert_hsm_hmac_key(&mut self, hmac_key: &LoadableHmacKey) -> Result<(), CacheError> {
         let data = serde_json::to_vec(hmac_key).map_err(|e| {
             error!("insert_hsm_hmac_key json error -> {:?}", e);
             CacheError::SerdeJson
@@ -631,7 +593,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
+    pub fn get_account(&mut self, account_id: &Id) -> Result<Option<(UserToken, u64)>, CacheError> {
         let data = match account_id {
             Id::Name(n) => self.get_account_data_name(n.as_str()),
             Id::Gid(g) => self.get_account_data_gid(*g),
@@ -665,7 +627,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn get_accounts(&mut self) -> Result<Vec<UserToken>, CacheError> {
+    pub fn get_accounts(&mut self) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM account_t")
@@ -694,7 +656,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect())
     }
 
-    fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), CacheError> {
+    pub fn update_account(&mut self, account: &UserToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(account).map_err(|e| {
             error!("update_account json error -> {:?}", e);
             CacheError::SerdeJson
@@ -790,7 +752,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         })
     }
 
-    fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), CacheError> {
+    pub fn delete_account(&mut self, a_uuid: Uuid) -> Result<(), CacheError> {
         let account_uuid = a_uuid.as_hyphenated().to_string();
 
         self.conn
@@ -810,7 +772,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map_err(|e| self.sqlite_error("account_t delete", &e))
     }
 
-    fn update_account_password(
+    pub fn update_account_password(
         &mut self,
         a_uuid: Uuid,
         cred: &str,
@@ -841,7 +803,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .map(|_| ())
     }
 
-    fn check_account_password(
+    pub fn check_account_password(
         &mut self,
         a_uuid: Uuid,
         cred: &str,
@@ -892,7 +854,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         })
     }
 
-    fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
+    pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
         let data = match grp_id {
             Id::Name(n) => self.get_group_data_name(n.as_str()),
             Id::Gid(g) => self.get_group_data_gid(*g),
@@ -926,7 +888,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         }
     }
 
-    fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
+    pub fn get_group_members(&mut self, g_uuid: Uuid) -> Result<Vec<UserToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT account_t.token FROM (account_t, memberof_t) WHERE account_t.uuid = memberof_t.a_uuid AND memberof_t.g_uuid = :g_uuid")
@@ -955,7 +917,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect()
     }
 
-    fn get_groups(&mut self) -> Result<Vec<GroupToken>, CacheError> {
+    pub fn get_groups(&mut self) -> Result<Vec<GroupToken>, CacheError> {
         let mut stmt = self
             .conn
             .prepare("SELECT token FROM group_t")
@@ -984,7 +946,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
             .collect())
     }
 
-    fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), CacheError> {
+    pub fn update_group(&mut self, grp: &GroupToken, expire: u64) -> Result<(), CacheError> {
         let data = serde_json::to_vec(grp).map_err(|e| {
             error!("json error -> {:?}", e);
             CacheError::SerdeJson
@@ -1015,7 +977,7 @@ impl<'a> CacheTxn for DbTxn<'a> {
         .map_err(|e| self.sqlite_error("execute", &e))
     }
 
-    fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError> {
+    pub fn delete_group(&mut self, g_uuid: Uuid) -> Result<(), CacheError> {
         let group_uuid = g_uuid.as_hyphenated().to_string();
         self.conn
             .execute(
@@ -1053,7 +1015,7 @@ impl<'a> Drop for DbTxn<'a> {
 #[cfg(test)]
 mod tests {
 
-    use super::{Cache, CacheTxn, Db};
+    use super::{Cache, Db};
     use crate::idprovider::interface::{GroupToken, Id, UserToken};
     use kanidm_hsm_crypto::{AuthValue, Tpm};
 

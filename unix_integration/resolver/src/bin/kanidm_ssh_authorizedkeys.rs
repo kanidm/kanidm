@@ -22,7 +22,7 @@ use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-include!("./opt/ssh_authorizedkeys.rs");
+include!("../opt/ssh_authorizedkeys.rs");
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {

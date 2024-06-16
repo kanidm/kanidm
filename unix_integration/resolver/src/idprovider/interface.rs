@@ -1,6 +1,8 @@
 use crate::db::KeyStoreTxn;
-use crate::unix_proto::{DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse};
 use async_trait::async_trait;
+use kanidm_unix_common::unix_proto::{
+    DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
+};
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use uuid::Uuid;
@@ -138,9 +140,9 @@ pub enum AuthCacheAction {
 
 #[async_trait]
 pub trait IdProvider {
-    async fn configure_hsm_keys<D: KeyStoreTxn + Send>(
+    async fn configure_hsm_keys(
         &self,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
@@ -150,10 +152,10 @@ pub trait IdProvider {
     /// This is similar to a "domain join" process. What do we actually need to pass here
     /// for this to work for kanidm or himmelblau? Should we make it take a generic?
     /*
-    async fn configure_machine_identity<D: KeyStoreTxn + Send>(
+    async fn configure_machine_identity(
         &self,
-        _keystore: &mut D,
-        _tpm: &mut (dyn tpm::Tpm + Send),
+        _keystore: &mut KeyStoreTxn,
+        _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
     ) -> Result<(), IdpError> {
         Ok(())
@@ -170,32 +172,32 @@ pub trait IdProvider {
         _machine_key: &tpm::MachineKey,
     ) -> Result<UserToken, IdpError>;
 
-    async fn unix_user_online_auth_init<D: KeyStoreTxn + Send>(
+    async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
-    async fn unix_user_online_auth_step<D: KeyStoreTxn + Send>(
+    async fn unix_user_online_auth_step(
         &self,
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
 
-    async fn unix_user_offline_auth_init<D: KeyStoreTxn + Send>(
+    async fn unix_user_offline_auth_init(
         &self,
         _account_id: &str,
         _token: Option<&UserToken>,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     // I thought about this part of the interface a lot. we could have the
@@ -217,13 +219,13 @@ pub trait IdProvider {
     // unlock the associated TPM key. While we can't perform a full request
     // for an auth token, we can verify that the PIN successfully unlocks the
     // TPM key.
-    async fn unix_user_offline_auth_step<D: KeyStoreTxn + Send>(
+    async fn unix_user_offline_auth_step(
         &self,
         _account_id: &str,
         _token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _keystore: &mut D,
+        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
         _machine_key: &tpm::MachineKey,
         _online_at_init: bool,

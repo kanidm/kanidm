@@ -6,11 +6,13 @@ use std::path::Path;
 
 #[cfg(all(target_family = "unix", feature = "selinux"))]
 use crate::selinux_util;
-use crate::unix_passwd::UnixIntegrationError;
+use kanidm_unix_common::unix_passwd::UnixIntegrationError;
+
+pub(crate) use kanidm_unix_common::unix_config::{HomeAttr, UidAttr};
 
 use serde::Deserialize;
 
-use crate::constants::*;
+use kanidm_unix_common::constants::*;
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
@@ -35,46 +37,6 @@ struct ConfigInt {
     hsm_pin_path: Option<String>,
     hsm_type: Option<String>,
     tpm_tcti_name: Option<String>,
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum HomeAttr {
-    Uuid,
-    Spn,
-    Name,
-}
-
-impl Display for HomeAttr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                HomeAttr::Uuid => "UUID",
-                HomeAttr::Spn => "SPN",
-                HomeAttr::Name => "Name",
-            }
-        )
-    }
-}
-
-#[derive(Debug, Copy, Clone)]
-pub enum UidAttr {
-    Name,
-    Spn,
-}
-
-impl Display for UidAttr {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                UidAttr::Name => "Name",
-                UidAttr::Spn => "SPN",
-            }
-        )
-    }
 }
 
 #[derive(Debug, Clone, Default)]

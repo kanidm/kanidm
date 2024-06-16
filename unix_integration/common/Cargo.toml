@@ -1,0 +1,36 @@
+[package]
+name = "kanidm_unix_common"
+description = "Kanidm Unix Resolver - Common Libraries"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[features]
+default = ["unix"]
+unix = []
+
+[lib]
+name = "kanidm_unix_common"
+path = "src/lib.rs"
+test = true
+doctest = false
+
+[dependencies]
+bytes = { workspace = true }
+csv = { workspace = true }
+futures = { workspace = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+toml = { workspace = true }
+tokio = { workspace = true, features = ["time","net","macros"] }
+tokio-util = { workspace = true, features = ["codec"] }
+tracing = { workspace = true }
+
+[build-dependencies]
+kanidm_build_profiles = { workspace = true }
