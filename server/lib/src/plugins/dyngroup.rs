@@ -46,7 +46,7 @@ impl DynGroup {
         */
 
         if qs.get_phase() < ServerPhase::SchemaReady {
-            trace!("Server is not ready to load dyngroups");
+            debug!("Server is not ready to load dyngroups");
             return Ok(());
         }
 
@@ -67,12 +67,12 @@ impl DynGroup {
                 .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing {}", Attribute::DynGroupFilter);
+                    error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
             let scope_i = Filter::from_rw(ident_internal, &scope_f, qs).map_err(|e| {
-                admin_error!("{} validation failed {:?}", Attribute::DynGroupFilter, e);
+                error!("{} validation failed {:?}", Attribute::DynGroupFilter, e);
                 e
             })?;
 
@@ -82,7 +82,7 @@ impl DynGroup {
 
             // Apply the filter and get all the uuids that are members of this dyngroup.
             let entries = qs.internal_search(scope_i.clone()).map_err(|e| {
-                admin_error!("internal search failure -> {:?}", e);
+                error!("internal search failure -> {:?}", e);
                 e
             })?;
 
@@ -110,7 +110,7 @@ impl DynGroup {
             // Insert it to the dyngroup cache with the compiled/resolved filter for
             // fast matching in other paths.
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
-                admin_error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
+                error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
                 return Err(OperationError::InvalidState);
             }
         }
@@ -123,7 +123,7 @@ impl DynGroup {
         // Internal search all our definitions.
         let filt = filter!(f_eq(Attribute::Class, EntryClass::DynGroup.into()));
         let entries = qs.internal_search(filt).map_err(|e| {
-            admin_error!("internal search failure -> {:?}", e);
+            error!("internal search failure -> {:?}", e);
             e
         })?;
 
@@ -134,19 +134,19 @@ impl DynGroup {
                 .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
                 .ok_or_else(|| {
-                    admin_error!("Missing {}", Attribute::DynGroupFilter);
+                    error!("Missing {}", Attribute::DynGroupFilter);
                     OperationError::InvalidEntryState
                 })?;
 
             let scope_i = Filter::from_rw(&ident_internal, &scope_f, qs).map_err(|e| {
-                admin_error!("dyngroup_filter validation failed {:?}", e);
+                error!("dyngroup_filter validation failed {:?}", e);
                 e
             })?;
 
             let uuid = nd_group.get_uuid();
 
             if reload_groups.insert(uuid, scope_i).is_some() {
-                admin_error!("dyngroup cache uuid conflict {}", uuid);
+                error!("dyngroup cache uuid conflict {}", uuid);
                 return Err(OperationError::InvalidState);
             }
         }
@@ -248,7 +248,7 @@ impl DynGroup {
         // Write this stripe if populated.
         if !candidate_tuples.is_empty() {
             qs.internal_apply_writable(candidate_tuples).map_err(|e| {
-                admin_error!("Failed to commit dyngroup set {:?}", e);
+                error!("Failed to commit dyngroup set {:?}", e);
                 e
             })?;
         }
@@ -370,7 +370,7 @@ impl DynGroup {
         // Write this stripe if populated.
         if !candidate_tuples.is_empty() {
             qs.internal_apply_writable(candidate_tuples).map_err(|e| {
-                admin_error!("Failed to commit dyngroup set {:?}", e);
+                error!("Failed to commit dyngroup set {:?}", e);
                 e
             })?;
         }
