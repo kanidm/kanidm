@@ -231,7 +231,17 @@ impl DynGroup {
                         .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
-                    affected_uuids.insert(*dg_uuid);
+
+                    // The *dyn group* isn't changing, it's that a member OF the dyn group
+                    // is being added. This means the dyngroup isn't part of the set that
+                    // needs update to MO, only the affected members do!
+                    /*
+                    if pre.get_ava_set(Attribute::DynMember)
+                        != d_group.get_ava_set(Attribute::DynMember)
+                    {
+                        affected_uuids.insert(*dg_uuid);
+                    }
+                    */
 
                     candidate_tuples.push((pre, d_group));
                 }
@@ -363,11 +373,21 @@ impl DynGroup {
                         Err(u) => d_group.remove_ava(Attribute::DynMember, &PartialValue::Refer(u)),
                     });
 
+                    // The *dyn group* isn't changing, it's that a member OF the dyn group
+                    // is being added. This means the dyngroup isn't part of the set that
+                    // needs update to MO, only the affected members do!
+                    /*
+                    if pre.get_ava_set(Attribute::DynMember)
+                        != d_group.get_ava_set(Attribute::DynMember)
+                    {
+                        affected_uuids.insert(*dg_uuid);
+                    }
+                    */
+
                     affected_uuids.extend(matches.into_iter().map(|choice| match choice {
                         Ok(u) => u,
                         Err(u) => u,
                     }));
-                    affected_uuids.insert(*dg_uuid);
 
                     candidate_tuples.push((pre, d_group));
                 }
