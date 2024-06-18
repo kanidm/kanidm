@@ -368,6 +368,7 @@ impl ReferentialIntegrity {
 
         // Fast Path
         let mut vsiter = cand.iter().flat_map(|c| {
+            trace!(cand_id = %c.get_display_id());
             // If it's dyngroup, skip member since this will be reset in the next step.
             let dyn_group = c.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into());
 
@@ -375,7 +376,8 @@ impl ReferentialIntegrity {
                 // Skip dynamic members, these are recalculated by the
                 // memberof plugin.
                 let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
-                // Skip memberOf, also recalculated.
+                // Skip memberOf, also recalculated. We ignore direct MO though because
+                // changes to direct member of trigger MO to recalc.
                 let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
                 if skip_mb || skip_mo {
                     None

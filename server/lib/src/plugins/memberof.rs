@@ -120,8 +120,8 @@ fn do_leaf_memberof(
                 err
             })?;
 
-
         for group in all_groups.iter() {
+            trace!(group_id = ?group.get_display_id());
             if let Some(members) = group.get_ava_refer(Attribute::Member) {
                 trace!(?members);
                 all_affected_uuids.extend(members);
@@ -132,6 +132,8 @@ fn do_leaf_memberof(
             }
         }
     }
+
+    trace!("---");
 
     // We just put everything into the filter here, the query code will remove
     // anything that is a group.
@@ -297,6 +299,19 @@ fn do_leaf_memberof(
                     } else {
                         trace!("NONE");
                     };
+
+                    if let Some(pre_dmo_set) = pre.get_ava_refer(Attribute::DirectMemberOf) {
+                        trace!(?pre_dmo_set);
+
+                        if let Some(pre_mo_set) = pre.get_ava_refer(Attribute::MemberOf) {
+                            trace!(?pre_mo_set);
+                            debug_assert!(pre_mo_set.is_superset(pre_dmo_set));
+                        } else {
+                            unreachable!();
+                        }
+                    } else {
+                        trace!("NONE");
+                    };
                 };
 
                 changes.push((pre, tgte));
@@ -317,7 +332,7 @@ fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
     // May require https://github.com/rust-lang/rust/issues/62924 to allow popping
-    mut affected_uuids: Vec<Uuid>,
+    mut affected_uuids: BTreeSet<Uuid>,
 ) -> Result<(), OperationError> {
     trace!(" => entering apply_memberof");
 
@@ -330,21 +345,21 @@ fn apply_memberof(
     // While there are still affected uuids.
     while !affected_uuids.is_empty() {
         trace!(?affected_uuids);
-        affected_uuids.sort();
-        affected_uuids.dedup();
-
-        debug_assert!(!affected_uuids.is_empty());
 
         // Ignore recycled/tombstones
         let filt = filter!(f_and!([
             f_eq(Attribute::Class, EntryClass::Group.into()),
             FC::Or(
                 affected_uuids
-                    .drain(0..)
+                    .iter()
+                    .copied()
                     .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
                     .collect()
             )
         ]));
+
+        // Clear the set for the next iteration
+        affected_uuids.clear();
 
         let work_set = qs.internal_search_writeable(&filt)?;
         let mut changes = Vec::with_capacity(work_set.len());

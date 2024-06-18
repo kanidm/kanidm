@@ -290,9 +290,7 @@ fn main() -> ExitCode {
     }
 
     #[cfg(feature = "dhat-heap")]
-    let _profiler = dhat::Profiler::builder()
-        .trim_backtraces(Some(40))
-        .build();
+    let _profiler = dhat::Profiler::builder().trim_backtraces(Some(40)).build();
 
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .enable_all()

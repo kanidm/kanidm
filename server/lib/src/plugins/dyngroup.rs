@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
 use kanidm_proto::internal::Filter as ProtoFilter;
@@ -19,11 +19,9 @@ impl DynGroup {
     #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
         qs: &mut QueryServerWriteTransaction,
-        // The output - This should be an empty vec with enough capacity for dyn
-        // group objects and the entries.
-        candidate_tuples: &mut Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
-        // The uuids that are affected by the dyngroup change.
-        affected_uuids: &mut Vec<Uuid>,
+        // The uuids that are affected by the dyngroup change. This is both addition
+        // and removal of the uuids as members.
+        affected_uuids: &mut BTreeSet<Uuid>,
         // If we should error when a dyngroup we thought should be cached is in fact,
         // not cached.
         expect: bool,
@@ -58,10 +56,11 @@ impl DynGroup {
                 .collect()
         ));
         // Load the dyn groups as a writeable set.
-        let work_set = qs.internal_search_writeable(&filt)?;
+        let mut work_set = qs.internal_search_writeable(&filt)?;
 
-        // Go through them all and update the new groups.
-        for (pre, mut nd_group) in work_set.into_iter() {
+        // Go through them all and update the groups.
+        for (ref pre, ref mut nd_group) in work_set.iter_mut() {
+            trace!(dyngroup_id = %nd_group.get_display_id());
             // Load the dyngroups filter
             let scope_f: ProtoFilter = nd_group
                 .get_ava_single_protofilter(Attribute::DynGroupFilter)
@@ -76,9 +75,11 @@ impl DynGroup {
                 e
             })?;
 
+            trace!(dyngroup_filter = ?scope_i);
+
             let uuid = pre.get_uuid();
             // Add our uuid as affected.
-            affected_uuids.push(uuid);
+            affected_uuids.insert(uuid);
 
             // Apply the filter and get all the uuids that are members of this dyngroup.
             let entries = qs.internal_search(scope_i.clone()).map_err(|e| {
@@ -86,7 +87,10 @@ impl DynGroup {
                 e
             })?;
 
+            trace!(entries_len = %entries.len());
+
             let members = ValueSetRefer::from_iter(entries.iter().map(|e| e.get_uuid()));
+            trace!(?members);
 
             if let Some(uuid_iter) = members.as_ref().and_then(|a| a.as_ref_uuid_iter()) {
                 affected_uuids.extend(uuid_iter);
@@ -105,8 +109,6 @@ impl DynGroup {
                 nd_group.purge_ava(Attribute::DynMember);
             }
 
-            candidate_tuples.push((pre, nd_group));
-
             // Insert it to the dyngroup cache with the compiled/resolved filter for
             // fast matching in other paths.
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
@@ -114,6 +116,14 @@ impl DynGroup {
                 return Err(OperationError::InvalidState);
             }
         }
+
+        if !work_set.is_empty() {
+            qs.internal_apply_writable(work_set).map_err(|e| {
+                error!("Failed to commit dyngroup set {:?}", e);
+                e
+            })?;
+        }
+
         Ok(())
     }
 
@@ -162,8 +172,8 @@ impl DynGroup {
         qs: &mut QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ident: &Identity,
-    ) -> Result<Vec<Uuid>, OperationError> {
-        let mut affected_uuids = Vec::with_capacity(cand.len());
+    ) -> Result<BTreeSet<Uuid>, OperationError> {
+        let mut affected_uuids = BTreeSet::new();
 
         let ident_internal = Identity::from_internal();
 
@@ -184,7 +194,7 @@ impl DynGroup {
         // dyn groups will see the created entries on an internal search
         // so we don't need to reference them.
 
-        let mut candidate_tuples = Vec::with_capacity(dyn_groups.insts.len() + cand.len());
+        let mut candidate_tuples = Vec::with_capacity(cand.len());
 
         // Apply existing dyn_groups to entries.
         trace!(?dyn_groups.insts);
@@ -221,27 +231,11 @@ impl DynGroup {
                         .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
 
                     affected_uuids.extend(matches.into_iter());
-                    affected_uuids.push(*dg_uuid);
+                    affected_uuids.insert(*dg_uuid);
 
                     candidate_tuples.push((pre, d_group));
                 }
             }
-        }
-
-        // If we created any dyn groups, populate them now.
-        //    if the event is not internal, reject (for now)
-
-        if !n_dyn_groups.is_empty() {
-            trace!("considering new dyngroups");
-            Self::apply_dyngroup_change(
-                qs,
-                &mut candidate_tuples,
-                &mut affected_uuids,
-                false,
-                &ident_internal,
-                dyn_groups,
-                n_dyn_groups.as_slice(),
-            )?;
         }
 
         // Write back the new changes.
@@ -251,6 +245,21 @@ impl DynGroup {
                 error!("Failed to commit dyngroup set {:?}", e);
                 e
             })?;
+        }
+
+        // If we created any dyn groups, populate them now.
+        //    if the event is not internal, reject (for now)
+
+        if !n_dyn_groups.is_empty() {
+            trace!("considering new dyngroups");
+            Self::apply_dyngroup_change(
+                qs,
+                &mut affected_uuids,
+                false,
+                &ident_internal,
+                dyn_groups,
+                n_dyn_groups.as_slice(),
+            )?;
         }
 
         Ok(affected_uuids)
@@ -263,8 +272,8 @@ impl DynGroup {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ident: &Identity,
         force_cand_updates: bool,
-    ) -> Result<Vec<Uuid>, OperationError> {
-        let mut affected_uuids = Vec::with_capacity(cand.len());
+    ) -> Result<BTreeSet<Uuid>, OperationError> {
+        let mut affected_uuids = BTreeSet::new();
 
         let ident_internal = Identity::from_internal();
 
@@ -297,7 +306,6 @@ impl DynGroup {
         if !n_dyn_groups.is_empty() {
             Self::apply_dyngroup_change(
                 qs,
-                &mut candidate_tuples,
                 &mut affected_uuids,
                 true,
                 &ident_internal,
@@ -359,7 +367,7 @@ impl DynGroup {
                         Ok(u) => u,
                         Err(u) => u,
                     }));
-                    affected_uuids.push(*dg_uuid);
+                    affected_uuids.insert(*dg_uuid);
 
                     candidate_tuples.push((pre, d_group));
                 }
@@ -368,6 +376,7 @@ impl DynGroup {
 
         // Write back the new changes.
         // Write this stripe if populated.
+        trace!(candidate_tuples_len = %candidate_tuples.len());
         if !candidate_tuples.is_empty() {
             qs.internal_apply_writable(candidate_tuples).map_err(|e| {
                 error!("Failed to commit dyngroup set {:?}", e);

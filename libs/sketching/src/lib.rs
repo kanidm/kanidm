@@ -19,10 +19,11 @@ pub use {tracing, tracing_forest, tracing_subscriber};
 
 /// Start up the logging for test mode.
 pub fn test_init() {
-    let filter = EnvFilter::from_default_env()
+    let filter = EnvFilter::builder()
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy()
         // Skipping trace on tests by default saves a *TON* of ram.
-        .add_directive(LevelFilter::INFO.into())
-        .add_directive("kanidmd_lib::plugins=TRACE".parse().expect("failed to generate log filter"))
+        // .add_directive("kanidmd_lib::plugins=TRACE".parse().expect("failed to generate log filter"))
         // escargot builds cargo packages while we integration test and is SUPER noisy.
         .add_directive(
             "escargot=ERROR"

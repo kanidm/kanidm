@@ -3,8 +3,8 @@ use crate::kani;
 use crate::state::*;
 use std::collections::VecDeque;
 
-use tokio::sync::Mutex;
 use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::sync::Mutex;
 
 use std::sync::Arc;
 
@@ -95,33 +95,36 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     let counter = Arc::new(AtomicU32::new(0));
     let par = std::thread::available_parallelism().unwrap();
 
-    let handles: Vec<_> = (0..par.into()).map(|_| {
-        let tasks_q = tasks.clone();
-        let counter_c = counter.clone();
-        tokio::spawn(async move {
-            loop {
-                let maybe_task = async {
-                    let mut guard = tasks_q.lock().await;
-                    guard.pop_front()
-                }.await;
-
-                if let Some(t) = maybe_task {
-                    let _ = t.await;
-                    let was = counter_c.fetch_add(1, Ordering::Relaxed);
-                    if was % 1000 == 999 {
-                        let order = was + 1;
-                        eprint!("{}", order);
-                    } else if was % 100 == 99 {
-                        // Since we just added one, this just rolled over.
-                        eprint!(".");
+    let handles: Vec<_> = (0..par.into())
+        .map(|_| {
+            let tasks_q = tasks.clone();
+            let counter_c = counter.clone();
+            tokio::spawn(async move {
+                loop {
+                    let maybe_task = async {
+                        let mut guard = tasks_q.lock().await;
+                        guard.pop_front()
                     }
-                } else {
-                    // queue drained.
-                    break;
+                    .await;
+
+                    if let Some(t) = maybe_task {
+                        let _ = t.await;
+                        let was = counter_c.fetch_add(1, Ordering::Relaxed);
+                        if was % 1000 == 999 {
+                            let order = was + 1;
+                            eprint!("{}", order);
+                        } else if was % 100 == 99 {
+                            // Since we just added one, this just rolled over.
+                            eprint!(".");
+                        }
+                    } else {
+                        // queue drained.
+                        break;
+                    }
                 }
-            }
+            })
         })
-    }).collect();
+        .collect();
 
     for handle in handles {
         handle.await.map_err(|tokio_err| {
@@ -131,7 +134,6 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     }
 
     eprintln!("done");
-
 
     // Create groups.
     let counter = Arc::new(AtomicU32::new(0));
