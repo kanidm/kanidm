@@ -48,6 +48,7 @@ use sketching::*;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::broadcast,
+    task,
 };
 use tokio_openssl::SslStream;
 use tower::Service;
@@ -199,7 +200,7 @@ pub async fn create_https_server(
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
-) -> Result<tokio::task::JoinHandle<()>, ()> {
+) -> Result<task::JoinHandle<()>, ()> {
     let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
@@ -343,7 +344,7 @@ pub async fn create_https_server(
 
     info!("Starting the web server...");
 
-    Ok(tokio::spawn(async move {
+    Ok(task::spawn(async move {
         tokio::select! {
             Ok(action) = rx.recv() => {
                 match action {
@@ -362,10 +363,10 @@ pub async fn create_https_server(
                             return
                         }
                     };
-                    tokio::spawn(server_loop(tls_param, listener, app))
+                    task::spawn(server_loop(tls_param, listener, app))
                 },
                 None => {
-                    tokio::spawn(axum_server::bind(addr).serve(app))
+                    task::spawn(axum_server::bind(addr).serve(app))
                 }
             } => {
                 match res {
@@ -538,7 +539,7 @@ async fn server_loop(
         if let Ok((stream, addr)) = listener.accept().await {
             let tls_acceptor = tls_acceptor.clone();
             let app = app.clone();
-            tokio::spawn(handle_conn(tls_acceptor, stream, app, addr));
+            task::spawn(handle_conn(tls_acceptor, stream, app, addr));
         }
     }
 }

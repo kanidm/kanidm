@@ -275,7 +275,7 @@ impl IdmServer {
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
         let mut pw = self.proxy_write(ct).await;
-        pw.process_delayedaction(da, ct)
+        pw.process_delayedaction(&da, ct)
             .and_then(|_| pw.commit())
             .map(|()| true)
     }
@@ -335,8 +335,16 @@ impl IdmServerDelayed {
         }
     }
 
+    /*
     pub async fn next(&mut self) -> Option<DelayedAction> {
         self.async_rx.recv().await
+    }
+    */
+
+    pub async fn recv_many(&mut self, buffer: &mut Vec<DelayedAction>) -> usize {
+        debug_assert!(buffer.is_empty());
+        let limit = buffer.capacity();
+        self.async_rx.recv_many(buffer, limit).await
     }
 }
 
@@ -2031,7 +2039,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn process_delayedaction(
         &mut self,
-        da: DelayedAction,
+        da: &DelayedAction,
         _ct: Duration,
     ) -> Result<(), OperationError> {
         match da {

@@ -14,6 +14,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroU8;
+use std::sync::Arc;
 
 use concread::arcache::ARCacheReadTxn;
 use hashbrown::HashMap;
@@ -448,8 +449,8 @@ impl Filter<FilterValid> {
         mut rsv_cache: Option<
             &mut ARCacheReadTxn<
                 '_,
-                (IdentityId, Filter<FilterValid>),
-                Filter<FilterValidResolved>,
+                (IdentityId, Arc<Filter<FilterValid>>),
+                Arc<Filter<FilterValidResolved>>,
                 (),
             >,
         >,
@@ -458,19 +459,27 @@ impl Filter<FilterValid> {
         //
         // The benefit of moving optimisation to this step is from various inputs, we can
         // get to a resolved + optimised filter, and then we can cache those outputs in many
-        // cases!
+        // cases! The exception is *large* filters, especially from the memberof plugin. We
+        // want to skip these because they can really jam up the server.
 
-        // do we have a cache?
-        let cache_key = if let Some(rcache) = rsv_cache.as_mut() {
-            // construct the key. For now it's expensive because we have to clone, but ... eh.
-            let cache_key = (ev.get_event_origin_id(), self.clone());
-            if let Some(f) = rcache.get(&cache_key) {
-                // Got it? Shortcut and return!
-                return Ok(f.clone());
-            };
-            // Not in cache? Set the cache_key.
-            Some(cache_key)
+        let cacheable = FilterResolved::resolve_cacheable(&self.state.inner);
+
+        let cache_key = if cacheable {
+            // do we have a cache?
+            if let Some(rcache) = rsv_cache.as_mut() {
+                // construct the key. For now it's expensive because we have to clone, but ... eh.
+                let cache_key = (ev.get_event_origin_id(), Arc::new(self.clone()));
+                if let Some(f) = rcache.get(&cache_key) {
+                    // Got it? Shortcut and return!
+                    return Ok(f.as_ref().clone());
+                };
+                // Not in cache? Set the cache_key.
+                Some(cache_key)
+            } else {
+                None
+            }
         } else {
+            // Not cacheable, lets just bail.
             None
         };
 
@@ -496,10 +505,11 @@ impl Filter<FilterValid> {
             },
         };
 
-        // Now it's computed, inject it.
-        if let Some(rcache) = rsv_cache.as_mut() {
-            if let Some(cache_key) = cache_key {
-                rcache.insert(cache_key, resolved_filt.clone());
+        // Now it's computed, inject it. Remember, we won't have a cache_key here
+        // if cacheable == false.
+        if let Some(cache_key) = cache_key {
+            if let Some(rcache) = rsv_cache.as_mut() {
+                rcache.insert(cache_key, Arc::new(resolved_filt.clone()));
             }
         }
 
@@ -1267,6 +1277,30 @@ impl FilterResolved {
                     None,
                 )
             }
+        }
+    }
+
+    fn resolve_cacheable(fc: &FilterComp) -> bool {
+        match fc {
+            // We set the compound filters slope factor to "None" here, because when we do
+            // optimise we'll actually fill in the correct slope factors after we sort those
+            // inner terms in a more optimal way.
+            FilterComp::Or(vs) | FilterComp::And(vs) | FilterComp::Inclusion(vs) => {
+                if vs.len() < 8 {
+                    vs.iter().all(FilterResolved::resolve_cacheable)
+                } else {
+                    // Too lorge.
+                    false
+                }
+            }
+            FilterComp::AndNot(f) => FilterResolved::resolve_cacheable(f.as_ref()),
+            FilterComp::Eq(..)
+            | FilterComp::SelfUuid
+            | FilterComp::Cnt(..)
+            | FilterComp::Stw(..)
+            | FilterComp::Enw(..)
+            | FilterComp::Pres(_)
+            | FilterComp::LessThan(..) => true,
         }
     }
 

@@ -1138,6 +1138,15 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
         ne.validate(schema).map(|()| ne)
     }
+
+    /// Access a reference set in a directly mutable form. This is "safe" because
+    /// referential integrity will check the values added are valid, and because
+    /// this is strongly typed it can't violate syntax.
+    pub(crate) fn get_ava_refer_mut(&mut self, attr: Attribute) -> Option<&mut BTreeSet<Uuid>> {
+        self.attrs
+            .get_mut(attr.as_ref())
+            .and_then(|vs| vs.as_refer_set_mut())
+    }
 }
 
 impl<VALID, STATE> Clone for Entry<VALID, STATE>

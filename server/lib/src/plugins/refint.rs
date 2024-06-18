@@ -23,6 +23,7 @@ use crate::schema::SchemaTransaction;
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
+    #[instrument(level = "debug", name = "check_uuids_exist_fast", skip_all)]
     fn check_uuids_exist_fast(
         qs: &mut QueryServerWriteTransaction,
         inner: &[Uuid],
@@ -55,6 +56,7 @@ impl ReferentialIntegrity {
         }
     }
 
+    #[instrument(level = "debug", name = "check_uuids_exist_slow", skip_all)]
     fn check_uuids_exist_slow(
         qs: &mut QueryServerWriteTransaction,
         inner: &[Uuid],

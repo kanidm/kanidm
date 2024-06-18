@@ -49,8 +49,8 @@ pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 // Min number of rounds for a pbkdf2
 pub const PBKDF2_MIN_NIST_COST: usize = 10000;
 
-// 64 * u8 -> 512 bits of out.
-const PBKDF2_KEY_LEN: usize = 64;
+// 32 * u8 -> 256 bits of out.
+const PBKDF2_KEY_LEN: usize = 32;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
@@ -62,10 +62,10 @@ const DS_SHA512_HASH_LEN: usize = 64;
 // Taken from the argon2 library and rfc 9106
 const ARGON2_VERSION: u32 = 19;
 const ARGON2_SALT_LEN: usize = 16;
+// 32 * u8 -> 256 bits of out.
 const ARGON2_KEY_LEN: usize = 32;
-// Default amount of ram we sacrifice per thread is 8MB
+// Default amount of ram we sacrifice per thread
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
-// Max is 64MB. This may change in time.
 const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
 // Amount of ram to subtract when we do a T cost iter. This
 // is because t=2 m=32 == t=3 m=20. So we just step down a little
@@ -902,10 +902,9 @@ impl Password {
 
     fn bench_argon2id(params: Params) -> Option<Duration> {
         let mut rng = rand::thread_rng();
-        let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        let input: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        // This is 512 bits of output
-        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
+        let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();
+        let input: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();
+        let mut key: Vec<u8> = (0..ARGON2_KEY_LEN).map(|_| 0).collect();
 
         let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
@@ -922,7 +921,6 @@ impl Password {
         let pbkdf2_cost = policy.pbkdf2_cost;
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        // This is 512 bits of output
         let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
 
         pbkdf2_hmac(

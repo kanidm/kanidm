@@ -245,6 +245,11 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
+    fn as_refer_set_mut(&mut self) -> Option<&mut BTreeSet<Uuid>> {
+        debug_assert!(false);
+        None
+    }
+
     fn as_bool_set(&self) -> Option<&SmolSet<[bool; 1]>> {
         debug_assert!(false);
         None

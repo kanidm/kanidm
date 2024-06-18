@@ -1771,7 +1771,6 @@ impl IdlSqlite {
                         "PRAGMA page_size={fs_page_size};
                          PRAGMA cache_size={cache_pages};
                          PRAGMA journal_mode=WAL;
-                         PRAGMA synchronous=NORMAL;
                          PRAGMA wal_autocheckpoint={checkpoint_pages};
                          PRAGMA wal_checkpoint(RESTART);"
                     )

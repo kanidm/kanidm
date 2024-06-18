@@ -10,12 +10,10 @@
 // As a result, we first need to run refint to clean up all dangling references, then memberof
 // fixes the graph of memberships
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use hashbrown::HashMap;
-
-use crate::entry::{Entry, EntryCommitted, EntrySealed, EntryTuple};
+use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
@@ -23,7 +21,7 @@ use crate::value::PartialValue;
 
 pub struct MemberOf;
 
-fn do_memberof(
+fn do_group_memberof(
     qs: &mut QueryServerWriteTransaction,
     uuid: Uuid,
     tgte: &mut EntryInvalidCommitted,
@@ -96,55 +94,254 @@ fn do_memberof(
     Ok(())
 }
 
+fn do_leaf_memberof(
+    qs: &mut QueryServerWriteTransaction,
+    groups_changed: BTreeSet<Uuid>,
+) -> Result<(), OperationError> {
+    trace!(?groups_changed);
+    // Fast path, jack out.
+    if groups_changed.is_empty() {
+        trace!("groups changed empty, return");
+        return Ok(());
+    }
+
+    // These are all the groups that changed.
+    let all_groups = qs
+        .internal_search(filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+            FC::Or(
+                groups_changed
+                    .iter()
+                    .copied()
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                    .collect()
+            )
+        ])))
+        .map_err(|err| {
+            error!(?err, "internal search failure");
+            err
+        })?;
+
+    let mut all_affected_uuids = BTreeSet::new();
+
+    for group in all_groups.iter() {
+        if let Some(members) = group.get_ava_refer(Attribute::Member) {
+            all_affected_uuids.extend(members);
+        }
+        if let Some(members) = group.get_ava_refer(Attribute::DynMember) {
+            all_affected_uuids.extend(members);
+        }
+    }
+
+    // In theory, we can actually remove the affected groups because any group that
+    // was already a member should have it's uuid already processed by the previous
+    // loop.
+    let all_affected_filter: Vec<_> = all_affected_uuids
+        .difference(&groups_changed)
+        .copied()
+        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+        .collect();
+
+    if all_affected_filter.is_empty() {
+        trace!("all affected filter is empty, return");
+        return Ok(());
+    }
+
+    // These are all the affected entries.
+    let leaf_entries = qs.internal_search_writeable(&filter!(f_and!([
+        f_andnot(f_eq(Attribute::Class, EntryClass::Group.into())),
+        FC::Or(all_affected_filter)
+    ])))?;
+
+    if leaf_entries.is_empty() {
+        trace!("leaf entries empty, return");
+        return Ok(());
+    }
+
+    let mut leaf_entries: BTreeMap<_, _> = leaf_entries
+        .into_iter()
+        .map(|entry_tuple| (entry_tuple.0.get_uuid(), entry_tuple))
+        .collect();
+
+    let mut changes = Vec::with_capacity(leaf_entries.len());
+
+    // Now that we know which *entries* changed, we actually have to load the groups *again*
+    // because the affected entries could still be a DMO/MO of a group that *wasn't* in the
+    // change set, and we still need to reflect that they exist.
+
+    let mut groups_or = Vec::with_capacity(leaf_entries.len() * 2);
+
+    for uuid in leaf_entries.keys().copied() {
+        groups_or.push(f_eq(Attribute::Member, PartialValue::Refer(uuid)));
+        groups_or.push(f_eq(Attribute::DynMember, PartialValue::Refer(uuid)));
+    }
+
+    let all_groups = qs
+        .internal_search(filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+            FC::Or(groups_or)
+        ])))
+        .map_err(|err| {
+            error!(?err, "internal search failure");
+            err
+        })?;
+
+    /*
+     * Previously we went through the remaining items and processed them one at a time, but
+     * that has significant performance limits, since if we update a large dyn group, we then
+     * have to perform N searches for each affected member, which may be repeatedly searching
+     * for the same groups over and over again.
+     *
+     * Instead, at this point we know that in memberof application the entire group tree is
+     * now stable, and all we need to do is reflect those values into our entries. We can do
+     * this in two steps. First we load *all* the groups that relate to our leaf entries that
+     * we need to reflect.
+     *
+     * Then we can go through that in a single pass updating our entries that need to be
+     * updated. Since we know that the leaf entries aren't groups, we don't have a collision
+     * as a result of using internal_search_writeable.
+     */
+
+    // Clear the existing Mo and Dmo on the write stripe.
+    for (_pre, tgte) in leaf_entries.values_mut() {
+        debug_assert!(!tgte.attribute_equality(Attribute::Class, &EntryClass::Group.into()));
+        // Ensure we are MO capable. We only add this if it's not already present.
+        tgte.add_ava_if_not_exist(Attribute::Class, EntryClass::MemberOf.into());
+        // Clear the dmo + mos, we will recreate them now.
+        // This is how we handle deletes/etc.
+        tgte.purge_ava(Attribute::MemberOf);
+        tgte.purge_ava(Attribute::DirectMemberOf);
+    }
+
+    // Now, we go through all the groups, and from each one we update the relevant
+    // target entry as needed.
+    for group in all_groups {
+        // Our group uuid that we add to direct members.
+        let group_uuid = group.get_uuid();
+
+        let memberof_ref = group.get_ava_refer(Attribute::MemberOf);
+
+        let member_ref = group.get_ava_refer(Attribute::Member);
+        let dynmember_ref = group.get_ava_refer(Attribute::DynMember);
+
+        let dir_members = member_ref
+            .iter()
+            .flat_map(|set| set.iter())
+            .chain(dynmember_ref.iter().flat_map(|set| set.iter()))
+            .copied();
+
+        // These are the entries that are direct members and need to reflect the group
+        // as mo and it's mo for indirect mo.
+        for dir_member in dir_members {
+            if let Some((_pre, tgte)) = leaf_entries.get_mut(&dir_member) {
+                trace!(entry_id = ?tgte.get_display_id());
+                // We were in the group, lets update.
+                if let Some(dmo_set) = tgte.get_ava_refer_mut(Attribute::DirectMemberOf) {
+                    dmo_set.insert(group_uuid);
+                } else {
+                    let dmo = ValueSetRefer::new(group_uuid);
+                    tgte.set_ava_set(Attribute::DirectMemberOf, dmo);
+                }
+
+                // We're also in member of this group.
+                if let Some(mo_set) = tgte.get_ava_refer_mut(Attribute::MemberOf) {
+                    mo_set.insert(group_uuid);
+                } else {
+                    let mo = ValueSetRefer::new(group_uuid);
+                    tgte.set_ava_set(Attribute::MemberOf, mo);
+                }
+
+                // If the group has memberOf attributes, we propogate these to
+                // our entry now.
+                if let Some(group_mo) = memberof_ref {
+                    // IMPORTANT this can't be a NONE because we just create MO in
+                    // the step above!
+                    if let Some(mo_set) = tgte.get_ava_refer_mut(Attribute::MemberOf) {
+                        mo_set.extend(group_mo.iter())
+                    }
+                }
+
+                if cfg!(debug_assertions) {
+                    if let Some(dmo) = group.get_ava_refer(Attribute::DirectMemberOf) {
+                        if let Some(mo) = group.get_ava_refer(Attribute::MemberOf) {
+                            debug_assert!(mo.is_superset(dmo))
+                        }
+                    }
+                }
+            }
+            // Done updating that leaf entry.
+        }
+        // Next group.
+    }
+
+    // Turn the other_cache into a write set.
+    leaf_entries
+        .into_iter()
+        .try_for_each(|(auuid, (pre, tgte))| {
+            // Only write if a change occurred.
+            if pre.get_ava_set(Attribute::MemberOf) != tgte.get_ava_set(Attribute::MemberOf)
+                || pre.get_ava_set(Attribute::DirectMemberOf)
+                    != tgte.get_ava_set(Attribute::DirectMemberOf)
+            {
+                trace!("=> processing affected uuid {:?}", auuid);
+                changes.push((pre, tgte));
+            } else {
+                trace!("=> ignoring unmodified uuid {:?}", auuid);
+            }
+            Ok(())
+        })?;
+
+    // Write the batch out in a single stripe.
+    qs.internal_apply_writable(changes)
+    // Done! 🎉
+}
+
 // This is how you know the good code is here.
 #[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
     qs: &mut QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
     // May require https://github.com/rust-lang/rust/issues/62924 to allow popping
-    mut group_affect: Vec<Uuid>,
+    mut affected_uuids: Vec<Uuid>,
 ) -> Result<(), OperationError> {
     trace!(" => entering apply_memberof");
-    trace!(" => initial group_affect {:?}", group_affect);
 
-    // We can't cache groups, because we need to be continually writing
-    // and querying them. But we can cache anything we find in the process
-    // to speed up the later other_affect write op, and we can use this
-    // to avoid loading things that aren't groups.
-    // All other changed entries (mo, dmo cleared)
-    let mut other_cache: HashMap<Uuid, EntryTuple> = HashMap::with_capacity(group_affect.len() * 2);
-    while !group_affect.is_empty() {
-        group_affect.sort();
-        group_affect.dedup();
+    let mut group_changed: BTreeSet<Uuid> = BTreeSet::new();
+
+    // While there are still affected uuids.
+    while !affected_uuids.is_empty() {
+        trace!(?affected_uuids);
+        affected_uuids.sort();
+        affected_uuids.dedup();
+
+        debug_assert!(!affected_uuids.is_empty());
 
         // Ignore recycled/tombstones
-        let filt = filter!(FC::Or(
-            group_affect
-                .drain(0..)
-                .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
-                .collect()
-        ));
+        let filt = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+            FC::Or(
+                affected_uuids
+                    .drain(0..)
+                    .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+                    .collect()
+            )
+        ]));
 
         let work_set = qs.internal_search_writeable(&filt)?;
-        // Load the vecdeque with this batch.
-
         let mut changes = Vec::with_capacity(work_set.len());
 
         for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
-            // load the entry from the db.
-            if !tgte.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
-                // It's not a group, we'll deal with you later. We should NOT
-                // have seen this UUID before, as either we are on the first
-                // iteration OR the checks belowe should have filtered it out.
-                trace!("not a group, delaying update to -> {:?}", guuid);
-                other_cache.insert(guuid, (pre, tgte));
-                continue;
-            }
 
-            trace!("=> processing group update -> {:?}", guuid);
+            group_changed.insert(guuid);
 
-            do_memberof(qs, guuid, &mut tgte)?;
+            trace!(
+                "=> processing group update -> {:?} {}",
+                guuid,
+                tgte.get_display_id()
+            );
+
+            do_group_memberof(qs, guuid, &mut tgte)?;
 
             // Did we change? Note we don't check if the class changed, only if mo changed.
             if pre.get_ava_set(Attribute::MemberOf) != tgte.get_ava_set(Attribute::MemberOf)
@@ -153,58 +350,40 @@ fn apply_memberof(
             {
                 // Yes we changed - we now must process all our members, as they need to
                 // inherit changes. Some of these members COULD be non groups, but we
-                // handle that in the dbload step.
+                // handle them in the subsequent steps.
                 trace!(
-                    "{:?} changed, flagging members as groups to change. ",
-                    guuid
+                    "{:?} {} changed, flagging members as groups to change. ",
+                    guuid,
+                    tgte.get_display_id()
                 );
                 if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::Member) {
-                    group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
+                    affected_uuids.extend(miter);
                 };
                 if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::DynMember) {
-                    group_affect.extend(miter.filter(|m| !other_cache.contains_key(m)));
+                    affected_uuids.extend(miter);
                 };
 
                 // push the entries to pre/cand
                 changes.push((pre, tgte));
             } else {
-                trace!("{:?} stable", guuid);
+                trace!("{:?} {} stable", guuid, tgte.get_display_id());
             }
         }
 
         // Write this stripe if populated.
         if !changes.is_empty() {
-            qs.internal_apply_writable(changes).map_err(|e| {
-                admin_error!("Failed to commit memberof group set {:?}", e);
-                e
+            trace!("wrote stripe {}", changes.len());
+            qs.internal_apply_writable(changes).map_err(|err| {
+                error!(?err, "Failed to commit memberof group set");
+                err
             })?;
         }
         // Next loop!
+        trace!("-------------------------------------");
     }
 
     // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
-    let mut changes = Vec::with_capacity(other_cache.len());
-
-    other_cache
-        .into_iter()
-        .try_for_each(|(auuid, (pre, mut tgte))| {
-            trace!("=> processing affected uuid {:?}", auuid);
-            debug_assert!(!tgte.attribute_equality(Attribute::Class, &EntryClass::Group.into()));
-            do_memberof(qs, auuid, &mut tgte)?;
-            // Only write if a change occurred.
-            if pre.get_ava_set(Attribute::MemberOf) != tgte.get_ava_set(Attribute::MemberOf)
-                || pre.get_ava_set(Attribute::DirectMemberOf)
-                    != tgte.get_ava_set(Attribute::DirectMemberOf)
-            {
-                changes.push((pre, tgte));
-            }
-            Ok(())
-        })?;
-
-    // Turn the other_cache into a write set.
-    // Write the batch out in a single stripe.
-    qs.internal_apply_writable(changes)
-    // Done! 🎉
+    do_leaf_memberof(qs, group_changed)
 }
 
 impl Plugin for MemberOf {
@@ -307,7 +486,7 @@ impl Plugin for MemberOf {
     ) -> Result<(), OperationError> {
         // Similar condition to create - we only trigger updates on groups's members,
         // so that they can find they are no longer a mo of what was deleted.
-        let group_affect = cand
+        let affected_uuids = cand
             .iter()
             .filter_map(|e| {
                 // Is it a group?
@@ -332,7 +511,7 @@ impl Plugin for MemberOf {
             )
             .collect();
 
-        apply_memberof(qs, group_affect)
+        apply_memberof(qs, affected_uuids)
     }
 
     #[instrument(level = "debug", name = "memberof::verify", skip_all)]
@@ -360,6 +539,7 @@ impl Plugin for MemberOf {
                 ])
             ]));
 
+            // what groups is this entry a direct member of?
             let direct_memberof = match qs
                 .internal_search(filt_in)
                 .map_err(|_| ConsistencyError::QueryServerSearchFailure)
@@ -367,8 +547,8 @@ impl Plugin for MemberOf {
                 Ok(d_mo) => d_mo,
                 Err(e) => return vec![Err(e)],
             };
-            // for all direct -> add uuid to map
 
+            // for all direct -> add uuid to map
             let d_groups_set: BTreeSet<Uuid> =
                 direct_memberof.iter().map(|e| e.get_uuid()).collect();
 
@@ -378,7 +558,11 @@ impl Plugin for MemberOf {
                 Some(d_groups_set)
             };
 
-            trace!("DMO search groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
+            trace!(
+                "DMO search groups {:?} -> {:?}",
+                e.get_display_id(),
+                d_groups_set
+            );
 
             match (e.get_ava_set(Attribute::DirectMemberOf), d_groups_set) {
                 (Some(edmos), Some(b)) => {
@@ -387,16 +571,19 @@ impl Plugin for MemberOf {
                         Some(a) => {
                             let diff: Vec<_> = a.symmetric_difference(&b).collect();
                             if !diff.is_empty() {
-                                admin_error!(
-                                    "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
-                                    e,
-                                    diff
+                                error!(
+                                    "MemberOfInvalid: Entry {}, DMO has inconsistencies",
+                                    e.get_display_id(),
                                 );
+                                trace!(entry_direct_member_of = ?a);
+                                trace!(expected_direct_groups = ?b);
+                                trace!(?diff);
+
                                 r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                             }
                         }
                         _ => {
-                            admin_error!("MemberOfInvalid: Entry {}, DMO has incorrect syntax", e,);
+                            error!("MemberOfInvalid: Entry {}, DMO has incorrect syntax - should be reference uuid set", e.get_display_id());
                             r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                         }
                     }
@@ -404,14 +591,14 @@ impl Plugin for MemberOf {
                 (None, None) => {
                     // Ok
                 }
-                (entry_dmo, d_groups) => {
-                    admin_error!(
+                (entry_direct_member_of, expected_direct_groups) => {
+                    error!(
                         "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
-                        e.get_uuid()
+                        e.get_display_id()
                     );
-                    trace!(?e);
-                    trace!(?entry_dmo);
-                    trace!(?d_groups);
+                    // trace!(?e);
+                    trace!(?entry_direct_member_of);
+                    trace!(?expected_direct_groups);
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                 }
             }
@@ -442,7 +629,7 @@ impl MemberOf {
     ) -> Result<(), OperationError> {
         let dyngroup_change = super::dyngroup::DynGroup::post_create(qs, cand, ident)?;
 
-        let group_affect = cand
+        let affected_uuids = cand
             .iter()
             .map(|e| e.get_uuid())
             .chain(dyngroup_change)
@@ -460,7 +647,7 @@ impl MemberOf {
             )
             .collect();
 
-        apply_memberof(qs, group_affect)
+        apply_memberof(qs, affected_uuids)
     }
 
     fn post_modify_inner(
@@ -479,7 +666,7 @@ impl MemberOf {
         )?;
 
         // TODO: Limit this to when it's a class, member, mo, dmo change instead.
-        let group_affect = cand
+        let affected_uuids = cand
             .iter()
             .map(|post| post.get_uuid())
             .chain(dyngroup_change)
@@ -508,7 +695,7 @@ impl MemberOf {
             )
             .collect();
 
-        apply_memberof(qs, group_affect)
+        apply_memberof(qs, affected_uuids)
     }
 }
 

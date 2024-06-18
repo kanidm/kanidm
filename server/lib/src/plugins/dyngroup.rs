@@ -15,14 +15,23 @@ pub struct DynGroupCache {
 pub struct DynGroup;
 
 impl DynGroup {
+    /// Determine if any dynamic groups changed as part of this operation.
     #[allow(clippy::too_many_arguments)]
     fn apply_dyngroup_change(
         qs: &mut QueryServerWriteTransaction,
+        // The output - This should be an empty vec with enough capacity for dyn
+        // group objects and the entries.
         candidate_tuples: &mut Vec<(Arc<EntrySealedCommitted>, EntryInvalidCommitted)>,
+        // The uuids that are affected by the dyngroup change.
         affected_uuids: &mut Vec<Uuid>,
+        // If we should error when a dyngroup we thought should be cached is in fact,
+        // not cached.
         expect: bool,
+        // The identity in use.
         ident_internal: &Identity,
+        // The dyn group cache
         dyn_groups: &mut DynGroupCache,
+        // The list of dyn groups that were in the change set
         n_dyn_groups: &[&Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
         /*
@@ -41,17 +50,19 @@ impl DynGroup {
             return Ok(());
         }
 
-        // Search all the new groups first.
+        // Search all dyn groups that were involved in the operation.
         let filt = filter!(FC::Or(
             n_dyn_groups
                 .iter()
                 .map(|e| f_eq(Attribute::Uuid, PartialValue::Uuid(e.get_uuid())))
                 .collect()
         ));
+        // Load the dyn groups as a writeable set.
         let work_set = qs.internal_search_writeable(&filt)?;
 
         // Go through them all and update the new groups.
         for (pre, mut nd_group) in work_set.into_iter() {
+            // Load the dyngroups filter
             let scope_f: ProtoFilter = nd_group
                 .get_ava_single_protofilter(Attribute::DynGroupFilter)
                 .cloned()
@@ -69,7 +80,7 @@ impl DynGroup {
             // Add our uuid as affected.
             affected_uuids.push(uuid);
 
-            // Apply the filter and get all the uuids.
+            // Apply the filter and get all the uuids that are members of this dyngroup.
             let entries = qs.internal_search(scope_i.clone()).map_err(|e| {
                 admin_error!("internal search failure -> {:?}", e);
                 e
@@ -96,7 +107,8 @@ impl DynGroup {
 
             candidate_tuples.push((pre, nd_group));
 
-            // Insert to our new instances
+            // Insert it to the dyngroup cache with the compiled/resolved filter for
+            // fast matching in other paths.
             if dyn_groups.insts.insert(uuid, scope_i).is_none() == expect {
                 admin_error!("{} cache uuid conflict {}", Attribute::DynGroup, uuid);
                 return Err(OperationError::InvalidState);
@@ -283,7 +295,6 @@ impl DynGroup {
         // changed in this op.
 
         if !n_dyn_groups.is_empty() {
-            trace!("considering modified dyngroups");
             Self::apply_dyngroup_change(
                 qs,
                 &mut candidate_tuples,

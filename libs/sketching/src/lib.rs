@@ -22,6 +22,7 @@ pub fn test_init() {
     let filter = EnvFilter::from_default_env()
         // Skipping trace on tests by default saves a *TON* of ram.
         .add_directive(LevelFilter::INFO.into())
+        .add_directive("kanidmd_lib::plugins=TRACE".parse().expect("failed to generate log filter"))
         // escargot builds cargo packages while we integration test and is SUPER noisy.
         .add_directive(
             "escargot=ERROR"

@@ -52,11 +52,15 @@ pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 
-const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
-const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
+const RESOLVE_FILTER_CACHE_MAX: usize = 128;
+const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
 
-pub type ResolveFilterCacheReadTxn<'a> =
-    ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+pub type ResolveFilterCacheReadTxn<'a> = ARCacheReadTxn<
+    'a,
+    (IdentityId, Arc<Filter<FilterValid>>),
+    Arc<Filter<FilterValidResolved>>,
+    (),
+>;
 
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub(crate) enum ServerPhase {
@@ -92,9 +96,10 @@ pub struct QueryServer {
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
     db_tickets: Arc<Semaphore>,
+    read_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
     resolve_filter_cache:
-        Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Arc<ARCache<(IdentityId, Arc<Filter<FilterValid>>), Arc<Filter<FilterValidResolved>>>>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
     cid_max: Arc<CowCell<Cid>>,
     key_providers: Arc<KeyProviders>,
@@ -110,8 +115,8 @@ pub struct QueryServerReadTransaction<'a> {
     accesscontrols: AccessControlsReadTransaction<'a>,
     key_providers: KeyProvidersReadTransaction,
     _db_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    _read_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache: ResolveFilterCacheReadTxn<'a>,
     // Future we may need this.
     // cid_max: CowCellReadTxn<Cid>,
     trim_cid: Cid,
@@ -155,8 +160,12 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(super) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    resolve_filter_cache: ARCacheReadTxn<
+        'a,
+        (IdentityId, Arc<Filter<FilterValid>>),
+        Arc<Filter<FilterValidResolved>>,
+        (),
+    >,
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
 }
 
@@ -1047,10 +1056,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.key_providers
     }
 
-    fn get_resolve_filter_cache(
-        &mut self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
         &mut self.resolve_filter_cache
     }
 
@@ -1058,7 +1064,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &mut self,
     ) -> (
         &mut BackendReadTransaction<'a>,
-        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+        &mut ResolveFilterCacheReadTxn<'a>,
     ) {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
@@ -1201,10 +1207,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.key_providers
     }
 
-    fn get_resolve_filter_cache(
-        &mut self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
         &mut self.resolve_filter_cache
     }
 
@@ -1212,7 +1215,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &mut self,
     ) -> (
         &mut BackendWriteTransaction<'a>,
-        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+        &mut ResolveFilterCacheReadTxn<'a>,
     ) {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
@@ -1311,6 +1314,11 @@ impl QueryServer {
 
         let key_providers = Arc::new(KeyProviders::default());
 
+        // These needs to be pool_size minus one to always leave a DB ticket
+        // for a writer. But it also needs to be at least one :)
+        debug_assert!(pool_size > 0);
+        let read_ticket_pool = if pool_size - 1 > 0 { pool_size } else { 1 };
+
         Ok(QueryServer {
             phase,
             d_info,
@@ -1319,6 +1327,7 @@ impl QueryServer {
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
+            read_tickets: Arc::new(Semaphore::new(read_ticket_pool as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
             resolve_filter_cache,
             dyngroup_cache,
@@ -1334,7 +1343,26 @@ impl QueryServer {
     }
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
-        // We need to ensure a db conn will be available
+        // Get a read ticket. Basicly this forces us to queue with other readers, while preventing
+        // us from competing with writers on the db tickets. This tilts us to write prioritising
+        // on db operations by always making sure a writer can get a db ticket.
+        let read_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.read_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsr")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.read_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsr")
+        };
+
+        // We need to ensure a db conn will be available. At this point either a db ticket
+        // *must* be available because pool_size >= 2 and the only other holders are write
+        // and read ticket holders, OR pool_size == 1, and we are waiting on the writer to now
+        // complete.
         let db_ticket = if cfg!(test) {
             #[allow(clippy::expect_used)]
             self.db_tickets
@@ -1368,6 +1396,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.read(),
             key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
+            _read_ticket: read_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             trim_cid,
         }
@@ -1387,7 +1416,9 @@ impl QueryServer {
                 .expect("unable to acquire writer_ticket for qsw")
         };
 
-        // We need to ensure a db conn will be available
+        // We need to ensure a db conn will be available. At this point either a db ticket
+        // *must* be available because pool_size >= 2 and the only other are readers, or
+        // pool_size == 1 and we are waiting on a single reader to now complete
         let db_ticket = if cfg!(test) {
             #[allow(clippy::expect_used)]
             self.db_tickets
@@ -1400,6 +1431,10 @@ impl QueryServer {
                 .await
                 .expect("unable to acquire db_ticket for qsw")
         };
+
+        // Point of no return - we now have a DB thread AND the write ticket, we MUST complete
+        // as soon as possible! The following locks and elements below are SYNCHRONOUS but
+        // will never be contented at this point, and will always progress.
 
         #[allow(clippy::expect_used)]
         let be_txn = self
@@ -1858,6 +1893,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
+        debug!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
 
         if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
             self.migrate_domain_2_to_3()?;
@@ -1881,7 +1917,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Similar to the older system info migration handler, these allow "one shot" fixes
         // to be issued and run by bumping the patch level.
-        if previous_patch_level <= PATCH_LEVEL_1 && domain_info_patch_level >= PATCH_LEVEL_1 {
+        if previous_patch_level < PATCH_LEVEL_1 && domain_info_patch_level >= PATCH_LEVEL_1 {
             self.migrate_domain_patch_level_1()?;
         }
 
@@ -2124,7 +2160,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Point of no return - everything has been validated and reloaded.
         //
         // = Lets commit =
-
         schema
             .commit()
             .map(|_| d_info.commit())
