@@ -1285,9 +1285,6 @@ impl FilterResolved {
 
     fn resolve_cacheable(fc: &FilterComp) -> bool {
         match fc {
-            // We set the compound filters slope factor to "None" here, because when we do
-            // optimise we'll actually fill in the correct slope factors after we sort those
-            // inner terms in a more optimal way.
             FilterComp::Or(vs) | FilterComp::And(vs) | FilterComp::Inclusion(vs) => {
                 if vs.len() < 8 {
                     vs.iter().all(FilterResolved::resolve_cacheable)
