@@ -12,13 +12,13 @@
 use std::collections::BTreeSet;
 use std::sync::Arc;
 
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::filter::{f_eq, FC};
 use crate::plugins::Plugin;
 use crate::prelude::*;
-use crate::schema::SchemaTransaction;
+use crate::schema::{SchemaAttribute, SchemaTransaction};
 
 pub struct ReferentialIntegrity;
 
@@ -164,27 +164,27 @@ impl Plugin for ReferentialIntegrity {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, cand)
+        Self::post_modify_inner(qs, None, cand)
     }
 
     #[instrument(level = "debug", name = "refint_post_modify", skip_all)]
     fn post_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, cand)
+        Self::post_modify_inner(qs, Some(pre_cand), cand)
     }
 
     #[instrument(level = "debug", name = "refint_post_batch_modify", skip_all)]
     fn post_batch_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, cand)
+        Self::post_modify_inner(qs, Some(pre_cand), cand)
     }
 
     #[instrument(level = "debug", name = "refint_post_repl_refresh", skip_all)]
@@ -192,7 +192,7 @@ impl Plugin for ReferentialIntegrity {
         qs: &mut QueryServerWriteTransaction,
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        Self::post_modify_inner(qs, cand)
+        Self::post_modify_inner(qs, None, cand)
     }
 
     #[instrument(level = "debug", name = "refint_post_repl_incremental", skip_all)]
@@ -209,7 +209,7 @@ impl Plugin for ReferentialIntegrity {
         //
         // This also becomes a path to a "ref int fixup" too?
 
-        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+        let uuids = Self::cand_references_to_uuid_filter(qs, Some(pre_cand), cand)?;
 
         let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
 
@@ -358,56 +358,45 @@ impl Plugin for ReferentialIntegrity {
     }
 }
 
-impl ReferentialIntegrity {
-    fn cand_references_to_uuid_filter(
-        qs: &mut QueryServerWriteTransaction,
-        cand: &[EntrySealedCommitted],
-    ) -> Result<Vec<Uuid>, OperationError> {
-        let schema = qs.get_schema();
-        let ref_types = schema.get_reference_types();
+fn update_reference_set<'a, I>(
+    ref_types: &HashMap<AttrString, SchemaAttribute>,
+    entry_iter: I,
+    reference_set: &mut BTreeSet<Uuid>,
+) -> Result<(), OperationError>
+where
+    I: Iterator<Item = &'a EntrySealedCommitted>,
+{
+    for cand in entry_iter {
+        trace!(cand_id = %cand.get_display_id());
+        // If it's dyngroup, skip member since this will be reset in the next step.
+        let dyn_group = cand.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into());
 
-        // Fast Path
-        let mut vsiter = cand.iter().flat_map(|c| {
-            trace!(cand_id = %c.get_display_id());
-            // If it's dyngroup, skip member since this will be reset in the next step.
-            let dyn_group = c.attribute_equality(Attribute::Class, &EntryClass::DynGroup.into());
+        // For all reference types that exist in the schema.
+        let cand_ref_valuesets = ref_types.values().filter_map(|rtype| {
+            // If the entry is a dyn-group, skip dyn member.
+            let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
+            // MemberOf is always recalculated, so it can be skipped
+            let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
 
-            ref_types.values().filter_map(move |rtype| {
-                // Skip dynamic members, these are recalculated by the
-                // memberof plugin.
-                let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
-                // Skip memberOf, also recalculated. We ignore direct MO though because
-                // changes to direct member of trigger MO to recalc.
-                let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
-                if skip_mb || skip_mo {
-                    None
-                } else {
-                    trace!(rtype_name = ?rtype.name, "examining");
-                    c.get_ava_set(
-                        (&rtype.name)
-                            .try_into()
-                            .map_err(|e| {
-                                admin_error!(?e, "invalid attribute type {}", &rtype.name);
-                                None::<Attribute>
-                            })
-                            .ok()?,
-                    )
-                }
-            })
+            if skip_mb || skip_mo {
+                None
+            } else {
+                trace!(rtype_name = ?rtype.name, "examining");
+                cand.get_ava_set(
+                    (&rtype.name)
+                        .try_into()
+                        .map_err(|e| {
+                            admin_error!(?e, "invalid attribute type {}", &rtype.name);
+                            None::<Attribute>
+                        })
+                        .ok()?,
+                )
+            }
         });
 
-        // Could check len first?
-        let mut i = Vec::with_capacity(cand.len() * 4);
-        let mut dedup = HashSet::new();
-
-        vsiter.try_for_each(|vs| {
+        for vs in cand_ref_valuesets {
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
-                uuid_iter.for_each(|u| {
-                    // Returns true if the item is NEW in the set
-                    if dedup.insert(u) {
-                        i.push(u)
-                    }
-                });
+                reference_set.extend(uuid_iter);
                 Ok(())
             } else {
                 admin_error!(?vs, "reference value could not convert to reference uuid.");
@@ -415,17 +404,50 @@ impl ReferentialIntegrity {
                 Err(OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string(),
                 ))
-            }
-        })?;
+            }?;
+        }
+    }
+    Ok(())
+}
 
-        Ok(i)
+impl ReferentialIntegrity {
+    fn cand_references_to_uuid_filter(
+        qs: &mut QueryServerWriteTransaction,
+        pre_cand: Option<&[Arc<EntrySealedCommitted>]>,
+        post_cand: &[EntrySealedCommitted],
+    ) -> Result<Vec<Uuid>, OperationError> {
+        let schema = qs.get_schema();
+        let ref_types = schema.get_reference_types();
+
+        let mut previous_reference_set = BTreeSet::new();
+        let mut reference_set = BTreeSet::new();
+
+        if let Some(pre_cand) = pre_cand {
+            update_reference_set(
+                ref_types,
+                pre_cand.iter().map(|e| e.as_ref()),
+                &mut previous_reference_set,
+            )?;
+        }
+
+        update_reference_set(ref_types, post_cand.iter(), &mut reference_set)?;
+
+        // Now build the reference set from the current candidates.
+
+        // Return only the values that are present in the new reference set. These are the values
+        // we actually need to check the integrity of.
+        Ok(reference_set
+            .difference(&previous_reference_set)
+            .copied()
+            .collect())
     }
 
     fn post_modify_inner(
         qs: &mut QueryServerWriteTransaction,
-        cand: &[EntrySealedCommitted],
+        pre_cand: Option<&[Arc<EntrySealedCommitted>]>,
+        post_cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
-        let uuids = Self::cand_references_to_uuid_filter(qs, cand)?;
+        let uuids = Self::cand_references_to_uuid_filter(qs, pre_cand, post_cand)?;
 
         let all_exist_fast = Self::check_uuids_exist_fast(qs, uuids.as_slice())?;
 

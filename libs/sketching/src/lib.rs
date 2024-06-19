@@ -10,8 +10,8 @@ use tracing_forest::printer::TestCapturePrinter;
 use tracing_forest::tag::NoTag;
 use tracing_forest::util::*;
 use tracing_forest::Tag;
-use tracing_subscriber::prelude::*;
 use tracing_subscriber::filter::Directive;
+use tracing_subscriber::prelude::*;
 
 pub mod macros;
 pub mod otel;
@@ -143,12 +143,9 @@ impl Display for LogLevel {
 impl From<LogLevel> for Directive {
     fn from(value: LogLevel) -> Self {
         match value {
-            LogLevel::Info =>
-                Directive::from(Level::INFO),
-            LogLevel::Debug =>
-                Directive::from(Level::DEBUG),
-            LogLevel::Trace =>
-                Directive::from(Level::TRACE),
+            LogLevel::Info => Directive::from(Level::INFO),
+            LogLevel::Debug => Directive::from(Level::DEBUG),
+            LogLevel::Trace => Directive::from(Level::TRACE),
         }
     }
 }
