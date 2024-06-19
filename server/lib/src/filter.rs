@@ -16,7 +16,7 @@ use std::iter;
 use std::num::NonZeroU8;
 use std::sync::Arc;
 
-use concread::arcache::ARCacheReadTxn;
+use concread::arcache::{ARCache, ARCacheReadTxn};
 use hashbrown::HashMap;
 #[cfg(test)]
 use hashbrown::HashSet;
@@ -32,6 +32,16 @@ use crate::idm::ldap::ldap_attr_filter_map;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
+
+pub type ResolveFilterCache =
+    ARCache<(IdentityId, Arc<Filter<FilterValid>>), Arc<Filter<FilterValidResolved>>>;
+
+pub type ResolveFilterCacheReadTxn<'a> = ARCacheReadTxn<
+    'a,
+    (IdentityId, Arc<Filter<FilterValid>>),
+    Arc<Filter<FilterValidResolved>>,
+    (),
+>;
 
 // Default filter is safe, ignores all hidden types!
 
@@ -446,14 +456,7 @@ impl Filter<FilterValid> {
         &self,
         ev: &Identity,
         idxmeta: Option<&IdxMeta>,
-        mut rsv_cache: Option<
-            &mut ARCacheReadTxn<
-                '_,
-                (IdentityId, Arc<Filter<FilterValid>>),
-                Arc<Filter<FilterValidResolved>>,
-                (),
-            >,
-        >,
+        mut rsv_cache: Option<&mut ResolveFilterCacheReadTxn<'_>>,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUuid to real terms.
         //

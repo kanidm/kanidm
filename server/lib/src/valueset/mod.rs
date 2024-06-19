@@ -625,7 +625,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Certificate>> {
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
         debug_assert!(false);
         None
     }

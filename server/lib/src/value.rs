@@ -1186,7 +1186,7 @@ pub enum Value {
 
     HexString(String),
 
-    Certificate(Certificate),
+    Certificate(Box<Certificate>),
 }
 
 impl PartialEq for Value {
@@ -1478,7 +1478,10 @@ impl Value {
     }
 
     pub fn new_certificate_s(cert_str: &str) -> Option<Self> {
-        Certificate::from_pem(cert_str).map(Value::Certificate).ok()
+        Certificate::from_pem(cert_str)
+            .map(Box::new)
+            .map(Value::Certificate)
+            .ok()
     }
 
     /// Want a `Value::Image`? use this!

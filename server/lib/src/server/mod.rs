@@ -4,7 +4,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
+use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use std::collections::BTreeSet;
@@ -15,7 +15,10 @@ use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
-use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
+use crate::filter::{
+    Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
+    ResolveFilterCacheReadTxn,
+};
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
 use crate::prelude::*;
@@ -52,15 +55,8 @@ pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 
-const RESOLVE_FILTER_CACHE_MAX: usize = 128;
+const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
-
-pub type ResolveFilterCacheReadTxn<'a> = ARCacheReadTxn<
-    'a,
-    (IdentityId, Arc<Filter<FilterValid>>),
-    Arc<Filter<FilterValidResolved>>,
-    (),
->;
 
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub(crate) enum ServerPhase {
@@ -98,8 +94,7 @@ pub struct QueryServer {
     db_tickets: Arc<Semaphore>,
     read_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
-    resolve_filter_cache:
-        Arc<ARCache<(IdentityId, Arc<Filter<FilterValid>>), Arc<Filter<FilterValidResolved>>>>,
+    resolve_filter_cache: Arc<ResolveFilterCache>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
     cid_max: Arc<CowCell<Cid>>,
     key_providers: Arc<KeyProviders>,
