@@ -230,7 +230,20 @@ impl DynGroup {
                         .copied()
                         .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
 
-                    affected_uuids.extend(matches.into_iter());
+                    let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
+                    let post_dynmember = d_group.get_ava_refer(Attribute::DynMember);
+
+                    match (pre_dynmember, post_dynmember) {
+                        (Some(pre_m), Some(post_m)) => {
+                            // Show only the *changed* uuids.
+                            affected_uuids.extend(pre_m.symmetric_difference(post_m));
+                        }
+                        (Some(members), None) | (None, Some(members)) => {
+                            // Doesn't matter what order, just that they are affected
+                            affected_uuids.extend(members);
+                        }
+                        (None, None) => {}
+                    };
 
                     // The *dyn group* isn't changing, it's that a member OF the dyn group
                     // is being added. This means the dyngroup isn't part of the set that
@@ -384,10 +397,20 @@ impl DynGroup {
                     }
                     */
 
-                    affected_uuids.extend(matches.into_iter().map(|choice| match choice {
-                        Ok(u) => u,
-                        Err(u) => u,
-                    }));
+                    let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
+                    let post_dynmember = d_group.get_ava_refer(Attribute::DynMember);
+
+                    match (pre_dynmember, post_dynmember) {
+                        (Some(pre_m), Some(post_m)) => {
+                            // Show only the *changed* uuids.
+                            affected_uuids.extend(pre_m.symmetric_difference(post_m));
+                        }
+                        (Some(members), None) | (None, Some(members)) => {
+                            // Doesn't matter what order, just that they are affected
+                            affected_uuids.extend(members);
+                        }
+                        (None, None) => {}
+                    };
 
                     candidate_tuples.push((pre, d_group));
                 }

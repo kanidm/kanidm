@@ -96,50 +96,14 @@ fn do_group_memberof(
 
 fn do_leaf_memberof(
     qs: &mut QueryServerWriteTransaction,
-    mut all_affected_uuids: BTreeSet<Uuid>,
-    groups_changed: BTreeSet<Uuid>,
+    all_affected_uuids: BTreeSet<Uuid>,
 ) -> Result<(), OperationError> {
-    trace!(?groups_changed);
-    // We can't fast path on changed groups being empty as we may need to examine
-    // the affected entries set directly.
-    if !groups_changed.is_empty() {
-        // These are all the groups that changed.
-        let all_groups = qs
-            .internal_search(filter!(f_and!([
-                f_eq(Attribute::Class, EntryClass::Group.into()),
-                FC::Or(
-                    groups_changed
-                        .iter()
-                        .copied()
-                        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
-                        .collect()
-                )
-            ])))
-            .map_err(|err| {
-                error!(?err, "internal search failure");
-                err
-            })?;
-
-        for group in all_groups.iter() {
-            trace!(group_id = ?group.get_display_id());
-            if let Some(members) = group.get_ava_refer(Attribute::Member) {
-                trace!(?members);
-                all_affected_uuids.extend(members);
-            }
-            if let Some(members) = group.get_ava_refer(Attribute::DynMember) {
-                trace!(dyn_members = ?members);
-                all_affected_uuids.extend(members);
-            }
-        }
-    }
-
     trace!("---");
 
     // We just put everything into the filter here, the query code will remove
     // anything that is a group.
     let all_affected_filter: Vec<_> = all_affected_uuids
-        .iter()
-        .copied()
+        .into_iter()
         .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
         .collect();
 
@@ -271,6 +235,8 @@ fn do_leaf_memberof(
                 }
             }
             // Done updating that leaf entry.
+            // Remember in the None case it could be that the group has a member which *isn't*
+            // being altered as a leaf in this operation.
         }
         // Next group.
     }
@@ -339,8 +305,10 @@ fn apply_memberof(
     // Because of how replication works, we don't send MO over a replication boundary.
     // As a result, we always need to trigger for any changed uuid, so we keep the
     // initial affected set for the leaf resolution.
-    let all_affected_uuids: BTreeSet<_> = affected_uuids.iter().copied().collect();
-    let mut group_changed: BTreeSet<Uuid> = BTreeSet::new();
+    //
+    // As we proceed, we'll also add the affected members of our groups that are
+    // changing.
+    let mut all_affected_uuids: BTreeSet<_> = affected_uuids.iter().copied().collect();
 
     // While there are still affected uuids.
     while !affected_uuids.is_empty() {
@@ -367,10 +335,6 @@ fn apply_memberof(
         for (pre, mut tgte) in work_set.into_iter() {
             let guuid = pre.get_uuid();
 
-            // We have to force the group to be changed so that we investigate it as part of the
-            // leaf update.
-            group_changed.insert(guuid);
-
             trace!(
                 "=> processing group update -> {:?} {}",
                 guuid,
@@ -392,16 +356,56 @@ fn apply_memberof(
                     guuid,
                     tgte.get_display_id()
                 );
-                if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::Member) {
-                    affected_uuids.extend(miter);
+
+                // We want to limit our examination only to memberships that were *affected*
+                // in this cycle, rather than all our members. This prevents explosion of the
+                // resolution graph when we consult the leaves.
+                let pre_member = pre.get_ava_refer(Attribute::Member);
+                let post_member = tgte.get_ava_refer(Attribute::Member);
+
+                match (pre_member, post_member) {
+                    (Some(pre_m), Some(post_m)) => {
+                        // For group resolution, yield everything.
+                        affected_uuids.extend(pre_m);
+                        affected_uuids.extend(post_m);
+                    }
+                    (Some(members), None) | (None, Some(members)) => {
+                        // Doesn't matter what order, just that they are affected
+                        affected_uuids.extend(members);
+                    }
+                    (None, None) => {}
                 };
-                if let Some(miter) = tgte.get_ava_as_refuuid(Attribute::DynMember) {
-                    affected_uuids.extend(miter);
+
+                let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
+                let post_dynmember = tgte.get_ava_refer(Attribute::DynMember);
+
+                match (pre_dynmember, post_dynmember) {
+                    (Some(pre_m), Some(post_m)) => {
+                        // Show only the *changed* uuids.
+                        affected_uuids.extend(pre_m);
+                        affected_uuids.extend(post_m);
+                    }
+                    (Some(members), None) | (None, Some(members)) => {
+                        // Doesn't matter what order, just that they are affected
+                        affected_uuids.extend(members);
+                    }
+                    (None, None) => {}
                 };
 
                 // push the entries to pre/cand
                 changes.push((pre, tgte));
             } else {
+                // If the group is stable, then we *only* need to update memberof
+                // on members that may have been added or removed. This exists to
+                // optimise when we add a member to a group, but without changing the
+                // group's mo/dmo to save re-writing mo to all the other members.
+                //
+                // If the group's memberof has been through the unstable state,
+                // all our members are already fully loaded into the affected sets.
+                //
+                // NOTE: This filtering of what members were actually impacted is
+                // performed in the call to post_modify_inner
+
                 trace!("{:?} {} stable", guuid, tgte.get_display_id());
             }
         }
@@ -414,12 +418,16 @@ fn apply_memberof(
                 err
             })?;
         }
+
+        // Reflect the full set of affected uuids into our all affected set.
+        all_affected_uuids.extend(affected_uuids.iter());
+
         // Next loop!
         trace!("-------------------------------------");
     }
 
     // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
-    do_leaf_memberof(qs, all_affected_uuids, group_changed)
+    do_leaf_memberof(qs, all_affected_uuids)
 }
 
 impl Plugin for MemberOf {
@@ -669,6 +677,7 @@ impl MemberOf {
             .iter()
             .map(|e| e.get_uuid())
             .chain(dyngroup_change)
+            // In a create, we have to always examine our members as being affected.
             .chain(
                 cand.iter()
                     .filter_map(|e| {
@@ -701,35 +710,46 @@ impl MemberOf {
             force_dyngroup_cand_update,
         )?;
 
-        // TODO: Limit this to when it's a class, member, mo, dmo change instead.
-        let affected_uuids = cand
+        let mut affected_uuids: BTreeSet<_> = cand
             .iter()
             .map(|post| post.get_uuid())
             .chain(dyngroup_change)
-            .chain(
-                pre_cand
-                    .iter()
-                    .filter_map(|pre| {
-                        if pre.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
-                            pre.get_ava_as_refuuid(Attribute::Member)
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten(),
-            )
-            .chain(
-                cand.iter()
-                    .filter_map(|post| {
-                        if post.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
-                            post.get_ava_as_refuuid(Attribute::Member)
-                        } else {
-                            None
-                        }
-                    })
-                    .flatten(),
-            )
             .collect();
+
+        for (pre, post) in pre_cand.iter().zip(cand.iter()).filter(|(pre, post)| {
+            post.attribute_equality(Attribute::Class, &EntryClass::Group.into())
+                || pre.attribute_equality(Attribute::Class, &EntryClass::Group.into())
+        }) {
+            let pre_member = pre.get_ava_refer(Attribute::Member);
+            let post_member = post.get_ava_refer(Attribute::Member);
+
+            match (pre_member, post_member) {
+                (Some(pre_m), Some(post_m)) => {
+                    // Show only the *changed* uuids for leaf resolution.
+                    affected_uuids.extend(pre_m.symmetric_difference(post_m));
+                }
+                (Some(members), None) | (None, Some(members)) => {
+                    // Doesn't matter what order, just that they are affected
+                    affected_uuids.extend(members);
+                }
+                (None, None) => {}
+            };
+
+            let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
+            let post_dynmember = post.get_ava_refer(Attribute::DynMember);
+
+            match (pre_dynmember, post_dynmember) {
+                (Some(pre_m), Some(post_m)) => {
+                    // Show only the *changed* uuids.
+                    affected_uuids.extend(pre_m.symmetric_difference(post_m));
+                }
+                (Some(members), None) | (None, Some(members)) => {
+                    // Doesn't matter what order, just that they are affected
+                    affected_uuids.extend(members);
+                }
+                (None, None) => {}
+            };
+        }
 
         apply_memberof(qs, affected_uuids)
     }
