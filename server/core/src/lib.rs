@@ -52,7 +52,7 @@ use kanidmd_lib::value::CredentialType;
 use libc::umask;
 
 use tokio::sync::broadcast;
-use tokio::task::JoinHandle;
+use tokio::task;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
@@ -754,7 +754,7 @@ pub struct CoreHandle {
     clean_shutdown: bool,
     pub tx: broadcast::Sender<CoreAction>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
-    handles: Vec<(TaskName, tokio::task::JoinHandle<()>)>,
+    handles: Vec<(TaskName, task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
@@ -954,19 +954,20 @@ pub async fn create_server_core(
     // Create the server async write entry point.
     let server_write_ref = QueryServerWriteV1::start_static(idms_arc.clone());
 
-    let delayed_handle = tokio::spawn(async move {
+    let delayed_handle = task::spawn(async move {
+        let mut buffer = Vec::with_capacity(DELAYED_ACTION_BATCH_SIZE);
         loop {
             tokio::select! {
+                added = idms_delayed.recv_many(&mut buffer) => {
+                    if added == 0 {
+                        // Channel has closed, stop the task.
+                        break
+                    }
+                    server_write_ref.handle_delayedaction(&mut buffer).await;
+                }
                 Ok(action) = broadcast_rx.recv() => {
                     match action {
                         CoreAction::Shutdown => break,
-                    }
-                }
-                delayed = idms_delayed.next() => {
-                    match delayed {
-                        Some(da) => server_write_ref.handle_delayedaction(da).await,
-                        // Channel has closed, stop the task.
-                        None => break,
                     }
                 }
             }
@@ -976,7 +977,7 @@ pub async fn create_server_core(
 
     let mut broadcast_rx = broadcast_tx.subscribe();
 
-    let auditd_handle = tokio::spawn(async move {
+    let auditd_handle = task::spawn(async move {
         loop {
             tokio::select! {
                 Ok(action) = broadcast_rx.recv() => {
@@ -1078,7 +1079,7 @@ pub async fn create_server_core(
         admin_info!("This config rocks! 🪨 ");
         None
     } else {
-        let h: tokio::task::JoinHandle<()> = match https::create_https_server(
+        let h: task::JoinHandle<()> = match https::create_https_server(
             config.clone(),
             jws_signer,
             status_ref,
@@ -1121,7 +1122,7 @@ pub async fn create_server_core(
         None
     };
 
-    let mut handles: Vec<(TaskName, JoinHandle<()>)> = vec![
+    let mut handles: Vec<(TaskName, task::JoinHandle<()>)> = vec![
         (TaskName::IntervalActor, interval_handle),
         (TaskName::DelayedActionActor, delayed_handle),
         (TaskName::AuditdActor, auditd_handle),

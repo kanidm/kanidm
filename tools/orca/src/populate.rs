@@ -1,6 +1,10 @@
 use crate::error::Error;
 use crate::kani;
 use crate::state::*;
+use std::collections::VecDeque;
+
+use std::sync::atomic::{AtomicU32, Ordering};
+use tokio::sync::Mutex;
 
 use std::sync::Arc;
 
@@ -76,47 +80,63 @@ pub async fn preflight(state: State) -> Result<(), Error> {
     apply_flags(client.clone(), state.preflight_flags.as_slice()).await?;
 
     let state_persons_len = state.persons.len();
-
-    let mut tasks = Vec::with_capacity(state_persons_len);
+    let mut tasks = VecDeque::with_capacity(state_persons_len);
 
     // Create persons.
     for person in state.persons.into_iter() {
         let c = client.clone();
-        // Write operations are single threaded in Kanidm, so we don't need to attempt
-        // to parallelise that here.
-        // tasks.push(tokio::spawn(preflight_person(c, person)))
-        tasks.push(preflight_person(c, person))
+        // While writes are single threaded in Kanidm, searches (such as .exists)
+        // and credential updates are concurrent / parallel. So these parts can be
+        // called in parallel, so we divide up into workers.
+        tasks.push_back(preflight_person(c, person))
     }
 
-    let tasks_par = tasks.split_off(state_persons_len / 2);
+    let tasks = Arc::new(Mutex::new(tasks));
+    let counter = Arc::new(AtomicU32::new(0));
+    let par = std::thread::available_parallelism().unwrap();
 
-    let left = tokio::spawn(async move {
-        for (i, task) in tasks.into_iter().enumerate() {
-            let _ = task.await;
-            if i % 500 == 0 {
-                eprint!(".");
-            }
-        }
-    });
-    let right = tokio::spawn(async move {
-        for (i, task) in tasks_par.into_iter().enumerate() {
-            let _ = task.await;
-            if i % 500 == 0 {
-                eprint!(".");
-            }
-        }
-    });
+    let handles: Vec<_> = (0..par.into())
+        .map(|_| {
+            let tasks_q = tasks.clone();
+            let counter_c = counter.clone();
+            tokio::spawn(async move {
+                loop {
+                    let maybe_task = async {
+                        let mut guard = tasks_q.lock().await;
+                        guard.pop_front()
+                    }
+                    .await;
 
-    left.await.map_err(|tokio_err| {
-        error!(?tokio_err, "Failed to join task");
-        Error::Tokio
-    })?;
-    right.await.map_err(|tokio_err| {
-        error!(?tokio_err, "Failed to join task");
-        Error::Tokio
-    })?;
+                    if let Some(t) = maybe_task {
+                        let _ = t.await;
+                        let was = counter_c.fetch_add(1, Ordering::Relaxed);
+                        if was % 1000 == 999 {
+                            let order = was + 1;
+                            eprint!("{}", order);
+                        } else if was % 100 == 99 {
+                            // Since we just added one, this just rolled over.
+                            eprint!(".");
+                        }
+                    } else {
+                        // queue drained.
+                        break;
+                    }
+                }
+            })
+        })
+        .collect();
+
+    for handle in handles {
+        handle.await.map_err(|tokio_err| {
+            error!(?tokio_err, "Failed to join task");
+            Error::Tokio
+        })?;
+    }
+
+    eprintln!("done");
 
     // Create groups.
+    let counter = Arc::new(AtomicU32::new(0));
     let mut tasks = Vec::with_capacity(state.groups.len());
 
     for group in state.groups.into_iter() {
@@ -129,10 +149,17 @@ pub async fn preflight(state: State) -> Result<(), Error> {
 
     for task in tasks {
         task.await?;
-        /*
-        task.await
-        */
+        let was = counter.fetch_add(1, Ordering::Relaxed);
+        if was % 1000 == 999 {
+            let order = was + 1;
+            eprint!("{}", order);
+        } else if was % 100 == 99 {
+            // Since we just added one, this just rolled over.
+            eprint!(".");
+        }
     }
+
+    eprintln!("done");
 
     // Create integrations.
 

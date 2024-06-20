@@ -16,11 +16,11 @@ use kanidm_lib_crypto::{
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCertificate {
-    map: BTreeMap<Sha256Digest, Certificate>,
+    map: BTreeMap<Sha256Digest, Box<Certificate>>,
 }
 
 impl ValueSetCertificate {
-    pub fn new(certificate: Certificate) -> Result<Box<Self>, OperationError> {
+    pub fn new(certificate: Box<Certificate>) -> Result<Box<Self>, OperationError> {
         let mut map = BTreeMap::new();
 
         let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
@@ -49,8 +49,9 @@ impl ValueSetCertificate {
             match db_cert {
                 DbValueCertificate::V1 { certificate_der } => {
                     // Parse the DER
-                    let certificate =
-                        Certificate::from_der(&certificate_der).map_err(|x509_err| {
+                    let certificate = Certificate::from_der(&certificate_der)
+                        .map(Box::new)
+                        .map_err(|x509_err| {
                             error!(?x509_err, "Unable to restore certificate from DER");
                             OperationError::VS0003CertificateDerDecode
                         })?;
@@ -87,9 +88,10 @@ impl ValueSetCertificate {
             .collect()
     }
 
+    #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = Certificate>,
+        T: IntoIterator<Item = Box<Certificate>>,
     {
         let mut map = BTreeMap::new();
 
@@ -129,7 +131,7 @@ impl ValueSetT for ValueSetCertificate {
         match pv {
             PartialValue::HexString(hs) => {
                 let mut buf = Sha256Digest::default();
-                if hex::decode_to_slice(&hs, &mut buf).is_ok() {
+                if hex::decode_to_slice(hs, &mut buf).is_ok() {
                     self.map.remove(&buf).is_some()
                 } else {
                     false
@@ -143,7 +145,7 @@ impl ValueSetT for ValueSetCertificate {
         match pv {
             PartialValue::HexString(hs) => {
                 let mut buf = Sha256Digest::default();
-                if hex::decode_to_slice(&hs, &mut buf).is_ok() {
+                if hex::decode_to_slice(hs, &mut buf).is_ok() {
                     self.map.contains_key(&buf)
                 } else {
                     false
@@ -236,13 +238,13 @@ impl ValueSetT for ValueSetCertificate {
 
     fn to_certificate_single(&self) -> Option<&Certificate> {
         if self.map.len() == 1 {
-            self.map.values().take(1).next()
+            self.map.values().take(1).map(|b| b.as_ref()).next()
         } else {
             None
         }
     }
 
-    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Certificate>> {
+    fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
         Some(&self.map)
     }
 }

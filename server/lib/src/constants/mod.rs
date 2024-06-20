@@ -99,6 +99,11 @@ pub const PURGE_FREQUENCY: u64 = 60;
 #[cfg(not(test))]
 pub const PURGE_FREQUENCY: u64 = 600;
 
+/// The number of delayed actions to consider per write transaction. Higher
+/// values allow more coalescing to occur, but may consume more ram and cause
+/// some latency while dequeuing and writing those operations.
+pub const DELAYED_ACTION_BATCH_SIZE: usize = 256;
+
 #[cfg(test)]
 /// In test, we limit the changelog to 10 minutes.
 pub const CHANGELOG_MAX_AGE: u64 = 600;
@@ -123,13 +128,14 @@ pub const PW_MIN_LENGTH: u32 = 10;
 pub const MAXIMUM_AUTH_SESSION_EXPIRY: u32 = u32::MAX;
 // Default - sessions last for 1 day
 pub const DEFAULT_AUTH_SESSION_EXPIRY: u32 = 86400;
-pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Maximum - privileges last for 1 hour.
 pub const MAXIMUM_AUTH_PRIVILEGE_EXPIRY: u32 = 3600;
 // Default - privileges last for 10 minutes.
 pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
+// Default - directly privileged sessions only last 1 hour.
+pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
-pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 8;
+pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
 
 // The time that a token can be used before session
 // status is enforced. This needs to be longer than

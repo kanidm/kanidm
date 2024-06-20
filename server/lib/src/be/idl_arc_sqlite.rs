@@ -33,7 +33,7 @@ const DEFAULT_CACHE_TARGET: usize = 2048;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 0;
-const DEFAULT_CACHE_WMISS: usize = 4;
+const DEFAULT_CACHE_WMISS: usize = 0;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum NameCacheKey {

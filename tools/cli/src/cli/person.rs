@@ -547,7 +547,7 @@ impl AccountCertificate {
                 let client = copt.to_client(OpType::Write).await;
 
                 if let Err(e) = client
-                    .idm_person_certificate_create(&account_id, &pem_data)
+                    .idm_person_certificate_create(account_id, &pem_data)
                     .await
                 {
                     handle_client_error(e, copt.output_mode);

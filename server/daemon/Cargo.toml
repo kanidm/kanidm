@@ -39,10 +39,7 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tempfile = { workspace = true }
-tracing = { workspace = true, features = [
-    "max_level_trace",
-    "release_max_level_debug",
-] }
+tracing = { workspace = true }
 serde_json.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]

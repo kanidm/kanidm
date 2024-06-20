@@ -1177,7 +1177,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get all the classes.
         debug!("Schemas valid - Proceeding with entry {}", scim_ent.id);
 
-        let mut mods = Vec::with_capacity(0);
+        #[allow(clippy::vec_init_then_push)]
+        let mut mods = Vec::with_capacity(4);
 
         mods.push(Modify::Assert(
             Attribute::SyncParentUuid,

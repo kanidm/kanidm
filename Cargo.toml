@@ -164,7 +164,7 @@ clap_complete = "^4.5.5"
 # Forced by saffron/cron
 chrono = "^0.4.35"
 compact_jwt = { version = "^0.4.1", default-features = false }
-concread = "^0.5.1"
+concread = "^0.5.2"
 cron = "0.12.1"
 crossbeam = "0.8.4"
 criterion = "^0.5.1"

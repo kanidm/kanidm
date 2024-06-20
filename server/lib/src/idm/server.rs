@@ -275,7 +275,7 @@ impl IdmServer {
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
         let mut pw = self.proxy_write(ct).await;
-        pw.process_delayedaction(da, ct)
+        pw.process_delayedaction(&da, ct)
             .and_then(|_| pw.commit())
             .map(|()| true)
     }
@@ -335,8 +335,10 @@ impl IdmServerDelayed {
         }
     }
 
-    pub async fn next(&mut self) -> Option<DelayedAction> {
-        self.async_rx.recv().await
+    pub async fn recv_many(&mut self, buffer: &mut Vec<DelayedAction>) -> usize {
+        debug_assert!(buffer.is_empty());
+        let limit = buffer.capacity();
+        self.async_rx.recv_many(buffer, limit).await
     }
 }
 
@@ -685,7 +687,7 @@ pub trait IdmServerTransaction<'a> {
         &mut self,
         client_cert_info: &ClientCertInfo,
     ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
-        let pks256 = hex::encode(&client_cert_info.public_key_s256);
+        let pks256 = hex::encode(client_cert_info.public_key_s256);
         // Using the certificate hash, find our matching cert.
         let mut maybe_cert_entries = self.get_qs_txn().internal_search(filter!(f_eq(
             Attribute::Certificate,
@@ -2031,15 +2033,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn process_delayedaction(
         &mut self,
-        da: DelayedAction,
+        da: &DelayedAction,
         _ct: Duration,
     ) -> Result<(), OperationError> {
         match da {
-            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(&pwu),
-            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(&upwu),
-            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
-            DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
-            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
+            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(pwu),
+            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(upwu),
+            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(wci),
+            DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(bcr),
+            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(asr),
         }
     }
 
