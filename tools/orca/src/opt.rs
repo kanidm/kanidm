@@ -60,6 +60,16 @@ enum OrcaOpt {
         threads: Option<usize>,
     },
 
+    #[clap(name = "reset-credentials")]
+    /// Automatically resets idm_admin and admin credentials and updates the provided profile
+    ResetCredential {
+        #[clap(flatten)]
+        common: CommonOpt,
+        #[clap(long = "profile")]
+        /// Path to the test profile.
+        profile_path: PathBuf,
+    },
+
     #[clap(name = "conntest")]
     /// Perform a connection test
     TestConnection {

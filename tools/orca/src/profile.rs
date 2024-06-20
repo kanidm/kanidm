@@ -45,6 +45,16 @@ impl Profile {
         self.idm_admin_password.as_str()
     }
 
+    pub fn set_admin_password(&mut self, pw: &str) {
+        self.admin_password.clear();
+        self.admin_password.push_str(pw);
+    }
+
+    pub fn set_idm_admin_password(&mut self, pw: &str) {
+        self.idm_admin_password.clear();
+        self.idm_admin_password.push_str(pw);
+    }
+
     #[allow(dead_code)]
     pub fn group_count(&self) -> u64 {
         self.group_count
