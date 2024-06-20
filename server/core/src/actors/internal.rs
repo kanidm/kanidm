@@ -114,13 +114,14 @@ impl QueryServerWriteV1 {
                 retry = idms_prox_write.process_delayedaction(da, ct).is_err();
                 if retry {
                     // exit the loop
+                    warn!("delayed action failed, will be retried individually.");
                     break;
                 }
             }
 
             if let Err(res) = idms_prox_write.commit() {
                 retry = true;
-                warn!(?res, "delayed action commit error");
+                error!(?res, "delayed action batch commit error");
             }
         }
         .instrument(span)
@@ -139,7 +140,7 @@ impl QueryServerWriteV1 {
                         .process_delayedaction(da, ct)
                         .and_then(|_| idms_prox_write.commit())
                     {
-                        warn!(?res, "delayed action error");
+                        error!(?res, "delayed action commit error");
                     }
                 }
                 .instrument(span)
