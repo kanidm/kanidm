@@ -78,11 +78,11 @@ impl ActorBasic {
         };
         match self.state {
             State::Unauthenticated => Transition {
-                delay: None,
+                delay: Some(Duration::from_secs(15)),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_millis(1000)),
+                delay: Some(Duration::from_secs(10)),
                 action: TransitionAction::PrivilegeReauth,
             },
             // Since this is the basic model we don't want to get too fancy and do too many things, but since the struct Person
@@ -91,20 +91,20 @@ impl ActorBasic {
             State::AuthenticatedWithReauth => match roles.first() {
                 Some(role) => match role {
                     ActorRole::PeopleSelfMailWrite => Transition {
-                        delay: Some(Duration::from_millis(200)),
+                        delay: Some(Duration::from_secs(5)),
                         action: TransitionAction::WriteAttributePersonMail,
                     },
                     ActorRole::PeopleSelfReadProfile => Transition {
-                        delay: Some(Duration::from_millis(450)),
+                        delay: Some(Duration::from_secs(2)),
                         action: TransitionAction::ReadSelfAccount,
                     },
                     ActorRole::PeopleSelfReadMemberOf => Transition {
-                        delay: Some(Duration::from_millis(500)),
+                        delay: Some(Duration::from_secs(1)),
                         action: TransitionAction::ReadSelfMemberOf,
                     },
                     ActorRole::PeopleSelfSetPassword => Transition {
-                        delay: Some(Duration::from_secs(2)),
-                        action: TransitionAction::SetSelfPassword,
+                        delay: Some(Duration::from_secs(3)),
+                        action: TransitionAction::WriteSelfPassword,
                     },
                     ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
                 },
