@@ -125,7 +125,7 @@ fn main() -> ExitCode {
             info!("Performing conntest of {}", profile.control_uri());
 
             // we're okay with just one thread here
-            let runtime = create_tokio_runtime(Some(1));
+            let runtime = build_tokio_runtime(Some(1));
             return runtime.block_on(async {
                 match kani::KanidmOrcaClient::new(&profile).await {
                     Ok(_) => {
@@ -153,7 +153,7 @@ fn main() -> ExitCode {
             };
 
             //here we want all threads available to speed up the process.
-            let runtime = create_tokio_runtime(None);
+            let runtime = build_tokio_runtime(None);
 
             return runtime.block_on(async {
                 let client = match kani::KanidmOrcaClient::new(&profile).await {
@@ -195,7 +195,7 @@ fn main() -> ExitCode {
             };
 
             //here we want all threads available to speed up the process.
-            let runtime = create_tokio_runtime(None);
+            let runtime = build_tokio_runtime(None);
 
             return runtime.block_on(async {
                 match populate::preflight(state).await {
@@ -222,7 +222,7 @@ fn main() -> ExitCode {
             };
             // here we need to create one less worker compared to the desired amount since we later call `spawn_blocking`, which consumes
             // an extra thread all on its own
-            let runtime = create_tokio_runtime(state.thread_count.map(|t| t - 1));
+            let runtime = build_tokio_runtime(state.thread_count.map(|t| t - 1));
             // We have a broadcast channel setup for controlling the state of
             // various actors and parts.
             //
@@ -295,7 +295,7 @@ fn main() -> ExitCode {
     };
 }
 
-fn create_tokio_runtime(threads: Option<usize>) -> Runtime {
+fn build_tokio_runtime(threads: Option<usize>) -> Runtime {
     let mut builder = tokio::runtime::Builder::new_multi_thread();
     match threads {
         Some(threads) => builder.worker_threads(threads),
@@ -303,5 +303,5 @@ fn create_tokio_runtime(threads: Option<usize>) -> Runtime {
     }
     .enable_all()
     .build()
-    .expect("Failed to start tokio runtime")
+    .expect("Failed to build tokio runtime")
 }
