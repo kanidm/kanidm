@@ -220,7 +220,9 @@ fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-            let runtime = create_tokio_runtime(state.thread_count);
+            // here we need to create one less worker compared to the desired amount since we later call `spawn_blocking`, which consumes
+            // an extra thread all on its own
+            let runtime = create_tokio_runtime(state.thread_count.map(|t| t - 1));
             // We have a broadcast channel setup for controlling the state of
             // various actors and parts.
             //
