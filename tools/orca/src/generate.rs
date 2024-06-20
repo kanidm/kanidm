@@ -50,6 +50,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         surnames.len()
     );
 
+    let thread_count = profile.thread_count();
+
     // PHASE 0 - For now, set require MFA off.
     let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
 
@@ -192,6 +194,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         groups,
         preflight_flags,
         persons,
+        thread_count,
     };
 
     Ok(state)

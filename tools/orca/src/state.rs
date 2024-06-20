@@ -17,7 +17,7 @@ pub struct State {
     pub preflight_flags: Vec<Flag>,
     pub persons: Vec<Person>,
     pub groups: Vec<Group>,
-    // oauth_clients: Vec<Oauth2Clients>,
+    pub thread_count: Option<usize>, // oauth_clients: Vec<Oauth2Clients>,
 }
 
 impl State {
