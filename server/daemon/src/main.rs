@@ -529,6 +529,11 @@ async fn kanidm_main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    if let Some(threads) = sconfig.thread_count {
+        // we don't want to use more threads than available!
+        config.update_threads_count(std::cmp::min(threads, config.threads));
+    }
+
     config.update_db_arc_size(sconfig.get_db_arc_size());
     config.update_role(sconfig.role);
     config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());

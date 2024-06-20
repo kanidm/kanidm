@@ -135,6 +135,9 @@ pub struct ServerConfig {
     /// The path to the "admin" socket, used for local communication when performing certain server control tasks. Default is set on build, based on the system target.
     pub adminbindpath: Option<String>,
 
+    /// The amount of threads the server will use. Defaults to maximum available if not set
+    pub thread_count: Option<usize>,
+
     /// Don't touch this unless you know what you're doing!
     #[allow(dead_code)]
     db_arc_size: Option<usize>,
@@ -722,5 +725,11 @@ impl Configuration {
                 std::process::exit(1);
             }
         }
+    }
+
+    //* Warning: threads shouldn't exceed the number of available threads on the system
+    //* The check is currently performed before calling this function, so beware if you want to call it yourself!!
+    pub fn update_threads_count(&mut self, threads: usize) {
+        self.threads = threads;
     }
 }
