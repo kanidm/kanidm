@@ -1312,7 +1312,7 @@ impl QueryServer {
         // These needs to be pool_size minus one to always leave a DB ticket
         // for a writer. But it also needs to be at least one :)
         debug_assert!(pool_size > 0);
-        let read_ticket_pool = if pool_size - 1 > 0 { pool_size } else { 1 };
+        let read_ticket_pool = std::cmp::min(pool_size-1,1);
 
         Ok(QueryServer {
             phase,
