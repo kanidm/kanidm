@@ -230,6 +230,10 @@ impl DynGroup {
                         .copied()
                         .for_each(|u| d_group.add_ava(Attribute::DynMember, Value::Refer(u)));
 
+                    // The *dyn group* isn't changing, it's that a member OF the dyn group
+                    // is being added. This means the dyngroup isn't part of the set that
+                    // needs update to MO, only the affected members do!
+
                     let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
                     let post_dynmember = d_group.get_ava_refer(Attribute::DynMember);
 
@@ -244,17 +248,6 @@ impl DynGroup {
                         }
                         (None, None) => {}
                     };
-
-                    // The *dyn group* isn't changing, it's that a member OF the dyn group
-                    // is being added. This means the dyngroup isn't part of the set that
-                    // needs update to MO, only the affected members do!
-                    /*
-                    if pre.get_ava_set(Attribute::DynMember)
-                        != d_group.get_ava_set(Attribute::DynMember)
-                    {
-                        affected_uuids.insert(*dg_uuid);
-                    }
-                    */
 
                     candidate_tuples.push((pre, d_group));
                 }
@@ -389,14 +382,6 @@ impl DynGroup {
                     // The *dyn group* isn't changing, it's that a member OF the dyn group
                     // is being added. This means the dyngroup isn't part of the set that
                     // needs update to MO, only the affected members do!
-                    /*
-                    if pre.get_ava_set(Attribute::DynMember)
-                        != d_group.get_ava_set(Attribute::DynMember)
-                    {
-                        affected_uuids.insert(*dg_uuid);
-                    }
-                    */
-
                     let pre_dynmember = pre.get_ava_refer(Attribute::DynMember);
                     let post_dynmember = d_group.get_ava_refer(Attribute::DynMember);
 

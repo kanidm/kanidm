@@ -335,12 +335,6 @@ impl IdmServerDelayed {
         }
     }
 
-    /*
-    pub async fn next(&mut self) -> Option<DelayedAction> {
-        self.async_rx.recv().await
-    }
-    */
-
     pub async fn recv_many(&mut self, buffer: &mut Vec<DelayedAction>) -> usize {
         debug_assert!(buffer.is_empty());
         let limit = buffer.capacity();

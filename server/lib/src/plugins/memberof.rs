@@ -241,7 +241,8 @@ fn do_leaf_memberof(
         // Next group.
     }
 
-    // Turn the other_cache into a write set.
+    // Now only write back leaf entries that actually were changed as a result of the memberof
+    // process.
     leaf_entries
         .into_iter()
         .try_for_each(|(auuid, (pre, tgte))| {
@@ -357,15 +358,14 @@ fn apply_memberof(
                     tgte.get_display_id()
                 );
 
-                // We want to limit our examination only to memberships that were *affected*
-                // in this cycle, rather than all our members. This prevents explosion of the
-                // resolution graph when we consult the leaves.
+                // Since our groups memberof (and related, direct member of) has changed, we
+                // need to propogate these values forward into our members. At this point we
+                // mark all our members as being part of the affected set.
                 let pre_member = pre.get_ava_refer(Attribute::Member);
                 let post_member = tgte.get_ava_refer(Attribute::Member);
 
                 match (pre_member, post_member) {
                     (Some(pre_m), Some(post_m)) => {
-                        // For group resolution, yield everything.
                         affected_uuids.extend(pre_m);
                         affected_uuids.extend(post_m);
                     }
@@ -381,7 +381,6 @@ fn apply_memberof(
 
                 match (pre_dynmember, post_dynmember) {
                     (Some(pre_m), Some(post_m)) => {
-                        // Show only the *changed* uuids.
                         affected_uuids.extend(pre_m);
                         affected_uuids.extend(post_m);
                     }
@@ -404,7 +403,7 @@ fn apply_memberof(
                 // all our members are already fully loaded into the affected sets.
                 //
                 // NOTE: This filtering of what members were actually impacted is
-                // performed in the call to post_modify_inner
+                // performed in the call to post_modify_inner.
 
                 trace!("{:?} {} stable", guuid, tgte.get_display_id());
             }
@@ -426,7 +425,7 @@ fn apply_memberof(
         trace!("-------------------------------------");
     }
 
-    // ALL GROUP MOS + DMOS ARE NOW STABLE. We can load these into other items directly.
+    // ALL GROUP MOS + DMOS ARE NOW STABLE. We can update oul leaf entries as required.
     do_leaf_memberof(qs, all_affected_uuids)
 }
 
