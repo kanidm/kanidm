@@ -37,7 +37,7 @@ impl From<EventDetail> for OpKind {
             EventDetail::PersonGetSelfMemberOf | EventDetail::PersonGetSelfAccount => {
                 OpKind::ReadOp
             }
-            EventDetail::PersonSetSelfMail | EventDetail::PersonSelfSetPassword => OpKind::WriteOp,
+            EventDetail::PersonSetSelfMail | EventDetail::PersonSetSelfPassword => OpKind::WriteOp,
             EventDetail::Error
             | EventDetail::Login
             | EventDetail::Logout

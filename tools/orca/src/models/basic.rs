@@ -57,7 +57,7 @@ impl ActorModel for ActorBasic {
             TransitionAction::ReadSelfMemberOf => {
                 model::person_get_self_memberof(client, person).await
             }
-            TransitionAction::SetSelfPassword => {
+            TransitionAction::WriteSelfPassword => {
                 // I know it's dumb but here we just re-set the same password because it's the simplest thing to do
                 let Credential::Password { plain } = &person.credential;
                 model::person_set_self_password(client, person, plain).await
@@ -128,7 +128,7 @@ impl ActorBasic {
                 TransitionAction::WriteAttributePersonMail
                 | TransitionAction::ReadSelfAccount
                 | TransitionAction::ReadSelfMemberOf
-                | TransitionAction::SetSelfPassword,
+                | TransitionAction::WriteSelfPassword,
                 TransitionResult::Ok,
             ) => {
                 self.state = State::AuthenticatedWithReauth;
