@@ -65,7 +65,7 @@ fn main() -> ExitCode {
     match opt {
         OrcaOpt::Version { .. } => {
             println!("orca {}", env!("KANIDM_PKG_VERSION"));
-            return ExitCode::SUCCESS;
+            ExitCode::SUCCESS
         }
 
         // Build the profile and the test dimensions.
@@ -101,12 +101,8 @@ fn main() -> ExitCode {
             };
 
             match profile.write_to_path(&profile_path) {
-                Ok(_) => {
-                    return ExitCode::SUCCESS;
-                }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
+                Ok(_) => ExitCode::SUCCESS,
+                Err(_err) => ExitCode::FAILURE,
             }
         }
 
@@ -126,17 +122,15 @@ fn main() -> ExitCode {
 
             // we're okay with just one thread here
             let runtime = build_tokio_runtime(Some(1));
-            return runtime.block_on(async {
+            runtime.block_on(async {
                 match kani::KanidmOrcaClient::new(&profile).await {
                     Ok(_) => {
                         info!("success");
-                        return ExitCode::SUCCESS;
+                        ExitCode::SUCCESS
                     }
-                    Err(_err) => {
-                        return ExitCode::FAILURE;
-                    }
+                    Err(_err) => ExitCode::FAILURE,
                 }
-            });
+            })
         }
 
         // From the profile and test dimensions, generate the data into a state file.
@@ -155,7 +149,7 @@ fn main() -> ExitCode {
             //here we want all threads available to speed up the process.
             let runtime = build_tokio_runtime(None);
 
-            return runtime.block_on(async {
+            runtime.block_on(async {
                 let client = match kani::KanidmOrcaClient::new(&profile).await {
                     Ok(client) => client,
                     Err(_err) => {
@@ -172,14 +166,10 @@ fn main() -> ExitCode {
                 };
 
                 match state.write_to_path(&state_path) {
-                    Ok(_) => {
-                        return ExitCode::SUCCESS;
-                    }
-                    Err(_err) => {
-                        return ExitCode::FAILURE;
-                    }
+                    Ok(_) => ExitCode::SUCCESS,
+                    Err(_err) => ExitCode::FAILURE,
                 }
-            });
+            })
         }
 
         //
@@ -197,16 +187,12 @@ fn main() -> ExitCode {
             //here we want all threads available to speed up the process.
             let runtime = build_tokio_runtime(None);
 
-            return runtime.block_on(async {
+            runtime.block_on(async {
                 match populate::preflight(state).await {
-                    Ok(_) => {
-                        return ExitCode::SUCCESS;
-                    }
-                    Err(_err) => {
-                        return ExitCode::FAILURE;
-                    }
-                };
-            });
+                    Ok(_) => ExitCode::SUCCESS,
+                    Err(_err) => ExitCode::FAILURE,
+                }
+            })
         }
 
         // Run the test based on the state file.
@@ -228,7 +214,7 @@ fn main() -> ExitCode {
             //
             // We want a small amount of backlog because there are a few possible
             // commands that could be sent.
-            return runtime.block_on(async {
+            runtime.block_on(async {
                 let (control_tx, control_rx) = broadcast::channel(8);
 
                 let mut run_execute = tokio::task::spawn(run::execute(state, control_rx));
@@ -290,9 +276,9 @@ fn main() -> ExitCode {
                         }
                     }
                 }
-            });
+            })
         }
-    };
+    }
 }
 
 fn build_tokio_runtime(threads: Option<usize>) -> Runtime {
