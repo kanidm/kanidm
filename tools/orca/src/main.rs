@@ -132,11 +132,9 @@ fn main() -> ExitCode {
             match profile.write_to_path(&profile_path) {
                 Ok(_) => {
                     info!("Credentials reset was successful!");
-                    return ExitCode::SUCCESS;
+                    ExitCode::SUCCESS
                 }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
+                Err(_err) => ExitCode::FAILURE,
             }
         }
 
@@ -332,7 +330,7 @@ fn reset_password_for_account(account: &str) -> String {
     let response = std::process::Command::new("kanidmd")
         .args(["recover-account", account])
         .output()
-        .expect(&format!("Failed to recover {account} account"))
+        .unwrap_or_else(|_| panic!("Failed to recover {account} account"))
         .stdout;
 
     let response_splitted_whitespace: Vec<&[u8]> = response.split(|&x| &[x] == b" ").collect();
@@ -346,7 +344,7 @@ fn reset_password_for_account(account: &str) -> String {
     let clean_password_bytes: Vec<u8> = response_splitted_whitespace[pw_index]
         .iter()
         .filter(|&&x| ![b"\"", b"\n"].contains(&&[x])) //we remove all the escaped quotes and the newline character
-        .map(|x| *x)
+        .copied()
         .collect();
 
     String::from_utf8(clean_password_bytes).expect("Failed to parse password as utf8")
