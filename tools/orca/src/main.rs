@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
@@ -89,9 +89,16 @@ fn main() -> ExitCode {
                 }
             });
 
-            let builder =
-                ProfileBuilder::new(control_uri, admin_password, idm_admin_password, threads)
-                    .seed(seed);
+            let extra_uris = Vec::with_capacity(0);
+
+            let builder = ProfileBuilder::new(
+                control_uri,
+                extra_uris,
+                admin_password,
+                idm_admin_password,
+                threads,
+            )
+            .seed(seed);
 
             let profile = match builder.build() {
                 Ok(p) => p,
@@ -146,8 +153,8 @@ fn main() -> ExitCode {
                 }
             };
 
-            //here we want all threads available to speed up the process.
-            let runtime = build_tokio_runtime(None);
+            // This is single threaded.
+            let runtime = build_tokio_runtime(Some(1));
 
             runtime.block_on(async {
                 let client = match kani::KanidmOrcaClient::new(&profile).await {
@@ -184,8 +191,8 @@ fn main() -> ExitCode {
                 }
             };
 
-            //here we want all threads available to speed up the process.
-            let runtime = build_tokio_runtime(None);
+            // here we want all threads available to speed up the process.
+            let runtime = build_tokio_runtime(state.thread_count);
 
             runtime.block_on(async {
                 match populate::preflight(state).await {
@@ -208,7 +215,7 @@ fn main() -> ExitCode {
             };
             // here we need to create one less worker compared to the desired amount since we later call `spawn_blocking`, which consumes
             // an extra thread all on its own
-            let runtime = build_tokio_runtime(state.thread_count.map(|t| t - 1));
+            let runtime = build_tokio_runtime(state.thread_count);
             // We have a broadcast channel setup for controlling the state of
             // various actors and parts.
             //
@@ -281,6 +288,8 @@ fn main() -> ExitCode {
     }
 }
 
+/// Build the tokio runtime with the configured number of threads. If set to None, then the maximum
+/// of the system is used.
 fn build_tokio_runtime(threads: Option<usize>) -> Runtime {
     let mut builder = tokio::runtime::Builder::new_multi_thread();
     match threads {

@@ -105,16 +105,17 @@ fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
 impl ProfileBuilder {
     pub fn new(
         control_uri: String,
+        extra_uris: Vec<String>,
         admin_password: String,
         idm_admin_password: String,
         thread_count: Option<usize>,
     ) -> Self {
         ProfileBuilder {
             control_uri,
+            extra_uris,
             admin_password,
             idm_admin_password,
             seed: None,
-            extra_uris: Vec::new(),
             warmup_time: None,
             test_time: None,
             group_count: None,
@@ -158,7 +159,7 @@ impl ProfileBuilder {
             admin_password,
             idm_admin_password,
             seed,
-            extra_uris: _,
+            extra_uris,
             warmup_time,
             test_time,
             group_count,
@@ -170,8 +171,6 @@ impl ProfileBuilder {
             let mut rng = thread_rng();
             rng.gen()
         });
-
-        let extra_uris = Vec::new();
 
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
