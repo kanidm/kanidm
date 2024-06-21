@@ -15,9 +15,14 @@ repository = { workspace = true }
 test = true
 doctest = false
 
+[features]
+ui_htmx = []
+
 [dependencies]
 async-trait = { workspace = true }
+askama = { workspace = true }
 axum = { workspace = true }
+axum-htmx = { workspace = true }
 axum-auth = "0.7.0"
 axum-extra = { version = "0.9.3", features = ["cookie"] }
 axum-macros = "0.4.1"
@@ -30,7 +35,6 @@ filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 hashbrown = { workspace = true }
-http = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }

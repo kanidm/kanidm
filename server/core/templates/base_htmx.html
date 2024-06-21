@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8"/>
+		<meta name="theme-color" content="white" />
+		<meta name="viewport" content="width=device-width" />
+
+		<title>(% block title %)(( title )) - Kanidm(% endblock %)</title>
+
+		<link rel="icon" href="/pkg/img/favicon.png" />
+		<link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
+		<script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
+		<script src="/pkg/external/htmx.min.1.9.2.js" integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"></script>
+
+		(% block head %)(% endblock %)
+	</head>
+	<body hx-boost="true">
+	(% block body %)(% endblock %)
+	</body>
+
+	<footer class="footer mt-auto py-3 bg-light text-end">
+		<div class="container">
+			<span class="text-muted">Powered by <a href="https://kanidm.com">Kanidm</a></span>
+		</div>
+	</footer>
+</html>
+

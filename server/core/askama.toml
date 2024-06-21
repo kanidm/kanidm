@@ -1,0 +1,14 @@
+[general]
+default_syntax = "htmx_compatible"
+
+[[syntax]]
+name = "htmx_compatible"
+
+block_start = "(%"
+block_end = "%)"
+
+expr_start = "(("
+expr_end = "))"
+
+comment_start = "/*"
+comment_end = "*/"

@@ -1,0 +1,54 @@
+(% extends "base_htmx.html" %)
+
+(% block title %)Error(% endblock %)
+
+(% block head %)
+(% endblock %)
+
+(% block body %)
+	<main class="flex-shrink-0 form-signin">
+		<center>
+			<img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+			<h3>Kanidm</h3>
+		</center>
+		<div id="login-form-container" class="container">
+			<label for="username" class="form-label">Username</label>
+			<form id="login" hx-post='/ui/api/login_begin' hx-target="#login-form-container" hx-push-url="false">
+				<div class="input-group mb-3">
+					<input
+						autofocus=true
+						class="autofocus form-control"
+						id="username"
+						name="username"
+						type="text"
+						autocomplete="username"
+						value="(( username ))"
+						required=true
+					/>
+				</div>
+				<div class="mb-3 form-check form-switch">
+					<input
+						type="checkbox"
+						name="remember_me"
+						class="form-check-input"
+						role="switch"
+						id="remember_me_check"
+						value="1"
+						(% if remember_me %)checked(% endif %)
+					/>
+					<label class="form-check-label" for="remember_me_check">Remember My Username</label>
+				</div>
+				<div class="input-group mb-3 justify-content-md-center">
+					<button
+						type="submit"
+						class="btn btn-dark"
+					>Begin</button>
+				</div>
+			</form>
+		</div>
+	</main>
+(% endblock %)
+
+
+
+
