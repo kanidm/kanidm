@@ -40,13 +40,14 @@ pub struct EventRecord {
     pub details: EventDetail,
 }
 
+#[derive(Debug)]
 pub enum EventDetail {
     Login,
     Logout,
     PersonSetSelfMail,
     PersonGetSelfAccount,
     PersonGetSelfMemberOf,
-    PersonSelfSetPassword,
+    PersonSetSelfPassword,
     PersonReauth,
     Error,
 }

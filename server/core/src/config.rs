@@ -135,6 +135,10 @@ pub struct ServerConfig {
     /// The path to the "admin" socket, used for local communication when performing certain server control tasks. Default is set on build, based on the system target.
     pub adminbindpath: Option<String>,
 
+    /// The maximum amount of threads the server will use for the async worker pool. Defaults
+    /// to std::threads::available_parallelism.
+    pub thread_count: Option<usize>,
+
     /// Don't touch this unless you know what you're doing!
     #[allow(dead_code)]
     db_arc_size: Option<usize>,
@@ -722,5 +726,11 @@ impl Configuration {
                 std::process::exit(1);
             }
         }
+    }
+
+    // Update the thread count of this server, only up to the maximum set by self threads
+    // which is configured with available parallelism.
+    pub fn update_threads_count(&mut self, threads: usize) {
+        self.threads = std::cmp::min(self.threads, threads);
     }
 }

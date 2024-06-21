@@ -15,7 +15,7 @@ pub enum TransitionAction {
     WriteAttributePersonMail,
     ReadSelfAccount,
     ReadSelfMemberOf,
-    SetSelfPassword,
+    WriteSelfPassword,
 }
 
 // Is this the right way? Should transitions/delay be part of the actor model? Should
@@ -137,7 +137,7 @@ pub async fn person_set_self_password(
     let duration = Instant::now().duration_since(start);
     let parsed_result = parse_call_result_into_transition_result_and_event_record(
         result,
-        EventDetail::PersonSelfSetPassword,
+        EventDetail::PersonSetSelfPassword,
         start,
         duration,
     );

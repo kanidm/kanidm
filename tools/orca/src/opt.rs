@@ -54,6 +54,10 @@ enum OrcaOpt {
         #[clap(long = "profile")]
         /// The configuration file path to update (or create)
         profile_path: PathBuf,
+
+        #[clap(long)]
+        /// Optional thread count, defaults to maximum available on the system
+        threads: Option<usize>,
     },
 
     #[clap(name = "conntest")]

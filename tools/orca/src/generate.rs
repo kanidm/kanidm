@@ -50,6 +50,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         surnames.len()
     );
 
+    let thread_count = profile.thread_count();
+
     // PHASE 0 - For now, set require MFA off.
     let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
 
@@ -148,7 +150,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     for group in groups.iter_mut() {
         // For now, our baseline is 20%. We can adjust this in future per
         // role for example.
-        let baseline = persons.len() / 5;
+        let baseline = persons.len() / 3;
         let inverse = persons.len() - baseline;
         // Randomly add extra from the inverse
         let extra = Uniform::new(0, inverse);
@@ -192,6 +194,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         groups,
         preflight_flags,
         persons,
+        thread_count,
     };
 
     Ok(state)
