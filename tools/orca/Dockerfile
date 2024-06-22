@@ -54,8 +54,8 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
 
-# == Construct the orca container starting on the kanidm server devel image
-FROM kanidm/server:devel
+# == Construct the orca container 
+FROM repos
 
 ENV RUST_BACKTRACE 1
 
@@ -66,4 +66,5 @@ COPY ./tools/orca/profile-sample.toml /etc/kanidm/profile-sample.toml
 RUN chmod +x /sbin/orca
 
 
+CMD [ "/sbin/orca", "-h" ]
 
