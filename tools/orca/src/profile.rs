@@ -51,8 +51,7 @@ impl Profile {
     }
 
     pub fn set_idm_admin_password(&mut self, pw: &str) {
-        self.idm_admin_password.clear();
-        self.idm_admin_password.push_str(pw);
+        self.idm_admin_password = pw.to_string();
     }
 
     #[allow(dead_code)]
