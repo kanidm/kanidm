@@ -32,7 +32,7 @@ mypy = "^1.10"
 pytest = "^8.2.2"
 types-toml = "^0.10.8"
 pylint-pydantic = "^0.3.2"
-coverage = "^7.5.3"
+coverage = "^7.5.4"
 pylint-pytest = "^1.1.7"
 pytest-asyncio = "^0.23.7"
 pytest-mock = "^3.14.0"
@@ -41,11 +41,11 @@ black = "^24.4.2"
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.18"
 mkdocstrings = "^0.25.1"
-mkdocstrings-python = "^1.10.3"
+mkdocstrings-python = "^1.10.5"
 pook = "^1.4.3"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.0.230,<0.4.10"
+ruff = ">=0.0.230,<0.4.11"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
