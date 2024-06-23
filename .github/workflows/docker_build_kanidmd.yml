@@ -51,7 +51,7 @@ jobs:
             type=sha
 
       - name: Build kanidmd
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           platforms: "linux/amd64"
           tags: ghcr.io/${{ needs.set_lower_case_name.outputs.owner_lc }}/kanidmd:devel
