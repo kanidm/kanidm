@@ -122,7 +122,7 @@ pub struct JavaScriptFiles {
 
 pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
     let mut all_pages: Vec<JavaScriptFile> = Vec::new();
-    let selected: HashMap<String, JavaScriptFile> = HashMap::new();
+    let mut selected: HashMap<String, JavaScriptFile> = HashMap::new();
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
@@ -134,33 +134,51 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
 
         let filelist = if cfg!(feature = "ui_htmx") {
             vec![
-                ("external/bootstrap.bundle.min.js", None, false),
-                ("external/htmx.min.1.9.2.js", None, false),
-                ("external/confetti.js", None, false),
+                ("external/bootstrap.bundle.min.js", None, false, false),
+                ("external/htmx.min.1.9.2.js", None, false, false),
+                ("external/confetti.js", None, false, false),
             ]
         } else {
             vec![
-                ("wasmloader_admin.js", Some("module".to_string()), false),
+                (
+                    "wasmloader_admin.js",
+                    Some("module".to_string()),
+                    false,
+                    true,
+                ),
                 (
                     "wasmloader_login_flows.js",
                     Some("module".to_string()),
                     false,
+                    true,
                 ),
-                ("wasmloader_user.js", Some("module".to_string()), false),
-                ("shared.js", Some("module".to_string()), false),
-                ("external/bootstrap.bundle.min.js", None, false),
-                ("external/viz.js", None, true),
+                (
+                    "wasmloader_user.js",
+                    Some("module".to_string()),
+                    false,
+                    true,
+                ),
+                ("shared.js", Some("module".to_string()), false, false),
+                ("external/bootstrap.bundle.min.js", None, false, false),
+                ("external/viz.js", None, true, false),
             ]
         };
 
-        for (filepath, filetype, dynamic) in filelist {
+        for (filepath, filetype, dynamic, select) in filelist {
             match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
-                Ok(hash) => all_pages.push(JavaScriptFile {
-                    filepath,
-                    dynamic,
-                    hash,
-                    filetype,
-                }),
+                Ok(hash) => {
+                    let js = JavaScriptFile {
+                        filepath,
+                        dynamic,
+                        hash,
+                        filetype,
+                    };
+                    if select {
+                        selected.insert(filepath.to_string(), js);
+                    } else {
+                        all_pages.push(js)
+                    }
+                }
                 Err(err) => {
                     admin_error!(
                         ?err,
