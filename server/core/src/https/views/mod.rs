@@ -1,41 +1,35 @@
 use askama::Template;
 
 use axum::{
-    http::StatusCode,
     extract::State,
-    response::{Html, Redirect, Response, IntoResponse},
+    http::StatusCode,
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Form,
-    Extension,
-    Router,
-
+    Extension, Form, Router,
 };
 
-use axum_extra::extract::cookie::{
-    // Cookie,
-    CookieJar,
-    // SameSite
-};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 
 // use axum_htmx::HxRequestGuardLayer;
 
-use kanidmd_lib::prelude::{
-    OperationError,
-    Uuid,
-};
+use compact_jwt::{Jws, JwsSigner};
 
-use kanidm_proto::v1::{
-    AuthRequest, AuthStep
-};
+use kanidmd_lib::prelude::{OperationError, Uuid};
+
+use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthRequest, AuthStep};
+
+use kanidmd_lib::prelude::*;
+
+use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN};
+
+use kanidmd_lib::idm::AuthState;
 
 use kanidmd_lib::idm::event::AuthResult;
 
 use serde::Deserialize;
 
 use crate::https::{
-    extractors::VerifiedClientInformation,
-    middleware::KOpId,
-    ServerState,
+    extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId, ServerState,
 };
 
 #[derive(Template)]
@@ -51,6 +45,10 @@ struct LoginView<'a> {
     username: &'a str,
     remember_me: bool,
 }
+
+#[derive(Template)]
+#[template(path = "login_totp_partial.html")]
+struct LoginTotpPartialView {}
 
 pub(crate) async fn view_index_get(
     State(state): State<ServerState>,
@@ -69,30 +67,27 @@ pub(crate) async fn view_index_get(
             // Send the user to the landing.
             Redirect::temporary("/ui/apps").into_response()
         }
-        Err(OperationError::NotAuthenticated) |
-        Err(OperationError::SessionExpired) => {
+        Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
             // cookie jar with remember me.
 
             HtmlTemplate(LoginView {
                 username: "",
                 remember_me: false,
             })
-                .into_response()
-
+            .into_response()
         }
-        Err(err_code) =>
-            HtmlTemplate(UnrecoverableErrorView { err_code, operation_id: kopid.eventid })
-                .into_response(),
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
     }
 }
-
-
-
 
 #[derive(Debug, Clone, Deserialize)]
 struct LoginBeginForm {
     username: String,
-    #[serde(default, deserialize_with = "empty_string_as_none")]
+    #[serde(default)]
     remember_me: Option<u8>,
 }
 
@@ -100,14 +95,14 @@ async fn partial_view_login_begin_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    _jar: CookieJar,
+    jar: CookieJar,
     Form(login_begin_form): Form<LoginBeginForm>,
 ) -> Response {
     trace!(?login_begin_form);
 
     let LoginBeginForm {
         username,
-        remember_me
+        remember_me,
     } = login_begin_form;
 
     trace!(?remember_me);
@@ -115,43 +110,209 @@ async fn partial_view_login_begin_post(
     // Init the login.
     let inter = state // This may change in the future ...
         .qe_r_ref
-        .handle_auth(None, AuthRequest {
-            step: AuthStep::Init(username),
-        }, kopid.eventid, client_auth_info)
+        .handle_auth(
+            None,
+            AuthRequest {
+                step: AuthStep::Init2 {
+                    username,
+                    issue: AuthIssueSession::Cookie,
+                    privileged: false,
+                },
+            },
+            kopid.eventid,
+            client_auth_info.clone(),
+        )
         .await;
-    debug!("Auth result: {:?}", inter);
 
-    // What was requested?
-
-    // Based on that, step.
-
-    partial_view_login_step(inter).await
+    // Now process the response if ok.
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
 }
 
 async fn partial_view_login_step(
-    step_result: Result<AuthResult, OperationError>
-) -> Response {
-    trace!(?step_result);
+    state: ServerState,
+    kopid: KOpId,
+    mut jar: CookieJar,
+    auth_result: AuthResult,
+    client_auth_info: ClientAuthInfo,
+) -> Result<Response, OperationError> {
+    trace!(?auth_result);
 
-    match step_result {
-        
-    }
+    let AuthResult {
+        state: mut auth_state,
+        sessionid,
+    } = auth_result;
 
+    let mut safety = 3;
 
-    todo!();
+    // Unlike the api version, only set the cookie.
+    let response = loop {
+        if safety == 0 {
+            error!("loop safety triggered - auth state was unable to resolve. This should NEVER HAPPEN.");
+            debug_assert!(false);
+            return Err(OperationError::InvalidSessionState);
+        }
+        // The slow march to the heat death of the loop.
+        safety -= 1;
+
+        match auth_state {
+            AuthState::Choose(allowed) => {
+                debug!("🧩 -> AuthState::Choose");
+                let kref = &state.jws_signer;
+                let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                    error!(?e);
+                    OperationError::InvalidSessionState
+                })?;
+
+                // Get the header token ready.
+                let token = kref.sign(&jws).map(|jwss| jwss.to_string()).map_err(|e| {
+                    error!(?e);
+                    OperationError::InvalidSessionState
+                })?;
+
+                let mut token_cookie = Cookie::new(COOKIE_AUTH_SESSION_ID, token);
+                token_cookie.set_secure(state.secure_cookies);
+                token_cookie.set_same_site(SameSite::Strict);
+                token_cookie.set_http_only(true);
+                // Not setting domains limits the cookie to precisely this
+                // url that was used.
+                // token_cookie.set_domain(state.domain.clone());
+                jar = jar.add(token_cookie);
+
+                let res = match allowed.len() {
+                    // Should never happen.
+                    0 => {
+                        error!("auth state choose allowed mechs is empty");
+                        HtmlTemplate(UnrecoverableErrorView {
+                            err_code: OperationError::InvalidState,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response()
+                    }
+                    1 => {
+                        let mech = allowed[0].clone();
+                        // submit the choice and then loop updating our auth_state.
+                        let inter = state // This may change in the future ...
+                            .qe_r_ref
+                            .handle_auth(
+                                Some(sessionid),
+                                AuthRequest {
+                                    step: AuthStep::Begin(mech),
+                                },
+                                kopid.eventid,
+                                client_auth_info.clone(),
+                            )
+                            .await?;
+
+                        // Set the state now for the next loop.
+                        auth_state = inter.state;
+
+                        // Autoselect was hit.
+                        continue;
+                    }
+                    // Render the list of options.
+                    _ => todo!(),
+                };
+                // break acts as return in a loop.
+                break res;
+            }
+            AuthState::Continue(allowed) => {
+                let res = match allowed.len() {
+                    // Shouldn't be possible.
+                    0 => {
+                        error!("auth state continued allowed mechs is empty");
+                        HtmlTemplate(UnrecoverableErrorView {
+                            err_code: OperationError::InvalidState,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response()
+                    }
+                    1 => {
+                        let auth_allowed = allowed[0].clone();
+
+                        match auth_allowed {
+                            AuthAllowed::Totp => {
+                                HtmlTemplate(LoginTotpPartialView {}).into_response()
+                            }
+                            _ => todo!(),
+                        }
+                    }
+                    _ => {
+                        todo!();
+                    }
+                };
+
+                // break acts as return in a loop.
+                break res;
+            }
+            AuthState::Success(token, issue) => {
+                debug!("🧩 -> AuthState::Success");
+
+                match issue {
+                    AuthIssueSession::Token => {
+                        error!(
+                            "Impossible state, should not recieve token in a htmx view auth flow"
+                        );
+                        return Err(OperationError::InvalidState);
+                    }
+                    AuthIssueSession::Cookie => {
+                        // Update jar
+                        let token_str = token.to_string();
+                        let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
+                        bearer_cookie.set_secure(state.secure_cookies);
+                        bearer_cookie.set_same_site(SameSite::Lax);
+                        bearer_cookie.set_http_only(true);
+                        // We set a domain here because it allows subdomains
+                        // of the idm to share the cookie. If domain was incorrect
+                        // then webauthn won't work anyway!
+                        bearer_cookie.set_domain(state.domain.clone());
+                        bearer_cookie.set_path("/");
+                        jar = jar
+                            .add(bearer_cookie)
+                            .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+
+                        // Send the redirect.
+                        break Redirect::temporary("/ui/apps").into_response();
+                    }
+                }
+            }
+            AuthState::Denied(_reason) => {
+                debug!("🧩 -> AuthState::Denied");
+                jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+
+                // Render a denial.
+                break Redirect::temporary("/ui/getrekt").into_response();
+            }
+        }
+    };
+
+    Ok((jar, response).into_response())
 }
-
 
 pub fn view_router() -> Router<ServerState> {
     Router::new()
         .route("/", get(view_index_get))
-
         // Anything that is a partial only works if triggered from htmx
         // .layer(HxRequestGuardLayer::default())
         .route("/api/login_begin", post(partial_view_login_begin_post))
-
 }
-
 
 struct HtmlTemplate<T>(T);
 
@@ -175,6 +336,7 @@ where
     }
 }
 
+/*
 /// Serde deserialization decorator to map empty Strings to None,
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
@@ -194,4 +356,4 @@ where
     }
 }
 
-
+*/

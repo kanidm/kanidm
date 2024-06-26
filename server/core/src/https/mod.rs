@@ -10,10 +10,10 @@ mod oauth2;
 mod tests;
 pub(crate) mod trace;
 mod ui;
-mod views;
 mod v1;
 mod v1_oauth2;
 mod v1_scim;
+mod views;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
@@ -126,36 +126,35 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-            let pkg_path = if cfg!(feature = "ui_htmx") {
-                "../core/static".to_string()
-            } else {
-                env!("KANIDM_WEB_UI_PKG_PATH").to_owned()
-            };
+        let pkg_path = if cfg!(feature = "ui_htmx") {
+            "../core/static".to_string()
+        } else {
+            env!("KANIDM_WEB_UI_PKG_PATH").to_owned()
+        };
 
-            let filelist = if cfg!(feature = "ui_htmx") {
-                vec![
-                    ("external/bootstrap.bundle.min.js", None, false),
-                    ("external/htmx.min.1.9.2.js", None, false),
-                    ("external/confetti.js", None, false),
-                ]
-            } else {
-                vec![
+        let filelist = if cfg!(feature = "ui_htmx") {
+            vec![
+                ("external/bootstrap.bundle.min.js", None, false),
+                ("external/htmx.min.1.9.2.js", None, false),
+                ("external/confetti.js", None, false),
+            ]
+        } else {
+            vec![
                 ("wasmloader_admin.js", Some("module".to_string()), false),
-                ("wasmloader_login_flows.js", Some("module".to_string()), false),
-                ("wasmloader_user.js",Some("module".to_string()), false),
+                (
+                    "wasmloader_login_flows.js",
+                    Some("module".to_string()),
+                    false,
+                ),
+                ("wasmloader_user.js", Some("module".to_string()), false),
                 ("shared.js", Some("module".to_string()), false),
                 ("external/bootstrap.bundle.min.js", None, false),
                 ("external/viz.js", None, true),
-                ]
-            };
-
+            ]
+        };
 
         for (filepath, filetype, dynamic) in filelist {
-            match generate_integrity_hash(format!(
-                "{}/{}",
-                pkg_path,
-                filepath,
-            )) {
+            match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
                 Ok(hash) => all_pages.push(JavaScriptFile {
                     filepath,
                     dynamic,
@@ -289,16 +288,14 @@ pub async fn create_https_server(
             }
             let pkg_router = if cfg!(feature = "ui_htmx") {
                 // TODO! This should be from webui pkg path in future!!!
-                Router::new()
-                    .nest_service("/pkg", ServeDir::new("../core/static"))
-                    // TODO: Add in the br precompress
+                Router::new().nest_service("/pkg", ServeDir::new("../core/static"))
+                // TODO: Add in the br precompress
             } else {
                 Router::new()
-                .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
+                    .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
                     .layer(middleware::compression::new())
             }
-                .layer(from_fn(middleware::caching::cache_me));
-
+            .layer(from_fn(middleware::caching::cache_me));
 
             app.merge(pkg_router)
         }
