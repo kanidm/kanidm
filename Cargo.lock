@@ -1167,6 +1167,8 @@ dependencies = [
  "kanidm_utils_users",
  "kanidmd_core",
  "mimalloc",
+ "opentelemetry",
+ "opentelemetry_api",
  "prctl",
  "reqwest",
  "sd-notify",
@@ -3278,7 +3280,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
 ]
 
