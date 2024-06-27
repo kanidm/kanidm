@@ -1,6 +1,11 @@
 
 
 <label for="totp" class="form-label">TOTP</label>
+(% match errors %)
+	(% when LoginTotpError::Syntax %)
+		<span class="error">Invalid Value - TOTP must only consist of numbers</span>
+	(% when LoginTotpError::None %)
+(% endmatch %)
 <form id="login" hx-post='/ui/api/login_totp' hx-target="#login-form-container" hx-push-url="false">
 	<div class="input-group mb-3">
 		<input

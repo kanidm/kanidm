@@ -262,7 +262,7 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
             if cfg!(feature = "ui_htmx") {
                 Router::new()
-                    .route("/", get(|| async { Redirect::temporary("/ui") }))
+                    .route("/", get(|| async { Redirect::to("/ui") }))
                     .nest("/ui", views::view_router())
                     .layer(middleware::compression::new())
                     .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
