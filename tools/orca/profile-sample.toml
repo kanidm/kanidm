@@ -1,0 +1,10 @@
+control_uri = "https://localhost:8443"
+admin_password = ""
+idm_admin_password = ""
+seed = -1236045086759770365
+extra_uris = []
+warmup_time = 10 
+test_time = 180
+group_count = 5
+person_count = 500
+thread_count = 20

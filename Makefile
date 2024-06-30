@@ -95,6 +95,17 @@ build/kanidmd:
 		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
 
+.PHONY: build/orca
+build/orca:	## Build the orca docker image locally
+build/orca:
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f tools/orca/Dockerfile \
+		-t $(IMAGE_BASE)/orca:$(IMAGE_VERSION) \
+		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
+		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		$(CONTAINER_BUILD_ARGS) .
+
 .PHONY: build/radiusd
 build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
