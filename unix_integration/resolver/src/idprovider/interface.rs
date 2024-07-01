@@ -139,6 +139,7 @@ pub enum AuthCacheAction {
 }
 
 #[async_trait]
+#[allow(clippy::too_many_arguments)]
 pub trait IdProvider {
     async fn configure_hsm_keys(
         &self,

@@ -5,8 +5,6 @@
 //! or domain entries that are able to be replicated.
 
 use std::fmt;
-use std::fs::File;
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -14,13 +12,13 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use sketching::LogLevel;
 use url::Url;
 
 use crate::repl::config::ReplicationConfiguration;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct OnlineBackup {
     /// The destination folder for your backups, defaults to the db_path dir if not set
     pub path: Option<String>,
@@ -88,7 +86,7 @@ pub struct TlsConfiguration {
 ///
 /// NOTE: not all flags or values from the internal [Configuration] object are exposed via this structure
 /// to prevent certain settings being set (e.g. integration test modes)
-#[derive(Debug, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default)]
 #[serde(deny_unknown_fields)]
 pub struct ServerConfig {
     /// *REQUIRED* - Kanidm Domain, eg `kanidm.example.com`.
@@ -160,33 +158,7 @@ impl ServerConfig {
             // see if we can load it from the config file you asked for
             if config_path.as_ref().exists() {
                 eprintln!("📜 Using config file: {:?}", config_path.as_ref());
-                let mut f: File = File::open(config_path.as_ref()).map_err(|e| {
-                    eprintln!("Unable to open config file [{:?}] 🥺", e);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-                    eprintln!("{}", diag);
-                    e
-                })?;
-
-                let mut contents = String::new();
-
-                f.read_to_string(&mut contents).map_err(|e| {
-                    eprintln!("unable to read contents {:?}", e);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(config_path.as_ref());
-                    eprintln!("{}", diag);
-                    e
-                })?;
-
-                // if we *can* load the config we'll set config to that.
-                match toml::from_str::<ServerConfig>(contents.as_str()) {
-                    Err(err) => {
-                        eprintln!(
-                            "Unable to parse config from '{:?}': {:?}",
-                            config_path.as_ref(),
-                            err
-                        );
-                    }
-                    Ok(val) => config = val,
-                };
+                config = ServerConfig::load_raw(&config_path.as_ref())?;
             } else {
                 eprintln!("📜 No config file found at {:?}", config_path.as_ref());
             }
@@ -421,9 +393,45 @@ impl ServerConfig {
     pub fn get_db_arc_size(&self) -> Option<usize> {
         self.db_arc_size
     }
+
+    /// Write the config to disk
+    pub fn save(&self, path: &PathBuf) -> Result<(), std::io::Error> {
+        let toml = toml_edit::ser::to_string_pretty(self).map_err(|e| {
+            error!("Failed to serialize config to TOML: {:?}", e);
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to serialize config to TOML",
+            )
+        })?;
+
+        std::fs::write(path, toml).map_err(|e| {
+            eprintln!("Unable to write config file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(path.as_ref());
+            eprintln!("{}", diag);
+            e
+        })
+    }
+
+    /// Load a raw config from a file
+    pub fn load_raw<P: AsRef<Path>>(path: P) -> Result<Self, std::io::Error> {
+        // read the config
+        let config_contents = std::fs::read_to_string(path.as_ref()).map_err(|e| {
+            eprintln!("Unable to read config file [{:?}] 🥺", e);
+            let diag = kanidm_lib_file_permissions::diagnose_path(path.as_ref());
+            eprintln!("{}", diag);
+            e
+        })?;
+
+        toml_edit::de::from_str(&config_contents).map_err(|err| {
+            std::io::Error::new(
+                std::io::ErrorKind::Other,
+                format!("Failed to deserialize config from TOML: {:?}", err),
+            )
+        })
+    }
 }
 
-#[derive(Debug, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, Default, Eq, PartialEq)]
 pub enum ServerRole {
     #[default]
     WriteReplica,
@@ -733,4 +741,54 @@ impl Configuration {
     pub fn update_threads_count(&mut self, threads: usize) {
         self.threads = std::cmp::min(self.threads, threads);
     }
+}
+
+impl TryFrom<Configuration> for ServerConfig {
+    type Error = String;
+
+    fn try_from(value: Configuration) -> Result<Self, Self::Error> {
+        Ok(ServerConfig {
+            domain: Some(value.domain),
+            origin: Some(value.origin),
+            db_path: Some(value.db_path),
+            tls_chain: value
+                .tls_config
+                .as_ref()
+                .map(|c| c.chain.to_string_lossy().to_string()),
+            tls_key: value
+                .tls_config
+                .as_ref()
+                .map(|c| c.key.to_string_lossy().to_string()),
+            tls_client_ca: value
+                .tls_config
+                .as_ref()
+                .and_then(|c| c.client_ca.as_ref())
+                .map(|c| c.to_string_lossy().to_string()),
+            bindaddress: Some(value.address),
+            ldapbindaddress: value.ldapaddress,
+            role: value.role,
+            log_level: Some(value.log_level),
+            online_backup: value.online_backup,
+            trust_x_forward_for: Some(value.trust_x_forward_for),
+            db_fs_type: value.db_fs_type,
+            adminbindpath: Some(value.adminbindpath),
+            db_arc_size: value.db_arc_size,
+            repl_config: value.repl_config,
+            otel_grpc_url: value.otel_grpc_url,
+            thread_count: value.threads.into(),
+        })
+    }
+}
+
+#[test]
+fn test_serverconfig_load_raw() {
+    let test_file_path = format!(
+        "{}/../../examples/insecure_server.toml",
+        env!("CARGO_MANIFEST_DIR"),
+    );
+    if let Err(err) =
+        ServerConfig::load_raw(PathBuf::from_str(&test_file_path).expect("Failed to parse path"))
+    {
+        panic!("error: {:?}", err);
+    };
 }

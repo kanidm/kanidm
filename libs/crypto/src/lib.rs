@@ -84,6 +84,7 @@ pub enum CryptoError {
     Argon2,
     Argon2Version,
     Argon2Parameters,
+    Base64Invalid,
 }
 
 impl From<OpenSSLErrorStack> for CryptoError {

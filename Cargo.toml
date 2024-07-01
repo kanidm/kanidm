@@ -268,7 +268,8 @@ tokio = "^1.38.0"
 tokio-openssl = "^0.6.4"
 tokio-util = "^0.7.10"
 
-toml = "^0.5.11"
+toml_edit = { version = "0.22.12", features = ["serde"] }
+
 tracing = { version = "^0.1.40", features = [
     "max_level_trace",
     "release_max_level_debug",

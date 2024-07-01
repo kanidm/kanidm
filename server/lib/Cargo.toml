@@ -75,7 +75,7 @@ sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
 tokio-util = { workspace = true, features = ["codec"] }
-toml = { workspace = true }
+toml_edit = { workspace = true, features = ["serde"] }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
@@ -105,7 +105,11 @@ svg = { workspace = true }
 whoami = { workspace = true }
 
 [dev-dependencies]
-compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_release_without_verify"] }
+compact_jwt = { workspace = true, features = [
+    "openssl",
+    "hsm-crypto",
+    "unsafe_release_without_verify",
+] }
 criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }

@@ -21,7 +21,7 @@ doctest = false
 
 [dependencies]
 serde = { workspace = true, features = ["derive"] }
-toml = { workspace = true }
+toml_edit = { workspace = true, features = ["serde"] }
 base64 = { workspace = true }
 
 [build-dependencies]

@@ -79,13 +79,35 @@ pub mod x509b64 {
             .decode(raw)
             .or_else(|_| general_purpose::URL_SAFE.decode(raw))
             .map_err(|err| {
-                error!(?err, "base64 url-safe invalid");
-                D::Error::custom("base64 url-safe invalid")
+                error!(?err, "Failed to decode base64 url-safe certificate data");
+                D::Error::custom("Failed to decode base64 url-safe certificate data")
             })?;
 
         X509::from_der(&s).map_err(|err| {
-            error!(?err, "openssl x509 invalid der");
-            D::Error::custom("openssl x509 invalid der")
+            error!(
+                ?err,
+                "Failed to parse x509 certitificate - invalid DER value"
+            );
+            D::Error::custom("Failed to parse x509 certitificate - invalid DER value")
+        })
+    }
+
+    /// parse a base64 DER-formatted certificate from a string
+    pub fn cert_from_string(s: &str) -> Result<X509, CryptoError> {
+        let der = general_purpose::URL_SAFE
+            .decode(s)
+            .or_else(|_| general_purpose::URL_SAFE_NO_PAD.decode(s))
+            .map_err(|err| {
+                error!(?err, "Failed to decode base64 url-safe certificate data");
+                CryptoError::Base64Invalid
+            })?;
+
+        X509::from_der(&der).map_err(|err| {
+            error!(
+                ?err,
+                "Failed to parse x509 certitificate - invalid DER value"
+            );
+            err.into()
         })
     }
 }

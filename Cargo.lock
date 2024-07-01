@@ -1161,11 +1161,14 @@ dependencies = [
  "fs4",
  "futures",
  "kanidm_build_profiles",
+ "kanidm_lib_crypto",
  "kanidm_lib_file_permissions",
  "kanidm_proto",
  "kanidm_utils_users",
  "kanidmd_core",
  "mimalloc",
+ "opentelemetry",
+ "opentelemetry_api",
  "prctl",
  "reqwest",
  "sd-notify",
@@ -1175,7 +1178,7 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "whoami",
 ]
@@ -1923,7 +1926,7 @@ dependencies = [
  "gix-date",
  "itoa",
  "thiserror",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -1967,7 +1970,7 @@ dependencies = [
  "smallvec",
  "thiserror",
  "unicode-bom",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -2119,7 +2122,7 @@ dependencies = [
  "itoa",
  "smallvec",
  "thiserror",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -2203,7 +2206,7 @@ dependencies = [
  "gix-validate",
  "memmap2",
  "thiserror",
- "winnow",
+ "winnow 0.5.40",
 ]
 
 [[package]]
@@ -3120,7 +3123,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -3146,7 +3149,7 @@ dependencies = [
  "serde_json",
  "sketching",
  "tokio",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -3160,7 +3163,7 @@ dependencies = [
  "base64 0.22.1",
  "gix",
  "serde",
- "toml",
+ "toml_edit 0.22.12",
 ]
 
 [[package]]
@@ -3177,7 +3180,7 @@ dependencies = [
  "serde_json",
  "time",
  "tokio",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "url",
  "uuid",
@@ -3277,7 +3280,7 @@ dependencies = [
  "serde_json",
  "tokio",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
 ]
 
@@ -3315,7 +3318,7 @@ dependencies = [
  "sketching",
  "tokio",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "uuid",
  "walkdir",
@@ -3370,7 +3373,7 @@ dependencies = [
  "tokio",
  "tokio-openssl",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tower",
  "tower-http",
  "tracing",
@@ -3432,7 +3435,7 @@ dependencies = [
  "time",
  "tokio",
  "tokio-util",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "url",
  "urlencoding",
@@ -4385,7 +4388,7 @@ dependencies = [
  "serde",
  "serde_json",
  "tokio",
- "toml",
+ "toml_edit 0.22.12",
  "tracing",
  "tracing-subscriber",
  "uuid",
@@ -4749,7 +4752,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
 dependencies = [
  "once_cell",
- "toml_edit",
+ "toml_edit 0.19.15",
 ]
 
 [[package]]
@@ -5424,6 +5427,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_spanned"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eb3622f419d1296904700073ea6cc23ad690adbd66f13ea683df73298736f0c1"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "serde_urlencoded"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5951,19 +5963,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "toml"
-version = "0.5.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f4f7f0dd8d50a853a531c426359045b1998f04219d88799810762cd4ad314234"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "toml_datetime"
 version = "0.6.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4badfd56924ae69bcc9039335b2e017639ce3f9b001c393c1b2d1ef846ce2cbf"
+dependencies = [
+ "serde",
+]
 
 [[package]]
 name = "toml_edit"
@@ -5973,7 +5979,20 @@ checksum = "1b5bb770da30e5cbfde35a2d7b9b8a2c4b8ef89548a7a6aeab5c9a576e3e7421"
 dependencies = [
  "indexmap 2.2.6",
  "toml_datetime",
- "winnow",
+ "winnow 0.5.40",
+]
+
+[[package]]
+name = "toml_edit"
+version = "0.22.12"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d3328d4f68a705b2a4498da1d580585d39a6510f98318a2cec3018a7ec61ddef"
+dependencies = [
+ "indexmap 2.2.6",
+ "serde",
+ "serde_spanned",
+ "toml_datetime",
+ "winnow 0.6.8",
 ]
 
 [[package]]
@@ -6931,6 +6950,15 @@ name = "winnow"
 version = "0.5.40"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f593a95398737aeed53e489c785df13f3618e41dbcd6718c6addbf1395aa6876"
+dependencies = [
+ "memchr",
+]
+
+[[package]]
+name = "winnow"
+version = "0.6.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3c52e9c97a68071b23e836c9380edae937f17b9c4667bd021973efc689f618d"
 dependencies = [
  "memchr",
 ]
