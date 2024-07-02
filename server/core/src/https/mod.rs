@@ -13,6 +13,7 @@ mod ui;
 mod v1;
 mod v1_oauth2;
 mod v1_scim;
+mod views;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
@@ -125,56 +126,59 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        for filepath in [
-            "wasmloader_admin.js",
-            "wasmloader_login_flows.js",
-            "wasmloader_user.js",
-        ] {
-            match generate_integrity_hash(format!(
-                "{}/{}",
-                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
-                filepath,
-            )) {
-                Ok(hash) => {
-                    selected.insert(
-                        filepath.to_string(),
-                        JavaScriptFile {
-                            filepath,
-                            dynamic: false,
-                            hash,
-                            filetype: Some("module".to_string()),
-                        },
-                    );
-                }
-                Err(err) => {
-                    admin_error!(
-                        ?err,
-                        "Failed to generate integrity hash for {} - cancelling startup!",
-                        filepath
-                    );
-                    return Err(());
-                }
-            };
-        }
+        let pkg_path = if cfg!(feature = "ui_htmx") {
+            "../core/static".to_string()
+        } else {
+            env!("KANIDM_WEB_UI_PKG_PATH").to_owned()
+        };
 
-        for (filepath, filetype, dynamic) in [
-            ("shared.js", Some("module".to_string()), false),
-            ("external/bootstrap.bundle.min.js", None, false),
-            ("external/viz.js", None, true),
-        ] {
-            // let's set up the list of non-wasm-module js files we want to serve
-            // for filepath in ["external/bootstrap.bundle.min.js", "shared.js"] {
-            match generate_integrity_hash(format!(
-                "{}/{}",
-                env!("KANIDM_WEB_UI_PKG_PATH").to_owned(),
-                filepath,
-            )) {
-                Ok(hash) => all_pages.push(JavaScriptFile {
-                    filepath,
-                    dynamic,
-                    hash,
-                    filetype,
-                }),
+        let filelist = if cfg!(feature = "ui_htmx") {
+            vec![
+                ("external/bootstrap.bundle.min.js", None, false, false),
+                ("external/htmx.min.1.9.2.js", None, false, false),
+                ("external/confetti.js", None, false, false),
+            ]
+        } else {
+            vec![
+                (
+                    "wasmloader_admin.js",
+                    Some("module".to_string()),
+                    false,
+                    true,
+                ),
+                (
+                    "wasmloader_login_flows.js",
+                    Some("module".to_string()),
+                    false,
+                    true,
+                ),
+                (
+                    "wasmloader_user.js",
+                    Some("module".to_string()),
+                    false,
+                    true,
+                ),
+                ("shared.js", Some("module".to_string()), false, false),
+                ("external/bootstrap.bundle.min.js", None, false, false),
+                ("external/viz.js", None, true, false),
+            ]
+        };
+
+        for (filepath, filetype, dynamic, select) in filelist {
+            match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
+                Ok(hash) => {
+                    let js = JavaScriptFile {
+                        filepath,
+                        dynamic,
+                        hash,
+                        filetype,
+                    };
+                    if select {
+                        selected.insert(filepath.to_string(), js);
+                    } else {
+                        all_pages.push(js)
+                    }
+                }
                 Err(err) => {
                     admin_error!(
                         ?err,
@@ -256,23 +260,30 @@ pub async fn create_https_server(
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             // Create a spa router that captures everything at ui without key extraction.
-
-            Router::new()
-                // Direct users to the base app page. If a login is required,
-                // then views will take care of redirection.
-                .route("/", get(|| async { Redirect::temporary("/ui") }))
-                .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
-                // user UI app is the catch-all
-                .nest("/ui", ui::spa_router_user_ui())
-                // login flows app
-                .nest("/ui/login", ui::spa_router_login_flows())
-                .nest("/ui/reauth", ui::spa_router_login_flows())
-                .nest("/ui/oauth2", ui::spa_router_login_flows())
-                // admin app
-                .nest("/ui/admin", ui::spa_router_admin())
-                .layer(middleware::compression::new())
-                .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
-            // skip_route_check
+            if cfg!(feature = "ui_htmx") {
+                Router::new()
+                    .route("/", get(|| async { Redirect::to("/ui") }))
+                    .nest("/ui", views::view_router())
+                    .layer(middleware::compression::new())
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+            } else {
+                Router::new()
+                    // Direct users to the base app page. If a login is required,
+                    // then views will take care of redirection.
+                    .route("/", get(|| async { Redirect::temporary("/ui") }))
+                    .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
+                    // user UI app is the catch-all
+                    .nest("/ui", ui::spa_router_user_ui())
+                    // login flows app
+                    .nest("/ui/login", ui::spa_router_login_flows())
+                    .nest("/ui/reauth", ui::spa_router_login_flows())
+                    .nest("/ui/oauth2", ui::spa_router_login_flows())
+                    // admin app
+                    .nest("/ui/admin", ui::spa_router_admin())
+                    .layer(middleware::compression::new())
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                // skip_route_check
+            }
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
@@ -293,10 +304,17 @@ pub async fn create_https_server(
                 );
                 std::process::exit(1);
             }
-            let pkg_router = Router::new()
-                .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
-                .layer(middleware::compression::new())
-                .layer(from_fn(middleware::caching::cache_me));
+            let pkg_router = if cfg!(feature = "ui_htmx") {
+                // TODO! This should be from webui pkg path in future!!!
+                Router::new().nest_service("/pkg", ServeDir::new("../core/static"))
+                // TODO: Add in the br precompress
+            } else {
+                Router::new()
+                    .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
+                    .layer(middleware::compression::new())
+            }
+            .layer(from_fn(middleware::caching::cache_me));
+
             app.merge(pkg_router)
         }
     };
