@@ -1084,6 +1084,7 @@ pub enum Oauth2Opt {
     #[clap(name = "prefer-spn-username")]
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
     PreferSPNUsername(Named),
+    /*
     /// Set the origin of an oauth2 client
     #[clap(name = "set-origin")]
     SetOrigin {
@@ -1092,6 +1093,7 @@ pub enum Oauth2Opt {
         #[clap(name = "origin")]
         origin: String,
     },
+    */
 }
 
 #[derive(Args, Debug)]

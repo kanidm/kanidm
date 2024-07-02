@@ -12,6 +12,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use hashbrown::HashSet;
+
 use base64::{engine::general_purpose, Engine as _};
 
 use base64urlsafedata::Base64UrlSafeData;
@@ -268,8 +270,10 @@ pub struct Oauth2RS {
     name: String,
     displayname: String,
     uuid: Uuid,
-    origin: Origin,
-    origin_https: bool,
+
+    origins: HashSet<Origin>,
+    origin_https_required: bool,
+
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
@@ -301,7 +305,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("displayname", &self.displayname)
             .field("uuid", &self.uuid)
             .field("type", &self.type_)
-            .field("origin", &self.origin)
+            .field("origins", &self.origins)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
             .field("claim_map", &self.claim_map)
@@ -418,19 +422,27 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let (origin, origin_https) = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOrigin)
-                    .map(|url| (url.origin(), url.scheme() == "https"))
+                let mut origins = HashSet::new();
+
+                let landing_url = ent
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let landing_valid = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
-                    .map(|url| url.origin() == origin).
-                    unwrap_or(true);
+                origins.insert(landing_url.origin());
 
-                if !landing_valid {
-                    warn!("{} has a landing page that is not part of origin. May be invalid.", name);
+                if let Some(extra_origins) = ent.get_ava_set(Attribute::OAuth2RsOrigin).and_then(|s| s.as_url_set()) {
+                    for x_origin in extra_origins {
+                        origins.insert(x_origin.origin());
+                    }
                 }
+
+                // Given the presence of a single https url, then all other urls must be https.
+                let origin_https_required = origins.iter().any(|origin| {
+                    match origin {
+                        Origin::Tuple(scheme, _, _) => scheme == "https",
+                        _ => false,
+                    }
+                });
 
                 let token_fernet = ent
                     .get_ava_single_secret(Attribute::OAuth2RsTokenKey)
@@ -604,8 +616,8 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     name,
                     displayname,
                     uuid,
-                    origin,
-                    origin_https,
+                    origins,
+                    origin_https_required,
                     scope_maps,
                     sup_scope_maps,
                     client_scopes,
@@ -1623,23 +1635,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .unwrap_or_default();
 
         // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
-        // be localhost.
-        if !(auth_req.redirect_uri.origin() == o2rs.origin
+        // be localhost exempting it from this check and enforcement.
+        if !(o2rs.origins.contains(&auth_req.redirect_uri.origin())
             || (allow_localhost_redirect && localhost_redirect))
         {
             admin_warn!(
-                origin = ?o2rs.origin,
                 "Invalid OAuth2 redirect_uri (must be related to origin {:?}) - got {:?}",
-                o2rs.origin,
+                o2rs.origins,
                 auth_req.redirect_uri.origin()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
 
-        if !localhost_redirect && o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
+        // We have to specifically match on http here because non-http origins may be exempt from this
+        // enforcement.
+        if !localhost_redirect
+            && o2rs.origin_https_required
+            && auth_req.redirect_uri.scheme() == "http"
+        {
             admin_warn!(
-                origin = ?o2rs.origin,
-                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
+                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
+                auth_req.redirect_uri.scheme()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
@@ -2711,7 +2727,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
@@ -2863,7 +2879,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins

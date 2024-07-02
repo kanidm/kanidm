@@ -35,7 +35,7 @@ impl Oauth2Opt {
             | Oauth2Opt::DeleteClaimMap { copt, .. }
             | Oauth2Opt::EnablePublicLocalhost { copt, .. }
             | Oauth2Opt::DisablePublicLocalhost { copt, .. } => copt.debug,
-            Oauth2Opt::SetOrigin { nopt, .. } => nopt.copt.debug,
+            // Oauth2Opt::SetOrigin { nopt, .. } => nopt.copt.debug,
         }
     }
 
@@ -160,16 +160,7 @@ impl Oauth2Opt {
             Oauth2Opt::ResetSecrets(cbopt) => {
                 let client = cbopt.copt.to_client(OpType::Write).await;
                 match client
-                    .idm_oauth2_rs_update(
-                        cbopt.name.as_str(),
-                        None,
-                        None,
-                        None,
-                        None,
-                        true,
-                        true,
-                        true,
-                    )
+                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true, true, true)
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -210,7 +201,6 @@ impl Oauth2Opt {
                         None,
                         Some(cbopt.displayname.as_str()),
                         None,
-                        None,
                         false,
                         false,
                         false,
@@ -229,7 +219,6 @@ impl Oauth2Opt {
                         Some(name.as_str()),
                         None,
                         None,
-                        None,
                         false,
                         false,
                         false,
@@ -245,7 +234,6 @@ impl Oauth2Opt {
                 match client
                     .idm_oauth2_rs_update(
                         nopt.name.as_str(),
-                        None,
                         None,
                         None,
                         Some(url),
@@ -313,6 +301,7 @@ impl Oauth2Opt {
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
             }
+            /*
             Oauth2Opt::SetOrigin { nopt, origin } => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 match client
@@ -332,6 +321,7 @@ impl Oauth2Opt {
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
             }
+            */
             Oauth2Opt::UpdateClaimMap {
                 copt,
                 name,

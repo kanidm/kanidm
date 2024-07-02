@@ -1,10 +1,17 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_NAME,
-    ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
-    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-    ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING,
-    ATTR_OAUTH2_RS_TOKEN_KEY, ATTR_RS256_PRIVATE_KEY_DER,
+    ATTR_DISPLAYNAME,
+    ATTR_ES256_PRIVATE_KEY_DER,
+    ATTR_NAME,
+    ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
+    ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+    ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+    ATTR_OAUTH2_RS_BASIC_SECRET,
+    // ATTR_OAUTH2_RS_ORIGIN,
+    ATTR_OAUTH2_RS_ORIGIN_LANDING,
+    ATTR_OAUTH2_RS_TOKEN_KEY,
+    ATTR_RS256_PRIVATE_KEY_DER,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
@@ -31,9 +38,10 @@ impl KanidmClient {
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
+            vec![origin.to_string()],
+        );
         self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
             .await
     }
@@ -51,9 +59,10 @@ impl KanidmClient {
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
+            vec![origin.to_string()],
+        );
         self.perform_post_request("/v1/oauth2/_public", new_oauth2_rs)
             .await
     }
@@ -78,7 +87,6 @@ impl KanidmClient {
         id: &str,
         name: Option<&str>,
         displayname: Option<&str>,
-        origin: Option<&str>,
         landing: Option<&str>,
         reset_secret: bool,
         reset_token_key: bool,
@@ -97,12 +105,6 @@ impl KanidmClient {
             update_oauth2_rs.attrs.insert(
                 ATTR_DISPLAYNAME.to_string(),
                 vec![newdisplayname.to_string()],
-            );
-        }
-        if let Some(neworigin) = origin {
-            update_oauth2_rs.attrs.insert(
-                ATTR_OAUTH2_RS_ORIGIN.to_string(),
-                vec![neworigin.to_string()],
             );
         }
         if let Some(newlanding) = landing {

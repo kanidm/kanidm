@@ -653,6 +653,41 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // =========== Apply changes ==============
 
+        // For each oauth2 client, if it is missing a landing page then we clone the origin
+        // into landing. This is because previously we implied the landing to be origin if
+        // unset, but now landing is the primary url and implies an origin.
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_pres(Attribute::OAuth2RsOrigin),
+            f_andnot(f_pres(Attribute::OAuth2RsOriginLanding)),
+        ]));
+
+        let pre_candidates = self.internal_search(filter).map_err(|err| {
+            error!(?err, "migrate_domain_6_to_7 internal search failure");
+            err
+        })?;
+
+        let modset: Vec<_> = pre_candidates
+            .into_iter()
+            .filter_map(|ent| {
+                ent.get_ava_single_url(Attribute::OAuth2RsOrigin)
+                    .map(|origin_url| {
+                        // Copy the origin url to the landing.
+                        let modlist = vec![Modify::Present(
+                            Attribute::OAuth2RsOriginLanding.into(),
+                            Value::Url(origin_url.clone()),
+                        )];
+
+                        (ent.get_uuid(), ModifyList::new_list(modlist))
+                    })
+            })
+            .collect();
+
+        // If there is nothing, we don't need to do anything.
+        if !modset.is_empty() {
+            self.internal_batch_modify(modset.into_iter())?;
+        }
+
         // Do this before schema change since domain info has cookie key
         // as may at this point.
         //
@@ -681,10 +716,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
             SCHEMA_ATTR_REFERS_DL7.clone().into(),
             SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_DL7.clone().into(),
         ];
 
         idm_schema_classes
@@ -1239,6 +1276,36 @@ mod tests {
 
         assert_eq!(db_domain_version, DOMAIN_LEVEL_6);
 
+        // Create an oauth2 client that doesn't have a landing url set.
+        let oauth2_client_uuid = Uuid::new_v4();
+
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Uuid, Value::Uuid(oauth2_client_uuid)),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerPublic.to_value()
+            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            )
+        );
+
+        write_txn
+            .internal_create(vec![ea])
+            .expect("Unable to create oauth2 client");
+
         // per migration verification.
         let domain_entry = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
@@ -1266,6 +1333,21 @@ mod tests {
             .expect("Unable to access domain entry");
 
         assert!(!domain_entry.attribute_pres(Attribute::PrivateCookieKey));
+
+        let oauth2_entry = write_txn
+            .internal_search_uuid(oauth2_client_uuid)
+            .expect("Unable to access oauth2 client entry");
+
+        let origin = oauth2_entry
+            .get_ava_single_url(Attribute::OAuth2RsOrigin)
+            .expect("Unable to access oauth2 client origin");
+
+        // The origin should have been cloned to the landing.
+        let landing = oauth2_entry
+            .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
+            .expect("Unable to access oauth2 client landing");
+
+        assert_eq!(origin, landing);
 
         write_txn.commit().expect("Unable to commit");
     }
