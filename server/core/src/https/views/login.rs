@@ -34,9 +34,9 @@ use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
 #[template(path = "login.html")]
-struct LoginView<'a> {
-    username: &'a str,
-    remember_me: bool,
+pub struct LoginView<'a> {
+    pub(crate) username: &'a str,
+    pub(crate) remember_me: bool,
 }
 
 #[derive(Default)]
