@@ -1038,15 +1038,39 @@ pub enum Oauth2Opt {
         #[clap(name = "newname")]
         name: String,
     },
-    /// When redirecting from the Kanidm Apps Listing page, some linked applications may need to
-    /// land on a specific page to trigger oauth2/oidc interactions.
+
+    /// The landing url is the default origin of the oauth2 client. Additionally, this landing
+    /// url is the target when Kanidm redirects the user from the apps listing page.
     #[clap(name = "set-landing-url")]
     SetLandingUrl {
         #[clap(flatten)]
         nopt: Named,
         #[clap(name = "landing-url")]
-        url: String,
+        url: Url,
     },
+
+    /// Add a supplemental origins as a redirection target. For example a phone app
+    /// may use a redirect url such as `app://my-cool-app` to trigger a native
+    /// redirection event out of a browser.
+    #[clap(name = "add-origin")]
+    AddOrigin {
+        name: String,
+        #[clap(name = "origin-url")]
+        origin: Url,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+
+    /// Remove a supplemental origin from the oauth2 client configuration.
+    #[clap(name = "remove-origin")]
+    RemoveOrigin {
+        name: String,
+        #[clap(name = "origin-url")]
+        origin: Url,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+
     #[clap(name = "enable-pkce")]
     /// Enable PKCE on this oauth2 client. This defaults to being enabled.
     EnablePkce(Named),
@@ -1084,16 +1108,6 @@ pub enum Oauth2Opt {
     #[clap(name = "prefer-spn-username")]
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
     PreferSPNUsername(Named),
-    /*
-    /// Set the origin of an oauth2 client
-    #[clap(name = "set-origin")]
-    SetOrigin {
-        #[clap(flatten)]
-        nopt: Named,
-        #[clap(name = "origin")]
-        origin: String,
-    },
-    */
 }
 
 #[derive(Args, Debug)]

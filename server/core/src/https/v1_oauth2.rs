@@ -2,7 +2,10 @@ use super::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse}
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::oauth2::oauth2_id;
-use super::v1::{json_rest_event_get, json_rest_event_post};
+use super::v1::{
+    json_rest_event_delete_id_attr, json_rest_event_get, json_rest_event_post,
+    json_rest_event_post_id_attr,
+};
 use super::ServerState;
 
 use crate::https::extractors::VerifiedClientInformation;
@@ -203,6 +206,57 @@ pub(crate) async fn oauth2_id_scopemap_post(
         .await
         .map(Json::from)
         .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/oauth2/{rs_name}/_attr/{attr}",
+    request_body=Vec<String>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/oauth2/attr",
+    operation_id = "oauth2_id_attr_post",
+)]
+pub async fn oauth2_id_attr_post(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(values): Json<Vec<String>>,
+) -> Result<Json<()>, WebError> {
+    let filter = filter_all!(f_eq(
+        Attribute::Class,
+        EntryClass::OAuth2ResourceServer.into()
+    ));
+    json_rest_event_post_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    delete,
+    path = "/v1/oauth2/{rs_name}/_attr/{attr}",
+    request_body=Option<Vec<String>>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/oauth2/attr",
+    operation_id = "oauth2_id_attr_delete",
+)]
+pub async fn oauth2_id_attr_delete(
+    Path((id, attr)): Path<(String, String)>,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    values: Option<Json<Vec<String>>>,
+) -> Result<Json<()>, WebError> {
+    let filter = filter_all!(f_eq(
+        Attribute::Class,
+        EntryClass::OAuth2ResourceServer.into()
+    ));
+    let values = values.map(|v| v.0);
+    json_rest_event_delete_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(

@@ -1,22 +1,16 @@
 use crate::{ClientError, KanidmClient};
 use kanidm_proto::constants::{
-    ATTR_DISPLAYNAME,
-    ATTR_ES256_PRIVATE_KEY_DER,
-    ATTR_NAME,
-    ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
-    ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
-    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-    ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-    ATTR_OAUTH2_RS_BASIC_SECRET,
-    // ATTR_OAUTH2_RS_ORIGIN,
-    ATTR_OAUTH2_RS_ORIGIN_LANDING,
-    ATTR_OAUTH2_RS_TOKEN_KEY,
-    ATTR_RS256_PRIVATE_KEY_DER,
+    ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_NAME,
+    ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
+    ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_PREFER_SHORT_USERNAME,
+    ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING,
+    ATTR_OAUTH2_RS_TOKEN_KEY, ATTR_RS256_PRIVATE_KEY_DER,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
 use reqwest::multipart;
 use std::collections::BTreeMap;
+use url::Url;
 
 impl KanidmClient {
     // ==== Oauth2 resource server configuration
@@ -392,6 +386,32 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
             format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_client_add_origin(
+        &self,
+        id: &str,
+        origin: &Url,
+    ) -> Result<(), ClientError> {
+        let url_to_add = &[origin.as_str()];
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            url_to_add,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_client_remove_origin(
+        &self,
+        id: &str,
+        origin: &Url,
+    ) -> Result<(), ClientError> {
+        let url_to_remove = &[origin.as_str()];
+        self.perform_delete_request_with_body(
+            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            url_to_remove,
         )
         .await
     }
