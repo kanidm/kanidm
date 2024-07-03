@@ -43,7 +43,6 @@ impl OrcaOpt {
             | OrcaOpt::TestConnection { common, .. }
             | OrcaOpt::GenerateData { common, .. }
             | OrcaOpt::PopulateData { common, .. }
-            | OrcaOpt::ResetCredential { common, .. }
             | OrcaOpt::Run { common, .. } => common.debug,
         }
     }
@@ -110,30 +109,6 @@ fn main() -> ExitCode {
 
             match profile.write_to_path(&profile_path) {
                 Ok(_) => ExitCode::SUCCESS,
-                Err(_err) => ExitCode::FAILURE,
-            }
-        }
-        // Reset admin and idm_admin credentials
-        OrcaOpt::ResetCredential {
-            common: _,
-            profile_path,
-        } => {
-            let mut profile = match Profile::try_from(profile_path.as_path()) {
-                Ok(p) => p,
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            };
-            let admin_pw = reset_password_for_account("admin");
-
-            let idm_admin_pw = reset_password_for_account("idm_admin");
-            profile.set_admin_password(&admin_pw);
-            profile.set_idm_admin_password(&idm_admin_pw);
-            match profile.write_to_path(&profile_path) {
-                Ok(_) => {
-                    info!("Credentials reset was successful!");
-                    ExitCode::SUCCESS
-                }
                 Err(_err) => ExitCode::FAILURE,
             }
         }
@@ -324,28 +299,4 @@ fn build_tokio_runtime(threads: Option<usize>) -> Runtime {
     .enable_all()
     .build()
     .expect("Failed to build tokio runtime")
-}
-
-fn reset_password_for_account(account: &str) -> String {
-    let response = std::process::Command::new("kanidmd")
-        .args(["recover-account", account])
-        .output()
-        .unwrap_or_else(|_| panic!("Failed to recover {account} account"))
-        .stdout;
-
-    let response_splitted_whitespace: Vec<&[u8]> = response.split(|&x| &[x] == b" ").collect();
-
-    let pw_index = response_splitted_whitespace
-        .iter()
-        .position(|&elm| elm == b"new_password:")
-        .expect("Failed to locate \"new_password:\" within response")
-        + 1;
-    // here we add 1 because the actual password is exactly one space after after "new_password:", which means it's the next element in the vec
-    let clean_password_bytes: Vec<u8> = response_splitted_whitespace[pw_index]
-        .iter()
-        .filter(|&&x| ![b"\"", b"\n"].contains(&&[x])) //we remove all the escaped quotes and the newline character
-        .copied()
-        .collect();
-
-    String::from_utf8(clean_password_bytes).expect("Failed to parse password as utf8")
 }
