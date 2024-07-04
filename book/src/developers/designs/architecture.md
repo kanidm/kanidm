@@ -110,7 +110,7 @@ make. If you are not within rights to perform these operations the event returns
 
 (4) The entries are now sent to the pre-operation plugins for the relevant operation type. This
 allows transformation of the candidate entries beyond the scope of your access controls, and to
-maintain some elements of data consistency. For example one plugin prevents creation of system
+maintain some elements of data consistency. For example, one plugin prevents creation of system
 protected types where another ensures that uuid exists on every entry.
 
 (5) These transformed entries are now returned to the query server.
