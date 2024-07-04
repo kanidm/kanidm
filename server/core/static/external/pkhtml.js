@@ -1,5 +1,5 @@
 
-function asskey_login() {
+function asskey_login(target) {
     var credentialRequestOptions = JSON.parse(document.getElementById('data').textContent);
         credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
         credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
@@ -10,7 +10,7 @@ function asskey_login() {
 
     navigator.credentials.get({ publicKey: credentialRequestOptions.publicKey })
     .then((assertion) => {
-        fetch('http://localhost:8080/login_finish', {
+        fetch(target, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -30,9 +30,16 @@ function asskey_login() {
     });
 }
 
-const myButton = document.getElementById("start-webauthn-button");
+try {
+    const myButton = document.getElementById("start-passkey-button");
+    myButton.addEventListener("click", () => {
+        asskey_login('/ui/api/login_passkey');
+    });
+} catch (error) {};
 
-myButton.addEventListener("click", () => {
-    asskey_login();
-});
-
+try {
+    const myButton = document.getElementById("start-seckey-button");
+    myButton.addEventListener("click", () => {
+        asskey_login('/ui/api/login_seckey');
+    });
+} catch (error) {};
