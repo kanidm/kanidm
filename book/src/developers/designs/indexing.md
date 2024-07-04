@@ -111,7 +111,7 @@ Imagine a query like:
 And(Eq(class, person), Eq(name, claire))
 ```
 
-In this case with our database of 250,000 persons, our idl's would have:
+In this case, with our database of 250,000 persons, our idl's would have:
 
 ```
 And( idl[250,000 ids], idl(1 id))
