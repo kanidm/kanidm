@@ -7,13 +7,13 @@ use axum::{
 };
 use axum_htmx::{HxPushUrl, HxReswap, HxRetarget, SwapOption};
 use axum_htmx::extractors::HxRequest;
-use url::Url;
 use uuid::Uuid;
 
 use kanidm_proto::internal::{AppLink, OperationError};
 
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use crate::https::views::login::LoginView;
+
 use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
@@ -67,8 +67,10 @@ pub(crate) async fn view_apps_get(
         Err(err) => return handler(err),
     };
 
-    let apps_partial = AppsPartialView {
-        apps: app_links
+    let apps_view = AppsView {
+        apps_partial: AppsPartialView {
+            apps: app_links,
+        },
     };
 
     if hx_request {
@@ -79,13 +81,13 @@ pub(crate) async fn view_apps_get(
             // Tell htmx that we want to update the body instead. There is no need
             // set the swap value as it defaults to innerHTML. This is because we came here
             // from an htmx request so we only need to render the inner portion.
-            HxRetarget("#main".to_string()),
+            HxRetarget("body".to_string()),
             // We send our own main, replace the existing one.
             HxReswap(SwapOption::OuterHtml),
-            HtmlTemplate(apps_partial),
+            HtmlTemplate(apps_view),
         )
             .into_response()
     } else {
-        HtmlTemplate(AppsView { apps_partial }).into_response()
+        HtmlTemplate(apps_view).into_response()
     }
 }
