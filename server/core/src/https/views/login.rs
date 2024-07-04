@@ -3,7 +3,7 @@ use askama::Template;
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect, Response},
-    Extension, Form,
+    Extension, Form, Json,
 };
 
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
@@ -30,7 +30,7 @@ use crate::https::{
     extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId, ServerState,
 };
 
-// use webauthn_rs::prelude::RequestChallengeResponse;
+use webauthn_rs::prelude::PublicKeyCredential;
 
 use std::str::FromStr;
 
@@ -250,16 +250,6 @@ pub async fn partial_view_login_totp_post(
     jar: CookieJar,
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
-    let maybe_sessionid = jar
-        .get(COOKIE_AUTH_SESSION_ID)
-        .map(|c| c.value())
-        .and_then(|s| {
-            trace!(id_jws = %s);
-            state.reinflate_uuid_from_bytes(s)
-        });
-
-    debug!("Session ID: {:?}", maybe_sessionid);
-
     // trim leading and trailing white space.
     let Ok(totp) = u32::from_str(&login_totp_form.totp.trim()) else {
         // If not an int, we need to re-render with an error
@@ -269,39 +259,8 @@ pub async fn partial_view_login_totp_post(
         .into_response();
     };
 
-    // Init the login.
-    let inter = state // This may change in the future ...
-        .qe_r_ref
-        .handle_auth(
-            maybe_sessionid,
-            AuthRequest {
-                step: AuthStep::Cred(AuthCredential::Totp(totp)),
-            },
-            kopid.eventid,
-            client_auth_info.clone(),
-        )
-        .await;
-
-    // Now process the response if ok.
-    match inter {
-        Ok(ar) => {
-            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
-                Ok(r) => r,
-                // Okay, these errors are actually REALLY bad.
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
-                    err_code,
-                    operation_id: kopid.eventid,
-                })
-                .into_response(),
-            }
-        }
-        // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
-            err_code,
-            operation_id: kopid.eventid,
-        })
-        .into_response(),
-    }
+    let auth_cred = AuthCredential::Totp(totp);
+    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -316,49 +275,8 @@ pub async fn partial_view_login_pw_post(
     jar: CookieJar,
     Form(login_pw_form): Form<LoginPwForm>,
 ) -> Response {
-    let maybe_sessionid = jar
-        .get(COOKIE_AUTH_SESSION_ID)
-        .map(|c| c.value())
-        .and_then(|s| {
-            trace!(id_jws = %s);
-            state.reinflate_uuid_from_bytes(s)
-        });
-
-    debug!("Session ID: {:?}", maybe_sessionid);
-
-    // Init the login.
-    let inter = state // This may change in the future ...
-        .qe_r_ref
-        .handle_auth(
-            maybe_sessionid,
-            AuthRequest {
-                step: AuthStep::Cred(AuthCredential::Password(login_pw_form.password)),
-            },
-            kopid.eventid,
-            client_auth_info.clone(),
-        )
-        .await;
-
-    // Now process the response if ok.
-    match inter {
-        Ok(ar) => {
-            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
-                Ok(r) => r,
-                // Okay, these errors are actually REALLY bad.
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
-                    err_code,
-                    operation_id: kopid.eventid,
-                })
-                .into_response(),
-            }
-        }
-        // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
-            err_code,
-            operation_id: kopid.eventid,
-        })
-        .into_response(),
-    }
+    let auth_cred = AuthCredential::Password(login_pw_form.password);
+    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -373,6 +291,41 @@ pub async fn partial_view_login_backupcode_post(
     jar: CookieJar,
     Form(login_bc_form): Form<LoginBackupCodeForm>,
 ) -> Response {
+    // People (like me) may copy-paste the bc with whitespace that causes issues. Trim it now.
+    let trimmed = login_bc_form.backupcode.trim().to_string();
+    let auth_cred = AuthCredential::BackupCode(trimmed);
+    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+}
+
+pub async fn partial_view_login_passkey_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Json(assertion): Json<Box<PublicKeyCredential>>,
+) -> Response {
+    let auth_cred = AuthCredential::Passkey(assertion);
+    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+}
+
+pub async fn partial_view_login_seckey_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Json(assertion): Json<Box<PublicKeyCredential>>,
+) -> Response {
+    let auth_cred = AuthCredential::SecurityKey(assertion);
+    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+}
+
+async fn credential_step(
+    state: ServerState,
+    kopid: KOpId,
+    jar: CookieJar,
+    client_auth_info: ClientAuthInfo,
+    auth_cred: AuthCredential,
+) -> Response {
     let maybe_sessionid = jar
         .get(COOKIE_AUTH_SESSION_ID)
         .map(|c| c.value())
@@ -383,16 +336,12 @@ pub async fn partial_view_login_backupcode_post(
 
     debug!("Session ID: {:?}", maybe_sessionid);
 
-    // People (like me) may copy-paste the bc with whitespace that causes issues. Trim it now.
-    let trimmed = login_bc_form.backupcode.trim().to_string();
-
-    // Init the login.
     let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
             maybe_sessionid,
             AuthRequest {
-                step: AuthStep::Cred(AuthCredential::BackupCode(trimmed)),
+                step: AuthStep::Cred(auth_cred),
             },
             kopid.eventid,
             client_auth_info.clone(),
@@ -546,15 +495,17 @@ async fn partial_view_login_step(
                                 let chal_json = serde_json::to_string(&chal).unwrap();
                                 HtmlTemplate(LoginWebauthnPartialView {
                                     passkey: false,
-                                    chal: chal_json
-                                }).into_response()
+                                    chal: chal_json,
+                                })
+                                .into_response()
                             }
                             AuthAllowed::Passkey(chal) => {
                                 let chal_json = serde_json::to_string(&chal).unwrap();
                                 HtmlTemplate(LoginWebauthnPartialView {
                                     passkey: true,
-                                    chal: chal_json
-                                }).into_response()
+                                    chal: chal_json,
+                                })
+                                .into_response()
                             }
                             _ => return Err(OperationError::InvalidState),
                         }

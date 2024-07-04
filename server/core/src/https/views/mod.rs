@@ -27,7 +27,16 @@ struct UnrecoverableErrorView {
 }
 
 pub fn view_router() -> Router<ServerState> {
-    let unauth_router = Router::new().route("/", get(login::view_index_get));
+    let unauth_router = Router::new()
+        .route("/", get(login::view_index_get))
+        .route(
+            "/api/login_passkey",
+            post(login::partial_view_login_passkey_post),
+        )
+        .route(
+            "/api/login_seckey",
+            post(login::partial_view_login_seckey_post),
+        );
 
     let unguarded_router = Router::new().route("/apps", get(apps::view_apps_get));
 

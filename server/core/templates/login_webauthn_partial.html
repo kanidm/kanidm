@@ -7,7 +7,7 @@
 <script src="/pkg/external/pkhtml.js" defer></script>
 
 (% if passkey %)
-<button type="button" class="btn btn-dark" id="start-webauthn-button">Use Passkey</button>
+<button hx-disable type="button" class="btn btn-dark" id="start-webauthn-button">Use Passkey</button>
 (% else %)
 <button type="button" class="btn btn-dark" id="start-webauthn-button">Use Security Key</button>
 (% endif %)
