@@ -16,10 +16,10 @@ considered authoritive and applies to all versions.
 
 Kanidm is released on a 3 month (quarterly) schedule.
 
-- February 1st
-- May 1st
-- August 1st
-- November 1st
+- February 1
+- May 1
+- August 1
+- November 1
 
 Versions follow semver using `major.minor.patch` with an optional `-tag`.
 
