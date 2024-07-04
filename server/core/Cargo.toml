@@ -82,6 +82,12 @@ utoipa = { workspace = true, features = [
 ] }
 utoipa-swagger-ui = { workspace = true, features = ["axum"] }
 
+webauthn-rs = { workspace = true, features = [
+    "resident-key-support",
+    "preview-features",
+    "danger-credential-internals",
+] }
+
 [dev-dependencies]
 walkdir = { workspace = true }
 tempfile = { workspace = true }

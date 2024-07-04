@@ -1,0 +1,15 @@
+
+<script id="data" type="application/json">
+(( chal|safe ))
+</script>
+
+<script src="/pkg/external/base64.js" async></script>
+<script src="/pkg/external/pkhtml.js" defer></script>
+
+(% if passkey %)
+<button type="button" class="btn btn-dark" id="start-webauthn-button">Use Passkey</button>
+(% else %)
+<button type="button" class="btn btn-dark" id="start-webauthn-button">Use Security Key</button>
+(% endif %)
+
+

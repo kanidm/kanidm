@@ -31,6 +31,8 @@ pub fn view_router() -> Router<ServerState> {
 
     let unguarded_router = Router::new().route("/apps", get(apps::view_apps_get));
 
+    // The webauthn post is unguarded because it's not a htmx event.
+
     // Anything that is a partial only works if triggered from htmx
     let guarded_router = Router::new()
         .layer(HxRequestGuardLayer::default())

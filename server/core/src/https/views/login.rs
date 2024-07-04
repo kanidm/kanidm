@@ -30,6 +30,8 @@ use crate::https::{
     extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId, ServerState,
 };
 
+// use webauthn_rs::prelude::RequestChallengeResponse;
+
 use std::str::FromStr;
 
 use super::{HtmlTemplate, UnrecoverableErrorView};
@@ -72,6 +74,15 @@ struct LoginPasswordPartialView {}
 #[derive(Template)]
 #[template(path = "login_backupcode_partial.html")]
 struct LoginBackupCodePartialView {}
+
+#[derive(Template)]
+#[template(path = "login_webauthn_partial.html")]
+struct LoginWebauthnPartialView {
+    // Control if we are rendering in security key or passkey mode.
+    passkey: bool,
+    // chal: RequestChallengeResponse,
+    chal: String,
+}
 
 pub async fn view_index_get(
     State(state): State<ServerState>,
@@ -531,11 +542,19 @@ async fn partial_view_login_step(
                             AuthAllowed::BackupCode => {
                                 HtmlTemplate(LoginBackupCodePartialView {}).into_response()
                             }
-                            AuthAllowed::SecurityKey(_chal) => {
-                                todo!();
+                            AuthAllowed::SecurityKey(chal) => {
+                                let chal_json = serde_json::to_string(&chal).unwrap();
+                                HtmlTemplate(LoginWebauthnPartialView {
+                                    passkey: false,
+                                    chal: chal_json
+                                }).into_response()
                             }
-                            AuthAllowed::Passkey(_chal) => {
-                                todo!();
+                            AuthAllowed::Passkey(chal) => {
+                                let chal_json = serde_json::to_string(&chal).unwrap();
+                                HtmlTemplate(LoginWebauthnPartialView {
+                                    passkey: true,
+                                    chal: chal_json
+                                }).into_response()
                             }
                             _ => return Err(OperationError::InvalidState),
                         }

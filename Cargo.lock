@@ -3479,6 +3479,7 @@ dependencies = [
  "utoipa-swagger-ui",
  "uuid",
  "walkdir",
+ "webauthn-rs",
 ]
 
 [[package]]

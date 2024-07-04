@@ -137,6 +137,8 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 ("external/bootstrap.bundle.min.js", None, false, false),
                 ("external/htmx.min.1.9.2.js", None, false, false),
                 ("external/confetti.js", None, false, false),
+                ("external/pkhtml.js", None, false, false),
+                ("external/base64.js", None, false, false),
             ]
         } else {
             vec![
@@ -228,8 +230,8 @@ pub async fn create_https_server(
 
     let csp_header = format!(
         concat!(
-            "base-uri 'self' https:; ",
             "default-src 'self'; ",
+            "base-uri 'self' https:; ",
             "form-action 'self' https:;",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",

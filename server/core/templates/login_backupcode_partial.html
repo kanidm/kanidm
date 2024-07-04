@@ -1,0 +1,23 @@
+
+<label for="Backup Code" class="form-label">Backup Code</label>
+<form id="login" hx-post='/ui/api/login_backup_code' hx-target="#login-form-container" hx-push-url="false">
+	<div class="input-group mb-3">
+		<input
+			autofocus=true
+			class="autofocus form-control"
+			id="backupcode"
+			name="backupcode"
+			type="password"
+			value=""
+			required=true
+		/>
+	</div>
+	<div class="input-group mb-3 justify-content-md-center">
+		<button
+			type="submit"
+			class="btn btn-dark"
+		>Submit</button>
+	</div>
+</form>
+
+

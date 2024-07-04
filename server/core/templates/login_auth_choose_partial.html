@@ -1,0 +1,18 @@
+<div class="container">
+	<p>Choose how to proceed:</p>
+</div>
+<div class="container">
+	<ul class="list-unstyled">
+		(% for auth in auths %)
+		<li class="text-center mb-2">
+			<form id="login" hx-post='/ui/api/login_auth_choose' hx-target="#login-form-container" hx-push-url="false">
+				<input type="hidden" id="auth" name="auth" value="(( auth.value ))" />
+				<button
+					type="submit"
+					class="btn btn-dark"
+				>(( auth.name ))</button>
+			</form>
+		</li>
+		(% endfor %)
+	</ul>
+</div>
