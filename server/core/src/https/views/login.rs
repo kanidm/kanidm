@@ -69,6 +69,10 @@ struct LoginTotpPartialView {
 #[template(path = "login_password_partial.html")]
 struct LoginPasswordPartialView {}
 
+#[derive(Template)]
+#[template(path = "login_backupcode_partial.html")]
+struct LoginBackupCodePartialView {}
+
 pub async fn view_index_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -245,7 +249,8 @@ pub async fn partial_view_login_totp_post(
 
     debug!("Session ID: {:?}", maybe_sessionid);
 
-    let Ok(totp) = u32::from_str(&login_totp_form.totp) else {
+    // trim leading and trailing white space.
+    let Ok(totp) = u32::from_str(&login_totp_form.totp.trim()) else {
         // If not an int, we need to re-render with an error
         return HtmlTemplate(LoginTotpPartialView {
             errors: LoginTotpError::Syntax,
@@ -317,6 +322,66 @@ pub async fn partial_view_login_pw_post(
             maybe_sessionid,
             AuthRequest {
                 step: AuthStep::Cred(AuthCredential::Password(login_pw_form.password)),
+            },
+            kopid.eventid,
+            client_auth_info.clone(),
+        )
+        .await;
+
+    // Now process the response if ok.
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LoginBackupCodeForm {
+    backupcode: String,
+}
+
+pub async fn partial_view_login_backupcode_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Form(login_bc_form): Form<LoginBackupCodeForm>,
+) -> Response {
+    let maybe_sessionid = jar
+        .get(COOKIE_AUTH_SESSION_ID)
+        .map(|c| c.value())
+        .and_then(|s| {
+            trace!(id_jws = %s);
+            state.reinflate_uuid_from_bytes(s)
+        });
+
+    debug!("Session ID: {:?}", maybe_sessionid);
+
+    // People (like me) may copy-paste the bc with whitespace that causes issues. Trim it now.
+    let trimmed = login_bc_form.backupcode.trim().to_string();
+
+    // Init the login.
+    let inter = state // This may change in the future ...
+        .qe_r_ref
+        .handle_auth(
+            maybe_sessionid,
+            AuthRequest {
+                step: AuthStep::Cred(AuthCredential::BackupCode(trimmed)),
             },
             kopid.eventid,
             client_auth_info.clone(),
@@ -462,6 +527,15 @@ async fn partial_view_login_step(
                             }
                             AuthAllowed::Password => {
                                 HtmlTemplate(LoginPasswordPartialView {}).into_response()
+                            }
+                            AuthAllowed::BackupCode => {
+                                HtmlTemplate(LoginBackupCodePartialView {}).into_response()
+                            }
+                            AuthAllowed::SecurityKey(_chal) => {
+                                todo!();
+                            }
+                            AuthAllowed::Passkey(_chal) => {
+                                todo!();
                             }
                             _ => return Err(OperationError::InvalidState),
                         }

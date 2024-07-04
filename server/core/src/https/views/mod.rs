@@ -42,6 +42,10 @@ pub fn view_router() -> Router<ServerState> {
             "/api/login_mech_choose",
             post(login::partial_view_login_mech_choose_post),
         )
+        .route(
+            "/api/login_backup_code",
+            post(login::partial_view_login_backupcode_post),
+        )
         .route("/api/login_totp", post(login::partial_view_login_totp_post))
         .route("/api/login_pw", post(login::partial_view_login_pw_post));
 
