@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::value::AuthType;
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::AuthenticationResult;
@@ -62,4 +63,5 @@ pub struct AuthSessionRecord {
     pub issued_at: OffsetDateTime,
     pub issued_by: IdentityId,
     pub scope: SessionScope,
+    pub type_: AuthType,
 }

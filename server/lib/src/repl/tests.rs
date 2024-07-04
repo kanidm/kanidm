@@ -6,7 +6,7 @@ use crate::repl::proto::ConsumerState;
 use crate::repl::proto::ReplIncrementalContext;
 use crate::repl::ruv::ReplicationUpdateVectorTransaction;
 use crate::repl::ruv::{RangeDiffStatus, ReplicationUpdateVector};
-use crate::value::{Session, SessionState};
+use crate::value::{AuthType, Session, SessionState};
 use kanidm_lib_crypto::CryptoPolicy;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
@@ -3254,6 +3254,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     let issued_at = curtime_odt;
     let issued_by = IdentityId::User(t_uuid);
     let scope = SessionScope::ReadOnly;
+    let type_ = AuthType::Passkey;
 
     let session = Value::Session(
         session_id_a,
@@ -3264,6 +3265,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
             issued_by,
             cred_id,
             scope,
+            type_,
         },
     );
 
@@ -3293,6 +3295,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     let issued_at = curtime_odt;
     let issued_by = IdentityId::User(t_uuid);
     let scope = SessionScope::ReadOnly;
+    let type_ = AuthType::Passkey;
 
     let session = Value::Session(
         session_id_b,
@@ -3303,6 +3306,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
             issued_by,
             cred_id,
             scope,
+            type_,
         },
     );
 

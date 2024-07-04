@@ -12,7 +12,9 @@ use compact_jwt::{Jws, JwsSigner};
 
 use kanidmd_lib::prelude::OperationError;
 
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthRequest, AuthStep};
+use kanidm_proto::v1::{
+    AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
+};
 
 use kanidmd_lib::prelude::*;
 
@@ -37,6 +39,17 @@ use super::{HtmlTemplate, UnrecoverableErrorView};
 struct LoginView<'a> {
     username: &'a str,
     remember_me: bool,
+}
+
+pub struct Mech<'a> {
+    name: AuthMech,
+    value: &'a str,
+}
+
+#[derive(Template)]
+#[template(path = "login_mech_choose_partial.html")]
+struct LoginMechPartialView<'a> {
+    mechs: Vec<Mech<'a>>,
 }
 
 #[derive(Default)]
@@ -124,6 +137,64 @@ pub async fn partial_view_login_begin_post(
                     issue: AuthIssueSession::Cookie,
                     privileged: false,
                 },
+            },
+            kopid.eventid,
+            client_auth_info.clone(),
+        )
+        .await;
+
+    // Now process the response if ok.
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LoginMechForm {
+    mech: AuthMech,
+}
+
+pub async fn partial_view_login_mech_choose_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Form(login_mech_form): Form<LoginMechForm>,
+) -> Response {
+    let maybe_sessionid = jar
+        .get(COOKIE_AUTH_SESSION_ID)
+        .map(|c| c.value())
+        .and_then(|s| {
+            trace!(id_jws = %s);
+            state.reinflate_uuid_from_bytes(s)
+        });
+
+    debug!("Session ID: {:?}", maybe_sessionid);
+
+    let LoginMechForm { mech } = login_mech_form;
+
+    let inter = state // This may change in the future ...
+        .qe_r_ref
+        .handle_auth(
+            maybe_sessionid,
+            AuthRequest {
+                step: AuthStep::Begin(mech),
             },
             kopid.eventid,
             client_auth_info.clone(),
@@ -355,8 +426,18 @@ async fn partial_view_login_step(
                         // Autoselect was hit.
                         continue;
                     }
+
                     // Render the list of options.
-                    _ => todo!(),
+                    _ => {
+                        let mechs = allowed
+                            .into_iter()
+                            .map(|m| Mech {
+                                value: m.to_value(),
+                                name: m,
+                            })
+                            .collect();
+                        HtmlTemplate(LoginMechPartialView { mechs }).into_response()
+                    }
                 };
                 // break acts as return in a loop.
                 break res;
@@ -382,11 +463,13 @@ async fn partial_view_login_step(
                             AuthAllowed::Password => {
                                 HtmlTemplate(LoginPasswordPartialView {}).into_response()
                             }
-                            _ => todo!(),
+                            _ => return Err(OperationError::InvalidState),
                         }
                     }
                     _ => {
-                        todo!();
+                        // We have changed auth session to only ever return one possibility, and
+                        // that one option encodes the possible challenges.
+                        return Err(OperationError::InvalidState);
                     }
                 };
 

@@ -429,7 +429,7 @@ pub struct DbValueOauthScopeMapV1 {
     pub data: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Default, Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueAccessScopeV1 {
     #[serde(rename = "i")]
     IdentityOnly,
@@ -444,7 +444,7 @@ pub enum DbValueAccessScopeV1 {
     Synchronise,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub enum DbValueIdentityId {
     #[serde(rename = "v1i")]
@@ -455,7 +455,7 @@ pub enum DbValueIdentityId {
     V1Sync(Uuid),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueSessionStateV1 {
     #[serde(rename = "ea")]
     ExpiresAt(String),
@@ -465,7 +465,27 @@ pub enum DbValueSessionStateV1 {
     RevokedAt(DbCidV1),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueAuthTypeV1 {
+    #[serde(rename = "an")]
+    Anonymous,
+    #[serde(rename = "po")]
+    Password,
+    #[serde(rename = "pg")]
+    GeneratedPassword,
+    #[serde(rename = "pt")]
+    PasswordTotp,
+    #[serde(rename = "pb")]
+    PasswordBackupCode,
+    #[serde(rename = "ps")]
+    PasswordSecurityKey,
+    #[serde(rename = "as")]
+    Passkey,
+    #[serde(rename = "ap")]
+    AttestedPasskey,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueSession {
     V1 {
         #[serde(rename = "u")]
@@ -512,6 +532,24 @@ pub enum DbValueSession {
         cred_id: Uuid,
         #[serde(rename = "s", default)]
         scope: DbValueAccessScopeV1,
+    },
+    V4 {
+        #[serde(rename = "u")]
+        refer: Uuid,
+        #[serde(rename = "l")]
+        label: String,
+        #[serde(rename = "e")]
+        state: DbValueSessionStateV1,
+        #[serde(rename = "i")]
+        issued_at: String,
+        #[serde(rename = "b")]
+        issued_by: DbValueIdentityId,
+        #[serde(rename = "c")]
+        cred_id: Uuid,
+        #[serde(rename = "s", default)]
+        scope: DbValueAccessScopeV1,
+        #[serde(rename = "t")]
+        type_: DbValueAuthTypeV1,
     },
 }
 

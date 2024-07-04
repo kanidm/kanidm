@@ -38,10 +38,9 @@ use crate::credential::{totp::Totp, Credential};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
+use crate::server::keys::KeyId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
-
-use crate::server::keys::KeyId;
 
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::v1::UatPurposeStatus;
@@ -990,6 +989,33 @@ impl Ord for SessionState {
     }
 }
 
+#[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
+pub enum AuthType {
+    Anonymous,
+    Password,
+    GeneratedPassword,
+    PasswordTotp,
+    PasswordBackupCode,
+    PasswordSecurityKey,
+    Passkey,
+    AttestedPasskey,
+}
+
+impl fmt::Display for AuthType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthType::Anonymous => write!(f, "anonymous"),
+            AuthType::Password => write!(f, "password"),
+            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
+            AuthType::PasswordTotp => write!(f, "passwordtotp"),
+            AuthType::PasswordBackupCode => write!(f, "passwordbackupcode"),
+            AuthType::PasswordSecurityKey => write!(f, "passwordsecuritykey"),
+            AuthType::Passkey => write!(f, "passkey"),
+            AuthType::AttestedPasskey => write!(f, "attested_passkey"),
+        }
+    }
+}
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct Session {
     pub label: String,
@@ -999,6 +1025,7 @@ pub struct Session {
     pub issued_by: IdentityId,
     pub cred_id: Uuid,
     pub scope: SessionScope,
+    pub type_: AuthType,
 }
 
 impl fmt::Debug for Session {
