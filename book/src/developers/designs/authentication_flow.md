@@ -8,7 +8,7 @@
 3. Client requests auth with a method (`AuthStep::Begin(AuthMech)`)
 4. Server responds with an acknowledgement (`AuthState::Continue(Vec<AuthAllowed>)`). This is so the
    challenge can be included in the response, for Passkeys or other challenge-response methods.
-   - If required, this challenge/response continues in a loop until the requirements are satisfied -
+   - If required, this challenge/response continues in a loop until the requirements are satisfied with,
      for example, TOTP + Password.
 5. The result is returned, either:
    - Success, with the User Auth Token as a `String`.
