@@ -285,7 +285,7 @@ addition to low.
 
 extra: groups could define a "number of ID points" required, where the server lists each auth type
 based on strength. So group high would request 30 points. Password is 10 points, totp is 20 points,
-webauthn could be 20 for example. This way, using totp + webauth would still get you a login.
+webauthn could be 20, for example. This way, using totp + webauth would still get you a login.
 
 There may be other ways to define this logic, but this applies to method one as well.
 

@@ -54,7 +54,7 @@ has an excellent explanation of the attack. Additionally, this threat is discuss
 [RFC6819 Section 4.4.1](https://www.rfc-editor.org/rfc/rfc6819#section-4.4.1).
 
 As Kanidm aims for "secure by default" design, even with _confidential_ clients, we deem it
-important to raise the bar for attackers. For example an attacker may have access to the `client_id`
+important to raise the bar for attackers. For example, an attacker may have access to the `client_id`
 and `client_secret` of a confidential client as it was mishandled by a system administrator. While
 they may not have direct access to the client/application systems, they could still use this
 `client_id+secret` to then carry out the authorisation code interception attack listed.

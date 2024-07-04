@@ -100,7 +100,7 @@ when creating the token. Tokens are only allowed to be valid for a maximum of 24
 
 ### Resetting Credentials Directly
 
-You can perform a password reset on the `demo_user`, for example as the `idm_admin` user, who is a
+You can perform a password reset on the `demo_user`, for example, as the `idm_admin` user, who is a
 default member of this group. The lines below prefixed with `#` are the interactive credential
 update interface. This allows the user to directly manage the credentials of another account.
 

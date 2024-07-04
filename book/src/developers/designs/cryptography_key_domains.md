@@ -90,7 +90,7 @@ The type defines the possible operations of the Key Object but not how the opera
 
 A key object MAY have multiple Key Types.
 
-Key Objects also must define their structure related to their Key Provider. For example a possible
+Key Objects also must define their structure related to their Key Provider. For example, a possible
 TPM Key Provider needs to store its Public and Private components in the Key Object, where our
 internal provider needs to store the DER portions of the keys.
 

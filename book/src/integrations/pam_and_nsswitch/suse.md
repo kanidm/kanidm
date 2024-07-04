@@ -10,7 +10,7 @@ authentication:
 /etc/pam.d/common-session
 ```
 
-> **IMPORTANT** By default these files are symlinks to their corresponding `-pc` file, for example
+> **IMPORTANT** By default these files are symlinks to their corresponding `-pc` file, for example,
 > `common-account -> common-account-pc`. If you directly edit these you are updating the inner
 > content of the `-pc` file and it WILL be reset on a future upgrade. To prevent this you must first
 > copy the `-pc` files. You can then edit the files safely.
