@@ -1,0 +1,24 @@
+<div class="modal" tabindex="-1" role="dialog" id="signoutModal">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Sign out</h5>
+            </div>
+            <div class="modal-body text-center">
+                Are you sure you'd like to log out?
+                <br/>
+                <img src="/pkg/img/kani-waving.svg" alt="Kani waving goodbye" />
+            </div>
+            <div class="modal-footer">
+                <a href="/ui/logout" hx-boost="false">
+                    <button type="button" class="btn btn-success"
+                            data-bs-toggle="modal"
+                            data-bs-target="#signoutModal">Sign out</button>
+                </a>
+
+                <button type="button" class="btn btn-secondary"
+                        data-bs-dismiss="modal">Cancel</button>
+            </div>
+        </div>
+    </div>
+</div>

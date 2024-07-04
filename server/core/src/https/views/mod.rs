@@ -29,7 +29,9 @@ struct UnrecoverableErrorView {
 pub fn view_router() -> Router<ServerState> {
     let unauth_router = Router::new().route("/", get(login::view_index_get));
 
-    let unguarded_router = Router::new().route("/apps", get(apps::view_apps_get));
+    let unguarded_router = Router::new()
+        .route("/apps", get(apps::view_apps_get))
+        .route("/logout", get(login::view_logout_get));
 
     // Anything that is a partial only works if triggered from htmx
     let guarded_router = Router::new()

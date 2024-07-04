@@ -29,7 +29,7 @@ use crate::https::{
 };
 
 use std::str::FromStr;
-
+use time::OffsetDateTime;
 use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
@@ -88,6 +88,30 @@ pub async fn view_index_get(
         })
         .into_response(),
     }
+}
+
+// Maybe cursed ?
+pub async fn view_logout_get(
+    State(state): State<ServerState>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Extension(_kopid): Extension<KOpId>,
+    _jar: CookieJar,
+) -> Response {
+    let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, "");
+    bearer_cookie.set_secure(state.secure_cookies);
+    bearer_cookie.set_same_site(SameSite::Lax);
+    bearer_cookie.set_http_only(true);
+    // We set a domain here because it allows subdomains
+    // of the idm to share the cookie. If domain was incorrect
+    // then webauthn won't work anyway!
+    bearer_cookie.set_domain(state.domain.clone());
+    bearer_cookie.set_path("/");
+    let now = OffsetDateTime::now_utc();
+    bearer_cookie.set_expires(now);
+    let jar = CookieJar::new().add(bearer_cookie);
+
+    let res = Redirect::to("/").into_response();
+    (jar, res).into_response()
 }
 
 #[derive(Debug, Clone, Deserialize)]
