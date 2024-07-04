@@ -262,7 +262,7 @@ kanidm system oauth2 delete-claim-map nextcloud account_role nextcloud_admins
 
 Some applications are unable to provide client authentication. A common example is single page web
 applications that act as the OAuth2 client and its corresponding webserver is the resource server.
-In this case the SPA is unable to act as a confidential client since the basic secret would need to
+In this case, the SPA is unable to act as a confidential client since the basic secret would need to
 be embedded in every client.
 
 Another common example is native applications that use a redirect to localhost. These can't have a
@@ -460,7 +460,7 @@ kanidm system oauth2 create_scope_map <client name> velociraptor_users openid em
 ### Grafana
 
 Grafana is a open source analytics and interactive visualization web application. It provides
-charts, graphs, and alerts when connected to supported data source.
+charts, graphs and alerts when connected to supported data source.
 
 Prepare the environment:
 
