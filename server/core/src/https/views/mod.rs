@@ -17,7 +17,8 @@ use crate::https::{
 };
 
 mod apps;
-mod login;
+pub mod login;
+pub mod errors;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -49,7 +50,7 @@ pub fn view_router() -> Router<ServerState> {
         .merge(guarded_router)
 }
 
-struct HtmlTemplate<T>(T);
+pub struct HtmlTemplate<T>(pub T);
 
 /// Allows us to convert Askama HTML templates into valid HTML for axum to serve in the response.
 impl<T> IntoResponse for HtmlTemplate<T>
