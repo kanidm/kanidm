@@ -28,7 +28,7 @@ authoritative source of protocol layouts with regard to REST or raw communicatio
 ## Kanidmd (main server)
 
 Kanidmd is intended to have minimal (thin) client tools, where the server itself contains most logic
-for operations, transformations, and routing of requests to their relevant datatypes. As a result,
+for operations, transformations and routing of requests to their relevant datatypes. As a result,
 the `kanidmd` section is the largest component of the project as it implements nearly everything
 required for IDM functionality to exist.
 
