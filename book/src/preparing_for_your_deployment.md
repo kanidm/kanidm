@@ -67,7 +67,7 @@ media.
 
 ## TLS
 
-You'll need a volume where you can place configuration, certificates, and the database:
+You'll need a volume where you can place configuration, certificates and the database:
 
 ```bash
 docker volume create kanidmd
