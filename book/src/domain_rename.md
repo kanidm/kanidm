@@ -1,7 +1,7 @@
 # Domain Rename
 
 There are some cases where you may need to rename the domain. You should have configured this
-initially in the setup, however you may have a situation where a business is changing name, merging,
+initially in the setup, however you may have a situation where a business is changing name, merging
 or other needs which may prompt this needing to be changed.
 
 > **WARNING:** This WILL break ALL u2f/webauthn tokens that have been enrolled, which MAY cause
