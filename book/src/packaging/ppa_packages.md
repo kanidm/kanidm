@@ -5,7 +5,7 @@ This pulls the packages from the Kanidm
 “nightly” packages. Packages are distributed for the latest LTS versions, Ubuntu 22.04 & Debian 12.
 
 Please note that while the commands below should also work on other Ubuntu-based distributions, we
-cannot ensure their compatibility with PPA. Pop OS for example, would require an altered setup in
+cannot ensure their compatibility with PPA. Pop OS, for example, would require an altered setup in
 line with their [instructions](https://support.system76.com/articles/ppa-third-party/).
 
 ## Adding it to your system
