@@ -135,7 +135,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
         let filelist = if cfg!(feature = "ui_htmx") {
             vec![
                 ("external/bootstrap.bundle.min.js", None, false, false),
-                ("external/htmx.min.1.9.2.js", None, false, false),
+                ("external/htmx.min.1.9.12.js", None, false, false),
                 ("external/confetti.js", None, false, false),
             ]
         } else {
