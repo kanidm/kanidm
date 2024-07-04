@@ -2,28 +2,28 @@
 	<div class="(( crate::https::ui::CSS_PAGE_HEADER ))">
 		<h2>Applications list</h2>
     </div>
-(% if apps.is_empty() %)
+	(% if apps.is_empty() %)
 	<h5>No linked applications available</h5>
-(% else %)
+	(% else %)
 	<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
-	(% for app in apps %)
+		(% for app in apps %)
 		<div class="col-md-3">
 			<div class="card text-center">
-		(% match app %)
-			(% when AppLink::Oauth2 with { name, display_name, redirect_url, icon } %)
+			(% match app %)
+				(% when AppLink::Oauth2 with { name, display_name, redirect_url, icon } %)
 				<a href="(( redirect_url ))" class="link-dark stretched-link">
-				(% if let Some(icon) = icon %)
+					(% if let Some(icon) = icon %)
 					<!-- TODO: load oauth2 icon here-->
 					<img src="/pkg/img/icon-oauth2.svg" class="oauth2-img" alt="((display_name)) icon" id="(( name ))">
-				(% else %)
+					(% else %)
 					<img src="/pkg/img/icon-oauth2.svg" class="oauth2-img" alt="missing-icon icon" id="(( name ))">
-				(% endif %)
+					(% endif %)
 				</a>
 				<label for="(( name ))">(( display_name ))</label>
-		(% endmatch %)
+			(% endmatch %)
 			</div>
 		</div>
-	(% endfor %)
+		(% endfor %)
 	</div>
-(% endif %)
+	(% endif %)
 </main>

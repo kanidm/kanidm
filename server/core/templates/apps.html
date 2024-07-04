@@ -1,15 +1,10 @@
-(% extends "base_htmx.html" %)
+(% extends "base_htmx_with_nav.html" %)
 
 (% block title %)Apps(% endblock %)
 
 (% block head %)
 (% endblock %)
 
-(% block nav %)
-	(% include "navbar.html" %)
-(% endblock %)
-
 (% block body %)
 	(( apps_partial|safe ))
-	(% include "signout_modal.html" %)
 (% endblock %)
