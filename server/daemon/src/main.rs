@@ -22,6 +22,9 @@ use std::fs::{metadata, File};
 // This works on both unix and windows.
 use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
+use kanidmd_core::repl::ReplicationConfiguration;
+
+use reqwest::Url;
 use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
 #[cfg(target_family = "unix")]
@@ -118,6 +121,13 @@ impl KanidmdOpt {
             KanidmdOpt::Database {
                 commands: DbCommands::Vacuum(copt),
             } => copt,
+            KanidmdOpt::Replication { commands, .. } => match commands {
+                ReplicationCommands::Add { commonopts, .. } => commonopts,
+                ReplicationCommands::Delete { commonopts, .. } => commonopts,
+                ReplicationCommands::Update { commonopts, .. } => commonopts,
+                ReplicationCommands::SetOrigin { commonopts, .. } => commonopts,
+                ReplicationCommands::SetBind { commonopts, .. } => commonopts,
+            },
             KanidmdOpt::HealthCheck(hcopt) => &hcopt.commonopts,
             KanidmdOpt::Version(copt) => copt,
         }
@@ -596,6 +606,260 @@ async fn kanidm_main(
     opt: KanidmdParser,
 ) -> ExitCode {
     match &opt.commands {
+        KanidmdOpt::Replication { commands, .. } => match commands {
+            ReplicationCommands::SetOrigin {
+                commonopts,
+                origin_uri,
+            } => {
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                new_config.repl_config.as_mut().unwrap().origin = match origin_uri.parse() {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Invalid Origin URI: {}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
+                    Err(err) => {
+                        error!(
+                            "Failed to write config to {}: {:?}",
+                            &config_path.display(),
+                            err
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                };
+            }
+            ReplicationCommands::SetBind {
+                commonopts,
+                bind_address,
+            } => {
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                // read the config
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                let mut repl_config = match new_config.repl_config.clone() {
+                    Some(repl_config) => repl_config,
+                    None => ReplicationConfiguration::default(),
+                };
+
+                repl_config.bindaddress = match bind_address.parse() {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Invalid Bind Address: {}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                new_config.repl_config = Some(repl_config);
+
+                // save the config back
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
+                    Err(err) => {
+                        error!(
+                            "Failed to write config to {}: {:?}",
+                            &config_path.display(),
+                            err
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                };
+            }
+            ReplicationCommands::Add {
+                commonopts,
+                peer_uri,
+                partner_cert,
+                peer_type,
+                automatic_refresh,
+            } => {
+                // parse the URI to check it's valid
+                let peer_uri = match Url::parse(peer_uri) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Invalid URI: {}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                let mut repl_config = match new_config.repl_config.clone() {
+                    Some(repl_config) => {
+                        if repl_config.manual.contains_key(&peer_uri) {
+                            error!("Peer URI already exists in configuration");
+                            return ExitCode::FAILURE;
+                        }
+                        repl_config
+                    }
+                    None => ReplicationConfiguration::default(),
+                };
+
+                if let Err(errr) = repl_config.try_add_peer_from_cli(
+                    peer_uri,
+                    peer_type,
+                    partner_cert,
+                    automatic_refresh,
+                ) {
+                    error!("Failed to add peer: {:?}", errr);
+                    return ExitCode::FAILURE;
+                }
+
+                new_config.repl_config = Some(repl_config);
+
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
+                    Err(err) => {
+                        error!(
+                            "Failed to write config to {}: {:?}",
+                            &config_path.display(),
+                            err
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                };
+            }
+            ReplicationCommands::Delete {
+                commonopts,
+                peer_uri,
+            } => {
+                // parse the URI to check it's valid
+                let peer_uri = match Url::parse(peer_uri) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Invalid URI: {}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                if new_config.repl_config.is_none() {
+                    error!("No replication configuration found in config file");
+                    return ExitCode::FAILURE;
+                } else {
+                    let mut repl_config = new_config.repl_config.unwrap();
+                    if !repl_config.delete_peer(&peer_uri) {
+                        error!("Peer URI not found in configuration");
+                        return ExitCode::FAILURE;
+                    }
+                    new_config.repl_config = Some(repl_config);
+                }
+
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
+                    Err(err) => {
+                        error!(
+                            "Failed to write config to {}: {:?}",
+                            &config_path.display(),
+                            err
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                };
+            }
+            ReplicationCommands::Update {
+                commonopts,
+                peer_uri,
+                peer_type,
+                partner_cert,
+                automatic_refresh,
+            } => {
+                let peer_uri = match Url::parse(peer_uri) {
+                    Ok(u) => u,
+                    Err(e) => {
+                        error!("Invalid URI: {}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                if !kanidmd_core::repl::RepNodeConfig::is_valid_type(peer_type) {
+                    error!("Invalid peer type: {}", peer_type);
+                    return ExitCode::FAILURE;
+                }
+
+                // load the config
+                let config_path = commonopts.config_path.clone().unwrap_or_default();
+                let mut new_config: ServerConfig = match ServerConfig::load_raw(&config_path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        error!("Failed to parse config file: {:?}", e);
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                let mut repl_config = match new_config.repl_config {
+                    Some(repl_config) => repl_config,
+                    None => ReplicationConfiguration::default(),
+                };
+
+                if !repl_config.manual.contains_key(&peer_uri) {
+                    error!("Peer URI not found in configuration");
+                    return ExitCode::FAILURE;
+                }
+
+                if let Err(err) = repl_config.try_add_peer_from_cli(
+                    peer_uri,
+                    peer_type,
+                    partner_cert,
+                    automatic_refresh,
+                ) {
+                    error!("Failed to update peer: {:?}", err);
+                    return ExitCode::FAILURE;
+                }
+
+                // save back the config
+                new_config.repl_config = Some(repl_config);
+
+                match new_config.save(&config_path) {
+                    Ok(_) => info!("Wrote configuration to {}", &config_path.display()),
+                    Err(err) => {
+                        error!(
+                            "Failed to write config to {}: {:?}",
+                            &config_path.display(),
+                            err
+                        );
+                        return ExitCode::FAILURE;
+                    }
+                };
+            }
+        },
         KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
             let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
             if config_test {

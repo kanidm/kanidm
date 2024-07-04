@@ -37,7 +37,7 @@ tokio = { workspace = true, features = [
     "sync",
     "signal",
 ] }
-toml = { workspace = true }
+toml_edit = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true, features = ["wasm"] }

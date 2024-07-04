@@ -201,7 +201,7 @@ impl KanidmUnixdConfig {
             UnixIntegrationError
         })?;
 
-        let config: ConfigInt = toml::from_str(contents.as_str()).map_err(|e| {
+        let config: ConfigInt = toml_edit::de::from_str(contents.as_str()).map_err(|e| {
             error!("{:?}", e);
             UnixIntegrationError
         })?;

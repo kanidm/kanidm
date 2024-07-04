@@ -33,7 +33,7 @@ mod crypto;
 mod https;
 mod interval;
 mod ldaps;
-mod repl;
+pub mod repl;
 mod utils;
 
 use std::fmt::{Display, Formatter};

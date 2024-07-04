@@ -6,6 +6,7 @@ use std::str::FromStr;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
 use serde::Deserialize;
+use serde::Serialize;
 use tracing_forest::printer::TestCapturePrinter;
 use tracing_forest::tag::NoTag;
 use tracing_forest::util::*;
@@ -105,14 +106,12 @@ impl EventTag {
     }
 }
 
-#[derive(Clone, Copy, Deserialize, Debug, Default)]
+#[derive(Clone, Copy, Deserialize, Serialize, Debug, Default)]
+#[serde(rename_all = "lowercase")]
 pub enum LogLevel {
     #[default]
-    #[serde(rename = "info")]
     Info,
-    #[serde(rename = "debug")]
     Debug,
-    #[serde(rename = "trace")]
     Trace,
 }
 

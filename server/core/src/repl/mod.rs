@@ -32,7 +32,7 @@ use kanidmd_lib::repl::proto::ConsumerState;
 use kanidmd_lib::server::QueryServerTransaction;
 
 use crate::CoreAction;
-use config::{RepNodeConfig, ReplicationConfiguration};
+pub use config::{RepNodeConfig, ReplicationConfiguration};
 
 use self::codec::{ConsumerRequest, SupplierResponse};
 
