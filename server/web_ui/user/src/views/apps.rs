@@ -3,10 +3,8 @@ use gloo::console;
 use yew::prelude::*;
 
 use kanidmd_web_ui_shared::constants::{CSS_CARD, CSS_LINK_DARK_STRETCHED, CSS_PAGE_HEADER};
-use kanidmd_web_ui_shared::{do_request, error::FetchError, get_blob, RequestMethod};
+use kanidmd_web_ui_shared::{do_request, error::FetchError, RequestMethod};
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlElement;
-use yew::platform::spawn_local;
 
 use kanidm_proto::internal::AppLink;
 use kanidmd_web_ui_shared::ui::{error_page, loading_spinner};
@@ -123,30 +121,14 @@ impl AppsApp {
                             name,
                             display_name,
                             redirect_url,
-                            has_image,
+                            has_image: _,
                         } => {
                             let redirect_url = redirect_url.to_string();
-                            let node_ref = NodeRef::default();
-                            if *has_image {
-                                let node_ref = node_ref.clone();
-                                let name = name.clone();
-                                spawn_local(async move {
-                                    let (_, status, blob, _) =
-                                        get_blob(format!("/ui/images/oauth2/{name}").as_str()).await.unwrap();
-
-                                    if status == 200 {
-                                        let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
-                                        let bound_node = node_ref.cast::<HtmlElement>();
-                                        bound_node.unwrap().set_attribute("src", url.as_str()).unwrap();
-                                    }
-                                });
-                            }
-
                             html!{
                                 <div class="col-md-3">
                                     <div class={CSS_CARD}>
                                     <a href={ redirect_url.clone() } class={CSS_LINK_DARK_STRETCHED}>
-                                    <img src={"/pkg/img/icon-oauth2.svg"} class="oauth2-img" id={name.clone()} alt={display_name.clone()} ref={node_ref} />
+                                    <img src={"/pkg/img/icon-oauth2.svg"} class="oauth2-img" id={name.clone()} alt={display_name.clone()} />
                                     </a>
                                         <label for={name.clone()}>{ display_name }</label>
                                     </div>

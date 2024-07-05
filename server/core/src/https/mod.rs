@@ -226,13 +226,7 @@ pub async fn create_https_server(
         .add(CspDirectiveType::ScriptSource, js_directives)
         .add(
             CspDirectiveType::ImgSrc,
-            vec![
-                CspValue::SelfSite,
-                CspValue::SchemeData,
-                CspValue::SchemeOther {
-                    value: "blob:".into(),
-                },
-            ],
+            vec![CspValue::SelfSite, CspValue::SchemeData],
         );
 
     let trust_x_forward_for = config.trust_x_forward_for;
