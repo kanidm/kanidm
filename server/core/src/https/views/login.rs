@@ -18,7 +18,7 @@ use kanidm_proto::v1::{
 
 use kanidmd_lib::prelude::*;
 
-use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN};
+use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_USERNAME};
 
 use kanidmd_lib::idm::AuthState;
 
@@ -51,8 +51,8 @@ struct SessionContext {
 
 #[derive(Template)]
 #[template(path = "login.html")]
-struct LoginView<'a> {
-    username: &'a str,
+struct LoginView {
+    username: String,
     remember_me: bool,
 }
 
@@ -104,7 +104,7 @@ pub async fn view_index_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
-    _jar: CookieJar,
+    jar: CookieJar,
 ) -> Response {
     // If we are authenticated, redirect to the landing.
     let session_valid_result = state
@@ -119,10 +119,16 @@ pub async fn view_index_get(
         }
         Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
             // cookie jar with remember me.
+            let username = jar
+                .get(COOKIE_USERNAME)
+                .map(|c| c.value().to_string())
+                .unwrap_or_default();
+
+            let remember_me = !username.is_empty();
 
             HtmlTemplate(LoginView {
-                username: "",
-                remember_me: false,
+                username,
+                remember_me,
             })
             .into_response()
         }
@@ -606,6 +612,20 @@ async fn view_login_step(
                         // then webauthn won't work anyway!
                         bearer_cookie.set_domain(state.domain.clone());
                         bearer_cookie.set_path("/");
+
+                        jar = if session_context.remember_me {
+                            let mut username_cookie =
+                                Cookie::new(COOKIE_USERNAME, session_context.username.clone());
+                            username_cookie.set_secure(state.secure_cookies);
+                            username_cookie.set_same_site(SameSite::Strict);
+                            username_cookie.set_http_only(true);
+                            username_cookie.set_domain(state.domain.clone());
+                            username_cookie.set_path("/");
+                            jar.add(username_cookie)
+                        } else {
+                            jar
+                        };
+
                         jar = jar
                             .add(bearer_cookie)
                             .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
