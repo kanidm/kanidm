@@ -236,6 +236,11 @@ impl SchemaAttribute {
             SyntaxType::AuditLogString => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::Image => matches!(v, PartialValue::Utf8(_)),
             SyntaxType::CredentialType => matches!(v, PartialValue::CredentialType(_)),
+
+            SyntaxType::HexString | SyntaxType::Certificate | SyntaxType::KeyInternal => {
+                matches!(v, PartialValue::HexString(_))
+            }
+
             SyntaxType::WebauthnAttestationCaList => false,
         };
         if r {
@@ -297,6 +302,9 @@ impl SchemaAttribute {
                 SyntaxType::WebauthnAttestationCaList => {
                     matches!(v, Value::WebauthnAttestationCaList(_))
                 }
+                SyntaxType::KeyInternal => matches!(v, Value::KeyInternal { .. }),
+                SyntaxType::HexString => matches!(v, Value::HexString(_)),
+                SyntaxType::Certificate => matches!(v, Value::Certificate(_)),
             };
         if r {
             Ok(())
@@ -587,7 +595,7 @@ pub trait SchemaTransaction {
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute>;
 
     fn validate(&self) -> Vec<Result<(), ConsistencyError>> {
-        let mut res = Vec::new();
+        let mut res = Vec::with_capacity(0);
 
         let class_snapshot = self.get_classes();
         let attribute_snapshot = self.get_attributes();
@@ -2221,7 +2229,7 @@ impl Schema {
         let s = Schema {
             classes: CowCell::new(HashMap::with_capacity(128)),
             attributes: CowCell::new(HashMap::with_capacity(128)),
-            unique_cache: CowCell::new(Vec::new()),
+            unique_cache: CowCell::new(Vec::with_capacity(0)),
             ref_cache: CowCell::new(HashMap::with_capacity(64)),
         };
         // let mut sw = task::block_on(s.write());

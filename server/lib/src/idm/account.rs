@@ -99,7 +99,7 @@ macro_rules! try_from_entry {
 
         let primary = $value
             .get_ava_single_credential(Attribute::PrimaryCredential)
-            .map(|v| v.clone());
+            .cloned();
 
         let passkeys = $value
             .get_ava_passkeys(Attribute::PassKeys)
@@ -173,7 +173,7 @@ macro_rules! try_from_entry {
 
             let ucred = $value
                 .get_ava_single_credential(Attribute::UnixPassword)
-                .map(|v| v.clone());
+                .cloned();
 
             let _shell = $value
                 .get_ava_single_iutf8(Attribute::LoginShell)
@@ -390,6 +390,45 @@ impl Account {
         })
     }
 
+    /// Given the currently bound client certificate, yield a user auth token that
+    /// represents the current session for the account.
+    pub(crate) fn client_cert_info_to_userauthtoken(
+        &self,
+        certificate_id: Uuid,
+        session_is_rw: bool,
+        ct: Duration,
+        account_policy: &ResolvedAccountPolicy,
+    ) -> Option<UserAuthToken> {
+        let issued_at = OffsetDateTime::UNIX_EPOCH + ct;
+
+        let limit_search_max_results = account_policy.limit_search_max_results();
+        let limit_search_max_filter_test = account_policy.limit_search_max_filter_test();
+
+        let purpose = if session_is_rw {
+            UatPurpose::ReadWrite { expiry: None }
+        } else {
+            UatPurpose::ReadOnly
+        };
+
+        Some(UserAuthToken {
+            session_id: certificate_id,
+            expiry: None,
+            issued_at,
+            purpose,
+            uuid: self.uuid,
+            displayname: self.displayname.clone(),
+            spn: self.spn.clone(),
+            mail_primary: self.mail_primary.clone(),
+            ui_hints: self.ui_hints.clone(),
+            // application: None,
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            limit_search_max_results,
+            limit_search_max_filter_test,
+        })
+    }
+
+    /// Determine if an entry is within it's validity period using it's `valid_from` and
+    /// `expire` attributes. `true` indicates the account is within the valid period.
     pub fn check_within_valid_time(
         ct: Duration,
         valid_from: Option<&OffsetDateTime>,
@@ -416,11 +455,14 @@ impl Account {
         vmin && vmax
     }
 
+    /// Determine if this account is within it's validity period. `true` indicates the
+    /// account is within the valid period.
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
         Self::check_within_valid_time(ct, self.valid_from.as_ref(), self.expire.as_ref())
     }
 
-    // Get related inputs, such as account name, email, etc.
+    /// Get related inputs, such as account name, email, etc. This is used for password
+    /// quality checking.
     pub fn related_inputs(&self) -> Vec<&str> {
         let mut inputs = Vec::with_capacity(4 + self.mail.len());
         self.mail.iter().for_each(|m| {
@@ -912,7 +954,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
-                        Ok(Vec::new())
+                        Ok(Vec::with_capacity(0))
                     })
             }
             Err(e) => Err(e),

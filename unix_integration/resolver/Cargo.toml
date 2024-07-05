@@ -1,0 +1,110 @@
+[package]
+name = "kanidm_unix_int"
+description = "Kanidm Unix Integration Clients"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[features]
+default = ["unix"]
+unix = []
+selinux = ["dep:selinux"]
+tpm = ["kanidm-hsm-crypto/tpm"]
+
+[[bin]]
+name = "kanidm_unixd"
+path = "src/bin/kanidm_unixd.rs"
+required-features = ["unix"]
+test = true
+doctest = false
+
+[[bin]]
+name = "kanidm_unixd_tasks"
+path = "src/bin/kanidm_unixd_tasks.rs"
+required-features = ["unix"]
+test = true
+doctest = false
+
+[[bin]]
+name = "kanidm_ssh_authorizedkeys"
+path = "src/bin/kanidm_ssh_authorizedkeys.rs"
+required-features = ["unix"]
+test = true
+doctest = false
+
+[[bin]]
+name = "kanidm-unix"
+path = "src/bin/kanidm-unix.rs"
+required-features = ["unix"]
+test = true
+doctest = false
+
+[lib]
+name = "kanidm_unix_resolver"
+path = "src/lib.rs"
+test = true
+doctest = false
+
+[dependencies]
+async-trait.workspace = true
+# base64urlsafedata = { workspace = true }
+bytes = { workspace = true }
+clap = { workspace = true, features = ["derive", "env"] }
+# csv = { workspace = true }
+futures = { workspace = true }
+hashbrown = { workspace = true }
+libc = { workspace = true }
+# libsqlite3-sys = { workspace = true }
+lru = { workspace = true }
+kanidm_client = { workspace = true }
+kanidm_proto = { workspace = true }
+kanidm-hsm-crypto = { workspace = true }
+kanidm_lib_crypto = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
+kanidm_unix_common = { workspace = true }
+notify-debouncer-full = { workspace = true }
+rpassword = { workspace = true }
+rusqlite = { workspace = true }
+selinux = { workspace = true, optional = true }
+serde = { workspace = true, features = ["derive"] }
+serde_json = { workspace = true }
+sketching = { workspace = true }
+toml = { workspace = true }
+tokio = { workspace = true, features = [
+    "rt",
+    "fs",
+    "macros",
+    "sync",
+    "time",
+    "net",
+    "io-util",
+] }
+tokio-util = { workspace = true, features = ["codec"] }
+tracing = { workspace = true }
+uuid = { workspace = true }
+walkdir = { workspace = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+sd-notify.workspace = true
+prctl.workspace = true
+
+[target.'cfg(not(target_family = "windows"))'.dependencies]
+kanidm_utils_users = { workspace = true }
+
+[target.'cfg(not(target_os = "illumos"))'.dependencies]
+mimalloc = { workspace = true }
+
+[dev-dependencies]
+kanidmd_core = { workspace = true }
+kanidmd_testkit = { workspace = true }
+
+[build-dependencies]
+clap = { workspace = true, features = ["derive"] }
+clap_complete = { workspace = true }
+kanidm_build_profiles = { workspace = true }

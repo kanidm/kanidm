@@ -22,8 +22,8 @@ use kanidmd_web_ui_shared::constants::{
     URL_USER_HOME,
 };
 use kanidmd_web_ui_shared::models::{
-    self, clear_bearer_token, get_bearer_token, get_login_hint, pop_login_hint,
-    pop_login_remember_me, pop_return_location, push_login_remember_me, set_bearer_token,
+    self, get_login_hint, pop_login_hint, pop_login_remember_me, pop_return_location,
+    push_login_remember_me,
 };
 use kanidmd_web_ui_shared::{do_request, error::FetchError, utils, RequestMethod};
 use serde::Serialize;
@@ -32,18 +32,6 @@ use yew_router::BrowserRouter;
 #[derive(Clone)]
 pub struct LoginApp {
     state: LoginState,
-}
-
-impl Default for LoginApp {
-    fn default() -> Self {
-        Self {
-            state: LoginState::InitLogin {
-                enable: true,
-                remember_me: false,
-                username: String::new(),
-            },
-        }
-    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -148,16 +136,11 @@ impl From<SessionStatus> for LoginAppMsg {
 }
 
 impl LoginApp {
-    /// Validate that the current auth token's OK
-    async fn fetch_session_valid() -> Result<LoginAppMsg, FetchError> {
-        fetch_session_valid().await.map(|v| v.into())
-    }
-
     async fn auth_init(username: String) -> Result<LoginAppMsg, FetchError> {
         let authreq = AuthRequest {
             step: AuthStep::Init2 {
                 username,
-                issue: AuthIssueSession::Token,
+                issue: AuthIssueSession::Cookie,
                 privileged: false,
             },
         };
@@ -187,7 +170,7 @@ impl LoginApp {
     }
 
     async fn reauth_init() -> Result<LoginAppMsg, FetchError> {
-        let issue = AuthIssueSession::Token;
+        let issue = AuthIssueSession::Cookie;
         let req_jsvalue = issue
             .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");
@@ -662,48 +645,30 @@ impl Component for LoginApp {
         let state = match workflow {
             LoginWorkflow::Login => {
                 // let's check if they're already authenticated!
-                if get_bearer_token().is_some() {
-                    ctx.link().send_future(async {
-                        match Self::fetch_session_valid().await {
-                            Ok(_) => {
-                                console::info!(
-                                    "Already logged in, redirecting to user home page"
-                                );
-                                let window = gloo_utils::window();
-                                window
-                                    .location()
-                                    .set_href(URL_USER_HOME)
-                                    .expect_throw(&["failed to set location to ", URL_USER_HOME].concat());
+                ctx.link().send_future(async {
+                    match fetch_session_valid().await {
+                        Ok(SessionStatus::TokenValid) => {
+                            console::info!("Already logged in, redirecting to user home page");
+                            let window = gloo_utils::window();
+                            window.location().set_href(URL_USER_HOME).expect_throw(
+                                &["failed to set location to ", URL_USER_HOME].concat(),
+                            );
 
-                                LoginAppMsg::AlreadyAuthenticated
-                                }
-                            Err(v) => {
-                                console::error!(
-                                    "Error checking session validity, clearing token and returning to login page: {:?}",
-                                    v.as_string()
-                                );
-                                clear_bearer_token();
-                                LoginAppMsg::Restart
-                            }
+                            LoginAppMsg::AlreadyAuthenticated
                         }
-                    });
-                }
+                        Err(_) | Ok(SessionStatus::LoginRequired) => LoginAppMsg::Restart,
+                        Ok(SessionStatus::Error { emsg, kopid }) => {
+                            LoginAppMsg::Error { emsg, kopid }
+                        }
+                    }
+                });
 
-                if get_bearer_token().is_some() {
-                    // We're already logged in, so we're going to redirect to the apps page.
-                    return Self::default();
-                }
-
-                // Do we have a login hint?
-                let (username, remember_me) = get_login_hint()
-                    .map(|user| (user, false))
-                    .or_else(|| models::get_login_remember_me().map(|user| (user, true)))
-                    .unwrap_or_default();
-
+                // Disable the form while we wait. We either get to AlreadyAuthenticated, or
+                // Restart from the above async call.
                 LoginState::InitLogin {
-                    enable: true,
-                    remember_me,
-                    username,
+                    enable: false,
+                    remember_me: false,
+                    username: String::new(),
                 }
             }
             LoginWorkflow::Reauth => match get_login_hint() {
@@ -1050,16 +1015,10 @@ impl Component for LoginApp {
                         self.state = LoginState::Denied(reason);
                         true
                     }
-                    AuthState::Success(bearer_token) => {
-                        // Store the bearer here!
-                        // We need to format the bearer onto it.
-                        #[cfg(debug_assertions)]
-                        console::info!(
-                            "User has successfully authenticated, setting the bearer token"
-                        );
-                        let bearer_token = format!("Bearer {}", bearer_token);
-                        set_bearer_token(bearer_token);
+                    AuthState::Success(_bearer_token) => {
+                        // No need to store bearer, it is a cookie now.
                         self.state = LoginState::Authenticated;
+                        // No need to render, that's the next page's job.
                         true
                     }
                 }

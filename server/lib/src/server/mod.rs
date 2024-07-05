@@ -4,7 +4,7 @@
 use std::str::FromStr;
 use std::sync::Arc;
 
-use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
+use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use std::collections::BTreeSet;
@@ -15,7 +15,10 @@ use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
-use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
+use crate::filter::{
+    Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
+    ResolveFilterCacheReadTxn,
+};
 use crate::plugins::dyngroup::{DynGroup, DynGroupCache};
 use crate::plugins::Plugins;
 use crate::prelude::*;
@@ -37,20 +40,23 @@ use self::access::{
     AccessControlsWriteTransaction,
 };
 
+use self::keys::{
+    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvidersWriteTransaction,
+};
+
 pub(crate) mod access;
 pub mod batch_modify;
 pub mod create;
 pub mod delete;
 pub mod identity;
+pub(crate) mod keys;
 pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
 
-const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
-const RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
-
-pub type ResolveFilterCacheReadTxn<'a> =
-    ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+const RESOLVE_FILTER_CACHE_MAX: usize = 256;
+const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
 
 #[derive(Debug, Clone, Copy, PartialOrd, PartialEq, Eq)]
 pub(crate) enum ServerPhase {
@@ -66,6 +72,8 @@ pub struct DomainInfo {
     pub(crate) d_name: String,
     pub(crate) d_display: String,
     pub(crate) d_vers: DomainVersion,
+    pub(crate) d_patch_level: u32,
+    pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
 }
 
@@ -84,11 +92,12 @@ pub struct QueryServer {
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
     db_tickets: Arc<Semaphore>,
+    read_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
-    resolve_filter_cache:
-        Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+    resolve_filter_cache: Arc<ResolveFilterCache>,
     dyngroup_cache: Arc<CowCell<DynGroupCache>>,
     cid_max: Arc<CowCell<Cid>>,
+    key_providers: Arc<KeyProviders>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -99,9 +108,10 @@ pub struct QueryServerReadTransaction<'a> {
     system_config: CowCellReadTxn<SystemConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
+    key_providers: KeyProvidersReadTransaction,
     _db_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    _read_ticket: SemaphorePermit<'a>,
+    resolve_filter_cache: ResolveFilterCacheReadTxn<'a>,
     // Future we may need this.
     // cid_max: CowCellReadTxn<Cid>,
     trim_cid: Cid,
@@ -110,6 +120,19 @@ pub struct QueryServerReadTransaction<'a> {
 unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
 
 unsafe impl<'a> Send for QueryServerReadTransaction<'a> {}
+
+bitflags::bitflags! {
+    #[derive(Copy, Clone, Debug)]
+    pub struct ChangeFlag: u32 {
+        const SCHEMA =         0b0000_0001;
+        const ACP =            0b0000_0010;
+        const OAUTH2 =         0b0000_0100;
+        const DOMAIN =         0b0000_1000;
+        const SYSTEM_CONFIG =  0b0001_0000;
+        const SYNC_AGREEMENT = 0b0010_0000;
+        const KEY_MATERIAL   = 0b0100_0000;
+    }
+}
 
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
@@ -122,21 +145,22 @@ pub struct QueryServerWriteTransaction<'a> {
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
+    key_providers: KeyProvidersWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
     // schema or acp, which is tested by checking the classes of the
     // changing content.
-    pub(super) changed_schema: bool,
-    pub(super) changed_acp: bool,
-    pub(super) changed_oauth2: bool,
-    pub(super) changed_domain: bool,
-    pub(super) changed_system_config: bool,
-    pub(super) changed_sync_agreement: bool,
+    pub(super) changed_flags: ChangeFlag,
+
     // Store the list of changed uuids for other invalidation needs?
     pub(super) changed_uuid: HashSet<Uuid>,
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
-    resolve_filter_cache:
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+    resolve_filter_cache: ARCacheReadTxn<
+        'a,
+        (IdentityId, Arc<Filter<FilterValid>>),
+        Arc<Filter<FilterValidResolved>>,
+        (),
+    >,
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
 }
 
@@ -165,11 +189,18 @@ pub trait QueryServerTransaction<'a> {
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
+    type KeyProvidersTransactionType: KeyProvidersTransaction;
+    fn get_key_providers(&self) -> &Self::KeyProvidersTransactionType;
+
     fn pw_badlist(&self) -> &HashSet<String>;
 
     fn denied_names(&self) -> &HashSet<String>;
 
     fn get_domain_version(&self) -> DomainVersion;
+
+    fn get_domain_patch_level(&self) -> u32;
+
+    fn get_domain_development_taint(&self) -> bool;
 
     fn get_domain_uuid(&self) -> Uuid;
 
@@ -291,10 +322,36 @@ pub trait QueryServerTransaction<'a> {
 
         let lims = ee.get_limits();
 
-        be_txn.exists(lims, &vfr).map_err(|e| {
-            admin_error!(?e, "backend failure");
-            OperationError::Backend
-        })
+        if ee.ident.is_internal() {
+            // We take a fast-path on internal because we can skip loading entries
+            // at all in this case.
+            be_txn.exists(lims, &vfr).map_err(|e| {
+                admin_error!(?e, "backend failure");
+                OperationError::Backend
+            })
+        } else {
+            // For external idents, we need to load the entries else we can't apply
+            // access controls to them.
+            let res = self.get_be_txn().search(lims, &vfr).map_err(|e| {
+                admin_error!(?e, "backend failure");
+                OperationError::Backend
+            })?;
+
+            // ⚠️  Compare / Exists is annoying security wise. It has the
+            // capability to easily leak information based on comparisons
+            // that have been made. In the external account case, we need
+            // to filter entries as a result.
+
+            // Apply ACP before we return the bool state.
+            let access = self.get_accesscontrols();
+            access
+                .filter_entries(&ee.ident, &ee.filter_orig, res)
+                .map_err(|e| {
+                    admin_error!(?e, "Unable to access filter entries");
+                    e
+                })
+                .map(|entries| !entries.is_empty())
+        }
     }
 
     fn name_to_uuid(&mut self, name: &str) -> Result<Uuid, OperationError> {
@@ -602,6 +659,11 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute("TotpSecret Values can not be supplied through modification".to_string())),
                     SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute("Audit logs are generated and not able to be set.".to_string())),
                     SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute("Ec keys are generated and not able to be set.".to_string())),
+                    SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute("Internal keys are generated and not able to be set.".to_string())),
+                    SyntaxType::HexString => Value::new_hex_string_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid hex string syntax".to_string())),
+                    SyntaxType::Certificate => Value::new_certificate_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
                 }
             }
             None => {
@@ -725,6 +787,13 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
                         "Invalid - unable to query attestation CA list".to_string(),
                     )),
+                    SyntaxType::HexString | SyntaxType::KeyInternal | SyntaxType::Certificate => {
+                        PartialValue::new_hex_string_s(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid syntax, expected hex string".to_string(),
+                            )
+                        })
+                    }
                 }
             }
             None => {
@@ -764,10 +833,10 @@ pub trait QueryServerTransaction<'a> {
                 .collect();
             v
         } else if let Some(r_map) = value.as_oauthclaim_map() {
-            let mut v = Vec::new();
+            let mut v = Vec::with_capacity(0);
             for (claim_name, mapping) in r_map.iter() {
                 for (group_ref, claims) in mapping.values() {
-                    let join_char = mapping.join().to_char();
+                    let join_char = mapping.join().to_str();
 
                     let nv = self.uuid_to_spn(*group_ref)?;
                     let resolved_id = match nv {
@@ -775,7 +844,7 @@ pub trait QueryServerTransaction<'a> {
                         None => uuid_to_proto_string(*group_ref),
                     };
 
-                    let joined = str_concat!(claims, ',');
+                    let joined = str_concat!(claims, ",");
 
                     v.push(format!(
                         "{}:{}:{}:{:?}",
@@ -834,17 +903,17 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_fernet_private_key(&mut self) -> Result<String, OperationError> {
-        self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_secret(Attribute::FernetPrivateKeyStr)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain fernet key");
-                e
-            })
+    fn get_domain_key_object_handle(&self) -> Result<Arc<KeyObject>, OperationError> {
+        #[cfg(test)]
+        if self.get_domain_version() < DOMAIN_LEVEL_6 {
+            // We must be in tests, and this is a DL5 to 6 test. For this we'll just make
+            // an ephemeral provider.
+            return Ok(crate::server::keys::KeyObjectInternal::new_test());
+        };
+
+        self.get_key_providers()
+            .get_key_object_handle(UUID_DOMAIN_INFO)
+            .ok_or(OperationError::KP0031KeyObjectNotFound)
     }
 
     fn get_domain_es256_private_key(&mut self) -> Result<Vec<u8>, OperationError> {
@@ -859,32 +928,13 @@ pub trait QueryServerTransaction<'a> {
                 e
             })
     }
+
     fn get_domain_ldap_allow_unix_pw_bind(&mut self) -> Result<bool, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO).map(|entry| {
             entry
                 .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
                 .unwrap_or(true)
         })
-    }
-    fn get_domain_cookie_key(&mut self) -> Result<[u8; 64], OperationError> {
-        self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_private_binary(Attribute::PrivateCookieKey)
-                    .and_then(|s| {
-                        let mut x = [0; 64];
-                        if s.len() == x.len() {
-                            x.copy_from_slice(s);
-                            Some(x)
-                        } else {
-                            None
-                        }
-                    })
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain cookie key");
-                e
-            })
     }
 
     /// Get the password badlist from the system config. You should not call this directly
@@ -977,6 +1027,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     type AccessControlsTransactionType = AccessControlsReadTransaction<'a>;
     type BackendTransactionType = BackendReadTransaction<'a>;
     type SchemaTransactionType = SchemaReadTransaction;
+    type KeyProvidersTransactionType = KeyProvidersReadTransaction;
 
     fn get_be_txn(&mut self) -> &mut BackendReadTransaction<'a> {
         &mut self.be_txn
@@ -996,10 +1047,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &self.accesscontrols
     }
 
-    fn get_resolve_filter_cache(
-        &mut self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_key_providers(&self) -> &KeyProvidersReadTransaction {
+        &self.key_providers
+    }
+
+    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
         &mut self.resolve_filter_cache
     }
 
@@ -1007,7 +1059,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
         &mut self,
     ) -> (
         &mut BackendReadTransaction<'a>,
-        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+        &mut ResolveFilterCacheReadTxn<'a>,
     ) {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
@@ -1022,6 +1074,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
 
     fn get_domain_version(&self) -> DomainVersion {
         self.d_info.d_vers
+    }
+
+    fn get_domain_patch_level(&self) -> u32 {
+        self.d_info.d_patch_level
+    }
+
+    fn get_domain_development_taint(&self) -> bool {
+        self.d_info.d_devel_taint
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -1083,7 +1143,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         // If anything error to this point we can't trust the verifications below. From
         // here we can just amass results.
-        let mut results = Vec::new();
+        let mut results = Vec::with_capacity(0);
 
         // Verify all our entries. Weird flex I know, but it's needed for verifying
         // the entry changelogs are consistent to their entries.
@@ -1118,6 +1178,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     type AccessControlsTransactionType = AccessControlsWriteTransaction<'a>;
     type BackendTransactionType = BackendWriteTransaction<'a>;
     type SchemaTransactionType = SchemaWriteTransaction<'a>;
+    type KeyProvidersTransactionType = KeyProvidersWriteTransaction<'a>;
 
     fn get_be_txn(&mut self) -> &mut BackendWriteTransaction<'a> {
         &mut self.be_txn
@@ -1137,10 +1198,11 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &self.accesscontrols
     }
 
-    fn get_resolve_filter_cache(
-        &mut self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_key_providers(&self) -> &KeyProvidersWriteTransaction<'a> {
+        &self.key_providers
+    }
+
+    fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a> {
         &mut self.resolve_filter_cache
     }
 
@@ -1148,7 +1210,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
         &mut self,
     ) -> (
         &mut BackendWriteTransaction<'a>,
-        &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
+        &mut ResolveFilterCacheReadTxn<'a>,
     ) {
         (&mut self.be_txn, &mut self.resolve_filter_cache)
     }
@@ -1163,6 +1225,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn get_domain_version(&self) -> DomainVersion {
         self.d_info.d_vers
+    }
+
+    fn get_domain_patch_level(&self) -> u32 {
+        self.d_info.d_patch_level
+    }
+
+    fn get_domain_development_taint(&self) -> bool {
+        self.d_info.d_devel_taint
     }
 
     fn get_domain_uuid(&self) -> Uuid {
@@ -1208,10 +1278,13 @@ impl QueryServer {
             // Start with our level as zero.
             // This will be reloaded from the DB shortly :)
             d_vers: DOMAIN_LEVEL_0,
+            d_patch_level: 0,
             d_name: domain_name.clone(),
             // we set the domain_display_name to the configuration file's domain_name
             // here because the database is not started, so we cannot pull it from there.
             d_display: domain_name,
+            // Automatically derive our current taint mode based on the PRERELEASE setting.
+            d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
         }));
 
@@ -1234,6 +1307,13 @@ impl QueryServer {
                 .expect("Failed to build resolve_filter_cache"),
         );
 
+        let key_providers = Arc::new(KeyProviders::default());
+
+        // These needs to be pool_size minus one to always leave a DB ticket
+        // for a writer. But it also needs to be at least one :)
+        debug_assert!(pool_size > 0);
+        let read_ticket_pool = std::cmp::max(pool_size - 1, 1);
+
         Ok(QueryServer {
             phase,
             d_info,
@@ -1242,10 +1322,12 @@ impl QueryServer {
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::default()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
+            read_tickets: Arc::new(Semaphore::new(read_ticket_pool as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
             resolve_filter_cache,
             dyngroup_cache,
             cid_max,
+            key_providers,
         })
     }
 
@@ -1256,7 +1338,26 @@ impl QueryServer {
     }
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
-        // We need to ensure a db conn will be available
+        // Get a read ticket. Basicly this forces us to queue with other readers, while preventing
+        // us from competing with writers on the db tickets. This tilts us to write prioritising
+        // on db operations by always making sure a writer can get a db ticket.
+        let read_ticket = if cfg!(test) {
+            #[allow(clippy::expect_used)]
+            self.read_tickets
+                .try_acquire()
+                .expect("unable to acquire db_ticket for qsr")
+        } else {
+            #[allow(clippy::expect_used)]
+            self.read_tickets
+                .acquire()
+                .await
+                .expect("unable to acquire db_ticket for qsr")
+        };
+
+        // We need to ensure a db conn will be available. At this point either a db ticket
+        // *must* be available because pool_size >= 2 and the only other holders are write
+        // and read ticket holders, OR pool_size == 1, and we are waiting on the writer to now
+        // complete.
         let db_ticket = if cfg!(test) {
             #[allow(clippy::expect_used)]
             self.db_tickets
@@ -1288,7 +1389,9 @@ impl QueryServer {
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
             accesscontrols: self.accesscontrols.read(),
+            key_providers: self.key_providers.read(),
             _db_ticket: db_ticket,
+            _read_ticket: read_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             trim_cid,
         }
@@ -1308,7 +1411,9 @@ impl QueryServer {
                 .expect("unable to acquire writer_ticket for qsw")
         };
 
-        // We need to ensure a db conn will be available
+        // We need to ensure a db conn will be available. At this point either a db ticket
+        // *must* be available because pool_size >= 2 and the only other are readers, or
+        // pool_size == 1 and we are waiting on a single reader to now complete
         let db_ticket = if cfg!(test) {
             #[allow(clippy::expect_used)]
             self.db_tickets
@@ -1321,6 +1426,10 @@ impl QueryServer {
                 .await
                 .expect("unable to acquire db_ticket for qsw")
         };
+
+        // Point of no return - we now have a DB thread AND the write ticket, we MUST complete
+        // as soon as possible! The following locks and elements below are SYNCHRONOUS but
+        // will never be contented at this point, and will always progress.
 
         #[allow(clippy::expect_used)]
         let be_txn = self
@@ -1359,17 +1468,13 @@ impl QueryServer {
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
-            changed_schema: false,
-            changed_acp: false,
-            changed_oauth2: false,
-            changed_domain: false,
-            changed_system_config: false,
-            changed_sync_agreement: false,
+            changed_flags: ChangeFlag::empty(),
             changed_uuid: HashSet::new(),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             dyngroup_cache: self.dyngroup_cache.write(),
+            key_providers: self.key_providers.write(),
         }
     }
 
@@ -1414,6 +1519,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &self.cid
     }
 
+    pub(crate) fn get_key_providers_mut(&mut self) -> &mut KeyProvidersWriteTransaction<'a> {
+        &mut self.key_providers
+    }
+
     pub(crate) fn get_dyngroup_cache(&mut self) -> &mut DynGroupCache {
         &mut self.dyngroup_cache
     }
@@ -1444,7 +1553,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             level, mut_d_info.d_vers
         );
         mut_d_info.d_vers = level;
-        self.changed_domain = true;
+        self.changed_flags.insert(ChangeFlag::DOMAIN);
 
         Ok(())
     }
@@ -1686,6 +1795,41 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub(crate) fn reload_key_material(&mut self) -> Result<(), OperationError> {
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::KeyProvider.into()));
+
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!(
+                err = ?e,
+                "reload key providers internal search failed",
+            );
+            e
+        })?;
+
+        // FUTURE: During this reload we may need to access the PIN or other data
+        // to access the provider.
+        let providers = res
+            .iter()
+            .map(|e| KeyProvider::try_from(e).and_then(|kp| kp.test().map(|()| kp)))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        self.key_providers.update_providers(providers)?;
+
+        let filt = filter!(f_eq(Attribute::Class, EntryClass::KeyObject.into()));
+
+        let res = self.internal_search(filt).map_err(|e| {
+            admin_error!(
+                err = ?e,
+                "reload key objects internal search failed",
+            );
+            e
+        })?;
+
+        res.iter()
+            .try_for_each(|entry| self.key_providers.load_key_object(entry.as_ref()))
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_system_config(&mut self) -> Result<(), OperationError> {
         let denied_names = self.get_sc_denied_names()?;
         let pw_badlist = self.get_sc_password_badlist()?;
@@ -1699,28 +1843,52 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_domain_info_version(&mut self) -> Result<(), OperationError> {
-        let domain_info_version = self
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                e.get_ava_single_uint32(Attribute::Version)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|err| {
-                error!(?err, "Error getting domain version");
-                err
+        let domain_info = self.internal_search_uuid(UUID_DOMAIN_INFO).map_err(|err| {
+            error!(?err, "Error getting domain info");
+            err
+        })?;
+
+        let domain_info_version = domain_info
+            .get_ava_single_uint32(Attribute::Version)
+            .ok_or_else(|| {
+                error!("domain info missing attribute version");
+                OperationError::InvalidEntryState
             })?;
 
+        let domain_info_patch_level = domain_info
+            .get_ava_single_uint32(Attribute::PatchLevel)
+            .unwrap_or(0);
+
+        // If we have moved from stable to dev, this triggers the taint. If we
+        // are moving from dev to stable, the db will be true triggering the
+        // taint flag. If we are stable to stable this will be false.
+        let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
+        let domain_info_devel_taint = current_devel_flag
+            || domain_info
+                .get_ava_single_bool(Attribute::DomainDevelopmentTaint)
+                .unwrap_or_default();
+
         // We have to set the domain version here so that features which check for it
-        // will now see it's been increased.
+        // will now see it's been increased. This also prevents recursion during reloads
+        // inside of a domain migration.
         let mut_d_info = self.d_info.get_mut();
         let previous_version = mut_d_info.d_vers;
+        let previous_patch_level = mut_d_info.d_patch_level;
         mut_d_info.d_vers = domain_info_version;
+        mut_d_info.d_patch_level = domain_info_patch_level;
+        mut_d_info.d_devel_taint = domain_info_devel_taint;
 
-        if previous_version == domain_info_version || *self.phase < ServerPhase::DomainInfoReady {
+        // We must both be at the correct domain version *and* the correct patch level. If we are
+        // not, then we only proceed to migrate *if* our server boot phase is correct.
+        if (previous_version == domain_info_version
+            && previous_patch_level == domain_info_patch_level)
+            || *self.phase < ServerPhase::DomainInfoReady
+        {
             return Ok(());
         }
 
         debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
+        debug!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
 
         if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
             self.migrate_domain_2_to_3()?;
@@ -1737,6 +1905,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if previous_version <= DOMAIN_LEVEL_5 && domain_info_version >= DOMAIN_LEVEL_6 {
             self.migrate_domain_5_to_6()?;
         }
+
+        if previous_version <= DOMAIN_LEVEL_6 && domain_info_version >= DOMAIN_LEVEL_7 {
+            self.migrate_domain_6_to_7()?;
+        }
+
+        // Similar to the older system info migration handler, these allow "one shot" fixes
+        // to be issued and run by bumping the patch level.
+        if previous_patch_level < PATCH_LEVEL_1 && domain_info_patch_level >= PATCH_LEVEL_1 {
+            self.migrate_domain_patch_level_1()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_7 && domain_info_version >= DOMAIN_LEVEL_8 {
+            self.migrate_domain_7_to_8()?;
+        }
+
+        // This is here to catch when we increase domain levels but didn't create the migration
+        // hooks. If this fails it probably means you need to add another migration hook
+        // in the above.
+        debug_assert!(domain_info_version <= DOMAIN_MAX_LEVEL);
 
         Ok(())
     }
@@ -1820,19 +2007,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn force_schema_reload(&mut self) {
-        self.changed_schema = true;
+        self.changed_flags.insert(ChangeFlag::SCHEMA);
+    }
+
+    fn force_domain_reload(&mut self) {
+        self.changed_flags.insert(ChangeFlag::DOMAIN);
     }
 
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
     }
 
+    #[inline]
     pub(crate) fn get_changed_oauth2(&self) -> bool {
-        self.changed_oauth2
+        self.changed_flags.contains(ChangeFlag::OAUTH2)
     }
 
-    pub(crate) fn get_changed_domain(&self) -> bool {
-        self.changed_domain
+    #[inline]
+    pub(crate) fn clear_changed_oauth2(&mut self) {
+        self.changed_flags.remove(ChangeFlag::OAUTH2)
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
@@ -1846,7 +2039,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload(&mut self) -> Result<(), OperationError> {
         // First, check if the domain version has changed. This can trigger
         // changes to schema, access controls and more.
-        if self.changed_domain {
+        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
             self.reload_domain_info_version()?;
         }
 
@@ -1854,16 +2047,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // in an operation so we can check if we need to do the reload or not
         //
         // Reload the schema from qs.
-        if self.changed_schema {
+        if self.changed_flags.contains(ChangeFlag::SCHEMA) {
             self.reload_schema()?;
 
             // If the server is in a late phase of start up or is
             // operational, then a reindex may be required. After the reindex, the schema
             // must also be reloaded so that slope optimisation indexes are loaded correctly.
-            if *self.phase >= ServerPhase::DomainInfoReady {
+            if *self.phase >= ServerPhase::Running {
                 self.reindex()?;
                 self.reload_schema()?;
             }
+        }
+
+        // We need to reload cryptographic providers before anything else so that
+        // sync agreements and the domain can access their key material.
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::SCHEMA | ChangeFlag::KEY_MATERIAL)
+        {
+            self.reload_key_material()?;
         }
 
         // Determine if we need to update access control profiles
@@ -1873,7 +2075,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // Also note that changing sync agreements triggers an acp reload since
         // access controls need to be aware of these agreements.
-        if self.changed_schema || self.changed_acp || self.changed_sync_agreement {
+        if self
+            .changed_flags
+            .intersects(ChangeFlag::SCHEMA | ChangeFlag::ACP | ChangeFlag::SYNC_AGREEMENT)
+        {
             self.reload_accesscontrols()?;
         } else {
             // On a reload the cache is dropped, otherwise we tell accesscontrols
@@ -1882,20 +2087,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
-        if self.changed_system_config {
+        if self.changed_flags.contains(ChangeFlag::SYSTEM_CONFIG) {
             self.reload_system_config()?;
         }
 
-        if self.changed_domain {
+        if self.changed_flags.contains(ChangeFlag::DOMAIN) {
             self.reload_domain_info()?;
         }
 
         // Clear flags
-        self.changed_domain = false;
-        self.changed_schema = false;
-        self.changed_system_config = false;
-        self.changed_acp = false;
-        self.changed_sync_agreement = false;
+        self.changed_flags.remove(
+            ChangeFlag::DOMAIN
+                | ChangeFlag::SCHEMA
+                | ChangeFlag::SYSTEM_CONFIG
+                | ChangeFlag::ACP
+                | ChangeFlag::SYNC_AGREEMENT
+                | ChangeFlag::KEY_MATERIAL,
+        );
 
         Ok(())
     }
@@ -1921,21 +2129,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
             accesscontrols,
             cid,
             dyngroup_cache,
+            key_providers,
+            // Hold these for a bit more ...
+            _db_ticket,
+            _write_ticket,
             // Ignore values that don't need a commit.
             curtime: _,
             trim_cid: _,
-            changed_schema: _,
-            changed_acp: _,
-            changed_oauth2: _,
-            changed_domain: _,
-            changed_system_config: _,
-            changed_sync_agreement: _,
+            changed_flags,
             changed_uuid: _,
-            _db_ticket: _,
-            _write_ticket: _,
             resolve_filter_cache: _,
         } = self;
         debug_assert!(!committed);
+
+        // Should have been cleared by any reloads.
+        trace!(
+            changed = ?changed_flags.iter_names().collect::<Vec<_>>(),
+        );
 
         // Write the cid to the db. If this fails, we can't assume replication
         // will be stable, so return if it fails.
@@ -1945,13 +2155,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Point of no return - everything has been validated and reloaded.
         //
         // = Lets commit =
-
         schema
             .commit()
             .map(|_| d_info.commit())
             .map(|_| system_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
+            .and_then(|_| key_providers.commit())
             .and_then(|_| accesscontrols.commit())
             .and_then(|_| be_txn.commit())
     }

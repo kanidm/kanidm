@@ -97,6 +97,8 @@ impl Modify for SecurityAddon {
         super::v1::person_id_put_attr,
         super::v1::person_id_post_attr,
         super::v1::person_id_delete_attr,
+        super::v1::person_get_id_certificate,
+        super::v1::person_post_id_certificate,
         super::v1::person_get_id_credential_status,
         super::v1::person_id_credential_update_get,
         super::v1::person_id_credential_update_intent_get,
@@ -117,7 +119,7 @@ impl Modify for SecurityAddon {
 
         super::v1::account_id_ssh_pubkeys_get,
         super::v1::account_id_radius_token_post,
-        super::v1::service_account_id_unix_post,
+        super::v1::person_id_unix_post,
         super::v1::person_id_unix_credential_put,
         super::v1::person_id_unix_credential_delete,
         super::v1::person_identify_user_post,
@@ -140,6 +142,7 @@ impl Modify for SecurityAddon {
         super::v1::service_account_id_credential_status_get,
         super::v1::service_account_id_ssh_pubkeys_tag_get,
         super::v1::service_account_id_ssh_pubkeys_tag_delete,
+        super::v1::service_account_id_unix_post,
         super::v1::account_id_unix_post,
         super::v1::account_id_unix_auth_post,
         super::v1::account_id_unix_token,
@@ -193,6 +196,7 @@ impl Modify for SecurityAddon {
         super::v1_scim::sync_account_token_post,
         super::v1_scim::sync_account_token_delete,
         super::v1::debug_ipinfo,
+        super::v1::public_jwk_key_id_get,
 
     ),
     components(
@@ -275,7 +279,8 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
-
+            // terrible workaround for other things
+            response_schema::Jwk,
 
             WebError,
         )

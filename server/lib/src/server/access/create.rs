@@ -132,7 +132,8 @@ fn create_filter_entry<'a>(
 
         // -- Conditions pass -- now verify the attributes.
 
-        security_access!(?entry, acs = ?accr.acp, "entry matches acs");
+        let entry_name = entry.get_display_id();
+        security_access!(%entry_name, acs = ?accr.acp.acp.name, "entry matches acs");
         // It matches, so now we have to check attrs and classes.
         // Remember, we have to match ALL requested attrs
         // and classes to pass!

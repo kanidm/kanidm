@@ -34,6 +34,12 @@ use kanidm_hsm_crypto::{HmacKey, Tpm};
 pub mod mtls;
 pub mod prelude;
 pub mod serialise;
+pub mod x509_cert;
+
+pub use sha2;
+
+pub type Sha256Digest =
+    sha2::digest::generic_array::GenericArray<u8, sha2::digest::typenum::consts::U32>;
 
 // NIST 800-63.b salt should be 112 bits -> 14  8u8.
 const PBKDF2_SALT_LEN: usize = 24;
@@ -43,8 +49,8 @@ pub const PBKDF2_MIN_NIST_SALT_LEN: usize = 14;
 // Min number of rounds for a pbkdf2
 pub const PBKDF2_MIN_NIST_COST: usize = 10000;
 
-// 64 * u8 -> 512 bits of out.
-const PBKDF2_KEY_LEN: usize = 64;
+// 32 * u8 -> 256 bits of out.
+const PBKDF2_KEY_LEN: usize = 32;
 const PBKDF2_MIN_NIST_KEY_LEN: usize = 32;
 const PBKDF2_SHA1_MIN_KEY_LEN: usize = 19;
 
@@ -56,10 +62,10 @@ const DS_SHA512_HASH_LEN: usize = 64;
 // Taken from the argon2 library and rfc 9106
 const ARGON2_VERSION: u32 = 19;
 const ARGON2_SALT_LEN: usize = 16;
+// 32 * u8 -> 256 bits of out.
 const ARGON2_KEY_LEN: usize = 32;
-// Default amount of ram we sacrifice per thread is 8MB
+// Default amount of ram we sacrifice per thread
 const ARGON2_MIN_RAM_KIB: u32 = 8 * 1024;
-// Max is 64MB. This may change in time.
 const ARGON2_MAX_RAM_KIB: u32 = 64 * 1024;
 // Amount of ram to subtract when we do a T cost iter. This
 // is because t=2 m=32 == t=3 m=20. So we just step down a little
@@ -228,6 +234,19 @@ impl CryptoPolicy {
         }
     }
 
+    pub fn danger_test_minimum() -> Self {
+        CryptoPolicy {
+            pbkdf2_cost: 1000,
+            argon2id_params: Params::new(
+                Params::MIN_M_COST,
+                Params::MIN_T_COST,
+                Params::MIN_P_COST,
+                None,
+            )
+            .unwrap_or_default(),
+        }
+    }
+
     pub fn time_target(target_time: Duration) -> Self {
         const PBKDF2_BENCH_FACTOR: usize = 10;
 
@@ -346,14 +365,8 @@ impl CryptoPolicy {
                             .checked_sub(ARGON2_TCOST_RAM_ITER_KIB)
                             .unwrap_or(ARGON2_MIN_RAM_KIB);
 
-                        // Floor and Ceil
-                        m_cost = if m_adjust > ARGON2_MAX_RAM_KIB {
-                            ARGON2_MAX_RAM_KIB
-                        } else if m_adjust < ARGON2_MIN_RAM_KIB {
-                            ARGON2_MIN_RAM_KIB
-                        } else {
-                            m_adjust
-                        };
+                        // Clamp the value
+                        m_cost = m_adjust.clamp(ARGON2_MIN_RAM_KIB, ARGON2_MAX_RAM_KIB);
                         continue;
                     } else {
                         // Unable to proceed, parameters are maxed out.
@@ -507,8 +520,8 @@ impl TryFrom<&ReplPasswordV1> for Password {
                     t_cost: *t_cost,
                     p_cost: *p_cost,
                     version: *version,
-                    salt: salt.0.clone(),
-                    key: key.0.clone(),
+                    salt: salt.to_vec(),
+                    key: key.to_vec(),
                 },
             }),
             ReplPasswordV1::ARGON2ID {
@@ -524,39 +537,39 @@ impl TryFrom<&ReplPasswordV1> for Password {
                     t_cost: *t_cost,
                     p_cost: *p_cost,
                     version: *version,
-                    salt: salt.0.clone(),
-                    key: key.0.clone(),
+                    salt: salt.to_vec(),
+                    key: key.to_vec(),
                 },
             }),
             ReplPasswordV1::PBKDF2 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::PBKDF2_SHA1 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA1(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2_SHA1(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA512(*cost, salt.0.clone(), hash.0.clone()),
+                material: Kdf::PBKDF2_SHA512(*cost, salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA1 { hash } => Ok(Password {
-                material: Kdf::SHA1(hash.0.clone()),
+                material: Kdf::SHA1(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA1 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA1(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA1(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA256 { hash } => Ok(Password {
-                material: Kdf::SHA256(hash.0.clone()),
+                material: Kdf::SHA256(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA256 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA256(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA256(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::SHA512 { hash } => Ok(Password {
-                material: Kdf::SHA512(hash.0.clone()),
+                material: Kdf::SHA512(hash.to_vec()),
             }),
             ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA512(salt.0.clone(), hash.0.clone()),
+                material: Kdf::SSHA512(salt.to_vec(), hash.to_vec()),
             }),
             ReplPasswordV1::NT_MD4 { hash } => Ok(Password {
-                material: Kdf::NT_MD4(hash.0.clone()),
+                material: Kdf::NT_MD4(hash.to_vec()),
             }),
         }
     }
@@ -889,10 +902,9 @@ impl Password {
 
     fn bench_argon2id(params: Params) -> Option<Duration> {
         let mut rng = rand::thread_rng();
-        let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        let input: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        // This is 512 bits of output
-        let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
+        let salt: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();
+        let input: Vec<u8> = (0..ARGON2_SALT_LEN).map(|_| rng.gen()).collect();
+        let mut key: Vec<u8> = (0..ARGON2_KEY_LEN).map(|_| 0).collect();
 
         let argon = Argon2::new(Algorithm::Argon2id, Version::V0x13, params);
 
@@ -909,7 +921,6 @@ impl Password {
         let pbkdf2_cost = policy.pbkdf2_cost;
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
-        // This is 512 bits of output
         let mut key: Vec<u8> = (0..PBKDF2_KEY_LEN).map(|_| 0).collect();
 
         pbkdf2_hmac(

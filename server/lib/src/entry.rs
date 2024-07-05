@@ -635,6 +635,10 @@ impl Entry<EntryInit, EntryNew> {
         self.add_ava_int(attr, value);
     }
 
+    pub fn remove_ava(&mut self, attr: Attribute) {
+        self.attrs.remove(attr.as_ref());
+    }
+
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
     pub fn set_ava<T>(&mut self, attr: Attribute, iter: T)
     where
@@ -887,6 +891,7 @@ impl Entry<EntryIncremental, EntryNew> {
                 // To shortcut this we dedup the attr set and then iterate.
                 let mut attr_set: Vec<_> =
                     changes_left.keys().chain(changes_right.keys()).collect();
+                attr_set.shrink_to_fit();
                 attr_set.sort_unstable();
                 attr_set.dedup();
 
@@ -1099,7 +1104,6 @@ impl Entry<EntryIncremental, EntryCommitted> {
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
-    // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
             .get(Attribute::Uuid.as_ref())
@@ -1133,6 +1137,15 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         };
 
         ne.validate(schema).map(|()| ne)
+    }
+
+    /// Access a reference set in a directly mutable form. This is "safe" because
+    /// referential integrity will check the values added are valid, and because
+    /// this is strongly typed it can't violate syntax.
+    pub(crate) fn get_ava_refer_mut(&mut self, attr: Attribute) -> Option<&mut BTreeSet<Uuid>> {
+        self.attrs
+            .get_mut(attr.as_ref())
+            .and_then(|vs| vs.as_refer_set_mut())
     }
 }
 
@@ -1316,7 +1329,7 @@ type IdxDiff<'a> =
     Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
-    /// If this entry has ever been committed to disk, retrieve it's database id number.
+    /// If this entry has ever been committed to disk, retrieve its database id number.
     pub fn get_id(&self) -> u64 {
         self.state.id
     }
@@ -1369,7 +1382,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         compare_attrs(&self.attrs, &rhs.attrs)
     }
 
-    /// Serialise this entry to it's Database format ready for storage.
+    /// Serialise this entry to its Database format ready for storage.
     pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
@@ -1419,8 +1432,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, extract it's primary security prinicple name, or if not present
-    /// extract it's name, and if that's not present, extract it's uuid.
+    /// Given this entry, extract its primary security principal name, or if not present
+    /// extract its name, and if that's not present, extract its uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
@@ -1434,7 +1447,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
-    /// Given this entry, determine it's relative distinguished named for LDAP compatibility.
+    /// Given this entry, determine its relative distinguished named for LDAP compatibility.
     ///
     /// See also - `get_display_id`
     pub(crate) fn get_uuid2rdn(&self) -> String {
@@ -1601,7 +1614,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         match (pre, post) {
             (None, None) => {
                 // if both are none, yield empty list.
-                Vec::new()
+                Vec::with_capacity(0)
             }
             (Some(pre_e), None) => {
                 // If we are none (?), yield our pre-state as removals.
@@ -1616,11 +1629,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     ikey.attr,
                                     err
                                 );
-                                return Vec::new();
+                                return Vec::with_capacity(0);
                             }
                         };
                         match pre_e.get_ava_set(attr) {
-                            None => Vec::new(),
+                            None => Vec::with_capacity(0),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::Equality => {
@@ -1633,7 +1646,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::new(),
+                                    IndexType::SubString => Vec::with_capacity(0),
                                 };
                                 changes
                             }
@@ -1654,11 +1667,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     ikey.attr,
                                     err
                                 );
-                                return Vec::new();
+                                return Vec::with_capacity(0);
                             }
                         };
                         match post_e.get_ava_set(attr) {
-                            None => Vec::new(),
+                            None => Vec::with_capacity(0),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::Equality => vs
@@ -1669,7 +1682,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::new(),
+                                    IndexType::SubString => Vec::with_capacity(0),
                                 };
                                 // For each value
                                 //
@@ -1692,13 +1705,13 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     ikey.attr,
                                     err
                                 );
-                                return Vec::new();
+                                return Vec::with_capacity(0);
                             }
                         };
                         match (pre_e.get_ava_set(attr), post_e.get_ava_set(attr)) {
                             (None, None) => {
                                 // Neither have it, do nothing.
-                                Vec::new()
+                                Vec::with_capacity(0)
                             }
                             (Some(pre_vs), None) => {
                                 // It existed before, but not anymore
@@ -1715,7 +1728,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::new(),
+                                    IndexType::SubString => Vec::with_capacity(0),
                                 };
                                 changes
                             }
@@ -1734,7 +1747,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::new(),
+                                    IndexType::SubString => Vec::with_capacity(0),
                                 };
                                 changes
                             }
@@ -3047,7 +3060,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(&str, PartialValue)> = Vec::new();
+        let mut pairs: Vec<(&str, PartialValue)> = Vec::with_capacity(0);
 
         for attr in attrs {
             match self.attrs.get(attr) {
@@ -3300,6 +3313,18 @@ where
             let _ = existing_vs.merge(&vs);
         } else {
             self.attrs.insert(attr.into(), vs);
+        }
+    }
+
+    /// Merge the content from the new ValueSet into the existing ValueSet. If no existing
+    /// ValueSet is present, then these data are inserted.
+    pub fn merge_ava_set(&mut self, attr: Attribute, vs: ValueSet) -> Result<(), OperationError> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        if let Some(existing_vs) = self.attrs.get_mut(attr.as_ref()) {
+            existing_vs.merge(&vs)
+        } else {
+            self.attrs.insert(attr.into(), vs);
+            Ok(())
         }
     }
 
@@ -3674,7 +3699,7 @@ mod tests {
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);
         eprintln!("{r1:?}");
-        assert!(r1 == Vec::new());
+        assert!(r1 == Vec::with_capacity(0));
 
         // Check generating a delete diff
         let mut del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);

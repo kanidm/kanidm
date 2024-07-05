@@ -24,8 +24,8 @@ use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
 use crate::{
-    handle_client_error, password_prompt, AccountCredential, AccountRadius, AccountSsh,
-    AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt, PersonPosix,
+    handle_client_error, password_prompt, AccountCertificate, AccountCredential, AccountRadius,
+    AccountSsh, AccountUserAuthToken, AccountValidity, OutputMode, PersonOpt, PersonPosix,
 };
 
 impl PersonOpt {
@@ -61,6 +61,10 @@ impl PersonOpt {
                 AccountValidity::Show(ano) => ano.copt.debug,
                 AccountValidity::ExpireAt(ano) => ano.copt.debug,
                 AccountValidity::BeginFrom(ano) => ano.copt.debug,
+            },
+            PersonOpt::Certificate { commands } => match commands {
+                AccountCertificate::Status { copt, .. }
+                | AccountCertificate::Create { copt, .. } => copt.debug,
             },
         }
     }
@@ -497,6 +501,60 @@ impl PersonOpt {
                     }
                 }
             }, // end PersonOpt::Validity
+            PersonOpt::Certificate { commands } => commands.exec().await,
+        }
+    }
+}
+
+impl AccountCertificate {
+    pub async fn exec(&self) {
+        match self {
+            AccountCertificate::Status { account_id, copt } => {
+                let client = copt.to_client(OpType::Read).await;
+                match client.idm_person_certificate_list(account_id).await {
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => {
+                            if r.is_empty() {
+                                println!("No certificates available")
+                            } else {
+                                r.iter().for_each(|ent| println!("{}", ent))
+                            }
+                        }
+                    },
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            AccountCertificate::Create {
+                account_id,
+                certificate_path,
+                copt,
+            } => {
+                let pem_data = match tokio::fs::read_to_string(certificate_path).await {
+                    Ok(pd) => pd,
+                    Err(io_err) => {
+                        error!(?io_err, ?certificate_path, "Unable to read PEM data");
+                        return;
+                    }
+                };
+
+                let client = copt.to_client(OpType::Write).await;
+
+                if let Err(e) = client
+                    .idm_person_certificate_create(account_id, &pem_data)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Success");
+                };
+            }
         }
     }
 }

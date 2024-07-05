@@ -1,11 +1,13 @@
 use std::iter;
 
+use compact_jwt::JweCompact;
 use kanidm_proto::internal::{
     CUIntentToken, CUSessionToken, CUStatus, CreateRequest, DeleteRequest, ImageValue,
     Modify as ProtoModify, ModifyList as ProtoModifyList, ModifyRequest,
     Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin, OperationError,
 };
 use kanidm_proto::v1::{AccountUnixExtend, Entry as ProtoEntry, GroupUnixExtend};
+use std::str::FromStr;
 use time::OffsetDateTime;
 use tracing::{info, instrument, trace};
 use uuid::Uuid;
@@ -442,6 +444,7 @@ impl QueryServerWriteV1 {
         idms_prox_write
             .service_account_generate_api_token(&gte, ct)
             .and_then(|r| idms_prox_write.commit().map(|_| r))
+            .map(|token| token.to_string())
     }
 
     #[instrument(
@@ -609,7 +612,7 @@ impl QueryServerWriteV1 {
             .map(|(tok, sta)| {
                 (
                     CUSessionToken {
-                        token: tok.token_enc,
+                        token: tok.token_enc.to_string(),
                     },
                     sta.into(),
                 )
@@ -692,7 +695,7 @@ impl QueryServerWriteV1 {
             .map(|(tok, sta)| {
                 (
                     CUSessionToken {
-                        token: tok.token_enc,
+                        token: tok.token_enc.to_string(),
                     },
                     sta.into(),
                 )
@@ -709,11 +712,15 @@ impl QueryServerWriteV1 {
         session_token: CUSessionToken,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
+        let session_token = JweCompact::from_str(session_token.token.as_str())
+            .map(|token_enc| CredentialUpdateSessionToken { token_enc })
+            .map_err(|err| {
+                error!(?err, "malformed token");
+                OperationError::InvalidRequestState
+            })?;
+
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        let session_token = CredentialUpdateSessionToken {
-            token_enc: session_token.token,
-        };
 
         idms_prox_write
             .commit_credential_update(&session_token, ct)
@@ -737,11 +744,15 @@ impl QueryServerWriteV1 {
         session_token: CUSessionToken,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
+        let session_token = JweCompact::from_str(session_token.token.as_str())
+            .map(|token_enc| CredentialUpdateSessionToken { token_enc })
+            .map_err(|err| {
+                error!(?err, "malformed token");
+                OperationError::InvalidRequestState
+            })?;
+
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
-        let session_token = CredentialUpdateSessionToken {
-            token_enc: session_token.token,
-        };
 
         idms_prox_write
             .cancel_credential_update(&session_token, ct)
@@ -862,7 +873,7 @@ impl QueryServerWriteV1 {
                 e
             })?;
 
-        let target_attr = Attribute::try_from(attr)?;
+        let target_attr = Attribute::try_from(attr.as_str())?;
         let mdf = match ModifyEvent::from_target_uuid_attr_purge(
             ident,
             target_uuid,
@@ -1671,15 +1682,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_token_exchange(
         &self,
-        client_authz: Option<String>,
+        client_auth_info: ClientAuthInfo,
         token_req: AccessTokenRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         // Now we can send to the idm server for authorisation checking.
-        let resp =
-            idms_prox_write.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct);
+        let resp = idms_prox_write.check_oauth2_token_exchange(&client_auth_info, &token_req, ct);
 
         match &resp {
             Err(Oauth2Error::InvalidGrant) | Ok(_) => {
@@ -1698,14 +1708,14 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_oauth2_token_revoke(
         &self,
-        client_authz: String,
+        client_auth_info: ClientAuthInfo,
         intr_req: TokenRevokeRequest,
         eventid: Uuid,
     ) -> Result<(), Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
         idms_prox_write
-            .oauth2_token_revoke(&client_authz, &intr_req, ct)
+            .oauth2_token_revoke(&client_auth_info, &intr_req, ct)
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 }

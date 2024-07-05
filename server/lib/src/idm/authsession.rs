@@ -5,13 +5,14 @@
 use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fmt;
+use std::sync::Arc;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
+use compact_jwt::Jws;
 use hashbrown::HashSet;
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
-use nonempty::{nonempty, NonEmpty};
+use nonempty::NonEmpty;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -29,6 +30,7 @@ use crate::idm::delayed::{
 };
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::server::keys::KeyObject;
 use crate::value::{Session, SessionState};
 use time::OffsetDateTime;
 
@@ -86,7 +88,7 @@ enum AuthIntent {
 /// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
     Success { auth_type: AuthType, cred_id: Uuid },
-    Continue(NonEmpty<AuthAllowed>),
+    Continue(Box<NonEmpty<AuthAllowed>>),
     Denied(&'static str),
 }
 
@@ -494,7 +496,10 @@ impl CredHandler {
                                         admin_warn!("unable to queue delayed webauthn property update, continuing ... ");
                                     };
                                 };
-                                CredState::Continue(nonempty![AuthAllowed::Password])
+                                CredState::Continue(Box::new(NonEmpty {
+                                    head: AuthAllowed::Password,
+                                    tail: Vec::with_capacity(0),
+                                }))
                             }
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
@@ -521,7 +526,10 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
                             );
-                            CredState::Continue(nonempty![AuthAllowed::Password])
+                            CredState::Continue(Box::new(NonEmpty {
+                                head: AuthAllowed::Password,
+                                tail: Vec::with_capacity(0),
+                            }))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!(
@@ -544,7 +552,10 @@ impl CredHandler {
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            CredState::Continue(nonempty![AuthAllowed::Password])
+                            CredState::Continue(Box::new(NonEmpty {
+                                head: AuthAllowed::Password,
+                                tail: Vec::with_capacity(0),
+                            }))
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
@@ -916,13 +927,20 @@ pub(crate) struct AuthSession {
 
     // Where did the event come from?
     source: Source,
+
+    // The cryptographic provider to encrypt or sign anything in this operation.
+    key_object: Arc<KeyObject>,
 }
 
 impl AuthSession {
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
-    pub fn new(asd: AuthSessionData<'_>, privileged: bool) -> (Option<Self>, AuthState) {
+    pub fn new(
+        asd: AuthSessionData<'_>,
+        privileged: bool,
+        key_object: Arc<KeyObject>,
+    ) -> (Option<Self>, AuthState) {
         // During this setup, determine the credential handler that we'll be using
         // for this session. This is currently based on presentation of an application
         // id.
@@ -931,12 +949,15 @@ impl AuthSession {
             // based on the anonymous ... in theory this could be cleaner
             // and interact with the account more?
             if asd.account.is_anonymous() {
-                AuthSessionState::Init(nonempty![CredHandler::Anonymous {
-                    cred_id: asd.account.uuid,
-                }])
+                AuthSessionState::Init(NonEmpty {
+                    head: CredHandler::Anonymous {
+                        cred_id: asd.account.uuid,
+                    },
+                    tail: Vec::with_capacity(0),
+                })
             } else {
                 // What's valid to use in this context?
-                let mut handlers = Vec::new();
+                let mut handlers = Vec::with_capacity(0);
 
                 // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
                 // to do to be able to check for pw / mfa etc.
@@ -1008,6 +1029,7 @@ impl AuthSession {
                 issue: asd.issue,
                 intent: AuthIntent::InitialAuth { privileged },
                 source: asd.client_auth_info.source,
+                key_object,
             };
             // Get the set of mechanisms that can proceed. This is tied
             // to the session so that it can mutate state and have progression
@@ -1029,6 +1051,7 @@ impl AuthSession {
         session_id: Uuid,
         session: &Session,
         cred_id: Uuid,
+        key_object: Arc<KeyObject>,
     ) -> (Option<Self>, AuthState) {
         /// An inner enum to allow us to more easily define state within this fn
         enum State {
@@ -1149,6 +1172,7 @@ impl AuthSession {
                         session_expiry,
                     },
                     source: asd.client_auth_info.source,
+                    key_object,
                 };
 
                 let as_state = AuthState::Continue(allow);
@@ -1254,7 +1278,6 @@ impl AuthSession {
         async_tx: &Sender<DelayedAction>,
         audit_tx: &Sender<AuditEvent>,
         webauthn: &Webauthn,
-        uat_jwt_signer: &JwsEs256Signer,
         pw_badlist: &HashSet<String>,
     ) -> Result<AuthState, OperationError> {
         let (next_state, response) = match &mut self.state {
@@ -1282,16 +1305,10 @@ impl AuthSession {
                         })?;
 
                         // Now encrypt and prepare the token for return to the client.
-                        let token = uat_jwt_signer
-                            // Do we want to embed this? Or just give the URL? I think we embed
-                            // as we only need the client to be able to check it's not tampered, but
-                            // this isn't a root of trust.
-                            .sign(&jwt)
-                            .map(|jwts| jwts.to_string())
-                            .map_err(|e| {
-                                admin_error!(?e, "Failed to sign UserAuthToken to Jwt");
-                                OperationError::InvalidState
-                            })?;
+                        let token = self.key_object.jws_es256_sign(&jwt, time).map_err(|e| {
+                            admin_error!(?e, "Failed to sign UserAuthToken to Jwt");
+                            OperationError::InvalidState
+                        })?;
 
                         (
                             Some(AuthSessionState::Success),
@@ -1464,7 +1481,7 @@ impl AuthSession {
         match &self.state {
             AuthSessionState::Success
             | AuthSessionState::Denied(_)
-            | AuthSessionState::InProgress(_) => Vec::new(),
+            | AuthSessionState::InProgress(_) => Vec::with_capacity(0),
             AuthSessionState::Init(handlers) => {
                 // Iterate over the handlers into what mechs they are
                 // and filter to unique?
@@ -1476,10 +1493,9 @@ impl AuthSession {
 
 #[cfg(test)]
 mod tests {
-    use std::str::FromStr;
     use std::time::Duration;
 
-    use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsVerifier};
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::internal::{UatPurpose, UserAuthToken};
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthIssueSession, AuthMech};
@@ -1499,6 +1515,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use crate::server::keys::KeyObjectInternal;
     use crate::utils::readable_password_from_random;
     use kanidm_lib_crypto::CryptoPolicy;
 
@@ -1517,12 +1534,6 @@ mod tests {
         .unwrap()
     }
 
-    fn create_jwt_signer() -> JwsEs256Signer {
-        JwsEs256Signer::generate_es256()
-            .expect("failed to construct signer.")
-            .set_sign_option_embed_jwk(true)
-    }
-
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
         sketching::test_init();
@@ -1539,7 +1550,9 @@ mod tests {
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
         };
-        let (session, state) = AuthSession::new(asd, false);
+
+        let key_object = KeyObjectInternal::new_test();
+        let (session, state) = AuthSession::new(asd, false, key_object);
         if let AuthState::Choose(auth_mechs) = state {
             assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
         } else {
@@ -1575,7 +1588,8 @@ mod tests {
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
             };
-            let (session, state) = AuthSession::new(asd, $privileged);
+            let key_object = KeyObjectInternal::new_test();
+            let (session, state) = AuthSession::new(asd, $privileged, key_object);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1617,14 +1631,12 @@ mod tests {
             start_password_session!(&mut audit, account, &webauthn, false);
 
         let attempt = AuthCredential::Password("bad_password".to_string());
-        let jws_signer = create_jwt_signer();
         match session.validate_creds(
             &attempt,
             Duration::from_secs(0),
             &async_tx,
             &audit_tx,
             &webauthn,
-            &jws_signer,
             &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(_)) => {}
@@ -1648,14 +1660,10 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            &jws_signer,
             &pw_badlist_cache,
         ) {
-            Ok(AuthState::Success(jwt, AuthIssueSession::Token)) => {
-                let jwsc = JwsCompact::from_str(&jwt).expect("Failed to parse jwt");
-
-                let jws_verifier =
-                    JwsEs256Verifier::try_from(jwsc.get_jwk_pubkey().unwrap()).unwrap();
+            Ok(AuthState::Success(jwsc, AuthIssueSession::Token)) => {
+                let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
                 jws_verifier
                     .verify(&jwsc)
@@ -1708,7 +1716,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
         sketching::test_init();
-        let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
@@ -1731,7 +1738,6 @@ mod tests {
             &async_tx,
             &audit_tx,
             &webauthn,
-            &jws_signer,
             &pw_badlist_cache,
         ) {
             Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
@@ -1762,7 +1768,8 @@ mod tests {
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
             };
-            let (session, state) = AuthSession::new(asd, false);
+            let key_object = KeyObjectInternal::new_test();
+            let (session, state) = AuthSession::new(asd, false, key_object);
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1813,7 +1820,6 @@ mod tests {
     fn test_idm_authsession_totp_password_mech() {
         sketching::test_init();
         let webauthn = create_webauthn();
-        let jws_signer = create_jwt_signer();
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
@@ -1857,7 +1863,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -1883,7 +1888,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -1906,7 +1910,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
@@ -1931,7 +1934,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -1943,7 +1945,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
@@ -1968,7 +1969,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -1980,7 +1980,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -2003,7 +2002,6 @@ mod tests {
     fn test_idm_authsession_password_mfa_badlist() {
         sketching::test_init();
         let webauthn = create_webauthn();
-        let jws_signer = create_jwt_signer();
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
@@ -2045,7 +2043,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2057,7 +2054,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
@@ -2090,7 +2086,8 @@ mod tests {
                 ct: duration_from_epoch_now(),
                 client_auth_info: Source::Internal.into(),
             };
-            let (session, state) = AuthSession::new(asd, false);
+            let key_object = KeyObjectInternal::new_test();
+            let (session, state) = AuthSession::new(asd, false, key_object);
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -2186,7 +2183,6 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
-        let jws_signer = create_jwt_signer();
 
         // Now create the credential for the account.
         account.passkeys = btreemap![(Uuid::new_v4(), ("soft".to_string(), wan_cred))];
@@ -2204,7 +2200,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -2232,7 +2227,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &Default::default(),
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -2267,7 +2261,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
@@ -2316,7 +2309,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &Default::default(),
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
@@ -2345,7 +2337,6 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
-        let jws_signer = create_jwt_signer();
         let pw_good = "test_password";
         let pw_bad = "bad_password";
 
@@ -2369,7 +2360,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -2393,7 +2383,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -2428,7 +2417,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
@@ -2458,7 +2446,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2470,7 +2457,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
@@ -2506,7 +2492,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2518,7 +2503,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -2552,7 +2536,6 @@ mod tests {
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
-        let jws_signer = create_jwt_signer();
 
         let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
         let totp_good = totp
@@ -2587,7 +2570,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -2611,7 +2593,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
@@ -2644,7 +2625,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
@@ -2674,7 +2654,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2686,7 +2665,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
@@ -2716,7 +2694,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2728,7 +2705,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
@@ -2752,7 +2728,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2764,7 +2739,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -2794,7 +2768,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2806,7 +2779,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -2833,7 +2805,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_backup_code_mech() {
         sketching::test_init();
-        let jws_signer = create_jwt_signer();
         let webauthn = create_webauthn();
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
@@ -2886,7 +2857,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
@@ -2909,7 +2879,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
@@ -2933,7 +2902,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2945,7 +2913,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
@@ -2975,7 +2942,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -2987,7 +2953,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -3019,7 +2984,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -3031,7 +2995,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -3057,7 +3020,6 @@ mod tests {
         // checks handling when multiple TOTP's are registered.
         sketching::test_init();
         let webauthn = create_webauthn();
-        let jws_signer = create_jwt_signer();
         // create the ent
         let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
 
@@ -3102,7 +3064,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -3114,7 +3075,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}
@@ -3138,7 +3098,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
@@ -3150,7 +3109,6 @@ mod tests {
                 &async_tx,
                 &audit_tx,
                 &webauthn,
-                &jws_signer,
                 &pw_badlist_cache,
             ) {
                 Ok(AuthState::Success(_, AuthIssueSession::Token)) => {}

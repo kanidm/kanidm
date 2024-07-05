@@ -14,6 +14,48 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2024-05-01 - Kanidm 1.2.0
+
+This is the first stable release of the Kanidm Identity Management project. We want to thank every
+one in our community who has supported to the project to this point with their invaluable
+contributions, comments, questions, feedback and support.
+
+Importantly this release makes a number of changes to our project's support processes. You should
+review our [support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md)
+as this may have important effects on your distribution or upgrades in future.
+
+### 1.2.0 Important Changes
+
+- On upgrade all OAuth2 sessions and user sessions will be reset due to changes in cryptographic key
+  handling. This does not affect api tokens.
+- There is a maximum limit of 48 interactive sessions for persons where older sessions are
+  automatically removed.
+
+### 1.2.0 Release Highlights
+
+- The book now contains a list of supported RFCs and standards
+- Add code challenge methods to OIDC discovery
+- CLI lists authentication methods in security preference order
+- Mark replication as stable for two node usage
+- Automatically conflict and disable nscd and sssd in the unixd resolver
+- Harden unixd resolver against memory inspection
+- Enable unixd hardware TPM support
+- Allow setting resource limits in account policy to raise query limits
+- Reduce logging noise on /status checks
+- Allow /dev/tpmrm0 access on older systemd versions
+- Add an improved migration test framework
+- Create an object graph in the experimental admin ui
+- Add a built-in class for all entries that are system provided
+- Fix uid number range handling with systemd
+- Remodel orca for improved load testing features
+- Upgrade concread with non-blocking read transaction acquisition
+- ldap-sync allows re-use of attributes on entry import
+- Support improved MFA challenge response process in unixd
+- Add support for async tasks in unixd
+- Add improved TPM handling for unixd
+- Migrate cryptographic key handling to an object model with future HSM support
+- Limit maximum active sessions on an account to 48
+
 ## 2024-02-07 - Kanidm 1.1.0-rc.16
 
 This is the sixteenth pre-release of the Kanidm Identity Management project. Pre-releases are to

@@ -98,12 +98,12 @@ Negative Validation
 -------------------
 
 This is a negative validation of if a session has been revoked. A session is considered valid
-unless it's unique id appears in the revocation list.
+unless its unique id appears in the revocation list.
 
 The session "validity" stored on the account details are for metadata an inspection purposes only, and to
 help drive the UI elements so a user can understand which sessions can be revoked that belong to them.
 
-When a session is invalidated, it's session id is added to a "site-wide" revocation list, along with
+When a session is invalidated, its session id is added to a "site-wide" revocation list, along with
 the maximum time of use of that session id.
 
 When a session is check as part of a standard UAT check, or an OAuth 2.0 refresh, if the session
@@ -111,7 +111,7 @@ id is present in the revocation list, it is denied access. Absence from the revo
 the session remains valid.
 
 This method requires no gracewindow, since the replication of the revocation list will be bound to the
-performance of replication and it's distribution.
+performance of replication and its distribution.
 
 The risk is that all sessions *must* have a maximum life, so that their existence in the revocation
 list is not unbounded. This version may have a greater risk of disk/memory usage due to the size of
@@ -141,7 +141,7 @@ Next the user revokes the token at time C, and replication has not yet occurred.
 from time B was restored.
 
 In this scenario, without access to the token itself, or without scouring logs to find the session
-id that was issued, this token is effectively "lost" and can be used until it's expiry, and would
+id that was issued, this token is effectively "lost" and can be used until its expiry, and would
 be difficult to revoke.
 
 Session Management
@@ -206,7 +206,7 @@ To achieve this we need to determine an order of the events. Let's assume a bett
 We store a "refresh id" in the refresh token, and a issued-by id in the access token. Additionally
 we store an issued-at timestamp (from the replication CID) in both.
 
-When we exchange the refresh token, we check that it's refresh id, is the next allowed refresh id that can proceed.
+When we exchange the refresh token, we check that its refresh id, is the next allowed refresh id that can proceed.
 We store in the session the "latest" issued-by id + timestamp in the session,
 as well as the next "refresh token" id in the session.
 

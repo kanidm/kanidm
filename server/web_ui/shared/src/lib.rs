@@ -1,21 +1,22 @@
+use std::fmt::Display;
+
 use constants::CONTENT_TYPE;
 use error::FetchError;
 use gloo::console;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
+use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::constants::KOPID;
-use kanidm_proto::constants::{APPLICATION_JSON, KSESSIONID};
-use models::{clear_bearer_token, get_bearer_token};
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsValue;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Headers, Request, RequestInit, RequestMode, Response};
 
-use gloo::storage::{SessionStorage as TemporaryStorage, Storage};
 use yew::{html, Html};
 
 use crate::constants::{CSS_ALERT_WARNING, IMG_LOGO_SQUARE};
+use crate::models::clear_bearer_token;
 
 pub mod constants;
 pub mod error;
@@ -25,23 +26,6 @@ pub mod models;
 pub mod ui;
 pub mod utils;
 
-const AUTH_SESSION_ID: &str = "auth_session_id";
-
-pub fn pop_auth_session_id() -> Option<String> {
-    let l: Result<String, _> = TemporaryStorage::get(AUTH_SESSION_ID);
-    #[cfg(debug_assertions)]
-    console::debug!(format!("auth_session_id -> {:?}", l).as_str());
-    TemporaryStorage::delete(AUTH_SESSION_ID);
-    l.ok()
-}
-
-pub fn push_auth_session_id(r: String) {
-    TemporaryStorage::set(AUTH_SESSION_ID, r).expect_throw(&format!(
-        "failed to set {} in temporary storage",
-        AUTH_SESSION_ID
-    ));
-}
-
 /// Build and send a request to the backend, with some standard headers and pull back
 /// (kopid, status, json, headers)
 pub async fn do_request<JV: AsRef<JsValue>>(
@@ -50,7 +34,7 @@ pub async fn do_request<JV: AsRef<JsValue>>(
     body: Option<JV>,
 ) -> Result<(Option<String>, u16, JsValue, Headers), FetchError> {
     let mut opts = RequestInit::new();
-    opts.method(&method.to_string());
+    opts.method(method.as_ref());
     opts.mode(RequestMode::SameOrigin);
     opts.credentials(web_sys::RequestCredentials::SameOrigin);
 
@@ -68,29 +52,11 @@ pub async fn do_request<JV: AsRef<JsValue>>(
         .set(CONTENT_TYPE, APPLICATION_JSON)
         .expect_throw("failed to set content-type header");
 
-    if let Some(sessionid) = pop_auth_session_id() {
-        request
-            .headers()
-            .set(KSESSIONID, &sessionid)
-            .expect_throw(&format!("failed to set {} header", KSESSIONID));
-    }
-
-    if let Some(bearer_token) = get_bearer_token() {
-        request
-            .headers()
-            .set("authorization", &bearer_token)
-            .expect_throw("failed to set authorization header");
-    }
-
     let window = utils::window();
     let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
     let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
     let status = resp.status();
     let headers: Headers = resp.headers();
-
-    if let Some(sessionid) = headers.get(KSESSIONID).ok().flatten() {
-        push_auth_session_id(sessionid);
-    }
 
     let kopid = headers.get(KOPID).ok().flatten();
 
@@ -121,13 +87,19 @@ pub enum RequestMethod {
     PUT,
 }
 
-impl ToString for RequestMethod {
-    fn to_string(&self) -> String {
+impl AsRef<str> for RequestMethod {
+    fn as_ref(&self) -> &str {
         match self {
-            RequestMethod::PUT => "PUT".to_string(),
-            RequestMethod::POST => "POST".to_string(),
-            RequestMethod::GET => "GET".to_string(),
+            RequestMethod::PUT => "PUT",
+            RequestMethod::POST => "POST",
+            RequestMethod::GET => "GET",
         }
+    }
+}
+
+impl Display for RequestMethod {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_ref())
     }
 }
 
@@ -153,15 +125,15 @@ pub enum SessionStatus {
     Error { emsg: String, kopid: Option<String> },
 }
 
-impl ToString for SessionStatus {
-    fn to_string(&self) -> String {
-        match self {
+impl Display for SessionStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&match self {
             SessionStatus::TokenValid => "SessionStatus::TokenValid".to_string(),
             SessionStatus::LoginRequired => "SessionStatus::LoginRequired".to_string(),
             SessionStatus::Error { emsg, kopid } => {
                 format!("SessionStatus::Error: {} {:?}", emsg, kopid)
             }
-        }
+        })
     }
 }
 

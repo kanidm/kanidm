@@ -2,6 +2,7 @@ use std::convert::TryFrom;
 use std::fs;
 use std::net::IpAddr;
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 
 use kanidm_proto::internal::{
     ApiToken, AppLink, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
@@ -19,6 +20,8 @@ use ldap3_proto::simple::*;
 use regex::Regex;
 use tracing::{error, info, instrument, trace};
 use uuid::Uuid;
+
+use compact_jwt::{JweCompact, Jwk, JwsCompact};
 
 use kanidmd_lib::be::BackendTransaction;
 use kanidmd_lib::prelude::*;
@@ -439,6 +442,65 @@ impl QueryServerReadV1 {
                 admin_error!("Invalid identity: {:?}", e);
                 e
             })?;
+        // Make an event from the request
+        let srch = match SearchEvent::from_internal_message(
+            ident,
+            &filter,
+            attrs.as_deref(),
+            &mut idms_prox_read.qs_read,
+        ) {
+            Ok(s) => s,
+            Err(e) => {
+                admin_error!("Failed to begin internal api search: {:?}", e);
+                return Err(e);
+            }
+        };
+
+        trace!(?srch, "Begin event");
+
+        match idms_prox_read.qs_read.search_ext(&srch) {
+            Ok(entries) => SearchResult::new(&mut idms_prox_read.qs_read, &entries)
+                .map(|ok_sr| ok_sr.into_proto_array()),
+            Err(e) => Err(e),
+        }
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_search_refers(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        filter: Filter<FilterInvalid>,
+        uuid_or_name: String,
+        attrs: Option<Vec<String>>,
+        eventid: Uuid,
+    ) -> Result<Vec<ProtoEntry>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .map_err(|e| {
+                admin_error!("Error resolving id to target");
+                e
+            })?;
+
+        // Update the filter with the target_uuid
+        let filter = Filter::join_parts_and(
+            filter,
+            filter_all!(f_eq(Attribute::Refers, PartialValue::Refer(target_uuid))),
+        );
+
         // Make an event from the request
         let srch = match SearchEvent::from_internal_message(
             ident,
@@ -1096,11 +1158,16 @@ impl QueryServerReadV1 {
         session_token: CUSessionToken,
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
+        let session_token = JweCompact::from_str(&session_token.token)
+            .map(|token_enc| CredentialUpdateSessionToken { token_enc })
+            .map_err(|err| {
+                error!(?err, "malformed token");
+                OperationError::InvalidRequestState
+            })?;
+
+        // Don't proceed unless the token parses
         let ct = duration_from_epoch_now();
         let idms_cred_update = self.idms.cred_update_transaction().await;
-        let session_token = CredentialUpdateSessionToken {
-            token_enc: session_token.token,
-        };
 
         idms_cred_update
             .credential_update_status(&session_token, ct)
@@ -1125,11 +1192,15 @@ impl QueryServerReadV1 {
         scr: CURequest,
         eventid: Uuid,
     ) -> Result<CUStatus, OperationError> {
+        let session_token = JweCompact::from_str(&session_token.token)
+            .map(|token_enc| CredentialUpdateSessionToken { token_enc })
+            .map_err(|err| {
+                error!(?err, "Invalid Token - Must be a compact JWE");
+                OperationError::InvalidRequestState
+            })?;
+
         let ct = duration_from_epoch_now();
         let idms_cred_update = self.idms.cred_update_transaction().await;
-        let session_token = CredentialUpdateSessionToken {
-            token_enc: session_token.token,
-        };
 
         debug!(?scr);
 
@@ -1380,14 +1451,14 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_token_introspect(
         &self,
-        client_authz: String,
+        client_auth_info: ClientAuthInfo,
         intr_req: AccessTokenIntrospectRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
         // Now we can send to the idm server for introspection checking.
-        idms_prox_read.check_oauth2_token_introspect(&client_authz, &intr_req, ct)
+        idms_prox_read.check_oauth2_token_introspect(&client_auth_info, &intr_req, ct)
     }
 
     #[instrument(
@@ -1398,12 +1469,12 @@ impl QueryServerReadV1 {
     pub async fn handle_oauth2_openid_userinfo(
         &self,
         client_id: String,
-        client_authz: String,
+        token: JwsCompact,
         eventid: Uuid,
     ) -> Result<OidcToken, Oauth2Error> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await;
-        idms_prox_read.oauth2_openid_userinfo(&client_id, &client_authz, ct)
+        idms_prox_read.oauth2_openid_userinfo(&client_id, token, ct)
     }
 
     #[instrument(
@@ -1501,6 +1572,22 @@ impl QueryServerReadV1 {
                 admin_error!("Invalid identity: {:?}", e);
                 e
             })
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    /// Retrieve a public jwk
+    pub async fn handle_public_jwk_get(
+        &self,
+        key_id: String,
+        eventid: Uuid,
+    ) -> Result<Jwk, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await;
+
+        idms_prox_read.jws_public_jwk(key_id.as_str())
     }
 
     #[instrument(

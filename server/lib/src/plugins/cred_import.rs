@@ -176,7 +176,7 @@ mod tests {
 
     #[test]
     fn test_pre_create_password_import_1() {
-        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
+        let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
         let e = entry_init!(
             (Attribute::Class, EntryClass::Account.to_value()),

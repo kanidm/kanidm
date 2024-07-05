@@ -34,7 +34,9 @@ pub fn start_logging_pipeline(
     log_filter: crate::LogLevel,
     service_name: String,
 ) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
-    let forest_filter: EnvFilter = log_filter.into();
+    let forest_filter: EnvFilter = EnvFilter::builder()
+        .with_default_directive(log_filter.into())
+        .from_env_lossy();
 
     // TODO: work out how to do metrics things
     // let meter_provider = init_metrics()
@@ -56,7 +58,9 @@ pub fn start_logging_pipeline(
                         .expect("Failed to set hyper logging to info"),
                 );
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
-            let t_filter: EnvFilter = log_filter.into();
+            let t_filter: EnvFilter = EnvFilter::builder()
+                .with_default_directive(log_filter.into())
+                .from_env_lossy();
 
             let tracer = opentelemetry_otlp::new_pipeline().tracing().with_exporter(
                 opentelemetry_otlp::new_exporter()

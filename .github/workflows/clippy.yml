@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.4
+        uses: mozilla-actions/sccache-action@v0.0.5
         with:
           version: "v0.4.2"
       - name: Install dependencies
@@ -32,7 +32,8 @@ jobs:
             libudev-dev \
             libssl-dev \
             pkg-config \
-            tpm-udev
+            tpm-udev \
+            libtss2-dev
 
       - name: "Run clippy (ignores errors, this is just a check)"
         run: cargo clippy --all-features --all-targets

@@ -100,22 +100,56 @@ impl QueryServerWriteV1 {
         }
     }
 
-    pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
+    pub(crate) async fn handle_delayedaction(&self, da_batch: &mut Vec<DelayedAction>) {
         let eventid = Uuid::new_v4();
         let span = span!(Level::INFO, "process_delayed_action", uuid = ?eventid);
+
+        let mut retry = false;
 
         async {
             let ct = duration_from_epoch_now();
             let mut idms_prox_write = self.idms.proxy_write(ct).await;
-            if let Err(res) = idms_prox_write
-                .process_delayedaction(da, ct)
-                .and_then(|_| idms_prox_write.commit())
-            {
-                info!(?res, "delayed action error");
+
+            for da in da_batch.iter() {
+                retry = idms_prox_write.process_delayedaction(da, ct).is_err();
+                if retry {
+                    // exit the loop
+                    warn!("delayed action failed, will be retried individually.");
+                    break;
+                }
+            }
+
+            if let Err(res) = idms_prox_write.commit() {
+                retry = true;
+                error!(?res, "delayed action batch commit error");
             }
         }
         .instrument(span)
-        .await
+        .await;
+
+        if retry {
+            // An error occured, retry each operation one at a time.
+            for da in da_batch.iter() {
+                let eventid = Uuid::new_v4();
+                let span = span!(Level::INFO, "process_delayed_action_retried", uuid = ?eventid);
+
+                async {
+                    let ct = duration_from_epoch_now();
+                    let mut idms_prox_write = self.idms.proxy_write(ct).await;
+                    if let Err(res) = idms_prox_write
+                        .process_delayedaction(da, ct)
+                        .and_then(|_| idms_prox_write.commit())
+                    {
+                        error!(?res, "delayed action commit error");
+                    }
+                }
+                .instrument(span)
+                .await
+            }
+        }
+
+        // We're done, clear out the buffer.
+        da_batch.clear();
     }
 
     #[instrument(

@@ -15,13 +15,18 @@ repository = { workspace = true }
 test = true
 doctest = false
 
+[features]
+ui_htmx = []
+
 [dependencies]
 async-trait = { workspace = true }
+askama = { workspace = true }
 axum = { workspace = true }
-axum-auth = "0.4.1"
-axum-csp = { workspace = true }
-axum-macros = "0.3.8"
-axum-server = { version = "0.5.1", features = ["tls-openssl"] }
+axum-htmx = { workspace = true }
+axum-auth = "0.7.0"
+axum-extra = { version = "0.9.3", features = ["cookie"] }
+axum-macros = "0.4.1"
+axum-server = { version = "0.6.0", features = ["tls-openssl"] }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
@@ -30,8 +35,8 @@ filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
 hashbrown = { workspace = true }
-http = { workspace = true }
 hyper = { workspace = true }
+hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidm_utils_users = { workspace = true }
 kanidmd_lib = { workspace = true }
@@ -40,6 +45,8 @@ kanidm_lib_file_permissions = { workspace = true }
 ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
+opentelemetry = { workspace = true, features = ["logs"] }
+# opentelemetry_api = { workspace = true, features = ["logs"] }
 rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -52,7 +59,7 @@ tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
 tower = { version = "0.4.13", features = ["tokio-stream", "tracing"] }
-tower-http = { version = "0.4.4", features = [
+tower-http = { version = "0.5.2", features = [
     "compression-gzip",
     "fs",
     "tokio",

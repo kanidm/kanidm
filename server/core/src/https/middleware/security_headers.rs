@@ -1,19 +1,20 @@
-use axum::extract::State;
-use axum::http::header;
-use axum::http::HeaderValue;
-use axum::http::Request;
-use axum::middleware::Next;
-use axum::response::Response;
+use axum::{
+    body::Body,
+    extract::State,
+    http::{header, HeaderValue, Request},
+    middleware::Next,
+    response::Response,
+};
 
 use crate::https::ServerState;
 
 const PERMISSIONS_POLICY_VALUE: &str = "fullscreen=(), geolocation=()";
 const X_CONTENT_TYPE_OPTIONS_VALUE: &str = "nosniff";
 
-pub async fn security_headers_layer<B>(
+pub async fn security_headers_layer(
     State(state): State<ServerState>,
-    request: Request<B>,
-    next: Next<B>,
+    request: Request<Body>,
+    next: Next,
 ) -> Response {
     // wait for the middleware to come back
     let mut response = next.run(request).await;

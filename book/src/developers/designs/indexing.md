@@ -111,7 +111,7 @@ Imagine a query like:
 And(Eq(class, person), Eq(name, claire))
 ```
 
-In this case with our database of 250,000 persons, our idl's would have:
+In this case, with our database of 250,000 persons, our idl's would have:
 
 ```
 And( idl[250,000 ids], idl(1 id))
@@ -235,9 +235,9 @@ based on the pre-entry state, and then to create again. However the current desi
 modification doesn't work like this as we only get the Entry to add.
 
 Most likely we will need to change modify to take the set of (pre, post) candidates as a pair _OR_
-we have the entry store it's own pre-post internally. Given we already need to store the pre /post
+we have the entry store its own pre-post internally. Given we already need to store the pre /post
 entries in the txn, it's likely better to have a pairing of these, and that allows us to then index
-replication metadata later as the entry will contain it's own changelog internally.
+replication metadata later as the entry will contain its own changelog internally.
 
 Given the pair, we then assert that they are the same entry (id). We can then use the index metadata
 to generate an indexing diff between them, containing a set of index items to remove (due to removal

@@ -122,7 +122,7 @@ override_homedir = /home/%U
 # entries in Kanidm.
 #
 # ⚠️  NEVER CHANGE THIS VALUE ⚠️
-ignore_group_members = False
+ignore_group_members = True
 
 # Disable caching of credentials by SSSD. SSSD uses less secure local password storage
 # mechanisims, and is a risk for credential disclosure.

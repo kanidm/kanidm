@@ -1,6 +1,6 @@
 use crate::prelude::*;
 use hashbrown::HashSet;
-use rand::distributions::Distribution;
+use rand::distributions::{Distribution, Uniform};
 use rand::{thread_rng, Rng};
 
 #[derive(Debug)]
@@ -77,13 +77,11 @@ impl Distribution<char> for DistinctAlpha {
         const GEN_ASCII_STR_CHARSET: &[u8] = b"ABCDEFGHJKLMNPQRSTUVWXYZ\
                 abcdefghjkpqrstuvwxyz\
                 0123456789";
-        // This probably needs to be checked for entropy/quality
-        loop {
-            let var = rng.next_u32() >> (32 - 6);
-            if var < RANGE {
-                return GEN_ASCII_STR_CHARSET[var as usize] as char;
-            }
-        }
+
+        let range = Uniform::new(0, RANGE);
+
+        let n = range.sample(rng);
+        GEN_ASCII_STR_CHARSET[n as usize] as char
     }
 }
 

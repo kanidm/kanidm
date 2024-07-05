@@ -1,4 +1,4 @@
-## Architectural Overview
+## Architecture
 
 Kanidm has a number of components and layers that make it up. As this project is continually
 evolving, if you have questions or notice discrepancies with this document please contact William
@@ -28,7 +28,7 @@ authoritative source of protocol layouts with regard to REST or raw communicatio
 ## Kanidmd (main server)
 
 Kanidmd is intended to have minimal (thin) client tools, where the server itself contains most logic
-for operations, transformations, and routing of requests to their relevant datatypes. As a result,
+for operations, transformations and routing of requests to their relevant datatypes. As a result,
 the `kanidmd` section is the largest component of the project as it implements nearly everything
 required for IDM functionality to exist.
 
@@ -110,7 +110,7 @@ make. If you are not within rights to perform these operations the event returns
 
 (4) The entries are now sent to the pre-operation plugins for the relevant operation type. This
 allows transformation of the candidate entries beyond the scope of your access controls, and to
-maintain some elements of data consistency. For example one plugin prevents creation of system
+maintain some elements of data consistency. For example, one plugin prevents creation of system
 protected types where another ensures that uuid exists on every entry.
 
 (5) These transformed entries are now returned to the query server.

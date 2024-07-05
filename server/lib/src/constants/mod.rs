@@ -3,18 +3,20 @@
 pub mod acp;
 pub mod entries;
 pub mod groups;
+mod key_providers;
 pub mod schema;
 pub mod system_config;
 pub mod uuids;
 pub mod values;
 
-pub use crate::constants::acp::*;
-pub use crate::constants::entries::*;
-pub use crate::constants::groups::*;
-pub use crate::constants::schema::*;
-pub use crate::constants::system_config::*;
-pub use crate::constants::uuids::*;
-pub use crate::constants::values::*;
+pub use self::acp::*;
+pub use self::entries::*;
+pub use self::groups::*;
+pub use self::key_providers::*;
+pub use self::schema::*;
+pub use self::system_config::*;
+pub use self::uuids::*;
+pub use self::values::*;
 
 use std::time::Duration;
 
@@ -58,29 +60,37 @@ pub const DOMAIN_LEVEL_2: DomainVersion = 2;
 pub const DOMAIN_LEVEL_3: DomainVersion = 3;
 /// Deprcated as of 1.2.0
 pub const DOMAIN_LEVEL_4: DomainVersion = 4;
+
 /// Deprcated as of 1.3.0
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 
 /// Domain Level introduced with 1.2.0.
 /// Deprcated as of 1.4.0
 pub const DOMAIN_LEVEL_6: DomainVersion = 6;
+pub const PATCH_LEVEL_1: u32 = 1;
 
 /// Domain Level introduced with 1.3.0.
 /// Deprcated as of 1.5.0
 pub const DOMAIN_LEVEL_7: DomainVersion = 7;
 
-// The minimum level that we can re-migrate from
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_2;
+/// Domain Level introduced with 1.4.0.
+/// Deprcated as of 1.6.0
+pub const DOMAIN_LEVEL_8: DomainVersion = 8;
+
+// The minimum level that we can re-migrate from.
+// This should be DOMAIN_TGT_LEVEL minus 2
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 // The minimum supported domain functional level
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level
-pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
+pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
 // The target supported domain functional level
-pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
+pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_1;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
-// The maximum supported domain functional level
-pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+// The next maximum supported domain functional level
+pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 
 // On test builds define to 60 seconds
 #[cfg(test)]
@@ -88,6 +98,11 @@ pub const PURGE_FREQUENCY: u64 = 60;
 // For production 10 minutes.
 #[cfg(not(test))]
 pub const PURGE_FREQUENCY: u64 = 600;
+
+/// The number of delayed actions to consider per write transaction. Higher
+/// values allow more coalescing to occur, but may consume more ram and cause
+/// some latency while dequeuing and writing those operations.
+pub const DELAYED_ACTION_BATCH_SIZE: usize = 256;
 
 #[cfg(test)]
 /// In test, we limit the changelog to 10 minutes.
@@ -113,13 +128,14 @@ pub const PW_MIN_LENGTH: u32 = 10;
 pub const MAXIMUM_AUTH_SESSION_EXPIRY: u32 = u32::MAX;
 // Default - sessions last for 1 day
 pub const DEFAULT_AUTH_SESSION_EXPIRY: u32 = 86400;
-pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Maximum - privileges last for 1 hour.
 pub const MAXIMUM_AUTH_PRIVILEGE_EXPIRY: u32 = 3600;
 // Default - privileges last for 10 minutes.
 pub const DEFAULT_AUTH_PRIVILEGE_EXPIRY: u32 = 600;
+// Default - directly privileged sessions only last 1 hour.
+pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
-pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 8;
+pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
 
 // The time that a token can be used before session
 // status is enforced. This needs to be longer than
@@ -149,3 +165,6 @@ pub const DEFAULT_LIMIT_FILTER_MAX_ELEMENTS: u64 = 32;
 
 /// The maximum amount of recursion allowed in a filter.
 pub const DEFAULT_LIMIT_FILTER_DEPTH_MAX: u64 = 12;
+
+/// The maximum number of sessions allowed on a single entry.
+pub(crate) const SESSION_MAXIMUM: usize = 48;

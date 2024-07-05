@@ -24,20 +24,21 @@ use std::os::unix::fs::MetadataExt;
 use std::path::Path;
 use std::time::Duration;
 
+use compact_jwt::Jwk;
+
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
-    APPLICATION_JSON, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID, KSESSIONID,
+    ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
+    ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID,
     KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
-use reqwest::header::CONTENT_TYPE;
 use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
-use serde_json::json;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -71,20 +72,12 @@ pub enum ClientError {
     ConfigParseIssue(String),
     CertParseIssue(String),
     UntrustedCertificate(String),
+    InvalidRequest(String),
 }
 
+/// Settings describing a single instance.
 #[derive(Debug, Deserialize, Serialize)]
-/// This struct is what Kanidm uses for parsing the client configuration at runtime.
-///
-/// # Configuration file inheritance
-///
-/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
-///
-/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
-/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
-/// 3. All of these may be overridden by setting environment variables.
-///
-pub struct KanidmClientConfig {
+pub struct KanidmClientConfigInstance {
     /// The URL of the server, ie `https://example.com`.
     ///
     /// Environment variable is `KANIDM_URL`. Yeah, we know.
@@ -103,6 +96,25 @@ pub struct KanidmClientConfig {
     pub ca_path: Option<String>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+/// This struct is what Kanidm uses for parsing the client configuration at runtime.
+///
+/// # Configuration file inheritance
+///
+/// The configuration files are loaded in order, with the last one loaded overriding the previous one.
+///
+/// 1. The "system" config is loaded from in [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH].
+/// 2. Then a per-user configuration, from [kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH_HOME] is loaded.
+/// 3. All of these may be overridden by setting environment variables.
+///
+pub struct KanidmClientConfig {
+    #[serde(flatten)]
+    default: KanidmClientConfigInstance,
+
+    #[serde(flatten)]
+    instances: BTreeMap<String, KanidmClientConfigInstance>,
+}
+
 #[derive(Debug, Clone, Default)]
 pub struct KanidmClientBuilder {
     address: Option<String>,
@@ -110,6 +122,7 @@ pub struct KanidmClientBuilder {
     verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
+    request_timeout: Option<u64>,
     use_system_proxies: bool,
     /// Where to store auth tokens, only use in testing!
     token_cache_path: Option<String>,
@@ -130,6 +143,10 @@ impl Display for KanidmClientBuilder {
         match self.connect_timeout {
             Some(value) => writeln!(f, "connect_timeout: {}", value)?,
             None => writeln!(f, "connect_timeout: unset")?,
+        }
+        match self.request_timeout {
+            Some(value) => writeln!(f, "request_timeout: {}", value)?,
+            None => writeln!(f, "request_timeout: unset")?,
         }
         writeln!(f, "use_system_proxies: {}", self.use_system_proxies)?;
         writeln!(
@@ -154,6 +171,7 @@ fn test_kanidmclientbuilder_display() {
         verify_hostnames: true,
         ca: None,
         connect_timeout: Some(420),
+        request_timeout: Some(69),
         use_system_proxies: true,
         token_cache_path: Some(CLIENT_TOKEN_CACHE.to_string()),
     };
@@ -175,7 +193,6 @@ pub struct KanidmClient {
     pub(crate) origin: Url,
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: RwLock<Option<String>>,
-    pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
     /// Where to store the tokens when you auth, only modify in testing.
     token_cache_path: String,
@@ -200,6 +217,7 @@ impl KanidmClientBuilder {
             verify_hostnames: true,
             ca: None,
             connect_timeout: None,
+            request_timeout: None,
             use_system_proxies: true,
             token_cache_path: None,
         }
@@ -249,13 +267,14 @@ impl KanidmClientBuilder {
         })
     }
 
-    fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ClientError> {
+    fn apply_config_options(self, kcc: KanidmClientConfigInstance) -> Result<Self, ClientError> {
         let KanidmClientBuilder {
             address,
             verify_ca,
             verify_hostnames,
             ca,
             connect_timeout,
+            request_timeout,
             use_system_proxies,
             token_cache_path,
         } = self;
@@ -280,6 +299,7 @@ impl KanidmClientBuilder {
             verify_hostnames,
             ca,
             connect_timeout,
+            request_timeout,
             use_system_proxies,
             token_cache_path,
         })
@@ -289,7 +309,19 @@ impl KanidmClientBuilder {
         self,
         config_path: P,
     ) -> Result<Self, ClientError> {
-        debug!("Attempting to load configuration from {:#?}", &config_path);
+        self.read_options_from_optional_instance_config(config_path, None)
+    }
+
+    pub fn read_options_from_optional_instance_config<P: AsRef<Path> + std::fmt::Debug>(
+        self,
+        config_path: P,
+        instance: Option<&str>,
+    ) -> Result<Self, ClientError> {
+        debug!(
+            "Attempting to load {} instance configuration from {:#?}",
+            instance.unwrap_or("default"),
+            &config_path
+        );
 
         // We have to check the .exists case manually, because there are some weird overlayfs
         // issues in docker where when the file does NOT exist, but we "open it" we get an
@@ -342,12 +374,25 @@ impl KanidmClientBuilder {
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        let config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
+        let mut config: KanidmClientConfig = toml::from_str(&contents).map_err(|e| {
             error!("{:?}", e);
             ClientError::ConfigParseIssue(format!("{:?}", e))
         })?;
 
-        self.apply_config_options(config)
+        if let Some(instance_name) = instance {
+            if let Some(instance_config) = config.instances.remove(instance_name) {
+                self.apply_config_options(instance_config)
+            } else {
+                let emsg = format!(
+                    "instance {} does not exist in config file {:?}",
+                    instance_name, config_path
+                );
+                error!(%emsg);
+                Err(ClientError::ConfigParseIssue(emsg))
+            }
+        } else {
+            self.apply_config_options(config.default)
+        }
     }
 
     pub fn address(self, address: String) -> Self {
@@ -376,6 +421,13 @@ impl KanidmClientBuilder {
     pub fn connect_timeout(self, secs: u64) -> Self {
         KanidmClientBuilder {
             connect_timeout: Some(secs),
+            ..self
+        }
+    }
+
+    pub fn request_timeout(self, secs: u64) -> Self {
+        KanidmClientBuilder {
+            request_timeout: Some(secs),
             ..self
         }
     }
@@ -465,9 +517,12 @@ impl KanidmClientBuilder {
         };
 
         let client_builder = match &self.connect_timeout {
-            Some(secs) => client_builder
-                .connect_timeout(Duration::from_secs(*secs))
-                .timeout(Duration::from_secs(*secs)),
+            Some(secs) => client_builder.connect_timeout(Duration::from_secs(*secs)),
+            None => client_builder,
+        };
+
+        let client_builder = match &self.request_timeout {
+            Some(secs) => client_builder.timeout(Duration::from_secs(*secs)),
             None => client_builder,
         };
 
@@ -492,7 +547,6 @@ impl KanidmClientBuilder {
             builder: self,
             bearer_token: RwLock::new(None),
             origin,
-            auth_session_id: RwLock::new(None),
             check_version: Mutex::new(true),
             token_cache_path,
         })
@@ -597,7 +651,16 @@ impl KanidmClient {
             return;
         }
 
-        let ver = response
+        if response.status() == StatusCode::BAD_GATEWAY
+            || response.status() == StatusCode::GATEWAY_TIMEOUT
+        {
+            // don't need to check versions when there's an intermediary reporting connectivity
+            debug!("Gateway error in response - we're going through a proxy so the version check is skipped.");
+            *guard = false;
+            return;
+        }
+
+        let ver: &str = response
             .headers()
             .get(KVERSION)
             .and_then(|hv| hv.to_str().ok())
@@ -658,13 +721,7 @@ impl KanidmClient {
         dest: &str,
         request: &R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
-
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(request);
 
         let response = response
             .send()
@@ -698,29 +755,14 @@ impl KanidmClient {
         request: R,
     ) -> Result<T, ClientError> {
         trace!("perform_auth_post_request connecting to {}", dest);
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(&request);
 
         // If we have a bearer token, set it now.
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
                 response.bearer_auth(token)
-            } else {
-                response
-            }
-        };
-
-        // If we have a session header, set it now.
-        let response = {
-            let sguard = self.auth_session_id.read().await;
-            if let Some(sessionid) = &(*sguard) {
-                response.header(KSESSIONID, sessionid)
             } else {
                 response
             }
@@ -734,16 +776,6 @@ impl KanidmClient {
         self.expect_version(&response).await;
 
         // If we have a sessionid header in the response, get it now.
-
-        let headers = response.headers();
-
-        {
-            let mut sguard = self.auth_session_id.write().await;
-            *sguard = headers
-                .get(KSESSIONID)
-                .and_then(|hv| hv.to_str().ok().map(str::to_string));
-        }
-
         let opid = self.get_kopid_from_response(&response);
 
         match response.status() {
@@ -768,12 +800,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .post(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.post(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -815,12 +842,8 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
+        let response = self.client.put(self.make_url(dest)).json(&request);
 
-        let response = self
-            .client
-            .put(self.make_url(dest))
-            .header(CONTENT_TYPE, APPLICATION_JSON);
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
@@ -831,7 +854,6 @@ impl KanidmClient {
         };
 
         let response = response
-            .body(req_string)
             .send()
             .await
             .map_err(|err| self.handle_response_error(err))?;
@@ -842,6 +864,10 @@ impl KanidmClient {
 
         match response.status() {
             reqwest::StatusCode::OK => {}
+            reqwest::StatusCode::UNPROCESSABLE_ENTITY => {
+                return Err(ClientError::InvalidRequest(format!("Something about the request content was invalid, check the server logs for further information. Operation ID: {} Error: {:?}",opid, response.text().await.ok() )))
+            }
+
             unexpect => {
                 return Err(ClientError::Http(
                     unexpect,
@@ -862,12 +888,7 @@ impl KanidmClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
-        let response = self
-            .client
-            .patch(self.make_url(dest))
-            .body(req_string)
-            .header(CONTENT_TYPE, APPLICATION_JSON);
+        let response = self.client.patch(self.make_url(dest)).json(&request);
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -950,7 +971,7 @@ impl KanidmClient {
             .client
             .delete(self.make_url(dest))
             // empty-ish body that makes the parser happy
-            .json(&json!([]));
+            .json(&serde_json::json!([]));
 
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -1474,6 +1495,11 @@ impl KanidmClient {
         self.perform_get_request(V1_AUTH_VALID).await
     }
 
+    pub async fn get_public_jwk(&self, key_id: &str) -> Result<Jwk, ClientError> {
+        self.perform_get_request(&format!("/v1/jwk/{}", key_id))
+            .await
+    }
+
     pub async fn whoami(&self) -> Result<Option<Entry>, ClientError> {
         let response = self.client.get(self.make_url("/v1/self"));
 
@@ -1900,16 +1926,16 @@ impl KanidmClient {
         new_display_name: &str,
     ) -> Result<(), ClientError> {
         self.perform_put_request(
-            "/v1/domain/_attr/domain_display_name",
-            vec![new_display_name.to_string()],
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_DISPLAY_NAME),
+            vec![new_display_name],
         )
         .await
     }
 
     pub async fn idm_domain_set_ldap_basedn(&self, new_basedn: &str) -> Result<(), ClientError> {
         self.perform_put_request(
-            "/v1/domain/_attr/domain_ldap_basedn",
-            vec![new_basedn.to_string()],
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_LDAP_BASEDN),
+            vec![new_basedn],
         )
         .await
     }
@@ -1918,12 +1944,15 @@ impl KanidmClient {
         &self,
         enable: bool,
     ) -> Result<(), ClientError> {
-        self.perform_put_request("/v1/domain/_attr/ldap_allow_unix_pw_bind", vec![enable])
-            .await
+        self.perform_put_request(
+            &format!("{}{}", "/v1/domain/_attr/", ATTR_LDAP_ALLOW_UNIX_PW_BIND),
+            vec![enable.to_string()],
+        )
+        .await
     }
 
     pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
-        self.perform_get_request("/v1/domain/_attr/domain_ssid")
+        self.perform_get_request(&format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID))
             .await
             .and_then(|mut r: Vec<String>|
                 // Get the first result
@@ -1934,13 +1963,19 @@ impl KanidmClient {
     }
 
     pub async fn idm_domain_set_ssid(&self, ssid: &str) -> Result<(), ClientError> {
-        self.perform_put_request("/v1/domain/_attr/domain_ssid", vec![ssid.to_string()])
-            .await
+        self.perform_put_request(
+            &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_SSID),
+            vec![ssid.to_string()],
+        )
+        .await
     }
 
-    pub async fn idm_domain_reset_token_key(&self) -> Result<(), ClientError> {
-        self.perform_delete_request("/v1/domain/_attr/es256_private_key_der")
-            .await
+    pub async fn idm_domain_revoke_key(&self, key_id: &str) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/domain/_attr/{}", ATTR_KEY_ACTION_REVOKE),
+            vec![key_id.to_string()],
+        )
+        .await
     }
 
     // ==== schema
@@ -1983,4 +2018,33 @@ impl KanidmClient {
         self.perform_post_request(&format!("/v1/recycle_bin/{}/_revive", id), ())
             .await
     }
+}
+
+#[tokio::test]
+async fn test_no_client_version_check_on_502() {
+    let res = reqwest::Response::from(
+        http::Response::builder()
+            .status(StatusCode::GATEWAY_TIMEOUT)
+            .body("")
+            .unwrap(),
+    );
+    let client = KanidmClientBuilder::new()
+        .address("http://localhost:8080".to_string())
+        .build()
+        .expect("Failed to build client");
+    eprintln!("This should pass because we are returning 504 and shouldn't check version...");
+    client.expect_version(&res).await;
+
+    let res = reqwest::Response::from(
+        http::Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body("")
+            .unwrap(),
+    );
+    let client = KanidmClientBuilder::new()
+        .address("http://localhost:8080".to_string())
+        .build()
+        .expect("Failed to build client");
+    eprintln!("This should pass because we are returning 502 and shouldn't check version...");
+    client.expect_version(&res).await;
 }

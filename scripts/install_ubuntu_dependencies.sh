@@ -17,6 +17,7 @@ ${SUDOCMD} apt-get install -y \
     curl \
     rsync \
     git \
+    cmake \
     build-essential \
     jq \
     tpm-udev

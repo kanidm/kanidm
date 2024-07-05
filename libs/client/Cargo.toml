@@ -16,6 +16,7 @@ test = true
 doctest = false
 
 [dependencies]
+compact_jwt = { workspace = true }
 tracing = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = [
     "cookies",
@@ -23,6 +24,8 @@ reqwest = { workspace = true, default-features = false, features = [
 ] }
 kanidm_proto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
+http = { workspace = true }
+hyper = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
@@ -38,4 +41,4 @@ toml = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true, features = ["wasm"] }
-hyper = { workspace = true }
+# hyper = { workspace = true }

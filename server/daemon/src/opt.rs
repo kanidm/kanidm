@@ -57,7 +57,7 @@ enum DomainSettingsCmds {
     },
     /// ⚠️  Do not use this command unless directed by a project member. ⚠️ 
     /// - Rerun migrations of this domains database, optionally nominating the level
-    /// to start from.
+    ///   to start from.
     #[clap(name = "remigrate")]
     Remigrate {
         #[clap(flatten)]

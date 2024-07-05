@@ -40,92 +40,6 @@ impl QueryServer {
             .initialise_schema_core()
             .and_then(|_| write_txn.reload())?;
 
-        write_txn.reload()?;
-
-        // Now, based on the system version apply migrations. You may ask "should you not
-        // be doing migrations before indexes?". And this is a very good question! The issue
-        // is within a migration we must be able to search for content by pres index, and those
-        // rely on us being indexed! It *is* safe to index content even if the
-        // migration would cause a value type change (ie name changing from iutf8s to iname) because
-        // the indexing subsystem is schema/value agnostic - the fact the values still let their keys
-        // be extracted, means that the pres indexes will be valid even though the entries are pending
-        // migration. We must be sure to NOT use EQ/SUB indexes in the migration code however!
-        //
-        // If we are "in the process of being setup" this is 0, and the migrations will have no
-        // effect as ... there is nothing to migrate! It allows reset of the version to 0 to force
-        // db migrations to take place.
-        let system_info_version = match write_txn.internal_search_uuid(UUID_SYSTEM_INFO) {
-            Ok(e) => Ok(e.get_ava_single_uint32(Attribute::Version).unwrap_or(0)),
-            Err(OperationError::NoMatchingEntries) => Ok(0),
-            Err(r) => Err(r),
-        }?;
-        admin_debug!(?system_info_version);
-
-        if system_info_version > 0 {
-            if system_info_version <= 9 {
-                error!("Your instance of Kanidm is version 1.1.0-alpha.10 or lower, and you are trying to perform a skip upgrade. This will not work.");
-                error!("You need to upgrade one version at a time to ensure upgrade migrations are performed in the correct order.");
-                return Err(OperationError::InvalidState);
-            }
-
-            if system_info_version < 9 {
-                write_txn.migrate_8_to_9()?;
-            }
-
-            if system_info_version < 10 {
-                write_txn.migrate_9_to_10()?;
-            }
-
-            if system_info_version < 11 {
-                write_txn.migrate_10_to_11()?;
-            }
-
-            if system_info_version < 12 {
-                write_txn.migrate_11_to_12()?;
-            }
-
-            if system_info_version < 13 {
-                write_txn.migrate_12_to_13()?;
-            }
-
-            if system_info_version < 14 {
-                write_txn.migrate_13_to_14()?;
-            }
-
-            if system_info_version < 15 {
-                write_txn.migrate_14_to_15()?;
-            }
-
-            if system_info_version < 16 {
-                write_txn.migrate_15_to_16()?;
-            }
-
-            if system_info_version < 17 {
-                write_txn.initialise_schema_idm()?;
-
-                write_txn.reload()?;
-
-                write_txn.migrate_16_to_17()?;
-            }
-
-            if system_info_version < 18 {
-                // Automate fix for #2391 - during the changes to the access controls
-                // and the recent domain migration work, this stage was not being run
-                // if a larger "jump" of migrations was performed such as rc.15 to main.
-                //
-                // This allows "forcing" a single once off run of init idm *before*
-                // the domain migrations kick in again.
-                write_txn.initialise_idm()?;
-            }
-
-            if system_info_version < 19 {
-                write_txn.migrate_18_to_19()?;
-            }
-        }
-
-        // Reload if anything in the (older) system migrations requires it.
-        write_txn.reload()?;
-
         // This is what tells us if the domain entry existed before or not. This
         // is now the primary method of migrations and version detection.
         let db_domain_version = match write_txn.internal_search_uuid(UUID_DOMAIN_INFO) {
@@ -136,9 +50,9 @@ impl QueryServer {
 
         debug!(?db_domain_version, "Before setting internal domain info");
 
-        // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
-        // the base-schema here.
         if db_domain_version == 0 {
+            // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
+            // the base-schema here.
             write_txn.initialise_schema_idm()?;
 
             write_txn.reload()?;
@@ -148,6 +62,18 @@ impl QueryServer {
             // very early in the bootstrap process, and very few entries exist,
             // reindexing is very fast here.
             write_txn.reindex()?;
+        } else {
+            // Domain info was present, so we need to reflect that in our server
+            // domain structures. If we don't do this, the in memory domain level
+            // is stuck at 0 which can confuse init domain info below.
+            //
+            // This also is where the former domain taint flag will be loaded to
+            // d_info so that if the *previous* execution of the database was
+            // a devel version, we'll still trigger the forced remigration in
+            // in the case that we are moving from dev -> stable.
+            write_txn.force_domain_reload();
+
+            write_txn.reload()?;
         }
 
         // Indicate the schema is now ready, which allows dyngroups to work when they
@@ -161,8 +87,20 @@ impl QueryServer {
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base entries here.
         if db_domain_version == 0 {
+            // In this path because we create the dyn groups they are immediately added to the
+            // dyngroup cache and begin to operate.
             write_txn.initialise_idm()?;
-        }
+        } else {
+            // #2756 - if we *aren't* creating the base IDM entries, then we
+            // need to force dyn groups to reload since we're now at schema
+            // ready. This is done indirectly by ... reloading the schema again.
+            //
+            // This is because dyngroups don't load until server phase >= schemaready
+            // and the reload path for these is either a change in the dyngroup entry
+            // itself or a change to schema reloading. Since we aren't changing the
+            // dyngroup here, we have to go via the schema reload path.
+            write_txn.force_schema_reload();
+        };
 
         // Reload as init idm affects access controls.
         write_txn.reload()?;
@@ -172,12 +110,19 @@ impl QueryServer {
 
         // This is the start of domain info related migrations which we will need in future
         // to handle replication. Due to the access control rework, and the addition of "managed by"
-        // syntax, we need to ensure both node "fence" replication from each other. We do this
+        // syntax, we need to ensure both nodes "fence" replication from each other. We do this
         // by changing domain infos to be incompatible during this phase.
 
         // The reloads will have populated this structure now.
         let domain_info_version = write_txn.get_domain_version();
-        debug!(?db_domain_version, "After setting internal domain info");
+        let domain_patch_level = write_txn.get_domain_patch_level();
+        let domain_development_taint = write_txn.get_domain_development_taint();
+        debug!(
+            ?db_domain_version,
+            ?domain_patch_level,
+            ?domain_development_taint,
+            "After setting internal domain info"
+        );
 
         if domain_info_version < domain_target_level {
             write_txn
@@ -191,7 +136,11 @@ impl QueryServer {
                 .map(|()| {
                     warn!("Domain level has been raised to {}", domain_target_level);
                 })?;
-        } else {
+
+            // Reload if anything in migrations requires it - this triggers the domain migrations
+            // which in turn can trigger schema reloads etc.
+            write_txn.reload()?;
+        } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
             // do a single domain version bump, and continue to extend the migrations
@@ -202,14 +151,42 @@ impl QueryServer {
             // we are NOT in a test environment
             // AND
             // We did not already need a version migration as above
-            if option_env!("KANIDM_PRE_RELEASE").is_some() && !cfg!(test) {
-                write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
-            }
+            write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
+            write_txn.reload()?;
         }
 
-        // Reload if anything in migrations requires it - this triggers the domain migrations
-        // which in turn can trigger schema reloads etc.
-        write_txn.reload()?;
+        if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
+            write_txn
+                .internal_modify_uuid(
+                    UUID_DOMAIN_INFO,
+                    &ModifyList::new_purge_and_set(
+                        Attribute::PatchLevel,
+                        Value::new_uint32(DOMAIN_TGT_PATCH_LEVEL),
+                    ),
+                )
+                .map(|()| {
+                    warn!("Domain level has been raised to {}", domain_target_level);
+                })?;
+
+            // Run the patch migrations if any.
+            write_txn.reload()?;
+        };
+
+        // Now set the db/domain devel taint flag to match our current release status
+        // if it changes. This is what breaks the cycle of db taint from dev -> stable
+        let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
+        if current_devel_flag {
+            warn!("Domain Development Taint mode is enabled");
+        }
+        if domain_development_taint != current_devel_flag {
+            write_txn.internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::DomainDevelopmentTaint,
+                    Value::Bool(current_devel_flag),
+                ),
+            )?;
+        }
 
         // We are ready to run
         write_txn.set_phase(ServerPhase::Running);
@@ -223,6 +200,21 @@ impl QueryServer {
 }
 
 impl<'a> QueryServerWriteTransaction<'a> {
+    /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
+    /// level.
+    #[cfg(test)]
+    pub(crate) fn internal_apply_domain_migration(
+        &mut self,
+        to_level: u32,
+    ) -> Result<(), OperationError> {
+        assert!(to_level > self.get_domain_version());
+        self.internal_modify_uuid(
+            UUID_DOMAIN_INFO,
+            &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(to_level)),
+        )
+        .and_then(|()| self.reload())
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
         let res = Entry::from_proto_entry_str(e_str, self)
@@ -252,13 +244,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         &mut self,
         e: Entry<EntryInit, EntryNew>,
     ) -> Result<(), OperationError> {
-        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
+        self.internal_migrate_or_create_ignore_attrs(e, &[])
+    }
+
+    /// This is the same as [QueryServerWriteTransaction::internal_migrate_or_create] but it will ignore the specified
+    /// list of attributes, so that if an admin has modified those values then we don't
+    /// stomp them.
+    #[instrument(level = "trace", skip_all)]
+    pub fn internal_migrate_or_create_ignore_attrs(
+        &mut self,
+        mut e: Entry<EntryInit, EntryNew>,
+        attrs: &[Attribute],
+    ) -> Result<(), OperationError> {
+        trace!("operating on {:?}", e.get_uuid());
 
         let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
             return Err(OperationError::FilterGeneration);
         };
 
-        trace!("internal_migrate_or_create search {:?}", filt);
+        trace!("search {:?}", filt);
 
         let results = self.internal_search(filt.clone())?;
 
@@ -266,11 +270,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // It does not exist. Create it.
             self.internal_create(vec![e])
         } else if results.len() == 1 {
+            // For each ignored attr, we remove it from entry.
+            for attr in attrs.iter() {
+                e.remove_ava(*attr);
+            }
+
             // If the thing is subset, pass
             match e.gen_modlist_assert(&self.schema) {
                 Ok(modlist) => {
                     // Apply to &results[0]
-                    trace!("Generated modlist -> {:?}", modlist);
+                    trace!(?modlist);
                     self.internal_modify(&filt, &modlist)
                 }
                 Err(e) => Err(OperationError::SchemaViolation(e)),
@@ -283,446 +292,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
             Err(OperationError::InvalidDbState)
         }
-    }
-
-    /// Migrate 8 to 9
-    ///
-    /// This migration updates properties of oauth2 relying server properties. First, it changes
-    /// the former basic value to a secret utf8string.
-    ///
-    /// The second change improves the current scope system to remove the implicit scope type.
-    #[instrument(level = "debug", skip_all)]
-    pub fn migrate_8_to_9(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 8 to 9 migration.");
-        let filt = filter_all!(f_or!([
-            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
-            f_eq(
-                Attribute::Class,
-                EntryClass::OAuth2ResourceServerBasic.into()
-            ),
-        ]));
-
-        let pre_candidates = self.internal_search(filt).map_err(|e| {
-            admin_error!(err = ?e, "migrate_8_to_9 internal search failure");
-            e
-        })?;
-
-        // If there is nothing, we don't need to do anything.
-        if pre_candidates.is_empty() {
-            admin_info!("migrate_8_to_9 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Change the value type.
-        let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-            .iter()
-            .map(|er| {
-                er.as_ref()
-                    .clone()
-                    .invalidate(self.cid.clone(), &self.trim_cid)
-            })
-            .collect();
-
-        candidates.iter_mut().try_for_each(|er| {
-            // Migrate basic secrets if they exist.
-            let nvs = er
-                .get_ava_set(Attribute::OAuth2RsBasicSecret)
-                .and_then(|vs| vs.as_utf8_iter())
-                .and_then(|vs_iter| {
-                    ValueSetSecret::from_iter(vs_iter.map(|s: &str| s.to_string()))
-                });
-            if let Some(nvs) = nvs {
-                er.set_ava_set(Attribute::OAuth2RsBasicSecret, nvs)
-            }
-
-            // Migrate implicit scopes if they exist.
-            let nv = if let Some(vs) = er.get_ava_set(Attribute::OAuth2RsImplicitScopes) {
-                vs.as_oauthscope_set()
-                    .map(|v| Value::OauthScopeMap(UUID_IDM_ALL_PERSONS, v.clone()))
-            } else {
-                None
-            };
-
-            if let Some(nv) = nv {
-                er.add_ava(Attribute::OAuth2RsScopeMap, nv)
-            }
-            er.purge_ava(Attribute::OAuth2RsImplicitScopes);
-
-            Ok(())
-        })?;
-
-        // Schema check all.
-        let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
-            .into_iter()
-            .map(|e| e.validate(&self.schema).map(|e| e.seal(&self.schema)))
-            .collect();
-
-        let norm_cand: Vec<Entry<_, _>> = match res {
-            Ok(v) => v,
-            Err(e) => {
-                admin_error!("migrate_8_to_9 schema error -> {:?}", e);
-                return Err(OperationError::SchemaViolation(e));
-            }
-        };
-
-        // Write them back.
-        self.be_txn
-            .modify(&self.cid, &pre_candidates, &norm_cand)
-            .map_err(|e| {
-                admin_error!("migrate_8_to_9 modification failure -> {:?}", e);
-                e
-            })
-        // Complete
-    }
-
-    /// Migrate 9 to 10
-    ///
-    /// This forces a load and rewrite of all credentials stored on all accounts so that they are
-    /// updated to new on-disk formats. This will allow us to purge some older on disk formats in
-    /// a future version.
-    ///
-    /// An extended feature of this is the ability to store multiple TOTP's per entry.
-    #[instrument(level = "info", skip_all)]
-    pub fn migrate_9_to_10(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_or!([
-            f_pres(Attribute::PrimaryCredential),
-            f_pres(Attribute::UnixPassword),
-        ]));
-        // This "does nothing" since everything has object anyway, but it forces the entry to be
-        // loaded and rewritten.
-        let modlist = ModifyList::new_append(Attribute::Class, EntryClass::Object.to_value());
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    /// Migrate 10 to 11
-    ///
-    /// This forces a load of all credentials, and then examines if any are "passkey" capable. If they
-    /// are, they are migrated to the passkey type, allowing us to deprecate and remove the older
-    /// credential behaviour.
-    ///
-    #[instrument(level = "info", skip_all)]
-    pub fn migrate_10_to_11(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 9 to 10 migration.");
-        let filter = filter!(f_pres(Attribute::PrimaryCredential));
-
-        let pre_candidates = self.internal_search(filter).map_err(|e| {
-            admin_error!(err = ?e, "migrate_10_to_11 internal search failure");
-            e
-        })?;
-
-        // First, filter based on if any credentials present actually are the legacy
-        // webauthn type.
-        let modset: Vec<_> = pre_candidates
-            .into_iter()
-            .filter_map(|ent| {
-                ent.get_ava_single_credential(Attribute::PrimaryCredential)
-                    .and_then(|cred| cred.passkey_ref().ok())
-                    .map(|pk_map| {
-                        let modlist = pk_map
-                            .iter()
-                            .map(|(t, k)| {
-                                Modify::Present(
-                                    "passkeys".into(),
-                                    Value::Passkey(Uuid::new_v4(), t.clone(), k.clone()),
-                                )
-                            })
-                            .chain(std::iter::once(m_purge(Attribute::PrimaryCredential)))
-                            .collect();
-                        (ent.get_uuid(), ModifyList::new_list(modlist))
-                    })
-            })
-            .collect();
-
-        // If there is nothing, we don't need to do anything.
-        if modset.is_empty() {
-            admin_info!("migrate_10_to_11 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Apply the batch mod.
-        self.internal_batch_modify(modset.into_iter())
-    }
-
-    /// Migrate 11 to 12
-    ///
-    /// Rewrite api-tokens from session to a dedicated API token type.
-    ///
-    #[instrument(level = "info", skip_all)]
-    pub fn migrate_11_to_12(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 11 to 12 migration.");
-        // sync_token_session
-        let filter = filter!(f_or!([
-            f_pres(Attribute::ApiTokenSession),
-            f_pres(Attribute::SyncTokenSession),
-        ]));
-
-        let mut mod_candidates = self.internal_search_writeable(&filter).map_err(|e| {
-            admin_error!(err = ?e, "migrate_11_to_12 internal search failure");
-            e
-        })?;
-
-        // If there is nothing, we don't need to do anything.
-        if mod_candidates.is_empty() {
-            admin_info!("migrate_11_to_12 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // First, filter based on if any credentials present actually are the legacy
-        // webauthn type.
-
-        for (_, ent) in mod_candidates.iter_mut() {
-            if let Some(api_token_session) = ent.pop_ava(Attribute::ApiTokenSession) {
-                let api_token_session =
-                    api_token_session
-                        .migrate_session_to_apitoken()
-                        .map_err(|e| {
-                            error!(
-                                "Failed to convert {} from session -> apitoken",
-                                Attribute::ApiTokenSession
-                            );
-                            e
-                        })?;
-
-                ent.set_ava_set(Attribute::ApiTokenSession, api_token_session);
-            }
-
-            if let Some(sync_token_session) = ent.pop_ava(Attribute::SyncTokenSession) {
-                let sync_token_session =
-                    sync_token_session
-                        .migrate_session_to_apitoken()
-                        .map_err(|e| {
-                            error!("Failed to convert sync_token_session from session -> apitoken");
-                            e
-                        })?;
-
-                ent.set_ava_set(Attribute::SyncTokenSession, sync_token_session);
-            }
-        }
-
-        // Apply the batch mod.
-        self.internal_apply_writable(mod_candidates)
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// Deletes the Domain info privatecookiekey to force a regeneration as we changed the format
-    pub fn migrate_12_to_13(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 12 to 13 migration.");
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
-            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-        ]));
-        // Delete the existing cookie key to trigger a regeneration.
-        let modlist = ModifyList::new_purge(Attribute::PrivateCookieKey);
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// - Deletes the incorrectly added "member" attribute on dynamic groups
-    pub fn migrate_13_to_14(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 13 to 14 migration.");
-        let filter = filter!(f_eq(
-            Attribute::Class,
-            EntryClass::DynGroup.to_partialvalue()
-        ));
-        // Delete the incorrectly added "member" attr.
-        let modlist = ModifyList::new_purge(Attribute::Member);
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// - Deletes the non-existing attribute for idverification private key which triggers it to regen
-    pub fn migrate_14_to_15(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 14 to 15 migration.");
-        let filter = filter!(f_eq(Attribute::Class, EntryClass::Person.into()));
-        // Delete the non-existing attr for idv private key which triggers it to regen.
-        let modlist = ModifyList::new_purge(Attribute::IdVerificationEcKey);
-        self.internal_modify(&filter, &modlist)
-        // Complete
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// - updates the system config to include the new session expiry values.
-    /// - adds the account policy object to idm_all_accounts
-    pub fn migrate_15_to_16(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 15 to 16 migration.");
-
-        let sysconfig_entry = match self.internal_search_uuid(UUID_SYSTEM_CONFIG) {
-            Ok(entry) => entry,
-            Err(OperationError::NoMatchingEntries) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        let mut all_account_modlist = Vec::with_capacity(3);
-
-        all_account_modlist.push(Modify::Present(
-            Attribute::Class.into(),
-            EntryClass::AccountPolicy.to_value(),
-        ));
-
-        if let Some(auth_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::AuthSessionExpiry)
-        {
-            all_account_modlist.push(Modify::Present(
-                Attribute::AuthSessionExpiry.into(),
-                Value::Uint32(auth_exp),
-            ));
-        }
-
-        if let Some(priv_exp) = sysconfig_entry.get_ava_single_uint32(Attribute::PrivilegeExpiry) {
-            all_account_modlist.push(Modify::Present(
-                Attribute::PrivilegeExpiry.into(),
-                Value::Uint32(priv_exp),
-            ));
-        }
-
-        self.internal_batch_modify(
-            [
-                (
-                    UUID_SYSTEM_CONFIG,
-                    ModifyList::new_list(vec![
-                        Modify::Purged(Attribute::AuthSessionExpiry.into()),
-                        Modify::Purged(Attribute::PrivilegeExpiry.into()),
-                    ]),
-                ),
-                (
-                    UUID_IDM_ALL_ACCOUNTS,
-                    ModifyList::new_list(all_account_modlist),
-                ),
-            ]
-            .into_iter(),
-        )
-        // Complete
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// This migration will:
-    /// * ensure that all access controls have the needed group receiver type
-    /// * delete legacy entries that are no longer needed.
-    pub fn migrate_16_to_17(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 16 to 17 migration.");
-
-        let filter = filter!(f_and!([
-            f_or!([
-                f_pres(Attribute::AcpReceiverGroup),
-                f_pres(Attribute::AcpTargetScope),
-            ]),
-            f_eq(
-                Attribute::Class,
-                EntryClass::AccessControlProfile.to_partialvalue()
-            )
-        ]));
-        // Delete the incorrectly added "member" attr.
-        let modlist = ModifyList::new_list(vec![
-            Modify::Present(
-                Attribute::Class.into(),
-                EntryClass::AccessControlReceiverGroup.to_value(),
-            ),
-            Modify::Present(
-                Attribute::Class.into(),
-                EntryClass::AccessControlTargetScope.to_value(),
-            ),
-        ]);
-        self.internal_modify(&filter, &modlist)?;
-
-        let delete_entries = [
-            UUID_IDM_ACP_OAUTH2_READ_PRIV_V1,
-            UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1,
-            UUID_IDM_ACP_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV_V1,
-            UUID_IDM_ACP_SYSTEM_CONFIG_SESSION_EXP_PRIV_V1,
-            UUID_IDM_ACP_HP_GROUP_WRITE_PRIV_V1,
-            UUID_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1,
-            UUID_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_READ_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_WRITE_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1,
-            UUID_IDM_ACP_GROUP_WRITE_PRIV_V1,
-            UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1,
-            UUID_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
-            UUID_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1,
-            UUID_IDM_HP_ACP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_V1,
-            UUID_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            UUID_IDM_HP_ACP_SYNC_ACCOUNT_MANAGE_PRIV_V1,
-            UUID_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
-            UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1,
-            UUID_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            UUID_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
-            UUID_IDM_ACP_HP_PEOPLE_READ_PRIV_V1,
-            UUID_IDM_ACP_PEOPLE_WRITE_PRIV_V1,
-            UUID_IDM_HP_SYNC_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1,
-            UUID_IDM_RADIUS_SECRET_READ_PRIV_V1,
-            UUID_IDM_PEOPLE_ACCOUNT_PASSWORD_IMPORT_PRIV,
-            UUID_IDM_PEOPLE_EXTEND_PRIV,
-            UUID_IDM_HP_PEOPLE_EXTEND_PRIV,
-            UUID_IDM_HP_GROUP_MANAGE_PRIV,
-            UUID_IDM_HP_GROUP_WRITE_PRIV,
-            UUID_IDM_HP_SERVICE_ACCOUNT_INTO_PERSON_MIGRATE_PRIV,
-            UUID_IDM_GROUP_ACCOUNT_POLICY_MANAGE_PRIV,
-            UUID_IDM_HP_GROUP_UNIX_EXTEND_PRIV,
-            UUID_IDM_GROUP_WRITE_PRIV,
-            UUID_IDM_GROUP_UNIX_EXTEND_PRIV,
-            UUID_IDM_HP_ACCOUNT_UNIX_EXTEND_PRIV,
-            UUID_IDM_ACCOUNT_UNIX_EXTEND_PRIV,
-            UUID_IDM_PEOPLE_WRITE_PRIV,
-            UUID_IDM_HP_PEOPLE_READ_PRIV,
-            UUID_IDM_HP_PEOPLE_WRITE_PRIV,
-            UUID_IDM_PEOPLE_WRITE_PRIV,
-            UUID_IDM_ACCOUNT_READ_PRIV,
-            UUID_IDM_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_ACCOUNT_WRITE_PRIV,
-            UUID_IDM_HP_ACCOUNT_READ_PRIV,
-            UUID_IDM_HP_ACCOUNT_MANAGE_PRIV,
-            UUID_IDM_HP_ACCOUNT_WRITE_PRIV,
-        ];
-
-        let res: Result<(), _> = delete_entries
-            .into_iter()
-            .try_for_each(|entry_uuid| self.internal_delete_uuid_if_exists(entry_uuid));
-        if res.is_ok() {
-            admin_debug!("migrate 16 to 17 -> result Ok!");
-        } else {
-            admin_error!(?res, "migrate 16 to 17 -> result");
-        }
-        debug_assert!(res.is_ok());
-        res?;
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// Automate fix for #2470 - force the domain version to be lowered, to allow
-    /// it to re-raise and force re-run migrations. This is because we accidentally
-    /// were "overwriting" the changes from domain migrations on startup due to
-    /// a logic error. At this point in the startup, the server phase is lower than
-    /// domain info ready, so the change won't immediately trigger remigrations. Rather
-    /// it will force them later in the startup.
-    pub fn migrate_18_to_19(&mut self) -> Result<(), OperationError> {
-        admin_warn!("starting 18 to 19 migration.");
-
-        debug_assert!(*self.phase < ServerPhase::DomainInfoReady);
-        if *self.phase >= ServerPhase::DomainInfoReady {
-            error!("Unable to perform system migration as server phase is greater or equal to domain info ready");
-            return Err(OperationError::MG0003ServerPhaseInvalidForMigration);
-        };
-
-        self.internal_modify_uuid(
-            UUID_DOMAIN_INFO,
-            &ModifyList::new_purge_and_set(Attribute::Version, Value::new_uint32(DOMAIN_LEVEL_2)),
-        )
-        .map(|()| {
-            warn!(
-                "Domain level has been temporarily lowered to {}",
-                DOMAIN_LEVEL_2
-            );
-        })
     }
 
     #[instrument(level = "info", skip_all)]
@@ -872,8 +441,22 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let idm_schema_classes = [
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
             SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_GROUP_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
         ];
 
         idm_schema_classes
@@ -886,17 +469,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        let idm_access_controls = [
+        let idm_data = [
             // Update access controls.
             IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
             // Update anonymous with the correct entry manager,
             BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
+            // Add the internal key provider.
+            E_KEY_PROVIDER_INTERNAL_DL6.clone(),
         ];
-        self.reload()?;
 
-        idm_access_controls
+        idm_data
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
@@ -904,7 +489,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
-        // all the built-in objects get a builtin class
+        // all existing built-in objects get a builtin class
         let filter = f_lt(
             Attribute::Uuid,
             PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),
@@ -913,13 +498,73 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.internal_modify(&filter!(filter), &modlist)?;
 
+        // Reload such that the new default key provider is loaded.
+        self.reload()?;
+
+        // Update the domain entry to contain its key object, which can now be generated.
+        let idm_data = [
+            IDM_ACP_DOMAIN_ADMIN_DL6.clone().into(),
+            E_DOMAIN_INFO_DL6.clone(),
+        ];
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_5_to_6 -> Error");
+                err
+            })?;
+
+        // At this point we reload to show the new key objects on the domain.
+        self.reload()?;
+
+        // Migrate the domain key to a retained key on the key object.
+        let domain_es256_private_key = self.get_domain_es256_private_key().map_err(|err| {
+            error!(?err, "migrate_domain_5_to_6 -> Error");
+            err
+        })?;
+
+        // Migrate all service/scim account keys to the domain key for verification.
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+        let entry_keys_to_migrate = self.internal_search(filter)?;
+
+        let mut modlist = Vec::with_capacity(1 + entry_keys_to_migrate.len());
+
+        modlist.push(Modify::Present(
+            Attribute::KeyActionImportJwsEs256.into(),
+            Value::PrivateBinary(domain_es256_private_key),
+        ));
+
+        for entry in entry_keys_to_migrate {
+            // In these entries, the keys are in JwsEs256PrivateKey.
+            if let Some(jws_signer) =
+                entry.get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
+            {
+                let es256_private_key = jws_signer.private_key_to_der().map_err(|err| {
+                    error!(?err, uuid = ?entry.get_display_id(), "unable to convert signer to der");
+                    OperationError::InvalidValueState
+                })?;
+
+                modlist.push(Modify::Present(
+                    Attribute::KeyActionImportJwsEs256.into(),
+                    Value::PrivateBinary(es256_private_key),
+                ));
+            }
+        }
+
+        let modlist = ModifyList::new_list(modlist);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
+
         Ok(())
     }
 
     /// Migration domain level 6 to 7
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_6_to_7(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) {
+        if !cfg!(test) && DOMAIN_MAX_LEVEL < DOMAIN_LEVEL_7 {
             error!("Unable to raise domain level from 6 to 7.");
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
@@ -1007,6 +652,113 @@ impl<'a> QueryServerWriteTransaction<'a> {
         }
 
         // =========== Apply changes ==============
+
+        // Do this before schema change since domain info has cookie key
+        // as may at this point.
+        //
+        // Domain info should have the attribute private cookie key removed.
+        let modlist = ModifyList::new_list(vec![
+            Modify::Purged(Attribute::PrivateCookieKey.into()),
+            Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
+            Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+        ]);
+
+        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
+
+        let filter = filter!(f_or!([
+            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
+            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
+        ]));
+
+        let modlist =
+            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]);
+
+        self.internal_modify(&filter, &modlist)?;
+
+        // Now update schema
+        let idm_schema_classes = [
+            SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
+            SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
+            SCHEMA_ATTR_REFERS_DL7.clone().into(),
+            SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        // Update access controls
+        let idm_data = [
+            BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
+                .clone()
+                .try_into()?,
+            IDM_PEOPLE_SELF_MAIL_WRITE_DL7.clone().try_into()?,
+            BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7
+                .clone()
+                .try_into()?,
+            IDM_HIGH_PRIVILEGE_DL7.clone().try_into()?,
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| {
+                self.internal_migrate_or_create_ignore_attrs(entry, &[Attribute::Member])
+            })
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        let idm_data = [
+            IDM_ACP_SELF_WRITE_DL7.clone().into(),
+            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        Ok(())
+    }
+
+    /// Patch Application - This triggers a one-shot fixup task for issue #2756
+    /// to correct the content of dyngroups after the dyngroups are now loaded.
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_patch_level_1(&mut self) -> Result<(), OperationError> {
+        admin_warn!("applying domain patch 1.");
+
+        debug_assert!(*self.phase >= ServerPhase::SchemaReady);
+
+        let filter = filter!(f_eq(Attribute::Class, EntryClass::DynGroup.into()));
+        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::DynGroup.into())]);
+
+        self.internal_modify(&filter, &modlist).map(|()| {
+            info!("forced dyngroups to re-calculate memberships");
+        })
+    }
+
+    /// Migration domain level 7 to 8
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_7_to_8(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_MAX_LEVEL < DOMAIN_LEVEL_8 {
+            error!("Unable to raise domain level from 7 to 8.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
 
         Ok(())
     }
@@ -1275,15 +1027,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
         debug_assert!(res.is_ok());
-        res?;
-
-        // Some attributes we don't want to stomp if they already exist. So we conditionally
-        // modify them.
-
-        self.changed_schema = true;
-        self.changed_acp = true;
-
-        Ok(())
+        res
     }
 }
 
@@ -1478,6 +1222,50 @@ mod tests {
         let _entry = write_txn
             .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
             .expect("unable to newly migrated schema entry");
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_6)]
+    async fn test_migrations_dl6_dl7(server: &QueryServer) {
+        // Assert our instance was setup to version 6
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_6);
+
+        // per migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(domain_entry.attribute_pres(Attribute::PrivateCookieKey));
+
+        // Set the version to 7.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_7),
+                ),
+            )
+            .expect("Unable to set domain level to version 7");
+
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        // post migration verification.
+        let domain_entry = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("Unable to access domain entry");
+
+        assert!(!domain_entry.attribute_pres(Attribute::PrivateCookieKey));
 
         write_txn.commit().expect("Unable to commit");
     }

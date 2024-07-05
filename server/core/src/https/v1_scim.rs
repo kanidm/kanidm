@@ -3,7 +3,7 @@ use super::errors::WebError;
 use super::middleware::KOpId;
 use super::v1::{
     json_rest_event_get, json_rest_event_get_id, json_rest_event_get_id_attr, json_rest_event_post,
-    json_rest_event_put_id_attr,
+    json_rest_event_put_attr,
 };
 use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
@@ -11,7 +11,6 @@ use axum::extract::{Path, State};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use axum_auth::AuthBearer;
 use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
@@ -247,10 +246,8 @@ async fn scim_sync_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    AuthBearer(bearer): AuthBearer,
 ) -> Result<Json<ScimSyncState>, WebError> {
     // Given the token, what is it's connected sync state?
-    trace!(?bearer);
     state
         .qe_r_ref
         .handle_scim_sync_status(client_auth_info, kopid.eventid)
@@ -298,7 +295,7 @@ pub async fn sync_account_id_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 /// When you want the kitchen Sink

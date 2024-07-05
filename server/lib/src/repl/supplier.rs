@@ -206,11 +206,12 @@ impl<'a> QueryServerReadTransaction<'a> {
         });
 
         let (meta_entries, entries): (Vec<_>, Vec<_>) = rem_entries.into_iter().partition(|e| {
-            e.get_ava_set(Attribute::Uuid)
-                .map(|uset| {
-                    uset.contains(&PVUUID_DOMAIN_INFO as &PartialValue)
-                        || uset.contains(&PVUUID_SYSTEM_INFO as &PartialValue)
-                        || uset.contains(&PVUUID_SYSTEM_CONFIG as &PartialValue)
+            e.get_ava_set(Attribute::Class)
+                .map(|cls| {
+                    cls.contains(&EntryClass::DomainInfo.into() as &PartialValue)
+                        || cls.contains(&EntryClass::SystemInfo.into() as &PartialValue)
+                        || cls.contains(&EntryClass::SystemConfig.into() as &PartialValue)
+                        || cls.contains(&EntryClass::KeyProvider.into() as &PartialValue)
                 })
                 .unwrap_or(false)
         });
@@ -224,6 +225,11 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         let schema = self.get_schema();
         let domain_version = self.d_info.d_vers;
+        let domain_patch_level = if self.d_info.d_devel_taint {
+            u32::MAX
+        } else {
+            self.d_info.d_patch_level
+        };
         let domain_uuid = self.d_info.d_uuid;
 
         let schema_entries: Vec<_> = schema_entries
@@ -248,6 +254,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Build the incremental context.
         Ok(ReplIncrementalContext::V1 {
             domain_version,
+            domain_patch_level,
             domain_uuid,
             ranges,
             schema_entries,
@@ -265,6 +272,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         //
         // * the current domain version
         let domain_version = self.d_info.d_vers;
+        let domain_devel = self.d_info.d_devel_taint;
         let domain_uuid = self.d_info.d_uuid;
 
         let trim_cid = self.trim_cid().clone();
@@ -285,28 +293,26 @@ impl<'a> QueryServerReadTransaction<'a> {
         // - We must exclude certain entries and attributes!
         //   * schema defines what we exclude!
 
-        let schema_filter = filter!(f_or!([
+        let schema_filter_inner = f_or!([
             f_eq(Attribute::Class, EntryClass::AttributeType.into()),
             f_eq(Attribute::Class, EntryClass::ClassType.into()),
-        ]));
+        ]);
 
-        let meta_filter = filter!(f_or!([
-            f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-            f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-            f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
-        ]));
+        let schema_filter = filter!(schema_filter_inner.clone());
+
+        let meta_filter_inner = f_or!([
+            f_eq(Attribute::Class, EntryClass::DomainInfo.into()),
+            f_eq(Attribute::Class, EntryClass::SystemInfo.into()),
+            f_eq(Attribute::Class, EntryClass::SystemConfig.into()),
+            f_eq(Attribute::Class, EntryClass::KeyProvider.into()),
+        ]);
+
+        let meta_filter = filter!(meta_filter_inner.clone());
 
         let entry_filter = filter_all!(f_or!([
             f_and!([
                 f_pres(Attribute::Class),
-                f_andnot(f_or(vec![
-                    // These are from above!
-                    f_eq(Attribute::Class, EntryClass::AttributeType.into()),
-                    f_eq(Attribute::Class, EntryClass::ClassType.into()),
-                    f_eq(Attribute::Uuid, PVUUID_DOMAIN_INFO.clone()),
-                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_INFO.clone()),
-                    f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone()),
-                ])),
+                f_andnot(f_or(vec![schema_filter_inner, meta_filter_inner])),
             ]),
             f_eq(Attribute::Class, EntryClass::Tombstone.into()),
             f_eq(Attribute::Class, EntryClass::Recycled.into()),
@@ -354,6 +360,7 @@ impl<'a> QueryServerReadTransaction<'a> {
 
         Ok(ReplRefreshContext::V1 {
             domain_version,
+            domain_devel,
             domain_uuid,
             ranges,
             schema_entries,

@@ -1,4 +1,4 @@
-# Release checklist
+# Release Checklist
 
 ## Pre-Reqs
 
@@ -66,6 +66,7 @@ cargo install wasm-bindgen-cli
 - [ ] git checkout -b YYYYMMDD-dev-version
 - [ ] update version to +1 and add dev tag in ./Cargo.toml
 - [ ] update version to +1 and add dev tag in ./Makefile
+- [ ] update `DOMAIN_*_LEVEL` in server/lib/src/constants/mod.rs
 
 ## Final Release Check List
 

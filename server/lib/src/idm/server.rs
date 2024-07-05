@@ -1,16 +1,12 @@
 use std::convert::TryFrom;
-use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use compact_jwt::{JwsCompact, JwsEs256Signer, JwsEs256Verifier, JwsSignerToVerifier, JwsVerifier};
+use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
-use concread::cowcell::{CowCellReadTxn, CowCellWriteTxn};
 use concread::hashmap::HashMap;
-use concread::CowCell;
-use fernet::Fernet;
 use kanidm_proto::internal::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
     UatPurpose, UserAuthToken,
@@ -36,6 +32,7 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
+
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
 use crate::idm::event::{AuthEvent, AuthEventStep, AuthResult};
@@ -54,19 +51,12 @@ use crate::idm::serviceaccount::ServiceAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::server::keys::KeyProvidersTransaction;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Session, SessionState};
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
-
-#[derive(Clone)]
-pub struct DomainKeys {
-    pub(crate) uat_jwt_signer: JwsEs256Signer,
-    pub(crate) uat_jwt_validator: JwsEs256Verifier,
-    pub(crate) token_enc_key: Fernet,
-    pub(crate) cookie_key: [u8; 64],
-}
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -87,7 +77,6 @@ pub struct IdmServer {
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
-    domain_keys: Arc<CowCell<DomainKeys>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -103,7 +92,6 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -111,14 +99,12 @@ pub struct IdmServerCredUpdateTransaction<'a> {
     // sid: Sid,
     pub(crate) webauthn: &'a Webauthn,
     pub(crate) cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
-    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) crypto_policy: &'a CryptoPolicy,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
-    pub(crate) domain_keys: CowCellReadTxn<DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersReadTransaction,
 }
 
@@ -131,7 +117,6 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
-    pub(crate) domain_keys: CowCellWriteTxn<'a, DomainKeys>,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
@@ -148,21 +133,23 @@ impl IdmServer {
         qs: QueryServer,
         origin: &str,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
-        // This is calculated back from:
-        //  100 password auths / thread -> 0.010 sec per op
-        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(10));
+        let crypto_policy = if cfg!(test) {
+            CryptoPolicy::danger_test_minimum()
+        } else {
+            // This is calculated back from:
+            //  100 password auths / thread -> 0.010 sec per op
+            CryptoPolicy::time_target(Duration::from_millis(10))
+        };
+
         let (async_tx, async_rx) = unbounded();
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, fernet_private_key, es256_private_key, cookie_key, oauth2rs_set) = {
+        let (rp_id, rp_name, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
-                qs_read.get_domain_fernet_private_key()?,
-                qs_read.get_domain_es256_private_key()?,
-                qs_read.get_domain_cookie_key()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
             )
@@ -199,31 +186,6 @@ impl IdmServer {
                 OperationError::InvalidState
             })?;
 
-        // Setup our auth token signing key.
-        let token_enc_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
-            admin_error!("Unable to load Fernet encryption key");
-            OperationError::CryptographyError
-        })?;
-
-        let uat_jwt_signer = JwsEs256Signer::from_es256_der(&es256_private_key)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
-                OperationError::CryptographyError
-            })?
-            .set_sign_option_embed_jwk(true);
-
-        let uat_jwt_validator = uat_jwt_signer.get_verifier().map_err(|e| {
-            admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
-            OperationError::CryptographyError
-        })?;
-
-        let domain_keys = Arc::new(CowCell::new(DomainKeys {
-            uat_jwt_signer,
-            uat_jwt_validator,
-            token_enc_key,
-            cookie_key,
-        }));
-
         let oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
                 admin_error!("Failed to load oauth2 resource servers - {:?}", e);
@@ -241,16 +203,11 @@ impl IdmServer {
                 async_tx,
                 audit_tx,
                 webauthn,
-                domain_keys,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
         ))
-    }
-
-    pub fn get_cookie_key(&self) -> [u8; 64] {
-        self.domain_keys.read().cookie_key
     }
 
     /// Start an auth txn
@@ -270,7 +227,6 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            domain_keys: self.domain_keys.read(),
         }
     }
 
@@ -279,7 +235,6 @@ impl IdmServer {
     pub async fn proxy_read(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read().await,
-            domain_keys: self.domain_keys.read(),
             oauth2rs: self.oauth2rs.read(),
             // async_tx: self.async_tx.clone(),
         }
@@ -299,7 +254,6 @@ impl IdmServer {
             sid,
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
-            domain_keys: self.domain_keys.write(),
             oauth2rs: self.oauth2rs.write(),
         }
     }
@@ -310,7 +264,6 @@ impl IdmServer {
             // sid: Sid,
             webauthn: &self.webauthn,
             cred_update_sessions: self.cred_update_sessions.read(),
-            domain_keys: self.domain_keys.read(),
             crypto_policy: &self.crypto_policy,
         }
     }
@@ -322,7 +275,7 @@ impl IdmServer {
         da: DelayedAction,
     ) -> Result<bool, OperationError> {
         let mut pw = self.proxy_write(ct).await;
-        pw.process_delayedaction(da, ct)
+        pw.process_delayedaction(&da, ct)
             .and_then(|_| pw.commit())
             .map(|()| true)
     }
@@ -382,8 +335,10 @@ impl IdmServerDelayed {
         }
     }
 
-    pub async fn next(&mut self) -> Option<DelayedAction> {
-        self.async_rx.recv().await
+    pub async fn recv_many(&mut self, buffer: &mut Vec<DelayedAction>) -> usize {
+        debug_assert!(buffer.is_empty());
+        let limit = buffer.capacity();
+        self.async_rx.recv_many(buffer, limit).await
     }
 }
 
@@ -396,8 +351,6 @@ pub trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType;
-
-    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier;
 
     /// This is the preferred method to transform and securely verify a token into
     /// an identity that can be used for operations and access enforcement. This
@@ -414,16 +367,15 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         let ClientAuthInfo {
+            source,
             client_cert,
             bearer_token,
-            source,
+            basic_authz: _,
         } = client_auth_info;
 
         match (client_cert, bearer_token) {
-            (Some(_client_cert_info), _) => {
-                // TODO: Cert validation here.
-                warn!("Unable to process client certificate identity");
-                Err(OperationError::NotAuthenticated)
+            (Some(client_cert_info), _) => {
+                self.client_certificate_to_identity(&client_cert_info, ct, source)
             }
             (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
                 Token::UserAuthToken(uat) => self.process_uat_to_identity(&uat, ct, source),
@@ -438,6 +390,9 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
+    /// This function is not using in authentication flows - it is a reflector of the
+    /// current session state to allow a user-auth-token to be presented to the
+    /// user via the whoami call.
     #[instrument(level = "info", skip_all)]
     fn validate_client_auth_info_to_uat(
         &mut self,
@@ -448,13 +403,12 @@ pub trait IdmServerTransaction<'a> {
             client_cert,
             bearer_token,
             source: _,
+            basic_authz: _,
         } = client_auth_info;
 
         match (client_cert, bearer_token) {
-            (Some(_client_cert_info), _) => {
-                // TODO: Cert validation here.
-                warn!("Unable to process client certificate identity");
-                Err(OperationError::NotAuthenticated)
+            (Some(client_cert_info), _) => {
+                self.client_certificate_to_user_auth_token(&client_cert_info, ct)
             }
             (None, Some(token)) => match self.validate_and_parse_token_to_token(&token, ct)? {
                 Token::UserAuthToken(uat) => Ok(uat),
@@ -472,103 +426,39 @@ pub trait IdmServerTransaction<'a> {
 
     fn validate_and_parse_token_to_token(
         &mut self,
-        token: &str,
+        jwsu: &JwsCompact,
         ct: Duration,
     ) -> Result<Token, OperationError> {
-        let jwsu = JwsCompact::from_str(token).map_err(|e| {
-            security_info!(?e, "Unable to decode token");
-            OperationError::NotAuthenticated
-        })?;
-
-        // Frow the unverified token we can now get the kid, and use that to locate the correct
-        // key to id the token.
-        let jws_validator = self.get_uat_validator_txn();
-        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
-            security_info!("Token does not contain a valid kid");
-            OperationError::NotAuthenticated
-        })?;
-
-        let jwsv_kid = jws_validator.get_kid().ok_or_else(|| {
-            security_info!("JWS validator does not contain a valid kid");
-            OperationError::NotAuthenticated
-        })?;
-
-        if kid == jwsv_kid {
-            // It's signed by the primary jws, so it's probably a UserAuthToken.
-            let uat = jws_validator
-                .verify(&jwsu)
-                .map_err(|e| {
-                    security_info!(?e, "Unable to verify token");
-                    OperationError::NotAuthenticated
-                })
-                .and_then(|t| {
-                    t.from_json::<UserAuthToken>().map_err(|err| {
-                        error!(?err, "Unable to deserialise JWS");
-                        OperationError::SerdeJsonError
-                    })
-                })?;
-
-            if let Some(exp) = uat.expiry {
-                let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
-                if ct_odt >= exp {
-                    security_info!(?ct_odt, ?exp, "Session expired");
-                    Err(OperationError::SessionExpired)
-                } else {
-                    trace!(?ct_odt, ?exp, "Session not yet expired");
-                    Ok(Token::UserAuthToken(uat))
-                }
-            } else {
-                debug!("Session has no expiry");
-                Ok(Token::UserAuthToken(uat))
-            }
-        } else {
-            // It's a per-user key, get their validator.
-            let entry = self
-                .get_qs_txn()
-                .internal_search(filter!(f_eq(
-                    Attribute::JwsEs256PrivateKey,
-                    PartialValue::new_iutf8(kid)
-                )))
-                .and_then(|mut vs| match vs.pop() {
-                    Some(entry) if vs.is_empty() => Ok(entry),
-                    _ => {
-                        admin_error!(
-                            ?kid,
-                            "entries was empty, or matched multiple results for kid"
-                        );
-                        Err(OperationError::NotAuthenticated)
-                    }
-                })?;
-
-            let user_signer = entry
-                .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-                .ok_or_else(|| {
-                    admin_error!(
-                        ?kid,
-                        "A kid was present on entry {} but it does not contain a signing key",
-                        entry.get_uuid()
-                    );
-                    OperationError::NotAuthenticated
-                })?;
-
-            let user_validator = user_signer.get_verifier().map_err(|e| {
-                security_info!(?e, "Unable to access token verifier");
+        // Our key objects now handle this logic and determine the correct key
+        // from the input type.
+        let jws_inner = self
+            .get_qs_txn()
+            .get_domain_key_object_handle()?
+            .jws_verify(jwsu)
+            .map_err(|err| {
+                security_info!(?err, "Unable to verify token");
                 OperationError::NotAuthenticated
             })?;
 
-            let apit = user_validator
-                .verify(&jwsu)
-                .map_err(|e| {
-                    security_info!(?e, "Unable to verify token");
-                    OperationError::NotAuthenticated
-                })
-                .and_then(|t| {
-                    t.from_json::<ApiToken>().map_err(|err| {
-                        error!(?err, "Unable to deserialise JWS");
-                        OperationError::SerdeJsonError
-                    })
-                })?;
+        // Is it a UAT?
+        if let Ok(uat) = jws_inner.from_json::<UserAuthToken>() {
+            if let Some(exp) = uat.expiry {
+                let ct_odt = time::OffsetDateTime::UNIX_EPOCH + ct;
+                if exp < ct_odt {
+                    security_info!(?ct_odt, ?exp, "Session expired");
+                    return Err(OperationError::SessionExpired);
+                } else {
+                    trace!(?ct_odt, ?exp, "Session not yet expired");
+                    return Ok(Token::UserAuthToken(uat));
+                }
+            } else {
+                debug!("Session has no expiry");
+                return Ok(Token::UserAuthToken(uat));
+            }
+        };
 
+        // Is it an API Token?
+        if let Ok(apit) = jws_inner.from_json::<ApiToken>() {
             if let Some(expiry) = apit.expiry {
                 if time::OffsetDateTime::UNIX_EPOCH + ct >= expiry {
                     security_info!("Session expired");
@@ -576,53 +466,19 @@ pub trait IdmServerTransaction<'a> {
                 }
             }
 
-            Ok(Token::ApiToken(apit, entry))
-        }
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    fn validate_and_parse_uat(
-        &self,
-        token: Option<&str>,
-        ct: Duration,
-    ) -> Result<UserAuthToken, OperationError> {
-        // Given the token string, validate and recreate the UAT
-        let jws_validator = self.get_uat_validator_txn();
-
-        let uat: UserAuthToken = token
-            .ok_or(OperationError::NotAuthenticated)
-            .and_then(|s| {
-                JwsCompact::from_str(s).map_err(|e| {
-                    security_info!(?e, "Unable to decode token");
+            let entry = self
+                .get_qs_txn()
+                .internal_search_uuid(apit.account_id)
+                .map_err(|err| {
+                    security_info!(?err, "Account associated with api token no longer exists.");
                     OperationError::NotAuthenticated
-                })
-            })
-            .and_then(|jwtu| {
-                jws_validator
-                    .verify(&jwtu)
-                    .map_err(|e| {
-                        security_info!(?e, "Unable to verify token");
-                        OperationError::NotAuthenticated
-                    })
-                    .and_then(|t| {
-                        t.from_json::<UserAuthToken>().map_err(|err| {
-                            error!(?err, "Unable to deserialise JWS");
-                            OperationError::SerdeJsonError
-                        })
-                    })
-            })?;
+                })?;
 
-        if let Some(exp) = uat.expiry {
-            if time::OffsetDateTime::UNIX_EPOCH + ct >= exp {
-                security_info!("Session expired");
-                Err(OperationError::SessionExpired)
-            } else {
-                Ok(uat)
-            }
-        } else {
-            debug!("Session has no expiry");
-            Ok(uat)
-        }
+            return Ok(Token::ApiToken(apit, entry));
+        };
+
+        security_info!("Unable to verify token, invalid inner JSON");
+        Err(OperationError::NotAuthenticated)
     }
 
     fn check_oauth2_account_uuid_valid(
@@ -827,6 +683,135 @@ pub trait IdmServerTransaction<'a> {
         })
     }
 
+    fn client_cert_info_entry(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
+        let pks256 = hex::encode(client_cert_info.public_key_s256);
+        // Using the certificate hash, find our matching cert.
+        let mut maybe_cert_entries = self.get_qs_txn().internal_search(filter!(f_eq(
+            Attribute::Certificate,
+            PartialValue::HexString(pks256.clone())
+        )))?;
+
+        let maybe_cert_entry = maybe_cert_entries.pop();
+
+        if let Some(cert_entry) = maybe_cert_entry {
+            if maybe_cert_entries.is_empty() {
+                Ok(cert_entry)
+            } else {
+                debug!(?pks256, "Multiple certificates matched, unable to proceed.");
+                Err(OperationError::NotAuthenticated)
+            }
+        } else {
+            debug!(?pks256, "No certificates were able to be mapped.");
+            Err(OperationError::NotAuthenticated)
+        }
+    }
+
+    /// Given a certificate, validate it and discover the associated entry that
+    /// the certificate relates to. Currently, this relies on mapping the public
+    /// key sha256 to a stored client certificate, which then links to the owner.
+    ///
+    /// In the future we *could* consider alternate mapping strategies such as
+    /// subjectAltName or subject DN, but these have subtle security risks and
+    /// configuration challenges, so binary mapping is the simplest - and safest -
+    /// option today.
+    #[instrument(level = "debug", skip_all)]
+    fn client_certificate_to_identity(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+        ct: Duration,
+        source: Source,
+    ) -> Result<Identity, OperationError> {
+        let cert_entry = self.client_cert_info_entry(client_cert_info)?;
+
+        // This is who the certificate belongs to.
+        let refers_uuid = cert_entry
+            .get_ava_single_refer(Attribute::Refers)
+            .ok_or_else(|| {
+                warn!("Invalid certificate entry, missing refers");
+                OperationError::InvalidState
+            })?;
+
+        // Now get the related entry.
+        let entry = self.get_qs_txn().internal_search_uuid(refers_uuid)?;
+
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        // Is the account in it's valid window?
+        if !account.is_within_valid_time(ct) {
+            // Nope, expired
+            return Err(OperationError::SessionExpired);
+        };
+
+        // scope is related to the cert. For now, default to RO.
+        let scope = AccessScope::ReadOnly;
+
+        let mut limits = Limits::default();
+        // Apply the limits from the account policy
+        if let Some(lim) = account_policy
+            .limit_search_max_results()
+            .and_then(|v| v.try_into().ok())
+        {
+            limits.search_max_results = lim;
+        }
+        if let Some(lim) = account_policy
+            .limit_search_max_filter_test()
+            .and_then(|v| v.try_into().ok())
+        {
+            limits.search_max_filter_test = lim;
+        }
+
+        let certificate_uuid = cert_entry.get_uuid();
+
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            source,
+            // session_id is the certificate uuid.
+            session_id: certificate_uuid,
+            scope,
+            limits,
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn client_certificate_to_user_auth_token(
+        &mut self,
+        client_cert_info: &ClientCertInfo,
+        ct: Duration,
+    ) -> Result<UserAuthToken, OperationError> {
+        let cert_entry = self.client_cert_info_entry(client_cert_info)?;
+
+        // This is who the certificate belongs to.
+        let refers_uuid = cert_entry
+            .get_ava_single_refer(Attribute::Refers)
+            .ok_or_else(|| {
+                warn!("Invalid certificate entry, missing refers");
+                OperationError::InvalidState
+            })?;
+
+        // Now get the related entry.
+        let entry = self.get_qs_txn().internal_search_uuid(refers_uuid)?;
+
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        // Is the account in it's valid window?
+        if !account.is_within_valid_time(ct) {
+            // Nope, expired
+            return Err(OperationError::SessionExpired);
+        };
+
+        let certificate_uuid = cert_entry.get_uuid();
+        let session_is_rw = false;
+
+        account
+            .client_cert_info_to_userauthtoken(certificate_uuid, session_is_rw, ct, &account_policy)
+            .ok_or(OperationError::InvalidState)
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &mut self,
@@ -901,68 +886,40 @@ pub trait IdmServerTransaction<'a> {
     ) -> Result<Identity, OperationError> {
         // FUTURE: Could allow mTLS here instead?
 
-        let jwsu = client_auth_info
-            .bearer_token
-            .ok_or_else(|| {
-                security_info!("No token provided");
+        let jwsu = client_auth_info.bearer_token.ok_or_else(|| {
+            security_info!("No token provided");
+            OperationError::NotAuthenticated
+        })?;
+
+        let jws_inner = self
+            .get_qs_txn()
+            .get_domain_key_object_handle()?
+            .jws_verify(&jwsu)
+            .map_err(|err| {
+                security_info!(?err, "Unable to verify token");
                 OperationError::NotAuthenticated
-            })
-            .and_then(|s| {
-                JwsCompact::from_str(s.as_str()).map_err(|e| {
-                    security_info!(?e, "Unable to decode token");
-                    OperationError::NotAuthenticated
-                })
             })?;
 
-        let kid = jwsu.get_jwk_kid().ok_or_else(|| {
-            security_info!("Token does not contain a valid kid");
-            OperationError::NotAuthenticated
+        let sync_token = jws_inner.from_json::<ScimSyncToken>().map_err(|err| {
+            error!(?err, "Unable to deserialise JWS");
+            OperationError::SerdeJsonError
         })?;
 
         let entry = self
             .get_qs_txn()
             .internal_search(filter!(f_eq(
-                Attribute::JwsEs256PrivateKey,
-                PartialValue::new_iutf8(kid)
+                Attribute::SyncTokenSession,
+                PartialValue::Refer(sync_token.token_id)
             )))
             .and_then(|mut vs| match vs.pop() {
                 Some(entry) if vs.is_empty() => Ok(entry),
                 _ => {
                     admin_error!(
-                        ?kid,
-                        "entries was empty, or matched multiple results for kid"
+                        token_id = ?sync_token.token_id,
+                        "entries was empty, or matched multiple results for token id"
                     );
                     Err(OperationError::NotAuthenticated)
                 }
-            })?;
-
-        let user_signer = entry
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .ok_or_else(|| {
-                admin_error!(
-                    ?kid,
-                    "A kid was present on entry {} but it does not contain a signing key",
-                    entry.get_uuid()
-                );
-                OperationError::NotAuthenticated
-            })?;
-
-        let user_validator = user_signer.get_verifier().map_err(|e| {
-            security_info!(?e, "Unable to access token verifier");
-            OperationError::NotAuthenticated
-        })?;
-
-        let sync_token = user_validator
-            .verify(&jwsu)
-            .map_err(|e| {
-                security_info!(?e, "Unable to verify token");
-                OperationError::NotAuthenticated
-            })
-            .and_then(|t| {
-                t.from_json::<ScimSyncToken>().map_err(|err| {
-                    error!(?err, "Unable to deserialise JWS");
-                    OperationError::SerdeJsonError
-                })
             })?;
 
         let valid = SyncAccount::check_sync_token_valid(ct, &sync_token, &entry);
@@ -991,10 +948,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_read
-    }
-
-    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
-        &self.domain_keys.uat_jwt_validator
     }
 }
 
@@ -1112,7 +1065,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     client_auth_info,
                 };
 
-                let (auth_session, state) = AuthSession::new(asd, init.privileged);
+                let domain_keys = self.qs_read.get_domain_key_object_handle()?;
+
+                let (auth_session, state) = AuthSession::new(asd, init.privileged, domain_keys);
 
                 match auth_session {
                     Some(auth_session) => {
@@ -1236,7 +1191,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             &self.audit_tx,
                             self.webauthn,
-                            &self.domain_keys.uat_jwt_signer,
                             self.qs_read.pw_badlist(),
                         )
                         .map(|aus| {
@@ -1494,11 +1448,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
     }
 
     pub fn commit(self) -> Result<(), OperationError> {
-        /*
-        lperf_trace_segment!("idm::server::IdmServerAuthTransaction::commit", || {
-            self.sessions.commit();
-            Ok(())
-        })*/
         Ok(())
     }
 }
@@ -1509,13 +1458,19 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_read
     }
-
-    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
-        &self.domain_keys.uat_jwt_validator
-    }
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
+    pub fn jws_public_jwk(&mut self, key_id: &str) -> Result<Jwk, OperationError> {
+        self.qs_read
+            .get_key_providers()
+            .get_key_object_handle(UUID_DOMAIN_INFO)
+            // If there is no domain info, error.
+            .ok_or(OperationError::NoMatchingEntries)
+            .and_then(|key_object| key_object.jws_public_jwk(key_id))
+            .and_then(|maybe_key: Option<Jwk>| maybe_key.ok_or(OperationError::NoMatchingEntries))
+    }
+
     pub fn get_radiusauthtoken(
         &mut self,
         rate: &RadiusAuthTokenEvent,
@@ -1612,10 +1567,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_write
     }
-
-    fn get_uat_validator_txn(&self) -> &JwsEs256Verifier {
-        &self.domain_keys.uat_jwt_validator
-    }
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
@@ -1659,7 +1610,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .feedback()
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
-                .map(|v| v.clone())
+                .cloned()
                 .map_err(|e| {
                     security_info!("zxcvbn returned no feedback when score < 3");
                     e
@@ -1788,6 +1739,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
+            trace!("Unable to use anonymous to change UNIX account password");
             return Err(OperationError::SystemProtectedObject);
         }
 
@@ -2081,15 +2033,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn process_delayedaction(
         &mut self,
-        da: DelayedAction,
+        da: &DelayedAction,
         _ct: Duration,
     ) -> Result<(), OperationError> {
         match da {
-            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(&pwu),
-            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(&upwu),
-            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
-            DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
-            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(&asr),
+            DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(pwu),
+            DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(upwu),
+            DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(wci),
+            DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(bcr),
+            DelayedAction::AuthSessionRecord(asr) => self.process_authsessionrecord(asr),
         }
     }
 
@@ -2099,60 +2051,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .get_oauth2rs_set()
                 .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+            // Clear the flag to indicate we completed the reload.
+            self.qs_write.clear_changed_oauth2();
         }
-        if self.qs_write.get_changed_domain() {
-            // reload token_key?
-            self.qs_write
-                .get_domain_fernet_private_key()
-                .and_then(|token_key| {
-                    Fernet::new(&token_key).ok_or_else(|| {
-                        admin_error!("Failed to generate token_enc_key");
-                        OperationError::InvalidState
-                    })
-                })
-                .map(|new_handle| {
-                    self.domain_keys.token_enc_key = new_handle;
-                })?;
-            self.qs_write
-                .get_domain_es256_private_key()
-                .and_then(|key_der| {
-                    JwsEs256Signer::from_es256_der(&key_der)
-                        .map(|signer| signer.set_sign_option_embed_jwk(true))
-                        .map_err(|e| {
-                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
-                            OperationError::InvalidState
-                        })
-                })
-                .and_then(|signer| {
-                    signer
-                        .get_verifier()
-                        .map_err(|e| {
-                            admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
-                            OperationError::InvalidState
-                        })
-                        .map(|validator| (signer, validator))
-                })
-                .map(|(new_signer, new_validator)| {
-                    self.domain_keys.uat_jwt_signer = new_signer;
-                    self.domain_keys.uat_jwt_validator = new_validator;
-                })?;
-            self.qs_write
-                .get_domain_cookie_key()
-                .map(|new_cookie_key| {
-                    self.domain_keys.cookie_key = new_cookie_key;
-                })?;
-            // If the domain name has changed, we need to update rp-id in
-            // webauthn rs
-            //
-            // TODO: I'm not sure actually. because on a domain rename we
-            // might need to update origin too. So this gets a bit tricky.
-            // we might actually need to *not* reload here, and then let the
-            // admin do it inline with their configs too.
-        }
+
         // Commit everything.
         self.oauth2rs.commit();
-        self.domain_keys.commit();
         self.cred_update_sessions.commit();
+
         trace!("cred_update_session.commit");
         self.qs_write.commit()
     }
@@ -2183,8 +2089,9 @@ mod tests {
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
+    use crate::server::keys::KeyProvidersTransaction;
     use crate::value::SessionState;
-    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+    use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -2415,20 +2322,15 @@ mod tests {
         sessionid
     }
 
-    async fn check_testperson_password(idms: &IdmServer, pw: &str) -> String {
-        let sid =
-            init_authsession_sid(idms, Duration::from_secs(TEST_CURRENT_TIME), "testperson1").await;
+    async fn check_testperson_password(idms: &IdmServer, pw: &str, ct: Duration) -> JwsCompact {
+        let sid = init_authsession_sid(idms, ct, "testperson1").await;
 
         let mut idms_auth = idms.auth().await;
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
         let r2 = idms_auth
-            .auth(
-                &anon_step,
-                Duration::from_secs(TEST_CURRENT_TIME),
-                Source::Internal.into(),
-            )
+            .auth(&anon_step, ct, Source::Internal.into())
             .await;
         debug!("r2 ==> {:?}", r2);
 
@@ -2464,10 +2366,11 @@ mod tests {
 
     #[idm_test]
     async fn test_idm_simple_password_auth(idms: &IdmServer, idms_delayed: &mut IdmServerDelayed) {
+        let ct = duration_from_epoch_now();
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        check_testperson_password(idms, TEST_PASSWORD).await;
+        check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear our the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -2814,11 +2717,12 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
+        let ct = duration_from_epoch_now();
         // Assert the delayed action queue is empty
         idms_delayed.check_is_empty_or_panic();
         // Setup the admin w_ an imported password.
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(ct).await;
             // now modify and provide a primary credential.
 
             idms_prox_write
@@ -2853,7 +2757,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Do an auth, this will trigger the action to send.
-        check_testperson_password(idms, "password").await;
+        check_testperson_password(idms, "password", ct).await;
 
         // ⚠️  We have to be careful here. Between these two actions, it's possible
         // that on the pw upgrade that the credential uuid changes. This immediately
@@ -2886,7 +2790,7 @@ mod tests {
         assert_eq!(cred_before.uuid, cred_after.uuid);
 
         // Check the admin pw still matches
-        check_testperson_password(idms, "password").await;
+        check_testperson_password(idms, "password", ct).await;
         // Clear the next auth session record
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
@@ -3472,7 +3376,7 @@ mod tests {
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_testperson_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear out the queued session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3486,11 +3390,11 @@ mod tests {
 
         // Check it's valid - This is within the time window so will pass.
         idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(token.clone().into(), ct)
             .expect("Failed to validate");
 
         // In X time it should be INVALID
-        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), expiry) {
+        match idms_prox_read.validate_client_auth_info_to_ident(token.into(), expiry) {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -3593,9 +3497,8 @@ mod tests {
         idms_delayed: &mut IdmServerDelayed,
     ) {
         use kanidm_proto::internal::UserAuthToken;
-        use std::str::FromStr;
 
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let ct = duration_from_epoch_now();
 
         let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
         let expiry = ct + Duration::from_secs(DEFAULT_AUTH_SESSION_EXPIRY as u64 + 1);
@@ -3608,7 +3511,7 @@ mod tests {
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_testperson_password(idms, TEST_PASSWORD).await;
+        let uat_unverified = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Process the session info.
         let da = idms_delayed.try_recv().expect("invalid");
@@ -3616,10 +3519,22 @@ mod tests {
         let r = idms.delayed_action(ct, da).await;
         assert!(Ok(true) == r);
 
-        let uat_unverified = JwsCompact::from_str(&token).expect("Failed to parse apitoken");
+        let mut idms_prox_read = idms.proxy_read().await;
 
-        let jws_validator =
-            JwsEs256Verifier::try_from(uat_unverified.get_jwk_pubkey().unwrap()).unwrap();
+        let token_kid = uat_unverified.kid().expect("no key id present");
+
+        let uat_jwk = idms_prox_read
+            .qs_read
+            .get_key_providers()
+            .get_key_object(UUID_DOMAIN_INFO)
+            .and_then(|object| {
+                object
+                    .jws_public_jwk(&token_kid)
+                    .expect("Unable to access uat jwk")
+            })
+            .expect("No jwk by this kid");
+
+        let jws_validator = JwsEs256Verifier::try_from(&uat_jwk).unwrap();
 
         let uat_inner: UserAuthToken = jws_validator
             .verify(&uat_unverified)
@@ -3627,16 +3542,14 @@ mod tests {
             .from_json()
             .unwrap();
 
-        let mut idms_prox_read = idms.proxy_read().await;
-
         // Check it's valid.
         idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(uat_unverified.clone().into(), ct)
             .expect("Failed to validate");
 
         // If the auth session record wasn't processed, this will fail.
         idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), post_grace)
+            .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
             .expect("Failed to validate");
 
         drop(idms_prox_read);
@@ -3652,7 +3565,9 @@ mod tests {
 
         // Now, within gracewindow, it's NOT valid because the session entry exists and is in
         // the revoked state!
-        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), post_grace) {
+        match idms_prox_read
+            .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
+        {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -3677,11 +3592,13 @@ mod tests {
 
         let mut idms_prox_read = idms.proxy_read().await;
         idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(uat_unverified.clone().into(), ct)
             .expect("Failed to validate");
 
         // post grace, it's not valid.
-        match idms_prox_read.validate_client_auth_info_to_ident(token.as_str().into(), post_grace) {
+        match idms_prox_read
+            .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
+        {
             Err(OperationError::SessionExpired) => {}
             _ => assert!(false),
         }
@@ -4013,12 +3930,12 @@ mod tests {
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let ct = duration_from_epoch_now();
 
         init_testperson_w_password(idms, TEST_PASSWORD)
             .await
             .expect("Failed to setup admin account");
-        let token = check_testperson_password(idms, TEST_PASSWORD).await;
+        let token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -4029,29 +3946,27 @@ mod tests {
 
         // Check it's valid.
         idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(token.clone().into(), ct)
             .expect("Failed to validate");
 
         drop(idms_prox_read);
 
-        // Now reset the token_key - we can cheat and push this
-        // through the migrate 3 to 4 code.
-        //
-        // fernet_private_key_str
-        // es256_private_key_der
+        // We need to get the token key id and revoke it.
+        let revoke_kid = token.kid().expect("token does not contain a key id");
+
+        // Now revoke the token_key
         let mut idms_prox_write = idms.proxy_write(ct).await;
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
-            ModifyList::new_list(vec![
-                Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
-                Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
-                Modify::Purged(Attribute::DomainTokenKey.into()),
-            ]),
+            ModifyList::new_append(
+                Attribute::KeyActionRevoke.into(),
+                Value::HexString(revoke_kid.to_string()),
+            ),
         );
         assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
         assert!(idms_prox_write.commit().is_ok());
-        // Check the old token is invalid, due to reload.
-        let new_token = check_testperson_password(idms, TEST_PASSWORD).await;
+
+        let new_token = check_testperson_password(idms, TEST_PASSWORD, ct).await;
 
         // Clear the session record
         let da = idms_delayed.try_recv().expect("invalid");
@@ -4059,12 +3974,15 @@ mod tests {
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await;
+
+        // Check the old token is invalid, due to reload.
         assert!(idms_prox_read
-            .validate_client_auth_info_to_ident(token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(token.into(), ct)
             .is_err());
+
         // A new token will work due to the matching key.
         idms_prox_read
-            .validate_client_auth_info_to_ident(new_token.as_str().into(), ct)
+            .validate_client_auth_info_to_ident(new_token.into(), ct)
             .expect("Failed to validate");
     }
 

@@ -411,6 +411,10 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn trim(&mut self, trim_cid: &Cid) {
+        // There might be a neater way to do this with less iterations. The problem
+        // is we can't just check on what was in b/older, because then we miss
+        // trimmable content from the local map. So once the merge is complete we
+        // do a pass for trim.
         self.map.retain(|_, session| {
             match &session.state {
                 SessionState::RevokedAt(cid) if cid < trim_cid => {
@@ -421,7 +425,38 @@ impl ValueSetT for ValueSetSession {
                 // Retain all else
                 _ => true,
             }
-        })
+        });
+
+        // Now, assert that there are fewer or equal sessions to the limit.
+        if self.map.len() > SESSION_MAXIMUM {
+            // At this point we will force a number of sessions to be removed. This
+            // is replication safe since other replicas will also be performing
+            // the same operation on merge, since we trim by session issuance order.
+
+            // This is a "slow path". This is becase we optimise session storage
+            // based on fast session lookup, so now we need to actually create an
+            // index based on time. We need to also clone here since we need to mutate
+            // self.map which would violate mut/imut.
+
+            warn!(
+                "entry has exceeded session_maximum limit ({:?}), force trimming will occur",
+                SESSION_MAXIMUM
+            );
+
+            let time_idx: BTreeMap<OffsetDateTime, Uuid> = self
+                .map
+                .iter()
+                .map(|(session_id, session)| (session.issued_at, *session_id))
+                .collect();
+
+            let to_take = self.map.len() - SESSION_MAXIMUM;
+
+            time_idx.values().take(to_take).for_each(|session_id| {
+                warn!(?session_id, "force trimmed");
+                self.map.remove(session_id);
+            });
+        }
+        // And we're done.
     }
 
     fn contains(&self, pv: &PartialValue) -> bool {
@@ -660,44 +695,31 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
-        if let Some(b) = older.as_session_map() {
-            // We can't just do merge maps here, we have to be aware of the
-            // session.state value and what it currently is set to.
-            let mut map = self.map.clone();
-            for (k_other, v_other) in b.iter() {
-                if let Some(v_self) = map.get_mut(k_other) {
-                    // We only update if lower. This is where RevokedAt
-                    // always proceeds other states, and lower revoked
-                    // cids will always take effect.
-                    if v_other.state > v_self.state {
-                        *v_self = v_other.clone();
-                    }
-                } else {
-                    // Not present, just insert.
-                    map.insert(*k_other, v_other.clone());
+        // If the older value has a different type - return nothing, we
+        // just take the newer value.
+        let b = older.as_session_map()?;
+        // We can't just do merge maps here, we have to be aware of the
+        // session.state value and what it currently is set to.
+        let mut map = self.map.clone();
+        for (k_other, v_other) in b.iter() {
+            if let Some(v_self) = map.get_mut(k_other) {
+                // We only update if lower. This is where RevokedAt
+                // always proceeds other states, and lower revoked
+                // cids will always take effect.
+                if v_other.state > v_self.state {
+                    *v_self = v_other.clone();
                 }
+            } else {
+                // Not present, just insert.
+                map.insert(*k_other, v_other.clone());
             }
-            // There might be a neater way to do this with less iterations. The problem
-            // is we can't just check on what was in b/older, because then we miss
-            // trimmable content from the local map. So once the merge is complete we
-            // do a pass for trim.
-            map.retain(|_, session| {
-                match &session.state {
-                    SessionState::RevokedAt(cid) if cid < trim_cid => {
-                        // This value is past the replication trim window and can now safely
-                        // be removed
-                        false
-                    }
-                    // Retain all else
-                    _ => true,
-                }
-            });
-            Some(Box::new(ValueSetSession { map }))
-        } else {
-            // The older value has a different type - return nothing, we
-            // just take the newer value.
-            None
         }
+
+        let mut vs = Box::new(ValueSetSession { map });
+
+        vs.trim(trim_cid);
+
+        Some(vs)
     }
 }
 
@@ -1067,6 +1089,10 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn trim(&mut self, trim_cid: &Cid) {
+        // There might be a neater way to do this with less iterations. The problem
+        // is we can't just check on what was in b/older, because then we miss
+        // trimmable content from the local map. So once the merge is complete we
+        // do a pass for trim.
         self.map.retain(|_, session| {
             match &session.state {
                 SessionState::RevokedAt(cid) if cid < trim_cid => {
@@ -1292,22 +1318,12 @@ impl ValueSetT for ValueSetOauth2Session {
                     map.insert(*k_other, v_other.clone());
                 }
             }
-            // There might be a neater way to do this with less iterations. The problem
-            // is we can't just check on what was in b/older, because then we miss
-            // trimmable content from the local map. So once the merge is complete we
-            // do a pass for trim.
-            map.retain(|_, session| {
-                match &session.state {
-                    SessionState::RevokedAt(cid) if cid < trim_cid => {
-                        // This value is past the replication trim window and can now safely
-                        // be removed
-                        false
-                    }
-                    // Retain all else
-                    _ => true,
-                }
-            });
-            Some(Box::new(ValueSetOauth2Session { map, rs_filter }))
+
+            let mut vs = Box::new(ValueSetOauth2Session { map, rs_filter });
+
+            vs.trim(trim_cid);
+
+            Some(vs)
         } else {
             // The older value has a different type - return nothing, we
             // just take the newer value.
@@ -1695,7 +1711,7 @@ impl ValueSetT for ValueSetApiToken {
 
 #[cfg(test)]
 mod tests {
-    use super::{ValueSetOauth2Session, ValueSetSession};
+    use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
     use crate::prelude::{IdentityId, SessionScope, Uuid};
     use crate::repl::cid::Cid;
     use crate::value::{Oauth2Session, Session, SessionState};
@@ -1982,6 +1998,51 @@ mod tests {
         assert!(!sessions.contains_key(&zero_uuid));
         assert!(!sessions.contains_key(&one_uuid));
         assert!(sessions.contains_key(&two_uuid));
+    }
+
+    #[test]
+    fn test_valueset_session_limit_trim() {
+        // Create a session that will be trimmed.
+        let zero_uuid = Uuid::new_v4();
+        let zero_cid = Cid::new_zero();
+        let issued_at = OffsetDateTime::UNIX_EPOCH;
+
+        let session_iter = std::iter::once((
+            zero_uuid,
+            Session {
+                state: SessionState::NeverExpires,
+                label: "hacks".to_string(),
+                issued_at,
+                issued_by: IdentityId::Internal,
+                cred_id: Uuid::new_v4(),
+                scope: SessionScope::ReadOnly,
+            },
+        ))
+        .chain((0..SESSION_MAXIMUM).into_iter().map(|_| {
+            (
+                Uuid::new_v4(),
+                Session {
+                    state: SessionState::NeverExpires,
+                    label: "hacks".to_string(),
+                    issued_at: OffsetDateTime::now_utc(),
+                    issued_by: IdentityId::Internal,
+                    cred_id: Uuid::new_v4(),
+                    scope: SessionScope::ReadOnly,
+                },
+            )
+        }));
+
+        let mut vs_a: ValueSet = ValueSetSession::from_iter(session_iter).unwrap();
+
+        assert!(vs_a.len() > SESSION_MAXIMUM);
+
+        vs_a.trim(&zero_cid);
+
+        assert!(vs_a.len() == SESSION_MAXIMUM);
+
+        let sessions = vs_a.as_session_map().expect("Unable to access sessions");
+
+        assert!(!sessions.contains_key(&zero_uuid));
     }
 
     #[test]

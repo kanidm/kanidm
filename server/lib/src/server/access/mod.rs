@@ -19,14 +19,13 @@ use std::collections::BTreeSet;
 use std::ops::DerefMut;
 use std::sync::Arc;
 
-use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
+use concread::arcache::ARCacheBuilder;
 use concread::cowcell::*;
-use tracing::trace;
 use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
-use crate::filter::{Filter, FilterValid, FilterValidResolved};
+use crate::filter::{Filter, FilterValid, ResolveFilterCache, ResolveFilterCacheReadTxn};
 use crate::modify::Modify;
 use crate::prelude::*;
 
@@ -42,8 +41,8 @@ use self::delete::{apply_delete_access, DeleteResult};
 use self::modify::{apply_modify_access, ModifyResult};
 use self::search::{apply_search_access, SearchResult};
 
-const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 2048;
-const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 16;
+const ACP_RESOLVE_FILTER_CACHE_MAX: usize = 256;
+const ACP_RESOLVE_FILTER_CACHE_LOCAL: usize = 0;
 
 mod create;
 mod delete;
@@ -101,8 +100,7 @@ struct AccessControlsInner {
 pub struct AccessControls {
     inner: CowCell<AccessControlsInner>,
     // acp_related_search_cache: ARCache<Uuid, Vec<Uuid>>,
-    acp_resolve_filter_cache:
-        ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
+    acp_resolve_filter_cache: ResolveFilterCache,
 }
 
 fn resolve_access_conditions(
@@ -110,12 +108,7 @@ fn resolve_access_conditions(
     ident_memberof: Option<&BTreeSet<Uuid>>,
     receiver: &AccessControlReceiver,
     target: &AccessControlTarget,
-    acp_resolve_filter_cache: &mut ARCacheReadTxn<
-        '_,
-        (IdentityId, Filter<FilterValid>),
-        Filter<FilterValidResolved>,
-        (),
-    >,
+    acp_resolve_filter_cache: &mut ResolveFilterCacheReadTxn<'_>,
 ) -> Option<(AccessControlReceiverCondition, AccessControlTargetCondition)> {
     let receiver_condition = match receiver {
         AccessControlReceiver::Group(groups) => {
@@ -159,9 +152,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>>;
 
     #[allow(clippy::mut_from_ref)]
-    fn get_acp_resolve_filter_cache(
-        &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>;
+    fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
     #[instrument(level = "trace", name = "access::search_related_acp", skip_all)]
     fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
@@ -236,28 +227,28 @@ pub trait AccessControlsTransaction<'a> {
         // }
     }
 
-    // Contains all the way to eval acps to entries
-    #[instrument(level = "debug", name = "access::search_filter_entries", skip_all)]
-    fn search_filter_entries(
+    #[instrument(level = "debug", name = "access::filter_entries", skip_all)]
+    fn filter_entries(
         &self,
-        se: &SearchEvent,
+        ident: &Identity,
+        filter_orig: &Filter<FilterValid>,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         // Prepare some shared resources.
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
-        let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
+        let requested_attrs: BTreeSet<&str> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp = self.search_related_acp(&se.ident);
+        let related_acp = self.search_related_acp(ident);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
             .filter(|e| {
-                match apply_search_access(&se.ident, related_acp.as_slice(), e) {
+                match apply_search_access(ident, related_acp.as_slice(), e) {
                     SearchResult::Denied => false,
                     SearchResult::Grant => true,
                     SearchResult::Allow(allowed_attrs) => {
@@ -284,6 +275,16 @@ pub trait AccessControlsTransaction<'a> {
         }
 
         Ok(allowed_entries)
+    }
+
+    // Contains all the way to eval acps to entries
+    #[inline(always)]
+    fn search_filter_entries(
+        &self,
+        se: &SearchEvent,
+        entries: Vec<Arc<EntrySealedCommitted>>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.filter_entries(&se.ident, &se.filter_orig, entries)
     }
 
     #[instrument(
@@ -504,7 +505,7 @@ pub trait AccessControlsTransaction<'a> {
                         );
                         false
                     } else {
-                        security_access!("passed pres, rem, classes check.");
+                        debug!("passed pres, rem, classes check.");
                         true
                     } // if acc == false
                 }
@@ -689,7 +690,7 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         if r {
-            security_access!("allowed create of {} entries ✅", entries.len());
+            debug!("allowed create of {} entries ✅", entries.len());
         } else {
             security_access!("denied ❌ - create may not proceed");
         }
@@ -864,9 +865,7 @@ pub trait AccessControlsTransaction<'a> {
 
 pub struct AccessControlsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, AccessControlsInner>,
-    acp_resolve_filter_cache: Cell<
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
+    acp_resolve_filter_cache: Cell<ResolveFilterCacheReadTxn<'a>>,
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
@@ -940,19 +939,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
         &self.inner.sync_agreements
     }
 
-    fn get_acp_resolve_filter_cache(
-        &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a> {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
+            &mut (*mptr) as &mut ResolveFilterCacheReadTxn<'a>
         }
     }
 }
@@ -964,9 +954,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 pub struct AccessControlsReadTransaction<'a> {
     inner: CowCellReadTxn<AccessControlsInner>,
     // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
-    acp_resolve_filter_cache: Cell<
-        ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>,
-    >,
+    acp_resolve_filter_cache: Cell<ResolveFilterCacheReadTxn<'a>>,
 }
 
 unsafe impl<'a> Sync for AccessControlsReadTransaction<'a> {}
@@ -994,19 +982,10 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.sync_agreements
     }
 
-    fn get_acp_resolve_filter_cache(
-        &self,
-    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>, ()>
-    {
+    fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a> {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
-            &mut (*mptr)
-                as &mut ARCacheReadTxn<
-                    'a,
-                    (IdentityId, Filter<FilterValid>),
-                    Filter<FilterValidResolved>,
-                    (),
-                >
+            &mut (*mptr) as &mut ResolveFilterCacheReadTxn<'a>
         }
     }
 }
@@ -1020,10 +999,10 @@ impl Default for AccessControls {
     fn default() -> Self {
         AccessControls {
             inner: CowCell::new(AccessControlsInner {
-                acps_search: Vec::new(),
-                acps_create: Vec::new(),
-                acps_modify: Vec::new(),
-                acps_delete: Vec::new(),
+                acps_search: Vec::with_capacity(0),
+                acps_create: Vec::with_capacity(0),
+                acps_modify: Vec::with_capacity(0),
+                acps_delete: Vec::with_capacity(0),
                 sync_agreements: HashMap::default(),
             }),
             // Allow the expect, if this fails it represents a programming/development

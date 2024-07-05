@@ -29,7 +29,7 @@ authentication type on radius, which is MSCHAPv2. This requires NTLM hash (md4) 
 storage. It's hard to overstate this - MSCHAPv2 is the only auth type that works on all devices,
 out of box, with no messing around. It has to be offered.
 
-This means whatever we do is limited now by it's requirements. For example, you can't have multiple
+This means whatever we do is limited now by its requirements. For example, you can't have multiple
 passwords per account (ie per-device radius pw) because of how the MSCHAPv2 chal-resp works. This
 means 1 to 1 of pw to account for RADIUS.
 

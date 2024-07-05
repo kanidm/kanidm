@@ -25,6 +25,7 @@ pub struct Profile {
     test_time: Option<u64>,
     group_count: u64,
     person_count: u64,
+    thread_count: Option<usize>,
 }
 
 impl Profile {
@@ -51,6 +52,10 @@ impl Profile {
 
     pub fn person_count(&self) -> u64 {
         self.person_count
+    }
+
+    pub fn thread_count(&self) -> Option<usize> {
+        self.thread_count
     }
 
     pub fn seed(&self) -> u64 {
@@ -81,6 +86,7 @@ pub struct ProfileBuilder {
     pub test_time: Option<Option<u64>>,
     pub group_count: Option<u64>,
     pub person_count: Option<u64>,
+    pub thread_count: Option<usize>,
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
@@ -97,17 +103,24 @@ fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
 }
 
 impl ProfileBuilder {
-    pub fn new(control_uri: String, admin_password: String, idm_admin_password: String) -> Self {
+    pub fn new(
+        control_uri: String,
+        extra_uris: Vec<String>,
+        admin_password: String,
+        idm_admin_password: String,
+        thread_count: Option<usize>,
+    ) -> Self {
         ProfileBuilder {
             control_uri,
+            extra_uris,
             admin_password,
             idm_admin_password,
             seed: None,
-            extra_uris: Vec::new(),
             warmup_time: None,
             test_time: None,
             group_count: None,
             person_count: None,
+            thread_count,
         }
     }
 
@@ -146,19 +159,18 @@ impl ProfileBuilder {
             admin_password,
             idm_admin_password,
             seed,
-            extra_uris: _,
+            extra_uris,
             warmup_time,
             test_time,
             group_count,
             person_count,
+            thread_count,
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
             let mut rng = thread_rng();
             rng.gen()
         });
-
-        let extra_uris = Vec::new();
 
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
@@ -184,6 +196,7 @@ impl ProfileBuilder {
             test_time,
             group_count,
             person_count,
+            thread_count,
         })
     }
 }

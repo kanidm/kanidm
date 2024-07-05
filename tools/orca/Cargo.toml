@@ -19,6 +19,7 @@ doctest = false
 
 [dependencies]
 async-trait = { workspace = true }
+chrono = { workspace = true }
 clap = { workspace = true }
 crossbeam = { workspace = true }
 csv = { workspace = true }
@@ -37,8 +38,8 @@ tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4" ] }
 
-[target.'cfg(not(target_family = "windows"))'.dependencies]
-tikv-jemallocator = { workspace = true }
+[target.'cfg(not(any(target_family = "windows", target_os = "illumos")))'.dependencies]
+mimalloc = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

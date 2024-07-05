@@ -24,7 +24,7 @@ jobs:
         with:
           ref: ${{ inputs.tag }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.4
+        uses: mozilla-actions/sccache-action@v0.0.5
         with:
           version: "v0.4.2"
       - name: Install deps
@@ -38,7 +38,7 @@ jobs:
             libudev-dev \
             libpam0g-dev
       - name: Setup mdBook
-        uses: peaceiris/actions-mdbook@v1
+        uses: peaceiris/actions-mdbook@v2
         with:
           mdbook-version: "latest"
 

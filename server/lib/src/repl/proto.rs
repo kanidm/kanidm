@@ -1,7 +1,9 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueCertificate;
 use crate::be::dbvalue::DbValueImage;
+use crate::be::dbvalue::DbValueKeyInternal;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
 use crate::entry::Eattrs;
 use crate::prelude::*;
@@ -452,6 +454,15 @@ pub enum ReplAttrV1 {
     WebauthnAttestationCaList {
         ca_list: AttestationCaList,
     },
+    KeyInternal {
+        set: Vec<DbValueKeyInternal>,
+    },
+    HexString {
+        set: Vec<String>,
+    },
+    Certificate {
+        set: Vec<DbValueCertificate>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -726,6 +737,7 @@ impl ReplIncrementalEntryV1 {
 pub enum ReplRefreshContext {
     V1 {
         domain_version: DomainVersion,
+        domain_devel: bool,
         domain_uuid: Uuid,
         // We need to send the current state of the ranges to populate into
         // the ranges so that lookups and ranges work properly.
@@ -745,6 +757,8 @@ pub enum ReplIncrementalContext {
     UnwillingToSupply,
     V1 {
         domain_version: DomainVersion,
+        #[serde(default)]
+        domain_patch_level: u32,
         domain_uuid: Uuid,
         // We need to send the current state of the ranges to populate into
         // the ranges so that lookups and ranges work properly, and the

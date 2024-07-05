@@ -13,11 +13,11 @@ consumers - many of who are unlikely to be in a position to contact us to ask fo
 
 ### Ethics / Rights
 
-If you have not already, please see our documentation on [rights and ethics](ethics.md)
+If you have not already, please see our documentation on [rights and ethics](developer_ethics.md)
 
 ### Humans First
 
-We must at all times make decisions that put humans first. We must respect all cultures, languages,
+We must at all times make decisions that put humans first. We must respect all cultures, languages
 and identities and how they are represented.
 
 We will never put a burden on the user to correct for poor designs on our part.

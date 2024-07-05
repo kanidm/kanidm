@@ -20,7 +20,7 @@ text=The LDAP server in Kanidm is not a full LDAP server. This is intentional, a
 
 LDAP is a protocol to read data from a directory of information. It is not a server, but a way to
 communicate to a server. There are many famous LDAP implementations such as Active Directory, 389
-Directory Server, DSEE, FreeIPA, and many others. Because it is a standard, applications can use an
+Directory Server, DSEE, FreeIPA and many others. Because it is a standard, applications can use an
 LDAP client library to authenticate users to LDAP, given "one account" for many applications - an
 IDM just like Kanidm!
 
@@ -31,7 +31,7 @@ key-values on objects which are all UTF8 strings (or subsets thereof) based on v
 rules. Kanidm internally implements complex structured data types such as tagging on SSH keys, or
 multi-value credentials. These can not be represented in LDAP.
 
-Many of the structures in Kanidm do not correlate closely to LDAP. For example Kanidm only has a GID
+Many of the structures in Kanidm do not correlate closely to LDAP. For example, Kanidm only has a GID
 number, where LDAP's schemas define both a UID number and a GID number.
 
 Entries in the database also have a specific name in LDAP, related to their path in the directory
@@ -61,7 +61,7 @@ HTTPS and LDAPS.
 
 ### Writes
 
-LDAP's structure is too simplistic for writing to the complex entries that Kanidm internally
+The structure of LDAP is too simplistic for writing to the complex entries that Kanidm internally
 contains. As a result, writes are rejected for all users via the LDAP interface.
 
 ### Access Controls
@@ -157,7 +157,7 @@ ldapwhoami -H ldaps://idm.example.com -x -D "dn=token" -w "..."
 
 ## Changing the Basedn
 
-By default the basedn of the LDAP server is derived from the domain name. For example a domain name
+By default the basedn of the LDAP server is derived from the domain name. For example, a domain name
 of `idm.example.com` will become `dc=idm,dc=example,dc=com`.
 
 However, you may wish to change this to something shorter or at a higher level within your domain

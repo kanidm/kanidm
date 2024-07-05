@@ -57,6 +57,9 @@ pub struct CommonOpt {
     /// Enable debugging of the kanidm tool
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
+    /// Select the instance name you wish to connect to
+    #[clap(short='I', long="instance", env = "KANIDM_INSTANCE")]
+    pub instance: Option<String>,
     /// The URL of the kanidm instance
     #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
@@ -253,6 +256,16 @@ pub enum GroupOpt {
     /// set operation.
     #[clap(name = "set-members")]
     SetMembers(GroupNamedMembers),
+    /// Set the exact list of mail addresses that this group is associated with. The first
+    /// mail address in the list is the `primary` and the remainder are aliases. Setting
+    /// an empty list will clear the mail attribute.
+    #[clap(name = "set-mail")]
+    SetMail {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        name: String,
+        mail: Vec<String>,
+    },
     /// Set a new entry-managed-by for this group.
     #[clap(name = "set-entry-manager")]
     SetEntryManagedBy {
@@ -519,6 +532,24 @@ pub enum AccountValidity {
 }
 
 #[derive(Debug, Subcommand)]
+pub enum AccountCertificate {
+    #[clap(name = "status")]
+    Status {
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap(name = "create")]
+    Create {
+        account_id: String,
+        certificate_path: PathBuf,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+
+}
+
+#[derive(Debug, Subcommand)]
 pub enum AccountUserAuthToken {
     /// Show the status of logged in sessions associated to this account.
     #[clap(name = "status")]
@@ -590,6 +621,11 @@ pub enum PersonOpt {
         #[clap(subcommand)]
         commands: AccountValidity,
     },
+    #[clap(name = "certificate", hide = true)]
+    Certificate {
+        #[clap(subcommand)]
+        commands: AccountCertificate,
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -769,8 +805,8 @@ pub struct ReauthOpt {
 pub struct LogoutOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long, hide = true)]
-    /// Do not send the logout to the server - only remove the session token locally
+    #[clap(short, long)]
+    /// Do not send a logout request to the server - only remove the session token locally.
     local_only: bool,
 }
 
@@ -900,16 +936,16 @@ impl ValueEnum for Oauth2ClaimMapJoin {
 #[derive(Debug, Subcommand)]
 pub enum Oauth2Opt {
     #[clap(name = "list")]
-    /// List all configured oauth2 resource servers
+    /// List all configured oauth2 clients
     List(CommonOpt),
     #[clap(name = "get")]
-    /// Display a selected oauth2 resource server
+    /// Display a selected oauth2 client
     Get(Named),
     // #[clap(name = "set")]
-    // /// Set options for a selected oauth2 resource server
+    // /// Set options for a selected oauth2 client
     // Set(),
     #[clap(name = "create")]
-    /// Create a new oauth2 confidential resource server that is protected by basic auth.
+    /// Create a new oauth2 confidential client that is protected by basic auth.
     CreateBasic {
         #[clap(name = "name")]
         name: String,
@@ -921,8 +957,8 @@ pub enum Oauth2Opt {
         copt: CommonOpt,
     },
     #[clap(name = "create-public")]
-    /// Create a new OAuth2 public resource server that requires PKCE. You should prefer
-    /// using confidential resource server types if possible over public ones.
+    /// Create a new OAuth2 public client that requires PKCE. You should prefer
+    /// using confidential client types if possible over public ones.
     ///
     /// Public clients have many limitations and can not access all API's of OAuth2. For
     /// example rfc7662 token introspection requires client authentication.
@@ -981,18 +1017,18 @@ pub enum Oauth2Opt {
     },
 
     #[clap(name = "reset-secrets")]
-    /// Reset the secrets associated to this resource server
+    /// Reset the secrets associated to this client
     ResetSecrets(Named),
     #[clap(name = "show-basic-secret")]
-    /// Show the associated basic secret for this resource server
+    /// Show the associated basic secret for this client
     ShowBasicSecret(Named),
     #[clap(name = "delete")]
-    /// Delete a oauth2 resource server
+    /// Delete a oauth2 client
     Delete(Named),
-    /// Set a new displayname for a resource server
+    /// Set a new displayname for a client
     #[clap(name = "set-displayname")]
     SetDisplayname(Oauth2SetDisplayname),
-    /// Set a new name for this resource server. You may need to update
+    /// Set a new name for this client. You may need to update
     /// your integrated applications after this so that they continue to
     /// function correctly.
     #[clap(name = "set-name")]
@@ -1022,18 +1058,18 @@ pub enum Oauth2Opt {
         image_type: Option<String>,
     },
     #[clap(name = "enable-pkce")]
-    /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
+    /// Enable PKCE on this oauth2 client. This defaults to being enabled.
     EnablePkce(Named),
-    /// Disable PKCE on this oauth2 resource server to work around insecure clients that
+    /// Disable PKCE on this oauth2 client to work around insecure clients that
     /// may not support it. You should request the client to enable PKCE!
     #[clap(name = "warning-insecure-client-disable-pkce")]
     DisablePkce(Named),
     #[clap(name = "warning-enable-legacy-crypto")]
-    /// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
+    /// Enable legacy signing crypto on this oauth2 client. This defaults to being disabled.
     /// You only need to enable this for openid clients that do not support modern crytopgraphic
     /// operations.
     EnableLegacyCrypto(Named),
-    /// Disable legacy signing crypto on this oauth2 resource server. This is the default.
+    /// Disable legacy signing crypto on this oauth2 client. This is the default.
     #[clap(name = "disable-legacy-crypto")]
     DisableLegacyCrypto(Named),
     #[clap(name = "prefer-short-username")]
@@ -1157,10 +1193,14 @@ pub enum DomainOpt {
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
-    #[clap(name = "reset-token-key")]
-    /// Reset this domain token signing key. This will cause all user sessions to be
+    #[clap(name = "revoke-key")]
+    /// Revoke a key by its key id. This will cause all user sessions to be
     /// invalidated (logged out).
-    ResetTokenKey(CommonOpt),
+    RevokeKey {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        key_id: String,
+    }
 }
 
 #[derive(Debug, Subcommand)]
@@ -1322,7 +1362,7 @@ pub enum SystemOpt {
         commands: DeniedNamesOpt,
     },
     #[clap(name = "oauth2")]
-    /// Configure and display oauth2/oidc resource server configuration
+    /// Configure and display oauth2/oidc client configuration
     Oauth2 {
         #[clap(subcommand)]
         commands: Oauth2Opt,
@@ -1413,3 +1453,4 @@ pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
 }
+

@@ -33,8 +33,6 @@ find pkg/ -type f -delete
 find pkg/ -mindepth 1 -type d -delete
 
 touch ./pkg/ANYTHING_HERE_WILL_BE_DELETED_IN_BUILDS
-# cp ../../README.md ./pkg/
-# cp ../../LICENSE.md ./pkg/
 if [ -f ./pkg/.gitignore ]; then
     rm ./pkg/.gitignore
 fi

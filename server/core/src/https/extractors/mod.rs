@@ -5,11 +5,18 @@ use axum::{
     http::{
         header::HeaderName, header::AUTHORIZATION as AUTHORISATION, request::Parts, StatusCode,
     },
+    serve::IncomingStream,
     RequestPartsExt,
 };
-use hyper::server::conn::AddrStream;
+
+use axum_extra::extract::cookie::CookieJar;
+
 use kanidm_proto::constants::X_FORWARDED_FOR;
+use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
+
+use compact_jwt::JwsCompact;
+use std::str::FromStr;
 
 use std::net::{IpAddr, SocketAddr};
 
@@ -24,7 +31,8 @@ pub struct TrustedClientIp(pub IpAddr);
 impl FromRequestParts<ServerState> for TrustedClientIp {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(level = "debug", skip(state))]
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ServerState,
@@ -81,7 +89,8 @@ pub struct VerifiedClientInformation(pub ClientAuthInfo);
 impl FromRequestParts<ServerState> for VerifiedClientInformation {
     type Rejection = (StatusCode, &'static str);
 
-    #[instrument(level = "debug", skip(state))]
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
     async fn from_request_parts(
         parts: &mut Parts,
         state: &ServerState,
@@ -125,26 +134,48 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             addr.ip()
         };
 
-        let bearer_token = if let Some(header) = parts.headers.get(AUTHORISATION) {
-            header
+        let (basic_authz, bearer_token) = if let Some(header) = parts.headers.get(AUTHORISATION) {
+            if let Some((authz_type, authz_data)) = header
                 .to_str()
                 .map_err(|err| {
-                    warn!(?err, "Invalid bearer token, ignoring");
+                    warn!(?err, "Invalid authz header, ignoring");
                 })
                 .ok()
                 .and_then(|s| s.split_once(' '))
-                .map(|(_, s)| s.to_string())
-                .or_else(|| {
-                    warn!("bearer token format invalid, ignoring");
-                    None
-                })
+            {
+                let authz_type = authz_type.to_lowercase();
+
+                if authz_type == "basic" {
+                    (Some(authz_data.to_string()), None)
+                } else if authz_type == "bearer" {
+                    if let Some(jwsc) = JwsCompact::from_str(authz_data).ok() {
+                        (None, Some(jwsc))
+                    } else {
+                        warn!("bearer jws invalid");
+                        (None, None)
+                    }
+                } else {
+                    warn!("authorisation header invalid, ignoring");
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            }
         } else {
-            None
+            // Only if there are no credentials in bearer, do we examine cookies.
+            let jar = CookieJar::from_headers(&parts.headers);
+
+            let value: Option<&str> = jar.get(COOKIE_BEARER_TOKEN).map(|c| c.value());
+
+            let maybe_bearer = value.and_then(|authz_data| JwsCompact::from_str(authz_data).ok());
+
+            (None, maybe_bearer)
         };
 
         Ok(VerifiedClientInformation(ClientAuthInfo {
             source: Source::Https(ip_addr),
             bearer_token,
+            basic_authz,
             client_cert,
         }))
     }
@@ -163,8 +194,17 @@ impl Connected<ClientConnInfo> for ClientConnInfo {
     }
 }
 
-impl<'a> Connected<&'a AddrStream> for ClientConnInfo {
-    fn connect_info(target: &'a AddrStream) -> Self {
+impl Connected<SocketAddr> for ClientConnInfo {
+    fn connect_info(addr: SocketAddr) -> Self {
+        ClientConnInfo {
+            addr,
+            client_cert: None,
+        }
+    }
+}
+
+impl Connected<IncomingStream<'_>> for ClientConnInfo {
+    fn connect_info(target: IncomingStream<'_>) -> Self {
         ClientConnInfo {
             addr: target.remote_addr(),
             client_cert: None,

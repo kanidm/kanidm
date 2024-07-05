@@ -34,7 +34,7 @@ impl TryFrom<u8> for TotpDigits {
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             6 => Ok(TotpDigits::Six),
-            8 => Ok(TotpDigits::Six),
+            8 => Ok(TotpDigits::Eight),
             _ => Err(()),
         }
     }
@@ -129,7 +129,7 @@ impl TryFrom<&ReplTotpV1> for Totp {
         let digits = TotpDigits::try_from(value.digits)?;
 
         Ok(Totp {
-            secret: value.key.0.clone(),
+            secret: value.key.to_vec(),
             step: value.step,
             algo,
             digits,

@@ -31,7 +31,7 @@ fn test_valueattribute_round_trip() {
     let the_list = all::<Attribute>().collect::<Vec<_>>();
     for attr in the_list {
         let s: &'static str = attr.into();
-        let attr2 = Attribute::try_from(s.to_string()).unwrap();
+        let attr2 = Attribute::try_from(s).unwrap();
         assert!(attr == attr2);
     }
 }
@@ -59,6 +59,7 @@ pub enum Attribute {
     AuthSessionExpiry,
     AuthPasswordMinimumLength,
     BadlistPassword,
+    Certificate,
     Claim,
     Class,
     ClassName,
@@ -72,6 +73,7 @@ pub enum Attribute {
     DisplayName,
     Dn,
     Domain,
+    DomainDevelopmentTaint,
     DomainDisplayName,
     DomainLdapBasedn,
     DomainName,
@@ -100,6 +102,11 @@ pub enum Attribute {
     IpaNtHash,
     IpaSshPubKey,
     JwsEs256PrivateKey,
+    KeyActionRotate,
+    KeyActionRevoke,
+    KeyActionImportJwsEs256,
+    KeyInternalData,
+    KeyProvider,
     LastModifiedCid,
     LdapAllowUnixPwBind,
     /// An LDAP Compatible emailAddress
@@ -140,12 +147,14 @@ pub enum Attribute {
     OtherNoIndex,
     PassKeys,
     PasswordImport,
+    PatchLevel,
     Phantom,
     PrimaryCredential,
     PrivateCookieKey,
     PrivilegeExpiry,
     RadiusSecret,
     RecycledDirectMemberOf,
+    Refers,
     Replicated,
     Rs256PrivateKeyDer,
     Scope,
@@ -208,26 +217,18 @@ impl From<&Attribute> for &'static str {
     }
 }
 
-impl TryFrom<&str> for Attribute {
-    type Error = OperationError;
-
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.to_string())
-    }
-}
-
 impl TryFrom<&AttrString> for Attribute {
     type Error = OperationError;
 
     fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.to_string())
+        Attribute::try_from(value.as_str())
     }
 }
 
-impl TryFrom<String> for Attribute {
+impl<'a> TryFrom<&'a str> for Attribute {
     type Error = OperationError;
-    fn try_from(val: String) -> Result<Self, OperationError> {
-        let res = match val.as_str() {
+    fn try_from(val: &'a str) -> Result<Self, OperationError> {
+        let res = match val {
             ATTR_ACCOUNT => Attribute::Account,
             ATTR_ACCOUNT_EXPIRE => Attribute::AccountExpire,
             ATTR_ACCOUNT_VALID_FROM => Attribute::AccountValidFrom,
@@ -249,6 +250,7 @@ impl TryFrom<String> for Attribute {
             ATTR_AUTH_SESSION_EXPIRY => Attribute::AuthSessionExpiry,
             ATTR_AUTH_PASSWORD_MINIMUM_LENGTH => Attribute::AuthPasswordMinimumLength,
             ATTR_BADLIST_PASSWORD => Attribute::BadlistPassword,
+            ATTR_CERTIFICATE => Attribute::Certificate,
             ATTR_CLAIM => Attribute::Claim,
             ATTR_CLASS => Attribute::Class,
             ATTR_CLASSNAME => Attribute::ClassName,
@@ -263,6 +265,7 @@ impl TryFrom<String> for Attribute {
             ATTR_DN => Attribute::Dn,
             ATTR_DOMAIN => Attribute::Domain,
             ATTR_DOMAIN_DISPLAY_NAME => Attribute::DomainDisplayName,
+            ATTR_DOMAIN_DEVELOPMENT_TAINT => Attribute::DomainDevelopmentTaint,
             ATTR_DOMAIN_LDAP_BASEDN => Attribute::DomainLdapBasedn,
             ATTR_DOMAIN_NAME => Attribute::DomainName,
             ATTR_DOMAIN_SSID => Attribute::DomainSsid,
@@ -290,6 +293,11 @@ impl TryFrom<String> for Attribute {
             ATTR_IPANTHASH => Attribute::IpaNtHash,
             ATTR_IPASSHPUBKEY => Attribute::IpaSshPubKey,
             ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
+            ATTR_KEY_ACTION_ROTATE => Attribute::KeyActionRotate,
+            ATTR_KEY_ACTION_REVOKE => Attribute::KeyActionRevoke,
+            ATTR_KEY_ACTION_IMPORT_JWS_ES256 => Attribute::KeyActionImportJwsEs256,
+            ATTR_KEY_INTERNAL_DATA => Attribute::KeyInternalData,
+            ATTR_KEY_PROVIDER => Attribute::KeyProvider,
             ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
             ATTR_LDAP_ALLOW_UNIX_PW_BIND => Attribute::LdapAllowUnixPwBind,
             ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
@@ -331,12 +339,14 @@ impl TryFrom<String> for Attribute {
             ATTR_OTHER_NO_INDEX => Attribute::OtherNoIndex,
             ATTR_PASSKEYS => Attribute::PassKeys,
             ATTR_PASSWORD_IMPORT => Attribute::PasswordImport,
+            ATTR_PATCH_LEVEL => Attribute::PatchLevel,
             ATTR_PHANTOM => Attribute::Phantom,
             ATTR_PRIMARY_CREDENTIAL => Attribute::PrimaryCredential,
             ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
             ATTR_PRIVILEGE_EXPIRY => Attribute::PrivilegeExpiry,
             ATTR_RADIUS_SECRET => Attribute::RadiusSecret,
             ATTR_RECYCLEDDIRECTMEMBEROF => Attribute::RecycledDirectMemberOf,
+            ATTR_REFERS => Attribute::Refers,
             ATTR_REPLICATED => Attribute::Replicated,
             ATTR_RS256_PRIVATE_KEY_DER => Attribute::Rs256PrivateKeyDer,
             ATTR_SCOPE => Attribute::Scope,
@@ -384,7 +394,7 @@ impl TryFrom<String> for Attribute {
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
             _ => {
                 trace!("Failed to convert {} to Attribute", val);
-                return Err(OperationError::InvalidAttributeName(val));
+                return Err(OperationError::InvalidAttributeName(val.to_string()));
             }
         };
         Ok(res)
@@ -415,6 +425,7 @@ impl From<Attribute> for &'static str {
             Attribute::AuthSessionExpiry => ATTR_AUTH_SESSION_EXPIRY,
             Attribute::AuthPasswordMinimumLength => ATTR_AUTH_PASSWORD_MINIMUM_LENGTH,
             Attribute::BadlistPassword => ATTR_BADLIST_PASSWORD,
+            Attribute::Certificate => ATTR_CERTIFICATE,
             Attribute::Claim => ATTR_CLAIM,
             Attribute::Class => ATTR_CLASS,
             Attribute::ClassName => ATTR_CLASSNAME,
@@ -428,6 +439,7 @@ impl From<Attribute> for &'static str {
             Attribute::DisplayName => ATTR_DISPLAYNAME,
             Attribute::Dn => ATTR_DN,
             Attribute::Domain => ATTR_DOMAIN,
+            Attribute::DomainDevelopmentTaint => ATTR_DOMAIN_DEVELOPMENT_TAINT,
             Attribute::DomainDisplayName => ATTR_DOMAIN_DISPLAY_NAME,
             Attribute::DomainLdapBasedn => ATTR_DOMAIN_LDAP_BASEDN,
             Attribute::DomainName => ATTR_DOMAIN_NAME,
@@ -456,6 +468,11 @@ impl From<Attribute> for &'static str {
             Attribute::IpaNtHash => ATTR_IPANTHASH,
             Attribute::IpaSshPubKey => ATTR_IPASSHPUBKEY,
             Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
+            Attribute::KeyActionRotate => ATTR_KEY_ACTION_ROTATE,
+            Attribute::KeyActionRevoke => ATTR_KEY_ACTION_REVOKE,
+            Attribute::KeyActionImportJwsEs256 => ATTR_KEY_ACTION_IMPORT_JWS_ES256,
+            Attribute::KeyInternalData => ATTR_KEY_INTERNAL_DATA,
+            Attribute::KeyProvider => ATTR_KEY_PROVIDER,
             Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
             Attribute::LdapAllowUnixPwBind => ATTR_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,
@@ -497,12 +514,14 @@ impl From<Attribute> for &'static str {
             Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
             Attribute::PassKeys => ATTR_PASSKEYS,
             Attribute::PasswordImport => ATTR_PASSWORD_IMPORT,
+            Attribute::PatchLevel => ATTR_PATCH_LEVEL,
             Attribute::Phantom => ATTR_PHANTOM,
             Attribute::PrimaryCredential => ATTR_PRIMARY_CREDENTIAL,
             Attribute::PrivateCookieKey => ATTR_PRIVATE_COOKIE_KEY,
             Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
             Attribute::RadiusSecret => ATTR_RADIUS_SECRET,
             Attribute::RecycledDirectMemberOf => ATTR_RECYCLEDDIRECTMEMBEROF,
+            Attribute::Refers => ATTR_REFERS,
             Attribute::Replicated => ATTR_REPLICATED,
             Attribute::Rs256PrivateKeyDer => ATTR_RS256_PRIVATE_KEY_DER,
             Attribute::Scope => ATTR_SCOPE,
@@ -583,7 +602,7 @@ impl<'a> serde::Deserialize<'a> for Attribute {
         D: serde::Deserializer<'a>,
     {
         let s = String::deserialize(deserializer)?;
-        Attribute::try_from(s).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
+        Attribute::try_from(s.as_str()).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
     }
 }
 
@@ -603,11 +622,18 @@ pub enum EntryClass {
     Builtin,
     Class,
     ClassType,
+    ClientCertificate,
     Conflict,
     DomainInfo,
     DynGroup,
     ExtensibleObject,
     Group,
+    KeyProvider,
+    KeyProviderInternal,
+    KeyObject,
+    KeyObjectJwtEs256,
+    KeyObjectJweA128GCM,
+    KeyObjectInternal,
     MemberOf,
     OAuth2ResourceServer,
     OAuth2ResourceServerBasic,
@@ -650,11 +676,18 @@ impl From<EntryClass> for &'static str {
             EntryClass::Builtin => ENTRYCLASS_BUILTIN,
             EntryClass::Class => ATTR_CLASS,
             EntryClass::ClassType => "classtype",
+            EntryClass::ClientCertificate => "client_certificate",
             EntryClass::Conflict => "conflict",
             EntryClass::DomainInfo => "domain_info",
             EntryClass::DynGroup => ATTR_DYNGROUP,
             EntryClass::ExtensibleObject => "extensibleobject",
             EntryClass::Group => ATTR_GROUP,
+            EntryClass::KeyProvider => ENTRYCLASS_KEY_PROVIDER,
+            EntryClass::KeyProviderInternal => ENTRYCLASS_KEY_PROVIDER_INTERNAL,
+            EntryClass::KeyObject => ENTRYCLASS_KEY_OBJECT,
+            EntryClass::KeyObjectJwtEs256 => ENTRYCLASS_KEY_OBJECT_JWT_ES256,
+            EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
+            EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
             EntryClass::MemberOf => "memberof",
             EntryClass::OAuth2ResourceServer => "oauth2_resource_server",
             EntryClass::OAuth2ResourceServerBasic => "oauth2_resource_server_basic",
@@ -758,10 +791,10 @@ lazy_static! {
         (Attribute::Class, EntryClass::System.to_value()),
         (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
             Value::new_utf8s("System (local) info and metadata object.")
         ),
-        (Attribute::Version, Value::Uint32(19))
+        (Attribute::Version, Value::Uint32(20))
     );
 
     pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
@@ -771,7 +804,22 @@ Attribute::Description,
         (Attribute::Name, Value::new_iname("domain_local")),
         (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
         (
-Attribute::Description,
+            Attribute::Description,
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
+
+    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            Attribute::Description,
             Value::new_utf8s("This local domain's info and metadata object.")
         )
     );
@@ -813,7 +861,7 @@ impl From<BuiltinAccount> for Account {
             displayname: value.displayname.to_string(),
             spn: format!("{}@example.com", value.name),
             mail_primary: None,
-            mail: Vec::new(),
+            mail: Vec::with_capacity(0),
             ..Default::default()
         }
     }

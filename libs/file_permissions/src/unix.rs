@@ -1,10 +1,16 @@
 use std::fs::Metadata;
 
+#[cfg(target_os = "freebsd")]
+use std::os::freebsd::fs::MetadataExt;
+
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
 
 #[cfg(target_os = "macos")]
 use std::os::macos::fs::MetadataExt;
+
+#[cfg(target_os = "illumos")]
+use std::os::illumos::fs::MetadataExt;
 
 use kanidm_utils_users::{get_current_gid, get_current_uid};
 

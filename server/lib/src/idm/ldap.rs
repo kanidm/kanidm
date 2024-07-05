@@ -3,7 +3,9 @@
 
 use std::collections::BTreeSet;
 use std::iter;
+use std::str::FromStr;
 
+use compact_jwt::JwsCompact;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
@@ -211,6 +213,7 @@ impl LdapServer {
                 }
             };
 
+            let mut no_attrs = false;
             let mut all_attrs = false;
             let mut all_op_attrs = false;
 
@@ -227,12 +230,28 @@ impl LdapServer {
                         // map all vattrs.
                         all_attrs = true;
                         all_op_attrs = true;
+                    } else if a == "1.1" {
+                        /*
+                         *  ref https://www.rfc-editor.org/rfc/rfc4511#section-4.5.1.8
+                         *
+                         *  A list containing only the OID "1.1" indicates that no
+                         *  attributes are to be returned. If "1.1" is provided with other
+                         *  attributeSelector values, the "1.1" attributeSelector is
+                         *  ignored. This OID was chosen because it does not (and can not)
+                         *  correspond to any attribute in use.
+                         */
+                        if sr.attrs.len() == 1 {
+                            no_attrs = true;
+                        }
                     }
                 })
             }
 
             // We need to retain this to know what the client requested.
-            let (k_attrs, l_attrs) = if all_op_attrs {
+            let (k_attrs, l_attrs) = if no_attrs {
+                // Request no attributes and no mapped attributes.
+                (None, Vec::with_capacity(0))
+            } else if all_op_attrs {
                 // We need all attrs, and we do a full v_attr map.
                 (None, ldap_all_vattrs())
             } else if all_attrs {
@@ -259,7 +278,7 @@ impl LdapServer {
                     .attrs
                     .iter()
                     .filter_map(|a| {
-                        if a == "*" || a == "+" {
+                        if a == "*" || a == "+" || a == "1.1" {
                             None
                         } else {
                             Some(a.to_lowercase())
@@ -429,7 +448,12 @@ impl LdapServer {
                 idm_auth.auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::ApiToken => {
-                let lae = LdapTokenAuthEvent::from_parts(pw.to_string())?;
+                let jwsc = JwsCompact::from_str(pw).map_err(|err| {
+                    error!(?err, "Invalid JwsCompact supplied as authentication token.");
+                    OperationError::NotAuthenticated
+                })?;
+
+                let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
         };
@@ -451,6 +475,123 @@ impl LdapServer {
         }
 
         Ok(result)
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    async fn do_compare(
+        &self,
+        idms: &IdmServer,
+        cr: &CompareRequest,
+        uat: &LdapBoundToken,
+        source: Source,
+    ) -> Result<Vec<LdapMsg>, OperationError> {
+        admin_info!("Attempt LDAP CompareRequest for {}", uat.spn);
+
+        let (opt_attr, opt_value) = match self.dnre.captures(cr.entry.as_str()) {
+            Some(caps) => (
+                caps.name("attr").map(|v| v.as_str().to_string()),
+                caps.name("val").map(|v| v.as_str().to_string()),
+            ),
+            None => {
+                request_error!("LDAP Search failure - invalid basedn");
+                return Err(OperationError::InvalidRequestState);
+            }
+        };
+
+        let ext_filter = match (opt_attr, opt_value) {
+            (Some(a), Some(v)) => LdapFilter::Equality(a, v),
+            _ => {
+                request_error!("LDAP Search failure - invalid rdn");
+                return Err(OperationError::InvalidRequestState);
+            }
+        };
+
+        let ct = duration_from_epoch_now();
+        let mut idm_read = idms.proxy_read().await;
+        // Now start the txn - we need it for resolving filter components.
+
+        // join the filter, with ext_filter
+        let lfilter = LdapFilter::And(vec![
+            ext_filter.clone(),
+            LdapFilter::Equality(cr.atype.clone(), cr.val.clone()),
+            LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
+                LdapFilter::Equality(Attribute::Class.to_string(), "attributetype".to_string()),
+                LdapFilter::Equality(
+                    Attribute::Class.to_string(),
+                    "access_control_profile".to_string(),
+                ),
+            ]))),
+        ]);
+
+        admin_info!(filter = ?lfilter, "LDAP Compare Filter");
+
+        // Build the event, with the permissions from effective_session
+        let ident = idm_read
+            .validate_ldap_session(&uat.effective_session, source, ct)
+            .map_err(|e| {
+                admin_error!("Invalid identity: {:?}", e);
+                e
+            })?;
+
+        let f = Filter::from_ldap_ro(&ident, &lfilter, &mut idm_read.qs_read)?;
+        let filter_orig = f
+            .validate(idm_read.qs_read.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
+
+        let ee = ExistsEvent {
+            ident: ident.clone(),
+            filter,
+            filter_orig,
+        };
+
+        let res = idm_read.qs_read.exists(&ee).map_err(|e| {
+            admin_error!("call to exists failure {:?}", e);
+            e
+        })?;
+
+        if res {
+            admin_info!("LDAP Compare -> True");
+            return Ok(vec![cr.gen_compare_true()]);
+        }
+
+        // we need to check if the entry exists at all (without the ava).
+        let lfilter = LdapFilter::And(vec![
+            ext_filter,
+            LdapFilter::Not(Box::new(LdapFilter::Or(vec![
+                LdapFilter::Equality(Attribute::Class.to_string(), "classtype".to_string()),
+                LdapFilter::Equality(Attribute::Class.to_string(), "attributetype".to_string()),
+                LdapFilter::Equality(
+                    Attribute::Class.to_string(),
+                    "access_control_profile".to_string(),
+                ),
+            ]))),
+        ]);
+        let f = Filter::from_ldap_ro(&ident, &lfilter, &mut idm_read.qs_read)?;
+        let filter_orig = f
+            .validate(idm_read.qs_read.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+        let filter = filter_orig.clone().into_ignore_hidden();
+        let ee = ExistsEvent {
+            ident,
+            filter,
+            filter_orig,
+        };
+
+        let res = idm_read.qs_read.exists(&ee).map_err(|e| {
+            admin_error!("call to exists failure {:?}", e);
+            e
+        })?;
+
+        if res {
+            admin_info!("LDAP Compare -> False");
+            return Ok(vec![cr.gen_compare_false()]);
+        }
+
+        Ok(vec![
+            cr.gen_error(LdapResultCode::NoSuchObject, "".to_string())
+        ])
     }
 
     pub async fn do_op(
@@ -486,6 +627,7 @@ impl LdapServer {
                     }),
                 None => {
                     // Search can occur without a bind, so bind first.
+                    // This is per section 4 of RFC 4513 (https://www.rfc-editor.org/rfc/rfc4513#section-4).
                     let lbt = match self.do_bind(idms, "", "").await {
                         Ok(Some(lbt)) => lbt,
                         Ok(None) => {
@@ -512,9 +654,40 @@ impl LdapServer {
                 // No need to notify on unbind (per rfc4511)
                 Ok(LdapResponseState::Unbind)
             }
-            ServerOps::Compare(cr) => Ok(LdapResponseState::Respond(
-                cr.gen_error(LdapResultCode::Other, "not supported".to_string()),
-            )),
+            ServerOps::Compare(cr) => match uat {
+                Some(u) => self
+                    .do_compare(idms, &cr, &u, source)
+                    .await
+                    .map(LdapResponseState::MultiPartResponse)
+                    .or_else(|e| {
+                        let (rc, msg) = operationerr_to_ldapresultcode(e);
+                        Ok(LdapResponseState::Respond(cr.gen_error(rc, msg)))
+                    }),
+                None => {
+                    // Compare can occur without a bind, so bind first.
+                    // This is per section 4 of RFC 4513 (https://www.rfc-editor.org/rfc/rfc4513#section-4).
+                    let lbt = match self.do_bind(idms, "", "").await {
+                        Ok(Some(lbt)) => lbt,
+                        Ok(None) => {
+                            return Ok(LdapResponseState::Respond(
+                                cr.gen_error(LdapResultCode::InvalidCredentials, "".to_string()),
+                            ))
+                        }
+                        Err(e) => {
+                            let (rc, msg) = operationerr_to_ldapresultcode(e);
+                            return Ok(LdapResponseState::Respond(cr.gen_error(rc, msg)));
+                        }
+                    };
+                    // If okay, do the compare.
+                    self.do_compare(idms, &cr, &lbt, Source::Internal)
+                        .await
+                        .map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
+                        .or_else(|e| {
+                            let (rc, msg) = operationerr_to_ldapresultcode(e);
+                            Ok(LdapResponseState::Respond(cr.gen_error(rc, msg)))
+                        })
+                }
+            },
             ServerOps::Whoami(wr) => match uat {
                 Some(u) => Ok(LdapResponseState::Respond(
                     wr.gen_success(format!("u: {}", u.spn).as_str()),
@@ -617,12 +790,13 @@ pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-    use std::str::FromStr;
 
-    use compact_jwt::{JwsCompact, JwsEs256Verifier, JwsVerifier};
+    use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use hashbrown::HashSet;
     use kanidm_proto::internal::ApiToken;
-    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope, LdapSubstringFilter};
+    use ldap3_proto::proto::{
+        LdapFilter, LdapMsg, LdapOp, LdapResultCode, LdapSearchScope, LdapSubstringFilter,
+    };
     use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
@@ -829,7 +1003,7 @@ mod tests {
             $dn:expr,
             $($item:expr),*
         ) => {{
-            assert!($entry.dn == $dn);
+            assert_eq!($entry.dn, $dn);
             // Build a set from the attrs.
             let mut attrs = HashSet::new();
             for a in $entry.attributes.iter() {
@@ -1133,28 +1307,28 @@ mod tests {
         };
 
         // Inspect the token to get its uuid out.
-        let apitoken_unverified =
-            JwsCompact::from_str(&apitoken).expect("Failed to parse apitoken");
-
-        let jws_verifier =
-            JwsEs256Verifier::try_from(apitoken_unverified.get_jwk_pubkey().unwrap()).unwrap();
+        let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
         let apitoken_inner = jws_verifier
-            .verify(&apitoken_unverified)
+            .verify(&apitoken)
             .unwrap()
             .from_json::<ApiToken>()
             .unwrap();
 
         // Bind using the token as a DN
         let sa_lbt = ldaps
-            .do_bind(idms, "dn=token", &apitoken)
+            .do_bind(idms, "dn=token", &apitoken.to_string())
             .await
             .unwrap()
             .unwrap();
         assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
 
         // Bind using the token as a pw
-        let sa_lbt = ldaps.do_bind(idms, "", &apitoken).await.unwrap().unwrap();
+        let sa_lbt = ldaps
+            .do_bind(idms, "", &apitoken.to_string())
+            .await
+            .unwrap()
+            .unwrap();
         assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
 
         // Search and retrieve mail that's now accessible.
@@ -1251,6 +1425,96 @@ mod tests {
                     (Attribute::Name, "testperson1"),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    (
+                        Attribute::EntryUuid.as_ref(),
+                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
+                    )
+                );
+            }
+            _ => assert!(false),
+        };
+    }
+
+    // Test behaviour of the 1.1 attribute.
+    #[idm_test]
+    async fn test_ldap_one_dot_one_attribute(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+        // Setup a user we want to check.
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // If we request only 1.1, we get no attributes.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec!["1.1".to_string()],
+        };
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_eq!(
+                    lsre.dn.as_str(),
+                    "spn=testperson1@example.com,dc=example,dc=com"
+                );
+                assert!(lsre.attributes.is_empty());
+            }
+            _ => assert!(false),
+        };
+
+        // If we request 1.1 and another attr, 1.1 is IGNORED.
+        let sr = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Equality(Attribute::Name.to_string(), "testperson1".to_string()),
+            attrs: vec![
+                "1.1".to_string(),
+                // This should be present.
+                Attribute::EntryUuid.to_string(),
+            ],
+        };
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        // The result, and the ldap proto success msg.
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
                     (
                         Attribute::EntryUuid.as_ref(),
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
@@ -1458,5 +1722,131 @@ mod tests {
             }
             _ => assert!(false),
         };
+    }
+
+    #[idm_test]
+    async fn test_ldap_compare_request(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        // Setup a user we want to check.
+        {
+            let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(acct_uuid)),
+                (Attribute::GidNumber, Value::Uint32(12345)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login.
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        #[track_caller]
+        fn assert_compare_result(r: &Vec<LdapMsg>, code: LdapResultCode) {
+            assert!(r.len() == 1);
+            match &r[0].op {
+                LdapOp::CompareResult(lcr) => {
+                    assert_eq!(lcr.code, code);
+                }
+                _ => assert!(false),
+            };
+        }
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "name=testperson1,dc=example,dc=com".to_string(),
+            atype: Attribute::Name.to_string(),
+            val: "testperson1".to_string(),
+        };
+
+        assert_compare_result(
+            &ldaps
+                .do_compare(idms, &cr, &anon_t, Source::Internal)
+                .await
+                .unwrap(),
+            LdapResultCode::CompareTrue,
+        );
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "name=testperson1,dc=example,dc=com".to_string(),
+            atype: Attribute::GidNumber.to_string(),
+            val: "12345".to_string(),
+        };
+
+        assert_compare_result(
+            &ldaps
+                .do_compare(idms, &cr, &anon_t, Source::Internal)
+                .await
+                .unwrap(),
+            LdapResultCode::CompareTrue,
+        );
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "name=testperson1,dc=example,dc=com".to_string(),
+            atype: Attribute::Name.to_string(),
+            val: "other".to_string(),
+        };
+        assert_compare_result(
+            &ldaps
+                .do_compare(idms, &cr, &anon_t, Source::Internal)
+                .await
+                .unwrap(),
+            LdapResultCode::CompareFalse,
+        );
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "name=other,dc=example,dc=com".to_string(),
+            atype: Attribute::Name.to_string(),
+            val: "other".to_string(),
+        };
+        assert_compare_result(
+            &ldaps
+                .do_compare(idms, &cr, &anon_t, Source::Internal)
+                .await
+                .unwrap(),
+            LdapResultCode::NoSuchObject,
+        );
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "invalidentry".to_string(),
+            atype: Attribute::Name.to_string(),
+            val: "other".to_string(),
+        };
+        assert!(&ldaps
+            .do_compare(idms, &cr, &anon_t, Source::Internal)
+            .await
+            .is_err());
+
+        let cr = CompareRequest {
+            msgid: 1,
+            entry: "name=other,dc=example,dc=com".to_string(),
+            atype: "invalid".to_string(),
+            val: "other".to_string(),
+        };
+        assert_eq!(
+            &ldaps
+                .do_compare(idms, &cr, &anon_t, Source::Internal)
+                .await
+                .unwrap_err(),
+            &OperationError::InvalidAttributeName("invalid".to_string()),
+        );
     }
 }

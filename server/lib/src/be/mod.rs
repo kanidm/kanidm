@@ -290,7 +290,7 @@ pub trait BackendTransaction {
             FilterResolved::Or(l, _) => {
                 // Importantly if this has no inner elements, this returns
                 // an empty list.
-                let mut plan = Vec::new();
+                let mut plan = Vec::with_capacity(0);
                 let mut result = IDLBitRange::new();
                 let mut partial = false;
                 let mut threshold = false;
@@ -535,7 +535,7 @@ pub trait BackendTransaction {
                 // for fully indexed existence queries, such as from refint.
 
                 // This has a lot in common with an And and Or but not really quite either.
-                let mut plan = Vec::new();
+                let mut plan = Vec::with_capacity(0);
                 let mut result = IDLBitRange::new();
                 // For each filter in l
                 for f in l.iter() {
@@ -588,7 +588,7 @@ pub trait BackendTransaction {
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
 
-        debug!(filter_optimised = ?filt);
+        trace!(filter_optimised = ?filt);
 
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
@@ -632,7 +632,7 @@ pub trait BackendTransaction {
             e
         })?;
 
-        let entries_filtered = match idl {
+        let mut entries_filtered = match idl {
             IdList::AllIds => trace_span!("be::search<entry::ftest::allids>").in_scope(|| {
                 entries
                     .into_iter()
@@ -666,6 +666,9 @@ pub trait BackendTransaction {
             return Err(OperationError::ResourceLimit);
         }
 
+        // Trim any excess capacity if needed
+        entries_filtered.shrink_to_fit();
+
         Ok(entries_filtered)
     }
 
@@ -679,7 +682,7 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        debug!(filter_optimised = ?filt);
+        trace!(filter_optimised = ?filt);
 
         // Using the indexes, resolve the IdList here, or AllIds.
         // Also get if the filter was 100% resolved or not.
@@ -851,7 +854,7 @@ pub trait BackendTransaction {
         if r.is_err() {
             vec![r]
         } else {
-            Vec::new()
+            Vec::with_capacity(0)
         }
     }
 
@@ -901,7 +904,9 @@ pub trait BackendTransaction {
 
         let keyhandles = idlayer.get_key_handles()?;
 
-        let bak = DbBackup::V4 {
+        let bak = DbBackup::V5 {
+            // remember env is evaled at compile time.
+            version: env!("KANIDM_PKG_SERIES").to_string(),
             db_s_uuid,
             db_d_uuid,
             db_ts_max,
@@ -1539,7 +1544,10 @@ impl<'a> BackendWriteTransaction<'a> {
                                 idl.insert_id(e_id);
                                 if cfg!(debug_assertions)
                                     && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
-                                        trace!("{:?}", idl);
+                                        // This means a duplicate UUID has appeared in the index.
+                                        if idl.len() > 1 {
+                                            trace!(duplicate_idl = ?idl, ?idx_key);
+                                        }
                                         debug_assert!(idl.len() <= 1);
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
@@ -1559,7 +1567,10 @@ impl<'a> BackendWriteTransaction<'a> {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
                                 if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
-                                        trace!("{:?}", idl);
+                                        // This means a duplicate UUID has appeared in the index.
+                                        if idl.len() > 1 {
+                                            trace!(duplicate_idl = ?idl, ?idx_key);
+                                        }
                                         debug_assert!(idl.len() <= 1);
                                 }
                                 self.idlayer.write_idl(attr, itype, &idx_key, &idl)
@@ -1750,8 +1761,8 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let (dbentries, repl_meta) = match dbbak {
-            DbBackup::V1(dbentries) => (dbentries, None),
+        let (dbentries, repl_meta, maybe_version) = match dbbak {
+            DbBackup::V1(dbentries) => (dbentries, None, None),
             DbBackup::V2 {
                 db_s_uuid,
                 db_d_uuid,
@@ -1762,7 +1773,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_s_uuid(db_s_uuid)?;
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
-                (entries, None)
+                (entries, None, None)
             }
             DbBackup::V3 {
                 db_s_uuid,
@@ -1776,7 +1787,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                (entries, None)
+                (entries, None, None)
             }
             DbBackup::V4 {
                 db_s_uuid,
@@ -1791,8 +1802,34 @@ impl<'a> BackendWriteTransaction<'a> {
                 idlayer.write_db_d_uuid(db_d_uuid)?;
                 idlayer.set_db_ts_max(db_ts_max)?;
                 idlayer.set_key_handles(keyhandles)?;
-                (entries, Some(repl_meta))
+                (entries, Some(repl_meta), None)
             }
+            DbBackup::V5 {
+                version,
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                keyhandles,
+                repl_meta,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                idlayer.set_key_handles(keyhandles)?;
+                (entries, Some(repl_meta), Some(version))
+            }
+        };
+
+        if let Some(version) = maybe_version {
+            if version != env!("KANIDM_PKG_SERIES") {
+                error!("The provided backup data is from server version {} and is unable to be restored on this instance ({})", version, env!("KANIDM_PKG_SERIES"));
+                return Err(OperationError::DB0001MismatchedRestoreVersion);
+            }
+        } else {
+            error!("The provided backup data is from an older server version and is unable to be restored.");
+            return Err(OperationError::DB0002MismatchedRestoreVersion);
         };
 
         // Rebuild the RUV from the backup.
@@ -2224,7 +2261,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Create");
 
-            let empty_result = be.create(&CID_ZERO, Vec::new());
+            let empty_result = be.create(&CID_ZERO, Vec::with_capacity(0));
             trace!("{:?}", empty_result);
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
@@ -2581,31 +2618,12 @@ mod tests {
 
             // Now here, we need to tamper with the file.
             let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
+            trace!(?serialized_string);
             let mut dbbak: DbBackup = serde_json::from_str(&serialized_string).unwrap();
 
             match &mut dbbak {
-                DbBackup::V1(_) => {
-                    // We no longer use these format versions!
-                    unreachable!()
-                }
-                DbBackup::V2 {
-                    db_s_uuid: _,
-                    db_d_uuid: _,
-                    db_ts_max: _,
-                    entries,
-                } => {
-                    let _ = entries.pop();
-                }
-                DbBackup::V3 {
-                    db_s_uuid: _,
-                    db_d_uuid: _,
-                    db_ts_max: _,
-                    keyhandles: _,
-                    entries,
-                } => {
-                    let _ = entries.pop();
-                }
-                DbBackup::V4 {
+                DbBackup::V5 {
+                    version: _,
                     db_s_uuid: _,
                     db_d_uuid: _,
                     db_ts_max: _,
@@ -2614,6 +2632,10 @@ mod tests {
                     entries,
                 } => {
                     let _ = entries.pop();
+                }
+                _ => {
+                    // We no longer use these format versions!
+                    unreachable!()
                 }
             };
 
@@ -2740,7 +2762,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "not-exist",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2748,7 +2770,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             let uuid_p_idl = be
@@ -2842,7 +2864,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "william",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2850,7 +2872,7 @@ mod tests {
                 Attribute::Name.as_ref(),
                 IndexType::Presence,
                 "_",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2858,7 +2880,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             idl_state!(
@@ -2866,7 +2888,7 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Presence,
                 "_",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             assert!(be.name2uuid("william") == Ok(None));
@@ -3110,14 +3132,14 @@ mod tests {
                 Attribute::Uuid.as_ref(),
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
             idl_state!(
                 be,
                 Attribute::Name.as_ref(),
                 IndexType::Equality,
                 "william",
-                Some(Vec::new())
+                Some(Vec::with_capacity(0))
             );
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
@@ -3284,7 +3306,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3300,7 +3322,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3315,7 +3337,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::new()));
+                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");

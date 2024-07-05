@@ -261,4 +261,24 @@ impl KanidmClient {
         )
         .await
     }
+
+    pub async fn idm_person_certificate_list(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/person/{}/_certificate", id).as_str())
+            .await
+    }
+
+    pub async fn idm_person_certificate_create(
+        &self,
+        id: &str,
+        pem_data: &str,
+    ) -> Result<(), ClientError> {
+        let mut new_cert = Entry {
+            attrs: BTreeMap::new(),
+        };
+        new_cert
+            .attrs
+            .insert(ATTR_CERTIFICATE.to_string(), vec![pem_data.to_string()]);
+        self.perform_post_request(format!("/v1/person/{}/_certificate", id).as_str(), new_cert)
+            .await
+    }
 }

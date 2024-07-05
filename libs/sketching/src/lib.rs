@@ -1,6 +1,7 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(non_snake_case)]
+use std::fmt::Display;
 use std::str::FromStr;
 
 use num_enum::{IntoPrimitive, TryFromPrimitive};
@@ -9,6 +10,7 @@ use tracing_forest::printer::TestCapturePrinter;
 use tracing_forest::tag::NoTag;
 use tracing_forest::util::*;
 use tracing_forest::Tag;
+use tracing_subscriber::filter::Directive;
 use tracing_subscriber::prelude::*;
 
 pub mod macros;
@@ -18,8 +20,10 @@ pub use {tracing, tracing_forest, tracing_subscriber};
 
 /// Start up the logging for test mode.
 pub fn test_init() {
-    let filter = EnvFilter::from_default_env()
-        .add_directive(LevelFilter::TRACE.into())
+    let filter = EnvFilter::builder()
+        // Skipping trace on tests by default saves a *TON* of ram.
+        .with_default_directive(LevelFilter::INFO.into())
+        .from_env_lossy()
         // escargot builds cargo packages while we integration test and is SUPER noisy.
         .add_directive(
             "escargot=ERROR"
@@ -125,22 +129,22 @@ impl FromStr for LogLevel {
     }
 }
 
-impl ToString for LogLevel {
-    fn to_string(&self) -> String {
-        match self {
-            LogLevel::Info => "info".to_string(),
-            LogLevel::Debug => "debug".to_string(),
-            LogLevel::Trace => "trace".to_string(),
-        }
+impl Display for LogLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            LogLevel::Info => "info",
+            LogLevel::Debug => "debug",
+            LogLevel::Trace => "trace",
+        })
     }
 }
 
-impl From<LogLevel> for EnvFilter {
+impl From<LogLevel> for Directive {
     fn from(value: LogLevel) -> Self {
         match value {
-            LogLevel::Info => EnvFilter::new("info"),
-            LogLevel::Debug => EnvFilter::new("debug"),
-            LogLevel::Trace => EnvFilter::new("trace"),
+            LogLevel::Info => Directive::from(Level::INFO),
+            LogLevel::Debug => Directive::from(Level::DEBUG),
+            LogLevel::Trace => Directive::from(Level::TRACE),
         }
     }
 }

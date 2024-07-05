@@ -338,6 +338,10 @@ impl ValueSetT for ValueSetRefer {
         Some(&self.set)
     }
 
+    fn as_refer_set_mut(&mut self) -> Option<&mut BTreeSet<Uuid>> {
+        Some(&mut self.set)
+    }
+
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         Some(Box::new(self.set.iter().copied()))
     }

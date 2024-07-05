@@ -1,6 +1,7 @@
 use super::proto::*;
 use crate::plugins::Plugins;
 use crate::prelude::*;
+use crate::server::ChangeFlag;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
@@ -219,35 +220,51 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.changed_uuid.extend(cand.iter().map(|e| e.get_uuid()));
 
-        if !self.changed_acp {
-            self.changed_acp = cand
+        if !self.changed_flags.contains(ChangeFlag::ACP)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::AccessControlProfile.into())
                 })
+        {
+            self.changed_flags.insert(ChangeFlag::ACP)
         }
-        if !self.changed_oauth2 {
-            self.changed_oauth2 = cand
+
+        if !self.changed_flags.contains(ChangeFlag::OAUTH2)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
                 .any(|e| {
                     e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())
-                });
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::OAUTH2)
         }
-        if !self.changed_sync_agreement {
-            self.changed_sync_agreement = cand
+
+        if !self.changed_flags.contains(ChangeFlag::SYNC_AGREEMENT)
+            && cand
                 .iter()
                 .chain(pre_cand.iter().map(|e| e.as_ref()))
-                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()));
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::SYNC_AGREEMENT)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::KEY_MATERIAL)
+            && cand
+                .iter()
+                .chain(pre_cand.iter().map(|e| e.as_ref()))
+                .any(|e| {
+                    e.attribute_equality(Attribute::Class, &EntryClass::KeyProvider.into())
+                        || e.attribute_equality(Attribute::Class, &EntryClass::KeyObject.into())
+                })
+        {
+            self.changed_flags.insert(ChangeFlag::KEY_MATERIAL)
         }
 
         trace!(
-            schema_reload = ?self.changed_schema,
-            acp_reload = ?self.changed_acp,
-            oauth2_reload = ?self.changed_oauth2,
-            domain_reload = ?self.changed_domain,
-            changed_sync_agreement = ?self.changed_sync_agreement
+            changed = ?self.changed_flags.iter_names().collect::<Vec<_>>(),
         );
 
         Ok(true)
@@ -279,6 +296,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
             ReplIncrementalContext::V1 {
                 domain_version,
+                domain_patch_level,
                 domain_uuid,
                 ranges,
                 schema_entries,
@@ -286,6 +304,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 entries,
             } => self.consumer_apply_changes_v1(
                 *domain_version,
+                *domain_patch_level,
                 *domain_uuid,
                 ranges,
                 schema_entries,
@@ -299,6 +318,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn consumer_apply_changes_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
+        ctx_domain_patch_level: u32,
         ctx_domain_uuid: Uuid,
         ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: &[ReplIncrementalEntryV1],
@@ -310,6 +330,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
             error!("Unable to proceed with consumer incremental - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        };
+
+        let domain_patch_level = if self.get_domain_development_taint() {
+            u32::MAX
+        } else {
+            self.get_domain_patch_level()
+        };
+
+        if ctx_domain_patch_level != domain_patch_level {
+            error!("Unable to proceed with consumer incremental - incoming domain patch level is not equal to our patch level. {} != {}", ctx_domain_patch_level, domain_patch_level);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         };
 
@@ -371,6 +402,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!("Failed to reload domain info");
                 e
             })?;
+            self.reload_system_config().map_err(|e| {
+                error!("Failed to reload system configuration");
+                e
+            })?;
         }
 
         debug!("Applying all context entries");
@@ -418,6 +453,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         match ctx {
             ReplRefreshContext::V1 {
                 domain_version,
+                domain_devel,
                 domain_uuid,
                 ranges,
                 schema_entries,
@@ -425,6 +461,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 entries,
             } => self.consumer_apply_refresh_v1(
                 *domain_version,
+                *domain_devel,
                 *domain_uuid,
                 ranges,
                 schema_entries,
@@ -494,6 +531,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     fn consumer_apply_refresh_v1(
         &mut self,
         ctx_domain_version: DomainVersion,
+        ctx_domain_devel: bool,
         ctx_domain_uuid: Uuid,
         ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
         ctx_schema_entries: &[ReplEntryV1],
@@ -502,12 +540,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Can we apply the domain version validly?
         // if domain_version >= min_support ...
+        let current_devel_flag = option_env!("KANIDM_PRE_RELEASE").is_some();
 
         if ctx_domain_version < DOMAIN_MIN_LEVEL {
             error!("Unable to proceed with consumer refresh - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         } else if ctx_domain_version > DOMAIN_MAX_LEVEL {
             error!("Unable to proceed with consumer refresh - incoming domain level is greater than our maximum supported level. {} > {}", ctx_domain_version, DOMAIN_MAX_LEVEL);
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        } else if ctx_domain_devel && !current_devel_flag {
+            error!("Unable to proceed with consumer refresh - incoming domain is from a development version while this server is a stable release.");
+            return Err(OperationError::ReplDomainLevelUnsatisfiable);
+        } else if !ctx_domain_devel && current_devel_flag {
+            error!("Unable to proceed with consumer refresh - incoming domain is from a stable version while this server is a development release.");
             return Err(OperationError::ReplDomainLevelUnsatisfiable);
         } else {
             debug!(
@@ -579,10 +624,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })?;
 
         // Mark that everything changed so that post commit hooks function as expected.
-        self.changed_schema = true;
-        self.changed_acp = true;
-        self.changed_oauth2 = true;
-        self.changed_domain = true;
+        self.changed_flags.insert(
+            ChangeFlag::SCHEMA
+                | ChangeFlag::ACP
+                | ChangeFlag::OAUTH2
+                | ChangeFlag::DOMAIN
+                | ChangeFlag::SYSTEM_CONFIG
+                | ChangeFlag::SYNC_AGREEMENT
+                | ChangeFlag::KEY_MATERIAL,
+        );
 
         // That's it! We are GOOD to go!
 

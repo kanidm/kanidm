@@ -33,7 +33,7 @@ const DEFAULT_CACHE_TARGET: usize = 2048;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 0;
-const DEFAULT_CACHE_WMISS: usize = 4;
+const DEFAULT_CACHE_WMISS: usize = 0;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum NameCacheKey {
@@ -86,7 +86,7 @@ macro_rules! get_identry {
         $idl:expr,
         $is_read_op:expr
     ) => {{
-        let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::new();
+        let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::with_capacity(0);
         match $idl {
             IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                 let mut nidl = IDLBitRange::new();
@@ -149,16 +149,16 @@ macro_rules! get_identry_raw {
     }};
 }
 
-macro_rules! exists_idx {
-    (
-        $self:expr,
-        $attr:expr,
-        $itype:expr
-    ) => {{
-        // As a cache we have no concept of this, so we just bypass to the db.
-        $self.db.exists_idx($attr, $itype)
-    }};
-}
+// macro_rules! exists_idx {
+//     (
+//         $self:expr,
+//         $attr:expr,
+//         $itype:expr
+//     ) => {{
+//         // As a cache we have no concept of this, so we just bypass to the db.
+//         $self.db.exists_idx($attr, $itype)
+//     }};
+// }
 
 macro_rules! get_idl {
     (
@@ -342,7 +342,7 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
 
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError>;
 
     fn get_idl(
         &mut self,
@@ -397,9 +397,9 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         get_identry_raw!(self, idl)
     }
 
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
-        exists_idx!(self, attr, itype)
-    }
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
+    //     exists_idx!(self, attr, itype)
+    // }
 
     #[instrument(level = "trace", skip_all)]
     fn get_idl(
@@ -492,9 +492,9 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         get_identry_raw!(self, idl)
     }
 
-    fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
-        exists_idx!(self, attr, itype)
-    }
+    // fn exists_idx(&mut self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
+    //     exists_idx!(self, attr, itype)
+    // }
 
     #[instrument(level = "trace", skip_all)]
     fn get_idl(

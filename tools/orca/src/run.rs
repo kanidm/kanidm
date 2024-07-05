@@ -22,11 +22,11 @@ async fn actor_person(
     stats_queue: Arc<SegQueue<EventRecord>>,
     mut actor_rx: broadcast::Receiver<Signal>,
 ) -> Result<(), Error> {
-    let mut model = person.model.as_dyn_object();
+    let mut model = person.model.as_dyn_object()?;
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
         let event = model.transition(&client, &person).await?;
-
+        debug!("Pushed event to queue!");
         stats_queue.push(event);
     }
 
@@ -40,10 +40,15 @@ pub struct EventRecord {
     pub details: EventDetail,
 }
 
+#[derive(Debug)]
 pub enum EventDetail {
-    Authentication,
+    Login,
     Logout,
-
+    PersonSetSelfMail,
+    PersonGetSelfAccount,
+    PersonGetSelfMemberOf,
+    PersonSetSelfPassword,
+    PersonReauth,
     Error,
 }
 
@@ -64,12 +69,13 @@ async fn execute_inner(
             // continue.
         }
         _ = control_rx.recv() => {
-            // Untill we add other signal types, any event is
+            // Until we add other signal types, any event is
             // either Ok(Signal::Stop) or Err(_), both of which indicate
             // we need to stop immediately.
-            return Err(Error::Interupt);
+            return Err(Error::Interrupt);
         }
     }
+    info!("warmup time passed, statistics will now be collected ...");
 
     let start = Instant::now();
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::Start(start)) {
@@ -92,10 +98,11 @@ async fn execute_inner(
                 // continue.
             }
             _ = recv => {
-                // Untill we add other signal types, any event is
+                // Until we add other signal types, any event is
                 // either Ok(Signal::Stop) or Err(_), both of which indicate
                 // we need to stop immediately.
-                return Err(Error::Interupt);
+                debug!("Interrupt");
+                return Err(Error::Interrupt);
             }
         }
     } else {
@@ -106,7 +113,7 @@ async fn execute_inner(
     if let Err(crossbeam_err) = stat_ctrl.push(TestPhase::End(end)) {
         error!(
             ?crossbeam_err,
-            "Unable to signal statistics collector to start"
+            "Unable to signal statistics collector to end"
         );
         return Err(Error::Crossbeam);
     }
@@ -123,7 +130,9 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
     let c_stats_queue = stats_queue.clone();
     let c_stats_ctrl = stats_ctrl.clone();
 
-    let mut dyn_data_collector = BasicStatistics::new();
+    let node_count = 1 + state.profile.extra_uris().len();
+    let mut dyn_data_collector =
+        BasicStatistics::new(state.persons.len(), state.groups.len(), node_count);
 
     let stats_task =
         tokio::task::spawn_blocking(move || dyn_data_collector.run(c_stats_queue, c_stats_ctrl));
@@ -175,14 +184,14 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
     }
 
     let warmup = state.profile.warmup_time();
-    let testtime = state.profile.test_time();
+    let test_time = state.profile.test_time();
 
-    // We run a seperate test inner so we don't have to worry about
+    // We run a separate test inner so we don't have to worry about
     // task spawn/join within our logic.
     let c_stats_ctrl = stats_ctrl.clone();
     // Don't ? this, we want to stash the result so we cleanly stop all the workers
     // before returning the inner test result.
-    let test_result = execute_inner(warmup, testtime, control_rx, c_stats_ctrl).await;
+    let test_result = execute_inner(warmup, test_time, control_rx, c_stats_ctrl).await;
 
     info!("stopping stats");
 

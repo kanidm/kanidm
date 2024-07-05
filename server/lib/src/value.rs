@@ -17,6 +17,7 @@ use std::time::Duration;
 use base64::{engine::general_purpose, Engine as _};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use hashbrown::HashSet;
+use kanidm_lib_crypto::x509_cert::{der::DecodePem, Certificate};
 use kanidm_proto::internal::ImageValue;
 use num_enum::TryFromPrimitive;
 use openssl::ec::EcKey;
@@ -39,6 +40,9 @@ use crate::repl::cid::Cid;
 use crate::server::identity::IdentityId;
 use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
+
+use crate::server::keys::KeyId;
+
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
@@ -62,6 +66,12 @@ lazy_static! {
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[a-z][a-z0-9-_\\.]*$").expect("Invalid Iname regex found")
+    };
+
+    /// Only lowercase+numbers, with limited chars.
+    pub static ref HEXSTR_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
     };
 
     pub static ref EXTRACT_VAL_DN: Regex = {
@@ -264,6 +274,9 @@ pub enum SyntaxType {
     CredentialType = 35,
     WebauthnAttestationCaList = 36,
     OauthClaimMap = 37,
+    KeyInternal = 38,
+    HexString = 39,
+    Certificate = 40,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -310,6 +323,9 @@ impl TryFrom<&str> for SyntaxType {
             "CREDENTIAL_TYPE" => Ok(SyntaxType::CredentialType),
             "WEBAUTHN_ATTESTATION_CA_LIST" => Ok(SyntaxType::WebauthnAttestationCaList),
             "OAUTH_CLAIM_MAP" => Ok(SyntaxType::OauthClaimMap),
+            "KEY_INTERNAL" => Ok(SyntaxType::KeyInternal),
+            "HEX_STRING" => Ok(SyntaxType::HexString),
+            "CERTIFICATE" => Ok(SyntaxType::Certificate),
             _ => Err(()),
         }
     }
@@ -356,6 +372,9 @@ impl fmt::Display for SyntaxType {
             SyntaxType::CredentialType => "CREDENTIAL_TYPE",
             SyntaxType::WebauthnAttestationCaList => "WEBAUTHN_ATTESTATION_CA_LIST",
             SyntaxType::OauthClaimMap => "OAUTH_CLAIM_MAP",
+            SyntaxType::KeyInternal => "KEY_INTERNAL",
+            SyntaxType::HexString => "HEX_STRING",
+            SyntaxType::Certificate => "CERTIFICATE",
         })
     }
 }
@@ -476,6 +495,8 @@ pub enum PartialValue {
 
     OauthClaim(String, Uuid),
     OauthClaimValue(String, Uuid, String),
+
+    HexString(String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -791,6 +812,15 @@ impl PartialValue {
         Uuid::parse_str(us).map(PartialValue::AttestedPasskey).ok()
     }
 
+    pub fn new_hex_string_s(hexstr: &str) -> Option<Self> {
+        let hexstr_lower = hexstr.to_lowercase();
+        if HEXSTR_RE.is_match(&hexstr_lower) {
+            Some(PartialValue::HexString(hexstr_lower))
+        } else {
+            None
+        }
+    }
+
     pub fn new_image(input: &str) -> Self {
         PartialValue::Image(input.to_string())
     }
@@ -857,6 +887,7 @@ impl PartialValue {
             // We don't allow searching on claim/uuid pairs.
             PartialValue::OauthClaim(_, _) => "_".to_string(),
             PartialValue::OauthClaimValue(_, _, _) => "_".to_string(),
+            PartialValue::HexString(hexstr) => hexstr.to_string(),
         }
     }
 
@@ -999,12 +1030,12 @@ pub enum OauthClaimMapJoin {
 }
 
 impl OauthClaimMapJoin {
-    pub(crate) fn to_char(self) -> char {
+    pub(crate) fn to_str(self) -> &'static str {
         match self {
-            OauthClaimMapJoin::CommaSeparatedValue => ',',
-            OauthClaimMapJoin::SpaceSeparatedValue => ' ',
+            OauthClaimMapJoin::CommaSeparatedValue => ",",
+            OauthClaimMapJoin::SpaceSeparatedValue => " ",
             // Should this be something else?
-            OauthClaimMapJoin::JsonArray => ';',
+            OauthClaimMapJoin::JsonArray => ";",
         }
     }
 }
@@ -1043,6 +1074,46 @@ pub struct Oauth2Session {
     pub state: SessionState,
     pub issued_at: OffsetDateTime,
     pub rs_uuid: Uuid,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum KeyUsage {
+    JwsEs256,
+    JweA128GCM,
+}
+
+impl fmt::Display for KeyUsage {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                KeyUsage::JwsEs256 => "jws_es256",
+                KeyUsage::JweA128GCM => "jwe_a128gcm",
+            }
+        )
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord)]
+pub enum KeyStatus {
+    Valid,
+    Retained,
+    Revoked,
+}
+
+impl fmt::Display for KeyStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}",
+            match self {
+                KeyStatus::Valid => "valid",
+                KeyStatus::Retained => "retained",
+                KeyStatus::Revoked => "revoked",
+            }
+        )
+    }
 }
 
 /// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
@@ -1103,6 +1174,19 @@ pub enum Value {
 
     OauthClaimValue(String, Uuid, BTreeSet<String>),
     OauthClaimMap(String, OauthClaimMapJoin),
+
+    KeyInternal {
+        id: KeyId,
+        usage: KeyUsage,
+        valid_from: u64,
+        status: KeyStatus,
+        status_cid: Cid,
+        der: Vec<u8>,
+    },
+
+    HexString(String),
+
+    Certificate(Box<Certificate>),
 }
 
 impl PartialEq for Value {
@@ -1382,6 +1466,22 @@ impl Value {
             Value::Cred(_, cred) => Some(cred),
             _ => None,
         }
+    }
+
+    pub fn new_hex_string_s(hexstr: &str) -> Option<Self> {
+        let hexstr_lower = hexstr.to_lowercase();
+        if HEXSTR_RE.is_match(&hexstr_lower) {
+            Some(Value::HexString(hexstr_lower))
+        } else {
+            None
+        }
+    }
+
+    pub fn new_certificate_s(cert_str: &str) -> Option<Self> {
+        Certificate::from_pem(cert_str)
+            .map(Box::new)
+            .map(Value::Certificate)
+            .ok()
     }
 
     /// Want a `Value::Image`? use this!
@@ -1913,8 +2013,15 @@ impl Value {
                 OAUTHSCOPE_RE.is_match(name) && value.iter().all(|s| OAUTHSCOPE_RE.is_match(s))
             }
 
+            Value::HexString(id) | Value::KeyInternal { id, .. } => {
+                Value::validate_str_escapes(id.as_str())
+                    && Value::validate_singleline(id.as_str())
+                    && Value::validate_hexstr(id.as_str())
+            }
+
             Value::PhoneNumber(_, _) => true,
             Value::Address(_) => true,
+            Value::Certificate(_) => true,
 
             Value::Uuid(_)
             | Value::Bool(_)
@@ -1958,6 +2065,15 @@ impl Value {
                     true
                 }
             }
+        }
+    }
+
+    pub(crate) fn validate_hexstr(s: &str) -> bool {
+        if !HEXSTR_RE.is_match(s) {
+            error!("hexstrings may only contain limited characters. - \"{}\" does not pass regex pattern \"{}\"", s, *HEXSTR_RE);
+            false
+        } else {
+            true
         }
     }
 
@@ -2238,5 +2354,11 @@ mod tests {
         assert!(Value::validate_str_escapes("🙃 emoji are 👍"));
 
         assert!(!Value::validate_str_escapes("naughty \x1b[31mred"));
+    }
+
+    #[test]
+    fn test_value_key_internal_status_order() {
+        assert!(KeyStatus::Valid < KeyStatus::Retained);
+        assert!(KeyStatus::Retained < KeyStatus::Revoked);
     }
 }

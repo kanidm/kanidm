@@ -1,6 +1,6 @@
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
-IMAGE_EXT_VERSION ?= 1.2.0-dev
+IMAGE_EXT_VERSION ?= $(shell cargo metadata --no-deps --format-version 1 | jq -r '.packages[] | select(.name == "daemon")  | .version')
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 CONTAINER_BUILD_ARGS ?=
@@ -16,6 +16,23 @@ GIT_COMMIT := $(shell git rev-parse HEAD)
 help:
 	@grep -E -h '\s##\s' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}'
 
+
+.PHONY: config
+config: ## Show makefile config things
+config:
+	@echo "IMAGE_BASE: $(IMAGE_BASE)"
+	@echo "IMAGE_VERSION: $(IMAGE_VERSION)"
+	@echo "IMAGE_EXT_VERSION: $(IMAGE_EXT_VERSION)"
+	@echo "CONTAINER_TOOL_ARGS: $(CONTAINER_TOOL_ARGS)"
+	@echo "IMAGE_ARCH: $(IMAGE_ARCH)"
+	@echo "CONTAINER_BUILD_ARGS: $(CONTAINER_BUILD_ARGS)"
+	@echo "MARKDOWN_FORMAT_ARGS: $(MARKDOWN_FORMAT_ARGS)"
+	@echo "CONTAINER_TOOL: $(CONTAINER_TOOL)"
+	@echo "BUILDKIT_PROGRESS: $(BUILDKIT_PROGRESS)"
+	@echo "TESTS: $(TESTS)"
+	@echo "BOOK_VERSION: $(BOOK_VERSION)"
+	@echo "GIT_COMMIT: $(GIT_COMMIT)"
+
 .PHONY: run
 run: ## Run the test/dev server
 run:
@@ -24,7 +41,6 @@ run:
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
-	@echo $(IMAGE_EXT_VERSION)
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
 		--pull --push --platform $(IMAGE_ARCH) \
 		-f server/Dockerfile \
@@ -33,6 +49,7 @@ buildx/kanidmd:
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
+		--compress \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -72,6 +89,17 @@ build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f server/Dockerfile \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
+		--build-arg "KANIDM_FEATURES=" \
+		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
+		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
+		$(CONTAINER_BUILD_ARGS) .
+
+.PHONY: build/orca
+build/orca:	## Build the orca docker image locally
+build/orca:
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f tools/orca/Dockerfile \
+		-t $(IMAGE_BASE)/orca:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \

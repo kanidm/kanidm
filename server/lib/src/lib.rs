@@ -21,9 +21,13 @@
 #![deny(clippy::manual_let_else)]
 #![allow(clippy::unreachable)]
 
-#[cfg(all(jemallocator, test, not(target_family = "windows")))]
+#[cfg(all(test, not(any(feature = "dhat-heap", target_os = "illumos"))))]
 #[global_allocator]
-static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(all(test, feature = "dhat-heap"))]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 #[macro_use]
 extern crate rusqlite;

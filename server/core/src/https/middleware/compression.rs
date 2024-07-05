@@ -20,6 +20,7 @@
 //!
 
 use tower_http::compression::CompressionLayer;
+
 // TODO: this should skip compression on responses smaller than ~256 bytes because gzip can make them bigger.
 /// This builds a compression layer with the following configuration:
 ///

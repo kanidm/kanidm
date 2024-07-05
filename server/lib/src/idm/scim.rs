@@ -1,8 +1,8 @@
 use std::time::Duration;
 
-use base64urlsafedata::Base64UrlSafeData;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 
-use compact_jwt::{Jws, JwsEs256Signer, JwsSigner};
+use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -22,7 +22,7 @@ pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
     pub sync_tokens: BTreeMap<Uuid, ApiToken>,
-    pub jws_key: JwsEs256Signer,
+    pub jws_key: Option<JwsEs256Signer>,
 }
 
 macro_rules! try_from_entry {
@@ -44,11 +44,11 @@ macro_rules! try_from_entry {
         let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
             .cloned()
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::JwsEs256PrivateKey
-            )))?
-            .set_sign_option_embed_jwk(true);
+            .map(|jws_key| {
+                jws_key
+                    .set_sign_option_embed_jwk(true)
+                    .set_sign_option_legacy_kid(true)
+            });
 
         let sync_tokens = $value
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
@@ -123,7 +123,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         gte: &GenerateScimSyncTokenEvent,
         ct: Duration,
-    ) -> Result<String, OperationError> {
+    ) -> Result<JwsCompact, OperationError> {
         // Get the target signing key.
         let sync_account = self
             .qs_write
@@ -182,21 +182,31 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Provide the event to impersonate
                 &gte.ident,
             )
-            .and_then(|_| {
-                // The modify succeeded and was allowed, now sign the token for return.
-                sync_account
-                    .jws_key
-                    .sign(&token)
-                    .map(|jws_signed| jws_signed.to_string())
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to sign sync token");
+            .map_err(|err| {
+                error!(?err, "Failed to generate sync token");
+                err
+            })?;
+
+        // The modify succeeded and was allowed, now sign the token for return.
+        if self.qs_write.get_domain_version() < DOMAIN_LEVEL_6 {
+            sync_account
+                .jws_key
+                .as_ref()
+                .ok_or_else(|| {
+                    admin_error!("Unable to sign sync token, no sync keys available");
+                    OperationError::CryptographyError
+                })
+                .and_then(|jws_key| {
+                    jws_key.sign(&token).map_err(|err| {
+                        admin_error!(?err, "Unable to sign sync token");
                         OperationError::CryptographyError
                     })
-            })
-            .map_err(|e| {
-                admin_error!("Failed to generate sync token {:?}", e);
-                e
-            })
+                })
+        } else {
+            self.qs_write
+                .get_domain_key_object_handle()?
+                .jws_es256_sign(&token, ct)
+        }
         // Done!
     }
 
@@ -580,7 +590,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
             (ScimSyncState::Active { cookie }, Some(sync_cookie)) => {
                 // Check cookies.
-                if cookie.0 != sync_cookie {
+                if cookie != sync_cookie {
                     // Invalid
                     error!(
                         "Invalid Sync State - Active, but agreement has divegent external cookie."
@@ -923,8 +933,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         })
                         .and_then(|secret| match secret {
                             ScimSimpleAttr::String(value) => {
-                                Base64UrlSafeData::try_from(value.as_str())
-                                    .map(|b| b.into())
+                                STANDARD.decode(value.as_str())
                                     .map_err(|_| {
                                         error!("Invalid secret attribute - must be base64 string");
                                         OperationError::InvalidAttribute(format!(
@@ -1168,7 +1177,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Get all the classes.
         debug!("Schemas valid - Proceeding with entry {}", scim_ent.id);
 
-        let mut mods = Vec::new();
+        #[allow(clippy::vec_init_then_push)]
+        let mut mods = Vec::with_capacity(4);
 
         mods.push(Modify::Assert(
             Attribute::SyncParentUuid,
@@ -1472,7 +1482,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = match to_state {
             ScimSyncState::Active { cookie } => ModifyList::new_purge_and_set(
                 Attribute::SyncCookie,
-                Value::PrivateBinary(cookie.0.clone()),
+                Value::PrivateBinary(cookie.to_vec()),
             ),
             ScimSyncState::Refresh => ModifyList::new_purge(Attribute::SyncCookie),
         };
@@ -1522,7 +1532,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         Ok(
             match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
                 Some(b) => ScimSyncState::Active {
-                    cookie: Base64UrlSafeData(b.to_vec()),
+                    cookie: b.to_vec().into(),
                 },
                 None => ScimSyncState::Refresh,
             },
@@ -1534,8 +1544,10 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 mod tests {
     use crate::idm::server::{IdmServerProxyWriteTransaction, IdmServerTransaction};
     use crate::prelude::*;
-    use base64urlsafedata::Base64UrlSafeData;
-    use compact_jwt::{Jws, JwsSigner};
+    use crate::server::keys::KeyProvidersTransaction;
+    use crate::value::KeyStatus;
+    use compact_jwt::traits::JwsVerifiable;
+    use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
     use std::sync::Arc;
@@ -1551,7 +1563,7 @@ mod tests {
     fn create_scim_sync_account(
         idms_prox_write: &mut IdmServerProxyWriteTransaction<'_>,
         ct: Duration,
-    ) -> (Uuid, String) {
+    ) -> (Uuid, JwsCompact) {
         let sync_uuid = Uuid::new_v4();
 
         let e1 = entry_init!(
@@ -1565,9 +1577,10 @@ mod tests {
             )
         );
 
-        let ce = CreateEvent::new_internal(vec![e1]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_ok());
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![e1])
+            .expect("Failed to create sync account");
 
         let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
 
@@ -1594,7 +1607,7 @@ mod tests {
         let mut idms_prox_read = idms.proxy_read().await;
 
         let ident = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to validate sync token");
 
         assert!(Some(sync_uuid) == ident.get_uuid());
@@ -1650,7 +1663,7 @@ mod tests {
         // -- Check the happy path.
         let mut idms_prox_read = idms.proxy_read().await;
         let ident = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct)
             .expect("Failed to validate sync token");
         assert!(Some(sync_uuid) == ident.get_uuid());
         drop(idms_prox_read);
@@ -1671,7 +1684,7 @@ mod tests {
         // Must fail
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
         drop(idms_prox_read);
 
@@ -1683,19 +1696,24 @@ mod tests {
             .scim_sync_generate_token(&gte, ct)
             .expect("failed to generate new scim sync token");
 
-        let me_inv_m = ModifyEvent::new_internal_invalid(
-            filter!(f_eq(
-                Attribute::Name,
-                PartialValue::new_iname("test_scim_sync")
-            )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]),
-        );
-        assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+        let revoke_kid = sync_token.kid().expect("token does not contain a key id");
+
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_append(
+                    Attribute::KeyActionRevoke.into(),
+                    Value::HexString(revoke_kid.to_string()),
+                ),
+            )
+            .expect("Unable to revoke key");
+
         assert!(idms_prox_write.commit().is_ok());
 
         let mut idms_prox_read = idms.proxy_read().await;
         let fail =
-            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct);
+            idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
 
         // -- Forge a session, use wrong types
@@ -1704,11 +1722,6 @@ mod tests {
             .qs_read
             .internal_search_uuid(sync_uuid)
             .expect("Unable to access sync entry");
-
-        let jws_key = sync_entry
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .cloned()
-            .expect("Missing attribute: jws_es256_private_key");
 
         let sync_tokens = sync_entry
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
@@ -1732,14 +1745,123 @@ mod tests {
 
         let token = Jws::into_json(&scim_sync_token).expect("Unable to serialise forged token");
 
-        let forged_token = jws_key
-            .sign(&token)
-            .map(|jws_signed| jws_signed.to_string())
-            .expect("Unable to sign forged token");
+        let jws_key = JwsEs256Signer::generate_es256().expect("Unable to create signer");
 
-        let fail = idms_prox_read
-            .validate_sync_client_auth_info_to_ident(forged_token.as_str().into(), ct);
+        let forged_token = jws_key.sign(&token).expect("Unable to sign forged token");
+
+        let fail = idms_prox_read.validate_sync_client_auth_info_to_ident(forged_token.into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
+    }
+
+    #[idm_test(domain_level=DOMAIN_LEVEL_5)]
+    async fn test_idm_scim_sync_token_dl5_dl6_token(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        assert_eq!(
+            idms_prox_write.qs_write.get_domain_version(),
+            DOMAIN_LEVEL_5
+        );
+
+        let sync_uuid = Uuid::new_v4();
+
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::SyncAccount.to_value()),
+            (Attribute::Name, Value::new_iname("test_scim_sync")),
+            (Attribute::Uuid, Value::Uuid(sync_uuid)),
+            (
+                Attribute::Description,
+                Value::new_utf8s("A test sync agreement")
+            )
+        );
+
+        idms_prox_write
+            .qs_write
+            .internal_create(vec![e1])
+            .expect("Failed to create sync account");
+
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+        let old_sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now trigger 5 -> 6
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        idms_prox_write
+            .qs_write
+            .internal_apply_domain_migration(DOMAIN_LEVEL_6)
+            .expect("Unable to set domain level to version 6");
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Check existing token still validates.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let _ident = idms_prox_write
+            .validate_sync_client_auth_info_to_ident(old_sync_token.clone().into(), ct)
+            .expect("Failed to process old sync token to ident");
+
+        // Delete the old session else we get a schema violation
+        let modlist = ModifyList::new_purge(Attribute::SyncTokenSession.into());
+
+        idms_prox_write
+            .qs_write
+            .internal_modify_uuid(sync_uuid, &modlist)
+            .expect("Unable to delete previous sync token session");
+
+        let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
+
+        let new_sync_token = idms_prox_write
+            .scim_sync_generate_token(&gte, ct)
+            .expect("failed to generate new scim sync token");
+
+        assert_ne!(old_sync_token.kid(), new_sync_token.kid());
+
+        let _ident = idms_prox_write
+            .validate_sync_client_auth_info_to_ident(new_sync_token.into(), ct)
+            .expect("Failed to process new sync token to ident");
+
+        // The former key is now on the domain object.
+        let key_object = idms_prox_write
+            .qs_write
+            .get_key_providers()
+            .get_key_object(UUID_DOMAIN_INFO)
+            .expect("Unable to retrieve key object by uuid");
+
+        // Assert the former key is now in the domain key object, and now is "retained".
+        let former_kid = old_sync_token.kid().unwrap().to_string();
+        let status = key_object
+            .kid_status(&former_kid)
+            .expect("Failed to access kid status");
+        assert_eq!(status, Some(KeyStatus::Retained));
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // Now trigger 6 -> 7
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+        idms_prox_write
+            .qs_write
+            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
+            .expect("Unable to set domain level to version 7");
+        assert!(idms_prox_write.commit().is_ok());
+
+        // The key on the service account is removed.
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let sync_entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(sync_uuid)
+            .expect("Unable to access service account");
+
+        assert!(!sync_entry.attribute_pres(Attribute::JwsEs256PrivateKey));
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     fn test_scim_sync_apply_setup_ident(
@@ -1770,7 +1892,7 @@ mod tests {
             .expect("failed to generate new scim sync token");
 
         let ident = idms_prox_write
-            .validate_sync_client_auth_info_to_ident(sync_token.as_str().into(), ct)
+            .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to process sync token to ident");
 
         (sync_uuid, ident)
@@ -1788,10 +1910,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Refresh,
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Ignore,
         };
 
@@ -1817,7 +1939,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
@@ -1885,7 +2007,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
@@ -1925,7 +2047,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries,
             retain: ScimSyncRetentionMode::Ignore,
@@ -2128,7 +2250,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
@@ -2152,10 +2274,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
@@ -2195,10 +2317,10 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![Uuid::new_v4()]),
         };
 
@@ -2234,10 +2356,10 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
@@ -2276,10 +2398,10 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             // Doesn't exist. If it does, then bless rng.
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
         };
 
@@ -2311,7 +2433,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
                 ScimEntry {
@@ -2347,10 +2469,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2395,7 +2517,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
                 ScimEntry {
@@ -2431,10 +2553,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![]),
@@ -2493,7 +2615,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
@@ -2517,10 +2639,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2555,9 +2677,9 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: Vec::default(),
+            entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Ignore,
         };
 
@@ -2570,10 +2692,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![1, 2, 3, 4]),
+                cookie: vec![1, 2, 3, 4].into(),
             },
             to_state: ScimSyncState::Active {
-                cookie: Base64UrlSafeData(vec![2, 3, 4, 5]),
+                cookie: vec![2, 3, 4, 5].into(),
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Ignore,

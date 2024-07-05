@@ -19,27 +19,27 @@ path = "src/main.rs"
 test = true
 doctest = false
 
+[features]
+dhat-heap = ["dep:dhat"]
+dhat-ad-hoc = ["dep:dhat"]
+
 [dependencies]
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 sketching = { workspace = true }
-fs2 = { workspace = true }
+fs4 = { workspace = true }
 futures = { workspace = true }
 
+dhat = { workspace = true, optional = true }
 clap = { workspace = true, features = ["env"] }
 reqwest = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-opentelemetry = { workspace = true, features = ["logs"] }
-opentelemetry_api = { workspace = true, features = ["logs"] }
 tempfile = { workspace = true }
-tracing = { workspace = true, features = [
-    "max_level_trace",
-    "release_max_level_debug",
-] }
+tracing = { workspace = true }
 serde_json.workspace = true
 
 [target.'cfg(target_os = "linux")'.dependencies]
@@ -51,7 +51,9 @@ whoami = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
-tikv-jemallocator = { workspace = true }
+
+[target.'cfg(not(target_os = "illumos"))'.dependencies]
+mimalloc = { workspace = true }
 
 [build-dependencies]
 serde = { workspace = true, features = ["derive"] }

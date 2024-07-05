@@ -6,7 +6,8 @@ use axum::middleware::from_fn;
 use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
-use compact_jwt::{Jws, JwsSigner};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
@@ -15,7 +16,8 @@ use uuid::Uuid;
 use kanidm_proto::internal::{
     ApiToken, AppLink, CUIntentToken, CURequest, CUSessionToken, CUStatus, CreateRequest,
     CredentialStatus, DeleteRequest, IdentifyUserRequest, IdentifyUserResponse, ModifyRequest,
-    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken,
+    RadiusAuthToken, SearchRequest, SearchResponse, UserAuthToken, COOKIE_AUTH_SESSION_ID,
+    COOKIE_BEARER_TOKEN,
 };
 use kanidm_proto::v1::{
     AccountUnixExtend, ApiTokenGenerate, AuthIssueSession, AuthRequest, AuthResponse,
@@ -195,7 +197,7 @@ pub async fn whoami_uat(
 }
 
 #[utoipa::path(
-    post,
+    get,
     path = "/v1/logout",
     responses(
         DefaultApiResponse,
@@ -208,12 +210,14 @@ pub async fn logout(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<Json<()>, WebError> {
+    jar: CookieJar,
+) -> Result<Response, WebError> {
     state
         .qe_w_ref
         .handle_logout(client_auth_info, kopid.eventid)
         .await
         .map(Json::from)
+        .map(|json| (jar, json).into_response())
         .map_err(WebError::from)
 }
 
@@ -235,6 +239,8 @@ pub async fn json_rest_event_get(
         .map_err(WebError::from)
 }
 
+/// Common event handler to search and retrieve entries with a name or id
+/// and return the result as json proto entries
 pub async fn json_rest_event_get_id(
     state: ServerState,
     id: String,
@@ -250,6 +256,24 @@ pub async fn json_rest_event_get_id(
         .handle_internalsearch(client_auth_info, filter, attrs, kopid.eventid)
         .await
         .map(|mut r| r.pop())
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+/// Common event handler to search and retrieve entries that reference another
+/// entry by the value of name or id and return the result as json proto entries
+pub async fn json_rest_event_get_refers_id(
+    state: ServerState,
+    refers_id: String,
+    filter: Filter<FilterInvalid>,
+    attrs: Option<Vec<String>>,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    state
+        .qe_r_ref
+        .handle_search_refers(client_auth_info, filter, refers_id, attrs, kopid.eventid)
+        .await
         .map(Json::from)
         .map_err(WebError::from)
 }
@@ -340,6 +364,15 @@ pub async fn json_rest_event_post_id_attr(
         .map_err(WebError::from)
 }
 
+// Okay, so a put normally needs
+///  * filter of what we are working on (id + class)
+///  * a `Map<String, Vec<String>>` that we turn into a modlist.
+///
+/// OR
+///  * filter of what we are working on (id + class)
+///  * a `Vec<String>` that we are changing
+///  * the attr name  (as a param to this in path)
+///
 pub async fn json_rest_event_put_attr(
     state: ServerState,
     id: String,
@@ -372,27 +405,6 @@ pub async fn json_rest_event_post_attr(
         .await
         .map(Json::from)
         .map_err(WebError::from)
-}
-
-// Okay, so a put normally needs
-///  * filter of what we are working on (id + class)
-///  * a `Map<String, Vec<String>>` that we turn into a modlist.
-///
-/// OR
-///  * filter of what we are working on (id + class)
-///  * a `Vec<String>` that we are changing
-///  * the attr name  (as a param to this in path)
-///
-pub async fn json_rest_event_put_id_attr(
-    state: ServerState,
-    id: String,
-    attr: String,
-    filter: Filter<FilterInvalid>,
-    values: Vec<String>,
-    kopid: KOpId,
-    client_auth_info: ClientAuthInfo,
-) -> Result<Json<()>, WebError> {
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 pub async fn json_rest_event_delete_id_attr(
@@ -662,6 +674,59 @@ pub async fn person_id_delete(
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Person.into()));
     json_rest_event_delete_id(state, id, filter, kopid, client_auth_info).await
+}
+
+// == person -> certificates
+
+#[utoipa::path(
+    get,
+    path = "/v1/person/{id}/_certificate",
+    responses(
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/person/certificate",
+    operation_id = "person_get_id_certificate",
+)]
+pub async fn person_get_id_certificate(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::ClientCertificate.into()));
+    json_rest_event_get_refers_id(state, id, filter, None, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/person/{id}/_certificate",
+    responses(
+        DefaultApiResponse,
+    ),
+    request_body=ProtoEntry,
+    security(("token_jwt" = [])),
+    tag = "v1/person/certificate",
+    operation_id = "person_post_id_certificate",
+)]
+/// Expects the following fields in the attrs field of the req: [certificate]
+///
+/// The person's id will be added implicitly as a reference.
+pub async fn person_post_id_certificate(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Json(mut obj): Json<ProtoEntry>,
+) -> Result<Json<()>, WebError> {
+    let classes: Vec<String> = vec![
+        EntryClass::ClientCertificate.into(),
+        EntryClass::Object.into(),
+    ];
+    obj.attrs.insert(Attribute::Refers.to_string(), vec![id]);
+
+    json_rest_event_post(state, classes, obj, kopid, client_auth_info).await
 }
 
 // // == account ==
@@ -1246,7 +1311,7 @@ pub async fn account_user_auth_token_delete(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/v1/credential/_exchange_intent",
     params(
     ),
@@ -1271,7 +1336,7 @@ pub async fn credential_update_exchange_intent(
 }
 
 #[utoipa::path(
-    get,
+    post,
     path = "/v1/credential/_status",
     responses(
         (status=200), // TODO: define response
@@ -1415,7 +1480,7 @@ pub async fn service_account_id_credential_status_get(
 }
 
 #[utoipa::path(
-    delete,
+    get,
     path = "/v1/person/{id}/_credential/_status",
     responses(
         (status=200), // TODO: define response
@@ -1877,7 +1942,7 @@ async fn person_id_radius_handler(
 #[utoipa::path(
     post,
     path = "/v1/person/{id}/_unix",
-    request_body=Jaon<AccountUnixExtend>,
+    request_body=AccountUnixExtend,
     responses(
         DefaultApiResponse,
     ),
@@ -2022,7 +2087,7 @@ pub async fn account_id_unix_auth_post(
 }
 
 #[utoipa::path(
-    post,
+    put,
     path = "/v1/person/{id}/_unix/_credential",
     request_body = SingleStringRequest,
     responses(
@@ -2300,11 +2365,11 @@ pub async fn group_id_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::Group.into()));
-    json_rest_event_put_id_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
 }
 
 #[utoipa::path(
-    put,
+    post,
     path = "/v1/group/{id}/_unix",
     request_body = GroupUnixExtend,
     responses(
@@ -2312,7 +2377,7 @@ pub async fn group_id_attr_put(
     ),
     security(("token_jwt" = [])),
     tag = "v1/group/unix",
-    operation_id = "group_id_unix_put",
+    operation_id = "group_id_unix_post",
 )]
 pub async fn group_id_unix_post(
     State(state): State<ServerState>,
@@ -2422,6 +2487,7 @@ pub async fn domain_attr_put(
     Json(values): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = filter_all!(f_eq(Attribute::Class, EntryClass::DomainInfo.into()));
+
     json_rest_event_put_attr(
         state,
         STR_UUID_DOMAIN_INFO.to_string(),
@@ -2730,6 +2796,7 @@ pub async fn applinks_get(
 pub async fn reauth(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthIssueSession>,
 ) -> Result<Response, WebError> {
@@ -2739,7 +2806,7 @@ pub async fn reauth(
         .handle_reauth(client_auth_info, obj, kopid.eventid)
         .await;
     debug!("ReAuth result: {:?}", inter);
-    auth_session_state_management(state, inter)
+    auth_session_state_management(state, jar, inter)
 }
 
 #[utoipa::path(
@@ -2757,6 +2824,7 @@ pub async fn reauth(
 pub async fn auth(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
     headers: HeaderMap,
     Extension(kopid): Extension<KOpId>,
     Json(obj): Json<AuthRequest>,
@@ -2765,8 +2833,9 @@ pub async fn auth(
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
 
-    let maybe_sessionid = state.get_current_auth_session_id(&headers);
+    let maybe_sessionid = state.get_current_auth_session_id(&headers, &jar);
     debug!("Session ID: {:?}", maybe_sessionid);
+
     // We probably need to know if we allocate the cookie, that this is a
     // new session, and in that case, anything *except* authrequest init is
     // invalid.
@@ -2775,12 +2844,14 @@ pub async fn auth(
         .handle_auth(maybe_sessionid, obj, kopid.eventid, client_auth_info)
         .await;
     debug!("Auth result: {:?}", inter);
-    auth_session_state_management(state, inter)
+    auth_session_state_management(state, jar, inter)
 }
 
-#[instrument(skip(state))]
+// Disable on any level except trace to stop leaking tokens
+#[instrument(level = "trace", skip_all)]
 fn auth_session_state_management(
     state: ServerState,
+    mut jar: CookieJar,
     inter: Result<AuthResult, OperationError>,
 ) -> Result<Response, WebError> {
     let mut auth_session_id_tok = None;
@@ -2793,8 +2864,7 @@ fn auth_session_state_management(
             // Do some response/state management.
             match auth_state {
                 AuthState::Choose(allowed) => {
-                    debug!("🧩 -> AuthState::Choose"); // TODO: this should be ... less work
-                                                       // Ensure the auth-session-id is set
+                    debug!("🧩 -> AuthState::Choose");
                     let kref = &state.jws_signer;
                     let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
                         error!(?e);
@@ -2834,7 +2904,25 @@ fn auth_session_state_management(
                     debug!("🧩 -> AuthState::Success");
 
                     match issue {
-                        AuthIssueSession::Token => Ok(ProtoAuthState::Success(token)),
+                        AuthIssueSession::Token => Ok(ProtoAuthState::Success(token.to_string())),
+                        AuthIssueSession::Cookie => {
+                            // Update jar
+                            let token_str = token.to_string();
+                            let mut bearer_cookie =
+                                Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
+                            bearer_cookie.set_secure(state.secure_cookies);
+                            bearer_cookie.set_same_site(SameSite::Lax);
+                            bearer_cookie.set_http_only(true);
+                            // We set a domain here because it allows subdomains
+                            // of the idm to share the cookie. If domain was incorrect
+                            // then webauthn won't work anyway!
+                            bearer_cookie.set_domain(state.domain.clone());
+                            bearer_cookie.set_path("/");
+                            jar = jar
+                                .add(bearer_cookie)
+                                .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+                            Ok(ProtoAuthState::Success(token_str))
+                        }
                     }
                 }
                 AuthState::Denied(reason) => {
@@ -2849,7 +2937,23 @@ fn auth_session_state_management(
 
     // if the sessionid was injected into our cookie, set it in the header too.
     res.map(|response| {
-        let mut res = Json::from(response).into_response();
+        jar = if let Some(token) = auth_session_id_tok.clone() {
+            let mut token_cookie = Cookie::new(COOKIE_AUTH_SESSION_ID, token);
+            token_cookie.set_secure(state.secure_cookies);
+            token_cookie.set_same_site(SameSite::Strict);
+            token_cookie.set_http_only(true);
+            // Not setting domains limits the cookie to precisely this
+            // url that was used.
+            // token_cookie.set_domain(state.domain.clone());
+            jar.add(token_cookie)
+        } else {
+            jar
+        };
+
+        trace!(?jar);
+
+        let mut res = (jar, Json::from(response)).into_response();
+
         match auth_session_id_tok {
             Some(tok) => {
                 match HeaderValue::from_str(&tok) {
@@ -2908,8 +3012,37 @@ pub async fn debug_ipinfo(
     Ok(Json::from(vec![ip_addr]))
 }
 
+#[utoipa::path(
+    get,
+    path = "/v1/jwk/{key_id}",
+    responses(
+        (status=200, body=Jwk, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/jwk",
+    operation_id = "public_jwk_key_id_get"
+)]
+pub async fn public_jwk_key_id_get(
+    State(state): State<ServerState>,
+    Path(key_id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+) -> Result<Json<Jwk>, WebError> {
+    if key_id.len() > 64 {
+        // Fast path to reject long KeyIDs
+        return Err(WebError::from(OperationError::NoMatchingEntries));
+    }
+    state
+        .qe_r_ref
+        .handle_public_jwk_get(key_id, kopid.eventid)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
 fn cacheable_routes(state: ServerState) -> Router<ServerState> {
     Router::new()
+        .route("/v1/jwk/:key_id", get(public_jwk_key_id_get))
         .route(
             "/v1/person/:id/_radius/_token",
             get(person_id_radius_token_get),
@@ -3026,16 +3159,14 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
                 .post(person_id_post_attr)
                 .delete(person_id_delete_attr),
         )
-        // .route("/v1/person/:id/_lock", get(|| async { "TODO" }))
-        // .route("/v1/person/:id/_credential", get(|| async { "TODO" }))
+        .route(
+            "/v1/person/:id/_certificate",
+            get(person_get_id_certificate).post(person_post_id_certificate),
+        )
         .route(
             "/v1/person/:id/_credential/_status",
             get(person_get_id_credential_status),
         )
-        // .route(
-        //     "/v1/person/:id/_credential/:cid/_lock",
-        //     get(|| async { "TODO" }),
-        // )
         .route(
             "/v1/person/:id/_credential/_update",
             get(person_id_credential_update_get),
@@ -3062,7 +3193,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
                 .post(person_id_radius_post)
                 .delete(person_id_radius_delete),
         )
-        .route("/v1/person/:id/_unix", post(service_account_id_unix_post))
+        .route("/v1/person/:id/_unix", post(person_id_unix_post))
         .route(
             "/v1/person/:id/_unix/_credential",
             put(person_id_unix_credential_put).delete(person_id_unix_credential_delete),

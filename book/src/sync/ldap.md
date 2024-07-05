@@ -1,4 +1,4 @@
-# Synchronising from LDAP
+# LDAP
 
 If you have an LDAP server that supports sync repl (rfc4533 content synchronisation) then you are
 able to synchronise from it to Kanidm for the purposes of coexistence or migration.
@@ -18,7 +18,7 @@ communicate to both sides.
 Like other components of Kanidm, the LDAP sync tool will read your /etc/kanidm/config if present to
 understand how to connect to Kanidm.
 
-The sync tool specific components are configured in it's own configuration file.
+The sync tool specific components are configured in its own configuration file.
 
 ```toml
 {{#rustdoc_include ../../../examples/kanidm-ldap-sync}}

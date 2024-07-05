@@ -110,8 +110,10 @@ impl fmt::Display for AuthMech {
 #[derive(Debug, Serialize, Deserialize, Copy, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum AuthIssueSession {
-    // Previously supported other types beside token.
+    /// Issue a bearer token for this client. This is the default.
     Token,
+    /// Issue a cookie for this client.
+    Cookie,
 }
 
 /// A request for the next step of an authentication.

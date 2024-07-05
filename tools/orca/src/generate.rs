@@ -1,21 +1,22 @@
 use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
+use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Model, Person, PreflightState, State};
-use rand::distributions::{Alphanumeric, DistString};
-use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
+use rand::distributions::{Alphanumeric, DistString, Uniform};
+use rand::seq::{index, SliceRandom};
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use std::collections::BTreeSet;
 
 const PEOPLE_PREFIX: &str = "person";
 
-#[derive(Debug)]
-pub struct PartialGroup {
-    pub name: String,
-    pub members: BTreeSet<String>,
-}
+// #[derive(Debug)]
+// pub struct PartialGroup {
+//     pub name: String,
+//     pub members: BTreeSet<String>,
+// }
 
 fn random_name(prefix: &str, rng: &mut ChaCha8Rng) -> String {
     let suffix = Alphanumeric.sample_string(rng, 8).to_lowercase();
@@ -49,13 +50,44 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         surnames.len()
     );
 
+    let thread_count = profile.thread_count();
+
     // PHASE 0 - For now, set require MFA off.
     let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
 
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
-    // todo! may need a random username vec for later stuff
 
-    // PHASE 2 - generate persons
+    // PHASE 2 - generate groups for integration access, assign roles to groups.
+    // These decide what each person is supposed to do with their life.
+    let mut groups = vec![
+        Group {
+            name: "role_people_self_set_password".to_string(),
+            role: ActorRole::PeopleSelfSetPassword,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_pii_reader".to_string(),
+            role: ActorRole::PeoplePiiReader,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_self_write_mail".to_string(),
+            role: ActorRole::PeopleSelfMailWrite,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_self_read_account".to_string(),
+            role: ActorRole::PeopleSelfReadProfile,
+            ..Default::default()
+        },
+        Group {
+            name: "role_people_self_read_memberof".to_string(),
+            role: ActorRole::PeopleSelfReadMemberOf,
+            ..Default::default()
+        },
+    ];
+
+    // PHASE 3 - generate persons
     //         - assign them credentials of various types.
     let mut persons = Vec::with_capacity(profile.person_count() as usize);
     let mut person_usernames = BTreeSet::new();
@@ -88,17 +120,16 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let password = random_password(&mut seeded_rng);
 
-        // TODO: Add more and different "models" to each person for their actions.
+        let roles = BTreeSet::new();
+
         let model = Model::Basic;
 
-        // =======
         // Data is ready, make changes to the server. These should be idempotent if possible.
-
         let p = Person {
             preflight_state: PreflightState::Present,
             username: username.clone(),
             display_name,
-            member_of: BTreeSet::default(),
+            roles,
             credential: Credential::Password { plain: password },
             model,
         };
@@ -109,7 +140,43 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         persons.push(p);
     }
 
-    // PHASE 3 - generate groups for integration access, assign persons.
+    // Now, assign persons to roles.
+    //
+    // We do this by iterating through our roles, and then assigning
+    // them a baseline of required accounts with some variation. This
+    // way in each test it's guaranteed that *at least* one person
+    // to each role always will exist and be operational.
+
+    for group in groups.iter_mut() {
+        // For now, our baseline is 20%. We can adjust this in future per
+        // role for example.
+        let baseline = persons.len() / 3;
+        let inverse = persons.len() - baseline;
+        // Randomly add extra from the inverse
+        let extra = Uniform::new(0, inverse);
+        let persons_to_choose = baseline + seeded_rng.sample(extra);
+
+        assert!(persons_to_choose <= persons.len());
+
+        debug!(?persons_to_choose);
+
+        let person_index = index::sample(&mut seeded_rng, persons.len(), persons_to_choose);
+
+        // Order doesn't matter, lets optimise for linear lookup.
+        let mut person_index = person_index.into_vec();
+        person_index.sort_unstable();
+
+        for p_idx in person_index {
+            let person = persons.get_mut(p_idx).unwrap();
+
+            // Add the person to the group.
+            group.members.insert(person.username.clone());
+
+            // Add the reverse links, this allows the person in the test
+            // to know their roles
+            person.roles.insert(group.role.clone());
+        }
+    }
 
     // PHASE 4 - generate groups for user modification rights
 
@@ -117,15 +184,17 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
     // PHASE 6 - generate integrations -
 
-    // PHASE 7 - given the intergariotns and groupings,
+    // PHASE 7 - given the integrations and groupings,
 
     // Return the state.
 
     let state = State {
         profile,
         // ---------------
+        groups,
         preflight_flags,
         persons,
+        thread_count,
     };
 
     Ok(state)

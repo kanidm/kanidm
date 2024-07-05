@@ -10,13 +10,17 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(not(target_family = "windows"))]
+#[cfg(not(any(feature = "dhat-heap", target_os = "illumos")))]
 #[global_allocator]
-static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
+
+#[cfg(feature = "dhat-heap")]
+#[global_allocator]
+static ALLOC: dhat::Alloc = dhat::Alloc;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.
-use fs2::FileExt;
+use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
@@ -24,6 +28,7 @@ use sketching::LogLevel;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::process::ExitCode;
+use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
@@ -284,28 +289,10 @@ fn main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
-    let maybe_rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .thread_name("kanidmd-thread-pool")
-        // .thread_stack_size(8 * 1024 * 1024)
-        // If we want a hook for thread start.
-        // .on_thread_start()
-        // In future, we can stop the whole process if a panic occurs.
-        // .unhandled_panic(tokio::runtime::UnhandledPanic::ShutdownRuntime)
-        .build();
+    // We need enough backtrace depth to find leak sources if they exist.
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::builder().trim_backtraces(Some(40)).build();
 
-    let rt = match maybe_rt {
-        Ok(rt) => rt,
-        Err(err) => {
-            eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
-            return ExitCode::FAILURE;
-        }
-    };
-
-    rt.block_on(kanidm_main())
-}
-
-async fn kanidm_main() -> ExitCode {
     // Read CLI args, determine what the user has asked us to do.
     let opt = KanidmdParser::parse();
 
@@ -319,7 +306,26 @@ async fn kanidm_main() -> ExitCode {
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
 
-    let sconfig = match ServerConfig::new(opt.config_path()) {
+    let Ok(default_config_path) = PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")) else {
+        eprintln!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_DEFAULT_CONFIG_PATH value");
+        return ExitCode::FAILURE;
+    };
+
+    let maybe_config_path = if let Some(p) = opt.config_path() {
+        Some(p)
+    } else {
+        // The user didn't ask for a file, lets check if the default path exists?
+        if default_config_path.exists() {
+            // It does, lets use it.
+            Some(default_config_path)
+        } else {
+            // No default config, and no config specified, lets assume the user
+            // has selected environment variables.
+            None
+        }
+    };
+
+    let sconfig = match ServerConfig::new(maybe_config_path) {
         Ok(c) => Some(c),
         Err(e) => {
             config_error.push(format!("Config Parse failure {:?}", e));
@@ -374,6 +380,17 @@ async fn kanidm_main() -> ExitCode {
         return ExitCode::FAILURE;
     }
 
+    let sconfig = match sconfig {
+        Some(val) => val,
+        None => {
+            error!("Somehow you got an empty ServerConfig after error checking?");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // ===========================================================================
+    // Config ready, start to setup pre-run checks.
+
     // Get info about who we are.
     #[cfg(target_family = "unix")]
     let (cuid, ceuid) = {
@@ -394,14 +411,6 @@ async fn kanidm_main() -> ExitCode {
             return ExitCode::FAILURE;
         }
         (cuid, ceuid)
-    };
-
-    let sconfig = match sconfig {
-        Some(val) => val,
-        None => {
-            error!("Somehow you got an empty ServerConfig after error checking?");
-            return ExitCode::FAILURE;
-        }
     };
 
     if let Some(cfg_path) = opt.config_path() {
@@ -507,8 +516,17 @@ async fn kanidm_main() -> ExitCode {
     config.update_output_mode(opt.commands.commonopt().output_mode.to_owned().into());
     config.update_trust_x_forward_for(sconfig.trust_x_forward_for);
     config.update_admin_bind_path(&sconfig.adminbindpath);
-
     config.update_replication_config(sconfig.repl_config.clone());
+
+    // We always set threads to 1 unless it's the main server.
+    if matches!(&opt.commands, KanidmdOpt::Server(_)) {
+        // If not updated, will default to maximum
+        if let Some(threads) = sconfig.thread_count {
+            config.update_threads_count(threads);
+        }
+    } else {
+        config.update_threads_count(1);
+    };
 
     match &opt.commands {
         // we aren't going to touch the DB so we can carry on
@@ -548,6 +566,35 @@ async fn kanidm_main() -> ExitCode {
         }
     }
 
+    let maybe_rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(config.threads)
+        .enable_all()
+        .thread_name("kanidmd-thread-pool")
+        // .thread_stack_size(8 * 1024 * 1024)
+        // If we want a hook for thread start.
+        // .on_thread_start()
+        // In future, we can stop the whole process if a panic occurs.
+        // .unhandled_panic(tokio::runtime::UnhandledPanic::ShutdownRuntime)
+        .build();
+
+    let rt = match maybe_rt {
+        Ok(rt) => rt,
+        Err(err) => {
+            eprintln!("CRITICAL: Unable to start runtime! {:?}", err);
+            return ExitCode::FAILURE;
+        }
+    };
+
+    rt.block_on(kanidm_main(sconfig, config, opt))
+}
+
+/// Build and execute the main server. The ServerConfig are the configuration options
+/// that we are processing into the config for the main server.
+async fn kanidm_main(
+    sconfig: ServerConfig,
+    mut config: Configuration,
+    opt: KanidmdParser,
+) -> ExitCode {
     match &opt.commands {
         KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
             let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));

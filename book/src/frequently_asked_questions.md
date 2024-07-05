@@ -54,7 +54,7 @@ has an excellent explanation of the attack. Additionally, this threat is discuss
 [RFC6819 Section 4.4.1](https://www.rfc-editor.org/rfc/rfc6819#section-4.4.1).
 
 As Kanidm aims for "secure by default" design, even with _confidential_ clients, we deem it
-important to raise the bar for attackers. For example an attacker may have access to the `client_id`
+important to raise the bar for attackers. For example, an attacker may have access to the `client_id`
 and `client_secret` of a confidential client as it was mishandled by a system administrator. While
 they may not have direct access to the client/application systems, they could still use this
 `client_id+secret` to then carry out the authorisation code interception attack listed.
@@ -113,16 +113,16 @@ This question is normally asked because people want to setup multiple Kanidm ser
 single database.
 
 Kanidm does not use SQL as a _database_. Kanidm uses SQL as a durable key-value store and Kanidm
-implements it's own database, caching, querying, optimisation and indexing on top of that key-value
+implements its own database, caching, querying, optimisation and indexing on top of that key-value
 store.
 
-As a result, because Kanidm specifically implements it's own cache layer above the key-value store
+As a result, because Kanidm specifically implements its own cache layer above the key-value store
 (sqlite in this example) then if you were to connect two Kanidm instances to the same key-value
-store, as each server has it's own cache layer and they are not in contact, it is possible for
-writes on one server to never be observed by the second, and if the second were to then write over
-those entries it will cause loss of the changes from the first server.
+store, as each server has its own cache layer and they are not in contact, it is possible for writes
+on one server to never be observed by the second, and if the second were to then write over those
+entries it will cause loss of the changes from the first server.
 
-Kanidm now implements it's own eventually consistent distributed replication which also removes the
+Kanidm now implements its own eventually consistent distributed replication which also removes the
 need for external databases to be considered.
 
 ## Why aren't snaps launching with `home_alias` set?

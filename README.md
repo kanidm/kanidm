@@ -19,7 +19,8 @@ way to the largest enterprise needs.
 
 If you want to host your own authentication service, then Kanidm is for you!
 
-<details><summary>Supported Features</summary>
+<details>
+  <summary>Supported Features</summary>
 
 Kanidm supports:
 
@@ -32,8 +33,8 @@ Kanidm supports:
 - RADIUS for network and VPN authentication
 - Read-only LDAPs gateway for Legacy Systems
 - Complete CLI tooling for Administration
-- A WebUI for user self-service
 - Two node high availability using database replication
+- A WebUI for user self-service
 
 </details>
 
@@ -54,8 +55,7 @@ All interactions with the project are covered by our [code of conduct].
 When we develop features, we follow our project's guidelines on [rights and ethics].
 
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-
-[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/ethics.md
+[rights and ethics]: https://github.com/kanidm/kanidm/blob/master/book/src/developers/developer_ethics.md
 
 ## Getting in Contact / Questions
 
@@ -63,7 +63,6 @@ We have a Matrix-powered [gitter community channel] where project members are al
 and answer questions. Alternately you can open a new [GitHub discussion].
 
 [gitter community channel]: https://app.gitter.im/#/room/#kanidm_community:gitter.im
-
 [github discussion]: https://github.com/kanidm/kanidm/discussions
 
 ## What does Kanidm mean?
@@ -76,7 +75,9 @@ Kanidm is pronounced as "kar - nee - dee - em".
 
 ## Comparison with other services
 
-<details><summary>LLDAP</summary>
+<details>
+  <summary>LLDAP</summary>
+
 [LLDAP](https://github.com/nitnelave/lldap) is a similar project aiming for a small and easy to
 administer LDAP server with a web administration portal. Both projects use the
 [Kanidm LDAP bindings](https://github.com/kanidm/ldap3), and have many similar ideas.
@@ -109,7 +110,9 @@ richer feature set.
 
 </details>
 
-<details><summary>FreeIPA</summary>
+<details>
+  <summary>FreeIPA</summary>
+
 FreeIPA is another identity management service for Linux/Unix, and ships a huge number of features
 from LDAP, Kerberos, DNS, Certificate Authority, and more.
 
@@ -124,10 +127,12 @@ differ however, but generally Kanidm is much faster than FreeIPA).
 
 </details>
 
-<details><summary>Keycloak</summary>
-Keycloak is an OIDC/OAuth2/SAML provider. It allows you to layer on WebAuthn to existing IDM systems.
-Keycloak can operate as a stand-alone IDM but generally is a component attached to an existing LDAP
-server or similar.
+<details>
+  <summary>Keycloak</summary>
+
+Keycloak is an OIDC/OAuth2/SAML provider. It allows you to layer on WebAuthn to existing IDM
+systems. Keycloak can operate as a stand-alone IDM but generally is a component attached to an
+existing LDAP server or similar.
 
 Keycloak requires a significant amount of configuration and experience to deploy. It allows high
 levels of customisation to every detail of its authentication work flows, which makes it harder to
@@ -135,6 +140,35 @@ start with in many cases.
 
 Kanidm does NOT require Keycloak to provide services such as OAuth2 and integrates many of the
 elements in a simpler and correct way out of the box in comparison.
+
+</details>
+
+<details>
+  <summary>Rauthy</summary>
+
+Rauthy is a minimal OIDC provider. It supports WebAuthn just like Kanidm - they actually use our
+library for it!
+
+Rauthy only provides support for OIDC and so is unable to support other use cases like RADIUS and
+unix authentication.
+
+If you need a minimal OIDC only provider, Rauthy is an excellent choice. If you need more features
+then Kanidm will support those.
+
+</details>
+
+<details>
+  <summary>Authentik / Authelia / Zitadel</summary>
+
+Authentik is an IDM provider written in Python and, Authelia and Zitadel are written in Go. all
+similar to Kanidm in the features it offers but notably all have weaker support for unix
+authentication and do not support the same level of authentication policy as Kanidm. Notably, all
+are missing WebAuthn Attestation.
+
+All three use an external SQL server such as PostgreSQL. This can create a potential single source
+of failure and performance limitation compared to Kanidm which opted to write our own high
+performance database and replication system instead based on our experience with enterprise LDAP
+servers.
 
 </details>
 
@@ -148,4 +182,4 @@ When developing the server you should refer to the latest commit documentation i
 
 - [Kanidm book (latest commit)](https://kanidm.github.io/kanidm/master/)
 
-[guide for developers]: https://kanidm.github.io/kanidm/stable/DEVELOPER_README.html
+[guide for developers]: https://kanidm.github.io/kanidm/master/developers/index.html

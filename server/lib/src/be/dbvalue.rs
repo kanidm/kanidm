@@ -18,7 +18,7 @@ use webauthn_rs_core::proto::{COSEKey, UserVerificationPolicy};
 use crate::repl::cid::Cid;
 pub use kanidm_lib_crypto::DbPasswordV1;
 
-#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Ord, PartialOrd, PartialEq, Eq, Clone)]
 pub struct DbCidV1 {
     #[serde(rename = "t")]
     pub timestamp: Duration,
@@ -595,6 +595,36 @@ pub enum DbValueImage {
     },
 }
 
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyUsage {
+    JwsEs256,
+    JweA128GCM,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyStatus {
+    Valid,
+    Retained,
+    Revoked,
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueKeyInternal {
+    V1 {
+        id: String,
+        usage: DbValueKeyUsage,
+        valid_from: u64,
+        status: DbValueKeyStatus,
+        status_cid: DbCidV1,
+        der: Vec<u8>,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
+pub enum DbValueCertificate {
+    V1 { certificate_der: Vec<u8> },
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
@@ -748,14 +778,21 @@ pub enum DbValueSetV2 {
     CredentialType(Vec<u16>),
     #[serde(rename = "WC")]
     WebauthnAttestationCaList { ca_list: AttestationCaList },
+    #[serde(rename = "KI")]
+    KeyInternal(Vec<DbValueKeyInternal>),
+    #[serde(rename = "HS")]
+    HexString(Vec<String>),
+    #[serde(rename = "X509")]
+    Certificate(Vec<DbValueCertificate>),
 }
 
 impl DbValueSetV2 {
     pub fn len(&self) -> usize {
         match self {
-            DbValueSetV2::Utf8(set) => set.len(),
-            DbValueSetV2::Iutf8(set) => set.len(),
-            DbValueSetV2::Iname(set) => set.len(),
+            DbValueSetV2::Utf8(set)
+            | DbValueSetV2::Iutf8(set)
+            | DbValueSetV2::HexString(set)
+            | DbValueSetV2::Iname(set) => set.len(),
             DbValueSetV2::Uuid(set) => set.len(),
             DbValueSetV2::Bool(set) => set.len(),
             DbValueSetV2::SyntaxType(set) => set.len(),
@@ -797,6 +834,8 @@ impl DbValueSetV2 {
             // represents the bytes of  SINGLE(!) key
             DbValueSetV2::CredentialType(set) => set.len(),
             DbValueSetV2::WebauthnAttestationCaList { ca_list } => ca_list.len(),
+            DbValueSetV2::KeyInternal(set) => set.len(),
+            DbValueSetV2::Certificate(set) => set.len(),
         }
     }
 

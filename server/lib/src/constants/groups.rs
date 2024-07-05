@@ -178,6 +178,18 @@ lazy_static! {
         ..Default::default()
     };
 
+    /// Builtin IDM Group for granting people the ability to write to their own name attributes.
+    pub static ref BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_name_write",
+        description: "Builtin IDM Group denoting users that can write to their own name attributes.",
+        uuid: UUID_IDM_PEOPLE_SELF_NAME_WRITE,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![
+            UUID_IDM_ALL_PERSONS
+        ],
+        ..Default::default()
+    };
+
     pub static ref BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS: BuiltinGroup = BuiltinGroup {
         name: "idm_service_account_admins",
         description: "Builtin Service Account Administration Group.",
@@ -236,6 +248,16 @@ lazy_static! {
         ..Default::default()
     };
 
+    /// Builtin IDM Group for managing client authentication certificates.
+    pub static ref BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_client_certificate_admins",
+        description: "Builtin Client Certificate Administration Group.",
+        uuid: UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
     /// Builtin IDM Group for granting elevated group write and lifecycle permissions.
     pub static ref IDM_GROUP_ADMINS_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_group_admins",
@@ -250,8 +272,17 @@ lazy_static! {
     pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_write_mail",
         description: "Builtin IDM Group for people accounts to update their own mail.",
-        uuid: UUID_IDM_PEOPLE_SELF_WRITE_MAIL,
-        members: Vec::new(),
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
+        members: Vec::with_capacity(0),
+        ..Default::default()
+    };
+
+    /// Self-write of mail
+    pub static ref IDM_PEOPLE_SELF_MAIL_WRITE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_people_self_mail_write",
+        description: "Builtin IDM Group for people accounts to update their own mail.",
+        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
+        members: Vec::with_capacity(0),
         ..Default::default()
     };
 }
@@ -262,7 +293,7 @@ lazy_static! {
         name: "idm_all_persons",
         description: "Builtin IDM dynamic group containing all persons.",
         uuid: UUID_IDM_ALL_PERSONS,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         dyngroup: true,
         dyngroup_filter: Some(
             Filter::And(vec![
@@ -283,7 +314,7 @@ lazy_static! {
         name: "idm_all_accounts",
         description: "Builtin IDM dynamic group containing all entries that can authenticate.",
         uuid: UUID_IDM_ALL_ACCOUNTS,
-        members: Vec::new(),
+        members: Vec::with_capacity(0),
         dyngroup: true,
         dyngroup_filter: Some(
                 Filter::Eq(Attribute::Class.to_string(), EntryClass::Account.to_string()),
@@ -342,6 +373,36 @@ lazy_static! {
             UUID_IDM_PEOPLE_ADMINS,
             UUID_IDM_PEOPLE_ON_BOARDING,
             UUID_IDM_SERVICE_ACCOUNT_ADMINS,
+            UUID_IDM_HIGH_PRIVILEGE,
+        ],
+        ..Default::default()
+    };
+
+    /// This must be the last group to init to include the UUID of the other high priv groups.
+    pub static ref IDM_HIGH_PRIVILEGE_DL7: BuiltinGroup = BuiltinGroup {
+        name: "idm_high_privilege",
+        uuid: UUID_IDM_HIGH_PRIVILEGE,
+        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
+        description: "Builtin IDM provided groups with high levels of access that should be audited and limited in modification.",
+        members: vec![
+            UUID_SYSTEM_ADMINS,
+            UUID_IDM_ADMINS,
+            UUID_DOMAIN_ADMINS,
+            UUID_IDM_SERVICE_DESK,
+            UUID_IDM_RECYCLE_BIN_ADMINS,
+            UUID_IDM_SCHEMA_ADMINS,
+            UUID_IDM_ACCESS_CONTROL_ADMINS,
+            UUID_IDM_OAUTH2_ADMINS,
+            UUID_IDM_RADIUS_ADMINS,
+            UUID_IDM_ACCOUNT_POLICY_ADMINS,
+            UUID_IDM_RADIUS_SERVERS,
+            UUID_IDM_GROUP_ADMINS,
+            UUID_IDM_UNIX_ADMINS,
+            UUID_IDM_PEOPLE_PII_READ,
+            UUID_IDM_PEOPLE_ADMINS,
+            UUID_IDM_PEOPLE_ON_BOARDING,
+            UUID_IDM_SERVICE_ACCOUNT_ADMINS,
+            UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()

@@ -631,7 +631,7 @@ pub(crate) trait IdlSqliteTransaction {
                 Ok(Some(v)) => {
                     let r: Result<String, _> = v.get(0);
                     match r {
-                        Ok(t) if t == "ok" => Vec::new(),
+                        Ok(t) if t == "ok" => Vec::with_capacity(0),
                         _ => vec![Err(ConsistencyError::SqliteIntegrityFailure)],
                     }
                 }
@@ -1574,7 +1574,7 @@ impl IdlSqliteWriteTransaction {
         // | schema   | 1       |
         // ----------------------
         //
-        // This allows each component to initialise on it's own, be
+        // This allows each component to initialise on its own, be
         // rolled back individually, by upgraded in isolation, and more
         //
         // NEVER CHANGE THIS DEFINITION.
@@ -1755,6 +1755,9 @@ impl IdlSqlite {
         };
 
         let fs_page_size = cfg.fstype as u32;
+        // sqlite caches based on pages, so we calc based on page size to achieve our target which
+        // is 32MB (constrst the SQLite default of 2MB)
+        let cache_pages = 33554432 / fs_page_size;
         let checkpoint_pages = cfg.fstype.checkpoint_pages();
 
         // Initial setup routines.
@@ -1766,6 +1769,7 @@ impl IdlSqlite {
                 .execute_batch(
                     format!(
                         "PRAGMA page_size={fs_page_size};
+                         PRAGMA cache_size={cache_pages};
                          PRAGMA journal_mode=WAL;
                          PRAGMA wal_autocheckpoint={checkpoint_pages};
                          PRAGMA wal_checkpoint(RESTART);"
@@ -1848,6 +1852,17 @@ impl IdlSqlite {
                     Connection::open_with_flags(cfg.path.as_str(), flags).map_err(sqlite_error);
                 match conn {
                     Ok(conn) => {
+                        // We need to set the cachesize at this point as well.
+                        conn
+                            .execute_batch(
+                                format!(
+                                    "PRAGMA cache_size={cache_pages};"
+                                )
+                                .as_str(),
+                            )
+                            .map_err(sqlite_error)?;
+
+
                         // load the rusqlite vtab module to allow for virtual tables
                         rusqlite::vtab::array::load_module(&conn).map_err(|e| {
                             admin_error!(

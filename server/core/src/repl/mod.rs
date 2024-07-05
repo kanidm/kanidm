@@ -661,8 +661,6 @@ async fn repl_acceptor(
 
         // Get the private key / cert.
         let res = {
-            // Does this actually need to be a read in case we need to write
-            // to sqlite?
             let ct = duration_from_epoch_now();
             let mut idms_prox_write = idms.proxy_write(ct).await;
             idms_prox_write
@@ -772,7 +770,7 @@ async fn repl_acceptor(
 
         // ⚠️  CRITICAL - Both verifications here are needed. PEER requests
         // the client cert to be sent. FAIL_IF_NO_PEER_CERT triggers an
-        // error if the cert is NOT present. FAIL_IF_NO_PEER_CERT on it's own
+        // error if the cert is NOT present. FAIL_IF_NO_PEER_CERT on its own
         // DOES NOTHING.
         let mut verify = SslVerifyMode::PEER;
         verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);

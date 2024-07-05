@@ -1,4 +1,4 @@
-# The Authentication Flow
+# Authentication Flow
 
 1. Client sends an init request. This can be either:
    1. `AuthStep::Init` which just includes the username, or
@@ -8,8 +8,7 @@
 3. Client requests auth with a method (`AuthStep::Begin(AuthMech)`)
 4. Server responds with an acknowledgement (`AuthState::Continue(Vec<AuthAllowed>)`). This is so the
    challenge can be included in the response, for Passkeys or other challenge-response methods.
-   - If required, this challenge/response continues in a loop until the requirements are satisfied -
-     for example, TOTP + Password.
+   - If required, this challenge/response continues in a loop until the requirements are satisfied. For example, TOTP and then Password.
 5. The result is returned, either:
    - Success, with the User Auth Token as a `String`.
    - Denied, with a reason as a `String`.

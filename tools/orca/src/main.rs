@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
@@ -6,9 +6,9 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-#[cfg(not(target_family = "windows"))]
+#[cfg(not(any(target_family = "windows", target_os = "illumos")))]
 #[global_allocator]
-static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
+static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 
 #[macro_use]
 extern crate tracing;
@@ -20,13 +20,13 @@ use clap::Parser;
 
 use crate::profile::{Profile, ProfileBuilder};
 
-use tokio::sync::broadcast;
+use tokio::{runtime::Runtime, sync::broadcast};
 
 mod error;
 mod generate;
 mod kani;
 mod model;
-mod model_basic;
+mod models;
 mod populate;
 mod profile;
 mod run;
@@ -48,8 +48,7 @@ impl OrcaOpt {
     }
 }
 
-#[tokio::main(flavor = "multi_thread")]
-async fn main() -> ExitCode {
+fn main() -> ExitCode {
     let opt = OrcaOpt::parse();
 
     if opt.debug() {
@@ -66,7 +65,7 @@ async fn main() -> ExitCode {
     match opt {
         OrcaOpt::Version { .. } => {
             println!("orca {}", env!("KANIDM_PKG_VERSION"));
-            return ExitCode::SUCCESS;
+            ExitCode::SUCCESS
         }
 
         // Build the profile and the test dimensions.
@@ -77,6 +76,7 @@ async fn main() -> ExitCode {
             control_uri,
             seed,
             profile_path,
+            threads,
         } => {
             // For now I hardcoded some dimensions, but we should prompt
             // the user for these later.
@@ -89,8 +89,16 @@ async fn main() -> ExitCode {
                 }
             });
 
-            let builder =
-                ProfileBuilder::new(control_uri, admin_password, idm_admin_password).seed(seed);
+            let extra_uris = Vec::with_capacity(0);
+
+            let builder = ProfileBuilder::new(
+                control_uri,
+                extra_uris,
+                admin_password,
+                idm_admin_password,
+                threads,
+            )
+            .seed(seed);
 
             let profile = match builder.build() {
                 Ok(p) => p,
@@ -100,12 +108,8 @@ async fn main() -> ExitCode {
             };
 
             match profile.write_to_path(&profile_path) {
-                Ok(_) => {
-                    return ExitCode::SUCCESS;
-                }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
+                Ok(_) => ExitCode::SUCCESS,
+                Err(_err) => ExitCode::FAILURE,
             }
         }
 
@@ -123,15 +127,17 @@ async fn main() -> ExitCode {
 
             info!("Performing conntest of {}", profile.control_uri());
 
-            match kani::KanidmOrcaClient::new(&profile).await {
-                Ok(_) => {
-                    info!("success");
-                    return ExitCode::SUCCESS;
+            // we're okay with just one thread here
+            let runtime = build_tokio_runtime(Some(1));
+            runtime.block_on(async {
+                match kani::KanidmOrcaClient::new(&profile).await {
+                    Ok(_) => {
+                        info!("success");
+                        ExitCode::SUCCESS
+                    }
+                    Err(_err) => ExitCode::FAILURE,
                 }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            }
+            })
         }
 
         // From the profile and test dimensions, generate the data into a state file.
@@ -147,29 +153,30 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let client = match kani::KanidmOrcaClient::new(&profile).await {
-                Ok(client) => client,
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            };
+            // This is single threaded.
+            let runtime = build_tokio_runtime(Some(1));
 
-            // do-it.
-            let state = match generate::populate(&client, profile).await {
-                Ok(s) => s,
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            };
+            runtime.block_on(async {
+                let client = match kani::KanidmOrcaClient::new(&profile).await {
+                    Ok(client) => client,
+                    Err(_err) => {
+                        return ExitCode::FAILURE;
+                    }
+                };
 
-            match state.write_to_path(&state_path) {
-                Ok(_) => {
-                    return ExitCode::SUCCESS;
+                // do-it.
+                let state = match generate::populate(&client, profile).await {
+                    Ok(s) => s,
+                    Err(_err) => {
+                        return ExitCode::FAILURE;
+                    }
+                };
+
+                match state.write_to_path(&state_path) {
+                    Ok(_) => ExitCode::SUCCESS,
+                    Err(_err) => ExitCode::FAILURE,
                 }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            }
+            })
         }
 
         //
@@ -184,14 +191,15 @@ async fn main() -> ExitCode {
                 }
             };
 
-            match populate::preflight(state).await {
-                Ok(_) => {
-                    return ExitCode::SUCCESS;
+            // here we want all threads available to speed up the process.
+            let runtime = build_tokio_runtime(state.thread_count);
+
+            runtime.block_on(async {
+                match populate::preflight(state).await {
+                    Ok(_) => ExitCode::SUCCESS,
+                    Err(_err) => ExitCode::FAILURE,
                 }
-                Err(_err) => {
-                    return ExitCode::FAILURE;
-                }
-            };
+            })
         }
 
         // Run the test based on the state file.
@@ -205,74 +213,90 @@ async fn main() -> ExitCode {
                     return ExitCode::FAILURE;
                 }
             };
-
+            // here we need to create one less worker compared to the desired amount since we later call `spawn_blocking`, which consumes
+            // an extra thread all on its own
+            let runtime = build_tokio_runtime(state.thread_count);
             // We have a broadcast channel setup for controlling the state of
             // various actors and parts.
             //
             // We want a small amount of backlog because there are a few possible
             // commands that could be sent.
+            runtime.block_on(async {
+                let (control_tx, control_rx) = broadcast::channel(8);
 
-            let (control_tx, control_rx) = broadcast::channel(8);
+                let mut run_execute = tokio::task::spawn(run::execute(state, control_rx));
 
-            let mut run_execute = tokio::task::spawn(run::execute(state, control_rx));
-
-            loop {
-                tokio::select! {
-                    // Note that we pass a &mut handle here because we want the future to join
-                    // but not be consumed each loop iteration.
-                    result = &mut run_execute => {
-                        match result {
-                            Ok(_) => {
-                                return ExitCode::SUCCESS;
-                            }
-                            Err(_err) => {
-                                return ExitCode::FAILURE;
-                            }
-                        };
-                    }
-                    // Signal handling.
-                    Ok(()) = tokio::signal::ctrl_c() => {
-                        info!("Stopping Task ...");
-                        let _ = control_tx.send(run::Signal::Stop);
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::terminate();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Kill it with fire I guess.
-                        return ExitCode::FAILURE;
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::alarm();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::hangup();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
-                    }
-                    Some(()) = async move {
-                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                        #[allow(clippy::unwrap_used)]
-                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                    } => {
-                        // Ignore
+                loop {
+                    tokio::select! {
+                        // Note that we pass a &mut handle here because we want the future to join
+                        // but not be consumed each loop iteration.
+                        result = &mut run_execute => {
+                            match result {
+                                Ok(_) => {
+                                    return ExitCode::SUCCESS;
+                                }
+                                Err(_err) => {
+                                    return ExitCode::FAILURE;
+                                }
+                            };
+                        }
+                        // Signal handling.
+                        Ok(()) = tokio::signal::ctrl_c() => {
+                            info!("Stopping Task ...");
+                            let _ = control_tx.send(run::Signal::Stop);
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::terminate();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Kill it with fire I guess.
+                            return ExitCode::FAILURE;
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::alarm();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::hangup();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
+                        Some(()) = async move {
+                            let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                            #[allow(clippy::unwrap_used)]
+                            tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                        } => {
+                            // Ignore
+                        }
                     }
                 }
-            }
+            })
         }
-    };
+    }
+}
+
+/// Build the tokio runtime with the configured number of threads. If set to None, then the maximum
+/// of the system is used.
+fn build_tokio_runtime(threads: Option<usize>) -> Runtime {
+    let mut builder = tokio::runtime::Builder::new_multi_thread();
+    match threads {
+        Some(threads) => builder.worker_threads(threads),
+        None => &mut builder,
+    }
+    .enable_all()
+    .build()
+    .expect("Failed to build tokio runtime")
 }
