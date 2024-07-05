@@ -1,26 +1,25 @@
-use askama::Template;
 use axum::http::StatusCode;
-use axum::response::{IntoResponse, Response};
-use axum_htmx::{HxReswap, HxRetarget, SwapOption};
+use axum::response::{IntoResponse, Redirect, Response};
 use utoipa::ToSchema;
 use uuid::Uuid;
-use kanidm_proto::internal::OperationError;
-use crate::https::middleware::KOpId;
-use crate::https::views::HtmlTemplate;
 
-#[derive(Template)]
-#[template(path = "recoverable_error_partial.html")]
-struct ErrorPartialView {
-    error_message: String,
-    operation_id: Uuid,
-    recovery_path: String,
-    recovery_boosted: bool,
-}
+use kanidm_proto::internal::OperationError;
+
+use crate::https::middleware::KOpId;
+
+// #[derive(Template)]
+// #[template(path = "recoverable_error_partial.html")]
+// struct ErrorPartialView {
+//     error_message: String,
+//     operation_id: Uuid,
+//     recovery_path: String,
+//     recovery_boosted: bool,
+// }
 
 
 /// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]
-pub enum HtmxError {
+pub(crate) enum HtmxError {
     /// Something went wrong when doing things.
     OperationError(Uuid, OperationError),
     // InternalServerError(Uuid, String),
@@ -38,20 +37,11 @@ impl IntoResponse for HtmxError {
             // HtmxError::InternalServerError(_kopid, inner) => {
             //     (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
             // }
-            HtmxError::OperationError(kopid, inner) => {
+            HtmxError::OperationError(_kopid, inner) => {
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
                 let response = match &inner {
                     OperationError::NotAuthenticated | OperationError::SessionExpired => {
-                        (
-                            HxRetarget("body".to_string()),
-                            HxReswap(SwapOption::BeforeEnd),
-                            HtmlTemplate(ErrorPartialView {
-                                operation_id: kopid,
-                                error_message: body,
-                                recovery_path: "/".into(),
-                                recovery_boosted: false,
-                            }),
-                        ).into_response()
+                        Redirect::to("/ui").into_response()
                     }
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
                         (StatusCode::FORBIDDEN, body).into_response()
