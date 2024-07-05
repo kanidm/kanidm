@@ -288,17 +288,13 @@ kanidm system oauth2 enable-localhost-redirects mywebapp
 
 ## Alternate Redirect Origins
 
-Some services may have a website url as well as native applications. These native applications
-require alternate redirection urls to be configured so that after an oauth2 exchange, the system can
+Some services may have a website URL as well as native applications. These native applications
+require alternate redirection URLs to be configured so that after an OAuth2 exchange, the system can
 redirect to the native application.
 
 To support this Kanidm allows supplemental origins to be configured on clients.
 
-{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=The ability to
-configure multiple origins is NOT intended to allow you to share a single Kanidm client definition
-between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT
-SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the
-_same_ client application. }}
+{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=The ability to configure multiple origins is NOT intended to allow you to share a single Kanidm client definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the _same_ client application. }}
 
 ```bash
 kanidm system oauth2 add-origin <name> <origin>
@@ -307,7 +303,7 @@ kanidm system oauth2 remove-origin <name> <origin>
 kanidm system oauth2 add-origin nextcloud app://ios-nextcloud
 ```
 
-Supplemental urls are shown in the OAuth2 client configuration in the `oauth2_rs_origin` attribute.
+Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs_origin` attribute.
 
 ## Extended Options for Legacy Clients
 

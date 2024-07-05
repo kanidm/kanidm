@@ -1039,8 +1039,8 @@ pub enum Oauth2Opt {
         name: String,
     },
 
-    /// The landing url is the default origin of the oauth2 client. Additionally, this landing
-    /// url is the target when Kanidm redirects the user from the apps listing page.
+    /// The landing URL is the default origin of the OAuth2 client. Additionally, this landing
+    /// URL is the target when Kanidm redirects the user from the apps listing page.
     #[clap(name = "set-landing-url")]
     SetLandingUrl {
         #[clap(flatten)]
@@ -1049,8 +1049,8 @@ pub enum Oauth2Opt {
         url: Url,
     },
 
-    /// Add a supplemental origins as a redirection target. For example a phone app
-    /// may use a redirect url such as `app://my-cool-app` to trigger a native
+    /// Add a supplemental origin as a redirection target. For example a phone app
+    /// may use a redirect URL such as `app://my-cool-app` to trigger a native
     /// redirection event out of a browser.
     #[clap(name = "add-origin")]
     AddOrigin {
@@ -1061,7 +1061,7 @@ pub enum Oauth2Opt {
         copt: CommonOpt,
     },
 
-    /// Remove a supplemental origin from the oauth2 client configuration.
+    /// Remove a supplemental origin from the OAuth2 client configuration.
     #[clap(name = "remove-origin")]
     RemoveOrigin {
         name: String,

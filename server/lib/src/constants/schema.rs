@@ -325,7 +325,7 @@ pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
     name: Attribute::OAuth2RsOrigin.into(),
-    description: "The origin domain of an oauth2 client".to_string(),
+    description: "The origin domain of an OAuth2 client".to_string(),
 
     syntax: SyntaxType::Url,
     multivalue: true,
@@ -1248,7 +1248,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL5: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_OAUTH2_RS_DL7: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
     name: EntryClass::OAuth2ResourceServer.into(),
-    description: "The class representing a configured Oauth2 Client".to_string(),
+    description: "The class representing a configured OAuth2 Client".to_string(),
 
     systemmay: vec![
         Attribute::Description.into(),
@@ -1284,7 +1284,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
     name: EntryClass::OAuth2ResourceServerBasic.into(),
-    description: "The class representing a configured Oauth2 client authenticated with http basic authentication".to_string(),
+    description: "The class representing a configured OAuth2 client authenticated with HTTP basic authentication".to_string(),
 
     systemmay: vec![
         Attribute::OAuth2AllowInsecureClientDisablePkce.into(),
@@ -1307,7 +1307,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
 pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
     name: EntryClass::OAuth2ResourceServerPublic.into(),
-    description: "The class representing a configured Public Oauth2 Client with pkce verification".to_string(),
+    description: "The class representing a configured Public OAuth2 Client with PKCE verification".to_string(),
 
     systemmay: vec![Attribute::OAuth2AllowLocalhostRedirect.into()],
     systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
