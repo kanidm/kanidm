@@ -24,17 +24,30 @@ use kanidmd_lib::idm::AuthState;
 
 use kanidmd_lib::idm::event::AuthResult;
 
-use serde::Deserialize;
-
-use crate::https::{
-    extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId, ServerState,
-};
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
 use webauthn_rs::prelude::PublicKeyCredential;
 
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-use super::{HtmlTemplate, UnrecoverableErrorView};
+use super::{empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
+
+#[derive(Default, Serialize, Deserialize)]
+struct SessionContext {
+    #[serde(rename = "u")]
+    username: String,
+
+    #[serde(rename = "r")]
+    remember_me: bool,
+
+    #[serde(rename = "i", default, skip_serializing_if = "Option::is_none")]
+    id: Option<Uuid>,
+    #[serde(rename = "p", default, skip_serializing_if = "Option::is_none")]
+    password: Option<String>,
+    #[serde(rename = "t", default, skip_serializing_if = "Option::is_none")]
+    totp: Option<String>,
+}
 
 #[derive(Template)]
 #[template(path = "login.html")]
@@ -49,8 +62,8 @@ pub struct Mech<'a> {
 }
 
 #[derive(Template)]
-#[template(path = "login_mech_choose_partial.html")]
-struct LoginMechPartialView<'a> {
+#[template(path = "login_mech_choose.html")]
+struct LoginMechView<'a> {
     mechs: Vec<Mech<'a>>,
 }
 
@@ -62,22 +75,25 @@ enum LoginTotpError {
 }
 
 #[derive(Template, Default)]
-#[template(path = "login_totp_partial.html")]
-struct LoginTotpPartialView {
+#[template(path = "login_totp.html")]
+struct LoginTotpView {
+    totp: String,
     errors: LoginTotpError,
 }
 
 #[derive(Template)]
-#[template(path = "login_password_partial.html")]
-struct LoginPasswordPartialView {}
+#[template(path = "login_password.html")]
+struct LoginPasswordView {
+    password: String,
+}
 
 #[derive(Template)]
-#[template(path = "login_backupcode_partial.html")]
-struct LoginBackupCodePartialView {}
+#[template(path = "login_backupcode.html")]
+struct LoginBackupCodeView {}
 
 #[derive(Template)]
-#[template(path = "login_webauthn_partial.html")]
-struct LoginWebauthnPartialView {
+#[template(path = "login_webauthn.html")]
+struct LoginWebauthnView {
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,
@@ -121,21 +137,25 @@ pub async fn view_index_get(
 #[derive(Debug, Clone, Deserialize)]
 pub struct LoginBeginForm {
     username: String,
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    password: Option<String>,
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    totp: Option<String>,
     #[serde(default)]
     remember_me: Option<u8>,
 }
 
-pub async fn partial_view_login_begin_post(
+pub async fn view_login_begin_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(login_begin_form): Form<LoginBeginForm>,
 ) -> Response {
-    trace!(?login_begin_form);
-
     let LoginBeginForm {
         username,
+        password,
+        totp,
         remember_me,
     } = login_begin_form;
 
@@ -148,7 +168,7 @@ pub async fn partial_view_login_begin_post(
             None,
             AuthRequest {
                 step: AuthStep::Init2 {
-                    username,
+                    username: username.clone(),
                     issue: AuthIssueSession::Cookie,
                     privileged: false,
                 },
@@ -158,10 +178,29 @@ pub async fn partial_view_login_begin_post(
         )
         .await;
 
+    let remember_me = remember_me.is_some();
+
+    let session_context = SessionContext {
+        id: None,
+        username,
+        password,
+        totp,
+        remember_me,
+    };
+
     // Now process the response if ok.
     match inter {
         Ok(ar) => {
-            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+            match view_login_step(
+                state,
+                kopid.clone(),
+                jar,
+                ar,
+                client_auth_info,
+                session_context,
+            )
+            .await
+            {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
                 Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
@@ -185,29 +224,30 @@ pub struct LoginMechForm {
     mech: AuthMech,
 }
 
-pub async fn partial_view_login_mech_choose_post(
+pub async fn view_login_mech_choose_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(login_mech_form): Form<LoginMechForm>,
 ) -> Response {
-    let maybe_sessionid = jar
+    let session_context = jar
         .get(COOKIE_AUTH_SESSION_ID)
         .map(|c| c.value())
         .and_then(|s| {
             trace!(id_jws = %s);
-            state.reinflate_uuid_from_bytes(s)
-        });
+            state.deserialise_from_str::<SessionContext>(s)
+        })
+        .unwrap_or_default();
 
-    debug!("Session ID: {:?}", maybe_sessionid);
+    debug!("Session ID: {:?}", session_context.id);
 
     let LoginMechForm { mech } = login_mech_form;
 
     let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
-            maybe_sessionid,
+            session_context.id,
             AuthRequest {
                 step: AuthStep::Begin(mech),
             },
@@ -219,7 +259,16 @@ pub async fn partial_view_login_mech_choose_post(
     // Now process the response if ok.
     match inter {
         Ok(ar) => {
-            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+            match view_login_step(
+                state,
+                kopid.clone(),
+                jar,
+                ar,
+                client_auth_info,
+                session_context,
+            )
+            .await
+            {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
                 Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
@@ -243,7 +292,7 @@ pub struct LoginTotpForm {
     totp: String,
 }
 
-pub async fn partial_view_login_totp_post(
+pub async fn view_login_totp_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -253,7 +302,8 @@ pub async fn partial_view_login_totp_post(
     // trim leading and trailing white space.
     let Ok(totp) = u32::from_str(&login_totp_form.totp.trim()) else {
         // If not an int, we need to re-render with an error
-        return HtmlTemplate(LoginTotpPartialView {
+        return HtmlTemplate(LoginTotpView {
+            totp: String::default(),
             errors: LoginTotpError::Syntax,
         })
         .into_response();
@@ -268,7 +318,7 @@ pub struct LoginPwForm {
     password: String,
 }
 
-pub async fn partial_view_login_pw_post(
+pub async fn view_login_pw_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -284,7 +334,7 @@ pub struct LoginBackupCodeForm {
     backupcode: String,
 }
 
-pub async fn partial_view_login_backupcode_post(
+pub async fn view_login_backupcode_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -297,7 +347,7 @@ pub async fn partial_view_login_backupcode_post(
     credential_step(state, kopid, jar, client_auth_info, auth_cred).await
 }
 
-pub async fn partial_view_login_passkey_post(
+pub async fn view_login_passkey_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -308,7 +358,7 @@ pub async fn partial_view_login_passkey_post(
     credential_step(state, kopid, jar, client_auth_info, auth_cred).await
 }
 
-pub async fn partial_view_login_seckey_post(
+pub async fn view_login_seckey_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -326,20 +376,19 @@ async fn credential_step(
     client_auth_info: ClientAuthInfo,
     auth_cred: AuthCredential,
 ) -> Response {
-    let maybe_sessionid = jar
+    let session_context = jar
         .get(COOKIE_AUTH_SESSION_ID)
         .map(|c| c.value())
         .and_then(|s| {
             trace!(id_jws = %s);
-            state.reinflate_uuid_from_bytes(s)
-        });
-
-    debug!("Session ID: {:?}", maybe_sessionid);
+            state.deserialise_from_str::<SessionContext>(s)
+        })
+        .unwrap_or_default();
 
     let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
-            maybe_sessionid,
+            session_context.id,
             AuthRequest {
                 step: AuthStep::Cred(auth_cred),
             },
@@ -351,7 +400,16 @@ async fn credential_step(
     // Now process the response if ok.
     match inter {
         Ok(ar) => {
-            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+            match view_login_step(
+                state,
+                kopid.clone(),
+                jar,
+                ar,
+                client_auth_info,
+                session_context,
+            )
+            .await
+            {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
                 Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
@@ -370,12 +428,13 @@ async fn credential_step(
     }
 }
 
-async fn partial_view_login_step(
+async fn view_login_step(
     state: ServerState,
     kopid: KOpId,
     mut jar: CookieJar,
     auth_result: AuthResult,
     client_auth_info: ClientAuthInfo,
+    mut session_context: SessionContext,
 ) -> Result<Response, OperationError> {
     trace!(?auth_result);
 
@@ -400,7 +459,9 @@ async fn partial_view_login_step(
             AuthState::Choose(allowed) => {
                 debug!("🧩 -> AuthState::Choose");
                 let kref = &state.jws_signer;
-                let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                // Set the sessionid.
+                session_context.id = Some(sessionid);
+                let jws = Jws::into_json(&session_context).map_err(|e| {
                     error!(?e);
                     OperationError::InvalidSessionState
                 })?;
@@ -461,7 +522,7 @@ async fn partial_view_login_step(
                                 name: m,
                             })
                             .collect();
-                        HtmlTemplate(LoginMechPartialView { mechs }).into_response()
+                        HtmlTemplate(LoginMechView { mechs }).into_response()
                     }
                 };
                 // break acts as return in a loop.
@@ -482,18 +543,21 @@ async fn partial_view_login_step(
                         let auth_allowed = allowed[0].clone();
 
                         match auth_allowed {
-                            AuthAllowed::Totp => {
-                                HtmlTemplate(LoginTotpPartialView::default()).into_response()
-                            }
-                            AuthAllowed::Password => {
-                                HtmlTemplate(LoginPasswordPartialView {}).into_response()
-                            }
+                            AuthAllowed::Totp => HtmlTemplate(LoginTotpView {
+                                totp: session_context.totp.clone().unwrap_or_default(),
+                                ..Default::default()
+                            })
+                            .into_response(),
+                            AuthAllowed::Password => HtmlTemplate(LoginPasswordView {
+                                password: session_context.password.clone().unwrap_or_default(),
+                            })
+                            .into_response(),
                             AuthAllowed::BackupCode => {
-                                HtmlTemplate(LoginBackupCodePartialView {}).into_response()
+                                HtmlTemplate(LoginBackupCodeView {}).into_response()
                             }
                             AuthAllowed::SecurityKey(chal) => {
                                 let chal_json = serde_json::to_string(&chal).unwrap();
-                                HtmlTemplate(LoginWebauthnPartialView {
+                                HtmlTemplate(LoginWebauthnView {
                                     passkey: false,
                                     chal: chal_json,
                                 })
@@ -501,7 +565,7 @@ async fn partial_view_login_step(
                             }
                             AuthAllowed::Passkey(chal) => {
                                 let chal_json = serde_json::to_string(&chal).unwrap();
-                                HtmlTemplate(LoginWebauthnPartialView {
+                                HtmlTemplate(LoginWebauthnView {
                                     passkey: true,
                                     chal: chal_json,
                                 })

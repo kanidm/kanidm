@@ -3,6 +3,10 @@ body {
   height: 100%;
 }
 
+.input-hidden {
+  display: none;
+}
+
 .form-cred-reset-body {
   width: 100%;
   max-width: 500px;

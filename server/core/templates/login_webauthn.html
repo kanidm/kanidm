@@ -1,4 +1,6 @@
+(% extends "login_base.html" %)
 
+(% block logincontainer %)
 <script id="data" type="application/json">
 (( chal|safe ))
 </script>
@@ -12,4 +14,4 @@
 <button type="button" class="btn btn-dark" id="start-seckey-button">Use Security Key</button>
 (% endif %)
 
-
+(% endblock %)

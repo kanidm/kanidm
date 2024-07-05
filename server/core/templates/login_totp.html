@@ -1,12 +1,14 @@
+(% extends "login_base.html" %)
 
-
+(% block logincontainer %)
 <label for="totp" class="form-label">TOTP</label>
 (% match errors %)
 	(% when LoginTotpError::Syntax %)
-		<span class="error">Invalid Value - TOTP must only consist of numbers</span>
+		<span class="error">Invalid Value</span>
+		<span class="error">TOTP must only consist of numbers</span>
 	(% when LoginTotpError::None %)
 (% endmatch %)
-<form id="login" hx-post='/ui/api/login_totp' hx-target="#login-form-container" hx-push-url="false">
+<form id="login" action="/ui/api/login_totp" method="post">
 	<div class="input-group mb-3">
 		<input
 			autofocus=true
@@ -14,8 +16,8 @@
 			id="totp"
 			name="totp"
 			type="text"
-			autocomplete="off"
-			value=""
+			autocomplete="one-time-code"
+			value="(( totp ))"
 			required=true
 		/>
 	</div>
@@ -26,5 +28,4 @@
 		>Submit</button>
 	</div>
 </form>
-
-
+(% endblock %)
