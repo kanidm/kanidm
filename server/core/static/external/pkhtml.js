@@ -6,12 +6,11 @@ function asskey_login(target) {
             listItem.id = Base64.toUint8Array(listItem.id)
         });
 
-    console.log(credentialRequestOptions);
-
     navigator.credentials.get({ publicKey: credentialRequestOptions.publicKey })
     .then((assertion) => {
-        fetch(target, {
+        const myRequest = new Request(target, {
             method: 'POST',
+            redirect: 'follow',
             headers: {
                 'Content-Type': 'application/json'
             },
@@ -26,8 +25,16 @@ function asskey_login(target) {
                     userHandle: Base64.fromUint8Array(new Uint8Array(assertion.response.userHandle), true)
                 },
             }),
+        });
+        fetch(myRequest).then((response) => {
+            if (response.redirected) {
+                window.location.replace(response.url);
+                return;
+            } else {
+                console.error("expected a redirect");
+            }
         })
-    });
+    })
 }
 
 try {
@@ -43,3 +50,4 @@ try {
         asskey_login('/ui/api/login_seckey');
     });
 } catch (error) {};
+
