@@ -39,7 +39,7 @@ impl GraphCommonOpt {
                 );
             }
             OutputMode::Text => {
-                println!("Showing graph for type: {graph_type:?}, filters: {filters:?}\n");
+                eprintln!("Showing graph for type: {graph_type:?}, filters: {filters:?}\n");
                 let typed_entries = entries
                     .iter()
                     .filter_map(|entry| {
