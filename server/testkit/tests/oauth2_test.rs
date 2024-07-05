@@ -87,7 +87,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update("test_integration", None, None, None, None, true, true, true)
+        .idm_oauth2_rs_update("test_integration", None, None, None, true, true, true)
         .await
         .expect("Failed to update oauth2 config");
 
@@ -517,7 +517,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update("test_integration", None, None, None, None, true, true, true)
+        .idm_oauth2_rs_update("test_integration", None, None, None, true, true, true)
         .await
         .expect("Failed to update oauth2 config");
 
