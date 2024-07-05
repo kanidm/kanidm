@@ -45,7 +45,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
                 let redirect_url = entry
                     .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
-                    .or_else(|| entry.get_ava_single_url(Attribute::OAuth2RsOrigin))
                     .cloned()?;
 
                 let name = entry

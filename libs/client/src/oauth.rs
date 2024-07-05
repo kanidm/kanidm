@@ -10,6 +10,7 @@ use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
 use reqwest::multipart;
 use std::collections::BTreeMap;
+use url::Url;
 
 impl KanidmClient {
     // ==== Oauth2 resource server configuration
@@ -31,9 +32,10 @@ impl KanidmClient {
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
+            vec![origin.to_string()],
+        );
         self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
             .await
     }
@@ -51,9 +53,10 @@ impl KanidmClient {
         new_oauth2_rs
             .attrs
             .insert(ATTR_DISPLAYNAME.to_string(), vec![displayname.to_string()]);
-        new_oauth2_rs
-            .attrs
-            .insert(ATTR_OAUTH2_RS_ORIGIN.to_string(), vec![origin.to_string()]);
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
+            vec![origin.to_string()],
+        );
         self.perform_post_request("/v1/oauth2/_public", new_oauth2_rs)
             .await
     }
@@ -78,7 +81,6 @@ impl KanidmClient {
         id: &str,
         name: Option<&str>,
         displayname: Option<&str>,
-        origin: Option<&str>,
         landing: Option<&str>,
         reset_secret: bool,
         reset_token_key: bool,
@@ -97,12 +99,6 @@ impl KanidmClient {
             update_oauth2_rs.attrs.insert(
                 ATTR_DISPLAYNAME.to_string(),
                 vec![newdisplayname.to_string()],
-            );
-        }
-        if let Some(neworigin) = origin {
-            update_oauth2_rs.attrs.insert(
-                ATTR_OAUTH2_RS_ORIGIN.to_string(),
-                vec![neworigin.to_string()],
             );
         }
         if let Some(newlanding) = landing {
@@ -390,6 +386,32 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_delete_request(
             format!("/v1/oauth2/{}/_claimmap/{}/{}", id, claim_name, group_id).as_str(),
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_client_add_origin(
+        &self,
+        id: &str,
+        origin: &Url,
+    ) -> Result<(), ClientError> {
+        let url_to_add = &[origin.as_str()];
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            url_to_add,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_client_remove_origin(
+        &self,
+        id: &str,
+        origin: &Url,
+    ) -> Result<(), ClientError> {
+        let url_to_remove = &[origin.as_str()];
+        self.perform_delete_request_with_body(
+            format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
+            url_to_remove,
         )
         .await
     }

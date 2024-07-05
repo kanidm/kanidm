@@ -12,6 +12,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use hashbrown::HashSet;
+
 use base64::{engine::general_purpose, Engine as _};
 
 use base64urlsafedata::Base64UrlSafeData;
@@ -268,8 +270,11 @@ pub struct Oauth2RS {
     name: String,
     displayname: String,
     uuid: Uuid,
-    origin: Origin,
-    origin_https: bool,
+
+    origins: HashSet<Origin>,
+    opaque_origins: HashSet<Url>,
+    origin_https_required: bool,
+
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     sup_scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
@@ -301,7 +306,8 @@ impl std::fmt::Debug for Oauth2RS {
             .field("displayname", &self.displayname)
             .field("uuid", &self.uuid)
             .field("type", &self.type_)
-            .field("origin", &self.origin)
+            .field("origins", &self.origins)
+            .field("opaque_origins", &self.opaque_origins)
             .field("scope_maps", &self.scope_maps)
             .field("sup_scope_maps", &self.sup_scope_maps)
             .field("claim_map", &self.claim_map)
@@ -418,18 +424,46 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let (origin, origin_https) = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOrigin)
-                    .map(|url| (url.origin(), url.scheme() == "https"))
+
+                // Setup the landing uri and its implied origin, as well as
+                // the supplemental origins.
+                let landing_url = ent
+                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
+                    .cloned()
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let landing_valid = ent
-                    .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
-                    .map(|url| url.origin() == origin).
-                    unwrap_or(true);
+                let maybe_extra_origins = ent.get_ava_set(Attribute::OAuth2RsOrigin).and_then(|s| s.as_url_set());
 
-                if !landing_valid {
-                    warn!("{} has a landing page that is not part of origin. May be invalid.", name);
+                let len_uris = maybe_extra_origins.map(|s| s.len() + 1).unwrap_or(1);
+
+                // The reason we have to allocate this is that we need to do some processing on these
+                // urls to determine if they are opaque or not.
+                let mut redirect_uris = Vec::with_capacity(len_uris);
+
+                redirect_uris.push(landing_url);
+                if let Some(extra_origins) = maybe_extra_origins {
+                    for x_origin in extra_origins {
+                        redirect_uris.push(x_origin.clone());
+                    }
+                }
+
+                // Now redirect_uris has the full set of the landing uri and the other uris
+                // that may or may not be an opaque origin. We need to split these up now.
+
+                let mut origins = HashSet::with_capacity(len_uris);
+                let mut opaque_origins = HashSet::with_capacity(len_uris);
+                let mut origin_https_required = false;
+
+                for uri in redirect_uris.into_iter() {
+                    // Given the presence of a single https url, then all other urls must be https.
+                    if uri.scheme() == "https" {
+                        origin_https_required = true;
+                        origins.insert(uri.origin());
+                    } else if uri.scheme() == "http" {
+                        origins.insert(uri.origin());
+                    } else {
+                        opaque_origins.insert(uri);
+                    }
                 }
 
                 let token_fernet = ent
@@ -604,8 +638,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     name,
                     displayname,
                     uuid,
-                    origin,
-                    origin_https,
+                    origins,
+                    opaque_origins,
+                    origin_https_required,
                     scope_maps,
                     sup_scope_maps,
                     client_scopes,
@@ -1623,23 +1658,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .unwrap_or_default();
 
         // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
-        // be localhost.
-        if !(auth_req.redirect_uri.origin() == o2rs.origin
+        // be localhost exempting it from this check and enforcement.
+        if !(o2rs.origins.contains(&auth_req.redirect_uri.origin())
+            || o2rs.opaque_origins.contains(&auth_req.redirect_uri)
             || (allow_localhost_redirect && localhost_redirect))
         {
-            admin_warn!(
-                origin = ?o2rs.origin,
-                "Invalid OAuth2 redirect_uri (must be related to origin {:?}) - got {:?}",
-                o2rs.origin,
+            warn!(
+                "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
                 auth_req.redirect_uri.origin()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
 
-        if !localhost_redirect && o2rs.origin_https && auth_req.redirect_uri.scheme() != "https" {
+        // We have to specifically match on http here because non-http origins may be exempt from this
+        // enforcement.
+        if !localhost_redirect
+            && o2rs.origin_https_required
+            && auth_req.redirect_uri.scheme() == "http"
+        {
             admin_warn!(
-                origin = ?o2rs.origin,
-                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}", auth_req.redirect_uri.scheme()
+                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
+                auth_req.redirect_uri.scheme()
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
@@ -1707,6 +1746,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .split_ascii_whitespace()
             .map(str::to_string)
             .collect();
+
         if req_scopes.is_empty() {
             admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
             return Err(Oauth2Error::InvalidRequest);
@@ -1782,6 +1822,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let consent_previously_granted =
             if let Some(consent_scopes) = ident.get_oauth2_consent_scopes(o2rs.uuid) {
+                trace!(?granted_scopes);
+                trace!(?consent_scopes);
                 granted_scopes.eq(consent_scopes)
             } else {
                 false
@@ -1790,11 +1832,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let session_id = ident.get_session_id();
 
         if consent_previously_granted {
-            let pretty_scopes: Vec<String> = granted_scopes.iter().map(|s| s.to_owned()).collect();
-            admin_info!(
-                "User has previously consented, permitting with scopes: {}",
-                pretty_scopes.join(",")
-            );
+            if event_enabled!(tracing::Level::DEBUG) {
+                let pretty_scopes: Vec<String> =
+                    granted_scopes.iter().map(|s| s.to_owned()).collect();
+                debug!(
+                    "User has previously consented, permitting with scopes: {}",
+                    pretty_scopes.join(",")
+                );
+            }
 
             // Setup for the permit success
             let xchg_code = TokenExchangeCode {
@@ -2711,8 +2756,17 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            // Supplemental origins
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://portal.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("app://cheese").unwrap()
             ),
             // System admins
             (
@@ -2863,7 +2917,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
@@ -3533,6 +3587,145 @@ mod tests {
         );
 
         assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_supplemental_origin_redirect(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, uat, ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
+
+        let idms_prox_read = idms.proxy_read().await;
+
+        // == Setup the authorisation request
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: Some(PkceRequest {
+                code_challenge: code_challenge.clone().into(),
+                code_challenge_method: CodeChallengeMethod::S256,
+            }),
+            redirect_uri: Url::parse("https://portal.example.com/oauth2/result").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        let consent_request = idms_prox_read
+            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .expect("OAuth2 authorisation failed");
+
+        trace!(?consent_request);
+
+        // Should be in the consent phase;
+        let consent_token =
+            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // Check we are reflecting the CSRF properly.
+        assert!(permit_success.state == "123");
+
+        // == Submit the token exchange code.
+        // ⚠️  This is where we submit a different origin!
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://portal.example.com/oauth2/result").unwrap(),
+                // From the first step.
+                code_verifier: code_verifier.clone(),
+            },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: Some(secret.clone()),
+        };
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&ClientAuthInfo::none(), &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(token_response.token_type == "Bearer");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        // ============================================================================
+        // Now repeat the test with the app url.
+
+        let mut idms_prox_read = idms.proxy_read().await;
+
+        // Reload the ident since it pins an entry in memory.
+        let ident = idms_prox_read
+            .process_uat_to_identity(&uat, ct, Source::Internal)
+            .expect("Unable to process uat");
+
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: Some(PkceRequest {
+                code_challenge: code_challenge.into(),
+                code_challenge_method: CodeChallengeMethod::S256,
+            }),
+            redirect_uri: Url::parse("app://cheese").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: Some("abcdef".to_string()),
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        let consent_request = idms_prox_read
+            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .expect("OAuth2 authorisation failed");
+
+        trace!(?consent_request);
+
+        let AuthoriseResponse::Permitted(permit_success) = consent_request else {
+            unreachable!();
+        };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        // Check we are reflecting the CSRF properly.
+        assert!(permit_success.state == "123");
+
+        // == Submit the token exchange code.
+        // ⚠️  This is where we submit a different origin!
+        let token_req = AccessTokenRequest {
+            grant_type: GrantTypeReq::AuthorizationCode {
+                code: permit_success.code,
+                redirect_uri: Url::parse("app://cheese").unwrap(),
+                // From the first step.
+                code_verifier,
+            },
+            client_id: Some("test_resource_server".to_string()),
+            client_secret: Some(secret),
+        };
+
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await;
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&ClientAuthInfo::none(), &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        // 🎉 We got a token! In the future we can then check introspection from this point.
+        assert!(token_response.token_type == "Bearer");
     }
 
     #[idm_test]

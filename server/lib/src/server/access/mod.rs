@@ -2695,8 +2695,12 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("app://hidden").unwrap()
             ),
             (
                 Attribute::OAuth2RsScopeMap,
@@ -2737,7 +2741,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             )
         )
@@ -2760,8 +2764,12 @@ mod tests {
                 Value::new_utf8s("second_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://noaccess.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("app://hidden").unwrap()
             ),
             (
                 Attribute::OAuth2RsScopeMap,

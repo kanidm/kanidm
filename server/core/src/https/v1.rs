@@ -3075,6 +3075,11 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
                 .delete(super::v1_oauth2::oauth2_id_delete),
         )
         .route(
+            "/v1/oauth2/:rs_name/_attr/:attr",
+            post(super::v1_oauth2::oauth2_id_attr_post)
+                .delete(super::v1_oauth2::oauth2_id_attr_delete),
+        )
+        .route(
             "/v1/oauth2/:rs_name/_image",
             post(super::v1_oauth2::oauth2_id_image_post)
                 .delete(super::v1_oauth2::oauth2_id_image_delete),
