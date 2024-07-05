@@ -11,8 +11,7 @@ use axum_htmx::extractors::HxRequest;
 use kanidm_proto::internal::AppLink;
 
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
-use crate::https::errors::HtmxError;
-
+use crate::https::views::errors::HtmxError;
 use super::HtmlTemplate;
 
 #[derive(Template)]
@@ -41,7 +40,7 @@ pub(crate) async fn view_apps_get(
         .qe_r_ref
         .handle_list_applinks(client_auth_info, kopid.eventid)
         .await
-        .map_err(|old| HtmxError::from((&kopid, old)) )?;
+        .map_err(|old| HtmxError::new(&kopid, old) )?;
 
     let apps_view = AppsView {
         apps_partial: AppsPartialView {
