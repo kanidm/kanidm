@@ -29,16 +29,14 @@ use crate::https::{
 };
 
 use std::str::FromStr;
-use futures_util::TryFutureExt;
-use time::OffsetDateTime;
-use crate::https::errors::HtmxError;
+
 use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
 #[template(path = "login.html")]
-pub struct LoginView<'a> {
-    pub(crate) username: &'a str,
-    pub(crate) remember_me: bool,
+struct LoginView<'a> {
+    username: &'a str,
+    remember_me: bool,
 }
 
 #[derive(Default)]
@@ -63,48 +61,33 @@ pub async fn view_index_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
     _jar: CookieJar,
-) -> axum::response::Result<Response> {
+) -> Response {
     // If we are authenticated, redirect to the landing.
-    let auth_result = state
+    let session_valid_result = state
         .qe_r_ref
         .handle_auth_valid(client_auth_info, kopid.eventid)
         .await;
 
-    // manual error handling because we don't want to see a not logged/session expired error
-    // on the login page
-    match auth_result {
-        Ok(_) => Ok(Redirect::to("/ui/apps").into_response()),
-        Err(err) => {
-            match err {
-                OperationError::NotAuthenticated | OperationError::SessionExpired => {
-                    Ok(HtmlTemplate(LoginView {
-                        username: "",
-                        remember_me: false,
-                    }).into_response())
-                }
-                _ => {
-                    Ok(HtmxError::from((&kopid, err)).into_response())
-                }
-            }
+    match session_valid_result {
+        Ok(()) => {
+            // Send the user to the landing.
+            Redirect::to("/ui/apps").into_response()
         }
+        Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
+            // cookie jar with remember me.
+
+            HtmlTemplate(LoginView {
+                username: "",
+                remember_me: false,
+            })
+            .into_response()
+        }
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
     }
-}
-
-// Maybe cursed ?
-pub async fn view_logout_get(
-    State(_state): State<ServerState>,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
-    Extension(_kopid): Extension<KOpId>,
-    _jar: CookieJar,
-) -> Response {
-    let now = OffsetDateTime::now_utc();
-    let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, "");
-    bearer_cookie.set_path("/");
-    bearer_cookie.set_expires(now);
-
-    let jar = CookieJar::new().add(bearer_cookie);
-    let res = Redirect::to("/").into_response();
-    (jar, res).into_response()
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -120,7 +103,7 @@ pub async fn partial_view_login_begin_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(login_begin_form): Form<LoginBeginForm>,
-) -> axum::response::Result<Response> {
+) -> Response {
     trace!(?login_begin_form);
 
     let LoginBeginForm {
@@ -131,7 +114,7 @@ pub async fn partial_view_login_begin_post(
     trace!(?remember_me);
 
     // Init the login.
-    let ar = state // This may change in the future ...
+    let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
             None,
@@ -145,11 +128,28 @@ pub async fn partial_view_login_begin_post(
             kopid.eventid,
             client_auth_info.clone(),
         )
-        .map_err(|operr| HtmxError::from((&kopid, operr)))
-        .await?;
+        .await;
 
     // Now process the response if ok.
-    Ok(partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).map_err(|operr| HtmxError::from((&kopid, operr))).await?)
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -163,7 +163,7 @@ pub async fn partial_view_login_totp_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(login_totp_form): Form<LoginTotpForm>,
-) -> axum::response::Result<Response> {
+) -> Response {
     let maybe_sessionid = jar
         .get(COOKIE_AUTH_SESSION_ID)
         .map(|c| c.value())
@@ -176,13 +176,14 @@ pub async fn partial_view_login_totp_post(
 
     let Ok(totp) = u32::from_str(&login_totp_form.totp) else {
         // If not an int, we need to re-render with an error
-        return Ok(HtmlTemplate(LoginTotpPartialView {
+        return HtmlTemplate(LoginTotpPartialView {
             errors: LoginTotpError::Syntax,
-        }).into_response());
+        })
+        .into_response();
     };
 
     // Init the login.
-    let ar = state // This may change in the future ...
+    let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
             maybe_sessionid,
@@ -192,11 +193,28 @@ pub async fn partial_view_login_totp_post(
             kopid.eventid,
             client_auth_info.clone(),
         )
-        .map_err(|operr| HtmxError::from((&kopid, operr)))
-        .await?;
+        .await;
 
     // Now process the response if ok.
-    Ok(partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).map_err(|operr| HtmxError::from((&kopid, operr))).await?)
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -210,7 +228,7 @@ pub async fn partial_view_login_pw_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(login_pw_form): Form<LoginPwForm>,
-) -> axum::response::Result<Response> {
+) -> Response {
     let maybe_sessionid = jar
         .get(COOKIE_AUTH_SESSION_ID)
         .map(|c| c.value())
@@ -222,7 +240,7 @@ pub async fn partial_view_login_pw_post(
     debug!("Session ID: {:?}", maybe_sessionid);
 
     // Init the login.
-    let ar = state // This may change in the future ...
+    let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
             maybe_sessionid,
@@ -232,11 +250,28 @@ pub async fn partial_view_login_pw_post(
             kopid.eventid,
             client_auth_info.clone(),
         )
-        .map_err(|operr| HtmxError::from((&kopid, operr)))
-        .await?;
+        .await;
 
     // Now process the response if ok.
-    Ok(partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).map_err(|operr| HtmxError::from((&kopid, operr))).await?)
+    match inter {
+        Ok(ar) => {
+            match partial_view_login_step(state, kopid.clone(), jar, ar, client_auth_info).await {
+                Ok(r) => r,
+                // Okay, these errors are actually REALLY bad.
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        // Probably needs to be way nicer on login, especially something like no matching users ...
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    }
 }
 
 async fn partial_view_login_step(
@@ -296,7 +331,8 @@ async fn partial_view_login_step(
                         HtmlTemplate(UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
-                        }).into_response()
+                        })
+                        .into_response()
                     }
                     1 => {
                         let mech = allowed[0].clone();
@@ -334,7 +370,7 @@ async fn partial_view_login_step(
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
                         })
-                            .into_response()
+                        .into_response()
                     }
                     1 => {
                         let auth_allowed = allowed[0].clone();
