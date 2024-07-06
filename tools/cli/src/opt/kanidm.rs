@@ -1048,16 +1048,19 @@ pub enum Oauth2Opt {
         #[clap(name = "landing-url")]
         url: Url,
     },
-    /// The image presented on the Kanidm Apps Listing page for a oauth2 resource server.
+    /// The image presented on the Kanidm Apps Listing page for an oauth2 resource server.
     #[clap(name="set-image")]
     SetImage {
         #[clap(flatten)]
         nopt: Named,
         #[clap(name = "file-path")]
-        path: String,
+        path: PathBuf,
         #[clap(name = "image-type")]
         image_type: Option<String>,
     },
+    /// Removes the custom image previously set.
+    #[clap(name="remove-image")]
+    RemoveImage(Named),
 
     /// Add a supplemental origin as a redirection target. For example a phone app
     /// may use a redirect URL such as `app://my-cool-app` to trigger a native

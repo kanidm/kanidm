@@ -1,8 +1,6 @@
 use anyhow::{Context, Error};
 use std::fs::read;
-use std::path::Path;
 use std::process::exit;
-
 use crate::common::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 
@@ -26,6 +24,7 @@ impl Oauth2Opt {
             Oauth2Opt::SetName { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::SetLandingUrl { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::SetImage { nopt, .. } => nopt.copt.debug,
+            Oauth2Opt::RemoveImage(nopt) => nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
@@ -259,7 +258,6 @@ impl Oauth2Opt {
             } => {
                 let client = nopt.copt.to_client(OpType::Write).await;
                 let img_res: Result<ImageValue, Error> = (move || {
-                    let path = Path::new(path);
                     let file_name = path
                         .file_name()
                         .context("Please pass a file")?
@@ -294,6 +292,17 @@ impl Oauth2Opt {
 
                 match client
                     .idm_oauth2_rs_update_image(nopt.name.as_str(), img)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            Oauth2Opt::RemoveImage(nopt) => {
+                let client = nopt.copt.to_client(OpType::Write).await;
+
+                match client
+                    .idm_oauth2_rs_delete_image(nopt.name.as_str())
                     .await
                 {
                     Ok(_) => println!("Success"),
