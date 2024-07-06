@@ -140,6 +140,7 @@ kanidm_unix_common = { path = "./unix_integration/common", version = "=1.3.0-dev
 kanidm_utils_users = { path = "./libs/users", version = "=1.3.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.3.0-dev" }
 
+anyhow = { version = "1.0.86" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde"] }
 async-recursion = "1.1.0"

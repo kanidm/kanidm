@@ -1048,6 +1048,19 @@ pub enum Oauth2Opt {
         #[clap(name = "landing-url")]
         url: Url,
     },
+    /// The image presented on the Kanidm Apps Listing page for an oauth2 resource server.
+    #[clap(name="set-image")]
+    SetImage {
+        #[clap(flatten)]
+        nopt: Named,
+        #[clap(name = "file-path")]
+        path: PathBuf,
+        #[clap(name = "image-type")]
+        image_type: Option<String>,
+    },
+    /// Removes the custom image previously set.
+    #[clap(name="remove-image")]
+    RemoveImage(Named),
 
     /// Add a supplemental origin as a redirection target. For example a phone app
     /// may use a redirect URL such as `app://my-cool-app` to trigger a native
@@ -1070,7 +1083,6 @@ pub enum Oauth2Opt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-
     #[clap(name = "enable-pkce")]
     /// Enable PKCE on this oauth2 client. This defaults to being enabled.
     EnablePkce(Named),

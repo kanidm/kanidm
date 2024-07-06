@@ -51,11 +51,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                     .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)?;
 
+                let has_image = entry.get_ava_single_image(Attribute::Image).is_some();
+
                 Some(AppLink::Oauth2 {
                     name,
                     display_name,
                     redirect_url,
-                    icon: None,
+                    has_image,
                 })
             })
             .collect::<Vec<_>>();
@@ -181,14 +183,14 @@ mod tests {
                 name,
                 display_name,
                 redirect_url,
-                icon,
+                has_image,
             } => {
                 name == "test_resource_server"
                     && display_name == "test_resource_server"
                     && redirect_url
                         == &Url::parse("https://demo.example.com/landing")
                             .expect("Failed to parse URL")
-                    && icon.is_none()
+                    && !has_image
             } // _ => false,
         })
     }

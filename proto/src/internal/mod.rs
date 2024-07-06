@@ -35,8 +35,8 @@ pub enum AppLink {
         name: String,
         display_name: String,
         redirect_url: Url,
-        // Where the icon can be retrieved from.
-        icon: Option<Url>,
+        // Whether this oauth2 resource has an image.
+        has_image: bool,
     },
 }
 
