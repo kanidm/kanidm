@@ -17,7 +17,6 @@ mod views;
 
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
-use self::v1::SessionId;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::config::{Configuration, ServerRole, TlsConfiguration};
 use crate::CoreAction;
@@ -45,6 +44,7 @@ use openssl::x509::X509;
 
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 
+use serde::de::DeserializeOwned;
 use sketching::*;
 use tokio::{
     net::{TcpListener, TcpStream},
@@ -79,16 +79,18 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    fn reinflate_uuid_from_bytes(&self, input: &str) -> Option<Uuid> {
+    /// Deserialize some input string validating that it was signed by our instance's
+    /// HMAC signer. This is used for short lived server-only sessions and context
+    /// data. This has applications in both accessing cookie content and header content.
+    fn deserialise_from_str<T: DeserializeOwned>(&self, input: &str) -> Option<T> {
         match JwsCompact::from_str(input) {
             Ok(val) => match self.jws_signer.verify(&val) {
-                Ok(val) => val.from_json::<SessionId>().ok(),
+                Ok(val) => val.from_json::<T>().ok(),
                 Err(err) => {
                     error!("Failed to unmarshal JWT from headers: {:?}", err);
                     None
                 }
-            }
-            .map(|inner| inner.sessionid),
+            },
             Err(_) => None,
         }
     }
@@ -109,7 +111,7 @@ impl ServerState {
             })
             .and_then(|s| {
                 trace!(id_jws = %s);
-                self.reinflate_uuid_from_bytes(s)
+                self.deserialise_from_str::<Uuid>(s)
             })
     }
 }
@@ -137,6 +139,8 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 ("external/bootstrap.bundle.min.js", None, false, false),
                 ("external/htmx.min.1.9.2.js", None, false, false),
                 ("external/confetti.js", None, false, false),
+                ("external/pkhtml.js", None, false, false),
+                ("external/base64.js", None, false, false),
             ]
         } else {
             vec![
@@ -228,8 +232,8 @@ pub async fn create_https_server(
 
     let csp_header = format!(
         concat!(
-            "base-uri 'self' https:; ",
             "default-src 'self'; ",
+            "base-uri 'self' https:; ",
             "form-action 'self' https:;",
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",

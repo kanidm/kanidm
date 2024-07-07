@@ -9,7 +9,6 @@ use axum::{Extension, Json, Router};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jwk, Jws, JwsSigner};
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use serde::{Deserialize, Serialize};
 use std::net::IpAddr;
 use uuid::Uuid;
 
@@ -35,11 +34,6 @@ use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
 use crate::https::extractors::{TrustedClientIp, VerifiedClientInformation};
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub(crate) struct SessionId {
-    pub sessionid: Uuid,
-}
 
 #[utoipa::path(
     post,
@@ -2866,7 +2860,7 @@ fn auth_session_state_management(
                 AuthState::Choose(allowed) => {
                     debug!("🧩 -> AuthState::Choose");
                     let kref = &state.jws_signer;
-                    let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                    let jws = Jws::into_json(&sessionid).map_err(|e| {
                         error!(?e);
                         OperationError::InvalidSessionState
                     })?;
@@ -2886,7 +2880,7 @@ fn auth_session_state_management(
                     debug!("🧩 -> AuthState::Continue");
                     let kref = &state.jws_signer;
                     // Get the header token ready.
-                    let jws = Jws::into_json(&SessionId { sessionid }).map_err(|e| {
+                    let jws = Jws::into_json(&sessionid).map_err(|e| {
                         error!(?e);
                         OperationError::InvalidSessionState
                     })?;

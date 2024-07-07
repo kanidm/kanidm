@@ -1,0 +1,19 @@
+(% extends "base_htmx.html" %)
+
+(% block title %)Login(% endblock %)
+
+(% block head %)
+(% endblock %)
+
+(% block body %)
+	<main id="main" class="flex-shrink-0 form-signin">
+		<center>
+			<img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+			<h3>Kanidm</h3>
+		</center>
+		<div id="login-form-container" class="container">
+			(% block logincontainer %)
+			(% endblock %)
+		</div>
+	</main>
+(% endblock %)

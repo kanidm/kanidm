@@ -476,7 +476,7 @@ mod tests {
 
     use crate::event::CreateEvent;
     use crate::prelude::*;
-    use crate::value::{Oauth2Session, OauthClaimMapJoin, Session, SessionState};
+    use crate::value::{AuthType, Oauth2Session, OauthClaimMapJoin, Session, SessionState};
     use time::OffsetDateTime;
 
     use crate::credential::Credential;
@@ -1172,6 +1172,7 @@ mod tests {
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
+                        type_: AuthType::Passkey,
                     },
                 )
             ),

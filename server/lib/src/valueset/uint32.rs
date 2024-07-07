@@ -165,6 +165,7 @@ impl ValueSetT for ValueSetUint32 {
 
 #[cfg(test)]
 mod tests {
+    use super::ValueSetUint32;
     use crate::prelude::*;
 
     #[test]

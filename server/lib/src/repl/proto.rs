@@ -5,6 +5,7 @@ use crate::be::dbvalue::DbValueCertificate;
 use crate::be::dbvalue::DbValueImage;
 use crate::be::dbvalue::DbValueKeyInternal;
 use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
+use crate::be::dbvalue::DbValueSession;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
@@ -276,15 +277,6 @@ pub struct ReplOauth2SessionV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
-pub enum ReplSessionScopeV1 {
-    #[default]
-    ReadOnly,
-    ReadWrite,
-    PrivilegeCapable,
-    Synchronise,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
 pub enum ReplApiTokenScopeV1 {
     #[default]
     ReadOnly,
@@ -297,18 +289,6 @@ pub enum ReplIdentityIdV1 {
     Internal,
     Uuid(Uuid),
     Synch(Uuid),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplSessionV1 {
-    pub refer: Uuid,
-    pub label: String,
-    pub state: ReplSessionStateV1,
-    // pub expiry: Option<String>,
-    pub issued_at: String,
-    pub issued_by: ReplIdentityIdV1,
-    pub cred_id: Uuid,
-    pub scope: ReplSessionScopeV1,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -431,7 +411,7 @@ pub enum ReplAttrV1 {
         set: Vec<ReplOauth2SessionV1>,
     },
     Session {
-        set: Vec<ReplSessionV1>,
+        set: Vec<DbValueSession>,
     },
     ApiToken {
         set: Vec<ReplApiTokenV1>,

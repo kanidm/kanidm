@@ -24,7 +24,6 @@ use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IntentTokenState, PartialValue, SessionState, Value};
 use kanidm_lib_crypto::CryptoPolicy;
-
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 #[derive(Debug, Clone)]

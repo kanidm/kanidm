@@ -2665,8 +2665,7 @@ mod tests {
     use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
-    use crate::value::OauthClaimMapJoin;
-    use crate::value::SessionState;
+    use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
@@ -2854,6 +2853,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id,
                 scope: SessionScope::ReadWrite,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -2982,6 +2982,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id,
                 scope: SessionScope::ReadWrite,
+                type_: AuthType::Passkey,
             },
         );
 

@@ -1120,6 +1120,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             // Now check the results
                             slock.is_valid()
                         } else {
+                            trace!("slock not found");
                             false
                         }
                     }
@@ -1130,6 +1131,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     auth_result
                 } else {
                     // Fail the session
+                    trace!("lock step begin");
                     auth_session.end_session("Account is temporarily locked")
                 }
                 .map(|aus| AuthResult {
@@ -1206,6 +1208,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         })
                 } else {
                     // Fail the session
+                    trace!("lock step cred");
                     auth_session.end_session("Account is temporarily locked")
                 }
                 .map(|aus| AuthResult {
@@ -2010,6 +2013,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope: asr.scope,
+                type_: asr.type_,
             },
         );
 
@@ -2090,7 +2094,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use crate::server::keys::KeyProvidersTransaction;
-    use crate::value::SessionState;
+    use crate::value::{AuthType, SessionState};
     use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
     use kanidm_lib_crypto::CryptoPolicy;
 
@@ -2311,8 +2315,8 @@ mod tests {
 
         match state {
             AuthState::Continue(_) => {}
-            _ => {
-                error!("Sessions was not initialised");
+            s => {
+                error!(?s, "Sessions was not initialised");
                 panic!();
             }
         };
@@ -3436,6 +3440,7 @@ mod tests {
             issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
+            type_: AuthType::Passkey,
         });
         // Persist it.
         let r = idms.delayed_action(ct, da).await;
@@ -3467,6 +3472,7 @@ mod tests {
             issued_at: OffsetDateTime::UNIX_EPOCH + ct,
             issued_by: IdentityId::User(UUID_ADMIN),
             scope: SessionScope::ReadOnly,
+            type_: AuthType::Passkey,
         });
         // Persist it.
         let r = idms.delayed_action(expiry_a, da).await;

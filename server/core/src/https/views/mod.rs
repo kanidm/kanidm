@@ -2,7 +2,7 @@ use askama::Template;
 
 use axum::{
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Router,
 };
@@ -27,24 +27,47 @@ struct UnrecoverableErrorView {
 }
 
 pub fn view_router() -> Router<ServerState> {
-    let unauth_router = Router::new().route("/", get(login::view_index_get));
-
-    let unguarded_router = Router::new().route("/apps", get(apps::view_apps_get));
-
-    // Anything that is a partial only works if triggered from htmx
-    let guarded_router = Router::new()
-        .layer(HxRequestGuardLayer::default())
+    let unguarded_router = Router::new()
+        .route("/", get(login::view_index_get))
+        .route("/apps", get(apps::view_apps_get))
+        // The login routes are htmx-free to make them simpler, which means
+        // they need manual guarding for direct get requests which can occur
+        // if a user attempts to reload the page.
+        .route(
+            "/api/login_passkey",
+            post(login::view_login_passkey_post).get(|| async { Redirect::to("/ui") }),
+        )
+        .route(
+            "/api/login_seckey",
+            post(login::view_login_seckey_post).get(|| async { Redirect::to("/ui") }),
+        )
         .route(
             "/api/login_begin",
-            post(login::partial_view_login_begin_post),
+            post(login::view_login_begin_post).get(|| async { Redirect::to("/ui") }),
         )
-        .route("/api/login_totp", post(login::partial_view_login_totp_post))
-        .route("/api/login_pw", post(login::partial_view_login_pw_post));
+        .route(
+            "/api/login_mech_choose",
+            post(login::view_login_mech_choose_post).get(|| async { Redirect::to("/ui") }),
+        )
+        .route(
+            "/api/login_backup_code",
+            post(login::view_login_backupcode_post).get(|| async { Redirect::to("/ui") }),
+        )
+        .route(
+            "/api/login_totp",
+            post(login::view_login_totp_post).get(|| async { Redirect::to("/ui") }),
+        )
+        .route(
+            "/api/login_pw",
+            post(login::view_login_pw_post).get(|| async { Redirect::to("/ui") }),
+        );
 
-    Router::new()
-        .merge(unauth_router)
-        .merge(unguarded_router)
-        .merge(guarded_router)
+    // The webauthn post is unguarded because it's not a htmx event.
+
+    // Anything that is a partial only works if triggered from htmx
+    let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
+
+    Router::new().merge(unguarded_router).merge(guarded_router)
 }
 
 struct HtmlTemplate<T>(T);
@@ -69,7 +92,6 @@ where
     }
 }
 
-/*
 /// Serde deserialization decorator to map empty Strings to None,
 fn empty_string_as_none<'de, D, T>(de: D) -> Result<Option<T>, D::Error>
 where
@@ -88,5 +110,3 @@ where
             .map(Some),
     }
 }
-
-*/

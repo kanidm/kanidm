@@ -1264,12 +1264,12 @@ impl KanidmClient {
             Err(e) => return Err(e),
         };
 
-        if !mechs.contains(&AuthMech::PasswordMfa) {
-            debug!("PasswordMfa mech not presented");
+        if !mechs.contains(&AuthMech::PasswordTotp) {
+            debug!("PasswordTotp mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let state = match self.auth_step_begin(AuthMech::PasswordMfa).await {
+        let state = match self.auth_step_begin(AuthMech::PasswordTotp).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };
@@ -1315,12 +1315,12 @@ impl KanidmClient {
             Err(e) => return Err(e),
         };
 
-        if !mechs.contains(&AuthMech::PasswordMfa) {
-            debug!("PasswordMfa mech not presented");
+        if !mechs.contains(&AuthMech::PasswordBackupCode) {
+            debug!("PasswordBackupCode mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 
-        let state = match self.auth_step_begin(AuthMech::PasswordMfa).await {
+        let state = match self.auth_step_begin(AuthMech::PasswordBackupCode).await {
             Ok(s) => s,
             Err(e) => return Err(e),
         };

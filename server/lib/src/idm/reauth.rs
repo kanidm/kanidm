@@ -424,7 +424,7 @@ mod tests {
             return None;
         };
 
-        let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordMfa);
+        let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordTotp);
 
         let r2 = idms_auth
             .auth(&auth_begin, ct, Source::Internal.into())
