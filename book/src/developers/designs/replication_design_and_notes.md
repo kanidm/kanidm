@@ -156,7 +156,7 @@ In our example, if node B was the last write the entry would resolve as:
 In attribute level resolution, the time of update for each attribute is tracked. If an attribute was
 written later, the content of that attribute wins over the other entries.
 
-For example if attr b was written last on node B, and attr c was written last on node A then the
+For example, if attr b was written last on node B, and attr c was written last on node A then the
 entry would resolve to:
 
     # AL Resolution
@@ -333,7 +333,7 @@ It is rare (if not will never happen) that an entry is morphed in place from a g
 from one class to a fundamentally different class. But the possibility exists so we must account for
 it.
 
-In this case what would occur is that the attribute of 'member' would be applied to a person, which
+In this case, what would occur is that the attribute of 'member' would be applied to a person, which
 is invalid for the kanidm schema. In this case, the entry would be moved into a conflict state since
 logically it is not valid for directory operations (even if the attributes and entry level
 replication requirements for consistency have been met).
@@ -386,7 +386,7 @@ This shows that server B contains the set of data ranging _from_ server A at tim
 time 6 to the latest values of server A at time 8 and server B at time 16.
 
 During incremental replication the consumer sends it RUV to the supplier. The supplier calculates
-the _difference_ between the consumer RUV and the supplier RUV. For example
+the _difference_ between the consumer RUV and the supplier RUV. For example,
 
     Server A RUV                   Server B RUV
     |-----|----------|----------|  |-----|----------|----------|

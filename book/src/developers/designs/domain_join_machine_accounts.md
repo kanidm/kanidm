@@ -36,7 +36,7 @@ identify themself to other systems. When a user authenticates with credentials s
 it's not possible to use these to request other forwardable credentials - and ssh agent forwarding
 only allows forwarding of ssh credentials, not other types of credentials that may be needed.
 
-In this case when a user authenticates with SSH, since they're using a trusted machine, Kanidm can
+In this case, when a user authenticates with SSH, since they're using a trusted machine, Kanidm can
 request short-term and limited credentials on the users behalf.
 
 An example is that we could dynamically request TLS certificates or Kerberos credentials.

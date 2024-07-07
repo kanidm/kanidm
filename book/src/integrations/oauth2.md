@@ -183,7 +183,7 @@ class: object
 displayname: Nextcloud Production
 oauth2_rs_basic_secret: hidden
 oauth2_rs_name: nextcloud
-oauth2_rs_origin: https://nextcloud.example.com
+oauth2_rs_origin_landing: https://nextcloud.example.com
 oauth2_rs_token_key: hidden
 ```
 
@@ -195,15 +195,15 @@ kanidm system oauth2 show-basic-secret nextcloud
 <secret>
 ```
 
-### Configure the Resource Server
+### Configure the Client/Resource Server
 
 On your client, you should configure the client ID as the `oauth2_rs_name` from Kanidm, and the
 password to be the value shown in `oauth2_rs_basic_secret`. Ensure that the code
 challenge/verification method is set to S256.
 
-You should now be able to test authorisation.
+You should now be able to test authorisation to the client.
 
-## Resetting Resource Server Security Material
+## Resetting Client Security Material
 
 In the case of disclosure of the basic secret or some other security event where you may wish to
 invalidate a services active sessions/tokens. You can reset the secret material of the server with:
@@ -262,7 +262,7 @@ kanidm system oauth2 delete-claim-map nextcloud account_role nextcloud_admins
 
 Some applications are unable to provide client authentication. A common example is single page web
 applications that act as the OAuth2 client and its corresponding webserver is the resource server.
-In this case the SPA is unable to act as a confidential client since the basic secret would need to
+In this case, the SPA is unable to act as a confidential client since the basic secret would need to
 be embedded in every client.
 
 Another common example is native applications that use a redirect to localhost. These can't have a
@@ -285,6 +285,25 @@ kanidm system oauth2 enable-localhost-redirects <name>
 kanidm system oauth2 disable-localhost-redirects <name>
 kanidm system oauth2 enable-localhost-redirects mywebapp
 ```
+
+## Alternate Redirect Origins
+
+Some services may have a website URL as well as native applications. These native applications
+require alternate redirection URLs to be configured so that after an OAuth2 exchange, the system can
+redirect to the native application.
+
+To support this Kanidm allows supplemental origins to be configured on clients.
+
+{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=The ability to configure multiple origins is NOT intended to allow you to share a single Kanidm client definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the _same_ client application. }}
+
+```bash
+kanidm system oauth2 add-origin <name> <origin>
+kanidm system oauth2 remove-origin <name> <origin>
+
+kanidm system oauth2 add-origin nextcloud app://ios-nextcloud
+```
+
+Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs_origin` attribute.
 
 ## Extended Options for Legacy Clients
 
@@ -460,7 +479,7 @@ kanidm system oauth2 create_scope_map <client name> velociraptor_users openid em
 ### Grafana
 
 Grafana is a open source analytics and interactive visualization web application. It provides
-charts, graphs, and alerts when connected to supported data source.
+charts, graphs and alerts when connected to supported data source.
 
 Prepare the environment:
 

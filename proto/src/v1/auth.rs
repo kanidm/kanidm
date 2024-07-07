@@ -85,8 +85,25 @@ impl fmt::Debug for AuthCredential {
 pub enum AuthMech {
     Anonymous,
     Password,
-    PasswordMfa,
+    // Now represents TOTP.
+    #[serde(rename = "passwordmfa")]
+    PasswordTotp,
+    PasswordBackupCode,
+    PasswordSecurityKey,
     Passkey,
+}
+
+impl AuthMech {
+    pub fn to_value(&self) -> &'static str {
+        match self {
+            AuthMech::Anonymous => "anonymous",
+            AuthMech::Password => "password",
+            AuthMech::PasswordTotp => "passwordmfa",
+            AuthMech::PasswordBackupCode => "passwordbackupcode",
+            AuthMech::PasswordSecurityKey => "passwordsecuritykey",
+            AuthMech::Passkey => "passkey",
+        }
+    }
 }
 
 impl PartialEq for AuthMech {
@@ -100,7 +117,9 @@ impl fmt::Display for AuthMech {
         match self {
             AuthMech::Anonymous => write!(f, "Anonymous (no credentials)"),
             AuthMech::Password => write!(f, "Password"),
-            AuthMech::PasswordMfa => write!(f, "TOTP/Backup Code and Password"),
+            AuthMech::PasswordTotp => write!(f, "TOTP and Password"),
+            AuthMech::PasswordBackupCode => write!(f, "Backup Code and Password"),
+            AuthMech::PasswordSecurityKey => write!(f, "Security Key and Password"),
             AuthMech::Passkey => write!(f, "Passkey"),
         }
     }

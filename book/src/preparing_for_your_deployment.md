@@ -67,7 +67,7 @@ media.
 
 ## TLS
 
-You'll need a volume where you can place configuration, certificates, and the database:
+You'll need a volume where you can place configuration, certificates and the database:
 
 ```bash
 docker volume create kanidmd
@@ -129,7 +129,7 @@ If your chain.pem contains the CA certificate, you can validate this file with t
 openssl verify -CAfile chain.pem chain.pem
 ```
 
-If your chain.pem does not contain the CA certificate (Let's Encrypt chains do not contain the CA
+If your chain.pem does not contain the CA certificate (Let's Encrypt chains do not contain the CA,
 for example) then you can validate with this command.
 
 ```bash

@@ -1,7 +1,7 @@
 # POSIX Accounts and Groups
 
 Kanidm has features that enable its accounts and groups to be consumed on POSIX-like machines, such
-as Linux, FreeBSD, or others. Both service accounts and person accounts can be used on POSIX
+as Linux, FreeBSD or others. Both service accounts and person accounts can be used on POSIX
 systems.
 
 ## Notes on POSIX Features
@@ -29,7 +29,7 @@ schema will block the creation).
 ### UPG Generation
 
 Due to the requirement that a user have a UPG for security, many systems create these as two
-independent items. For example in /etc/passwd and /etc/group:
+independent items. For example, in /etc/passwd and /etc/group:
 
 ```text
 # passwd
@@ -138,5 +138,5 @@ ERROR[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "
 ```
 
 This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs are
-greater than 65535. In this case you may manually allocate your users GID number to be between
+greater than 65535. In this case, you may manually allocate your users GID number to be between
 1000 - 65535, which may not trigger the fault.

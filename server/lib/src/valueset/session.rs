@@ -4,17 +4,19 @@ use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
 use crate::be::dbvalue::{
-    DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueIdentityId,
-    DbValueOauth2Session, DbValueSession, DbValueSessionStateV1,
+    DbCidV1, DbValueAccessScopeV1, DbValueApiToken, DbValueApiTokenScopeV1, DbValueAuthTypeV1,
+    DbValueIdentityId, DbValueOauth2Session, DbValueSession, DbValueSessionStateV1,
 };
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::proto::{
     ReplApiTokenScopeV1, ReplApiTokenV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1,
-    ReplSessionScopeV1, ReplSessionStateV1, ReplSessionV1,
+    ReplSessionStateV1,
 };
 use crate::schema::SchemaAttribute;
-use crate::value::{ApiToken, ApiTokenScope, Oauth2Session, Session, SessionScope, SessionState};
+use crate::value::{
+    ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionScope, SessionState,
+};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -33,321 +35,168 @@ impl ValueSetSession {
         self.map.insert(u, m).is_none()
     }
 
-    pub fn from_dbvs2(data: Vec<DbValueSession>) -> Result<ValueSet, OperationError> {
-        let map =
-            data.into_iter()
-                .filter_map(|dbv| {
-                    match dbv {
-                        // MISTAKE - Skip due to lack of credential id
-                        // Don't actually skip, generate a random cred id. Session cleanup will
-                        // trim sessions on users, but if we skip blazenly we invalidate every api
-                        // token ever issued. OOPS!
-                        DbValueSession::V1 {
-                            refer,
-                            label,
-                            expiry,
-                            issued_at,
-                            issued_by,
-                            scope,
-                        } => {
-                            let cred_id = Uuid::new_v4();
+    fn to_vec_dbvs(&self) -> Vec<DbValueSession> {
+        self.map
+            .iter()
+            .map(|(u, m)| DbValueSession::V4 {
+                refer: *u,
+                label: m.label.clone(),
 
-                            // Convert things.
-                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map_err(|e| {
-                                    admin_error!(
-                                    ?e,
-                                    "Invalidating session {} due to invalid issued_at timestamp",
-                                    refer
-                                )
-                                })
-                                .ok()?;
-
-                            // This is a bit annoying. In the case we can't parse the optional
-                            // expiry, we need to NOT return the session so that it's immediately
-                            // invalidated. To do this we have to invert some of the options involved
-                            // here.
-                            let expiry = expiry
-                                .map(|e_inner| {
-                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
-                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                    // We now have an
-                                    // Option<Result<ODT, _>>
-                                })
-                                .transpose()
-                                // Result<Option<ODT>, _>
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "Invalidating session {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                })
-                                // Option<Option<ODT>>
-                                .ok()?;
-
-                            let state = expiry
-                                .map(SessionState::ExpiresAt)
-                                .unwrap_or(SessionState::NeverExpires);
-
-                            let issued_by = match issued_by {
-                                DbValueIdentityId::V1Internal => IdentityId::Internal,
-                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                            };
-
-                            let scope = match scope {
-                                DbValueAccessScopeV1::IdentityOnly
-                                | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
-                                DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
-                                DbValueAccessScopeV1::PrivilegeCapable => {
-                                    SessionScope::PrivilegeCapable
-                                }
-                                DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
-                            };
-
-                            Some((
-                                refer,
-                                Session {
-                                    label,
-                                    state,
-                                    issued_at,
-                                    issued_by,
-                                    cred_id,
-                                    scope,
-                                },
-                            ))
-                        }
-                        DbValueSession::V2 {
-                            refer,
-                            label,
-                            expiry,
-                            issued_at,
-                            issued_by,
-                            cred_id,
-                            scope,
-                        } => {
-                            // Convert things.
-                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map_err(|e| {
-                                    admin_error!(
-                                    ?e,
-                                    "Invalidating session {} due to invalid issued_at timestamp",
-                                    refer
-                                )
-                                })
-                                .ok()?;
-
-                            // This is a bit annoying. In the case we can't parse the optional
-                            // expiry, we need to NOT return the session so that it's immediately
-                            // invalidated. To do this we have to invert some of the options involved
-                            // here.
-                            let expiry = expiry
-                                .map(|e_inner| {
-                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
-                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                    // We now have an
-                                    // Option<Result<ODT, _>>
-                                })
-                                .transpose()
-                                // Result<Option<ODT>, _>
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "Invalidating session {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                })
-                                // Option<Option<ODT>>
-                                .ok()?;
-
-                            let state = expiry
-                                .map(SessionState::ExpiresAt)
-                                .unwrap_or(SessionState::NeverExpires);
-
-                            let issued_by = match issued_by {
-                                DbValueIdentityId::V1Internal => IdentityId::Internal,
-                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                            };
-
-                            let scope = match scope {
-                                DbValueAccessScopeV1::IdentityOnly
-                                | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
-                                DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
-                                DbValueAccessScopeV1::PrivilegeCapable => {
-                                    SessionScope::PrivilegeCapable
-                                }
-                                DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
-                            };
-
-                            Some((
-                                refer,
-                                Session {
-                                    label,
-                                    state,
-                                    issued_at,
-                                    issued_by,
-                                    cred_id,
-                                    scope,
-                                },
-                            ))
-                        }
-                        DbValueSession::V3 {
-                            refer,
-                            label,
-                            state,
-                            issued_at,
-                            issued_by,
-                            cred_id,
-                            scope,
-                        } => {
-                            // Convert things.
-                            let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map_err(|e| {
-                                    admin_error!(
-                                    ?e,
-                                    "Invalidating session {} due to invalid issued_at timestamp",
-                                    refer
-                                )
-                                })
-                                .ok()?;
-
-                            let state = match state {
-                                DbValueSessionStateV1::ExpiresAt(e_inner) => {
-                                    OffsetDateTime::parse(&e_inner, &Rfc3339)
-                                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                        .map(SessionState::ExpiresAt)
-                                        .map_err(|e| {
-                                            admin_error!(
-                                        ?e,
-                                        "Invalidating session {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                        })
-                                        .ok()?
-                                }
-                                DbValueSessionStateV1::Never => SessionState::NeverExpires,
-                                DbValueSessionStateV1::RevokedAt(dc) => {
-                                    SessionState::RevokedAt(Cid {
-                                        s_uuid: dc.server_id,
-                                        ts: dc.timestamp,
-                                    })
-                                }
-                            };
-
-                            let issued_by = match issued_by {
-                                DbValueIdentityId::V1Internal => IdentityId::Internal,
-                                DbValueIdentityId::V1Uuid(u) => IdentityId::User(u),
-                                DbValueIdentityId::V1Sync(u) => IdentityId::Synch(u),
-                            };
-
-                            let scope = match scope {
-                                DbValueAccessScopeV1::IdentityOnly
-                                | DbValueAccessScopeV1::ReadOnly => SessionScope::ReadOnly,
-                                DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
-                                DbValueAccessScopeV1::PrivilegeCapable => {
-                                    SessionScope::PrivilegeCapable
-                                }
-                                DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
-                            };
-
-                            Some((
-                                refer,
-                                Session {
-                                    label,
-                                    state,
-                                    issued_at,
-                                    issued_by,
-                                    cred_id,
-                                    scope,
-                                },
-                            ))
-                        }
+                state: match &m.state {
+                    SessionState::ExpiresAt(odt) => {
+                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        #[allow(clippy::expect_used)]
+                        odt.format(&Rfc3339)
+                            .map(DbValueSessionStateV1::ExpiresAt)
+                            .expect("Failed to format timestamp into RFC3339!")
                     }
-                })
-                .collect();
+                    SessionState::NeverExpires => DbValueSessionStateV1::Never,
+                    SessionState::RevokedAt(c) => DbValueSessionStateV1::RevokedAt(DbCidV1 {
+                        server_id: c.s_uuid,
+                        timestamp: c.ts,
+                    }),
+                },
+
+                issued_at: {
+                    debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                    #[allow(clippy::expect_used)]
+                    m.issued_at
+                        .format(&Rfc3339)
+                        .expect("Failed to format timestamp into RFC3339!")
+                },
+                issued_by: match m.issued_by {
+                    IdentityId::Internal => DbValueIdentityId::V1Internal,
+                    IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
+                    IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
+                },
+                cred_id: m.cred_id,
+                scope: match m.scope {
+                    SessionScope::ReadOnly => DbValueAccessScopeV1::ReadOnly,
+                    SessionScope::ReadWrite => DbValueAccessScopeV1::ReadWrite,
+                    SessionScope::PrivilegeCapable => DbValueAccessScopeV1::PrivilegeCapable,
+                    SessionScope::Synchronise => DbValueAccessScopeV1::Synchronise,
+                },
+                type_: match m.type_ {
+                    AuthType::Anonymous => DbValueAuthTypeV1::Anonymous,
+                    AuthType::Password => DbValueAuthTypeV1::Password,
+                    AuthType::GeneratedPassword => DbValueAuthTypeV1::GeneratedPassword,
+                    AuthType::PasswordTotp => DbValueAuthTypeV1::PasswordTotp,
+                    AuthType::PasswordBackupCode => DbValueAuthTypeV1::PasswordBackupCode,
+                    AuthType::PasswordSecurityKey => DbValueAuthTypeV1::PasswordSecurityKey,
+                    AuthType::Passkey => DbValueAuthTypeV1::Passkey,
+                    AuthType::AttestedPasskey => DbValueAuthTypeV1::AttestedPasskey,
+                },
+            })
+            .collect()
+    }
+
+    fn from_dbv_iter<'a>(
+        iter: impl Iterator<Item = &'a DbValueSession>,
+    ) -> Result<ValueSet, OperationError> {
+        let map = iter
+            .filter_map(|dbv| {
+                match dbv {
+                    // We need to ignore all older session records as they lack the AuthType
+                    // record which prevents re-auth working.
+                    DbValueSession::V1 { .. }
+                    | DbValueSession::V2 { .. }
+                    | DbValueSession::V3 { .. } => None,
+                    DbValueSession::V4 {
+                        refer,
+                        label,
+                        state,
+                        issued_at,
+                        issued_by,
+                        cred_id,
+                        scope,
+                        type_,
+                    } => {
+                        // Convert things.
+                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                            .map_err(|e| {
+                                admin_error!(
+                                    ?e,
+                                    "Invalidating session {} due to invalid issued_at timestamp",
+                                    refer
+                                )
+                            })
+                            .ok()?;
+
+                        let state = match state {
+                            DbValueSessionStateV1::ExpiresAt(e_inner) => {
+                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                                    .map(SessionState::ExpiresAt)
+                                    .map_err(|e| {
+                                        admin_error!(
+                                        ?e,
+                                        "Invalidating session {} due to invalid expiry timestamp",
+                                        refer
+                                    )
+                                    })
+                                    .ok()?
+                            }
+                            DbValueSessionStateV1::Never => SessionState::NeverExpires,
+                            DbValueSessionStateV1::RevokedAt(dc) => SessionState::RevokedAt(Cid {
+                                s_uuid: dc.server_id,
+                                ts: dc.timestamp,
+                            }),
+                        };
+
+                        let issued_by = match issued_by {
+                            DbValueIdentityId::V1Internal => IdentityId::Internal,
+                            DbValueIdentityId::V1Uuid(u) => IdentityId::User(*u),
+                            DbValueIdentityId::V1Sync(u) => IdentityId::Synch(*u),
+                        };
+
+                        let scope = match scope {
+                            DbValueAccessScopeV1::IdentityOnly | DbValueAccessScopeV1::ReadOnly => {
+                                SessionScope::ReadOnly
+                            }
+                            DbValueAccessScopeV1::ReadWrite => SessionScope::ReadWrite,
+                            DbValueAccessScopeV1::PrivilegeCapable => {
+                                SessionScope::PrivilegeCapable
+                            }
+                            DbValueAccessScopeV1::Synchronise => SessionScope::Synchronise,
+                        };
+
+                        let type_ = match type_ {
+                            DbValueAuthTypeV1::Anonymous => AuthType::Anonymous,
+                            DbValueAuthTypeV1::Password => AuthType::Password,
+                            DbValueAuthTypeV1::GeneratedPassword => AuthType::GeneratedPassword,
+                            DbValueAuthTypeV1::PasswordTotp => AuthType::PasswordTotp,
+                            DbValueAuthTypeV1::PasswordBackupCode => AuthType::PasswordBackupCode,
+                            DbValueAuthTypeV1::PasswordSecurityKey => AuthType::PasswordSecurityKey,
+                            DbValueAuthTypeV1::Passkey => AuthType::Passkey,
+                            DbValueAuthTypeV1::AttestedPasskey => AuthType::AttestedPasskey,
+                        };
+
+                        Some((
+                            *refer,
+                            Session {
+                                label: label.clone(),
+                                state,
+                                issued_at,
+                                issued_by,
+                                cred_id: *cred_id,
+                                scope,
+                                type_,
+                            },
+                        ))
+                    }
+                }
+            })
+            .collect();
         Ok(Box::new(ValueSetSession { map }))
     }
 
-    pub fn from_repl_v1(data: &[ReplSessionV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .filter_map(
-                |ReplSessionV1 {
-                     refer,
-                     label,
-                     state,
-                     issued_at,
-                     issued_by,
-                     cred_id,
-                     scope,
-                 }| {
-                    // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
-                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid issued_at timestamp",
-                                refer
-                            )
-                        })
-                        .ok()?;
+    pub fn from_dbvs2(data: Vec<DbValueSession>) -> Result<ValueSet, OperationError> {
+        Self::from_dbv_iter(data.iter())
+    }
 
-                    // This is a bit annoying. In the case we can't parse the optional
-                    // expiry, we need to NOT return the session so that it's immediately
-                    // invalidated. To do this we have to invert some of the options involved
-                    // here.
-                    let state = match state {
-                        ReplSessionStateV1::ExpiresAt(e_inner) => {
-                            OffsetDateTime::parse(e_inner, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map(SessionState::ExpiresAt)
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "Invalidating session {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                })
-                                .ok()?
-                        }
-                        ReplSessionStateV1::Never => SessionState::NeverExpires,
-                        ReplSessionStateV1::RevokedAt(rc) => SessionState::RevokedAt(rc.into()),
-                    };
-
-                    let issued_by = match issued_by {
-                        ReplIdentityIdV1::Internal => IdentityId::Internal,
-                        ReplIdentityIdV1::Uuid(u) => IdentityId::User(*u),
-                        ReplIdentityIdV1::Synch(u) => IdentityId::Synch(*u),
-                    };
-
-                    let scope = match scope {
-                        ReplSessionScopeV1::ReadOnly => SessionScope::ReadOnly,
-                        ReplSessionScopeV1::ReadWrite => SessionScope::ReadWrite,
-                        ReplSessionScopeV1::PrivilegeCapable => SessionScope::PrivilegeCapable,
-                        ReplSessionScopeV1::Synchronise => SessionScope::Synchronise,
-                    };
-
-                    Some((
-                        *refer,
-                        Session {
-                            label: label.to_string(),
-                            state,
-                            issued_at,
-                            issued_by,
-                            cred_id: *cred_id,
-                            scope,
-                        },
-                    ))
-                },
-            )
-            .collect();
-        Ok(Box::new(ValueSetSession { map }))
+    pub fn from_repl_v1(data: &[DbValueSession]) -> Result<ValueSet, OperationError> {
+        Self::from_dbv_iter(data.iter())
     }
 
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
@@ -510,94 +359,12 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::Session(
-            self.map
-                .iter()
-                .map(|(u, m)| DbValueSession::V3 {
-                    refer: *u,
-                    label: m.label.clone(),
-
-                    state: match &m.state {
-                        SessionState::ExpiresAt(odt) => {
-                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                            #[allow(clippy::expect_used)]
-                            odt.format(&Rfc3339)
-                                .map(DbValueSessionStateV1::ExpiresAt)
-                                .expect("Failed to format timestamp into RFC3339!")
-                        }
-                        SessionState::NeverExpires => DbValueSessionStateV1::Never,
-                        SessionState::RevokedAt(c) => DbValueSessionStateV1::RevokedAt(DbCidV1 {
-                            server_id: c.s_uuid,
-                            timestamp: c.ts,
-                        }),
-                    },
-
-                    issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        m.issued_at
-                            .format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339!")
-                    },
-                    issued_by: match m.issued_by {
-                        IdentityId::Internal => DbValueIdentityId::V1Internal,
-                        IdentityId::User(u) => DbValueIdentityId::V1Uuid(u),
-                        IdentityId::Synch(u) => DbValueIdentityId::V1Sync(u),
-                    },
-                    cred_id: m.cred_id,
-                    scope: match m.scope {
-                        SessionScope::ReadOnly => DbValueAccessScopeV1::ReadOnly,
-                        SessionScope::ReadWrite => DbValueAccessScopeV1::ReadWrite,
-                        SessionScope::PrivilegeCapable => DbValueAccessScopeV1::PrivilegeCapable,
-                        SessionScope::Synchronise => DbValueAccessScopeV1::Synchronise,
-                    },
-                })
-                .collect(),
-        )
+        DbValueSetV2::Session(self.to_vec_dbvs())
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {
         ReplAttrV1::Session {
-            set: self
-                .map
-                .iter()
-                .map(|(u, m)| ReplSessionV1 {
-                    refer: *u,
-                    label: m.label.clone(),
-
-                    state: match &m.state {
-                        SessionState::ExpiresAt(odt) => {
-                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                            #[allow(clippy::expect_used)]
-                            odt.format(&Rfc3339)
-                                .map(ReplSessionStateV1::ExpiresAt)
-                                .expect("Failed to format timestamp into RFC3339!")
-                        }
-                        SessionState::NeverExpires => ReplSessionStateV1::Never,
-                        SessionState::RevokedAt(c) => ReplSessionStateV1::RevokedAt(c.into()),
-                    },
-
-                    issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        m.issued_at
-                            .format(&Rfc3339)
-                            .expect("Failed to format timestamp to RFC3339")
-                    },
-                    issued_by: match m.issued_by {
-                        IdentityId::Internal => ReplIdentityIdV1::Internal,
-                        IdentityId::User(u) => ReplIdentityIdV1::Uuid(u),
-                        IdentityId::Synch(u) => ReplIdentityIdV1::Synch(u),
-                    },
-                    cred_id: m.cred_id,
-                    scope: match m.scope {
-                        SessionScope::ReadOnly => ReplSessionScopeV1::ReadOnly,
-                        SessionScope::ReadWrite => ReplSessionScopeV1::ReadWrite,
-                        SessionScope::PrivilegeCapable => ReplSessionScopeV1::PrivilegeCapable,
-                        SessionScope::Synchronise => ReplSessionScopeV1::Synchronise,
-                    },
-                })
-                .collect(),
+            set: self.to_vec_dbvs(),
         }
     }
 
@@ -649,49 +416,6 @@ impl ValueSetT for ValueSetSession {
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
-    }
-
-    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
-        let map = self
-            .as_session_map()
-            .iter()
-            .flat_map(|m| m.iter())
-            .filter_map(
-                |(
-                    u,
-                    Session {
-                        label,
-                        state,
-                        issued_at,
-                        issued_by,
-                        cred_id: _,
-                        scope,
-                    },
-                )| {
-                    let expiry = match state {
-                        SessionState::ExpiresAt(e) => Some(*e),
-                        SessionState::NeverExpires => None,
-                        SessionState::RevokedAt(_) => return None,
-                    };
-
-                    Some((
-                        *u,
-                        ApiToken {
-                            label: label.clone(),
-                            expiry,
-                            issued_at: *issued_at,
-                            issued_by: issued_by.clone(),
-                            scope: match scope {
-                                SessionScope::Synchronise => ApiTokenScope::Synchronise,
-                                SessionScope::ReadWrite => ApiTokenScope::ReadWrite,
-                                _ => ApiTokenScope::ReadOnly,
-                            },
-                        },
-                    ))
-                },
-            )
-            .collect();
-        Ok(Box::new(ValueSetApiToken { map }))
     }
 
     fn repl_merge_valueset(&self, older: &ValueSet, trim_cid: &Cid) -> Option<ValueSet> {
@@ -1702,11 +1426,6 @@ impl ValueSetT for ValueSetApiToken {
         // This is what ties us as a type that can be refint checked.
         Some(Box::new(self.map.keys().copied()))
     }
-
-    fn migrate_session_to_apitoken(&self) -> Result<ValueSet, OperationError> {
-        // We are already in the api token format, don't do anything.
-        Ok(Box::new(self.clone()))
-    }
 }
 
 #[cfg(test)]
@@ -1714,7 +1433,7 @@ mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
     use crate::prelude::{IdentityId, SessionScope, Uuid};
     use crate::repl::cid::Cid;
-    use crate::value::{Oauth2Session, Session, SessionState};
+    use crate::value::{AuthType, Oauth2Session, Session, SessionState};
     use crate::valueset::ValueSet;
     use time::OffsetDateTime;
 
@@ -1731,6 +1450,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1763,6 +1483,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1775,6 +1496,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1802,6 +1524,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1814,6 +1537,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1844,6 +1568,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1857,6 +1582,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
             (
@@ -1868,6 +1594,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
         ])
@@ -1902,6 +1629,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -1915,6 +1643,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
             (
@@ -1926,6 +1655,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
         ])
@@ -1964,6 +1694,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
             (
@@ -1975,6 +1706,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
             (
@@ -1986,6 +1718,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             ),
         ])
@@ -2016,6 +1749,7 @@ mod tests {
                 issued_by: IdentityId::Internal,
                 cred_id: Uuid::new_v4(),
                 scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
             },
         ))
         .chain((0..SESSION_MAXIMUM).into_iter().map(|_| {
@@ -2028,6 +1762,7 @@ mod tests {
                     issued_by: IdentityId::Internal,
                     cred_id: Uuid::new_v4(),
                     scope: SessionScope::ReadOnly,
+                    type_: AuthType::Passkey,
                 },
             )
         }));

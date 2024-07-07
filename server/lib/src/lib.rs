@@ -112,10 +112,10 @@ pub mod prelude {
     pub use crate::value::{
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };
-    pub use crate::valueset::{
+
+    pub(crate) use crate::valueset::{
         ValueSet, ValueSetBool, ValueSetCid, ValueSetIndex, ValueSetIutf8, ValueSetRefer,
-        ValueSetSecret, ValueSetSpn, ValueSetSyntax, ValueSetT, ValueSetUint32, ValueSetUtf8,
-        ValueSetUuid,
+        ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
 
     #[cfg(test)]

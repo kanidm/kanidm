@@ -43,7 +43,7 @@ kanidm person get demo_user --name anonymous
 {{#template ../templates/kani-warning.md
 imagepath=images
 title=Warning!
-text=Persons may change their own displayname, name, and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
+text=Persons may change their own displayname, name and legal name at any time. You MUST NOT use these values as primary keys in external systems. You MUST use the `uuid` attribute present on all entries as an external primary key.
 }}
 
 <!-- deno-fmt-ignore-end -->

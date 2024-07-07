@@ -98,7 +98,7 @@ An adminisrator may wish to allow synchronised entries to have some attributes w
 instance locally. An example is allowing passkeys to be created on Kanidm when the external
 synchronisation provider does not supply them.
 
-In this case the synchronisation agreement can be configured to yield it's authority over these
+In this case, the synchronisation agreement can be configured to yield its authority over these
 attributes to Kanidm.
 
 To configure the attributes that Kanidm can control:

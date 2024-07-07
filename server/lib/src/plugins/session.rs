@@ -190,7 +190,7 @@ mod tests {
     use crate::prelude::*;
 
     use crate::event::CreateEvent;
-    use crate::value::{Oauth2Session, Session, SessionState};
+    use crate::value::{AuthType, Oauth2Session, Session, SessionState};
     use kanidm_proto::constants::OAUTH2_SCOPE_OPENID;
     use std::time::Duration;
     use time::OffsetDateTime;
@@ -256,6 +256,7 @@ mod tests {
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope,
+                type_: AuthType::Passkey,
             },
         );
 
@@ -360,7 +361,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
@@ -418,6 +419,7 @@ mod tests {
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
+                        type_: AuthType::Passkey,
                     },
                 )
             ),
@@ -533,7 +535,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
@@ -590,6 +592,7 @@ mod tests {
                         // What is the access scope of this session? This is
                         // for auditing purposes.
                         scope,
+                        type_: AuthType::Passkey,
                     },
                 )
             ),
@@ -699,7 +702,7 @@ mod tests {
                 Value::new_utf8s("test_resource_server")
             ),
             (
-                Attribute::OAuth2RsOrigin,
+                Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             // System admins
@@ -837,6 +840,7 @@ mod tests {
                 // What is the access scope of this session? This is
                 // for auditing purposes.
                 scope,
+                type_: AuthType::Passkey,
             },
         );
 

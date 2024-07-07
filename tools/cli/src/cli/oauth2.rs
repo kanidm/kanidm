@@ -1,10 +1,11 @@
+use anyhow::{Context, Error};
+use std::fs::read;
 use std::process::exit;
-
 use crate::common::OpType;
 use crate::{handle_client_error, Oauth2Opt, OutputMode};
 
 use crate::Oauth2ClaimMapJoin;
-use kanidm_proto::internal::Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin;
+use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin as ProtoOauth2ClaimMapJoin};
 
 impl Oauth2Opt {
     pub fn debug(&self) -> bool {
@@ -22,6 +23,8 @@ impl Oauth2Opt {
             Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::SetName { nopt, .. } => nopt.copt.debug,
             Oauth2Opt::SetLandingUrl { nopt, .. } => nopt.copt.debug,
+            Oauth2Opt::SetImage { nopt, .. } => nopt.copt.debug,
+            Oauth2Opt::RemoveImage(nopt) => nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
@@ -34,8 +37,9 @@ impl Oauth2Opt {
             | Oauth2Opt::UpdateClaimMapJoin { copt, .. }
             | Oauth2Opt::DeleteClaimMap { copt, .. }
             | Oauth2Opt::EnablePublicLocalhost { copt, .. }
-            | Oauth2Opt::DisablePublicLocalhost { copt, .. } => copt.debug,
-            Oauth2Opt::SetOrigin { nopt, .. } => nopt.copt.debug,
+            | Oauth2Opt::DisablePublicLocalhost { copt, .. }
+            | Oauth2Opt::AddOrigin { copt, .. }
+            | Oauth2Opt::RemoveOrigin { copt, .. } => copt.debug,
         }
     }
 
@@ -160,16 +164,7 @@ impl Oauth2Opt {
             Oauth2Opt::ResetSecrets(cbopt) => {
                 let client = cbopt.copt.to_client(OpType::Write).await;
                 match client
-                    .idm_oauth2_rs_update(
-                        cbopt.name.as_str(),
-                        None,
-                        None,
-                        None,
-                        None,
-                        true,
-                        true,
-                        true,
-                    )
+                    .idm_oauth2_rs_update(cbopt.name.as_str(), None, None, None, true, true, true)
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -210,7 +205,6 @@ impl Oauth2Opt {
                         None,
                         Some(cbopt.displayname.as_str()),
                         None,
-                        None,
                         false,
                         false,
                         false,
@@ -227,7 +221,6 @@ impl Oauth2Opt {
                     .idm_oauth2_rs_update(
                         nopt.name.as_str(),
                         Some(name.as_str()),
-                        None,
                         None,
                         None,
                         false,
@@ -247,12 +240,69 @@ impl Oauth2Opt {
                         nopt.name.as_str(),
                         None,
                         None,
-                        None,
-                        Some(url),
+                        Some(url.as_str()),
                         false,
                         false,
                         false,
                     )
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            Oauth2Opt::SetImage {
+                nopt,
+                path,
+                image_type,
+            } => {
+                let client = nopt.copt.to_client(OpType::Write).await;
+                let img_res: Result<ImageValue, Error> = (move || {
+                    let file_name = path
+                        .file_name()
+                        .context("Please pass a file")?
+                        .to_str()
+                        .context("Path contains non utf-8")?
+                        .to_string();
+
+                    let image_type = if let Some(image_type) = image_type {
+                        image_type.as_str().try_into().map_err(Error::msg)?
+                    } else {
+                        path
+                            .extension().context("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
+                            .to_str().context("Path contains invalid utf-8")?
+                            .try_into()
+                            .map_err(Error::msg)?
+                    };
+
+                    let read_res = read(path);
+                    match read_res {
+                        Ok(data) => Ok(ImageValue::new(file_name, image_type, data)),
+                        Err(err) => Err(err).context("Reading error"),
+                    }
+                })();
+
+                let img = match img_res {
+                    Ok(img) => img,
+                    Err(err) => {
+                        eprintln!("{err}");
+                        return;
+                    }
+                };
+
+                match client
+                    .idm_oauth2_rs_update_image(nopt.name.as_str(), img)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            Oauth2Opt::RemoveImage(nopt) => {
+                let client = nopt.copt.to_client(OpType::Write).await;
+
+                match client
+                    .idm_oauth2_rs_delete_image(nopt.name.as_str())
                     .await
                 {
                     Ok(_) => println!("Success"),
@@ -313,23 +363,19 @@ impl Oauth2Opt {
                     Err(e) => handle_client_error(e, nopt.copt.output_mode),
                 }
             }
-            Oauth2Opt::SetOrigin { nopt, origin } => {
-                let client = nopt.copt.to_client(OpType::Write).await;
-                match client
-                    .idm_oauth2_rs_update(
-                        &nopt.name,
-                        None,
-                        None,
-                        Some(origin),
-                        None,
-                        false,
-                        false,
-                        false,
-                    )
-                    .await
-                {
+
+            Oauth2Opt::AddOrigin { name, origin, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client.idm_oauth2_client_add_origin(name, origin).await {
                     Ok(_) => println!("Success"),
-                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            Oauth2Opt::RemoveOrigin { name, origin, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client.idm_oauth2_client_remove_origin(name, origin).await {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             Oauth2Opt::UpdateClaimMap {

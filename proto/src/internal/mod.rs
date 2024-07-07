@@ -26,6 +26,7 @@ pub use self::token::*;
 
 pub const COOKIE_AUTH_SESSION_ID: &str = "auth-session-id";
 pub const COOKIE_BEARER_TOKEN: &str = "bearer";
+pub const COOKIE_USERNAME: &str = "username";
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 /// This is a description of a linked or connected application for a user. This is
@@ -35,8 +36,8 @@ pub enum AppLink {
         name: String,
         display_name: String,
         redirect_url: Url,
-        // Where the icon can be retrieved from.
-        icon: Option<Url>,
+        // Whether this oauth2 resource has an image.
+        has_image: bool,
     },
 }
 

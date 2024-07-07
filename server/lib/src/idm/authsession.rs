@@ -3,8 +3,6 @@
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
-use std::fmt;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -31,7 +29,7 @@ use crate::idm::delayed::{
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyObject;
-use crate::value::{Session, SessionState};
+use crate::value::{AuthType, Session, SessionState};
 use time::OffsetDateTime;
 
 use super::accountpolicy::ResolvedAccountPolicy;
@@ -50,29 +48,6 @@ const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
-
-#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq)]
-pub enum AuthType {
-    Anonymous,
-    Password,
-    GeneratedPassword,
-    PasswordMfa,
-    Passkey,
-    AttestedPasskey,
-}
-
-impl fmt::Display for AuthType {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            AuthType::Anonymous => write!(f, "anonymous"),
-            AuthType::Password => write!(f, "password"),
-            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
-            AuthType::PasswordMfa => write!(f, "passwordmfa"),
-            AuthType::Passkey => write!(f, "passkey"),
-            AuthType::AttestedPasskey => write!(f, "attested_passkey"),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 enum AuthIntent {
@@ -102,12 +77,29 @@ enum CredVerifyState {
 
 #[derive(Clone, Debug)]
 /// The state of a multifactor authenticator during authentication.
-struct CredMfa {
+struct CredTotp {
     pw: Password,
     pw_state: CredVerifyState,
     totp: BTreeMap<String, Totp>,
-    wan: Option<(RequestChallengeResponse, SecurityKeyAuthentication)>,
-    backup_code: Option<BackupCodes>,
+    mfa_state: CredVerifyState,
+}
+
+#[derive(Clone, Debug)]
+/// The state of a multifactor authenticator during authentication.
+struct CredBackupCode {
+    pw: Password,
+    pw_state: CredVerifyState,
+    backup_code: BackupCodes,
+    mfa_state: CredVerifyState,
+}
+
+#[derive(Clone, Debug)]
+/// The state of a multifactor authenticator during authentication.
+struct CredSecurityKey {
+    pw: Password,
+    pw_state: CredVerifyState,
+    chal: RequestChallengeResponse,
+    ska: SecurityKeyAuthentication,
     mfa_state: CredVerifyState,
 }
 
@@ -140,8 +132,16 @@ enum CredHandler {
         generated: bool,
         cred_id: Uuid,
     },
-    PasswordMfa {
-        cmfa: Box<CredMfa>,
+    PasswordTotp {
+        cmfa: CredTotp,
+        cred_id: Uuid,
+    },
+    PasswordBackupCode {
+        cmfa: CredBackupCode,
+        cred_id: Uuid,
+    },
+    PasswordSecurityKey {
+        cmfa: CredSecurityKey,
         cred_id: Uuid,
     },
     Passkey {
@@ -157,89 +157,6 @@ enum CredHandler {
     },
 }
 
-impl TryFrom<(&Credential, &Webauthn)> for CredHandler {
-    type Error = ();
-
-    /// Given a credential and some external configuration, Generate the credential handler
-    /// that will be used for this session. This credential handler is a "self contained"
-    /// unit that defines what is possible to use during this authentication session to prevent
-    /// inconsistency.
-    fn try_from((c, webauthn): (&Credential, &Webauthn)) -> Result<Self, Self::Error> {
-        match &c.type_ {
-            CredentialType::Password(pw) => Ok(CredHandler::Password {
-                pw: pw.clone(),
-                generated: false,
-                cred_id: c.uuid,
-            }),
-            CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password {
-                pw: pw.clone(),
-                generated: true,
-                cred_id: c.uuid,
-            }),
-            CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan, maybe_backup_code) => {
-                let wan = if !maybe_wan.is_empty() {
-                    let sks: Vec<_> = maybe_wan.values().cloned().collect();
-                    webauthn
-                        .start_securitykey_authentication(&sks)
-                        .map(Some)
-                        .map_err(|e| {
-                            security_info!(
-                                err = ?e,
-                                "Unable to create webauthn authentication challenge"
-                            )
-                        })?
-                } else {
-                    None
-                };
-
-                let cmfa = Box::new(CredMfa {
-                    pw: pw.clone(),
-                    pw_state: CredVerifyState::Init,
-                    totp: maybe_totp
-                        .iter()
-                        .map(|(l, t)| (l.clone(), t.clone()))
-                        .collect(),
-                    wan,
-                    backup_code: maybe_backup_code.clone(),
-                    mfa_state: CredVerifyState::Init,
-                });
-
-                // Paranoia. Should NEVER occur.
-                if cmfa.totp.is_empty() && cmfa.wan.is_none() {
-                    security_critical!("Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!");
-                    return Err(());
-                }
-
-                Ok(CredHandler::PasswordMfa {
-                    cmfa,
-                    cred_id: c.uuid,
-                })
-            }
-            CredentialType::Webauthn(wan) => {
-                let pks: Vec<_> = wan.values().cloned().collect();
-                let cred_ids: BTreeMap<_, _> = pks
-                    .iter()
-                    .map(|pk| (pk.cred_id().clone(), c.uuid))
-                    .collect();
-                webauthn
-                    .start_passkey_authentication(&pks)
-                    .map(|(chal, wan_state)| CredHandler::Passkey {
-                        c_wan: CredPasskey {
-                            chal,
-                            wan_state,
-                            state: CredVerifyState::Init,
-                        },
-                        cred_ids,
-                    })
-                    .map_err(|e| {
-                        security_info!(?e, "Unable to create webauthn authentication challenge");
-                        // maps to unit.
-                    })
-            }
-        }
-    }
-}
-
 impl CredHandler {
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
@@ -248,7 +165,7 @@ impl CredHandler {
     fn build_from_set_passkey(
         wan: impl Iterator<Item = (Uuid, PasskeyV4)>,
         webauthn: &Webauthn,
-    ) -> Result<Self, ()> {
+    ) -> Option<Self> {
         let mut pks = Vec::with_capacity(wan.size_hint().0);
         let mut cred_ids = BTreeMap::default();
 
@@ -258,8 +175,8 @@ impl CredHandler {
         }
 
         if pks.is_empty() {
-            security_info!("Account does not have any passkeys");
-            return Err(());
+            debug!("Account does not have any passkeys");
+            return None;
         };
 
         webauthn
@@ -279,13 +196,14 @@ impl CredHandler {
                 );
                 // maps to unit.
             })
+            .ok()
     }
 
     fn build_from_single_passkey(
         cred_id: Uuid,
         pk: PasskeyV4,
         webauthn: &Webauthn,
-    ) -> Result<Self, ()> {
+    ) -> Option<Self> {
         let cred_ids = btreemap!((pk.cred_id().clone(), cred_id));
         let pks = vec![pk];
 
@@ -306,16 +224,17 @@ impl CredHandler {
                 );
                 // maps to unit.
             })
+            .ok()
     }
 
     fn build_from_set_attested_pk(
         wan: &BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
         att_ca_list: &AttestationCaList,
         webauthn: &Webauthn,
-    ) -> Result<Self, ()> {
+    ) -> Option<Self> {
         if wan.is_empty() {
-            security_info!("Account does not have any attested passkeys");
-            return Err(());
+            debug!("Account does not have any attested passkeys");
+            return None;
         };
 
         let pks: Vec<_> = wan.values().map(|(_, k)| k).cloned().collect();
@@ -339,6 +258,7 @@ impl CredHandler {
                 );
                 // maps to unit.
             })
+            .ok()
     }
 
     fn build_from_single_attested_pk(
@@ -346,7 +266,7 @@ impl CredHandler {
         pk: &AttestedPasskeyV4,
         att_ca_list: &AttestationCaList,
         webauthn: &Webauthn,
-    ) -> Result<Self, ()> {
+    ) -> Option<Self> {
         let creds = btreemap!((pk.clone(), cred_id));
         let pks = vec![pk.clone()];
 
@@ -368,6 +288,100 @@ impl CredHandler {
                 );
                 // maps to unit.
             })
+            .ok()
+    }
+
+    fn build_from_password_totp(cred: &Credential) -> Option<Self> {
+        match &cred.type_ {
+            CredentialType::PasswordMfa(pw, maybe_totp, _, _) => {
+                if maybe_totp.is_empty() {
+                    None
+                } else {
+                    let cmfa = CredTotp {
+                        pw: pw.clone(),
+                        pw_state: CredVerifyState::Init,
+                        totp: maybe_totp
+                            .iter()
+                            .map(|(l, t)| (l.clone(), t.clone()))
+                            .collect(),
+                        mfa_state: CredVerifyState::Init,
+                    };
+
+                    Some(CredHandler::PasswordTotp {
+                        cmfa,
+                        cred_id: cred.uuid,
+                    })
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn build_from_password_backup_code(cred: &Credential) -> Option<Self> {
+        match &cred.type_ {
+            CredentialType::PasswordMfa(pw, _, _, Some(backup_code)) => {
+                let cmfa = CredBackupCode {
+                    pw: pw.clone(),
+                    pw_state: CredVerifyState::Init,
+                    backup_code: backup_code.clone(),
+                    mfa_state: CredVerifyState::Init,
+                };
+
+                Some(CredHandler::PasswordBackupCode {
+                    cmfa,
+                    cred_id: cred.uuid,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    fn build_from_password_security_key(cred: &Credential, webauthn: &Webauthn) -> Option<Self> {
+        match &cred.type_ {
+            CredentialType::PasswordMfa(pw, _, maybe_wan, _) => {
+                if !maybe_wan.is_empty() {
+                    let sks: Vec<_> = maybe_wan.values().cloned().collect();
+                    let (chal, ska) = webauthn
+                        .start_securitykey_authentication(&sks)
+                        .map_err(|err| {
+                            warn!(?err, "Unable to create webauthn authentication challenge")
+                        })
+                        .ok()?;
+
+                    let cmfa = CredSecurityKey {
+                        pw: pw.clone(),
+                        pw_state: CredVerifyState::Init,
+                        ska,
+                        chal,
+                        mfa_state: CredVerifyState::Init,
+                    };
+
+                    Some(CredHandler::PasswordSecurityKey {
+                        cmfa,
+                        cred_id: cred.uuid,
+                    })
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    fn build_from_password_only(cred: &Credential) -> Option<Self> {
+        match &cred.type_ {
+            CredentialType::Password(pw) => Some(CredHandler::Password {
+                pw: pw.clone(),
+                generated: false,
+                cred_id: cred.uuid,
+            }),
+            CredentialType::GeneratedPassword(pw) => Some(CredHandler::Password {
+                pw: pw.clone(),
+                generated: true,
+                cred_id: cred.uuid,
+            }),
+            _ => None,
+        }
     }
 
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
@@ -458,11 +472,104 @@ impl CredHandler {
     /// Proceed with the next step in a multifactor authentication, based on the current
     /// verification results and state. If this logic of this statemachine is violated, the
     /// authentication will fail.
-    fn validate_password_mfa(
+    fn validate_password_totp(
         cred: &AuthCredential,
         cred_id: Uuid,
         ts: Duration,
-        pw_mfa: &mut CredMfa,
+        pw_mfa: &mut CredTotp,
+        who: Uuid,
+        async_tx: &Sender<DelayedAction>,
+        pw_badlist_set: &HashSet<String>,
+    ) -> CredState {
+        match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
+            (CredVerifyState::Init, CredVerifyState::Init) => {
+                // MFA first
+                match cred {
+                    AuthCredential::Totp(totp_chal) => {
+                        // So long as one totp matches, success. Log which token was used.
+                        // We don't need to worry about the empty case since none will match and we
+                        // will get the failure.
+                        if let Some(label) = pw_mfa
+                            .totp
+                            .iter()
+                            .find(|(_, t)| t.verify(*totp_chal, ts))
+                            .map(|(l, _)| l)
+                        {
+                            pw_mfa.mfa_state = CredVerifyState::Success;
+                            security_info!(
+                                "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
+                            );
+                            CredState::Continue(Box::new(NonEmpty {
+                                head: AuthAllowed::Password,
+                                tail: Vec::with_capacity(0),
+                            }))
+                        } else {
+                            pw_mfa.mfa_state = CredVerifyState::Fail;
+                            security_error!(
+                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
+                            );
+                            CredState::Denied(BAD_TOTP_MSG)
+                        }
+                    }
+                    _ => {
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
+                }
+            }
+            (CredVerifyState::Success, CredVerifyState::Init) => {
+                // PW second.
+                match cred {
+                    AuthCredential::Password(cleartext) => {
+                        if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
+                            if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                                pw_mfa.pw_state = CredVerifyState::Fail;
+                                security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
+                                CredState::Denied(PW_BADLIST_MSG)
+                            } else {
+                                pw_mfa.pw_state = CredVerifyState::Success;
+                                security_info!("Handler::PasswordMfa -> Result::Success - TOTP OK, password OK");
+                                Self::maybe_pw_upgrade(
+                                    &pw_mfa.pw,
+                                    who,
+                                    cleartext.as_str(),
+                                    async_tx,
+                                );
+                                CredState::Success {
+                                    auth_type: AuthType::PasswordTotp,
+                                    cred_id,
+                                }
+                            }
+                        } else {
+                            pw_mfa.pw_state = CredVerifyState::Fail;
+                            security_error!(
+                                "Handler::PasswordMfa -> Result::Denied - TOTP OK, password Fail"
+                            );
+                            CredState::Denied(BAD_PASSWORD_MSG)
+                        }
+                    }
+                    _ => {
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
+                }
+            }
+            _ => {
+                security_error!(
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
+                );
+                CredState::Denied(BAD_AUTH_TYPE_MSG)
+            }
+        }
+    } // end CredHandler::PasswordTotp
+
+    /// Proceed with the next step in a multifactor authentication, based on the current
+    /// verification results and state. If this logic of this statemachine is violated, the
+    /// authentication will fail.
+    fn validate_password_security_key(
+        cred: &AuthCredential,
+        cred_id: Uuid,
+        pw_mfa: &mut CredSecurityKey,
         webauthn: &Webauthn,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
@@ -471,14 +578,9 @@ impl CredHandler {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
                 // MFA first
-                match (
-                    cred,
-                    !pw_mfa.totp.is_empty(),
-                    pw_mfa.wan.as_ref(),
-                    pw_mfa.backup_code.as_ref(),
-                ) {
-                    (AuthCredential::SecurityKey(resp), _, Some((_, wan_state)), _) => {
-                        match webauthn.finish_securitykey_authentication(resp, wan_state) {
+                match cred {
+                    AuthCredential::SecurityKey(resp) => {
+                        match webauthn.finish_securitykey_authentication(resp, &pw_mfa.ska) {
                             Ok(auth_result) => {
                                 pw_mfa.mfa_state = CredVerifyState::Success;
                                 // Success. Determine if we need to update the counter
@@ -512,34 +614,73 @@ impl CredHandler {
                             }
                         }
                     }
-                    (AuthCredential::Totp(totp_chal), true, _, _) => {
-                        // So long as one totp matches, success. Log which token was used.
-                        // We don't need to worry about the empty case since none will match and we
-                        // will get the failure.
-                        if let Some(label) = pw_mfa
-                            .totp
-                            .iter()
-                            .find(|(_, t)| t.verify(*totp_chal, ts))
-                            .map(|(l, _)| l)
-                        {
-                            pw_mfa.mfa_state = CredVerifyState::Success;
-                            security_info!(
-                                "Handler::PasswordMfa -> Result::Continue - TOTP ({}) OK, password -", label
-                            );
-                            CredState::Continue(Box::new(NonEmpty {
-                                head: AuthAllowed::Password,
-                                tail: Vec::with_capacity(0),
-                            }))
+                    _ => {
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
+                }
+            }
+            (CredVerifyState::Success, CredVerifyState::Init) => {
+                // PW second.
+                match cred {
+                    AuthCredential::Password(cleartext) => {
+                        if pw_mfa.pw.verify(cleartext.as_str()).unwrap_or(false) {
+                            if pw_badlist_set.contains(&cleartext.to_lowercase()) {
+                                pw_mfa.pw_state = CredVerifyState::Fail;
+                                security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
+                                CredState::Denied(PW_BADLIST_MSG)
+                            } else {
+                                pw_mfa.pw_state = CredVerifyState::Success;
+                                security_info!("Handler::PasswordMfa -> Result::Success - SecurityKey OK, password OK");
+                                Self::maybe_pw_upgrade(
+                                    &pw_mfa.pw,
+                                    who,
+                                    cleartext.as_str(),
+                                    async_tx,
+                                );
+                                CredState::Success {
+                                    auth_type: AuthType::PasswordSecurityKey,
+                                    cred_id,
+                                }
+                            }
                         } else {
-                            pw_mfa.mfa_state = CredVerifyState::Fail;
-                            security_error!(
-                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
-                            );
-                            CredState::Denied(BAD_TOTP_MSG)
+                            pw_mfa.pw_state = CredVerifyState::Fail;
+                            security_error!("Handler::PasswordMfa -> Result::Denied - SecurityKey OK, password Fail");
+                            CredState::Denied(BAD_PASSWORD_MSG)
                         }
                     }
-                    (AuthCredential::BackupCode(code_chal), _, _, Some(backup_codes)) => {
-                        if backup_codes.verify(code_chal) {
+                    _ => {
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        CredState::Denied(BAD_AUTH_TYPE_MSG)
+                    }
+                }
+            }
+            _ => {
+                security_error!(
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
+                );
+                CredState::Denied(BAD_AUTH_TYPE_MSG)
+            }
+        }
+    }
+
+    /// Proceed with the next step in a multifactor authentication, based on the current
+    /// verification results and state. If this logic of this statemachine is violated, the
+    /// authentication will fail.
+    fn validate_password_backup_code(
+        cred: &AuthCredential,
+        cred_id: Uuid,
+        pw_mfa: &mut CredBackupCode,
+        who: Uuid,
+        async_tx: &Sender<DelayedAction>,
+        pw_badlist_set: &HashSet<String>,
+    ) -> CredState {
+        match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
+            (CredVerifyState::Init, CredVerifyState::Init) => {
+                // MFA first
+                match cred {
+                    AuthCredential::BackupCode(code_chal) => {
+                        if pw_mfa.backup_code.verify(code_chal) {
                             if let Err(_e) =
                                 async_tx.send(DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
                                     target_uuid: who,
@@ -579,7 +720,7 @@ impl CredHandler {
                                 CredState::Denied(PW_BADLIST_MSG)
                             } else {
                                 pw_mfa.pw_state = CredVerifyState::Success;
-                                security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
+                                security_info!("Handler::PasswordMfa -> Result::Success - BackupCode OK, password OK");
                                 Self::maybe_pw_upgrade(
                                     &pw_mfa.pw,
                                     who,
@@ -587,13 +728,13 @@ impl CredHandler {
                                     async_tx,
                                 );
                                 CredState::Success {
-                                    auth_type: AuthType::PasswordMfa,
+                                    auth_type: AuthType::PasswordBackupCode,
                                     cred_id,
                                 }
                             }
                         } else {
                             pw_mfa.pw_state = CredVerifyState::Fail;
-                            security_error!("Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail");
+                            security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode OK, password Fail");
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
                     }
@@ -605,14 +746,12 @@ impl CredHandler {
             }
             _ => {
                 security_error!(
-                    "Handler::PasswordMfa -> Result::lenied - invalid credential mfa and pw state"
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
         }
     }
-
-    // end CredHandler::PasswordMfa
 
     /// Validate a webauthn authentication attempt
     pub fn validate_passkey(
@@ -781,13 +920,35 @@ impl CredHandler {
                 async_tx,
                 pw_badlist_set,
             ),
-            CredHandler::PasswordMfa {
+            CredHandler::PasswordTotp {
                 ref mut cmfa,
                 cred_id,
-            } => Self::validate_password_mfa(
+            } => Self::validate_password_totp(
                 cred,
                 *cred_id,
                 ts,
+                cmfa,
+                who,
+                async_tx,
+                pw_badlist_set,
+            ),
+            CredHandler::PasswordBackupCode {
+                ref mut cmfa,
+                cred_id,
+            } => Self::validate_password_backup_code(
+                cred,
+                *cred_id,
+                cmfa,
+                who,
+                async_tx,
+                pw_badlist_set,
+            ),
+            CredHandler::PasswordSecurityKey {
+                ref mut cmfa,
+                cred_id,
+            } => Self::validate_password_security_key(
+                cred,
+                *cred_id,
                 cmfa,
                 webauthn,
                 who,
@@ -820,21 +981,12 @@ impl CredHandler {
         match &self {
             CredHandler::Anonymous { .. } => vec![AuthAllowed::Anonymous],
             CredHandler::Password { .. } => vec![AuthAllowed::Password],
-            CredHandler::PasswordMfa { ref cmfa, .. } => cmfa
-                .backup_code
-                .iter()
-                .map(|_| AuthAllowed::BackupCode)
-                // This looks weird but the idea is that if at least *one*
-                // totp exists, then we only offer TOTP once. If none are
-                // there we offer it none.
-                .chain(cmfa.totp.iter().next().map(|_| AuthAllowed::Totp))
-                // This iter is over an option so it's there or not.
-                .chain(
-                    cmfa.wan
-                        .iter()
-                        .map(|(chal, _)| AuthAllowed::SecurityKey(chal.clone())),
-                )
-                .collect(),
+            CredHandler::PasswordTotp { .. } => vec![AuthAllowed::Totp],
+            CredHandler::PasswordBackupCode { .. } => vec![AuthAllowed::BackupCode],
+
+            CredHandler::PasswordSecurityKey { ref cmfa, .. } => {
+                vec![AuthAllowed::SecurityKey(cmfa.chal.clone())]
+            }
             CredHandler::Passkey { c_wan, .. } => vec![AuthAllowed::Passkey(c_wan.chal.clone())],
             CredHandler::AttestedPasskey { c_wan, .. } => {
                 vec![AuthAllowed::Passkey(c_wan.chal.clone())]
@@ -847,7 +999,9 @@ impl CredHandler {
         match (self, mech) {
             (CredHandler::Anonymous { .. }, AuthMech::Anonymous)
             | (CredHandler::Password { .. }, AuthMech::Password)
-            | (CredHandler::PasswordMfa { .. }, AuthMech::PasswordMfa)
+            | (CredHandler::PasswordTotp { .. }, AuthMech::PasswordTotp)
+            | (CredHandler::PasswordBackupCode { .. }, AuthMech::PasswordBackupCode)
+            | (CredHandler::PasswordSecurityKey { .. }, AuthMech::PasswordSecurityKey)
             | (CredHandler::Passkey { .. }, AuthMech::Passkey)
             | (CredHandler::AttestedPasskey { .. }, AuthMech::Passkey) => true,
             (_, _) => false,
@@ -858,7 +1012,9 @@ impl CredHandler {
         match self {
             CredHandler::Anonymous { .. } => AuthMech::Anonymous,
             CredHandler::Password { .. } => AuthMech::Password,
-            CredHandler::PasswordMfa { .. } => AuthMech::PasswordMfa,
+            CredHandler::PasswordTotp { .. } => AuthMech::PasswordTotp,
+            CredHandler::PasswordBackupCode { .. } => AuthMech::PasswordBackupCode,
+            CredHandler::PasswordSecurityKey { .. } => AuthMech::PasswordSecurityKey,
             CredHandler::Passkey { .. } => AuthMech::Passkey,
             CredHandler::AttestedPasskey { .. } => AuthMech::Passkey,
         }
@@ -956,8 +1112,7 @@ impl AuthSession {
                     tail: Vec::with_capacity(0),
                 })
             } else {
-                // What's valid to use in this context?
-                let mut handlers = Vec::with_capacity(0);
+                let mut handlers = Vec::with_capacity(4);
 
                 // TODO: We can't yet fully enforce account policy on auth, there is a bit of work
                 // to do to be able to check for pw / mfa etc.
@@ -966,18 +1121,34 @@ impl AuthSession {
                 // let cred_type_min = asd.account_policy.credential_policy();
 
                 if let Some(cred) = &asd.account.primary {
-                    if let Ok(ch) = CredHandler::try_from((cred, asd.webauthn)) {
+                    // Is it a pw-only credential?
+                    if let Some(ch) = CredHandler::build_from_password_totp(cred) {
                         handlers.push(ch);
-                    } else {
-                        security_critical!(
-                            "corrupt credentials, unable to start primary credhandler"
-                        );
+                    }
+
+                    if let Some(ch) = CredHandler::build_from_password_backup_code(cred) {
+                        handlers.push(ch);
+                    }
+
+                    if let Some(ch) =
+                        CredHandler::build_from_password_security_key(cred, asd.webauthn)
+                    {
+                        handlers.push(ch);
+                    }
+
+                    if handlers.is_empty() {
+                        // No MFA types were setup, allow the PW only to proceed then.
+                        if let Some(ch) = CredHandler::build_from_password_only(cred) {
+                            handlers.push(ch);
+                        }
                     }
                 }
 
+                trace!(?handlers);
+
                 // Important - if attested is present, don't use passkeys
                 if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
-                    if let Ok(ch) = CredHandler::build_from_set_attested_pk(
+                    if let Some(ch) = CredHandler::build_from_set_attested_pk(
                         &asd.account.attested_passkeys,
                         att_ca_list,
                         asd.webauthn,
@@ -997,7 +1168,7 @@ impl AuthSession {
                                 .map(|(u, (_, pk))| (*u, pk.into())),
                         );
 
-                    if let Ok(ch) =
+                    if let Some(ch) =
                         CredHandler::build_from_set_passkey(credential_iter, asd.webauthn)
                     {
                         handlers.push(ch);
@@ -1061,80 +1232,90 @@ impl AuthSession {
         }
 
         let state = if asd.account.is_within_valid_time(asd.ct) {
-            // Get the credential that matches this cred_id.
-            //
-            // To make this work "cleanly" we can't really nest a bunch of if
-            // statements like if primary and if primary.cred_id because the logic will
-            // just be chaos. So for now we build this as a mut option.
-            //
-            // Do we need to double check for anon here? I don't think so since the
-            // anon cred_id won't ever exist on an account.
+            // Get the credential that matches this cred_id and auth type used in the
+            // initial authentication.
 
             // We can't yet fully enforce account policy on auth, there is a bit of work
             // to do to be able to check the credential types match what we expect.
 
             let mut cred_handler = None;
 
-            if let Some(primary) = asd.account.primary.as_ref() {
-                if primary.uuid == cred_id {
-                    if let Ok(ch) = CredHandler::try_from((primary, asd.webauthn)) {
-                        // Update it.
-                        debug_assert!(cred_handler.is_none());
-                        cred_handler = Some(ch);
-                    } else {
-                        security_critical!(
-                            "corrupt credentials, unable to start primary credhandler"
-                        );
+            match session.type_ {
+                AuthType::Password
+                | AuthType::GeneratedPassword
+                // If a backup code was used, since the code was scrubbed at use we need to
+                // fall back to the password of the account instead.
+                | AuthType::PasswordBackupCode => {
+                    if let Some(primary) = asd.account.primary.as_ref() {
+                        if primary.uuid == cred_id {
+                            cred_handler = CredHandler::build_from_password_only(primary)
+                        }
                     }
                 }
-            }
+                AuthType::PasswordTotp => {
+                    if let Some(primary) = asd.account.primary.as_ref() {
+                        if primary.uuid == cred_id {
+                            cred_handler = CredHandler::build_from_password_totp(primary)
+                        }
+                    }
+                }
+                AuthType::PasswordSecurityKey => {
+                    if let Some(primary) = asd.account.primary.as_ref() {
+                        if primary.uuid == cred_id {
+                            cred_handler =
+                                CredHandler::build_from_password_security_key(primary, asd.webauthn)
+                        }
+                    }
+                }
+                AuthType::Passkey => {
+                    // Scan both attested and passkeys for the possible credential.
+                    let maybe_pk: Option<PasskeyV4> = asd
+                        .account
+                        .attested_passkeys
+                        .get(&cred_id)
+                        .map(|(_, apk)| apk.into())
+                        .or_else(|| asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk.clone()));
 
-            // Do we have an attestation ca list? If so, we only accept attested
-            // passkeys.
-            if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
-                if let Some(pk) = asd
-                    .account
-                    .attested_passkeys
-                    .get(&cred_id)
-                    .map(|(_, pk)| pk)
-                {
-                    if let Ok(ch) = CredHandler::build_from_single_attested_pk(
-                        cred_id,
-                        pk,
-                        att_ca_list,
-                        asd.webauthn,
-                    ) {
-                        // Update it.
-                        debug_assert!(cred_handler.is_none());
-                        cred_handler = Some(ch);
-                    } else {
-                        security_critical!(
+                    if let Some(pk) = maybe_pk {
+                        if let Some(ch) =
+                            CredHandler::build_from_single_passkey(cred_id, pk, asd.webauthn)
+                        {
+                            // Update it.
+                            debug_assert!(cred_handler.is_none());
+                            cred_handler = Some(ch);
+                        } else {
+                            security_critical!(
+                                "corrupt credentials, unable to start passkey credhandler"
+                            );
+                        }
+                    }
+                }
+                AuthType::AttestedPasskey => {
+                    if let Some(att_ca_list) = asd.account_policy.webauthn_attestation_ca_list() {
+                        if let Some(pk) = asd
+                            .account
+                            .attested_passkeys
+                            .get(&cred_id)
+                            .map(|(_, pk)| pk)
+                        {
+                            if let Some(ch) = CredHandler::build_from_single_attested_pk(
+                                cred_id,
+                                pk,
+                                att_ca_list,
+                                asd.webauthn,
+                            ) {
+                                // Update it.
+                                debug_assert!(cred_handler.is_none());
+                                cred_handler = Some(ch);
+                            } else {
+                                security_critical!(
                             "corrupt credentials, unable to start attested passkey credhandler"
                         );
+                            }
+                        }
                     }
                 }
-            } else {
-                // Scan both attested and passkeys for the possible credential.
-                let maybe_pk: Option<PasskeyV4> = asd
-                    .account
-                    .attested_passkeys
-                    .get(&cred_id)
-                    .map(|(_, apk)| apk.into())
-                    .or_else(|| asd.account.passkeys.get(&cred_id).map(|(_, pk)| pk.clone()));
-
-                if let Some(pk) = maybe_pk {
-                    if let Ok(ch) =
-                        CredHandler::build_from_single_passkey(cred_id, pk, asd.webauthn)
-                    {
-                        // Update it.
-                        debug_assert!(cred_handler.is_none());
-                        cred_handler = Some(ch);
-                    } else {
-                        security_critical!(
-                            "corrupt credentials, unable to start passkey credhandler"
-                        );
-                    }
-                }
+                AuthType::Anonymous => {}
             }
 
             // Did anything get set-up?
@@ -1189,14 +1370,17 @@ impl AuthSession {
         }
     }
 
-    // This is used for softlock identification only.
+    /// If the credential class can be softlocked, retrieve the credential ID. This is
+    /// only used when a credential requires softlocking.
     pub fn get_credential_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         match &self.state {
             AuthSessionState::InProgress(CredHandler::Password { cred_id, .. })
-            | AuthSessionState::InProgress(CredHandler::PasswordMfa { cred_id, .. }) => {
+            | AuthSessionState::InProgress(CredHandler::PasswordTotp { cred_id, .. })
+            | AuthSessionState::InProgress(CredHandler::PasswordBackupCode { cred_id, .. }) => {
                 Ok(Some(*cred_id))
             }
             AuthSessionState::InProgress(CredHandler::Anonymous { .. })
+            | AuthSessionState::InProgress(CredHandler::PasswordSecurityKey { .. })
             | AuthSessionState::InProgress(CredHandler::Passkey { .. })
             | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
             _ => Err(OperationError::InvalidState),
@@ -1377,7 +1561,9 @@ impl AuthSession {
                     AuthType::Anonymous => SessionScope::ReadOnly,
                     AuthType::GeneratedPassword => SessionScope::ReadWrite,
                     AuthType::Password
-                    | AuthType::PasswordMfa
+                    | AuthType::PasswordTotp
+                    | AuthType::PasswordBackupCode
+                    | AuthType::PasswordSecurityKey
                     | AuthType::Passkey
                     | AuthType::AttestedPasskey => {
                         if privileged {
@@ -1413,7 +1599,9 @@ impl AuthSession {
                     }
                     AuthType::Password
                     | AuthType::GeneratedPassword
-                    | AuthType::PasswordMfa
+                    | AuthType::PasswordTotp
+                    | AuthType::PasswordBackupCode
+                    | AuthType::PasswordSecurityKey
                     | AuthType::Passkey
                     | AuthType::AttestedPasskey => {
                         trace!("⚠️   Queued AuthSessionRecord for {}", self.account.uuid);
@@ -1426,6 +1614,7 @@ impl AuthSession {
                             issued_at: uat.issued_at,
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
+                            type_: *auth_type,
                         }))
                         .map_err(|e| {
                             debug!(?e, "queue failure");
@@ -1449,7 +1638,9 @@ impl AuthSession {
                         return Err(OperationError::InvalidState);
                     }
                     AuthType::Password
-                    | AuthType::PasswordMfa
+                    | AuthType::PasswordTotp
+                    | AuthType::PasswordBackupCode
+                    | AuthType::PasswordSecurityKey
                     | AuthType::Passkey
                     | AuthType::AttestedPasskey => SessionScope::PrivilegeCapable,
                 };
@@ -1502,6 +1693,7 @@ mod tests {
     use tokio::sync::mpsc::unbounded_channel as unbounded;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::WebauthnAuthenticator;
+    use webauthn_rs::prelude::{RequestChallengeResponse, Webauthn};
 
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{BackupCodes, Credential};
@@ -1755,65 +1947,129 @@ mod tests {
         assert!(audit_rx.blocking_recv().is_none());
     }
 
-    macro_rules! start_password_mfa_session {
-        (
-            $account:expr,
-            $webauthn:expr
-        ) => {{
-            let asd = AuthSessionData {
-                account: $account.clone(),
-                account_policy: ResolvedAccountPolicy::default(),
-                issue: AuthIssueSession::Token,
-                webauthn: $webauthn,
-                ct: duration_from_epoch_now(),
-                client_auth_info: Source::Internal.into(),
-            };
-            let key_object = KeyObjectInternal::new_test();
-            let (session, state) = AuthSession::new(asd, false, key_object);
-            let mut session = session.expect("Session was unable to be created.");
+    fn start_password_totp_session(
+        account: &Account,
+        webauthn: &Webauthn,
+    ) -> (AuthSession, HashSet<String>) {
+        let asd = AuthSessionData {
+            account: account.clone(),
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: webauthn,
+            ct: duration_from_epoch_now(),
+            client_auth_info: Source::Internal.into(),
+        };
+        let key_object = KeyObjectInternal::new_test();
+        let (session, state) = AuthSession::new(asd, false, key_object);
+        let mut session = session.expect("Session was unable to be created.");
 
-            if let AuthState::Choose(auth_mechs) = state {
-                assert!(auth_mechs
-                    .iter()
-                    .any(|x| matches!(x, AuthMech::PasswordMfa)))
-            } else {
-                panic!();
-            }
+        if let AuthState::Choose(auth_mechs) = state {
+            assert!(auth_mechs
+                .iter()
+                .any(|x| matches!(x, AuthMech::PasswordTotp)))
+        } else {
+            panic!();
+        }
 
-            let state = session
-                .start_session(&AuthMech::PasswordMfa)
-                .expect("Failed to select anonymous mech.");
+        let state = session
+            .start_session(&AuthMech::PasswordTotp)
+            .expect("Failed to select password totp mech.");
 
-            let mut rchal = None;
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(auth_mechs.iter().fold(false, |acc, x| match x {
+                AuthAllowed::Totp => true,
+                _ => acc,
+            }));
+        } else {
+            panic!("Invalid auth state")
+        }
 
-            if let AuthState::Continue(auth_mechs) = state {
-                assert!(
-                    true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        // TODO: How to return webauthn chal?
-                        AuthAllowed::SecurityKey(chal) => {
-                            rchal = Some(chal.clone());
-                            true
-                        }
-                        // Why does this also return `true`? If we hit this but not
-                        // Webauthn, then we will panic when unwrapping `rchal` later...
-                        AuthAllowed::Totp => true,
-                        _ => acc,
-                    })
-                );
+        (session, create_pw_badlist_cache())
+    }
 
-                // I feel like this is what we should be doing
-                // assuming there will only be one `AuthAllowed::Webauthn`.
-                // rchal = auth_mechs.iter().find_map(|x| match x {
-                //     AuthAllowed::Webauthn(chal) => Some(chal),
-                //     _ => None,
-                // });
-                // assert!(rchal.is_some());
-            } else {
-                panic!("Invalid auth state")
-            }
+    fn start_password_sk_session(
+        account: &Account,
+        webauthn: &Webauthn,
+    ) -> (AuthSession, RequestChallengeResponse, HashSet<String>) {
+        let asd = AuthSessionData {
+            account: account.clone(),
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: webauthn,
+            ct: duration_from_epoch_now(),
+            client_auth_info: Source::Internal.into(),
+        };
+        let key_object = KeyObjectInternal::new_test();
+        let (session, state) = AuthSession::new(asd, false, key_object);
+        let mut session = session.expect("Session was unable to be created.");
 
-            (session, rchal, create_pw_badlist_cache())
-        }};
+        if let AuthState::Choose(auth_mechs) = state {
+            assert!(auth_mechs
+                .iter()
+                .any(|x| matches!(x, AuthMech::PasswordSecurityKey)))
+        } else {
+            panic!();
+        }
+
+        let state = session
+            .start_session(&AuthMech::PasswordSecurityKey)
+            .expect("Failed to select password security key mech.");
+
+        let mut rchal = None;
+
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(auth_mechs.iter().fold(false, |acc, x| match x {
+                AuthAllowed::SecurityKey(chal) => {
+                    rchal = Some(chal.clone());
+                    true
+                }
+                _ => acc,
+            }));
+        } else {
+            panic!("Invalid auth state")
+        }
+
+        (session, rchal.unwrap(), create_pw_badlist_cache())
+    }
+
+    fn start_password_bc_session(
+        account: &Account,
+        webauthn: &Webauthn,
+    ) -> (AuthSession, HashSet<String>) {
+        let asd = AuthSessionData {
+            account: account.clone(),
+            account_policy: ResolvedAccountPolicy::default(),
+            issue: AuthIssueSession::Token,
+            webauthn: webauthn,
+            ct: duration_from_epoch_now(),
+            client_auth_info: Source::Internal.into(),
+        };
+        let key_object = KeyObjectInternal::new_test();
+        let (session, state) = AuthSession::new(asd, false, key_object);
+        let mut session = session.expect("Session was unable to be created.");
+
+        if let AuthState::Choose(auth_mechs) = state {
+            assert!(auth_mechs
+                .iter()
+                .any(|x| matches!(x, AuthMech::PasswordBackupCode)))
+        } else {
+            panic!();
+        }
+
+        let state = session
+            .start_session(&AuthMech::PasswordBackupCode)
+            .expect("Failed to select password backup code mech.");
+
+        if let AuthState::Continue(auth_mechs) = state {
+            assert!(auth_mechs.iter().fold(false, |acc, x| match x {
+                AuthAllowed::BackupCode => true,
+                _ => acc,
+            }));
+        } else {
+            panic!("Invalid auth state")
+        }
+
+        (session, create_pw_badlist_cache())
     }
 
     #[test]
@@ -1854,8 +2110,7 @@ mod tests {
 
         // check send anon (fail)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Anonymous,
@@ -1879,8 +2134,7 @@ mod tests {
 
         // Sending a PW first is an immediate fail.
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
@@ -1901,8 +2155,7 @@ mod tests {
         }
         // check send bad totp, should fail immediate
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_bad),
@@ -1925,8 +2178,7 @@ mod tests {
         // check send good totp, should continue
         //      then bad pw, fail pw
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -1960,8 +2212,7 @@ mod tests {
         // check send good totp, should continue
         //      then good pw, success
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -2034,8 +2285,7 @@ mod tests {
         // check send good totp, should continue
         //      then badlist pw, failed
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -2351,8 +2601,7 @@ mod tests {
 
         // check pw first (fail)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, _, pw_badlist_cache) = start_password_sk_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
@@ -2374,8 +2623,7 @@ mod tests {
 
         // Check totp first attempt fails.
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, _, pw_badlist_cache) = start_password_sk_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(0),
@@ -2400,10 +2648,8 @@ mod tests {
         // extensively tested.
         {
             let (_session, inv_chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let (mut session, _chal, _) = start_password_mfa_session!(account, &webauthn);
-
-            let inv_chal = inv_chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
+            let (mut session, _chal, _) = start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
@@ -2432,8 +2678,7 @@ mod tests {
         // check good webauthn/bad pw (fail)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let chal = chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
@@ -2478,8 +2723,7 @@ mod tests {
         // Check good webauthn/good pw (pass)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let chal = chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
@@ -2561,8 +2805,7 @@ mod tests {
 
         // check pw first (fail)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
@@ -2584,8 +2827,7 @@ mod tests {
 
         // Check bad totp (fail)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_bad),
@@ -2608,10 +2850,8 @@ mod tests {
         // check bad webauthn (fail)
         {
             let (_session, inv_chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let (mut session, _chal, _) = start_password_mfa_session!(account, &webauthn);
-
-            let inv_chal = inv_chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
+            let (mut session, _chal, _) = start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 // HERE -> we use inv_chal instead.
@@ -2640,8 +2880,7 @@ mod tests {
         // check good webauthn/bad pw (fail)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let chal = chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
@@ -2685,8 +2924,7 @@ mod tests {
 
         // check good totp/bad pw (fail)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -2719,8 +2957,7 @@ mod tests {
 
         // check good totp/good pw (pass)
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -2754,8 +2991,7 @@ mod tests {
         // Check good webauthn/good pw (pass)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
-            let chal = chal.unwrap();
+                start_password_sk_session(&account, &webauthn);
 
             let resp = wa
                 .do_authentication(webauthn.get_allowed_origins()[0].clone(), chal)
@@ -2848,8 +3084,7 @@ mod tests {
 
         // Sending a PW first is an immediate fail.
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_bc_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Password(pw_bad.to_string()),
@@ -2870,8 +3105,7 @@ mod tests {
         }
         // check send wrong backup code, should fail immediate
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_bc_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_bad),
@@ -2893,8 +3127,7 @@ mod tests {
         // check send good backup code, should continue
         //      then bad pw, fail pw
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_bc_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_good.clone()),
@@ -2933,8 +3166,7 @@ mod tests {
         // check send good backup code, should continue
         //      then good pw, success
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_bc_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::BackupCode(backup_code_good),
@@ -2975,8 +3207,7 @@ mod tests {
         // check send good TOTP, should continue
         //      then good pw, success
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good),
@@ -3055,8 +3286,7 @@ mod tests {
 
         // Test totp_a
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good_a),
@@ -3089,8 +3319,7 @@ mod tests {
 
         // Test totp_b
         {
-            let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(account, &webauthn);
+            let (mut session, pw_badlist_cache) = start_password_totp_session(&account, &webauthn);
 
             match session.validate_creds(
                 &AuthCredential::Totp(totp_good_b),
