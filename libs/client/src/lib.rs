@@ -1316,7 +1316,7 @@ impl KanidmClient {
         };
 
         if !mechs.contains(&AuthMech::PasswordBackupCode) {
-            debug!("PasswordMfa mech not presented");
+            debug!("PasswordBackupCode mech not presented");
             return Err(ClientError::AuthenticationFailed);
         }
 

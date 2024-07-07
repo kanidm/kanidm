@@ -1,10 +1,10 @@
 
 function asskey_login(target) {
-    var credentialRequestOptions = JSON.parse(document.getElementById('data').textContent);
-        credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
-        credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
-            listItem.id = Base64.toUint8Array(listItem.id)
-        });
+    let credentialRequestOptions = JSON.parse(document.getElementById('data').textContent);
+    credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
+    credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
+        listItem.id = Base64.toUint8Array(listItem.id)
+    });
 
     navigator.credentials.get({ publicKey: credentialRequestOptions.publicKey })
     .then((assertion) => {
@@ -42,12 +42,12 @@ try {
     myButton.addEventListener("click", () => {
         asskey_login('/ui/api/login_passkey');
     });
-} catch (error) {};
+} catch (_error) {};
 
 try {
     const myButton = document.getElementById("start-seckey-button");
     myButton.addEventListener("click", () => {
         asskey_login('/ui/api/login_seckey');
     });
-} catch (error) {};
+} catch (_error) {};
 

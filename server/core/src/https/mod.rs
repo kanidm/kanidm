@@ -79,7 +79,7 @@ pub struct ServerState {
 }
 
 impl ServerState {
-    /// Deserialize some input string validating that it was signed by our instances
+    /// Deserialize some input string validating that it was signed by our instance's
     /// HMAC signer. This is used for short lived server-only sessions and context
     /// data. This has applications in both accessing cookie content and header content.
     fn deserialise_from_str<T: DeserializeOwned>(&self, input: &str) -> Option<T> {
