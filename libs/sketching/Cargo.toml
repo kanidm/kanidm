@@ -17,7 +17,7 @@ test = false
 doctest = false
 
 [dependencies]
-gethostname = "0.4.3"
+gethostname = "0.5.0"
 num_enum = { workspace = true }
 opentelemetry = { workspace = true, features = ["metrics", "rt-tokio"] }
 opentelemetry-otlp = { workspace = true, default-features = false, features = [

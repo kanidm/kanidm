@@ -144,7 +144,7 @@ anyhow = { version = "1.0.86" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde"] }
 async-recursion = "1.1.0"
-async-trait = "^0.1.78"
+async-trait = "^0.1.81"
 axum = { version = "0.7.5", features = [
     "form",
     "json",
@@ -186,8 +186,8 @@ gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "1.1.0"
-hyper = { version = "1.3.1", features = ["server", "client"] }
-hyper-util = { version = "0.1.5", features = ["server", "tokio"] }
+hyper = { version = "1.4.0", features = ["server", "client"] }
+hyper-util = { version = "0.1.6", features = ["server", "tokio"] }
 hyper-tls = "0.6.0"
 idlset = "^0.2.5"
 image = { version = "0.24.9", default-features = false, features = [
@@ -207,7 +207,7 @@ ldap3_proto = { version = "^0.5", features = ["serde"] }
 libc = "^0.2.153"
 libnss = "^0.4.0"
 libsqlite3-sys = "^0.25.2"
-lodepng = "3.10.1"
+lodepng = "3.10.2"
 lru = "^0.12.3"
 mathru = "^0.13.0"
 mimalloc = "0.1.43"
@@ -250,20 +250,20 @@ rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 
 scim_proto = "^0.2.2"
-sd-notify = "^0.4.1"
+sd-notify = "^0.4.2"
 selinux = "^0.4.3"
-serde = "^1.0.197"
+serde = "^1.0.204"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.119"
+serde_json = "^1.0.120"
 serde-wasm-bindgen = "0.5"
-serde_with = "3.7.0"
+serde_with = "3.8.3"
 sha2 = "0.10.8"
 shellexpand = "^2.1.2"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkey-attest = "^0.5.0"
 svg = "0.13.1"
-syn = { version = "2.0.68", features = ["full"] }
+syn = { version = "2.0.69", features = ["full"] }
 tempfile = "3.10.1"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
