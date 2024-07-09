@@ -1662,6 +1662,13 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to destroy user auth token");
 
+    // The session is revoked server side, but we can still call logout locally
+    // and on the 401 it will just clear the token.
+    rsclient
+        .logout()
+        .await
+        .expect("Failed to remove local token");
+
     // Since the session is revoked, check with the admin.
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
