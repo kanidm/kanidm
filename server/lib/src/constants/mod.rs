@@ -137,11 +137,6 @@ pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
 pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
 
-// The time that a token can be used before session
-// status is enforced. This needs to be longer than
-// replication delay/cycle.
-pub const GRACE_WINDOW: Duration = Duration::from_secs(300);
-
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
