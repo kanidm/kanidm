@@ -42,10 +42,10 @@ mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.18"
 mkdocstrings = "^0.25.1"
 mkdocstrings-python = "^1.10.5"
-pook = "^1.4.3"
+pook = "^2.0.0"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.0,<0.5.1"
+ruff = ">=0.5.1,<0.5.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
