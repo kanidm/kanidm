@@ -1,11 +1,13 @@
 //! Where we hide the error handling widgets
 //!
 
-use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use axum::http::{HeaderValue, StatusCode};
+use axum::http::header::ACCESS_CONTROL_ALLOW_ORIGIN;
 use axum::response::{IntoResponse, Response};
-use kanidm_proto::internal::OperationError;
 use utoipa::ToSchema;
+
+use kanidm_proto::internal::OperationError;
+
 
 /// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]
