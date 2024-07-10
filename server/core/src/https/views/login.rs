@@ -100,6 +100,46 @@ struct LoginWebauthnView {
     chal: String,
 }
 
+#[derive(Template, Default)]
+#[template(path = "login_denied.html")]
+struct LoginDeniedView {
+    reason: String,
+    operation_id: Uuid,
+}
+
+pub async fn view_logout_get(
+    State(state): State<ServerState>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Extension(kopid): Extension<KOpId>,
+    mut jar: CookieJar,
+) -> Response {
+    if let Err(err_code) = state
+        .qe_w_ref
+        .handle_logout(client_auth_info, kopid.eventid)
+        .await
+    {
+        HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response()
+    } else {
+        let response = Redirect::to("/ui").into_response();
+
+        jar = if let Some(bearer_cookie) = jar.get(COOKIE_BEARER_TOKEN) {
+            let mut bearer_cookie = bearer_cookie.clone();
+            bearer_cookie.make_removal();
+            bearer_cookie.set_value("");
+            bearer_cookie.set_path("/");
+            jar.add(bearer_cookie)
+        } else {
+            jar
+        };
+
+        (jar, response).into_response()
+    }
+}
+
 pub async fn view_index_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
@@ -606,6 +646,7 @@ async fn view_login_step(
                         let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
                         bearer_cookie.set_secure(state.secure_cookies);
                         bearer_cookie.set_same_site(SameSite::Lax);
+                        // Prevent Document.cookie accessing this. Still works with fetch.
                         bearer_cookie.set_http_only(true);
                         // We set a domain here because it allows subdomains
                         // of the idm to share the cookie. If domain was incorrect
@@ -617,7 +658,7 @@ async fn view_login_step(
                             let mut username_cookie =
                                 Cookie::new(COOKIE_USERNAME, session_context.username.clone());
                             username_cookie.set_secure(state.secure_cookies);
-                            username_cookie.set_same_site(SameSite::Strict);
+                            username_cookie.set_same_site(SameSite::Lax);
                             username_cookie.set_http_only(true);
                             username_cookie.set_domain(state.domain.clone());
                             username_cookie.set_path("/");
@@ -636,12 +677,15 @@ async fn view_login_step(
                     }
                 }
             }
-            AuthState::Denied(_reason) => {
+            AuthState::Denied(reason) => {
                 debug!("🧩 -> AuthState::Denied");
                 jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                // Render a denial.
-                break Redirect::temporary("/ui/getrekt").into_response();
+                break HtmlTemplate(LoginDeniedView {
+                    reason,
+                    operation_id: kopid.eventid,
+                })
+                .into_response();
             }
         }
     };
