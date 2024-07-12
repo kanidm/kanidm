@@ -15,6 +15,7 @@ Kanidm currently is packaged for the following systems:
 - NixOS
 - Fedora 38
 - CentOS Stream 9
+- Alpine Linux
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
 
@@ -86,6 +87,16 @@ You can then install with:
 
 ```bash
 dnf install kanidm-clients
+```
+
+## Alpine Linux
+
+Kanidm is available in the [Alpine Linux testing repository](https://pkgs.alpinelinux.org/packages?name=kanidm%2A).
+
+To install the Kanidm client use:
+
+```bash
+apk add kanidm-clients
 ```
 
 ## Tools Container
