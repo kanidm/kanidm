@@ -60,8 +60,8 @@ pam_allowed_login_groups = ["posix_group"]
 
 # home_attr = "uuid"
 
-# Controls the prefix that will be appended to the home alias when mounting home directories.
-# If unset, defaults to the value of the `home_prefix`. If set, must end with a trailing `/`.
+# Controls the prefix that will be appended to the home alias when mounting home directories. Must
+# end with a trailing `/`. If unset, defaults to the value of the `home_prefix`.
 #
 # This is option is useful when implementing a networked home directory layout. A common implementation
 # is to configure a networked filesystem that contains user directories mounted at `/u/` (eg /u/$user_uuid)
