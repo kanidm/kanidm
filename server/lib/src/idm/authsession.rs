@@ -1481,7 +1481,7 @@ impl AuthSession {
                 ) {
                     CredState::Success { auth_type, cred_id } => {
                         // Issue the uat based on a set of factors.
-                        let uat = self.issue_uat(&auth_type, time, async_tx, cred_id)?;
+                        let uat = self.issue_uat(auth_type, time, async_tx, cred_id)?;
 
                         let jwt = Jws::into_json(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to serialise into Jws");
@@ -1546,7 +1546,7 @@ impl AuthSession {
 
     fn issue_uat(
         &mut self,
-        auth_type: &AuthType,
+        auth_type: AuthType,
         time: Duration,
         async_tx: &Sender<DelayedAction>,
         cred_id: Uuid,
@@ -1614,7 +1614,7 @@ impl AuthSession {
                             issued_at: uat.issued_at,
                             issued_by: IdentityId::User(self.account.uuid),
                             scope,
-                            type_: *auth_type,
+                            type_: auth_type,
                         }))
                         .map_err(|e| {
                             debug!(?e, "queue failure");
