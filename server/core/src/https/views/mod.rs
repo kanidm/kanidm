@@ -18,6 +18,7 @@ use crate::https::{
 
 mod apps;
 mod login;
+mod errors;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]

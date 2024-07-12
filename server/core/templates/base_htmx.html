@@ -16,14 +16,15 @@
 		<link rel="apple-touch-icon" sizes="512x512"
 			href="/pkg/img/logo-square.svg" />
 
-		<link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
-		<script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-		<script src="/pkg/external/htmx.min.1.9.2.js" integrity="sha384-L6OqL9pRWyyFU3+/bjdSri+iIphTN/bvYyM37tICVyOJkWZLpP2vGn6VUEXgzg6h"></script>
+		<link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"/>
+		<script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"></script>
+		<script src="/pkg/external/htmx.min.1.9.12.js" integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"></script>
 		<link rel="stylesheet" href="/pkg/style.css" />
 
 		(% block head %)(% endblock %)
 	</head>
 	<body hx-boost="true" class="flex-column d-flex h-100">
+		(% block nav %)(% endblock %)
 		(% block body %)(% endblock %)
 		<footer class="footer mt-auto py-3 bg-light text-end">
 			<div class="container">
