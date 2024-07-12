@@ -129,7 +129,6 @@ pub async fn view_logout_get(
         jar = if let Some(bearer_cookie) = jar.get(COOKIE_BEARER_TOKEN) {
             let mut bearer_cookie = bearer_cookie.clone();
             bearer_cookie.make_removal();
-            bearer_cookie.set_value("");
             bearer_cookie.set_path("/");
             jar.add(bearer_cookie)
         } else {
