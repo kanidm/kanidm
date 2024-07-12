@@ -109,11 +109,13 @@ pub struct KanidmClientConfigInstance {
 /// 3. All of these may be overridden by setting environment variables.
 ///
 pub struct KanidmClientConfig {
+    // future editors, please leave this public so others can parse the config!
     #[serde(flatten)]
-    default: KanidmClientConfigInstance,
+    pub default: KanidmClientConfigInstance,
 
     #[serde(flatten)]
-    instances: BTreeMap<String, KanidmClientConfigInstance>,
+    // future editors, please leave this public so others can parse the config!
+    pub instances: BTreeMap<String, KanidmClientConfigInstance>,
 }
 
 #[derive(Debug, Clone, Default)]
