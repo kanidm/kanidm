@@ -6,6 +6,7 @@ task_sock_path = "/tmp/kanimd_unidx_task.sock"
 pam_allowed_login_groups = ["posix_group"]
 # default_shell = "/bin/sh"
 # home_prefix = "/home/"
+# home_mount_prefix = "/home/"
 # home_attr = "uuid"
 # home_alias = "spn"
 # uid_attr_map = "spn"

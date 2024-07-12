@@ -60,6 +60,12 @@ pam_allowed_login_groups = ["posix_group"]
 
 # home_attr = "uuid"
 
+# The prefix prepended to where home directories will be mounted to. If unset, defaults to the value
+# of the `home_prefix`. If set, must end with a trailing `/`.
+#
+# Default: unset
+
+# home_mount_prefix = "/home/"
 
 # The default token attribute used for generating symlinks pointing to the user's home
 # directory. If set, this will become the value of the home path to nss calls. It is recommended you

@@ -89,6 +89,7 @@ fn chown(path: &Path, gid: u32) -> Result<(), String> {
 fn create_home_directory(
     info: &HomeDirectoryInfo,
     home_prefix: &str,
+    home_mount_prefix: &Option<String>,
     use_etc_skel: bool,
     use_selinux: bool,
 ) -> Result<(), String> {
@@ -96,10 +97,15 @@ fn create_home_directory(
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
     let home_prefix_path = Path::new(home_prefix);
+    let home_mount_prefix_path = Path::new(home_mount_prefix.as_deref().unwrap_or(home_prefix));
 
     // Does our home_prefix actually exist?
     if !home_prefix_path.exists() || !home_prefix_path.is_dir() {
         return Err("Invalid home_prefix from configuration".to_string());
+    }
+
+    if !home_mount_prefix_path.exists() || !home_mount_prefix_path.is_dir() {
+        return Err("Invalid home_mount_prefix from configuration".to_string());
     }
 
     // Actually process the request here.
@@ -192,8 +198,10 @@ fn create_home_directory(
 
         // Assert the resulting alias path is consistent and correct.
         if let Some(pp) = alias_path.parent() {
-            if pp != home_prefix_path {
-                return Err("Invalid home directory alias - not within home_prefix".to_string());
+            if pp != home_mount_prefix_path {
+                return Err(
+                    "Invalid home directory alias - not within home_mount_prefix".to_string(),
+                );
             }
         } else {
             return Err("Invalid/Corrupt alias directory path - no prefix found".to_string());
@@ -237,6 +245,7 @@ async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
                 let resp = match create_home_directory(
                     &info,
                     &cfg.home_prefix,
+                    &cfg.home_mount_prefix,
                     cfg.use_etc_skel,
                     cfg.selinux,
                 ) {

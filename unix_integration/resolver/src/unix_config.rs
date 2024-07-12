@@ -25,6 +25,7 @@ struct ConfigInt {
     pam_allowed_login_groups: Option<Vec<String>>,
     default_shell: Option<String>,
     home_prefix: Option<String>,
+    home_mount_prefix: Option<String>,
     home_attr: Option<String>,
     home_alias: Option<String>,
     use_etc_skel: Option<bool>,
@@ -70,6 +71,7 @@ pub struct KanidmUnixdConfig {
     pub pam_allowed_login_groups: Vec<String>,
     pub default_shell: String,
     pub home_prefix: String,
+    pub home_mount_prefix: Option<String>,
     pub home_attr: HomeAttr,
     pub home_alias: Option<HomeAttr>,
     pub use_etc_skel: bool,
@@ -104,6 +106,10 @@ impl Display for KanidmUnixdConfig {
         )?;
         writeln!(f, "default_shell: {}", self.default_shell)?;
         writeln!(f, "home_prefix: {}", self.home_prefix)?;
+        match self.home_mount_prefix.as_deref() {
+            Some(val) => writeln!(f, "home_mount_prefix: {}", val)?,
+            None => writeln!(f, "home_mount_prefix: unset")?,
+        }
         writeln!(f, "home_attr: {}", self.home_attr)?;
         match self.home_alias {
             Some(val) => writeln!(f, "home_alias: {}", val)?,
@@ -147,6 +153,7 @@ impl KanidmUnixdConfig {
             pam_allowed_login_groups: Vec::new(),
             default_shell: DEFAULT_SHELL.to_string(),
             home_prefix: DEFAULT_HOME_PREFIX.to_string(),
+            home_mount_prefix: None,
             home_attr: DEFAULT_HOME_ATTR,
             home_alias: DEFAULT_HOME_ALIAS,
             use_etc_skel: DEFAULT_USE_ETC_SKEL,
@@ -222,6 +229,7 @@ impl KanidmUnixdConfig {
                 .unwrap_or(self.pam_allowed_login_groups),
             default_shell: config.default_shell.unwrap_or(self.default_shell),
             home_prefix: config.home_prefix.unwrap_or(self.home_prefix),
+            home_mount_prefix: config.home_mount_prefix,
             home_attr: config
                 .home_attr
                 .and_then(|v| match v.as_str() {
