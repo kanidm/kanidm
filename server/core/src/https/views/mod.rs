@@ -19,6 +19,7 @@ use crate::https::{
 mod apps;
 mod login;
 mod errors;
+mod reset;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -31,6 +32,7 @@ pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
         .route("/", get(login::view_index_get))
         .route("/apps", get(apps::view_apps_get))
+        .route("/reset", get(reset::view_reset_get))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.

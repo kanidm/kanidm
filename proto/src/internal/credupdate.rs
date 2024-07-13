@@ -139,7 +139,7 @@ pub enum CUCredState {
     // Disabled,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum CURegWarning {
     MfaRequired,
     PasskeyRequired,
