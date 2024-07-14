@@ -19,7 +19,7 @@ RuntimeDirectory=kanidm-unixd
 StateDirectory=kanidm-unixd
 
 
-Type=simple
+Type=notify
 ExecStart=/usr/sbin/kanidm_unixd
 # auth going down is bad, but infinite speedlooping is worse
 Restart=always
