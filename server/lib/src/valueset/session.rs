@@ -112,7 +112,7 @@ impl ValueSetSession {
                         type_,
                     } => {
                         // Convert things.
-                        let issued_at = OffsetDateTime::parse(&issued_at, &Rfc3339)
+                        let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
                             .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                             .map_err(|e| {
                                 admin_error!(
@@ -125,7 +125,7 @@ impl ValueSetSession {
 
                         let state = match state {
                             DbValueSessionStateV1::ExpiresAt(e_inner) => {
-                                OffsetDateTime::parse(&e_inner, &Rfc3339)
+                                OffsetDateTime::parse(e_inner, &Rfc3339)
                                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                                     .map(SessionState::ExpiresAt)
                                     .map_err(|e| {
