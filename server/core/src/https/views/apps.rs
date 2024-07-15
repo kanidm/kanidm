@@ -1,18 +1,18 @@
 use askama::Template;
 use axum::{
-    Extension,
     extract::State,
     http::uri::Uri,
     response::{IntoResponse, Response},
+    Extension,
 };
-use axum_htmx::{HxPushUrl, HxReswap, HxRetarget, SwapOption};
 use axum_htmx::extractors::HxRequest;
+use axum_htmx::{HxPushUrl, HxReswap, HxRetarget, SwapOption};
 
 use kanidm_proto::internal::AppLink;
 
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
-use crate::https::views::errors::HtmxError;
 use super::HtmlTemplate;
+use crate::https::views::errors::HtmxError;
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
 #[derive(Template)]
 #[template(path = "apps.html")]
@@ -40,16 +40,14 @@ pub(crate) async fn view_apps_get(
         .qe_r_ref
         .handle_list_applinks(client_auth_info, kopid.eventid)
         .await
-        .map_err(|old| HtmxError::new(&kopid, old) )?;
+        .map_err(|old| HtmxError::new(&kopid, old))?;
 
     let apps_view = AppsView {
-        apps_partial: AppsPartialView {
-            apps: app_links,
-        },
+        apps_partial: AppsPartialView { apps: app_links },
     };
 
     Ok(if hx_request {
-       (
+        (
             // On the redirect during a login we don't push urls. We set these headers
             // so that the url is updated, and we swap the correct element.
             HxPushUrl(Uri::from_static("/ui/apps")),
@@ -60,7 +58,8 @@ pub(crate) async fn view_apps_get(
             // We send our own main, replace the existing one.
             HxReswap(SwapOption::OuterHtml),
             HtmlTemplate(apps_view),
-        ).into_response()
+        )
+            .into_response()
     } else {
         HtmlTemplate(apps_view).into_response()
     })
