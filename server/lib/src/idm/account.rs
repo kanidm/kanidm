@@ -723,7 +723,7 @@ impl Account {
                     }
                 }
             } else {
-                let grace = uat.issued_at + GRACE_WINDOW;
+                let grace = uat.issued_at + AUTH_TOKEN_GRACE_WINDOW;
                 let current = time::OffsetDateTime::UNIX_EPOCH + ct;
                 trace!(%grace, %current);
                 if current >= grace {

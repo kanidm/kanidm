@@ -1,6 +1,9 @@
 use kanidm_lib_crypto::prelude::X509;
 use kanidm_lib_crypto::serialise::x509b64;
-use kanidm_proto::constants::{DEFAULT_REPLICATION_ADDRESS, DEFAULT_REPLICATION_ORIGIN};
+use kanidm_proto::constants::{
+    AUTH_TOKEN_GRACE_WINDOW, DEFAULT_REPLICATION_ADDRESS, DEFAULT_REPLICATION_ORIGIN,
+    DEFAULT_REPL_TASK_POLL_INTERVAL,
+};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::net::SocketAddr;
@@ -43,7 +46,9 @@ pub struct ReplicationConfiguration {
     pub origin: Url,
     /// Defaults to [kanidm_proto::constants::DEFAULT_REPLICATION_ADDRESS]
     pub bindaddress: SocketAddr,
-    /// Number of seconds between running a replication event
+    /// Number of seconds between running a replication event. Defaults to
+    /// [kanidm_proto::constants::DEFAULT_REPL_TASK_POLL_INTERVAL] but may
+    /// not exceed [kanidm_proto::constants::AUTH_TOKEN_GRACE_WINDOW].
     pub task_poll_interval: Option<u64>,
 
     #[serde(flatten)]
@@ -69,14 +74,19 @@ impl Default for ReplicationConfiguration {
     }
 }
 
-const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
-
 impl ReplicationConfiguration {
     /// Get the task poll interval, or the default if not set.
     pub(crate) fn get_task_poll_interval(&self) -> core::time::Duration {
-        core::time::Duration::from_secs(
+        let config_poll = core::time::Duration::from_secs(
             self.task_poll_interval
                 .unwrap_or(DEFAULT_REPL_TASK_POLL_INTERVAL),
-        )
+        );
+
+        // Don't allow the replication poll to exceed gracewindow.
+        if config_poll > AUTH_TOKEN_GRACE_WINDOW {
+            AUTH_TOKEN_GRACE_WINDOW
+        } else {
+            config_poll
+        }
     }
 }

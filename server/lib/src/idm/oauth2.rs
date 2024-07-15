@@ -3971,7 +3971,7 @@ mod tests {
         assert!(intr_response.active);
 
         // Grace window passed, it will now be invalid.
-        let ct = ct + GRACE_WINDOW;
+        let ct = ct + AUTH_TOKEN_GRACE_WINDOW;
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
             .expect("Failed to inspect token");
@@ -6230,7 +6230,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now must be invalid.
-        let ct = ct + GRACE_WINDOW;
+        let ct = ct + AUTH_TOKEN_GRACE_WINDOW;
         let mut idms_prox_read = idms.proxy_read().await;
 
         let intr_request = AccessTokenIntrospectRequest {
