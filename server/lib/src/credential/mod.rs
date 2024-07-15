@@ -645,6 +645,13 @@ impl Credential {
         }))
     }
 
+    pub(crate) fn has_securitykey(&self) -> bool {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, _, map, _) => !map.is_empty(),
+            _ => false,
+        }
+    }
+
     /// Get a reference to the contained webuthn credentials, if any.
     pub fn securitykey_ref(&self) -> Result<&Map<String, SecurityKey>, OperationError> {
         match &self.type_ {
