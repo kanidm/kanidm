@@ -137,11 +137,6 @@ pub const DEFAULT_AUTH_SESSION_LIMITED_EXPIRY: u32 = 3600;
 // Default - oauth refresh tokens last for 16 hours.
 pub const OAUTH_REFRESH_TOKEN_EXPIRY: u64 = 3600 * 16;
 
-// The time that a token can be used before session
-// status is enforced. This needs to be longer than
-// replication delay/cycle.
-pub const GRACE_WINDOW: Duration = Duration::from_secs(300);
-
 /// How long access tokens should last. This is NOT the length
 /// of the refresh token, which is bound to the issuing session.
 pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
@@ -149,6 +144,10 @@ pub const OAUTH2_ACCESS_TOKEN_EXPIRY: u32 = 15 * 60;
 /// The amount of time a suppliers clock can be "ahead" before
 /// we warn about possible clock synchronisation issues.
 pub const REPL_SUPPLIER_ADVANCE_WINDOW: Duration = Duration::from_secs(600);
+
+/// The number of days that the default replication MTLS cert lasts for when
+/// configured manually. Defaults to 4 years (including 1 day for the leap year).
+pub const REPL_MTLS_CERTIFICATE_DAYS: u32 = 1461;
 
 /// The default number of entries that a user may retrieve in a search
 pub const DEFAULT_LIMIT_SEARCH_MAX_RESULTS: u64 = 1024;

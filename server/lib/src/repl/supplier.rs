@@ -15,16 +15,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         domain_name: &str,
     ) -> Result<(PKey<Private>, X509), OperationError> {
         // Invalid, must need to re-generate.
-        let expiration_days = 180;
         let s_uuid = self.get_server_uuid();
 
-        let (private, x509) =
-            build_self_signed_server_and_client_identity(s_uuid, domain_name, expiration_days)
-                .map_err(|err| {
-                    error!(?err, "Unable to generate self signed key/cert");
-                    // What error?
-                    OperationError::CryptographyError
-                })?;
+        let (private, x509) = build_self_signed_server_and_client_identity(
+            s_uuid,
+            domain_name,
+            REPL_MTLS_CERTIFICATE_DAYS,
+        )
+        .map_err(|err| {
+            error!(?err, "Unable to generate self signed key/cert");
+            // What error?
+            OperationError::CryptographyError
+        })?;
 
         let kh = KeyHandle::X509Key {
             private: private.clone(),

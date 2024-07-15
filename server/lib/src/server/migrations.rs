@@ -797,6 +797,39 @@ impl<'a> QueryServerWriteTransaction<'a> {
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
+        // ============== Apply constraints ===============
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Account.into()),
+            f_pres(Attribute::PrimaryCredential),
+        ]));
+
+        let results = self.internal_search(filter)?;
+
+        let affected_entries = results
+            .into_iter()
+            .filter_map(|entry| {
+                if entry
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
+                    .map(|cred| cred.has_securitykey())
+                    .unwrap_or_default()
+                {
+                    Some(entry.get_display_id())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        if !affected_entries.is_empty() {
+            error!("Unable to proceed. Not all entries meet gid/uid constraints.");
+            for sk_present in affected_entries {
+                error!(%sk_present);
+            }
+            return Err(OperationError::MG0006SKConstraintsNotMet);
+        }
+
+        // =========== Apply changes ==============
+
         Ok(())
     }
 
@@ -1095,6 +1128,19 @@ impl<'a> QueryServerReadTransaction<'a> {
             report_items.push(item);
         }
 
+        if current_level <= DOMAIN_LEVEL_7 && upgrade_level >= DOMAIN_LEVEL_8 {
+            let item = self
+                .domain_upgrade_check_7_to_8_security_keys()
+                .map_err(|err| {
+                    error!(
+                        ?err,
+                        "Failed to perform domain upgrade check 7 to 8 - security-keys"
+                    );
+                    err
+                })?;
+            report_items.push(item);
+        }
+
         Ok(ProtoDomainUpgradeCheckReport {
             name,
             uuid,
@@ -1188,6 +1234,45 @@ impl<'a> QueryServerReadTransaction<'a> {
             status,
             from_level: DOMAIN_LEVEL_6,
             to_level: DOMAIN_LEVEL_7,
+            affected_entries,
+        })
+    }
+
+    pub(crate) fn domain_upgrade_check_7_to_8_security_keys(
+        &mut self,
+    ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Account.into()),
+            f_pres(Attribute::PrimaryCredential),
+        ]));
+
+        let results = self.internal_search(filter)?;
+
+        let affected_entries = results
+            .into_iter()
+            .filter_map(|entry| {
+                if entry
+                    .get_ava_single_credential(Attribute::PrimaryCredential)
+                    .map(|cred| cred.has_securitykey())
+                    .unwrap_or_default()
+                {
+                    Some(entry.get_display_id())
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>();
+
+        let status = if affected_entries.is_empty() {
+            ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys
+        } else {
+            ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys
+        };
+
+        Ok(ProtoDomainUpgradeCheckItem {
+            status,
+            from_level: DOMAIN_LEVEL_7,
+            to_level: DOMAIN_LEVEL_8,
             affected_entries,
         })
     }
