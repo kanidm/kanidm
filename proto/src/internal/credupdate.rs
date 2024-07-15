@@ -388,7 +388,7 @@ impl fmt::Display for PasswordFeedback {
             }
             PasswordFeedback::TooShort(minlength) => write!(
                 f,
-                "Password too was short, needs to be at least {} characters long.",
+                "Password was too short, needs to be at least {} characters long.",
                 minlength
             ),
             PasswordFeedback::UseAFewWordsAvoidCommonPhrases => {

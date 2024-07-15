@@ -33,6 +33,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/", get(login::view_index_get))
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
+        .route("/reset/new_pwd", post(reset::view_new_pwd))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.

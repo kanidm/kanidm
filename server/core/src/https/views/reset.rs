@@ -1,8 +1,8 @@
 use askama::Template;
-use axum::Extension;
+use axum::{Extension, Form};
 use axum::extract::{Query, State};
-use axum::http::Uri;
-use axum::response::{IntoResponse, Response};
+use axum::http::{StatusCode, Uri};
+use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest, HxRetarget};
@@ -10,7 +10,7 @@ use futures_util::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use kanidm_proto::internal::{COOKIE_CU_SESSION_TOKEN, CredentialDetail, CUCredState, CUExtPortal, CUIntentToken, CURegWarning, CUSessionToken, CUStatus, PasskeyDetail};
+use kanidm_proto::internal::{COOKIE_CU_SESSION_TOKEN, CredentialDetail, CUCredState, CUExtPortal, CUIntentToken, CURegWarning, CURequest, CUSessionToken, CUStatus, OperationError, PasskeyDetail, PasswordFeedback};
 
 use crate::https::extractors::VerifiedClientInformation;
 use crate::https::middleware::KOpId;
@@ -21,18 +21,18 @@ use crate::https::views::HtmlTemplate;
 #[derive(Template)]
 #[template(path = "credentials_reset_form.html")]
 struct ResetCredFormView {
-    domain: String
+    domain: String,
 }
 
 
 #[derive(Template)]
 #[template(path = "credentials_reset.html")]
 struct CredResetView {
-    credentials_update_partial: CredResetPartialView
+    credentials_update_partial: CredResetPartialView,
 }
 
 #[derive(Template)]
-#[template(path = "credentials_update_partial.html", print = "all")]
+#[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     domain: String,
     names: String,
@@ -50,7 +50,72 @@ struct CredResetPartialView {
 #[derive(Serialize, Deserialize, Debug)]
 // Needs to be visible so axum can create this struct
 pub(crate) struct ResetTokenParam {
-    token: Option<String>
+    token: Option<String>,
+}
+
+
+#[derive(Template)]
+#[template(path = "cred_update/add_password_modal_partial.html")]
+struct AddPasswordModalPartial {
+    check_res: PwdCheckResult,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum PwdCheckResult {
+    Success,
+    Init,
+    Failure {
+        pwd_equal: bool,
+        warnings: Vec<PasswordFeedback>,
+    },
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct NewPassword {
+    new_password: String,
+    new_password_check: String,
+}
+
+pub(crate) async fn view_new_pwd(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Form(new_passwords): Form<NewPassword>,
+) -> axum::response::Result<Response> {
+    let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
+    return if let Some(cookie) = cookie {
+        let cu_session_token = cookie.value();
+        let cu_session_token = CUSessionToken { token: cu_session_token.into() };
+
+        let eq = new_passwords.new_password == new_passwords.new_password_check;
+        let (check_res, status) = if eq {
+            let res = state.qe_r_ref.handle_idmcredentialupdate(cu_session_token, CURequest::Password(new_passwords.new_password), kopid.eventid).await;
+            match res {
+                Ok(_) => (PwdCheckResult::Success, StatusCode::OK),
+                Err(OperationError::PasswordQuality(password_feedback)) => {
+                    (PwdCheckResult::Failure {
+                        pwd_equal: eq,
+                        warnings: password_feedback,
+                    }, StatusCode::UNPROCESSABLE_ENTITY)
+                }
+                Err(operr) => {
+                    return Err(ErrorResponse::from(HtmxError::new(&kopid, operr)))
+                }
+            }
+        } else {
+            (PwdCheckResult::Failure {
+                pwd_equal: eq,
+                warnings: vec![],
+            }, StatusCode::UNPROCESSABLE_ENTITY)
+        };
+
+        let template = HtmlTemplate(AddPasswordModalPartial { check_res });
+        Ok((status, template).into_response())
+    } else {
+        Ok((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
+    };
 }
 
 pub(crate) async fn view_reset_get(
@@ -59,7 +124,7 @@ pub(crate) async fn view_reset_get(
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     Query(params): Query<ResetTokenParam>,
-    mut jar: CookieJar
+    mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
     let cred_form_view = ResetCredFormView {
@@ -103,7 +168,6 @@ fn get_cu_template(domain_display_name: String, cu_status: CUStatus) -> HtmlTemp
         attested_passkeys_state,
         attested_passkeys,
         passkeys,
-
         primary_state,
         primary,
         ..
@@ -125,10 +189,29 @@ fn get_cu_template(domain_display_name: String, cu_status: CUStatus) -> HtmlTemp
             attested_passkeys,
             passkeys,
             primary_state,
-            primary
+            primary,
         }
     };
 
     let template = HtmlTemplate(cred_view);
     template
+}
+
+
+// Any filter defined in the module `filters` is accessible in your template.
+mod filters {
+    pub fn blank_if<T: std::fmt::Display>(implicit_arg: T, condition: bool) -> ::askama::Result<String> {
+        return if condition {
+            Ok("".into())
+        } else {
+            Ok(format!("{implicit_arg}"))
+        };
+    }
+    pub fn blank_iff<T: std::fmt::Display>(implicit_arg: T, condition: &bool) -> ::askama::Result<String> {
+        return if *condition {
+            Ok("".into())
+        } else {
+            Ok(format!("{implicit_arg}"))
+        };
+    }
 }
