@@ -159,7 +159,7 @@ impl SessionConsistency {
                                     None
                                 } else {
                                     // Can't find the parent. Are we within grace window
-                                    if session.issued_at + GRACE_WINDOW <= curtime_odt {
+                                    if session.issued_at + AUTH_TOKEN_GRACE_WINDOW <= curtime_odt {
                                         info!(%o2_session_id, parent_id = ?session.parent, "Removing orphaned oauth2 session");
                                         Some(PartialValue::Refer(*o2_session_id))
                                     } else {
@@ -320,7 +320,7 @@ mod tests {
         let cred_id = cred.uuid;
 
         // Set exp to gracewindow.
-        let exp_curtime = curtime + GRACE_WINDOW;
+        let exp_curtime = curtime + AUTH_TOKEN_GRACE_WINDOW;
         let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
@@ -491,7 +491,7 @@ mod tests {
     async fn test_session_consistency_oauth2_removed_by_parent(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
         let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
-        let exp_curtime = curtime + GRACE_WINDOW;
+        let exp_curtime = curtime + AUTH_TOKEN_GRACE_WINDOW;
 
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -665,7 +665,7 @@ mod tests {
         let curtime_odt = OffsetDateTime::UNIX_EPOCH + curtime;
 
         // Set exp to gracewindow.
-        let exp_curtime = curtime + GRACE_WINDOW;
+        let exp_curtime = curtime + AUTH_TOKEN_GRACE_WINDOW;
         // let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user

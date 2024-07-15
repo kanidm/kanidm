@@ -221,6 +221,23 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
                                 info!("affected_entry         : {}", entry_id);
                             }
                         }
+                        ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
+                            info!("upgrade_item           : security key usage");
+                            debug!("from_level             : {}", item.from_level);
+                            debug!("to_level               : {}", item.to_level);
+                            info!("status                 : PASS");
+                        }
+                        ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
+                            info!("upgrade_item           : security key usage");
+                            debug!("from_level             : {}", item.from_level);
+                            debug!("to_level               : {}", item.to_level);
+                            info!("status                 : FAIL");
+                            info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
+                            info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
+                            for entry_id in item.affected_entries {
+                                info!("affected_entry         : {}", entry_id);
+                            }
+                        }
                     }
                 }
             }

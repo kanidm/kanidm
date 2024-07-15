@@ -242,6 +242,9 @@ pub struct DomainUpgradeCheckReport {
 pub enum DomainUpgradeCheckStatus {
     Pass6To7Gidnumber,
     Fail6To7Gidnumber,
+
+    Pass7To8SecurityKeys,
+    Fail7To8SecurityKeys,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

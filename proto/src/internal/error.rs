@@ -151,6 +151,7 @@ pub enum OperationError {
     MG0003ServerPhaseInvalidForMigration,
     MG0004DomainLevelInDevelopment,
     MG0005GidConstraintsNotMet,
+    MG0006SKConstraintsNotMet,
     //
     KP0001KeyProviderNotLoaded,
     KP0002KeyProviderInvalidClass,
@@ -302,6 +303,7 @@ impl OperationError {
             Self::DB0002MismatchedRestoreVersion => None,
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
+            Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present."),
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
