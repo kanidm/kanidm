@@ -541,17 +541,24 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write(ct).await;
 
         // We specifically need a uat here to assess the auth type!
-        let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
-                e
-            })?;
+        let validate_result =
+            idms_prox_write.validate_client_auth_info_to_ident(client_auth_info, ct);
+
+        let ident = match validate_result {
+            Ok(ident) => ident,
+            Err(OperationError::SessionExpired) | Err(OperationError::NotAuthenticated) => {
+                return Ok(())
+            }
+            Err(err) => {
+                admin_error!(?err, "Invalid identity");
+                return Err(err);
+            }
+        };
 
         if !ident.can_logout() {
             info!("Ignoring request to logout session - these sessions are not recorded");
             return Ok(());
-        }
+        };
 
         let target = ident.get_uuid().ok_or_else(|| {
             admin_error!("Invalid identity - no uuid present");

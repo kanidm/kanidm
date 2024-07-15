@@ -16,7 +16,6 @@ use crate::https::middleware::KOpId;
 //     recovery_boosted: bool,
 // }
 
-
 /// The web app's top level error type, this takes an `OperationError` and converts it into a HTTP response.
 #[derive(Debug, ToSchema)]
 pub(crate) enum HtmxError {
@@ -46,7 +45,9 @@ impl IntoResponse for HtmxError {
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
                         (StatusCode::FORBIDDEN, body).into_response()
                     }
-                    OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, body).into_response(),
+                    OperationError::NoMatchingEntries => {
+                        (StatusCode::NOT_FOUND, body).into_response()
+                    }
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
                     | OperationError::SchemaViolation(_)
