@@ -129,7 +129,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
         let pkg_path = if cfg!(feature = "ui_htmx") {
-            "../core/static".to_string()
+            env!("KANIDM_HTMX_UI_PKG_PATH").to_owned()
         } else {
             env!("KANIDM_WEB_UI_PKG_PATH").to_owned()
         };
@@ -300,19 +300,28 @@ pub async fn create_https_server(
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
-            if !pkg_path.exists() {
-                eprintln!(
-                    "Couldn't find Web UI package path: ({}), quitting.",
-                    env!("KANIDM_WEB_UI_PKG_PATH")
-                );
-                std::process::exit(1);
-            }
             let pkg_router = if cfg!(feature = "ui_htmx") {
-                // TODO! This should be from webui pkg path in future!!!
-                Router::new().nest_service("/pkg", ServeDir::new("../core/static"))
+                let pkg_path = PathBuf::from(env!("KANIDM_HTMX_UI_PKG_PATH"));
+                if !pkg_path.exists() {
+                    eprintln!(
+                        "Couldn't find htmx UI package path: ({}), quitting.",
+                        env!("KANIDM_HTMX_UI_PKG_PATH")
+                    );
+                    std::process::exit(1);
+                }
+                Router::new().nest_service("/pkg", ServeDir::new(pkg_path))
                 // TODO: Add in the br precompress
             } else {
+
+                let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
+                if !pkg_path.exists() {
+                    eprintln!(
+                        "Couldn't find Web UI package path: ({}), quitting.",
+                        env!("KANIDM_WEB_UI_PKG_PATH")
+                    );
+                    std::process::exit(1);
+                }
+
                 Router::new()
                     .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
                     .layer(middleware::compression::new())
