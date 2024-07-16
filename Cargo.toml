@@ -156,7 +156,7 @@ axum = { version = "0.7.5", features = [
     "tracing",
 ] }
 axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
-base32 = "^0.4.0"
+base32 = "^0.5.0"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
@@ -186,7 +186,9 @@ gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "1.1.0"
-hyper = { version = "1.4.1", features = ["server", "client"] }
+hyper = { version = "1.4.1", features = [
+    "full",
+] } # hyper full includes client/server/http2
 hyper-util = { version = "0.1.6", features = ["server", "tokio"] }
 hyper-tls = "0.6.0"
 idlset = "^0.2.5"
@@ -195,8 +197,8 @@ image = { version = "0.24.9", default-features = false, features = [
     "jpeg",
     "webp",
 ] }
-itertools = "0.12.1"
-enum-iterator = "1.5.0"
+itertools = "0.13.0"
+enum-iterator = "2.1.0"
 js-sys = "^0.3.69"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
