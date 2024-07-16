@@ -82,6 +82,7 @@ impl ActorReader {
             (State::Authenticated, TransitionAction::ReadSelfMemberOf, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
+            #[allow(clippy::unreachable)]
             (_, _, TransitionResult::Ok) => unreachable!(),
 
             (_, _, TransitionResult::Error) => {
