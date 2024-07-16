@@ -3,6 +3,7 @@ use crate::kani::KanidmOrcaClient;
 use crate::model::ActorRole;
 use crate::profile::Profile;
 use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
+use hashbrown::HashMap;
 use rand::distributions::{Alphanumeric, DistString, Uniform};
 use rand::seq::{index, SliceRandom};
 use rand::{Rng, SeedableRng};
@@ -122,7 +123,7 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let roles = BTreeSet::new();
 
-        let model = Model::Basic;
+        let model = Model::Writer;
 
         // Data is ready, make changes to the server. These should be idempotent if possible.
         let p = Person {
@@ -146,15 +147,23 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // them a baseline of required accounts with some variation. This
     // way in each test it's guaranteed that *at least* one person
     // to each role always will exist and be operational.
+    let groups_person_count_map: HashMap<&String, u64> = profile
+        .person_count_by_group()
+        .iter()
+        .map(|elm| (&elm.0, elm.1))
+        .collect();
 
     for group in groups.iter_mut() {
-        // For now, our baseline is 20%. We can adjust this in future per
-        // role for example.
-        let baseline = persons.len() / 3;
-        let inverse = persons.len() - baseline;
-        // Randomly add extra from the inverse
-        let extra = Uniform::new(0, inverse);
-        let persons_to_choose = baseline + seeded_rng.sample(extra);
+        let persons_to_choose = match groups_person_count_map.get(&group.name) {
+            Some(person_count) => *person_count as usize,
+            None => {
+                let baseline = persons.len() / 3;
+                let inverse = persons.len() - baseline;
+                // Randomly add extra from the inverse
+                let extra = Uniform::new(0, inverse);
+                baseline + seeded_rng.sample(extra)
+            }
+        };
 
         assert!(persons_to_choose <= persons.len());
 
@@ -186,8 +195,10 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
     // PHASE 7 - given the integrations and groupings,
 
-    // Return the state.
+    drop(groups_person_count_map); // it looks ugly but we have to do this to reassure the borrow checker we can return profile, as we were borrowing
+                                   //the group names from it
 
+    // Return the state.
     let state = State {
         profile,
         // ---------------

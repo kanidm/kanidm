@@ -26,6 +26,7 @@ pub struct Profile {
     group_count: u64,
     person_count: u64,
     thread_count: Option<usize>,
+    person_count_by_group: Vec<(String, u64)>,
 }
 
 impl Profile {
@@ -58,6 +59,10 @@ impl Profile {
         self.thread_count
     }
 
+    pub fn person_count_by_group(&self) -> &Vec<(String, u64)> {
+        &self.person_count_by_group
+    }
+
     pub fn seed(&self) -> u64 {
         if self.seed < 0 {
             self.seed.wrapping_mul(-1) as u64
@@ -87,6 +92,7 @@ pub struct ProfileBuilder {
     pub group_count: Option<u64>,
     pub person_count: Option<u64>,
     pub thread_count: Option<usize>,
+    pub person_count_by_group: Vec<(String, u64)>,
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
@@ -109,6 +115,7 @@ impl ProfileBuilder {
         admin_password: String,
         idm_admin_password: String,
         thread_count: Option<usize>,
+        person_count_by_group: Vec<(String, u64)>,
     ) -> Self {
         ProfileBuilder {
             control_uri,
@@ -121,6 +128,7 @@ impl ProfileBuilder {
             group_count: None,
             person_count: None,
             thread_count,
+            person_count_by_group,
         }
     }
 
@@ -165,12 +173,19 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
+            person_count_by_group,
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
             let mut rng = thread_rng();
             rng.gen()
         });
+
+        for (_, size) in person_count_by_group.iter() {
+            if size > &person_count.unwrap_or_default() {
+                return Err(Error::ProfileBuilder);
+            }
+        }
 
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
@@ -197,6 +212,7 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
+            person_count_by_group,
         })
     }
 }
