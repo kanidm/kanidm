@@ -201,11 +201,7 @@ fn get_cu_template(domain_display_name: String, cu_status: CUStatus) -> HtmlTemp
 // Any filter defined in the module `filters` is accessible in your template.
 mod filters {
     pub fn blank_if<T: std::fmt::Display>(implicit_arg: T, condition: bool) -> ::askama::Result<String> {
-        return if condition {
-            Ok("".into())
-        } else {
-            Ok(format!("{implicit_arg}"))
-        };
+        blank_iff(implicit_arg, &condition)
     }
     pub fn blank_iff<T: std::fmt::Display>(implicit_arg: T, condition: &bool) -> ::askama::Result<String> {
         return if *condition {
