@@ -333,7 +333,7 @@ For example, this will set the CPU flags to "none" and the location for the Web 
 `/usr/share/kanidm/ui/pkg`:
 
 ```bash
-KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
+KANIDM_BUILD_PROFILE=release_linux cargo build --release --bin kanidmd
 ```
 
 ### Building the Web UI
