@@ -78,6 +78,8 @@ pub enum Model {
     /// A simple linear executor that does actions in a loop.
     #[default]
     Basic,
+    Reader,
+    Writer,
 }
 
 impl Model {
@@ -85,6 +87,8 @@ impl Model {
         Ok(match self {
             Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
             Model::Basic => Box::new(models::basic::ActorBasic::new()),
+            Model::Reader => Box::new(models::read::ActorReader::new()),
+            Model::Writer => Box::new(models::write::ActorWriter::new()),
         })
     }
 }
