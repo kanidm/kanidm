@@ -312,7 +312,6 @@ pub async fn create_https_server(
                 Router::new().nest_service("/pkg", ServeDir::new(pkg_path))
                 // TODO: Add in the br precompress
             } else {
-
                 let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
                 if !pkg_path.exists() {
                     eprintln!(
