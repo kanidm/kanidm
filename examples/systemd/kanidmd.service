@@ -7,7 +7,7 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
 
 ExecStart=/usr/local/sbin/kanidmd server --config=/etc/kanidm/server.toml
 Restart=on-failure

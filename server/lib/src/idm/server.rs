@@ -513,7 +513,7 @@ pub trait IdmServerTransaction<'a> {
         // We enforce both sessions are present in case of inconsistency
         // that may occur with replication.
 
-        let grace_valid = ct < (Duration::from_secs(iat as u64) + GRACE_WINDOW);
+        let grace_valid = ct < (Duration::from_secs(iat as u64) + AUTH_TOKEN_GRACE_WINDOW);
 
         let oauth2_session = entry
             .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
@@ -3506,7 +3506,7 @@ mod tests {
 
         let ct = duration_from_epoch_now();
 
-        let post_grace = ct + GRACE_WINDOW + Duration::from_secs(1);
+        let post_grace = ct + AUTH_TOKEN_GRACE_WINDOW + Duration::from_secs(1);
         let expiry = ct + Duration::from_secs(DEFAULT_AUTH_SESSION_EXPIRY as u64 + 1);
 
         // Assert that our grace time is less than expiry, so we know the failure is due to

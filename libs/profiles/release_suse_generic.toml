@@ -1,4 +1,5 @@
 web_ui_pkg_path = "/usr/share/kanidm/ui/pkg"
+htmx_ui_pkg_path = "/usr/share/kanidm/ui/hpkg"
 # Don't set the value for autodetect
 # cpu_flags = "none"
 admin_bind_path = "/var/run/kanidmd/sock"
