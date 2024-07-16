@@ -38,6 +38,7 @@
 - Merlijn Verstraete (ToxicMushroom)
 - Tobias Krischer (tobikris)
 - Daniil Egortsev (playhardgopro)
+- Anton Loukianov (antonl)
 
 ## Acknowledgements
 
