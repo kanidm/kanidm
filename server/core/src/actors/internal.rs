@@ -128,7 +128,7 @@ impl QueryServerWriteV1 {
         .await;
 
         if retry {
-            // An error occured, retry each operation one at a time.
+            // An error occurred, retry each operation one at a time.
             for da in da_batch.iter() {
                 let eventid = Uuid::new_v4();
                 let span = span!(Level::INFO, "process_delayed_action_retried", uuid = ?eventid);

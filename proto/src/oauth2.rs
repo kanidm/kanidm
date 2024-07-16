@@ -290,7 +290,7 @@ pub enum PkceAlg {
 #[serde(rename_all = "UPPERCASE")]
 /// Algorithms supported for token signatures. Prefers `ES256`
 pub enum IdTokenSignAlg {
-    // WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WON'T HAPPEN.
+    // WE REFUSE TO SUPPORT NONE. DON'T EVEN ASK. IT WON'T HAPPEN.
     ES256,
     RS256,
 }

@@ -97,7 +97,7 @@ But there are some things I want:
 * RADIUS pws are per-domain, not replicated. This would breach the cred-silo idea, and really, if domain B has radius it probably has different
  SSID/ca cert to domain A, so why share the pw? If we did want to really share the credentials, we can have RADIUS act as a client switch
  instead.
-* We can't proxy authentications because of webuathn domain verification, so clients that want to
+* We can't proxy authentications because of webauthn domain verification, so clients that want to
  auth users to either side have to redirect through their origin domain to generate the session. This
  means the origin domain may have to be accessible in some cases.
 * Public-key auth types can be replicated fractionally, which allows the domain to auth a user via

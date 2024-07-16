@@ -676,7 +676,7 @@ mod tests {
             &["22b47373-d123-421f-859e-9ddd8ab14a2a"],
         );
 
-        // Need a user in A -> B -> User, such that A/B are re-adde as MO
+        // Need a user in A -> B -> User, such that A/B are re-added as MO
         let u2 = create_user("u2", "5c19a4a2-b9f0-4429-b130-5782de5fddda");
         let g2a = create_group(
             "g2a",

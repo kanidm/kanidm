@@ -2585,7 +2585,7 @@ mod tests {
             ..Default::default()
         };
 
-        // Since valueset now disallows such shenangians at a type level, this can't occur
+        // Since valueset now disallows such shenanigans at a type level, this can't occur
         /*
         let rvs = unsafe {
             valueset![

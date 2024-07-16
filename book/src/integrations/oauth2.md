@@ -222,7 +222,7 @@ claim name. Different applications may expect these values to be formatted (join
 ways.
 
 Claim values are mapped based on membership to groups. When an account is a member of multiple
-groups that would recieve the same claim, the values of these maps are merged.
+groups that would receive the same claim, the values of these maps are merged.
 
 To create or update a claim map on a client:
 
@@ -327,7 +327,7 @@ To disable PKCE for a confidential client:
 kanidm system oauth2 warning-insecure-client-disable-pkce <client name>
 ```
 
-To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
+To enable legacy cryptography (RSA PKCS1-5 SHA256):
 
 ```bash
 kanidm system oauth2 warning-enable-legacy-crypto <client name>

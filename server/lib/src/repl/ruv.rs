@@ -617,7 +617,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         // Since the ctx range comes from the supplier, when we rebuild due to the
         // state machine then some values may not exist since they were replaced
         // or updated. It's also possible that the imported range maximums *may not*
-        // exist especially in three way replication scenarioes where S1:A was the S1
+        // exist especially in three way replication scenarios where S1:A was the S1
         // maximum but is replaced by S2:B. This would make S1:A still it's valid
         // maximum but no entry reflects that in it's change state.
         let mut valid = true;
@@ -874,7 +874,7 @@ impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
         to allow the comparison here to continue even if it's ruv is cleaned. Or, we need to
         have a delayed trim on the range that is 2x the normal trim range to give a buffer?
 
-        Mostly longer ruv/cid ranges aren't an issue for us, so could we just maek these ranges
+        Mostly longer ruv/cid ranges aren't an issue for us, so could we just make these ranges
         really large?
 
         NOTE: For now we do NOT trim out max CID's of any s_uuid so that we don't have to confront

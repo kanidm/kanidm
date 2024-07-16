@@ -41,7 +41,7 @@ impl Display for AccountType {
 // entry/ava/filter types. These related deeply to schema.
 
 /// The current purpose of a User Auth Token. It may be read-only, read-write
-/// or privilige capable (able to step up to read-write after re-authentication).
+/// or privilege capable (able to step up to read-write after re-authentication).
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum UatPurposeStatus {

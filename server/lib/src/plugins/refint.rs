@@ -41,7 +41,7 @@ impl ReferentialIntegrity {
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
         // will fail. This will return the union of the inclusion after the
-        // operationn.
+        // operation.
         let filt_in = filter!(f_inc(inner));
         let b = qs.internal_exists(filt_in).map_err(|e| {
             admin_error!(err = ?e, "internal exists failure");
@@ -156,7 +156,7 @@ impl Plugin for ReferentialIntegrity {
     // Yes, this does mean we do more work to add/index/rollback in an error
     // condition, *but* it means we only have developed a single verification
     // so we can assert stronger trust in it's correct operation and interaction
-    // in complex scenarioes - It actually simplifies the check from "could
+    // in complex scenarios - It actually simplifies the check from "could
     // be in cand AND db" to simply "is it in the DB?".
     #[instrument(level = "debug", name = "refint_post_create", skip(qs, cand, _ce))]
     fn post_create(

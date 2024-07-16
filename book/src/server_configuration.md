@@ -90,7 +90,7 @@ text=However you choose to run your server, you should document and keep note of
 ### Default Admin Accounts
 
 Now that the server is running, you can initialise the default admin accounts. There are two
-parallel admin accounts that have seperate functions. `admin` which manages Kanidm's configuration,
+parallel admin accounts that have separate functions. `admin` which manages Kanidm's configuration,
 and `idm_admin` which manages accounts and groups in Kanidm.
 
 You should consider these as "break-glass" accounts. They exist to allow the server to be

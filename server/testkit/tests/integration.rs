@@ -124,7 +124,7 @@ async fn test_webdriver_user_login(rsclient: kanidm_client::KanidmClient) {
     let username_form = handle_error!(
         c,
         c.form(Locator::Id("login")).await,
-        "Coudln't find login form"
+        "Couldn't find login form"
     );
     handle_error!(
         c,

@@ -109,7 +109,7 @@ There are two possibilities here:
 We replicate the radius credential to the trusted domain, so the user has the same radius password
 in both locations. A question is how the user would auto-add their profile to their devices here
 on the remote site, because they would need to be able to access the configuration. This would
-necesitate the user logging into the "trust" site to get the configuration profile anyway.
+necessitate the user logging into the "trust" site to get the configuration profile anyway.
 
 * One account - two sites - two passwords
 

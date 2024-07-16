@@ -115,7 +115,7 @@ fn test_jpg_has_trailer() {
     .expect("Failed to read file");
     assert!(!has_trailer(&file_contents).expect("Failed to check for JPEG trailer"));
 
-    // checking a known bad imagee
+    // checking a known bad image
     let file_contents = std::fs::read(format!(
         "{}/src/valueset/image/test_images/windows11_3_cropped.jpg",
         env!("CARGO_MANIFEST_DIR")

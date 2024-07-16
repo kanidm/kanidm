@@ -376,7 +376,7 @@ pub enum FilterPlan {
 ///
 /// This `Filter` validation state is in the `STATE` attribute and will be either `FilterInvalid`
 /// or `FilterValid`. The `Filter` must be checked by the schema to move to `FilterValid`. This
-/// helps to prevent errors at compile time to assert `Filters` are secuerly. checked
+/// helps to prevent errors at compile time to assert `Filters` are securely. checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
 #[derive(Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
@@ -634,7 +634,7 @@ impl Filter<FilterInvalid> {
         //
         // YOLO.
         // tl;dr - blindly accept that this filter and it's ava's MUST have
-        // been normalised and exist in schema. If they don't things may subtely
+        // been normalised and exist in schema. If they don't things may subtly
         // break, fail, or explode. As subtle as an explosion can be.
         Filter {
             state: FilterValid {

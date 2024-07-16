@@ -5,7 +5,7 @@ static PNG_CHUNK_END: &[u8; 4] = b"IEND";
 
 #[derive(Debug)]
 /// This is used as part of PNG validation to identify if we've seen the end of the file, and if it suffers from
-/// Acropalypyse issues by having trailing data.
+/// Acropalypse issues by having trailing data.
 enum PngChunkStatus {
     SeenEnd { has_trailer: bool },
     MoreChunks,

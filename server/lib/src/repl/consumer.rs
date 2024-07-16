@@ -185,7 +185,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         let (cand, pre_cand): (Vec<_>, Vec<_>) = all_updates_valid
             .into_iter()
-            // We previously excluded this to avoid doing unnecesary work on entries that
+            // We previously excluded this to avoid doing unnecessary work on entries that
             // were moving to a conflict state, and the survivor was staying "as is" on this
             // node. However, this gets messy with dyngroups and memberof, where on a conflict
             // the memberships are deleted across the replication boundary. In these cases
@@ -418,7 +418,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Reload the domain version, doing any needed migrations.
         //
-        // While it seems odd that we do the migrations after we recieve the entries,
+        // While it seems odd that we do the migrations after we receive the entries,
         // this is because the supplier will already be sending us everything that
         // was just migrated. As a result, we only need to apply the migrations to entries
         // that were not on the supplier, and therefore need updates here.

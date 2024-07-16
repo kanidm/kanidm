@@ -94,7 +94,7 @@ By default Kanidm assumes that authority over synchronised entries is retained b
 This means that synchronised entries can not be written to in any capacity outside of a small number
 of internal Kanidm internal attributes.
 
-An adminisrator may wish to allow synchronised entries to have some attributes written by the
+An administrator may wish to allow synchronised entries to have some attributes written by the
 instance locally. An example is allowing passkeys to be created on Kanidm when the external
 synchronisation provider does not supply them.
 

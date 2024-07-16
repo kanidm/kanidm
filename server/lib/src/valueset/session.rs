@@ -282,7 +282,7 @@ impl ValueSetT for ValueSetSession {
             // is replication safe since other replicas will also be performing
             // the same operation on merge, since we trim by session issuance order.
 
-            // This is a "slow path". This is becase we optimise session storage
+            // This is a "slow path". This is because we optimise session storage
             // based on fast session lookup, so now we need to actually create an
             // index based on time. We need to also clone here since we need to mutate
             // self.map which would violate mut/imut.

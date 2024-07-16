@@ -2972,10 +2972,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap_or(false)
     }
 
-    // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
+    // Since EntryValid/Invalid is just about class adherence, not Value correctness, we
     // can now apply filters to invalid entries - why? Because even if they aren't class
     // valid, we still have strict typing checks between the filter -> entry to guarantee
-    // they should be functional. We'll never match something that isn't syntactially valid.
+    // they should be functional. We'll never match something that isn't syntactically valid.
     #[inline(always)]
     #[instrument(level = "trace", name = "entry::entry_match_no_index", skip(self))]
     /// Test if the following filter applies to and matches this entry.
