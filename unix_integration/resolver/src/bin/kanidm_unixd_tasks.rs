@@ -96,7 +96,10 @@ fn create_home_directory(
     // Final sanity check to prevent certain classes of attacks.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
+    // This is where the symlinks (or in future, bindmounts) will be.
     let home_prefix_path = Path::new(home_prefix);
+    // This is where the actual storage of the home dir is, if an external mount path
+    // is configured.
     let home_mount_prefix_path = Path::new(home_mount_prefix.as_deref().unwrap_or(home_prefix));
 
     // Does our home_prefix actually exist?
@@ -112,10 +115,29 @@ fn create_home_directory(
     let hd_path_raw = format!("{}{}", home_prefix, name);
     let hd_path = Path::new(&hd_path_raw);
 
-    // Assert the resulting named home path is consistent and correct.
+    // Assert the resulting named home path is consistent and correct. This is to ensure that
+    // the complete home path is not a path traversal outside of the home_prefixes.
     if let Some(pp) = hd_path.parent() {
         if pp != home_prefix_path {
             return Err("Invalid home directory name - not within home_prefix".to_string());
+        }
+    } else {
+        return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
+    }
+
+    let hd_mount_path_raw = format!(
+        "{}{}",
+        home_mount_prefix.as_deref().unwrap_or(home_prefix),
+        name
+    );
+    let hd_mount_path = Path::new(&hd_mount_path_raw);
+
+    if let Some(pp) = hd_mount_path.parent() {
+        if pp != home_mount_prefix_path {
+            return Err(
+                "Invalid home directory name - not within home_prefix/home_mount_prefix"
+                    .to_string(),
+            );
         }
     } else {
         return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
@@ -130,8 +152,8 @@ fn create_home_directory(
         selinux_util::SelinuxLabeler::new_noop()
     };
 
-    // Does the home directory exist?
-    if !hd_path.exists() {
+    // Does the home directory exist? This is checking the *true* home mount storage.
+    if !hd_mount_path.exists() {
         // Set the SELinux security context for file creation
         #[cfg(all(target_family = "unix", feature = "selinux"))]
         labeler.do_setfscreatecon_for_path()?;
@@ -140,20 +162,20 @@ fn create_home_directory(
         let before = unsafe { umask(0o0027) };
 
         // Create the dir
-        if let Err(e) = fs::create_dir_all(hd_path) {
+        if let Err(e) = fs::create_dir_all(hd_mount_path) {
             let _ = unsafe { umask(before) };
             return Err(format!("{:?}", e));
         }
         let _ = unsafe { umask(before) };
 
-        chown(hd_path, info.gid)?;
+        chown(hd_mount_path, info.gid)?;
 
         // Copy in structure from /etc/skel/ if present
         let skel_dir = Path::new("/etc/skel/");
         if use_etc_skel && skel_dir.exists() {
             info!("preparing homedir using /etc/skel");
             for entry in WalkDir::new(skel_dir).into_iter().filter_map(|e| e.ok()) {
-                let dest = &hd_path.join(
+                let dest = &hd_mount_path.join(
                     entry
                         .path()
                         .strip_prefix(skel_dir)
@@ -178,7 +200,7 @@ fn create_home_directory(
 
                 // Create equivalence rule in the SELinux policy
                 #[cfg(all(target_family = "unix", feature = "selinux"))]
-                labeler.setup_equivalence_rule(&hd_path_raw)?;
+                labeler.setup_equivalence_rule(&hd_mount_path_raw)?;
             }
         }
     }
@@ -187,8 +209,15 @@ fn create_home_directory(
     #[cfg(all(target_family = "unix", feature = "selinux"))]
     labeler.set_default_context_for_fs_objects()?;
 
-    let name_rel_path = Path::new(&name);
-    // Does the aliases exist
+    // If there is a mount prefix we use it, otherwise we use a relative path
+    // within the same directory.
+    let name_rel_path = if home_mount_prefix.is_none() {
+        Path::new(&name)
+    } else {
+        hd_mount_path
+    };
+
+    // Do the aliases exist?
     for alias in info.aliases.iter() {
         // Sanity check the alias.
         // let alias = alias.replace(".", "").replace("/", "").replace("\\", "");
@@ -196,12 +225,10 @@ fn create_home_directory(
         let alias_path_raw = format!("{}{}", home_prefix, alias);
         let alias_path = Path::new(&alias_path_raw);
 
-        // Assert the resulting alias path is consistent and correct.
+        // Assert the resulting alias path is consistent and correct within the home_prefix.
         if let Some(pp) = alias_path.parent() {
-            if pp != home_mount_prefix_path {
-                return Err(
-                    "Invalid home directory alias - not within home_mount_prefix".to_string(),
-                );
+            if pp != home_prefix_path {
+                return Err("Invalid home directory alias - not within home_prefix".to_string());
             }
         } else {
             return Err("Invalid/Corrupt alias directory path - no prefix found".to_string());
@@ -223,6 +250,13 @@ fn create_home_directory(
                 if let Err(e) = symlink(name_rel_path, alias_path) {
                     return Err(format!("{:?}", e));
                 }
+            } else {
+                warn!(
+                    ?alias_path_raw,
+                    ?alias,
+                    ?name,
+                    "home directory alias is not a symlink, unable to update"
+                );
             }
         } else {
             // Does not exist. Create.
