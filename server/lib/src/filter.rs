@@ -1235,13 +1235,20 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
             FilterComp::Cnt(a, v) => {
-                // TODO: For now, don't emit substring indexes.
-                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
-                // let idx = NonZeroU8::new(idx as u8);
-                FilterResolved::Cnt(a, v, None)
+                let idx = idxmeta.contains(&(&a, &IndexType::SubString));
+                let idx = NonZeroU8::new(idx as u8);
+                FilterResolved::Cnt(a, v, idx)
             }
-            FilterComp::Stw(a, v) => FilterResolved::Stw(a, v, None),
-            FilterComp::Enw(a, v) => FilterResolved::Enw(a, v, None),
+            FilterComp::Stw(a, v) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::SubString));
+                let idx = NonZeroU8::new(idx as u8);
+                FilterResolved::Stw(a, v, idx)
+            }
+            FilterComp::Enw(a, v) => {
+                let idx = idxmeta.contains(&(&a, &IndexType::SubString));
+                let idx = NonZeroU8::new(idx as u8);
+                FilterResolved::Enw(a, v, idx)
+            }
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
                 FilterResolved::Pres(a, NonZeroU8::new(idx as u8))
@@ -1335,26 +1342,20 @@ impl FilterResolved {
                 Some(FilterResolved::Cnt(a, v, idx))
             }
             FilterComp::Stw(a, v) => {
-                /*
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
                 Some(FilterResolved::Stw(a, v, idx))
-                */
-                Some(FilterResolved::Stw(a, v, None))
             }
             FilterComp::Enw(a, v) => {
-                /*
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
                 Some(FilterResolved::Enw(a, v, idx))
-                */
-                Some(FilterResolved::Enw(a, v, None))
             }
             FilterComp::Pres(a) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);

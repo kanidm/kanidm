@@ -30,6 +30,7 @@ use crate::repl::ruv::{
     ReplicationUpdateVector, ReplicationUpdateVectorReadTransaction,
     ReplicationUpdateVectorTransaction, ReplicationUpdateVectorWriteTransaction,
 };
+use crate::utils::trigraph_iter;
 use crate::value::{IndexType, Value};
 
 pub(crate) mod dbentry;
@@ -51,6 +52,7 @@ use kanidm_proto::internal::FsType;
 // Currently disabled due to improvements in idlset for intersection handling.
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
+const FILTER_SUBSTR_TEST_THRESHOLD: usize = 4;
 
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
@@ -216,7 +218,6 @@ pub trait BackendTransaction {
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
-    // #[instrument(level = "debug", name = "be::filter2idl", skip_all)]
     fn filter2idl(
         &mut self,
         filt: &FilterResolved,
@@ -243,33 +244,17 @@ pub trait BackendTransaction {
                     (IdList::AllIds, FilterPlan::EqUnindexed(attr.clone()))
                 }
             }
-            FilterResolved::Cnt(attr, subvalue, idx) => {
-                if idx.is_some() {
-                    // Get the idx_key
-                    let idx_key = subvalue.get_idx_sub_key();
-                    // Get the idl for this
-                    match self
-                        .get_idlayer()
-                        .get_idl(attr, IndexType::SubString, &idx_key)?
-                    {
-                        Some(idl) => (
-                            IdList::Indexed(idl),
-                            FilterPlan::SubIndexed(attr.clone(), idx_key),
-                        ),
-                        None => (IdList::AllIds, FilterPlan::SubCorrupt(attr.clone())),
-                    }
+            FilterResolved::Stw(attr, subvalue, idx)
+            | FilterResolved::Enw(attr, subvalue, idx)
+            | FilterResolved::Cnt(attr, subvalue, idx) => {
+                // Get the idx_key. Not all types support this, so may return "none".
+                trace!(?idx, ?subvalue, ?attr);
+                if let (true, Some(idx_key)) = (idx.is_some(), subvalue.get_idx_sub_key()) {
+                    self.filter2idl_sub(attr, idx_key)?
                 } else {
                     // Schema believes this is not indexed
                     (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
                 }
-            }
-            FilterResolved::Stw(attr, _subvalue, _idx) => {
-                // Schema believes this is not indexed
-                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
-            }
-            FilterResolved::Enw(attr, _subvalue, _idx) => {
-                // Schema believes this is not indexed
-                (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
             }
             FilterResolved::Pres(attr, idx) => {
                 if idx.is_some() {
@@ -577,6 +562,69 @@ pub trait BackendTransaction {
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
         })
+    }
+
+    fn filter2idl_sub(
+        &mut self,
+        attr: &AttrString,
+        sub_idx_key: String,
+    ) -> Result<(IdList, FilterPlan), OperationError> {
+        // Now given that idx_key, we will iterate over the possible graphemes.
+        let mut grapheme_iter = trigraph_iter(&sub_idx_key);
+
+        // Substrings are always partial because we have to split the keys up
+        // and we don't pay attention to starts/ends with conditions. We need
+        // the caller to check those conditions manually at run time. This lets
+        // the index focus on trigraph indexes only rather than needing to
+        // worry about those other bits. In a way substring indexes are "fuzzy".
+
+        let mut idl = match grapheme_iter.next() {
+            Some(idx_key) => {
+                match self
+                    .get_idlayer()
+                    .get_idl(attr, IndexType::SubString, &idx_key)?
+                {
+                    Some(idl) => idl,
+                    None => return Ok((IdList::AllIds, FilterPlan::SubCorrupt(attr.clone()))),
+                }
+            }
+            None => {
+                // If there are no graphemes this means the attempt is for an empty string, so
+                // we return an empty result set.
+                return Ok((IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid));
+            }
+        };
+
+        if idl.len() > FILTER_SUBSTR_TEST_THRESHOLD {
+            for idx_key in grapheme_iter {
+                // Get the idl for this
+                match self
+                    .get_idlayer()
+                    .get_idl(attr, IndexType::SubString, idx_key)?
+                {
+                    Some(r_idl) => {
+                        // Do an *and* operation between what we found and our working idl.
+                        idl = r_idl & idl;
+                    }
+                    None => {
+                        // if something didn't match, then we simply bail out after zeroing the current IDL.
+                        idl = IDLBitRange::new();
+                    }
+                };
+
+                if idl.len() < FILTER_SUBSTR_TEST_THRESHOLD {
+                    break;
+                }
+            }
+        } else {
+            drop(grapheme_iter);
+        }
+
+        // We exhausted the grapheme iter, exit with what we found.
+        Ok((
+            IdList::Partial(idl),
+            FilterPlan::SubIndexed(attr.clone(), sub_idx_key),
+        ))
     }
 
     #[instrument(level = "debug", name = "be::search", skip_all)]
@@ -2723,6 +2771,40 @@ mod tests {
                 Some(vec![2])
             );
 
+            for sub in [
+                "w", "m", "wi", "il", "ll", "li", "ia", "am", "wil", "ill", "lli", "lia", "iam",
+            ] {
+                idl_state!(
+                    be,
+                    Attribute::Name.as_ref(),
+                    IndexType::SubString,
+                    sub,
+                    Some(vec![1])
+                );
+            }
+
+            for sub in [
+                "c", "r", "e", "cl", "la", "ai", "ir", "re", "cla", "lai", "air", "ire",
+            ] {
+                idl_state!(
+                    be,
+                    Attribute::Name.as_ref(),
+                    IndexType::SubString,
+                    sub,
+                    Some(vec![2])
+                );
+            }
+
+            for sub in ["i", "a", "l"] {
+                idl_state!(
+                    be,
+                    Attribute::Name.as_ref(),
+                    IndexType::SubString,
+                    sub,
+                    Some(vec![1, 2])
+                );
+            }
+
             idl_state!(
                 be,
                 Attribute::Name.as_ref(),
@@ -3239,9 +3321,7 @@ mod tests {
                 IdList::Partial(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
                 }
-                _ => {
-                    panic!("");
-                }
+                _ => unreachable!(),
             }
 
             let (r, _plan) = be.filter2idl(f_p2.to_inner(), 0).unwrap();
@@ -3249,9 +3329,19 @@ mod tests {
                 IdList::Partial(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
                 }
-                _ => {
-                    panic!("");
+                _ => unreachable!(),
+            }
+
+            // Substrings are always partial
+            let f_p3 = filter_resolved!(f_sub(Attribute::Name, PartialValue::new_utf8s("wil")));
+
+            let (r, plan) = be.filter2idl(f_p3.to_inner(), 0).unwrap();
+            trace!(?r, ?plan);
+            match r {
+                IdList::Partial(idl) => {
+                    assert!(idl == IDLBitRange::from_iter(vec![1]));
                 }
+                _ => unreachable!(),
             }
 
             //   no index and

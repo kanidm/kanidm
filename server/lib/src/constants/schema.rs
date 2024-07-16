@@ -21,12 +21,36 @@ pub static ref SCHEMA_ATTR_DISPLAYNAME: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_DISPLAYNAME_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DISPLAYNAME,
+    name: Attribute::DisplayName.into(),
+    description: "The publicly visible display name of this person".to_string(),
+
+    index: vec![IndexType::Equality, IndexType::SubString],
+    sync_allowed: true,
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_MAIL: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_MAIL,
     name: Attribute::Mail.into(),
     description: "Mail addresses of the object".to_string(),
 
     index: vec![IndexType::Equality],
+    unique: true,
+    multivalue: true,
+    sync_allowed: true,
+    syntax: SyntaxType::EmailAddress,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_MAIL_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_MAIL,
+    name: Attribute::Mail.into(),
+    description: "Mail addresses of the object".to_string(),
+
+    index: vec![IndexType::Equality, IndexType::SubString],
     unique: true,
     multivalue: true,
     sync_allowed: true,
@@ -74,6 +98,17 @@ pub static ref SCHEMA_ATTR_LEGALNAME: SchemaAttribute = SchemaAttribute {
     description: "The private and sensitive legal name of this person".to_string(),
 
     index: vec![IndexType::Equality],
+    sync_allowed: true,
+    syntax: SyntaxType::Utf8String,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_LEGALNAME_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LEGALNAME,
+    name: Attribute::LegalName.into(),
+    description: "The private and sensitive legal name of this person".to_string(),
+
+    index: vec![IndexType::Equality, IndexType::SubString],
     sync_allowed: true,
     syntax: SyntaxType::Utf8String,
     ..Default::default()

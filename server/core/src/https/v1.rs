@@ -631,6 +631,30 @@ pub async fn person_post(
 
 #[utoipa::path(
     get,
+    path = "/v1/person/_search/{id}",
+    responses(
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/person",
+    operation_id = "person_search_id",
+)]
+pub async fn person_search_id(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    let filter = filter_all!(f_and!([
+        f_eq(Attribute::Class, EntryClass::Person.into()),
+        f_sub(Attribute::Name, PartialValue::new_iname(&id))
+    ]));
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    get,
     path = "/v1/person/{id}",
     responses(
         (status=200, body=Option<ProtoEntry>, content_type="application/json"),
@@ -2185,6 +2209,30 @@ pub async fn group_get(
 }
 
 #[utoipa::path(
+    get,
+    path = "/v1/group/_search/{id}",
+    responses(
+        (status=200, body=Option<ProtoEntry>, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/group",
+    operation_id = "group_search_id",
+)]
+pub async fn group_search_id(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<ProtoEntry>>, WebError> {
+    let filter = filter_all!(f_and!([
+        f_eq(Attribute::Class, EntryClass::Group.into()),
+        f_sub(Attribute::Name, PartialValue::new_iname(&id))
+    ]));
+    json_rest_event_get(state, None, filter, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
     post,
     path = "/v1/group",
     responses(
@@ -3145,6 +3193,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/self/_applinks", get(applinks_get))
         // Person routes
         .route("/v1/person", get(person_get).post(person_post))
+        .route("/v1/person/_search/:id", get(person_search_id))
         .route(
             "/v1/person/:id",
             get(person_id_get)
@@ -3311,6 +3360,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/group/:id/_unix/_token", get(group_id_unix_token_get))
         .route("/v1/group/:id/_unix", post(group_id_unix_post))
         .route("/v1/group", get(group_get).post(group_post))
+        .route("/v1/group/_search/:id", get(group_search_id))
         .route(
             "/v1/group/:id",
             get(group_id_get)

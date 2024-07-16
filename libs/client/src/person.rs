@@ -17,6 +17,11 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_person_search(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/person/_search/{}", id).as_str())
+            .await
+    }
+
     pub async fn idm_person_account_create(
         &self,
         name: &str,
