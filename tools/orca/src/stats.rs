@@ -141,15 +141,15 @@ impl DataCollector for BasicStatistics {
             return Err(Error::InvalidState);
         }
 
-        if writeop_times.is_empty() {
-            error!("For some weird reason no write operations were recorded, exiting...");
-            return Err(Error::InvalidState);
-        }
+        // if writeop_times.is_empty() {
+        //     error!("For some weird reason no write operations were recorded, exiting...");
+        //     return Err(Error::InvalidState);
+        // }
 
-        if readop_times.is_empty() {
-            error!("For some weird reason no read operations were recorded, exiting...");
-            return Err(Error::InvalidState);
-        }
+        // if readop_times.is_empty() {
+        //     error!("For some weird reason no read operations were recorded, exiting...");
+        //     return Err(Error::InvalidState);
+        // }
 
         let stats = StatsContainer::new(
             &readop_times,
@@ -167,14 +167,14 @@ impl DataCollector for BasicStatistics {
         info!("Received {} read events", stats.read_events);
 
         info!("mean: {} seconds", stats.read_mean);
-        info!("variance: {}", stats.read_variance);
+        info!("variance: {} seconds", stats.read_variance);
         info!("SD: {} seconds", stats.read_sd);
         info!("95%: {}", stats.read_95);
 
         info!("Received {} write events", stats.write_events);
 
         info!("mean: {} seconds", stats.write_mean);
-        info!("variance: {}", stats.write_variance);
+        info!("variance: {} seconds", stats.write_variance);
         info!("SD: {} seconds", stats.write_sd);
         info!("95%: {}", stats.write_95);
 
@@ -217,25 +217,37 @@ impl StatsContainer {
         person_count: usize,
         group_count: usize,
     ) -> Self {
-        let readop_distrib: Normal<f64> = Normal::from_data(readop_times);
-        let read_sd = readop_distrib.variance().sqrt();
-        let writeop_distrib: Normal<f64> = Normal::from_data(writeop_times);
-        let write_sd = writeop_distrib.variance().sqrt();
+        let readop_distrib: Option<Normal<f64>> = if readop_times.len() >= 2 {
+            Some(Normal::from_data(readop_times))
+        } else {
+            None
+        };
+        let read_sd = readop_distrib.map(|v| v.variance().sqrt()).unwrap_or(0.);
+        let writeop_distrib: Option<Normal<f64>> = if writeop_times.len() >= 2 {
+            Some(Normal::from_data(writeop_times))
+        } else {
+            None
+        };
+        let write_sd = writeop_distrib.map(|v| v.variance().sqrt()).unwrap_or(0.);
 
         StatsContainer {
             person_count,
             group_count,
             node_count,
             read_events: readop_times.len(),
-            read_sd: readop_distrib.variance().sqrt(),
-            read_mean: readop_distrib.mean(),
-            read_variance: readop_distrib.variance(),
-            read_95: readop_distrib.mean() + (2.0 * read_sd),
+            read_sd: readop_distrib.map(|v| v.variance().sqrt()).unwrap_or(0.),
+            read_mean: readop_distrib.map(|v| v.mean()).unwrap_or(0.),
+            read_variance: readop_distrib.map(|v| v.variance()).unwrap_or(0.),
+            read_95: readop_distrib
+                .map(|v| v.mean() + (2.0 * read_sd))
+                .unwrap_or(0.),
             write_events: writeop_times.len(),
-            write_sd: writeop_distrib.variance().sqrt(),
-            write_mean: writeop_distrib.mean(),
-            write_variance: writeop_distrib.variance(),
-            write_95: writeop_distrib.mean() + (2.0 * write_sd),
+            write_sd: writeop_distrib.map(|v| v.variance().sqrt()).unwrap_or(0.),
+            write_mean: writeop_distrib.map(|v| v.mean()).unwrap_or(0.),
+            write_variance: writeop_distrib.map(|v| v.variance()).unwrap_or(0.),
+            write_95: writeop_distrib
+                .map(|v| v.mean() + (2.0 * write_sd))
+                .unwrap_or(0.),
         }
     }
 }
