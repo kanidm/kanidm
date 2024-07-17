@@ -10,7 +10,7 @@ allow rogue users to have a long window of usage of the token before they were f
 also means that in the case that an account must be forcefully terminated then the user would retain
 access to applications for up to 8 hours or more.
 
-To prevent this, we need oauth2 tokens to "check in" periodically to re-affirm their session
+To prevent this, we need OAuth2 tokens to "check in" periodically to re-affirm their session
 validity.
 
 This is performed with access tokens and refresh tokens. The access token has a short lifespan
