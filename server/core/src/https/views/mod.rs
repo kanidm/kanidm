@@ -69,8 +69,9 @@ pub fn view_router() -> Router<ServerState> {
 
     // Anything that is a partial only works if triggered from htmx
     let guarded_router = Router::new()
-        .route("/reset/new_pwd", post(reset::view_new_pwd))
-        .route("/api/init_passkey", post(reset::init_passkey))
+        .route("/reset/add_password", post(reset::view_new_pwd))
+        .route("/reset/add_passkey", post(reset::view_new_passkey))
+        .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
         .layer(HxRequestGuardLayer::new("/ui"));

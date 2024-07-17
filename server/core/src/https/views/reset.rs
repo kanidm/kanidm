@@ -7,10 +7,10 @@ use askama::Template;
 use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
-use axum::{Extension, Form};
+use axum::{Extension, Form, Json};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
-use axum_htmx::{HxPushUrl, HxRequest, HxRetarget};
+use axum_htmx::{HxEvent, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
 use futures_util::TryFutureExt;
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CURequest, CUSessionToken,
@@ -19,6 +19,7 @@ use kanidm_proto::internal::{
 };
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use uuid::Uuid;
 
 #[derive(Template)]
 #[template(path = "credentials_reset_form.html")]
@@ -29,14 +30,14 @@ struct ResetCredFormView {
 #[derive(Template)]
 #[template(path = "credentials_reset.html")]
 struct CredResetView {
+    domain: String,
+    names: String,
     credentials_update_partial: CredResetPartialView,
 }
 
 #[derive(Template)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
-    domain: String,
-    names: String,
     ext_cred_portal: CUExtPortal,
     warnings: Vec<CURegWarning>,
     attested_passkeys_state: CUCredState,
@@ -55,7 +56,7 @@ pub(crate) struct ResetTokenParam {
 }
 
 #[derive(Template)]
-#[template(path = "cred_update/add_password_modal_partial.html")]
+#[template(path = "cred_update/add_password_partial.html")]
 struct AddPasswordModalPartial {
     check_res: PwdCheckResult,
 }
@@ -77,14 +78,10 @@ pub(crate) struct NewPassword {
 }
 
 #[derive(Template)]
-#[template(path = "cred_update/add_passkey_modal_partial.html")]
+#[template(path = "cred_update/add_passkey_partial.html")]
 struct AddPasskeyModalPartial {
-    passkey_state: PassKeyState,
-}
-
-enum PassKeyState {
-    Init,
-    Create { chal: String },
+    // Passkey challenge for adding a new passkey
+    challenge: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -100,6 +97,11 @@ pub(crate) struct PasskeyCreateForm {
     creation_data: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub(crate) struct PasskeyRemoveData {
+    uuid: Uuid
+}
+
 pub(crate) async fn cancel_mfareg(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -109,17 +111,13 @@ pub(crate) async fn cancel_mfareg(
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
 
-    state
+    let cu_status = state
         .qe_r_ref
         .handle_idmcredentialupdate(cu_session_token, CURequest::CancelMFAReg, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    // TODO: Probably add other modals here ?
-    Ok(HtmlTemplate(AddPasskeyModalPartial {
-        passkey_state: PassKeyState::Init,
-    })
-    .into_response())
+    Ok(get_cu_partial_template(cu_status).into_response())
 }
 
 async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
@@ -133,6 +131,25 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
     } else {
         Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
     };
+}
+
+pub(crate) async fn remove_passkey(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Json(passkey): Json<PasskeyRemoveData>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(cu_session_token, CURequest::PasskeyRemove(passkey.uuid), kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok(get_cu_partial_template(cu_status).into_response())
 }
 
 pub(crate) async fn finish_passkey(
@@ -155,7 +172,7 @@ pub(crate) async fn finish_passkey(
                 .map_err(|op_err| HtmxError::new(&kopid, op_err))
                 .await?;
 
-            Ok(get_cu_template("".to_string(), cu_status).into_response())
+            Ok(get_cu_partial_template(cu_status).into_response())
         }
         Err(e) => {
             error!("Bad request for passkey creation: {e}");
@@ -168,7 +185,7 @@ pub(crate) async fn finish_passkey(
     }
 }
 
-pub(crate) async fn init_passkey(
+pub(crate) async fn view_new_passkey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
@@ -185,9 +202,7 @@ pub(crate) async fn init_passkey(
 
     let response = match cu_satus.mfaregstate {
         CURegState::Passkey(chal) => HtmlTemplate(AddPasskeyModalPartial {
-            passkey_state: PassKeyState::Create {
-                chal: serde_json::to_string(&chal).unwrap(),
-            },
+            challenge: serde_json::to_string(&chal).unwrap(),
         })
         .into_response(),
         _ => (
@@ -197,7 +212,9 @@ pub(crate) async fn init_passkey(
             .into_response(),
     };
 
-    Ok(response)
+    let passkey_init_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped".to_string())]);
+    Ok((passkey_init_trigger, response).into_response())
 }
 
 pub(crate) async fn view_new_pwd(
@@ -206,9 +223,23 @@ pub(crate) async fn view_new_pwd(
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
-    Form(new_passwords): Form<NewPassword>,
+    opt_form: Option<Form<NewPassword>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+    let swap_on_err_trigger =
+        HxResponseTrigger::normal([HxEvent::new("addPasswordSwapOnErr".to_string())]);
+
+    let new_passwords = match opt_form {
+        None => {
+            let partial = AddPasswordModalPartial {
+                check_res: PwdCheckResult::Init,
+            };
+            return Ok((swapped_handler_trigger, HtmlTemplate(partial)).into_response());
+        }
+        Some(Form(new_passwords)) => new_passwords,
+    };
 
     let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
     let (warnings, status) = if pwd_equal {
@@ -221,8 +252,7 @@ pub(crate) async fn view_new_pwd(
             )
             .await;
         match res {
-            // TODO: Return n swap dynamic template part instead of redirect
-            Ok(_) => return Ok(Redirect::to("/ui/reset").into_response()),
+            Ok(cu_status) => return Ok(get_cu_partial_template(cu_status).into_response()),
             Err(OperationError::PasswordQuality(password_feedback)) => {
                 (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
             }
@@ -237,7 +267,14 @@ pub(crate) async fn view_new_pwd(
         warnings,
     };
     let template = HtmlTemplate(AddPasswordModalPartial { check_res });
-    Ok((status, template).into_response())
+
+    Ok((
+        status,
+        swapped_handler_trigger,
+        swap_on_err_trigger,
+        template,
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_reset_get(
@@ -313,15 +350,9 @@ pub(crate) async fn view_reset_get(
     }
 }
 
-fn get_cu_template(
-    domain_display_name: String,
-    cu_status: CUStatus,
-) -> HtmlTemplate<CredResetView> {
+fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
     let CUStatus {
-        spn,
-        displayname,
         ext_cred_portal,
-        mfaregstate: _,
         warnings,
         passkeys_state,
         attested_passkeys_state,
@@ -332,26 +363,34 @@ fn get_cu_template(
         ..
     } = cu_status;
 
+    return CredResetPartialView {
+        ext_cred_portal,
+        warnings,
+        attested_passkeys_state,
+        passkeys_state,
+        attested_passkeys,
+        passkeys,
+        primary_state,
+        primary,
+    };
+}
+
+fn get_cu_partial_template(cu_status: CUStatus) -> HtmlTemplate<CredResetPartialView> {
+    let credentials_update_partial = get_cu_partial(cu_status);
+    HtmlTemplate(credentials_update_partial)
+}
+
+fn get_cu_template(domain: String, cu_status: CUStatus) -> HtmlTemplate<CredResetView> {
+    let spn = cu_status.spn.clone();
+    let displayname = cu_status.displayname.clone();
     let (username, _domain) = spn.split_once('@').unwrap_or(("", &spn));
     let names = format!("{} ({})", displayname, username);
-
-    let cred_view = CredResetView {
-        credentials_update_partial: CredResetPartialView {
-            domain: domain_display_name,
-            names,
-            ext_cred_portal,
-            warnings,
-            attested_passkeys_state,
-            passkeys_state,
-            attested_passkeys,
-            passkeys,
-            primary_state,
-            primary,
-        },
-    };
-
-    let template = HtmlTemplate(cred_view);
-    template
+    let credentials_update_partial = get_cu_partial(cu_status);
+    HtmlTemplate(CredResetView {
+        domain,
+        names,
+        credentials_update_partial,
+    })
 }
 
 // Any filter defined in the module `filters` is accessible in your template.
@@ -361,6 +400,17 @@ mod filters {
         condition: bool,
     ) -> ::askama::Result<String> {
         blank_iff(implicit_arg, &condition)
+    }
+    pub fn ternary<T: std::fmt::Display, F: std::fmt::Display>(
+        implicit_arg: &bool,
+        true_case: T,
+        false_case: F,
+    ) -> ::askama::Result<String> {
+        if *implicit_arg {
+            Ok(format!("{true_case}"))
+        } else {
+            Ok(format!("{false_case}"))
+        }
     }
     pub fn blank_iff<T: std::fmt::Display>(
         implicit_arg: T,

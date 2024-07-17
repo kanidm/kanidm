@@ -1,0 +1,25 @@
+<div>
+    <div class="row" id="staticPasskeyCreateRow">
+        <script id="data">(( challenge|safe ))</script>
+
+        <!-- Safari requires a human input to start passkey creation -->
+        <button id="passkeyNamingSafariBtn" class="btn btn-primary">Begin Passkey Enrollment</button>
+
+        <form id="passkeyNamingForm" class="g-2 d-none">
+            <label for="passkey-label" class="form-label">Please name this Passkey</label>
+            <input type="text" name="name" id="passkey-label" required class="form-control">
+
+            <!-- Hidden inputs to put info passkey into form submission -->
+            <input hidden type="text" name="creationData" id="passkey-create-data">
+
+            <div class="d-flex justify-content-end pt-3 g-3" hx-target="#credentialUpdateDynamicSection">
+                <button id="password-cancel" type="button" class="btn btn-danger" hx-get="/ui/api/cancel_mfareg">Cancel</button>
+                <button
+                        hx-post="/ui/api/finish_passkey"
+                        id="passkeyNamingSubmitBtn"
+                        type="button" class="btn btn-success d-none ms-2" disabled
+                >Submit</button>
+            </div>
+        </form>
+    </div>
+</div>
