@@ -592,7 +592,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1a56894edf5cd1efa7068d7454adeb7ce0b3da4ffa5ab08cfc06165bbc62f0c7"
 dependencies = [
  "base64 0.21.7",
- "paste 1.0.15",
+ "paste",
  "serde",
 ]
 
@@ -3791,13 +3791,13 @@ dependencies = [
 
 [[package]]
 name = "libnss"
-version = "0.4.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "48b67ef5ebef2a035ac8106c9b71176b6246be2a580ff4ee94bb80919e55b34c"
+checksum = "3c4bc0291fc787d67c56e9ed79b80780e53bfb9be173177f301ee666cec1021b"
 dependencies = [
  "lazy_static",
  "libc",
- "paste 0.1.18",
+ "paste",
 ]
 
 [[package]]
@@ -4102,7 +4102,7 @@ dependencies = [
  "lazy_static",
  "libc",
  "libnss",
- "paste 1.0.15",
+ "paste",
 ]
 
 [[package]]
@@ -4581,28 +4581,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "45ca20c77d80be666aef2b45486da86238fabe33e38306bd3118fe4af33fa880"
-dependencies = [
- "paste-impl",
- "proc-macro-hack",
-]
-
-[[package]]
-name = "paste"
 version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
-
-[[package]]
-name = "paste-impl"
-version = "0.1.18"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d95a7db200b97ef370c8e6de0088252f7e0dfff7d047a28528e47456c0fc98b6"
-dependencies = [
- "proc-macro-hack",
-]
 
 [[package]]
 name = "peeking_take_while"
@@ -4878,12 +4859,6 @@ dependencies = [
  "quote",
  "version_check",
 ]
-
-[[package]]
-name = "proc-macro-hack"
-version = "0.5.20+deprecated"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc375e1527247fe1a97d8b7156678dfe7c1af2fc075c9a4db3690ecd2a148068"
 
 [[package]]
 name = "proc-macro2"
@@ -6358,7 +6333,7 @@ dependencies = [
  "num-derive",
  "num-traits",
  "oid",
- "paste 1.0.15",
+ "paste",
  "picky-asn1",
  "picky-asn1-x509",
  "regex",
