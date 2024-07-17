@@ -520,7 +520,7 @@ macro_rules! vs_utf8 {
 
 #[allow(unused_macros)]
 #[macro_export]
-/// Takes EntryClass objects and makes  a ValueSetIutf8
+/// Takes EntryClass objects and makes a ValueSetIutf8
 macro_rules! vs_iutf8 {
     () => (
         compile_error!("ValueSetIutf8 needs at least 1 element")

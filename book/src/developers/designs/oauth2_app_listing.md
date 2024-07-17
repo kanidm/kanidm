@@ -25,7 +25,7 @@ While this works well for the oauth2 authorisation design, it doesn't work well 
 for managing _our_ knowledge of who is granted access to the application.
 
 In order to limit who can see what applications we will need a new method to define who is allowed
-access to the resource server on the kanidm side, while also preserving oauth2 semantics.
+access to the resource server on the Kanidm side, while also preserving OAuth2 semantics.
 
 To fix this the current definition of scopes on oauth2 resource servers need to change.
 

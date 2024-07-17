@@ -376,7 +376,7 @@ pub enum FilterPlan {
 ///
 /// This `Filter` validation state is in the `STATE` attribute and will be either `FilterInvalid`
 /// or `FilterValid`. The `Filter` must be checked by the schema to move to `FilterValid`. This
-/// helps to prevent errors at compile time to assert `Filters` are securely. checked
+/// helps to prevent errors at compile time to assert `Filters` are securely checked
 ///
 /// [`Entry`]: ../entry/struct.Entry.html
 #[derive(Clone, Hash, Ord, Eq, PartialOrd, PartialEq)]
