@@ -139,8 +139,8 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
                 ("external/bootstrap.bundle.min.js", None, false, false),
                 ("external/htmx.min.1.9.12.js", None, false, false),
                 ("external/confetti.js", None, false, false),
-                ("external/pkhtml.js", None, false, false),
                 ("external/base64.js", None, false, false),
+                ("pkhtml.js", None, false, false),
             ]
         } else {
             vec![

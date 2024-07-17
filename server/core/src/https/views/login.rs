@@ -1,33 +1,21 @@
 use askama::Template;
-
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
-
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-
 use compact_jwt::{Jws, JwsSigner};
-
 use kanidmd_lib::prelude::OperationError;
-
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
 };
-
 use kanidmd_lib::prelude::*;
-
-use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_USERNAME};
-
+use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_USERNAME, COOKIE_OAUTH2_REQ};
 use kanidmd_lib::idm::AuthState;
-
 use kanidmd_lib::idm::event::AuthResult;
-
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
-
 use webauthn_rs::prelude::PublicKeyCredential;
-
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -124,7 +112,7 @@ pub async fn view_logout_get(
         })
         .into_response()
     } else {
-        let response = Redirect::to("/ui").into_response();
+        let response = Redirect::to("/ui/login").into_response();
 
         jar = if let Some(bearer_cookie) = jar.get(COOKIE_BEARER_TOKEN) {
             let mut bearer_cookie = bearer_cookie.clone();
@@ -660,7 +648,7 @@ async fn view_login_step(
                             username_cookie.set_same_site(SameSite::Lax);
                             username_cookie.set_http_only(true);
                             username_cookie.set_domain(state.domain.clone());
-                            username_cookie.set_path("/");
+                            username_cookie.set_path("/ui/login");
                             jar.add(username_cookie)
                         } else {
                             jar
@@ -670,7 +658,14 @@ async fn view_login_step(
                             .add(bearer_cookie)
                             .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                        let res = Redirect::to("/ui/apps").into_response();
+                        // Now, we need to decided where to go. If this 
+
+                        let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
+                            Redirect::to("/ui/oauth2/resume").into_response()
+                        } else {
+                            Redirect::to("/ui/apps").into_response()
+                        };
+
 
                         break res;
                     }
