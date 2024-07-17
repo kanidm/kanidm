@@ -1,0 +1,57 @@
+<button type="button" class="btn btn-primary" data-bs-toggle="modal"
+        data-bs-target="#staticPasskeyCreate"
+>Add Passkey</button>
+<div class="modal fade" id="staticPasskeyCreate" data-bs-backdrop="static" data-bs-keyboard="false"
+     tabindex="-1" aria-labelledby="staticPasskeyLabel" aria-hidden="true"
+     hx-on::after-request="addPasskeyModalEventListeners()"
+>
+    <div class="modal-dialog" id="staticPasskeyCreateInner">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="staticPasskeyLabel">Add a New Passkey</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" hx-post="/ui/api/cancel_mfareg"
+                hx-target="#staticPasskeyCreateRow" hx-select="#staticPasskeyCreateRow" hx-swap="outerHTML"></button>
+            </div>
+            <div class="modal-body">
+                <div class="container">
+                    <div class="row" id="staticPasskeyCreateRow">
+                        (% match passkey_state %)
+                            (% when PassKeyState::Init %)
+                                <div class="spinner-border" role="status">
+                                    <span class="visually-hidden"
+                                          hx-trigger="intersect once"
+                                          hx-post="/ui/api/init_passkey"
+                                          hx-target="#staticPasskeyCreateRow" hx-select="#staticPasskeyCreateRow" hx-swap="outerHTML"
+                                    >Loading...</span>
+                                </div>
+                            (% when PassKeyState::Create with { chal } %)
+                                <script id="data">(( chal|safe ))</script>
+                                <button id="passkey-generate" type="button" class="btn btn-primary">
+                                    Begin Passkey Enrollment
+                                </button>
+                                <div id="passkeyNamingForm" class="d-none">
+                                    <label for="passkey-label" class="form-label">Please name this Passkey</label>
+                                    <input type="text" name="name" id="passkey-label" required class="form-control">
+
+                                    <!-- Hidden inputs to put info passkey into form submission -->
+                                    <input hidden type="text" name="creationData" id="passkey-create-data">
+                                </div>
+                        (% endmatch %)
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer d-none" id="staticPasskeyCreateFooter">
+                <!-- TODO: Close modal before swap  -->
+                <button
+                        hx-include="#passkeyNamingForm"
+                        hx-post="/ui/api/finish_passkey"
+                        hx-target="#credentialUpdateDynamicSection"
+                        hx-select="#credentialUpdateDynamicSection"
+                        hx-swap="outerHTML"
+                        id="passkey-submit"
+                        type="button" class="btn btn-success" disabled
+                >Submit</button>
+            </div>
+        </div>
+    </div>
+</div>

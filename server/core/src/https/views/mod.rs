@@ -17,8 +17,8 @@ use crate::https::{
 };
 
 mod apps;
-mod login;
 mod errors;
+mod login;
 mod reset;
 
 #[derive(Template)]
@@ -33,7 +33,6 @@ pub fn view_router() -> Router<ServerState> {
         .route("/", get(login::view_index_get))
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
-        .route("/reset/new_pwd", post(reset::view_new_pwd))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
@@ -69,7 +68,12 @@ pub fn view_router() -> Router<ServerState> {
     // The webauthn post is unguarded because it's not a htmx event.
 
     // Anything that is a partial only works if triggered from htmx
-    let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
+    let guarded_router = Router::new()
+        .route("/reset/new_pwd", post(reset::view_new_pwd))
+        .route("/api/init_passkey", post(reset::init_passkey))
+        .route("/api/finish_passkey", post(reset::finish_passkey))
+        .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
 }
