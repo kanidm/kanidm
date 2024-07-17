@@ -4,7 +4,7 @@ use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::num::NonZeroUsize;
 use std::ops::{Add, DerefMut, Sub};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 
@@ -77,7 +77,7 @@ pub struct Resolver {
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
     default_shell: String,
-    home_prefix: String,
+    home_prefix: PathBuf,
     home_attr: HomeAttr,
     home_alias: Option<HomeAttr>,
     uid_attr_map: UidAttr,
@@ -107,7 +107,7 @@ impl Resolver {
         timeout_seconds: u64,
         pam_allow_groups: Vec<String>,
         default_shell: String,
-        home_prefix: String,
+        home_prefix: PathBuf,
         home_attr: HomeAttr,
         home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
@@ -748,7 +748,10 @@ impl Resolver {
 
     #[inline(always)]
     fn token_abs_homedirectory(&self, token: &UserToken) -> String {
-        format!("{}{}", self.home_prefix, self.token_homedirectory(token))
+        self.home_prefix
+            .join(self.token_homedirectory(token))
+            .to_string_lossy()
+            .to_string()
     }
 
     #[inline(always)]
