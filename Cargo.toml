@@ -207,7 +207,7 @@ ldap3_client = "^0.5"
 ldap3_proto = { version = "^0.5", features = ["serde"] }
 
 libc = "^0.2.153"
-libnss = "^0.4.0"
+libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.10.2"
 lru = "^0.12.3"

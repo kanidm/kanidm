@@ -131,7 +131,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         300,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),
-        DEFAULT_HOME_PREFIX.to_string(),
+        DEFAULT_HOME_PREFIX.into(),
         DEFAULT_HOME_ATTR,
         DEFAULT_HOME_ALIAS,
         DEFAULT_UID_ATTR_MAP,

@@ -103,14 +103,14 @@ impl SelinuxLabeler {
         }
     }
 
-    pub fn setup_equivalence_rule(&self, path: &str) -> Result<(), String> {
+    pub fn setup_equivalence_rule<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
         match &self {
             SelinuxLabeler::None => Ok(()),
             SelinuxLabeler::Enabled {
                 labeler: _,
                 sel_lookup_path_raw,
             } => Command::new("semanage")
-                .args(["fcontext", "-ae", sel_lookup_path_raw, &path])
+                .args(["fcontext", "-ae", sel_lookup_path_raw, path.as_ref()])
                 .spawn()
                 .map(|_| ())
                 .map_err(|_| "Failed creating SELinux policy equivalence rule".to_string()),
