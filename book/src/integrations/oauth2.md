@@ -130,11 +130,20 @@ After you have understood your service requirements you first need to configure 
 members of `system_admins` or `idm_hp_oauth2_manage_priv` are able to create or manage OAuth2 client
 integrations.
 
-You can create a new client with:
+You can create a new client by specifying it's client name, application display name and the landing
+page (home page) of the client. The landing page is where users will be redirect to in order to
+begin an oauth2 flow.
 
 ```bash
-kanidm system oauth2 create <name> <displayname> <origin>
+kanidm system oauth2 create <name> <displayname> <landing page url>
 kanidm system oauth2 create nextcloud "Nextcloud Production" https://nextcloud.example.com
+```
+
+You must now configure the redirect URL where the application expects oauth2 requests to be sent.
+
+```bash
+kanidm system oauth2 add-redirect-url <name> <redirect url>
+kanidm system oauth2 add-redirect-url nextcloud https://nextcloud.example.com/oauth2/handler
 ```
 
 You can create a scope map with:
@@ -286,24 +295,60 @@ kanidm system oauth2 disable-localhost-redirects <name>
 kanidm system oauth2 enable-localhost-redirects mywebapp
 ```
 
-## Alternate Redirect Origins
+## Alternate Redirect URLs
 
 Some services may have a website URL as well as native applications. These native applications
 require alternate redirection URLs to be configured so that after an OAuth2 exchange, the system can
 redirect to the native application.
 
-To support this Kanidm allows supplemental origins to be configured on clients.
+To support this Kanidm allows supplemental opaque origins to be configured on clients.
 
-{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=The ability to configure multiple origins is NOT intended to allow you to share a single Kanidm client definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the _same_ client application. }}
+{{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=The ability to
+configure multiple redirect URLs is NOT intended to allow you to share a single Kanidm client
+definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and
+is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within
+the _same_ client application. }}
 
 ```bash
-kanidm system oauth2 add-origin <name> <origin>
-kanidm system oauth2 remove-origin <name> <origin>
+kanidm system oauth2 add-redirect-url <name> <url>
+kanidm system oauth2 remove-redirect-url <name> <url>
 
-kanidm system oauth2 add-origin nextcloud app://ios-nextcloud
+kanidm system oauth2 add-redirect-url nextcloud app://ios-nextcloud
 ```
 
 Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs_origin` attribute.
+
+### Strict Redirect URLs
+
+Kanidm previously enforce that redirection targets only matched by _origin_ not the full URL. In
+1.4.0 these URLs well expect a full URL match instead.
+
+To indicate your readiness for this transition, all OAuth2 clients must have the field
+`strict-redirect-url` enabled. Once enbaled, the client will begin to enforce the 1.4.0 strict
+validation behaviour.
+
+If you have not enabled `strict-redirect-url` on all OAuth2 clients the upgrade to 1.4.0 will refuse
+to proceed.
+
+To enable or disable strict validation:
+
+```bash
+kanidm system oauth2 enable-strict-redirect-url <name>
+kanidm system oauth2 disable-strict-redirect-url <name>
+```
+
+### Why Does Sharing a Client Weaken OAuth2?
+
+By sharing a client ID between multiple applications this implies that all of these applications are
+a singular client in Kanidm's view. This means tokens issued to one application can be reused on any
+other application.
+
+This limits your ability to enforce scopes, presents a large compromise blast radius if a token is
+stolen, and also increases the damage radius if the client credentials are stolen.
+
+Generally this also provides a bad user experience since the Kanidm application portal only lists a
+single landing URL of the client, so subsequent applications that "piggy back" can not be redirected
+to from the application portal meaning that users will not easily be able to access the application.
 
 ## Extended Options for Legacy Clients
 

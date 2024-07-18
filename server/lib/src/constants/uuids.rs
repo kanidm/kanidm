@@ -309,6 +309,8 @@ pub const UUID_SCHEMA_ATTR_REFERS: Uuid = uuid!("00000000-0000-0000-0000-ffff000
 pub const UUID_SCHEMA_ATTR_CERTIFICATE: Uuid = uuid!("00000000-0000-0000-0000-ffff00000178");
 pub const UUID_SCHEMA_CLASS_CLIENT_CERTIFICATE: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000179");
+pub const UUID_SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000180");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

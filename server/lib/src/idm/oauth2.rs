@@ -273,7 +273,9 @@ pub struct Oauth2RS {
 
     origins: HashSet<Origin>,
     opaque_origins: HashSet<Url>,
+    redirect_uris: HashSet<Url>,
     origin_https_required: bool,
+    strict_redirect_uri: bool,
 
     claim_map: BTreeMap<Uuid, Vec<(String, ClaimValue)>>,
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
@@ -335,11 +337,13 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, Oauth2RSInner>,
 }
 
-impl TryFrom<(Vec<Arc<EntrySealedCommitted>>, Url)> for Oauth2ResourceServers {
+impl TryFrom<(Vec<Arc<EntrySealedCommitted>>, Url, DomainVersion)> for Oauth2ResourceServers {
     type Error = OperationError;
 
-    fn try_from(value: (Vec<Arc<EntrySealedCommitted>>, Url)) -> Result<Self, Self::Error> {
-        let (value, origin) = value;
+    fn try_from(
+        value: (Vec<Arc<EntrySealedCommitted>>, Url, DomainVersion),
+    ) -> Result<Self, Self::Error> {
+        let (value, origin, domain_level) = value;
         let fernet =
             Fernet::new(&Fernet::generate_key()).ok_or(OperationError::CryptographyError)?;
         let oauth2rs = Oauth2ResourceServers {
@@ -351,7 +355,7 @@ impl TryFrom<(Vec<Arc<EntrySealedCommitted>>, Url)> for Oauth2ResourceServers {
         };
 
         let mut oauth2rs_wr = oauth2rs.write();
-        oauth2rs_wr.reload(value)?;
+        oauth2rs_wr.reload(value, domain_level)?;
         oauth2rs_wr.commit();
         Ok(oauth2rs)
     }
@@ -372,7 +376,11 @@ impl Oauth2ResourceServers {
 }
 
 impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
-    pub fn reload(&mut self, value: Vec<Arc<EntrySealedCommitted>>) -> Result<(), OperationError> {
+    pub fn reload(
+        &mut self,
+        value: Vec<Arc<EntrySealedCommitted>>,
+        domain_level: DomainVersion,
+    ) -> Result<(), OperationError> {
         let rs_set: Result<HashMap<_, _>, _> = value
             .into_iter()
             .map(|ent| {
@@ -432,18 +440,24 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let maybe_extra_origins = ent.get_ava_set(Attribute::OAuth2RsOrigin).and_then(|s| s.as_url_set());
+                let maybe_extra_urls = ent.get_ava_set(Attribute::OAuth2RsOrigin).and_then(|s| s.as_url_set());
 
-                let len_uris = maybe_extra_origins.map(|s| s.len() + 1).unwrap_or(1);
+                let len_uris = maybe_extra_urls.map(|s| s.len() + 1).unwrap_or(1);
+
+                // If we are DL8, then strict enforcement is always required.
+                let strict_redirect_uri = cfg!(test) ||
+                    domain_level >= DOMAIN_LEVEL_8 ||
+                    ent.get_ava_single_bool(Attribute::OAuth2StrictRedirectUri)
+                        .unwrap_or(false);
 
                 // The reason we have to allocate this is that we need to do some processing on these
                 // urls to determine if they are opaque or not.
-                let mut redirect_uris = Vec::with_capacity(len_uris);
+                let mut redirect_uris_v = Vec::with_capacity(len_uris);
 
-                redirect_uris.push(landing_url);
-                if let Some(extra_origins) = maybe_extra_origins {
+                redirect_uris_v.push(landing_url);
+                if let Some(extra_origins) = maybe_extra_urls {
                     for x_origin in extra_origins {
-                        redirect_uris.push(x_origin.clone());
+                        redirect_uris_v.push(x_origin.clone());
                     }
                 }
 
@@ -451,16 +465,19 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 // that may or may not be an opaque origin. We need to split these up now.
 
                 let mut origins = HashSet::with_capacity(len_uris);
+                let mut redirect_uris = HashSet::with_capacity(len_uris);
                 let mut opaque_origins = HashSet::with_capacity(len_uris);
                 let mut origin_https_required = false;
 
-                for uri in redirect_uris.into_iter() {
+                for uri in redirect_uris_v.into_iter() {
                     // Given the presence of a single https url, then all other urls must be https.
                     if uri.scheme() == "https" {
                         origin_https_required = true;
                         origins.insert(uri.origin());
+                        redirect_uris.insert(uri);
                     } else if uri.scheme() == "http" {
                         origins.insert(uri.origin());
+                        redirect_uris.insert(uri);
                     } else {
                         opaque_origins.insert(uri);
                     }
@@ -640,7 +657,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     uuid,
                     origins,
                     opaque_origins,
+                    redirect_uris,
                     origin_https_required,
+                    strict_redirect_uri,
                     scope_maps,
                     sup_scope_maps,
                     client_scopes,
@@ -1659,14 +1678,23 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
         // be localhost exempting it from this check and enforcement.
-        if !(o2rs.origins.contains(&auth_req.redirect_uri.origin())
+        if !((o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri))
+            || (!o2rs.strict_redirect_uri
+                && o2rs.origins.contains(&auth_req.redirect_uri.origin()))
             || o2rs.opaque_origins.contains(&auth_req.redirect_uri)
             || (allow_localhost_redirect && localhost_redirect))
         {
-            warn!(
-                "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
-                auth_req.redirect_uri.origin()
-            );
+            if o2rs.strict_redirect_uri {
+                warn!(
+                    "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
+                    auth_req.redirect_uri.as_str()
+                );
+            } else {
+                warn!(
+                    "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
+                    auth_req.redirect_uri.origin()
+                );
+            }
             return Err(Oauth2Error::InvalidOrigin);
         }
 
@@ -2761,6 +2789,10 @@ mod tests {
             // Supplemental origins
             (
                 Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
                 Value::new_url_s("https://portal.example.com").unwrap()
             ),
             (
@@ -2919,6 +2951,10 @@ mod tests {
             (
                 Attribute::OAuth2RsOriginLanding,
                 Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com/oauth2/result").unwrap()
             ),
             // System admins
             (
@@ -3254,6 +3290,26 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: None,
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        assert!(
+            idms_prox_read
+                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .unwrap_err()
+                == Oauth2Error::InvalidOrigin
+        );
+
+        // * invalid uri in the redirect
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: pkce_request.clone(),
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
@@ -3612,7 +3668,7 @@ mod tests {
                 code_challenge: code_challenge.clone().into(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
-            redirect_uri: Url::parse("https://portal.example.com/oauth2/result").unwrap(),
+            redirect_uri: Url::parse("https://portal.example.com").unwrap(),
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
@@ -3649,7 +3705,7 @@ mod tests {
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
-                redirect_uri: Url::parse("https://portal.example.com/oauth2/result").unwrap(),
+                redirect_uri: Url::parse("https://portal.example.com").unwrap(),
                 // From the first step.
                 code_verifier: code_verifier.clone(),
             },

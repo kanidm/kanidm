@@ -84,13 +84,15 @@ pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_5;
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level
 pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
-// The target supported domain functional level
+// The target supported domain functional level. During development this is
+// the NEXT level that users will upgrade too.
 pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
+// The current patch level if any out of band fixes are required.
 pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_1;
+// The target domain functional level for the SUBSEQUENT release/dev cycle.
+pub const DOMAIN_TGT_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 // The maximum supported domain functional level
-pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
-// The next maximum supported domain functional level
-pub const DOMAIN_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
+pub const DOMAIN_MAX_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 
 // On test builds define to 60 seconds
 #[cfg(test)]

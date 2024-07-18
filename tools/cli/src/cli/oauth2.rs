@@ -38,6 +38,8 @@ impl Oauth2Opt {
             | Oauth2Opt::DeleteClaimMap { copt, .. }
             | Oauth2Opt::EnablePublicLocalhost { copt, .. }
             | Oauth2Opt::DisablePublicLocalhost { copt, .. }
+            | Oauth2Opt::EnableStrictRedirectUri { copt, .. }
+            | Oauth2Opt::DisableStrictRedirectUri { copt, .. }
             | Oauth2Opt::AddOrigin { copt, .. }
             | Oauth2Opt::RemoveOrigin { copt, .. } => copt.debug,
         }
@@ -453,6 +455,27 @@ impl Oauth2Opt {
                 let client = copt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_disable_public_localhost_redirect(name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            Oauth2Opt::EnableStrictRedirectUri { copt, name } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_enable_strict_redirect_uri(name.as_str())
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+
+            Oauth2Opt::DisableStrictRedirectUri { copt, name } => {
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_rs_disable_strict_redirect_uri(name.as_str())
                     .await
                 {
                     Ok(_) => println!("Success"),
