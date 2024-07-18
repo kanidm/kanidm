@@ -104,7 +104,7 @@ finish our production components and the stability of the API's for longer term 
 - Minimum TLS key length enforcement on server code.
 - Improvements to exit code returns on CLI commands.
 - Credential reset link timeout issues resolved.
-- Removed a lot of uses of `unwrap` and `expect` to improve reliabilty.
+- Removed a lot of uses of `unwrap` and `expect` to improve reliability.
 - Account policy framework is now in place.
 
 ## 2023-05-01 - Kanidm 1.1.0-beta13
@@ -333,7 +333,7 @@ bring the project this far! 🎉 🦀
 - Dynamic menus on CLI for auth factors when choices exist
 - Better handle missing resources for web ui elements at server startup
 - Add WAL checkpointing to improve disk usage
-- Oauth2 user interface flows for simple authorisation scenarioes
+- Oauth2 user interface flows for simple authorisation scenarios
 - Improve entry memory usage based on valueset rewrite
 - Allow online backups to be scheduled and taken
 - Reliability improvements for unixd components with missing sockets

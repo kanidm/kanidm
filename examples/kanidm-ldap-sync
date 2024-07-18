@@ -32,7 +32,7 @@ ldap_sync_base_dn = "dc=ldap,dc=dev,dc=kanidm,dc=com"
 ldap_filter = "(|(objectclass=person)(objectclass=posixgroup))"
 # ldap_filter = "(cn=\"my value\")"
 
-# By default Kanidm seperates the primary account password and credentials from
+# By default Kanidm separates the primary account password and credentials from
 # the unix credential. This allows the unix password to be isolated from the
 # account password so that compromise of one doesn't compromise the other. However
 # this can be surprising for new users during a migration. This boolean allows the

@@ -20,7 +20,7 @@ It requires more extensive testing and it's hard to follow the code that exists 
 correct MFA situations.
 
 Clients that have already been implemented don't used the stepped model. As the server is sending
-*all* required steps the client responds with all needed credentials to fufil the request. This means
+*all* required steps the client responds with all needed credentials to fulfil the request. This means
 that a large part of the model is not used effectively, and this shows in the client which even today
 doesn't actually check what's requested due to the complexity of callbacks that would require
 to implement.

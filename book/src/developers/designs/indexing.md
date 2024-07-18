@@ -148,7 +148,7 @@ provide faster searches and avoid indexes that are costly unless they are needed
 
 In this case, we would _demote_ any filter where Eq(class, ...) to the _end_ of the And, because it
 is highly likely to be less targeted than the other Eq types. Another example would be promotion of
-Eq filters to the front of an And over a Sub term, wherh Sub indexes tend to be larger and have
+Eq filters to the front of an And over a Sub term, where Sub indexes tend to be larger and have
 longer IDLs.
 
 ## Implementation Details and Notes
@@ -247,7 +247,7 @@ The major transformation cases for testing are:
 
 - Add a multivalue (one)
 - Add a multivalue (many)
-- On a mulitvalue, add another value
+- On a multivalve, add another value
 - On multivalue, remove a value, but leave others
 - Delete a multivalue
 - Add a new single value

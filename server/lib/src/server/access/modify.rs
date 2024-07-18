@@ -100,7 +100,7 @@ pub(super) fn apply_modify_access<'a>(
                                 return None;
                             }
                         } else {
-                            // Can not satsify.
+                            // Can not satisfy.
                             return None;
                         }
                     }

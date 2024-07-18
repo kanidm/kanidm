@@ -7,7 +7,7 @@ After=chronyd.service nscd.service ntpd.service network-online.target suspend.ta
 Before=systemd-user-sessions.service sshd.service nss-user-lookup.target
 Wants=nss-user-lookup.target
 # While it seems confusing, we need to be after nscd.service so that the
-# Conflicts will triger and then automatically stop it.
+# Conflicts will trigger and then automatically stop it.
 Conflicts=nscd.service
 
 [Service]

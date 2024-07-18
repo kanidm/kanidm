@@ -2673,7 +2673,7 @@ mod tests {
     }
 
     #[test]
-    fn test_access_ouath2_dyn_search() {
+    fn test_access_oauth2_dyn_search() {
         sketching::test_init();
         // Test that an account that is granted a scope to an oauth2 rs is granted
         // the ability to search that rs.

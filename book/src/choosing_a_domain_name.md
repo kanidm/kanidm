@@ -42,7 +42,7 @@ selected to be the parent (toplevel) domain (`example.com`).
 
 Failure to use a unique subdomain may allow cookies to leak to other entities within your domain,
 and may allow webauthn to be used on entities you did not intend for which may or may not lead to
-some phishing scenarioes.
+some phishing scenarios.
 
 ## Examples
 

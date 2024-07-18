@@ -137,7 +137,7 @@ fn search_filter_entry<'a>(
                             return None
                         }
                     } else {
-                        // Can not satsify.
+                        // Can not satisfy.
                         return None
                     }
                 }
@@ -240,7 +240,7 @@ fn search_sync_account_filter_entry<'a>(
 
                     if sync_source_match {
                         // We finally got here!
-                        security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronsied account from this sync account");
+                        security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronised account from this sync account");
 
                         return AccessResult::Allow(btreeset!(
                             Attribute::Class.as_ref(),

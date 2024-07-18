@@ -1,7 +1,7 @@
 Account Policy and Lockouts
 ---------------------------
 
-For accounts we need to be able to define securite constraints and limits to prevent malicious use
+For accounts we need to be able to define security constraints and limits to prevent malicious use
 or attacks from succeeding. While these attacks may have similar sources or goals, the defences
 to them may vary.
 
@@ -100,7 +100,7 @@ Hard Lock + Expiry/Active Time Limits
 
 It must be possible to expire an account so it no longer operates (IE temporary contractor) or
 accounts that can only operate after a known point in time (Student enrollments and their course
-commencment date).
+commencement date).
 
 This expiry must exist at the account level, but also on issued token/API password levels. This allows revocation of
 individual tokens, but also the expiry of the account and all tokens as a whole. This expiry may be
@@ -120,7 +120,7 @@ Application Passwords / Issued Oauth Tokens
 ===========================================
 
 * Relates to claims
-* Need their own expirys
+* Need their own expiries
 * Need ratelimit as above?
 
 

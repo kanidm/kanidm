@@ -462,7 +462,7 @@ async fn server_loop(
         info!("Loading client certificates from {}", client_ca.display());
 
         let verify = SslVerifyMode::PEER;
-        // In future we may add a "require mTLS option" which would necesitate this.
+        // In future we may add a "require mTLS option" which would necessitate this.
         // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
         tls_builder.set_verify(verify);
 
@@ -494,7 +494,7 @@ async fn server_loop(
             item.file_name()
                 .to_str()
                 // Hashed certs end in .0
-                // Hsahed crls are .r0
+                // Hashed crls are .r0
                 .map(|fname| fname.ends_with(".0"))
                 .unwrap_or_default()
         }) {
