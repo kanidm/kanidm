@@ -1338,7 +1338,7 @@ impl QueryServer {
     }
 
     pub async fn read(&self) -> QueryServerReadTransaction<'_> {
-        // Get a read ticket. Basicly this forces us to queue with other readers, while preventing
+        // Get a read ticket. Basically this forces us to queue with other readers, while preventing
         // us from competing with writers on the db tickets. This tilts us to write prioritising
         // on db operations by always making sure a writer can get a db ticket.
         let read_ticket = if cfg!(test) {

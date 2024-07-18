@@ -34,7 +34,7 @@ impl QueryServer {
         // Remember, that this would normally mean that it's possible for schema
         // to be mis-indexed (IE we index the new schemas here before we read
         // the schema to tell us what's indexed), but because we have the in
-        // mem schema that defines how schema is structuded, and this is all
+        // mem schema that defines how schema is structured, and this is all
         // marked "system", then we won't have an issue here.
         write_txn
             .initialise_schema_core()

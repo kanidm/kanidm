@@ -635,7 +635,7 @@ async fn view_login_step(
                 match issue {
                     AuthIssueSession::Token => {
                         error!(
-                            "Impossible state, should not recieve token in a htmx view auth flow"
+                            "Impossible state, should not receive token in a htmx view auth flow"
                         );
                         return Err(OperationError::InvalidState);
                     }

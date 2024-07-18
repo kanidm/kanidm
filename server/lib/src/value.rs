@@ -2123,7 +2123,7 @@ impl Value {
         if UNICODE_CONTROL_RE.is_match(s) {
             error!("value contains invalid unicode control character",);
             // Trace only, could be an injection attack of some kind.
-            trace!(?s, "Invalid Uncode Control");
+            trace!(?s, "Invalid Unicode Control");
             false
         } else {
             true

@@ -102,7 +102,7 @@ bounded and if the queue is not being serviced, it proceeds with the login/proce
 as we must assume the user has *not* configured the tasks daemon on the system. This queue
 also prevents memory growth/ddos if we are overloaded by login requests.
 
-In packaging the tasks daemon will use systemds isolation features to further harden this. For
+In packaging the tasks daemon will use systemd's isolation features to further harden this. For
 example:
 
 ::

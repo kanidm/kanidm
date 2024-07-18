@@ -304,7 +304,7 @@ impl CryptoPolicy {
         //
         // We also need to balance this against the fact we are a database, and we do have
         // caches. We also don't want to over-use RAM, especially because in the worst case
-        // every thread will be operationg in argon2id at the same time. That means
+        // every thread will be operating in argon2id at the same time. That means
         // thread x ram will be used. If we had 8 threads at 64mb of ram, that would require
         // 512mb of ram alone just for hashing. This becomes worse as core counts scale, with
         // 24 core xeons easily reaching 1.5GB in these cases.

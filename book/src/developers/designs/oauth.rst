@@ -86,7 +86,7 @@ application within the authorisation server.
 Each registered resource server will have an associated secret for authentication. The
 most simple for of this is a "basic" authorisation header.
 
-This resource server entry will nominially list what scopes map to which kanidm roles,
+This resource server entry will nominally list what scopes map to which kanidm roles,
 which scopes are "always" available to all authenticated users. Additionally, it may
 be that we have an extra set of "filter rules" to allow authorisation decisions to be
 made based on other factors like group membership.

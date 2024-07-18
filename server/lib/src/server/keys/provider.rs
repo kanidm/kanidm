@@ -324,7 +324,7 @@ mod tests {
             .internal_apply_domain_migration(DOMAIN_LEVEL_6)
             .expect("Unable to set domain level to version 6");
 
-        // The internel key provider is created from dl 5 to 6
+        // The internal key provider is created from dl 5 to 6
         let key_provider_object = write_txn
             .internal_search_uuid(UUID_KEY_PROVIDER_INTERNAL)
             .expect("Unable to find key provider entry.");

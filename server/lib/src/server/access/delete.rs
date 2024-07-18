@@ -107,7 +107,7 @@ fn delete_filter_entry<'a>(
                         return false;
                     }
                 } else {
-                    // Can not satsify.
+                    // Can not satisfy.
                     return false;
                 }
             }

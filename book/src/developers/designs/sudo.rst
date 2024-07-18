@@ -5,7 +5,7 @@ To ensure that certain actions are only performed after re-authentication, we sh
 a sudo mode to kanidm. This relies on some changes from Oauth.rst (namely interactive session
 identification).
 
-Only interactive sessions (IE not api passwords or radius) must be elligble for sudo mode.
+Only interactive sessions (IE not api passwords or radius) must be eligible for sudo mode.
 
 Sudo mode when requested will perform a partial-reauthentication of the account using a single
 factor (if mfa). This is determined based on the credential uuid of the associated session.

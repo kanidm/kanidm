@@ -43,5 +43,5 @@ that all replication as a whole will still be valid. This is good!
 
 It does mean we need to consider that we have to upgrade data as it comes in from
 replication from an older server too to bring fields up to date if needed. This
-may necesitate a "data version" field on each entry, which we can also associate
+may necessitate a "data version" field on each entry, which we can also associate
 to any CSN so that it can be accepted or rejected as required.
