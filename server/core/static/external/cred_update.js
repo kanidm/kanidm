@@ -96,12 +96,6 @@ function updateSubmitButtonVisibility(event) {
     submitButton.disabled = event.value === "";
 }
 
-function nukeModalBackdrop() {
-    document.querySelectorAll("body > .modal-backdrop").forEach((backdrop) => {
-        backdrop.remove();
-    })
-}
-
 window.onload = function () {
     document.body.addEventListener("addPasswordSwapped", () => { setupInteractivePwdFormListeners() });
     document.body.addEventListener("addPasskeySwapped", () => {
