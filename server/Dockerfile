@@ -81,4 +81,12 @@ VOLUME /data
 
 ENV RUST_BACKTRACE 1
 
+HEALTHCHECK \
+    --interval=60s \
+    --timeout=10s \
+    --start-period=60s \
+    --start-interval=5s \
+    --retries=3 \
+    CMD [ "/sbin/kanidmd", "healthcheck", "-c", "/data/server.toml"]
+
 CMD [ "/sbin/kanidmd", "server", "-c", "/data/server.toml"]

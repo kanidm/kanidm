@@ -1,3 +1,4 @@
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use askama::Template;
 use axum::{
     extract::State,
@@ -6,18 +7,19 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use compact_jwt::{Jws, JwsSigner};
-use kanidmd_lib::prelude::OperationError;
+use kanidm_proto::internal::{
+    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+};
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
 };
-use kanidmd_lib::prelude::*;
-use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_USERNAME, COOKIE_OAUTH2_REQ};
-use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::idm::event::AuthResult;
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
-use webauthn_rs::prelude::PublicKeyCredential;
+use kanidmd_lib::idm::AuthState;
+use kanidmd_lib::prelude::OperationError;
+use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use webauthn_rs::prelude::PublicKeyCredential;
 
 use super::{empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
 
@@ -658,14 +660,13 @@ async fn view_login_step(
                             .add(bearer_cookie)
                             .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                        // Now, we need to decided where to go. If this 
+                        // Now, we need to decided where to go. If this
 
                         let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
                             Redirect::to("/ui/oauth2/resume").into_response()
                         } else {
                             Redirect::to("/ui/apps").into_response()
                         };
-
 
                         break res;
                     }

@@ -30,10 +30,12 @@ struct UnrecoverableErrorView {
 
 pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
-        .route("/", get(|| async { Redirect::permanent("/ui/login") }) )
+        .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
         .route("/logout", get(login::view_logout_get))
-        .nest("/oauth2", oauth2::view_router())
+        .route("/oauth2", get(oauth2::view_index_get))
+        .route("/oauth2/resume", get(oauth2::view_resume_get))
+        .route("/oauth2/consent", post(oauth2::view_consent_post))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.

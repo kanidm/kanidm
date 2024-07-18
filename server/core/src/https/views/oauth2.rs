@@ -1,11 +1,8 @@
-use kanidmd_lib::prelude::*;
-use kanidmd_lib::idm::oauth2::{
-    AuthorisationRequest,
-    Oauth2Error,
-    AuthorisePermitSuccess,
-    AuthoriseResponse,
-};
 use compact_jwt::{Jws, JwsSigner};
+use kanidmd_lib::idm::oauth2::{
+    AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
+};
+use kanidmd_lib::prelude::*;
 
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
@@ -17,22 +14,11 @@ use askama::Template;
 
 use axum::{
     extract::{Query, State},
-    response::{
-        IntoResponse,
-        Redirect,
-        Response
-    },
     http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
-    routing::{get, post},
-    Extension,
-    Router,
-    Form,
+    response::{IntoResponse, Redirect, Response},
+    Extension, Form,
 };
-use axum_extra::extract::cookie::{
-    Cookie,
-    CookieJar,
-    SameSite
-};
+use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
@@ -60,9 +46,7 @@ pub async fn view_index_get(
     jar: CookieJar,
     Query(auth_req): Query<AuthorisationRequest>,
 ) -> Response {
-    oauth2_auth_req(
-        state, kopid, client_auth_info, jar, auth_req
-    ).await
+    oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
 }
 
 pub async fn view_resume_get(
@@ -74,14 +58,10 @@ pub async fn view_resume_get(
     let maybe_auth_req = jar
         .get(COOKIE_OAUTH2_REQ)
         .map(|c| c.value())
-        .and_then(|s| {
-            state.deserialise_from_str::<AuthorisationRequest>(s)
-        });
+        .and_then(|s| state.deserialise_from_str::<AuthorisationRequest>(s));
 
     if let Some(auth_req) = maybe_auth_req {
-        oauth2_auth_req(
-            state, kopid, client_auth_info, jar, auth_req
-        ).await
+        oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
     } else {
         error!("unable to resume session, no auth_req was found in the cookie");
         HtmlTemplate(UnrecoverableErrorView {
@@ -127,16 +107,16 @@ async fn oauth2_auth_req(
 
             (
                 jar,
-                [(
-                    HX_REDIRECT,
-                    redirect_uri.as_str().to_string(),
-                ),
-                (
-                    ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                    redirect_uri.origin().ascii_serialization(),
-                )],
+                [
+                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                    (
+                        ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                        redirect_uri.origin().ascii_serialization(),
+                    ),
+                ],
                 Redirect::to(redirect_uri.as_str()),
-            ).into_response()
+            )
+                .into_response()
         }
         Ok(AuthoriseResponse::ConsentRequested {
             client_name,
@@ -151,7 +131,7 @@ async fn oauth2_auth_req(
                 pii_scopes,
                 consent_token,
             })
-                .into_response()
+            .into_response()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // We store the auth_req into the cookie.
@@ -162,13 +142,12 @@ async fn oauth2_auth_req(
                     error!(?err, "Failed to serialise AuthorisationRequest");
                     OperationError::InvalidSessionState
                 })
-                .and_then(|jws|
-                    kref.sign(&jws)
-                    .map_err(|err| {
+                .and_then(|jws| {
+                    kref.sign(&jws).map_err(|err| {
                         error!(?err, "Failed to sign AuthorisationRequest");
                         OperationError::InvalidSessionState
                     })
-                )
+                })
                 .map(|jwss| jwss.to_string())
             {
                 Ok(jws) => jws,
@@ -181,8 +160,7 @@ async fn oauth2_auth_req(
                 }
             };
 
-            let mut authreq_cookie =
-                Cookie::new(COOKIE_OAUTH2_REQ, token);
+            let mut authreq_cookie = Cookie::new(COOKIE_OAUTH2_REQ, token);
             authreq_cookie.set_secure(state.secure_cookies);
             authreq_cookie.set_same_site(SameSite::Strict);
             authreq_cookie.set_http_only(true);
@@ -197,7 +175,7 @@ async fn oauth2_auth_req(
             HtmlTemplate(AccessDeniedView {
                 operation_id: kopid.eventid,
             })
-                .into_response()
+            .into_response()
         }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
@@ -265,16 +243,16 @@ pub async fn view_consent_post(
 
             (
                 jar,
-                [(
-                    HX_REDIRECT,
-                    redirect_uri.as_str().to_string(),
-                ),
-                (
-                    ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                    redirect_uri.origin().ascii_serialization(),
-                )],
+                [
+                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                    (
+                        ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                        redirect_uri.origin().ascii_serialization(),
+                    ),
+                ],
                 Redirect::to(redirect_uri.as_str()),
-            ).into_response()
+            )
+                .into_response()
         }
         Err(err_code) => {
             error!(
@@ -290,11 +268,4 @@ pub async fn view_consent_post(
             .into_response()
         }
     }
-}
-
-pub fn view_router() -> Router<ServerState> {
-    Router::new()
-        .route("/", get(view_index_get))
-        .route("/resume", get(view_resume_get))
-        .route("/consent", post(view_consent_post))
 }
