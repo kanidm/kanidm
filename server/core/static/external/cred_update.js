@@ -92,8 +92,14 @@ function setupSubmitBtnVisibility() {
 }
 
 function updateSubmitButtonVisibility(event) {
-    let submitButton = document.getElementById("passkey-submit");
+    let submitButton = document.getElementById("passkeyNamingSubmitBtn");
     submitButton.disabled = event.value === "";
+}
+
+function nukeModalBackdrop() {
+    document.querySelectorAll("body > .modal-backdrop").forEach((backdrop) => {
+        backdrop.remove();
+    })
 }
 
 window.onload = function () {

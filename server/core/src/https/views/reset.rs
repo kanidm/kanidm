@@ -7,7 +7,7 @@ use askama::Template;
 use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
-use axum::{Extension, Form, Json};
+use axum::{Extension, Form};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use axum_htmx::{HxEvent, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
@@ -139,7 +139,7 @@ pub(crate) async fn remove_passkey(
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
-    Json(passkey): Json<PasskeyRemoveData>,
+    Form(passkey): Form<PasskeyRemoveData>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
 
