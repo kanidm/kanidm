@@ -1,4 +1,5 @@
 use crate::error::Error;
+use crate::state::Model;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -26,6 +27,7 @@ pub struct Profile {
     group_count: u64,
     person_count: u64,
     thread_count: Option<usize>,
+    model: Model,
     person_count_by_group: Vec<(String, u64)>,
 }
 
@@ -71,6 +73,10 @@ impl Profile {
         }
     }
 
+    pub fn model(&self) -> &Model {
+        &self.model
+    }
+
     pub fn warmup_time(&self) -> Duration {
         Duration::from_secs(self.warmup_time)
     }
@@ -93,6 +99,7 @@ pub struct ProfileBuilder {
     pub person_count: Option<u64>,
     pub thread_count: Option<usize>,
     pub person_count_by_group: Vec<(String, u64)>,
+    pub model: Model,
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
@@ -114,6 +121,7 @@ impl ProfileBuilder {
         extra_uris: Vec<String>,
         admin_password: String,
         idm_admin_password: String,
+        model: Model,
         thread_count: Option<usize>,
         person_count_by_group: Vec<(String, u64)>,
     ) -> Self {
@@ -129,6 +137,7 @@ impl ProfileBuilder {
             person_count: None,
             thread_count,
             person_count_by_group,
+            model,
         }
     }
 
@@ -174,6 +183,7 @@ impl ProfileBuilder {
             person_count,
             thread_count,
             person_count_by_group,
+            model,
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
@@ -213,6 +223,7 @@ impl ProfileBuilder {
             person_count,
             thread_count,
             person_count_by_group,
+            model,
         })
     }
 }

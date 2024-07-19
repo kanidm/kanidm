@@ -71,14 +71,17 @@ pub enum PreflightState {
 /// This compliments ActorRoles, which define the extended actions an Actor may
 /// choose to perform. If ActorRoles are present, the model MAY choose to use
 /// these roles to perform extended operations.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(clap::ValueEnum, Debug, Serialize, Deserialize, Clone, Default, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
     AuthOnly,
     /// A simple linear executor that does actions in a loop.
     #[default]
     Basic,
+    /// This model only performs read requests in a loop
     Reader,
+    /// This model only performs write requests in a loop
     Writer,
 }
 

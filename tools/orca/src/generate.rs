@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
 use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
+use crate::state::{Credential, Flag, Group, Person, PreflightState, State};
 use hashbrown::HashMap;
 use rand::distributions::{Alphanumeric, DistString, Uniform};
 use rand::seq::{index, SliceRandom};
@@ -93,6 +93,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     let mut persons = Vec::with_capacity(profile.person_count() as usize);
     let mut person_usernames = BTreeSet::new();
 
+    let model = *profile.model();
+
     for _ in 0..profile.person_count() {
         let given_name = given_names
             .choose(&mut seeded_rng)
@@ -122,8 +124,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
         let password = random_password(&mut seeded_rng);
 
         let roles = BTreeSet::new();
-
-        let model = Model::Writer;
 
         // Data is ready, make changes to the server. These should be idempotent if possible.
         let p = Person {
