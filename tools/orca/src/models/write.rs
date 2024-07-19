@@ -72,16 +72,16 @@ impl ActorWriter {
             // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
             State::Unauthenticated => Transition {
                 delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 5000)),
+                    self.cha_rng.sample(Uniform::new(0, 1000)),
                 )),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: None,
+                delay: Some(Duration::from_secs(5)),
                 action: TransitionAction::PrivilegeReauth,
             },
             State::AuthenticatedWithReauth => Transition {
-                delay: Some(Duration::from_secs(3)),
+                delay: Some(Duration::from_secs(1)),
                 action: TransitionAction::WriteAttributePersonMail,
             },
         }

@@ -69,12 +69,12 @@ impl ActorReader {
             State::Unauthenticated => Transition {
                 // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
                 delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 5000)),
+                    self.cha_rng.sample(Uniform::new(0, 1000)),
                 )),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(3)),
+                delay: Some(Duration::from_secs(1)),
                 action: TransitionAction::ReadSelfMemberOf,
             },
         }
