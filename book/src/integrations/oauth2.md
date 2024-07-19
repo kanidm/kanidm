@@ -154,11 +154,14 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 ```
 
 > [!WARNING]
-> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map named `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
+>
+> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map
+> named `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
 
 Also...
 
 > [!TIP]
+>
 > OpenID connect allows a number of scopes that affect the content of the resulting
 > authorisation token. If one of the following scopes are requested by the OpenID client, then the
 > associated claims may be added to the authorisation token. It is not guaranteed that all of the
@@ -366,7 +369,9 @@ to disable these on a per-client basis. Disabling these on one client will not a
 settings are explained in detail in [our FAQ](../frequently_asked_questions.html#oauth2)
 
 > [!WARNING]
-> Changing these settings MAY have serious consequences on the security of your services. You should avoid changing these if at all possible!
+>
+> Changing these settings MAY have serious consequences on the security of your services.
+> You should avoid changing these if at all possible!
 
 To disable PKCE for a confidential client:
 

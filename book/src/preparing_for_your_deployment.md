@@ -42,6 +42,7 @@ Older or unsupported CPUs may raise a `SIGILL` (Illegal Instruction) on hardware
 supported by the project.
 
 > [!TIP]
+>
 > You can check your CPU flags on Linux with the command `lscpu`
 
 #### Memory

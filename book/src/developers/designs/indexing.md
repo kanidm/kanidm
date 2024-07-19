@@ -73,8 +73,8 @@ loads and one compare. That's 30000x faster (potentially ;) )!
 To improve on this, if we had a query like Or(Eq(name, john), Eq(name, kris)) we can use our indexes
 to speed this up.
 
-We would query `index_eq_name` again, and we would perform the search for both john, and kris. Because
-this is an OR we then union the two idl's, and we would have:
+We would query `index_eq_name` again, and we would perform the search for both john, and kris.
+Because this is an OR we then union the two idl's, and we would have:
 
 ```text
 [04, 05,]
@@ -86,7 +86,8 @@ filters are often applied as idl set operations.
 ## Compressed ID lists
 
 In order to make idl loading faster, and the set operations faster there is an idl library
-(developed by me, firstyear), which will be used for this. To read more see: <https://github.com/Firstyear/idlset>
+(developed by me, firstyear), which will be used for this. To read more see:
+<https://github.com/Firstyear/idlset>
 
 ## Filter Optimisation
 

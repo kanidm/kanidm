@@ -7,7 +7,10 @@ and bind to LDAP. As many organisations still rely on LDAP, Kanidm can host a re
 interface for these legacy applications and services.
 
 > [!WARNING]
-> The LDAP server in Kanidm is not a complete LDAP implementation. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support are RFC compliant however.
+>
+> The LDAP server in Kanidm is not a complete LDAP implementation. This is intentional,
+> as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support
+> are RFC compliant however.
 
 ## What is LDAP
 
@@ -157,7 +160,9 @@ However, you may wish to change this to something shorter or at a higher level w
 name.
 
 > [!WARNING]
-> Changing the LDAP Basedn will require you to reconfigure your client applications so they search the correct basedn. Be careful when changing this value!
+>
+> Changing the LDAP Basedn will require you to reconfigure your client applications so
+> they search the correct basedn. Be careful when changing this value!
 
 As an admin you can change the domain ldap basedn with:
 

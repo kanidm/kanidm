@@ -31,7 +31,10 @@ container and recreate it with a newer version. This document will help walk you
 process.
 
 > [!TIP]
-> You should have documented and preserved your Kanidm container create / run command from the server preparation guide. If not, you'll need to use `docker inspect` to work out how to recreate these parameters.
+>
+> You should have documented and preserved your Kanidm container create / run command from
+> the server preparation guide. If not, you'll need to use `docker inspect` to work out how to
+> recreate these parameters.
 
 ### Upgrade Check
 
@@ -76,7 +79,9 @@ See [backup and restore](backup_restore.md)
 ### Update your Instance
 
 > [!WARNING]
-> Downgrades are not possible. It is critical you know how to backup and restore before you proceed with this step.
+>
+> Downgrades are not possible. It is critical you know how to backup and restore before
+> you proceed with this step.
 
 Docker updates operate by deleting and recreating the container. All state that needs to be
 preserved is within your storage volume.

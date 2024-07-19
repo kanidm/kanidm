@@ -4,8 +4,11 @@ Through out this book, Kanidm will make reference to a "domain name". This is yo
 name that you intend to use for Kanidm. Choosing this domain name however is not simple as there are
 a number of considerations you need to be careful of.
 
-> [!WARNING]  
-> Incorrect choice of the domain name may have security impacts on your Kanidm instance, not limited to credential phishing, theft, session leaks and more. It is critical you follow the advice in this chapter.
+> [!WARNING]
+>
+> Incorrect choice of the domain name may have security impacts on your Kanidm instance, not limited
+> to credential phishing, theft, session leaks and more. It is critical you follow the advice in
+> this chapter.
 
 ## Considerations
 

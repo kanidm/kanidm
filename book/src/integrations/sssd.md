@@ -4,7 +4,9 @@
 commonly available on Linux.
 
 > [!WARNING]
-> SSSD should be considered a "last resort". If possible, always use the native Kanidm pam and nsswitch tools instead.
+>
+> SSSD should be considered a "last resort". If possible, always use the native Kanidm
+> pam and nsswitch tools instead.
 
 ## Limitations
 

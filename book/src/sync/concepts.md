@@ -54,7 +54,9 @@ token: eyJhbGci...
 ```
 
 > [!WARNING]
-> The sync account token has a high level of privilege, able to create new accounts and groups. It should be treated carefully as a result!
+>
+> The sync account token has a high level of privilege, able to create new accounts and
+> groups. It should be treated carefully as a result!
 
 If you need to revoke the token, you can do so with:
 
@@ -117,7 +119,9 @@ you can nominate that Kanidm now owns all of the imported data. This is achieved
 sync account.
 
 > [!WARNING]
-> You can not undo this operation. Once you have finalised an agreement, Kanidm owns all of the synchronised data, and you can not resume synchronisation.
+>
+> You can not undo this operation. Once you have finalised an agreement, Kanidm owns all
+> of the synchronised data, and you can not resume synchronisation.
 
 ```bash
 kanidm system sync finalise <sync account name>
@@ -133,7 +137,9 @@ If you decide to cease importing accounts or need to remove all imported account
 account, you can choose to terminate the agreement removing all data that was imported.
 
 > [!WARNING]
-> You can not undo this operation. Once you have terminated an agreement, Kanidm deletes all of the synchronised data, and you can not resume synchronisation.
+>
+> You can not undo this operation. Once you have terminated an agreement, Kanidm deletes
+> all of the synchronised data, and you can not resume synchronisation.
 
 ```bash
 kanidm system sync terminate <sync account name>

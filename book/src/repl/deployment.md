@@ -1,7 +1,9 @@
 # Deployment
 
 > [!WARNING]
-> Replication is a newly developed feature. This means it requires manual configuration and careful monitoring. You should take regular backups if you choose to proceed.
+>
+> Replication is a newly developed feature. This means it requires manual configuration
+> and careful monitoring. You should take regular backups if you choose to proceed.
 
 ## Node Setup
 

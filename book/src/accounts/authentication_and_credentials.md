@@ -15,7 +15,9 @@ These devices are unphishable, self contained multifactor authenticators and are
 secure method of authentication in Kanidm.
 
 > [!WARNING]
-> Kanidm's definition of Passkeys may differ from that of other systems. This is because we adopted the term very early, before it has changed and evolved.
+>
+> Kanidm's definition of Passkeys may differ from that of other systems. This is because
+> we adopted the term very early, before it has changed and evolved.
 
 ### Attested Passkeys
 
@@ -98,7 +100,9 @@ default member of this group. The lines below prefixed with `#` are the interact
 update interface. This allows the user to directly manage the credentials of another account.
 
 > [!WARNING]
-> Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
+>
+> Don't use the direct credential reset to lock or invalidate an account. You should
+> expire the account instead.
 
 ```bash
 kanidm person credential update demo_user --name idm_admin

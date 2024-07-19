@@ -1,7 +1,9 @@
 # Planning
 
 > [!WARNING]
-> Replication is a newly developed feature. This means it requires manual configuration and careful monitoring. You should keep backups if you choose to proceed.
+>
+> Replication is a newly developed feature. This means it requires manual configuration
+> and careful monitoring. You should keep backups if you choose to proceed.
 
 It is important that you plan your replication deployment before you proceed. You may have a need
 for high availability within a datacentre, geographic redundancy, or improvement of read scaling.

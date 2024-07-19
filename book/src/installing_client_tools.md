@@ -63,7 +63,10 @@ brew install kanidm
 ### Fedora / Centos Stream
 
 > [!NOTE]
-> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm versions available.
+>
+> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS
+> frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm
+> versions available.
 
 Fedora has limited support through the development repository. You need to add the repository
 metadata into the correct directory:
