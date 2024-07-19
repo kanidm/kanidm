@@ -21,21 +21,25 @@ use crate::https::middleware::KOpId;
 pub(crate) enum HtmxError {
     /// Something went wrong when doing things.
     OperationError(Uuid, OperationError),
-    // InternalServerError(Uuid, String),
+    InternalServerError(Uuid, String),
 }
 
 impl HtmxError {
     pub(crate) fn new(kopid: &KOpId, operr: OperationError) -> Self {
         HtmxError::OperationError(kopid.eventid, operr)
     }
+
+    pub(crate) fn internal(kopid: &KOpId, msg: String) -> Self {
+        HtmxError::InternalServerError(kopid.eventid, msg)
+    }
 }
 
 impl IntoResponse for HtmxError {
     fn into_response(self) -> Response {
         match self {
-            // HtmxError::InternalServerError(_kopid, inner) => {
-            //     (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
-            // }
+            HtmxError::InternalServerError(_kopid, inner) => {
+                (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
+            }
             HtmxError::OperationError(_kopid, inner) => {
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
                 let response = match &inner {

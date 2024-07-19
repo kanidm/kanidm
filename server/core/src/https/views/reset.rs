@@ -1,8 +1,3 @@
-use crate::https::extractors::VerifiedClientInformation;
-use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::HtmlTemplate;
-use crate::https::ServerState;
 use askama::Template;
 use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
@@ -12,14 +7,25 @@ use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
 use axum_htmx::{HxEvent, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
 use futures_util::TryFutureExt;
-use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CURequest, CUSessionToken,
-    CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback,
-    COOKIE_CU_SESSION_TOKEN,
-};
+use qrcode::render::svg;
+use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::fmt;
+use std::fmt::{Display, Formatter};
 use uuid::Uuid;
+
+use kanidm_proto::internal::{
+    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CURequest, CUSessionToken,
+    CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo,
+    COOKIE_CU_SESSION_TOKEN,
+};
+
+use crate::https::extractors::VerifiedClientInformation;
+use crate::https::middleware::KOpId;
+use crate::https::views::errors::HtmxError;
+use crate::https::views::HtmlTemplate;
+use crate::https::ServerState;
 
 #[derive(Template)]
 #[template(path = "credentials_reset_form.html")]
@@ -57,7 +63,7 @@ pub(crate) struct ResetTokenParam {
 
 #[derive(Template)]
 #[template(path = "cred_update/add_password_partial.html")]
-struct AddPasswordModalPartial {
+struct AddPasswordPartial {
     check_res: PwdCheckResult,
 }
 
@@ -77,9 +83,18 @@ pub(crate) struct NewPassword {
     new_password_check: String,
 }
 
+#[derive(Deserialize, Debug)]
+pub(crate) struct NewTotp {
+    name: String,
+    #[serde(rename = "checkTOTPCode")]
+    check_totpcode: u32,
+    #[serde(rename = "ignoreBrokenApp")]
+    ignore_broken_app: bool,
+}
+
 #[derive(Template)]
 #[template(path = "cred_update/add_passkey_partial.html")]
-struct AddPasskeyModalPartial {
+struct AddPasskeyPartial {
     // Passkey challenge for adding a new passkey
     challenge: String,
 }
@@ -99,7 +114,48 @@ pub(crate) struct PasskeyCreateForm {
 
 #[derive(Deserialize, Debug)]
 pub(crate) struct PasskeyRemoveData {
-    uuid: Uuid
+    uuid: Uuid,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) enum TotpCheckResult {
+    Init {
+        secret: String,
+        qr_code_svg: String,
+        steps: u64,
+        digits: u8,
+        algo: TotpAlgo,
+        uri: String,
+    },
+    Failure {
+        wrong_code: bool,
+        broken_app: bool,
+        warnings: Vec<TotpFeedback>,
+    },
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) enum TotpFeedback {
+    BlankName,
+    DuplicateName,
+}
+
+impl Display for TotpFeedback {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            TotpFeedback::BlankName => write!(f, "Please enter a name."),
+            TotpFeedback::DuplicateName => write!(
+                f,
+                "This name already exists, choose another or remove the existing one."
+            ),
+        }
+    }
+}
+
+#[derive(Template)]
+#[template(path = "cred_update/add_totp_partial.html")]
+struct AddTotpPartial {
+    check_res: TotpCheckResult,
 }
 
 pub(crate) async fn cancel_mfareg(
@@ -145,7 +201,11 @@ pub(crate) async fn remove_passkey(
 
     let cu_status = state
         .qe_r_ref
-        .handle_idmcredentialupdate(cu_session_token, CURequest::PasskeyRemove(passkey.uuid), kopid.eventid)
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::PasskeyRemove(passkey.uuid),
+            kopid.eventid,
+        )
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
@@ -201,7 +261,7 @@ pub(crate) async fn view_new_passkey(
         .await?;
 
     let response = match cu_satus.mfaregstate {
-        CURegState::Passkey(chal) => HtmlTemplate(AddPasskeyModalPartial {
+        CURegState::Passkey(chal) => HtmlTemplate(AddPasskeyPartial {
             challenge: serde_json::to_string(&chal).unwrap(),
         })
         .into_response(),
@@ -217,6 +277,108 @@ pub(crate) async fn view_new_passkey(
     Ok((passkey_init_trigger, response).into_response())
 }
 
+pub(crate) async fn view_new_totp(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    opt_form: Option<Form<NewTotp>>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
+
+    let new_totp = match opt_form {
+        None => {
+            let cu_status = state
+                .qe_r_ref
+                .handle_idmcredentialupdate(
+                    cu_session_token,
+                    CURequest::TotpGenerate,
+                    kopid.eventid,
+                )
+                .await
+                // TODO: better handling for invalid mfaregstate state, can be invalid if certain mfa flows were interrupted
+                // TODO: We should maybe automatically cancel the other MFA reg
+                .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+
+            let partial = if let CURegState::TotpCheck(secret) = cu_status.mfaregstate {
+                let uri = secret.to_uri();
+                let svg = match QrCode::new(uri.as_str()) {
+                    Ok(qr) => qr.render::<svg::Color>().build(),
+                    Err(qr_err) => {
+                        error!("Failed to create TOTP QR code: {qr_err}");
+                        "QR Code broke".to_string()
+                    }
+                };
+
+                AddTotpPartial {
+                    check_res: TotpCheckResult::Init {
+                        secret: secret.get_secret(),
+                        qr_code_svg: svg,
+                        steps: secret.step,
+                        digits: secret.digits,
+                        algo: secret.algo,
+                        uri,
+                    },
+                }
+            } else {
+                return Err(ErrorResponse::from(HtmxError::internal(
+                    &kopid,
+                    "Another MFA session appears to be ongoing.".to_string(),
+                )));
+            };
+
+            return Ok((swapped_handler_trigger, HtmlTemplate(partial)).into_response());
+        }
+        Some(Form(new_totp)) => new_totp,
+    };
+
+    let cu_status = if new_totp.ignore_broken_app {
+        state.qe_r_ref.handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::TotpAcceptSha1,
+            kopid.eventid,
+        )
+    } else {
+        state.qe_r_ref.handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::TotpVerify(new_totp.check_totpcode, new_totp.name),
+            kopid.eventid,
+        )
+    }
+    .await
+    .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+
+    let warnings = vec![];
+    let check_res = match &cu_status.mfaregstate {
+        CURegState::None => return Ok(get_cu_partial_template(cu_status).into_response()),
+        CURegState::TotpTryAgain => TotpCheckResult::Failure {
+            wrong_code: true,
+            broken_app: false,
+            warnings,
+        },
+        CURegState::TotpInvalidSha1 => TotpCheckResult::Failure {
+            wrong_code: false,
+            broken_app: true,
+            warnings,
+        },
+        CURegState::TotpCheck(_)
+        | CURegState::BackupCodes(_)
+        | CURegState::Passkey(_)
+        | CURegState::AttestedPasskey(_) => {
+            return Err(ErrorResponse::from(HtmxError::new(
+                &kopid,
+                OperationError::InvalidState,
+            )))
+        }
+    };
+
+    let template = HtmlTemplate(AddTotpPartial { check_res });
+    Ok((swapped_handler_trigger, template).into_response())
+}
+
 pub(crate) async fn view_new_pwd(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -228,12 +390,10 @@ pub(crate) async fn view_new_pwd(
     let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
-    let swap_on_err_trigger =
-        HxResponseTrigger::normal([HxEvent::new("addPasswordSwapOnErr".to_string())]);
 
     let new_passwords = match opt_form {
         None => {
-            let partial = AddPasswordModalPartial {
+            let partial = AddPasswordPartial {
                 check_res: PwdCheckResult::Init,
             };
             return Ok((swapped_handler_trigger, HtmlTemplate(partial)).into_response());
@@ -266,15 +426,9 @@ pub(crate) async fn view_new_pwd(
         pwd_equal,
         warnings,
     };
-    let template = HtmlTemplate(AddPasswordModalPartial { check_res });
+    let template = HtmlTemplate(AddPasswordPartial { check_res });
 
-    Ok((
-        status,
-        swapped_handler_trigger,
-        swap_on_err_trigger,
-        template,
-    )
-        .into_response())
+    Ok((status, swapped_handler_trigger, template).into_response())
 }
 
 pub(crate) async fn view_reset_get(

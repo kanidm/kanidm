@@ -3457,6 +3457,7 @@ dependencies = [
  "libc",
  "openssl",
  "opentelemetry",
+ "qrcode",
  "rand",
  "regex",
  "serde",

@@ -69,6 +69,7 @@ pub fn view_router() -> Router<ServerState> {
 
     // Anything that is a partial only works if triggered from htmx
     let guarded_router = Router::new()
+        .route("/reset/add_totp", post(reset::view_new_totp))
         .route("/reset/add_password", post(reset::view_new_pwd))
         .route("/reset/add_passkey", post(reset::view_new_passkey))
         .route("/api/remove_passkey", post(reset::remove_passkey))
