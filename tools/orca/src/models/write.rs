@@ -6,6 +6,9 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
+use rand::distributions::Uniform;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha8Rng;
 
 use std::time::Duration;
 
@@ -17,12 +20,14 @@ enum State {
 
 pub struct ActorWriter {
     state: State,
+    cha_rng: ChaCha8Rng,
 }
 
 impl ActorWriter {
-    pub fn new() -> Self {
+    pub fn new(rng_seed: u64) -> Self {
         ActorWriter {
             state: State::Unauthenticated,
+            cha_rng: ChaCha8Rng::seed_from_u64(rng_seed),
         }
     }
 }
@@ -64,12 +69,15 @@ impl ActorModel for ActorWriter {
 impl ActorWriter {
     fn next_transition(&mut self) -> Transition {
         match self.state {
+            // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
             State::Unauthenticated => Transition {
-                delay: Some(Duration::from_secs(2)),
+                delay: Some(Duration::from_millis(
+                    self.cha_rng.sample(Uniform::new(0, 5000)),
+                )),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(3)),
+                delay: None,
                 action: TransitionAction::PrivilegeReauth,
             },
             State::AuthenticatedWithReauth => Transition {

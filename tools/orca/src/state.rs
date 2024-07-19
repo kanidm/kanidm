@@ -86,12 +86,12 @@ pub enum Model {
 }
 
 impl Model {
-    pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
+    pub fn as_dyn_object(&self, rng_seed: u64) -> Result<Box<dyn ActorModel + Send>, Error> {
         Ok(match self {
             Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
             Model::Basic => Box::new(models::basic::ActorBasic::new()),
-            Model::Reader => Box::new(models::read::ActorReader::new()),
-            Model::Writer => Box::new(models::write::ActorWriter::new()),
+            Model::Reader => Box::new(models::read::ActorReader::new(rng_seed)),
+            Model::Writer => Box::new(models::write::ActorWriter::new(rng_seed)),
         })
     }
 }

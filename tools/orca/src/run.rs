@@ -21,8 +21,9 @@ async fn actor_person(
     person: Person,
     stats_queue: Arc<SegQueue<EventRecord>>,
     mut actor_rx: broadcast::Receiver<Signal>,
+    rng_seed: u64,
 ) -> Result<(), Error> {
-    let mut model = person.model.as_dyn_object()?;
+    let mut model = person.model.as_dyn_object(rng_seed)?;
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
         let event = model.transition(&client, &person).await?;
@@ -180,6 +181,7 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
             person,
             c_stats_queue,
             c_actor_rx,
+            state.profile.seed(),
         )))
     }
 
