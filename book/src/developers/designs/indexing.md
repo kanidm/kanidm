@@ -1,4 +1,4 @@
-## Indexing
+# Indexing
 
 Indexing is deeply tied to the concept of filtering. Indexes exist to make the application of a
 search term (filter) faster.
@@ -25,10 +25,12 @@ components. However the ID is very important to indexing :)
 If we wanted to find `Eq(name, john)` here, what do we need to do? A full table scan is where we
 perform:
 
-    data = sqlite.do(SELECT * from id2entry);
-    for row in data:
-        entry = deserialise(row)
-        entry.match_filter(...) // check Eq(name, john)
+```python
+data = sqlite.do(SELECT * from id2entry);
+for row in data:
+    entry = deserialise(row)
+    entry.match_filter(...) // check Eq(name, john)
+```
 
 For a small database (maybe up to 20 objects), this is probably fine. But once you start to get much
 larger this is really costly. We continually load, deserialise, check and free data that is not
@@ -71,22 +73,20 @@ loads and one compare. That's 30000x faster (potentially ;) )!
 To improve on this, if we had a query like Or(Eq(name, john), Eq(name, kris)) we can use our indexes
 to speed this up.
 
-We would query index_eq_name again, and we would perform the search for both john, and kris. Because
+We would query `index_eq_name` again, and we would perform the search for both john, and kris. Because
 this is an OR we then union the two idl's, and we would have:
 
-```
+```text
 [04, 05,]
 ```
 
-Now we just have to get entries 04,05 from id2entry, and we have our matching query. This means
+Now we just have to get entries `04,05` from `id2entry`, and we have our matching query. This means
 filters are often applied as idl set operations.
 
 ## Compressed ID lists
 
 In order to make idl loading faster, and the set operations faster there is an idl library
-(developed by me, firstyear), which will be used for this. To read more see:
-
-https://github.com/Firstyear/idlset
+(developed by me, firstyear), which will be used for this. To read more see: <https://github.com/Firstyear/idlset>
 
 ## Filter Optimisation
 
@@ -107,13 +107,13 @@ However, for targeted searches, filter optimisation really helps.
 
 Imagine a query like:
 
-```
+```text
 And(Eq(class, person), Eq(name, claire))
 ```
 
 In this case, with our database of 250,000 persons, our idl's would have:
 
-```
+```text
 And( idl[250,000 ids], idl(1 id))
 ```
 
@@ -127,13 +127,13 @@ testing.
 
 When we have this test threshold, there exists two possibilities for this filter.
 
-```
+```text
 And( idl[250,000 ids], idl(1 id))
 ```
 
 We load 250,000 idl and then perform the intersection with the idl of 1 value, and result in 1 or 0.
 
-```
+```text
 And( idl(1 id), idl[250,000 ids])
 ```
 
@@ -156,16 +156,16 @@ longer IDLs.
 Before we discuss the details of the states and update processes, we need to consider the index
 types we require.
 
-# Index types
+## Index types
 
 The standard index is a key-value, where the key is the lookup, and the value is the idl set of the
 candidates. The examples follow the above.
 
 For us, we will format the table names as:
 
-- idx_eq_<attrname>
-- idx_sub_<attrname>
-- idx_pres_<attrname>
+- `idx_eq_<attrname>`
+- `idx_sub_<attrname>`
+- `idx_pres_<attrname>`
 
 These will be string, blob for SQL. The string is the pkey.
 
@@ -177,16 +177,16 @@ We also require a special name to uuid, and uuid to name index. These are to acc
 name2uuid and uuid2name functions which are common in resolving on search. These will be named in
 the tables as:
 
-- idx_name2uuid
-- idx_uuid2name
+- `idx_name2uuid`
+- `idx_uuid2name`
 
 They will be structured as string, string for both - where the uuid and name column matches the
 correct direction, and is the primary key. We could use a single table, but if we change to sled we
 need to split this, so we preempt this change and duplicate the data here.
 
-# Indexing States
+## Indexing States
 
-- Reindex
+### Reindex
 
 A reindex is the only time when we create the tables needed for indexing. In all other phases if we
 do not have the table for the insertion, we log the error, and move on, instructing in the logs to
@@ -198,13 +198,13 @@ for the first time. This means we need an "initial indexed" flag or similar.
 For all intents, a reindex is likely the same as "create" but just without replacing the entry. We
 would just remove all the index tables before hand.
 
-- Write operation index metadata
+### Write operation index metadata
 
 At the start of a write transaction, the schema passes us a map of the current attribute index
 states so that on filter application or modification we are aware of what attrs are indexed. It is
 assumed that `name2uuid` and `uuid2name` are always indexed.
 
-- Search Index Metadata
+### Search Index Metadata
 
 When filters are resolved they are tagged by their indexed state to allow optimisation to occur. We
 then process each filter element and their tag to determine the indexes needed to built a candidate
@@ -215,20 +215,20 @@ and the `entry_match_no_index` routine.
 shortcut where if the outermost term is a full indexed term, then we can avoid the
 `entry_match_no_index` Scall.
 
-- Create
+### Create
 
 This is one of the simplest steps. On create we iterate over the entries ava's and referencing the
 index metadata of the transaction, we create the indexes as needed from the values (before dbv
 conversion).
 
-- Delete
+### Delete
 
 Given the Entry to delete, we remove the ava's and id's from each set as needed. Generally this will
 only be for tombstones, but we still should check the process works. Important to check will be
 entries with and without names, ensuring the name2uuid/uuid2name is correctly changed, and removal
 of all the other attributes.
 
-- Modify
+### Modify
 
 This is the truly scary and difficult situation. The simple method would be to "delete" all indexes
 based on the pre-entry state, and then to create again. However the current design of Entry and

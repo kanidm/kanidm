@@ -1,20 +1,13 @@
 # LDAP
 
-While many applications can support external authentication and identity services through Oauth2,
+While many applications can support external authentication and identity services through OAuth2,
 not all services can. Lightweight Directory Access Protocol (LDAP) has been the "universal language"
 of authentication for many years, with almost every application in the world being able to search
 and bind to LDAP. As many organisations still rely on LDAP, Kanidm can host a read-only LDAP
 interface for these legacy applications and services.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=Warning!
-text=The LDAP server in Kanidm is not a full LDAP server. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support are RFC compliant however.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> The LDAP server in Kanidm is not a complete LDAP implementation. This is intentional, as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support are RFC compliant however.
 
 ## What is LDAP
 
@@ -125,7 +118,7 @@ ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 
 ## Group Memberships
 
-Group membership is defined in rfc2307bis or Active Directory style. This means groups are
+Group membership is defined in RFC2307bis or Active Directory style. This means groups are
 determined from the "memberof" attribute which contains a DN to a group.
 
 ## People Accounts
@@ -163,15 +156,8 @@ of `idm.example.com` will become `dc=idm,dc=example,dc=com`.
 However, you may wish to change this to something shorter or at a higher level within your domain
 name.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=Warning!
-text=Changing the LDAP Basedn will require you to reconfigure your client applications so they search the correct basedn. Be careful when changing this value!
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Changing the LDAP Basedn will require you to reconfigure your client applications so they search the correct basedn. Be careful when changing this value!
 
 As an admin you can change the domain ldap basedn with:
 
@@ -191,7 +177,7 @@ replicated topology, you must restart all servers.
 If you do not have applications that require LDAP password binds, then you should disable this
 function to limit access.
 
-```
+```shell
 kanidm system domain set-ldap-allow-unix-password-bind [true|false]
 kanidm system domain set-ldap-allow-unix-password-bind -D admin false
 ```

@@ -3,15 +3,8 @@
 The recycle bin is a storage of deleted entries from the server. This allows recovery from mistakes
 for a period of time.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be sure to check your entries are valid once they have been revived.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> The recycle bin is a best effort - when recovering in some cases not everything can be "put back" the way it was. Be sure to check your entries are valid once they have been revived.
 
 ## Where is the Recycle Bin?
 
@@ -52,7 +45,7 @@ kanidm recycle-bin revive --name admin <uuid>
 The recycle bin is a best effort to restore your data - there are some cases where the revived
 entries may not be the same as their were when they were deleted. This generally revolves around
 reference types such as group membership, or when the reference type includes supplemental map data
-such as the oauth2 scope map type.
+such as the OAuth2 scope map type.
 
 An example of this data loss is the following steps:
 

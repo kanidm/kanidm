@@ -4,7 +4,7 @@ Kanidm exists to provide an authentication source for external applications. The
 to have standardised ways to integrate with Kanidm to allow that application to interact and trust
 Kanidm's authentication results.
 
-For web based applications we offer Oauth2/OIDC. For Linux machines we offer a Kanidm specific HTTPS
+For web based applications we offer OAuth2/OIDC. For Linux machines we offer a Kanidm-specific HTTPS
 channel for identifying users (UNIX integration). Currently, for applications that don't support
 other protocols we offer an LDAPS gateway that allows users to bind using their UNIX password.
 
@@ -64,10 +64,10 @@ The application must bind with its api-token if it wishes to read extended user 
 this, only basic info limited to anonymous rights are granted.
 
 (NOTE: We can't assume these DNs are private - I did consider making these
-app=<secret key>,dc=example,dc=com, but client applications may disclose this basedn in ui
+`app=<secret key>,dc=example,dc=com`, but client applications may disclose this basedn in UI
 elements).
 
-When a user authenticates the binddn of the account is set to spn=user,app=name,dc=example,dc=com.
+When a user authenticates the binddn of the account is set to `spn=user,app=name,dc=example,dc=com`.
 This difference in base DN triggers Kanidm to re-route the authentication to the application
 specific password, rather than the UNIX one.
 
@@ -102,7 +102,7 @@ their app password?)
 The user may wish to have multiple passwords per application. Each password must have, at minimum, a
 label to identify it. For example:
 
-```
+```text
 MAIL
   iphone: abcd...
   laptop: bcde...
@@ -114,7 +114,7 @@ Person accounts will need a new `Attribute::ApplicationPassword` that stores a
 `ValueSetApplicationPassword`. Each value in the set is a new type to manage these secrets and their
 labeling and the references to the applications.
 
-```
+```text
 struct ApplicationPAssword {
     label: String,
     password: Password,

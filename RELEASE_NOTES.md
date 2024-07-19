@@ -134,9 +134,9 @@ finish our production components and the stability of the API's for longer term 
 - Improve account sync import, including mail attrs and better session handling
 - Bug fix in unixd when certain operation orders could cause group cache to be ignored
 - pre-compress all wasm to improve loading times
-- Add preflight headers for SPA oauth2 clients
+- Add preflight headers for SPA OAuth2 clients
 - Persist nonce through refresh tokens to support public clients
-- Allow public (pkce) oauth2 clients
+- Allow public (PKCE) OAuth2 clients
 - Add client UX for external credential portals for synchronised accounts
 - Improve migration durability with a global transaction
 - Cli now shows spn instead of username to allow better multidomain admin
@@ -144,7 +144,7 @@ finish our production components and the stability of the API's for longer term 
 - Add tls certgen to main binary to improve developer and quickstart setup
 - Unixd now blocks all local account names and id's resolving prevent priv-esc
 - Fix bug with service-account session logout access
-- Oauth2 app list shows when no applications are available
+- OAuth2 app list shows when no applications are available
 - Improve ip audit logging
 - Improve cli with re-auth when session is expired
 - Support legacy cron syntax in backup config
@@ -171,7 +171,7 @@ production usage.
 ### Release Highlights
 
 - Allow full server content replication in testing (yes we're finally working on replication!)
-- Improve oauth2 to allow scoped members to see RS they can access for UI flows
+- Improve OAuth2 to allow scoped members to see RS they can access for UI flows
 - Performance improvement by reducing clones
 - Track credential uuid used for session authentication in the session
 - Remove the legacy webauthn types for newer attributes
@@ -182,7 +182,7 @@ production usage.
 - Improve exit codes of unixd tools
 - Restrict valid chars in some string contexts in entries
 - Allow configuration of ldap basedn
-- Extend oauth2 session lifetimes, add refresh token support
+- Extend OAuth2 session lifetimes, add refresh token support
 - Improve user experience of credential updates via intent tokens
 - Consolidate unix tools
 - Add exclusive process lock to daemon
@@ -205,13 +205,13 @@ There are still things we want to change there. Otherwise the server is stable a
 - Support windows for server tests
 - Add a kanidm tools container
 - Initial support for live sync/import of users and groups from FreeIPA
-- Oauth2 session logout and global logout support
+- OAuth2 session logout and global logout support
 - UI polish based on hint flags to dynamically enable/disable elements
-- Oauth2 single sign on application portal
+- OAuth2 single sign on application portal
 - Support dn=token for ldap client binds
 - Trap more signals for daemons
 - Mail read permission group
-- Oauth2 add a groups claim
+- OAuth2 add a groups claim
 - LDAP support for mail primary and alternate address selectors in queries
 - Fix handling of virtual attrs with '\*' searches in ldap
 - Support multiple TOTP on accounts
@@ -244,7 +244,7 @@ proxy. You should be ready for this change when you upgrade to the latest versio
 - TLS enforced as a requirement for all servers
 - Support API service account tokens
 - Make name rules stricter due to issues found in production
-- Improve Oauth2 PKCE testing
+- Improve OAuth2 PKCE testing
 - Add support for new password import hashes
 - Allow configuration of trusting x forward for headers
 - Components for account permission elevation modes
@@ -270,7 +270,7 @@ The project is shaping up very nicely, and a beta will be coming soon!
 - Performance improvements in builds
 - Windows development and service support
 - WebUI polish and improvements
-- Consent is remembered in oauth2 improving access flows
+- Consent is remembered in OAuth2 improving access flows
 - Replication changelog foundations
 - Compression middleware for static assests to reduce load times
 - User on boarding now possible with self service credential reset
@@ -308,14 +308,14 @@ better for a future supported release.
 
 ### Release Highlights
 
-- Oauth2 scope to group mappings
+- OAuth2 scope to group mappings
 - Webauthn subdomain support
-- Oauth2 rfc7662 token introspection
+- OAuth2 RFC7662 token introspection
 - Basic OpenID Connect support
 - Improve performance of domain rename
 - Refactor of entry value internals to improve performance
 - Addition of email address attributes
-- Web UI improvements for Oauth2
+- Web UI improvements for OAuth2
 
 ## 2021-10-01 - Kanidm 1.1.0-alpha6
 
@@ -333,7 +333,7 @@ bring the project this far! 🎉 🦀
 - Dynamic menus on CLI for auth factors when choices exist
 - Better handle missing resources for web ui elements at server startup
 - Add WAL checkpointing to improve disk usage
-- Oauth2 user interface flows for simple authorisation scenarios
+- OAuth2 user interface flows for simple authorisation scenarios
 - Improve entry memory usage based on valueset rewrite
 - Allow online backups to be scheduled and taken
 - Reliability improvements for unixd components with missing sockets
@@ -360,7 +360,7 @@ for a future supported release.
 - Password badlist caching
 - Orca, a kanidm and ldap load testing system
 - TOTP usability improvements
-- Oauth2 foundations
+- OAuth2 foundations
 - CLI tool session management improvements
 - Default shell falls back if the requested shell is not found
 - Optional backup codes in case of lost MFA device

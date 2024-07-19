@@ -1,10 +1,10 @@
-# Oauth2 Refresh Tokens
+# OAuth2 Refresh Tokens
 
 Due to how Kanidm authentication sessions were originally implemented they had short session times
 (1 hour) due to the lack of privilege separation in tokens. Now with privilege separation being
 implemented session lengths have been extended to 8 hours with possible increases in the future.
 
-However, this leaves us with an issue with oauth2 - oauth2 access tokens are considered valid until
+However, this leaves us with an issue with OAuth2 - OAuth2 access tokens are considered valid until
 their expiry and we should not issue tokens with a validity of 8 hours or longer since that would
 allow rogue users to have a long window of usage of the token before they were forced to re-auth. It
 also means that in the case that an account must be forcefully terminated then the user would retain
@@ -16,7 +16,7 @@ validity.
 This is performed with access tokens and refresh tokens. The access token has a short lifespan
 (proposed 15 minutes) and must be refreshed with Kanidm which can check the true session validity
 and if the session has been revoked. This creates a short window for revocation to propagate to
-oauth2 applications since each oauth2 application must periodically check in to keep their access
+OAuth2 applications since each OAuth2 application must periodically check in to keep their access
 token alive.
 
 ## Risks
@@ -38,7 +38,7 @@ and
 
 Refresh tokens must only be used by the client application associated. Kanidm strictly enforces this
 already with our client authorisation checks. This is discussed in
-[rfc6749 section 10.4](https://www.rfc-editor.org/rfc/rfc6749#section-10.4).
+[RFC6749 section 10.4](https://www.rfc-editor.org/rfc/rfc6749#section-10.4).
 
 ## Design
 

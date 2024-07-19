@@ -2,7 +2,7 @@
 
 - Do we need some kind of permission atoms to allow certain tasks?
 
-## Use Cases:
+## Use Cases
 
 - User sign-up portal (need service account that can create users and do cred reset)
 - Role for service account generation.
@@ -54,7 +54,7 @@ IdmAdmin("IDM Admin") --> RadiusAccountModify("Radius Account Modify")
 ```mermaid
 graph LR
 
-IntegrationAdmin("Integration Admin") --> Oauth2Admin("Oauth2 Admin")
+IntegrationAdmin("Integration Admin") --> OAuth2Admin("OAuth2 Admin")
 IntegrationAdmin("Integration Admin") --> PosixAccountConsumer("POSIX Account Consumer")
 IntegrationAdmin("Integration Admin") --> RadiusServiceAdmin("Radius Service Admin")
 ```
@@ -131,8 +131,8 @@ GroupAdmin -.-> |"Inherits"| HPGroupAdmin
 ```mermaid
 graph LR
 
-Oauth2Admin("Oauth2 Admin") --> |"Creates Modifies Delegates"| Oauth2RS("Oauth2 RS")
-ScopedMember("Scoped Member") --> |"Reads"| Oauth2RS
+OAuth2Admin("OAuth2 Admin") --> |"Creates Modifies Delegates"| OAuth2RS("OAuth2 RS")
+ScopedMember("Scoped Member") --> |"Reads"| OAuth2RS
 ```
 
 ## POSIX-Specific

@@ -36,7 +36,7 @@ receives the access it is granting.
 
 Alternately an access profile could target "self" so that self-update rules can still be expressed.
 
-An access profile could target an oauth2 definition for the purpose of allowing reads to members of
+An access profile could target an OAuth2 definition for the purpose of allowing reads to members of
 a set of scopes that can access the service.
 
 The access profile receiver would be group based only. This allows specifying that "X group of
@@ -103,7 +103,7 @@ The "admins" role is responsible to manage:
 
 - The name of the domain
 - Configuration of the servers and replication
-- Management of external integrations (oauth2)
+- Management of external integrations (OAuth2)
 
 #### Service Account Admin
 
@@ -151,12 +151,12 @@ Satisfied by:
 - Access profiles target specifiers instead of filters
 - Sudo Mode
 
-### Oauth2 Service Read (Nice to Have)
+### OAuth2 Service Read (Nice to Have)
 
-For ux/ui integration, being able to list oauth2 applications that are accessible to the user would
-be a good feature. To limit "who" can see the oauth2 applications that an account can access a way
-to "allow read" but by proxy of the related users of the oauth2 service. This will require access
-controls to be able to interpret the oauth2 config and provide rights based on that.
+For UX/UI integration, being able to list OAuth2 applications that are accessible to the user would
+be a good feature. To limit "who" can see the OAuth2 applications that an account can access a way
+to "allow read" but by proxy of the related users of the OAuth2 service. This will require access
+controls to be able to interpret the OAuth2 config and provide rights based on that.
 
 Satisfied by:
 

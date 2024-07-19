@@ -1,14 +1,7 @@
 # REST Interface
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../../templates/kani-warning.md
-imagepath=../../images/
-title=Note!
-text=This is a work in progress and not all endpoints have perfect schema definitions, but they're all covered!
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!NOTE]
+> This is a work in progress and not all endpoints have perfect schema definitions, but they're all covered!
 
 We're generating an OpenAPI specification file and Swagger interface using
 [utoipa](https://crates.io/crates/utoipa).

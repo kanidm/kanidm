@@ -16,15 +16,8 @@ files.The full options and explanations are in the
 [kanidmd_core::config::ServerConfig](https://kanidm.github.io/kanidm/master/rustdoc/kanidmd_core/config/struct.ServerConfig.html)
 docs page for your particular build.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=You MUST set the "domain", "origin", "tls_chain" and "tls_path" options via one method or the other, or the server cannot start!
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> You MUST set the "domain", "origin", "tls_chain" and "tls_path" options via one method or the other, or the server cannot start!
 
 The following is a commented example configuration.
 
@@ -35,15 +28,8 @@ The following is a commented example configuration.
 This example is located in
 [examples/server_container.toml](https://github.com/kanidm/kanidm/blob/master/examples/server_container.toml).
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=You MUST set the "domain" name correctly, aligned with your "origin", else the server may refuse to start or some features (e.g. WebAuthn, OAuth2) may not work correctly!
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> You MUST set the "domain" name correctly, aligned with your "origin", else the server may refuse to start or some features (e.g. WebAuthn, OAuth2) may not work correctly!
 
 ### Check the configuration is valid
 
@@ -77,15 +63,8 @@ docker run --cap-add NET_BIND_SERVICE \
   kanidm/server:latest
 ```
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-alert.md
-imagepath=images
-title=Tip
-text=However you choose to run your server, you should document and keep note of the docker run / create command you chose to start the instance. This will be used in the upgrade procedure.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!TIP]
+> However you choose to run your server, you should document and keep note of the docker run / create command you chose to start the instance. This will be used in the upgrade procedure.
 
 ### Default Admin Accounts
 

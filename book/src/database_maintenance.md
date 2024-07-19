@@ -9,7 +9,7 @@ expected - you may never need to start a reindex yourself as a result!
 You only need to reindex if you add custom schema elements and you see a message in your logs such
 as:
 
-```
+```text
 Index EQUALITY name not found
 Index {type} {attribute} not found
 ```

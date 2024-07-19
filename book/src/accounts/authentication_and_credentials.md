@@ -14,15 +14,8 @@ Windows Hello, TPM's and more.
 These devices are unphishable, self contained multifactor authenticators and are considered the most
 secure method of authentication in Kanidm.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=Kanidm's definition of Passkeys may differ from that of other systems. This is because we adopted the term very early, before it has changed and evolved.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Kanidm's definition of Passkeys may differ from that of other systems. This is because we adopted the term very early, before it has changed and evolved.
 
 ### Attested Passkeys
 
@@ -104,15 +97,8 @@ You can perform a password reset on the `demo_user`, for example, as the `idm_ad
 default member of this group. The lines below prefixed with `#` are the interactive credential
 update interface. This allows the user to directly manage the credentials of another account.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=images
-title=Warning!
-text=Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Don't use the direct credential reset to lock or invalidate an account. You should expire the account instead.
 
 ```bash
 kanidm person credential update demo_user --name idm_admin

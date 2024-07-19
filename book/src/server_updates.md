@@ -30,15 +30,8 @@ Docker doesn't follow a "traditional" method of updates. Rather you remove the o
 container and recreate it with a newer version. This document will help walk you through that
 process.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-alert.md
-imagepath=images
-title=Tip
-text=You should have documented and preserved your kanidm container create / run command from the server preparation guide. If not, you'll need to use "docker inspect" to work out how to recreate these parameters.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!TIP]
+> You should have documented and preserved your Kanidm container create / run command from the server preparation guide. If not, you'll need to use `docker inspect` to work out how to recreate these parameters.
 
 ### Upgrade Check
 
@@ -82,15 +75,8 @@ See [backup and restore](backup_restore.md)
 
 ### Update your Instance
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=WARNING
-text=Downgrades are not possible. It is critical you know how to backup and restore before you proceed with this step.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Downgrades are not possible. It is critical you know how to backup and restore before you proceed with this step.
 
 Docker updates operate by deleting and recreating the container. All state that needs to be
 preserved is within your storage volume.

@@ -1,14 +1,7 @@
 # Planning
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=WARNING
-text=Replication is a newely developed feature. This means it requires manual configuration and careful monitoring. You should keep backups if you choose to proceed.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Replication is a newly developed feature. This means it requires manual configuration and careful monitoring. You should keep backups if you choose to proceed.
 
 It is important that you plan your replication deployment before you proceed. You may have a need
 for high availability within a datacentre, geographic redundancy, or improvement of read scaling.

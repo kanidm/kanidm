@@ -42,7 +42,7 @@
     - [Troubleshooting](integrations/pam_and_nsswitch/troubleshooting.md)
   - [SSSD](integrations/sssd.md)
   - [SSH Key Distribution](integrations/ssh_key_distribution.md)
-  - [Oauth2](integrations/oauth2.md)
+  - [OAuth2](integrations/oauth2.md)
   - [LDAP](integrations/ldap.md)
   - [RADIUS](integrations/radius.md)
 
@@ -79,7 +79,7 @@
   - [Cryptography Key Domains (2024)](developers/designs/cryptography_key_domains.md)
   - [Domain Join - Machine Accounts](developers/designs/domain_join_machine_accounts.md)
   - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
-  - [Oauth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
+  - [OAuth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
   - [Replication Coordinator](developers/designs/replication_coordinator.md)
   - [Replication Design and Notes](developers/designs/replication_design_and_notes.md)
   - [REST Interface](developers/designs/rest_interface.md)

@@ -2,7 +2,7 @@
 
 OAuth is a web authorisation protocol that allows "single sign on". It's key to note OAuth only
 provides authorisation, as the protocol in its default forms do not provide identity or
-authentication information. All that Oauth2 provides is information that an entity is authorised for
+authentication information. All that OAuth2 provides is information that an entity is authorised for
 the requested resources.
 
 OAuth can tie into extensions allowing an identity provider to reveal information about authorised
@@ -69,13 +69,13 @@ Kanidm will expose its OAuth2 APIs at the following URLs:
 - user auth url: `https://idm.example.com/ui/oauth2`
 - api auth url: `https://idm.example.com/oauth2/authorise`
 - token url: `https://idm.example.com/oauth2/token`
-- rfc7662 token introspection url: `https://idm.example.com/oauth2/token/introspect`
-- rfc7009 token revoke url: `https://idm.example.com/oauth2/token/revoke`
+- RFC7662 token introspection URL: `https://idm.example.com/oauth2/token/introspect`
+- RFC7009 token revoke URL: `https://idm.example.com/oauth2/token/revoke`
 
-Oauth2 Server Metadata - you need to substitute your OAuth2 `:client_id:` in the following urls:
+OAuth2 Server Metadata - you need to substitute your OAuth2 `:client_id:` in the following urls:
 
-- Oauth2 issuer uri: `https://idm.example.com/oauth2/openid/:client_id:/`
-- Oauth2 rfc8414 discovery:
+- OAuth2 issuer URL: `https://idm.example.com/oauth2/openid/:client_id:/`
+- OAuth2 RFC8414 discovery:
   `https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
 
 OpenID Connect discovery - you need to substitute your OAuth2 `:client_id:` in the following urls:
@@ -153,17 +153,13 @@ kanidm system oauth2 update-scope-map <name> <kanidm_group_name> [scopes]...
 kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 ```
 
-<!-- deno-fmt-ignore-start -->
+> [!WARNING]
+> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map named `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
 
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=WARNING
-text=If you are creating an OpenID Connect (OIDC) client you <b>MUST</b> provide a scope map named <code>openid</code>. Without this, OpenID Connect clients <b>WILL NOT WORK</b>!
-}}
+Also...
 
-<!-- deno-fmt-ignore-end -->
-
-> **HINT** OpenID connect allows a number of scopes that affect the content of the resulting
+> [!TIP]
+> OpenID connect allows a number of scopes that affect the content of the resulting
 > authorisation token. If one of the following scopes are requested by the OpenID client, then the
 > associated claims may be added to the authorisation token. It is not guaranteed that all of the
 > associated claims will be added.
@@ -235,7 +231,7 @@ groups that would receive the same claim, the values of these maps are merged.
 
 To create or update a claim map on a client:
 
-```
+```shell
 kanidm system oauth2 update-claim-map <name> <claim_name> <kanidm_group_name> [values]...
 kanidm system oauth2 update-claim-map nextcloud account_role nextcloud_admins admin login ...
 ```
@@ -243,13 +239,14 @@ kanidm system oauth2 update-claim-map nextcloud account_role nextcloud_admins ad
 To change the join strategy for a claim name. Valid strategies are csv (comma separated value), ssv
 (space separated value) and array (a native json array). The default strategy is array.
 
-```
+```shell
 kanidm system oauth2 update-claim-map-join <name> <claim_name> [csv|ssv|array]
 kanidm system oauth2 update-claim-map-join nextcloud account_role csv
 ```
 
-```
-# Example claim formats
+Example claim formats:
+
+```text
 # csv
 claim: "value_a,value_b"
 
@@ -262,7 +259,7 @@ claim: ["value_a", "value_b"]
 
 To delete a group from a claim map
 
-```
+```shell
 kanidm system oauth2 delete-claim-map <name> <claim_name> <kanidm_group_name>
 kanidm system oauth2 delete-claim-map nextcloud account_role nextcloud_admins
 ```
@@ -317,6 +314,10 @@ exchange, the system can redirect to the native application.
 
 To support this Kanidm allows supplemental opaque origins to be configured on clients.
 
+> [!WARNING]
+> 
+> The ability to configure multiple origins is NOT intended to allow you to share a single Kanidm client definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the _same_ client application.
+
 ```bash
 kanidm system oauth2 add-redirect-url <name> <url>
 kanidm system oauth2 remove-redirect-url <name> <url>
@@ -364,15 +365,8 @@ Not all clients support modern standards like PKCE or ECDSA. In these situations
 to disable these on a per-client basis. Disabling these on one client will not affect others. These
 settings are explained in detail in [our FAQ](../frequently_asked_questions.html#oauth2)
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=WARNING
-text=Changing these settings MAY have serious consequences on the security of your services. You should avoid changing these if at all possible!
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+> Changing these settings MAY have serious consequences on the security of your services. You should avoid changing these if at all possible!
 
 To disable PKCE for a confidential client:
 
@@ -444,7 +438,7 @@ Miniflux is a feedreader that supports OAuth 2.0 and OpenID connect. It automati
 `.well-known` parts to the discovery endpoint. The application name in the redirect URL needs to
 match the `OAUTH2_PROVIDER` name.
 
-```
+```conf
 OAUTH2_PROVIDER = "oidc";
 OAUTH2_CLIENT_ID = "miniflux";
 OAUTH2_CLIENT_SECRET = "<oauth2_rs_basic_secret>";
@@ -537,37 +531,37 @@ charts, graphs and alerts when connected to supported data source.
 Prepare the environment:
 
 ```bash
-$ kanidm system oauth2 create grafana "grafana.domain.name" https://grafana.domain.name
-$ kanidm system oauth2 update-scope-map grafana grafana_users email openid profile groups
-$ kanidm system oauth2 enable-pkce grafana
-$ kanidm system oauth2 get grafana
-$ kanidm system oauth2 show-basic-secret grafana
+kanidm system oauth2 create grafana "grafana.domain.name" https://grafana.domain.name
+kanidm system oauth2 update-scope-map grafana grafana_users email openid profile groups
+kanidm system oauth2 enable-pkce grafana
+kanidm system oauth2 get grafana
+kanidm system oauth2 show-basic-secret grafana
 <SECRET>
 ```
 
 Create Grafana user groups:
 
 ```bash
-$ kanidm group create 'grafana_superadmins'
-$ kanidm group create 'grafana_admins'
-$ kanidm group create 'grafana_editors'
-$ kanidm group create 'grafana_users'
+kanidm group create 'grafana_superadmins'
+kanidm group create 'grafana_admins'
+kanidm group create 'grafana_editors'
+kanidm group create 'grafana_users'
 ```
 
 Setup the claim-map that will set what role each group will map to in Grafana:
 
 ```bash
-$ kanidm system oauth2 update-claim-map-join 'grafana' 'grafana_role' array
-$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_superadmins' 'GrafanaAdmin'
-$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_admins' 'Admin'
-$ kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_editors' 'Editor'
+kanidmm oauth2 update-claim-map-join 'grafana' 'grafana_role' array
+kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_superadmins' 'GrafanaAdmin'
+kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_admins' 'Admin'
+kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_editors' 'Editor'
 ```
 
 Don't forget that every Grafana user needs be member of one of above group and have name and e-mail:
 
 ```bash
-$ kanidm person update <user> --legalname "Personal Name" --mail "user@example.com"
-$ kanidm group add-members 'grafana_users' 'my_user_group_or_user_name'
+kanidm person update <user> --legalname "Personal Name" --mail "user@example.com"
+kanidm group add-members 'grafana_users' 'my_user_group_or_user_name'
 ```
 
 And add the following to your Grafana config:

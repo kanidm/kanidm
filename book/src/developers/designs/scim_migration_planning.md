@@ -140,7 +140,7 @@ associated state identifier (cookie).
 
 ### Batch Operations
 
-Per [rfc7644 section 3.7](https://datatracker.ietf.org/doc/html/rfc7644#section-3.7)
+Per [RFC7644 section 3.7](https://datatracker.ietf.org/doc/html/rfc7644#section-3.7)
 
 A requirement of the sync account will be a PATCH request to update the state identifier as the
 first operation of the batch request. Failure to do so will result in an error.
