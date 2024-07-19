@@ -469,7 +469,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 let mut opaque_origins = HashSet::with_capacity(len_uris);
                 let mut origin_https_required = false;
 
-                for uri in redirect_uris_v.into_iter() {
+                for mut uri in redirect_uris_v.into_iter() {
+                    // https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2
+                    // Must not include a fragment.
+                    uri.set_fragment(None);
                     // Given the presence of a single https url, then all other urls must be https.
                     if uri.scheme() == "https" {
                         origin_https_required = true;
@@ -1676,13 +1679,23 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .map(|domain| domain == "localhost")
             .unwrap_or_default();
 
+        // Strict uri validatiot is in use.
+        let strict_redirect_uri_matched =
+            o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+        // The legacy origin match is in use.
+        let origin_uri_matched =
+            !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
+        // Allow opaque origins such as app uris.
+        let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
         // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
         // be localhost exempting it from this check and enforcement.
-        if !((o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri))
-            || (!o2rs.strict_redirect_uri
-                && o2rs.origins.contains(&auth_req.redirect_uri.origin()))
-            || o2rs.opaque_origins.contains(&auth_req.redirect_uri)
-            || (allow_localhost_redirect && localhost_redirect))
+        let localhost_redirect_matched = allow_localhost_redirect && localhost_redirect;
+
+        // At least one of these conditions must hold true to proceed.
+        if !(strict_redirect_uri_matched
+            || origin_uri_matched
+            || opaque_origin_matched
+            || localhost_redirect_matched)
         {
             if o2rs.strict_redirect_uri {
                 warn!(

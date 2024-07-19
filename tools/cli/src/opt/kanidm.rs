@@ -1062,8 +1062,8 @@ pub enum Oauth2Opt {
     #[clap(name="remove-image")]
     RemoveImage(Named),
 
-    /// Add a supplemental url as a redirection target. For example a phone app
-    /// may use a redirect URI such as `app://my-cool-app` to trigger a native
+    /// Add a supplemental URL as a redirection target. For example a phone app
+    /// may use a redirect URL such as `app://my-cool-app` to trigger a native
     /// redirection event out of a browser.
     #[clap(name = "add-redirect-url")]
     AddOrigin {
@@ -1074,7 +1074,7 @@ pub enum Oauth2Opt {
         copt: CommonOpt,
     },
 
-    /// Remove a supplemental redirect url from the OAuth2 client configuration.
+    /// Remove a supplemental redirect URL from the OAuth2 client configuration.
     #[clap(name = "remove-redirect-url")]
     RemoveOrigin {
         name: String,
@@ -1098,10 +1098,9 @@ pub enum Oauth2Opt {
     /// Disable legacy signing crypto on this oauth2 client. This is the default.
     #[clap(name = "disable-legacy-crypto")]
     DisableLegacyCrypto(Named),
-    /// Enable strict validation of redirect urls. Previously redirect urls only
-    /// validated the origin of the url matched. For public clients, if the client
-    /// site is vulnerable to an open redirection attack this can lead to token theft.
-    /// When enabled, redirect urls must match exactly.
+    /// Enable strict validation of redirect URLs. Previously redirect URLs only
+    /// validated the origin of the URL matched. When enabled, redirect URLs must
+    /// match exactly.
     #[clap(name = "enable-strict-redirect-url")]
     EnableStrictRedirectUri {
         name: String,
