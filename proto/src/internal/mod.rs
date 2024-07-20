@@ -245,6 +245,9 @@ pub enum DomainUpgradeCheckStatus {
 
     Pass7To8SecurityKeys,
     Fail7To8SecurityKeys,
+
+    Pass7To8Oauth2StrictRedirectUri,
+    Fail7To8Oauth2StrictRedirectUri,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

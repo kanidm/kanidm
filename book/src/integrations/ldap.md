@@ -31,8 +31,8 @@ key-values on objects which are all UTF8 strings (or subsets thereof) based on v
 rules. Kanidm internally implements complex structured data types such as tagging on SSH keys, or
 multi-value credentials. These can not be represented in LDAP.
 
-Many of the structures in Kanidm do not correlate closely to LDAP. For example, Kanidm only has a GID
-number, where LDAP's schemas define both a UID number and a GID number.
+Many of the structures in Kanidm do not correlate closely to LDAP. For example, Kanidm only has a
+GID number, where LDAP's schemas define both a UID number and a GID number.
 
 Entries in the database also have a specific name in LDAP, related to their path in the directory
 tree. Kanidm is a flat model, so we have to emulate some tree-like elements, and ignore others.

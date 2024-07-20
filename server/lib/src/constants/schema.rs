@@ -424,6 +424,15 @@ pub static ref SCHEMA_ATTR_OAUTH2_CONSENT_SCOPE_MAP: SchemaAttribute = SchemaAtt
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI,
+    name: Attribute::OAuth2StrictRedirectUri.into(),
+    description: "Represents if strict redirect uri enforcement is enabled.".to_string(),
+
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
     name: Attribute::Es256PrivateKeyDer.into(),
@@ -1261,6 +1270,7 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL7: SchemaClass = SchemaClass {
         Attribute::OAuth2RsClaimMap.into(),
         Attribute::OAuth2Session.into(),
         Attribute::OAuth2RsOrigin.into(),
+        Attribute::OAuth2StrictRedirectUri.into(),
     ],
     systemmust: vec![
         Attribute::OAuth2RsOriginLanding.into(),

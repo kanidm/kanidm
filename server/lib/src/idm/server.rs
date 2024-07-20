@@ -145,11 +145,12 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, oauth2rs_set) = {
+        let (rp_id, rp_name, domain_level, oauth2rs_set) = {
             let mut qs_read = qs.read().await;
             (
                 qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_display_name().to_string(),
+                qs_read.get_domain_version(),
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
             )
@@ -186,8 +187,8 @@ impl IdmServer {
                 OperationError::InvalidState
             })?;
 
-        let oauth2rs =
-            Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
+        let oauth2rs = Oauth2ResourceServers::try_from((oauth2rs_set, origin_url, domain_level))
+            .map_err(|e| {
                 admin_error!("Failed to load oauth2 resource servers - {:?}", e);
                 e
             })?;
@@ -2052,9 +2053,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
         if self.qs_write.get_changed_oauth2() {
+            let domain_level = self.qs_write.get_domain_version();
             self.qs_write
                 .get_oauth2rs_set()
-                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+                .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set, domain_level))?;
             // Clear the flag to indicate we completed the reload.
             self.qs_write.clear_changed_oauth2();
         }
