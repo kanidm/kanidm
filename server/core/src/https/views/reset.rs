@@ -97,6 +97,7 @@ pub(crate) struct NewTotp {
 struct AddPasskeyPartial {
     // Passkey challenge for adding a new passkey
     challenge: String,
+    class: PasskeyClass,
 }
 
 #[derive(Deserialize, Debug)]
@@ -106,8 +107,14 @@ struct PasskeyCreateResponse {}
 struct PasskeyCreateExtensions {}
 
 #[derive(Deserialize, Debug)]
+pub(crate) struct PasskeyInitForm {
+    class: PasskeyClass,
+}
+
+#[derive(Deserialize, Debug)]
 pub(crate) struct PasskeyCreateForm {
     name: String,
+    class: PasskeyClass,
     #[serde(rename = "creationData")]
     creation_data: String,
 }
@@ -116,6 +123,12 @@ pub(crate) struct PasskeyCreateForm {
 pub(crate) struct PasskeyRemoveData {
     uuid: Uuid,
 }
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct TOTPRemoveData {
+    name: String,
+}
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) enum TotpCheckResult {
@@ -158,6 +171,59 @@ struct AddTotpPartial {
     check_res: TotpCheckResult,
 }
 
+#[derive(PartialEq, Debug, Serialize, Deserialize)]
+pub enum PasskeyClass {
+    Any,
+    Attested,
+}
+
+impl Display for PasskeyClass {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            PasskeyClass::Any => write!(f, "Any"),
+            PasskeyClass::Attested => write!(f, "Attested"),
+        }
+    }
+}
+
+pub(crate) async fn commit(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    state
+        .qe_w_ref
+        .handle_idmcredentialupdatecommit(cu_session_token, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok((Redirect::to("/ui").into_response(), HxRetarget("body".to_string())).into_response())
+}
+
+
+pub(crate) async fn cancel(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    state
+        .qe_w_ref
+        .handle_idmcredentialupdatecancel(cu_session_token, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok((Redirect::to("/ui").into_response(), HxRetarget("body".to_string())).into_response())
+}
+
+
 pub(crate) async fn cancel_mfareg(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -187,6 +253,29 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
     } else {
         Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
     };
+}
+
+pub(crate) async fn remove_totp(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Form(totp): Form<TOTPRemoveData>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::TotpRemove(totp.name),
+            kopid.eventid,
+        )
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok(get_cu_partial_template(cu_status).into_response())
 }
 
 pub(crate) async fn remove_passkey(
@@ -220,11 +309,16 @@ pub(crate) async fn finish_passkey(
     jar: CookieJar,
     Form(passkey_create): Form<PasskeyCreateForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(jar).await?;
 
     match serde_json::from_str(passkey_create.creation_data.as_str()) {
         Ok(creation_data) => {
-            let cu_request = CURequest::PasskeyFinish(passkey_create.name, creation_data);
+            let cu_request = match passkey_create.class {
+                PasskeyClass::Any => CURequest::PasskeyFinish(passkey_create.name, creation_data),
+                PasskeyClass::Attested => {
+                    CURequest::AttestedPasskeyFinish(passkey_create.name, creation_data)
+                }
+            };
 
             let cu_status = state
                 .qe_r_ref
@@ -251,20 +345,28 @@ pub(crate) async fn view_new_passkey(
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
+    Form(init_form): Form<PasskeyInitForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(jar).await?;
+    let cu_req = match init_form.class {
+        PasskeyClass::Any => CURequest::PasskeyInit,
+        PasskeyClass::Attested => CURequest::AttestedPasskeyInit,
+    };
 
-    let cu_satus: CUStatus = state
+    let cu_status: CUStatus = state
         .qe_r_ref
-        .handle_idmcredentialupdate(cu_session_token, CURequest::PasskeyInit, kopid.eventid)
+        .handle_idmcredentialupdate(cu_session_token, cu_req, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    let response = match cu_satus.mfaregstate {
-        CURegState::Passkey(chal) => HtmlTemplate(AddPasskeyPartial {
-            challenge: serde_json::to_string(&chal).unwrap(),
-        })
-        .into_response(),
+    let response = match cu_status.mfaregstate {
+        CURegState::Passkey(chal) | CURegState::AttestedPasskey(chal) => {
+            HtmlTemplate(AddPasskeyPartial {
+                challenge: serde_json::to_string(&chal).unwrap(),
+                class: init_form.class,
+            })
+            .into_response()
+        }
         _ => (
             StatusCode::INTERNAL_SERVER_ERROR,
             HtmxError::new(&kopid, OperationError::Backend).into_response(),
@@ -285,7 +387,7 @@ pub(crate) async fn view_new_totp(
     jar: CookieJar,
     opt_form: Option<Form<NewTotp>>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
 

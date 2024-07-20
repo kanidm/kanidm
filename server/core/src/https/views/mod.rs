@@ -72,9 +72,12 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset/add_totp", post(reset::view_new_totp))
         .route("/reset/add_password", post(reset::view_new_pwd))
         .route("/reset/add_passkey", post(reset::view_new_passkey))
+        .route("/api/remove_totp", post(reset::remove_totp))
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .route("/api/cu_cancel", post(reset::cancel))
+        .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)

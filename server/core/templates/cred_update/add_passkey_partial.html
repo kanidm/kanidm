@@ -16,6 +16,7 @@
                 <button id="password-cancel" type="button" class="btn btn-danger" hx-post="/ui/api/cancel_mfareg">Cancel</button>
                 <button
                         hx-post="/ui/api/finish_passkey"
+                        hx-vals='{"class": "(( class ))"}'
                         id="passkeyNamingSubmitBtn"
                         type="button" class="btn btn-success d-none ms-2" disabled
                 >Submit</button>
