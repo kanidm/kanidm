@@ -328,7 +328,7 @@ Supplemental URLs are shown in the OAuth2 client configuration in the `oauth2_rs
 
 ### Strict Redirect URLs
 
-Kanidm previously enforce that redirection targets only matched by _origin_ not the full URL. In
+Kanidm previously enforce that redirection targets only matched by _origin_, not the full URL. In
 1.4.0 these URLs will enforce a full URL match instead.
 
 To indicate your readiness for this transition, all OAuth2 clients must have the field
