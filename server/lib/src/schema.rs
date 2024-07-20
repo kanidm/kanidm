@@ -921,7 +921,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: true,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::Presence],
+                index: vec![
+                    IndexType::Equality,
+                    IndexType::Presence,
+                    IndexType::SubString,
+                ],
                 syntax: SyntaxType::Utf8StringIname,
             },
         );
@@ -1254,7 +1258,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: false,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::SubString],
+                index: vec![IndexType::Equality],
                 syntax: SyntaxType::JsonFilter,
             },
         );
@@ -1289,7 +1293,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: false,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::SubString],
+                index: vec![IndexType::Equality],
                 syntax: SyntaxType::JsonFilter,
             },
         );

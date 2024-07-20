@@ -66,6 +66,7 @@ impl PersonOpt {
                 AccountCertificate::Status { copt, .. }
                 | AccountCertificate::Create { copt, .. } => copt.debug,
             },
+            PersonOpt::Search { copt, .. } => copt.debug,
         }
     }
 
@@ -270,6 +271,22 @@ impl PersonOpt {
             PersonOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_person_account_list().await {
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            PersonOpt::Search { copt, account_id } => {
+                let client = copt.to_client(OpType::Read).await;
+                match client.idm_person_search(account_id).await {
                     Ok(r) => match copt.output_mode {
                         OutputMode::Json => {
                             let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();

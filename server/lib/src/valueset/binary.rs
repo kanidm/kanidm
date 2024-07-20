@@ -7,6 +7,7 @@ use smolset::SmolSet;
 use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
+use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -253,6 +254,16 @@ impl ValueSetT for ValueSetPublicBinary {
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
         self.map.keys().cloned().collect()
+    }
+
+    fn generate_idx_sub_keys(&self) -> Vec<String> {
+        let lower: Vec<_> = self.map.keys().map(|s| s.to_lowercase()).collect();
+        let mut trigraphs: Vec<_> = lower.iter().flat_map(|v| trigraph_iter(v)).collect();
+
+        trigraphs.sort_unstable();
+        trigraphs.dedup();
+
+        trigraphs.into_iter().map(String::from).collect()
     }
 
     fn syntax(&self) -> SyntaxType {

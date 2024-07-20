@@ -236,6 +236,14 @@ pub enum GroupOpt {
     /// View a specific group
     #[clap(name = "get")]
     Get(Named),
+    /// Search a group by name
+    #[clap(name = "search")]
+    Search {
+        /// The name of the group
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Create a new group
     #[clap(name = "create")]
     Create {
@@ -606,6 +614,13 @@ pub enum PersonOpt {
     /// View a specific person
     #[clap(name = "get")]
     Get(AccountNamedOpt),
+    /// Search persons by name
+    #[clap(name = "search")]
+    Search {
+        account_id: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Update a specific person's attributes
     #[clap(name = "update")]
     Update(PersonUpdateOpt),

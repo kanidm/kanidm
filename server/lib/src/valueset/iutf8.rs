@@ -4,6 +4,7 @@ use super::iname::ValueSetIname;
 use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
+use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 #[derive(Debug, Clone)]
@@ -116,6 +117,15 @@ impl ValueSetT for ValueSetIutf8 {
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
         self.set.iter().cloned().collect()
+    }
+
+    fn generate_idx_sub_keys(&self) -> Vec<String> {
+        let mut trigraphs: Vec<_> = self.set.iter().flat_map(|v| trigraph_iter(v)).collect();
+
+        trigraphs.sort_unstable();
+        trigraphs.dedup();
+
+        trigraphs.into_iter().map(String::from).collect()
     }
 
     fn syntax(&self) -> SyntaxType {

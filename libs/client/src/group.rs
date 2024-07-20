@@ -1,6 +1,12 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::v1::Entry;
 
 impl KanidmClient {
+    pub async fn idm_group_search(&self, id: &str) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request(&format!("/v1/group/_search/{}", id))
+            .await
+    }
+
     pub async fn idm_group_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/group/{}/_attr/{}", id, attr).as_str())
             .await

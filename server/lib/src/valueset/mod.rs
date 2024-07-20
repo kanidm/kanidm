@@ -132,6 +132,10 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn generate_idx_eq_keys(&self) -> Vec<String>;
 
+    fn generate_idx_sub_keys(&self) -> Vec<String> {
+        Vec::with_capacity(0)
+    }
+
     fn syntax(&self) -> SyntaxType;
 
     fn validate(&self, schema_attr: &SchemaAttribute) -> bool;
