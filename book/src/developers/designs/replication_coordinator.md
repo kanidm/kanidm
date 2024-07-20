@@ -241,8 +241,8 @@ Imagine the following example. Here, Node A is acting as the KRC.
 
 This would allow Node A to be aware of B, C, D and then create a full mesh.
 
-We wish to decommission Node A and promote Node B to become the new KRC. Imagine at this point we cut
-over Node D to point its KRC at Node B.
+We wish to decommission Node A and promote Node B to become the new KRC. Imagine at this point we
+cut over Node D to point its KRC at Node B.
 
 ```
 ┌─────────────────┐                ┌─────────────────┐

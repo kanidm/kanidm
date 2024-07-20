@@ -4,7 +4,7 @@ use kanidm_proto::constants::{
     ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
     ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE, ATTR_OAUTH2_PREFER_SHORT_USERNAME,
     ATTR_OAUTH2_RS_BASIC_SECRET, ATTR_OAUTH2_RS_ORIGIN, ATTR_OAUTH2_RS_ORIGIN_LANDING,
-    ATTR_OAUTH2_RS_TOKEN_KEY, ATTR_RS256_PRIVATE_KEY_DER,
+    ATTR_OAUTH2_RS_TOKEN_KEY, ATTR_OAUTH2_STRICT_REDIRECT_URI, ATTR_RS256_PRIVATE_KEY_DER,
 };
 use kanidm_proto::internal::{ImageValue, Oauth2ClaimMapJoin};
 use kanidm_proto::v1::Entry;
@@ -344,6 +344,36 @@ impl KanidmClient {
         };
         update_oauth2_rs.attrs.insert(
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT.to_string(),
+            vec!["false".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_enable_strict_redirect_uri(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
+            vec!["true".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_disable_strict_redirect_uri(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
             vec!["false".to_string()],
         );
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)

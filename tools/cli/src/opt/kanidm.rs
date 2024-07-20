@@ -1062,23 +1062,23 @@ pub enum Oauth2Opt {
     #[clap(name="remove-image")]
     RemoveImage(Named),
 
-    /// Add a supplemental origin as a redirection target. For example a phone app
+    /// Add a supplemental URL as a redirection target. For example a phone app
     /// may use a redirect URL such as `app://my-cool-app` to trigger a native
     /// redirection event out of a browser.
-    #[clap(name = "add-origin")]
+    #[clap(name = "add-redirect-url")]
     AddOrigin {
         name: String,
-        #[clap(name = "origin-url")]
+        #[clap(name = "url")]
         origin: Url,
         #[clap(flatten)]
         copt: CommonOpt,
     },
 
-    /// Remove a supplemental origin from the OAuth2 client configuration.
-    #[clap(name = "remove-origin")]
+    /// Remove a supplemental redirect URL from the OAuth2 client configuration.
+    #[clap(name = "remove-redirect-url")]
     RemoveOrigin {
         name: String,
-        #[clap(name = "origin-url")]
+        #[clap(name = "url")]
         origin: Url,
         #[clap(flatten)]
         copt: CommonOpt,
@@ -1098,8 +1098,21 @@ pub enum Oauth2Opt {
     /// Disable legacy signing crypto on this oauth2 client. This is the default.
     #[clap(name = "disable-legacy-crypto")]
     DisableLegacyCrypto(Named),
-    #[clap(name = "prefer-short-username")]
-
+    /// Enable strict validation of redirect URLs. Previously redirect URLs only
+    /// validated the origin of the URL matched. When enabled, redirect URLs must
+    /// match exactly.
+    #[clap(name = "enable-strict-redirect-url")]
+    EnableStrictRedirectUri {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    #[clap(name = "disable-strict-redirect-url")]
+    DisableStrictRedirectUri {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     #[clap(name = "enable-localhost-redirects")]
     /// Allow public clients to redirect to localhost.
     EnablePublicLocalhost {
@@ -1114,11 +1127,11 @@ pub enum Oauth2Opt {
         copt: CommonOpt,
         name: String,
     },
-
     /// Use the 'name' attribute instead of 'spn' for the preferred_username
+    #[clap(name = "prefer-short-username")]
     PreferShortUsername(Named),
-    #[clap(name = "prefer-spn-username")]
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
+    #[clap(name = "prefer-spn-username")]
     PreferSPNUsername(Named),
 }
 

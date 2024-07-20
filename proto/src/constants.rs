@@ -158,6 +158,7 @@ pub const ATTR_OAUTH2_RS_SCOPE_MAP: &str = "oauth2_rs_scope_map";
 pub const ATTR_OAUTH2_RS_SUP_SCOPE_MAP: &str = "oauth2_rs_sup_scope_map";
 pub const ATTR_OAUTH2_RS_TOKEN_KEY: &str = "oauth2_rs_token_key";
 pub const ATTR_OAUTH2_SESSION: &str = "oauth2_session";
+pub const ATTR_OAUTH2_STRICT_REDIRECT_URI: &str = "oauth2_strict_redirect_uri";
 pub const ATTR_OBJECTCLASS: &str = "objectclass";
 pub const ATTR_OTHER_NO_INDEX: &str = "other-no-index";
 pub const ATTR_PASSKEYS: &str = "passkeys";

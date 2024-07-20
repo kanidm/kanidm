@@ -717,6 +717,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_REFERS_DL7.clone().into(),
             SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
+            SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
@@ -760,6 +761,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SELF_WRITE_DL7.clone().into(),
             IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
             IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
         ];
 
         idm_data
@@ -826,6 +828,27 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(%sk_present);
             }
             return Err(OperationError::MG0006SKConstraintsNotMet);
+        }
+
+        // Check oauth2 strict uri
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_andnot(f_pres(Attribute::OAuth2StrictRedirectUri)),
+        ]));
+
+        let results = self.internal_search(filter)?;
+
+        let affected_entries = results
+            .into_iter()
+            .map(|entry| entry.get_display_id())
+            .collect::<Vec<_>>();
+
+        if !affected_entries.is_empty() {
+            error!("Unable to proceed. Not all oauth2 clients have strict redirect verification enabled.");
+            for missing_oauth2_strict_redirect_uri in affected_entries {
+                error!(%missing_oauth2_strict_redirect_uri);
+            }
+            return Err(OperationError::MG0007Oauth2StrictConstraintsNotMet);
         }
 
         // =========== Apply changes ==============
@@ -1111,7 +1134,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         let name = d_info.d_name.clone();
         let uuid = d_info.d_uuid;
         let current_level = d_info.d_vers;
-        let upgrade_level = DOMAIN_NEXT_LEVEL;
+        let upgrade_level = DOMAIN_TGT_NEXT_LEVEL;
 
         let mut report_items = Vec::with_capacity(1);
 
@@ -1135,6 +1158,17 @@ impl<'a> QueryServerReadTransaction<'a> {
                     error!(
                         ?err,
                         "Failed to perform domain upgrade check 7 to 8 - security-keys"
+                    );
+                    err
+                })?;
+            report_items.push(item);
+
+            let item = self
+                .domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri()
+                .map_err(|err| {
+                    error!(
+                        ?err,
+                        "Failed to perform domain upgrade check 7 to 8 - oauth2-strict-redirect_uri"
                     );
                     err
                 })?;
@@ -1276,10 +1310,40 @@ impl<'a> QueryServerReadTransaction<'a> {
             affected_entries,
         })
     }
+
+    pub(crate) fn domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri(
+        &mut self,
+    ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
+        let filter = filter!(f_and!([
+            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
+            f_andnot(f_pres(Attribute::OAuth2StrictRedirectUri)),
+        ]));
+
+        let results = self.internal_search(filter)?;
+
+        let affected_entries = results
+            .into_iter()
+            .map(|entry| entry.get_display_id())
+            .collect::<Vec<_>>();
+
+        let status = if affected_entries.is_empty() {
+            ProtoDomainUpgradeCheckStatus::Pass7To8Oauth2StrictRedirectUri
+        } else {
+            ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri
+        };
+
+        Ok(ProtoDomainUpgradeCheckItem {
+            status,
+            from_level: DOMAIN_LEVEL_7,
+            to_level: DOMAIN_LEVEL_8,
+            affected_entries,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
     use crate::prelude::*;
 
     #[qs_test]
@@ -1391,13 +1455,6 @@ mod tests {
             .internal_create(vec![ea])
             .expect("Unable to create oauth2 client");
 
-        // per migration verification.
-        let domain_entry = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("Unable to access domain entry");
-
-        assert!(domain_entry.attribute_pres(Attribute::PrivateCookieKey));
-
         // Set the version to 7.
         write_txn
             .internal_modify_uuid(
@@ -1433,6 +1490,108 @@ mod tests {
             .expect("Unable to access oauth2 client landing");
 
         assert_eq!(origin, landing);
+
+        write_txn.commit().expect("Unable to commit");
+    }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
+    async fn test_migrations_dl7_dl8(server: &QueryServer) {
+        // Assert our instance was setup to version 7
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_7);
+
+        // Create an oauth2 client that doesn't have a landing url set.
+        let oauth2_client_uuid = Uuid::new_v4();
+
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Uuid, Value::Uuid(oauth2_client_uuid)),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServer.to_value()
+            ),
+            (
+                Attribute::Class,
+                EntryClass::OAuth2ResourceServerPublic.to_value()
+            ),
+            (Attribute::Name, Value::new_iname("test_resource_server")),
+            (
+                Attribute::DisplayName,
+                Value::new_utf8s("test_resource_server")
+            ),
+            (
+                Attribute::OAuth2RsOriginLanding,
+                Value::new_url_s("https://demo.example.com/oauth2").unwrap()
+            ),
+            (
+                Attribute::OAuth2RsOrigin,
+                Value::new_url_s("https://demo.example.com").unwrap()
+            )
+        );
+
+        write_txn
+            .internal_create(vec![ea])
+            .expect("Unable to create oauth2 client");
+
+        write_txn.commit().expect("Unable to commit");
+
+        // pre migration verification.
+        // check we currently would fail a migration.
+
+        let mut read_txn = server.read().await;
+
+        match read_txn.domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri() {
+            Ok(ProtoDomainUpgradeCheckItem {
+                status: ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri,
+                ..
+            }) => {
+                trace!("Failed as expected, very good.");
+            }
+            other => {
+                error!(?other);
+                unreachable!();
+            }
+        };
+
+        drop(read_txn);
+
+        // Okay, fix the problem.
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await;
+
+        write_txn
+            .internal_modify_uuid(
+                oauth2_client_uuid,
+                &ModifyList::new_purge_and_set(
+                    Attribute::OAuth2StrictRedirectUri,
+                    Value::Bool(true),
+                ),
+            )
+            .expect("Unable to enforce strict mode.");
+
+        // Set the version to 8.
+        write_txn
+            .internal_modify_uuid(
+                UUID_DOMAIN_INFO,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Version,
+                    Value::new_uint32(DOMAIN_LEVEL_8),
+                ),
+            )
+            .expect("Unable to set domain level to version 8");
+
+        // Re-load - this applies the migrations.
+        write_txn.reload().expect("Unable to reload transaction");
+
+        // post migration verification.
 
         write_txn.commit().expect("Unable to commit");
     }

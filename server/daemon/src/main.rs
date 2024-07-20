@@ -181,68 +181,89 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
         },
 
-        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                let json_output = serde_json::json!({
-                    "domain_upgrade_check": report
-                });
-                println!("{}", json_output);
-            }
-            ConsoleOutputMode::Text => {
-                let ProtoDomainUpgradeCheckReport {
-                    name,
-                    uuid,
-                    current_level,
-                    upgrade_level,
-                    report_items,
-                } = report;
+        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
+            match output_mode {
+                ConsoleOutputMode::JSON => {
+                    let json_output = serde_json::json!({
+                        "domain_upgrade_check": report
+                    });
+                    println!("{}", json_output);
+                }
+                ConsoleOutputMode::Text => {
+                    let ProtoDomainUpgradeCheckReport {
+                        name,
+                        uuid,
+                        current_level,
+                        upgrade_level,
+                        report_items,
+                    } = report;
 
-                info!("domain_name            : {}", name);
-                info!("domain_uuid            : {}", uuid);
-                info!("domain_current_level   : {}", current_level);
-                info!("domain_upgrade_level   : {}", upgrade_level);
+                    info!("domain_name            : {}", name);
+                    info!("domain_uuid            : {}", uuid);
+                    info!("domain_current_level   : {}", current_level);
+                    info!("domain_upgrade_level   : {}", upgrade_level);
 
-                for item in report_items {
-                    info!("------------------------");
-                    match item.status {
-                        ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
-                            info!("upgrade_item           : gidnumber range validity");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : PASS");
-                        }
-                        ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
-                            info!("upgrade_item           : gidnumber range validity");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : FAIL");
-                            info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
-                            info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
-                            for entry_id in item.affected_entries {
-                                info!("affected_entry         : {}", entry_id);
+                    for item in report_items {
+                        info!("------------------------");
+                        match item.status {
+                            ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
+                                info!("upgrade_item           : gidnumber range validity");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
                             }
-                        }
-                        ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
-                            info!("upgrade_item           : security key usage");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : PASS");
-                        }
-                        ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
-                            info!("upgrade_item           : security key usage");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : FAIL");
-                            info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
-                            info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
-                            for entry_id in item.affected_entries {
-                                info!("affected_entry         : {}", entry_id);
+                            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
+                                info!("upgrade_item           : gidnumber range validity");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
+                                info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
+                            }
+                            // ===========
+                            ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
+                                info!("upgrade_item           : security key usage");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
+                            }
+                            ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
+                                info!("upgrade_item           : security key usage");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
+                                info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
+                            }
+                            // ===========
+                            ProtoDomainUpgradeCheckStatus::Pass7To8Oauth2StrictRedirectUri => {
+                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
+                            }
+                            ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri => {
+                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : To harden against possible public client open redirection vulnerabilities, redirect uris must now be registered ahead of time and are validated rather than the former origin verification process.");
+                                info!("action                 : Verify the redirect uri's for OAuth2 clients and then enable strict-redirect-uri on each client.");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
                             }
                         }
                     }
                 }
             }
-        },
+        }
 
         Some(Ok(AdminTaskResponse::DomainRaise { level })) => match output_mode {
             ConsoleOutputMode::JSON => {
