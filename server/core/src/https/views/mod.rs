@@ -19,6 +19,7 @@ use crate::https::{
 mod apps;
 mod errors;
 mod login;
+mod oauth2;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -29,38 +30,42 @@ struct UnrecoverableErrorView {
 
 pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
-        .route("/", get(login::view_index_get))
+        .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
         .route("/logout", get(login::view_logout_get))
+        .route("/oauth2", get(oauth2::view_index_get))
+        .route("/oauth2/resume", get(oauth2::view_resume_get))
+        .route("/oauth2/consent", post(oauth2::view_consent_post))
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
+        .route("/login", get(login::view_index_get))
         .route(
-            "/api/login_passkey",
+            "/login/passkey",
             post(login::view_login_passkey_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_seckey",
+            "/login/seckey",
             post(login::view_login_seckey_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_begin",
+            "/login/begin",
             post(login::view_login_begin_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_mech_choose",
+            "/login/mech_choose",
             post(login::view_login_mech_choose_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_backup_code",
+            "/login/backup_code",
             post(login::view_login_backupcode_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_totp",
+            "/login/totp",
             post(login::view_login_totp_post).get(|| async { Redirect::to("/ui") }),
         )
         .route(
-            "/api/login_pw",
+            "/login/pw",
             post(login::view_login_pw_post).get(|| async { Redirect::to("/ui") }),
         );
 

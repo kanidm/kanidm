@@ -24,6 +24,7 @@ use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
+use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -1044,50 +1045,34 @@ async fn kanidm_main(
                     let ca_cert_path = PathBuf::from(ca_cert);
                     match ca_cert_path.exists() {
                         true => {
-                            let ca_contents = match std::fs::read_to_string(ca_cert_path.clone()) {
-                                Ok(val) => val,
-                                Err(e) => {
-                                    error!(
-                                        "Failed to read {:?} from filesystem: {:?}",
-                                        ca_cert_path, e
-                                    );
-                                    return ExitCode::FAILURE;
-                                }
-                            };
-                            let content = ca_contents
-                                .split("-----END CERTIFICATE-----")
-                                .filter_map(|c| {
-                                    if c.trim().is_empty() {
-                                        None
-                                    } else {
-                                        Some(c.trim().to_string())
-                                    }
-                                })
-                                .collect::<Vec<String>>();
-                            let content = match content.last() {
-                                Some(val) => val,
-                                None => {
-                                    error!(
-                                        "Failed to parse {:?} as valid certificate",
-                                        ca_cert_path
-                                    );
-                                    return ExitCode::FAILURE;
-                                }
-                            };
-                            let content = format!("{}-----END CERTIFICATE-----", content);
+                            let mut cert_buf = Vec::new();
+                            if let Err(err) = std::fs::File::open(&ca_cert_path)
+                                .and_then(|mut file| file.read_to_end(&mut cert_buf))
+                            {
+                                error!(
+                                    "Failed to read {:?} from filesystem: {:?}",
+                                    ca_cert_path, err
+                                );
+                                return ExitCode::FAILURE;
+                            }
 
-                            let ca_cert_parsed =
-                                match reqwest::Certificate::from_pem(content.as_bytes()) {
+                            let ca_chain_parsed =
+                                match reqwest::Certificate::from_pem_bundle(&cert_buf) {
                                     Ok(val) => val,
                                     Err(e) => {
                                         error!(
-                                            "Failed to parse {} into CA certificate!\nError: {:?}",
-                                            ca_cert, e
+                                            "Failed to parse {:?} into CA chain!\nError: {:?}",
+                                            ca_cert_path, e
                                         );
                                         return ExitCode::FAILURE;
                                     }
                                 };
-                            client.add_root_certificate(ca_cert_parsed)
+
+                            // Need at least 2 certs for the leaf + chain. We skip the leaf.
+                            for cert in ca_chain_parsed.into_iter().skip(1) {
+                                client = client.add_root_certificate(cert)
+                            }
+                            client
                         }
                         false => {
                             warn!("Couldn't find ca cert {} but carrying on...", ca_cert);

@@ -40,14 +40,14 @@ function asskey_login(target) {
 try {
     const myButton = document.getElementById("start-passkey-button");
     myButton.addEventListener("click", () => {
-        asskey_login('/ui/api/login_passkey');
+        asskey_login('/ui/login/passkey');
     });
 } catch (_error) {};
 
 try {
     const myButton = document.getElementById("start-seckey-button");
     myButton.addEventListener("click", () => {
-        asskey_login('/ui/api/login_seckey');
+        asskey_login('/ui/login/seckey');
     });
 } catch (_error) {};
 

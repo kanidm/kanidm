@@ -1,0 +1,32 @@
+(% extends "base.html" %)
+
+(% block title %)Consent Required(% endblock %)
+
+(% block head %)
+(% endblock %)
+
+(% block body %)
+<main id="main" class="flex-shrink-0 form-signin">
+	<h2 class="h3 mb-3 fw-normal">Consent to Proceed to (( client_name ))</h2>
+	(% if pii_scopes.is_empty() %)
+		<div>
+			<p>This site will not have access to your personal information.</p>
+			<p>If this site requests personal information in the future we will check with you.</p>
+		</div>
+	(% else %)
+		<div>
+			<p>This site has requested access to the following personal information:</p>
+			<ul>
+			(% for pii_scope in pii_scopes %)
+				<li>(( pii_scope ))</li>
+			(% endfor %)
+			</ul>
+			<p>If this site requests different personal information in the future we will check with you again.</p>
+		</div>
+	(% endif %)
+	<form id="login" action="/ui/oauth2/consent" method="post">
+		<input type="hidden" id="consent_token" name="consent_token" value="(( consent_token ))" />
+		<button autofocus=true class="w-100 btn btn-lg btn-primary" type="submit">Proceed</button>
+	</form>
+</main>
+(% endblock %)
