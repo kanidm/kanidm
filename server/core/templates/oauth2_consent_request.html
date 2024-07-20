@@ -1,6 +1,6 @@
 (% extends "base.html" %)
 
-(% block title %)Oauth2 Access Denied(% endblock %)
+(% block title %)Consent Required(% endblock %)
 
 (% block head %)
 (% endblock %)
@@ -15,7 +15,7 @@
 		</div>
 	(% else %)
 		<div>
-			<p>This site has requested to see the following personal information.</p>
+			<p>This site has requested access to the following personal information:</p>
 			<ul>
 			(% for pii_scope in pii_scopes %)
 				<li>(( pii_scope ))</li>
