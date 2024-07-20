@@ -1679,7 +1679,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .map(|domain| domain == "localhost")
             .unwrap_or_default();
 
-        // Strict uri validatiot is in use.
+        // Strict uri validation is in use.
         let strict_redirect_uri_matched =
             o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
         // The legacy origin match is in use.
