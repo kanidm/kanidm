@@ -299,7 +299,7 @@ kanidm system oauth2 enable-localhost-redirects mywebapp
 
 {{#template ../templates/kani-warning.md imagepath=../images title=WARNING text=SECURITY RISK }}
 
-> You **MUST NOT** shared a single OAuth2 client definition between multiple applications.
+> You **MUST NOT** share a single OAuth2 client definition between multiple applications.
 >
 > The ability to configure multiple redirect URLs is **NOT** to allow you to share a single Kanidm
 > client definition between multiple OAuth2 clients.
