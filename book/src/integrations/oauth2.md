@@ -318,7 +318,7 @@ exchange, the system can redirect to the native application.
 To support this Kanidm allows supplemental opaque origins to be configured on clients.
 
 > [!WARNING]
-> 
+>
 > The ability to configure multiple origins is NOT intended to allow you to share a single Kanidm client definition between multiple OAuth2 clients. This fundamentally breaks the OAuth2 security model and is NOT SUPPORTED as a configuration. Multiple origins is only to allow supplemental redirects within the _same_ client application.
 
 ```bash
