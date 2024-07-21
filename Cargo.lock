@@ -546,9 +546,9 @@ dependencies = [
 
 [[package]]
 name = "base32"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1ce0365f4d5fb6646220bb52fe547afd51796d90f914d4063cb0b032ebee088"
+checksum = "022dfe9eb35f19ebbcb51e0b40a5ab759f46ad60cadf7297e0bd085afb50e076"
 
 [[package]]
 name = "base64"
@@ -945,9 +945,9 @@ dependencies = [
 
 [[package]]
 name = "compact_jwt"
-version = "0.4.1"
+version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d1aca09e6a9e9011c2a2fb13f26a0d2440a709ac0e68ccf02d168d54f4801b27"
+checksum = "6b6493b1c78b7c33fbbb00d8d60d633439fd0c0e44826fb4834efc28121ef266"
 dependencies = [
  "base64 0.21.7",
  "base64urlsafedata 0.5.0",
@@ -3261,7 +3261,7 @@ dependencies = [
 name = "kanidm_client"
 version = "1.3.0-dev"
 dependencies = [
- "compact_jwt 0.4.1",
+ "compact_jwt 0.4.2",
  "http 1.1.0",
  "hyper 1.4.1",
  "kanidm_lib_file_permissions",
@@ -3335,7 +3335,7 @@ dependencies = [
  "async-recursion",
  "clap",
  "clap_complete",
- "compact_jwt 0.4.1",
+ "compact_jwt 0.4.2",
  "dialoguer",
  "futures-concurrency",
  "kanidm_build_profiles",
@@ -3437,7 +3437,7 @@ dependencies = [
  "axum-server",
  "bytes",
  "chrono",
- "compact_jwt 0.4.1",
+ "compact_jwt 0.4.2",
  "cron",
  "filetime",
  "futures",
@@ -3487,7 +3487,7 @@ dependencies = [
  "base64 0.22.1",
  "base64urlsafedata 0.5.0",
  "bitflags 2.6.0",
- "compact_jwt 0.4.1",
+ "compact_jwt 0.4.2",
  "concread",
  "criterion",
  "dhat",
@@ -3555,7 +3555,7 @@ name = "kanidmd_testkit"
 version = "1.3.0-dev"
 dependencies = [
  "assert_cmd",
- "compact_jwt 0.4.1",
+ "compact_jwt 0.4.2",
  "escargot",
  "fantoccini",
  "futures",
@@ -3770,7 +3770,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e310b3a6b5907f99202fcdb4960ff45b93735d7c7d96b760fcff8db2dc0e103d"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -4322,9 +4322,9 @@ checksum = "b410bbe7e14ab526a0e86877eb47c6996a2bd7746f027ba551028c925390e4e9"
 
 [[package]]
 name = "openssl"
-version = "0.10.64"
+version = "0.10.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "95a0481286a310808298130d22dd1fef0fa571e05a8f44ec801801e84b216b1f"
+checksum = "9529f4786b70a3e8c61e11179af17ab6188ad8d0ded78c5529441ed39d4bd9c1"
 dependencies = [
  "bitflags 2.6.0",
  "cfg-if",
@@ -4354,9 +4354,9 @@ checksum = "ff011a302c396a5197692431fc1948019154afc178baf7d8e37367442a4601cf"
 
 [[package]]
 name = "openssl-sys"
-version = "0.9.102"
+version = "0.9.103"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c597637d56fbc83893a35eb0dd04b2b8e7a50c91e64e9493e398b5df4fb45fa2"
+checksum = "7f9e8deee91df40a943c71b917e5874b951d32a802526c85721ce3b776c929d6"
 dependencies = [
  "cc",
  "libc",
@@ -5985,9 +5985,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.38.0"
+version = "1.38.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba4f4a02a7a80d6f274636f0aa95c7e383b912d41fe721a31f29e29698585a4a"
+checksum = "eb2caba9f80616f438e09748d5acda951967e1ea58508ef53d9c6402485a46df"
 dependencies = [
  "backtrace",
  "bytes",

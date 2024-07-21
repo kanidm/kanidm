@@ -156,7 +156,7 @@ axum = { version = "0.7.5", features = [
     "tracing",
 ] }
 axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
-base32 = "^0.5.0"
+base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
@@ -165,7 +165,7 @@ clap = { version = "^4.5.9", features = ["derive", "env"] }
 clap_complete = "^4.5.8"
 # Forced by saffron/cron
 chrono = "^0.4.35"
-compact_jwt = { version = "^0.4.1", default-features = false }
+compact_jwt = { version = "^0.4.2", default-features = false }
 concread = "^0.5.2"
 cron = "0.12.1"
 crossbeam = "0.8.4"
@@ -217,7 +217,7 @@ notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.64"
+openssl = "^0.10.66"
 
 opentelemetry = { version = "0.20.0" }
 opentelemetry_api = { version = "0.20.0", features = ["logs", "metrics"] }
@@ -270,7 +270,7 @@ tempfile = "3.10.1"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
 
-tokio = "^1.38.0"
+tokio = "^1.38.1"
 tokio-openssl = "^0.6.4"
 tokio-util = "^0.7.10"
 
