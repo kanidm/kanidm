@@ -160,7 +160,7 @@ client to be able to construct correct authorisations.
   cookie keys to prevent forgery of writable master cookies)
 
 - cookies can request tokens, tokens are signed cbor that contains the set of group uuids + names
-  derferenced so that a client can make all authorisation decisions from a single datapoint
+  dereferenced so that a client can make all authorisation decisions from a single datapoint
 
 - Groups require the ability to be ephemeral/temporary or permanent.
 
@@ -252,7 +252,7 @@ what reqwest supports). For more consideration, see, <https://tools.ietf.org/htm
   walking the set of sessions and purging incomplete ones which have passed the time stamp.
 - The session id is in the cookie to eliminate leaking of the session id (secure cookies), and to
   prevent tampering of the session id if possible. It's not perfect, but it helps to prevent casual
-  attkcs. The session id itself is really the thing that protects us from replays.
+  attacks. The session id itself is really the thing that protects us from replays.
 
 ## Auth Questions
 
@@ -421,8 +421,8 @@ sshPublicKey: ... <<-- different due to needing anon read.
 ## Some Dirty Rust Brain Dumps
 
 - Credentials need per-cred locking
-  - This means they have to be in memory and uniquely ided.
-  - How can we display to a user that a credential back-off is inplace?
+  - This means they have to be in memory and uniquely IDed.
+  - How can we display to a user that a credential back-off is in place?
 
 - UAT need to know what Credential was used and its state.
   - The Credential associates the claims

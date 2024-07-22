@@ -15,16 +15,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         domain_name: &str,
     ) -> Result<(PKey<Private>, X509), OperationError> {
         // Invalid, must need to re-generate.
-        let expiration_days = 180;
         let s_uuid = self.get_server_uuid();
 
-        let (private, x509) =
-            build_self_signed_server_and_client_identity(s_uuid, domain_name, expiration_days)
-                .map_err(|err| {
-                    error!(?err, "Unable to generate self signed key/cert");
-                    // What error?
-                    OperationError::CryptographyError
-                })?;
+        let (private, x509) = build_self_signed_server_and_client_identity(
+            s_uuid,
+            domain_name,
+            REPL_MTLS_CERTIFICATE_DAYS,
+        )
+        .map_err(|err| {
+            error!(?err, "Unable to generate self signed key/cert");
+            // What error?
+            OperationError::CryptographyError
+        })?;
 
         let kh = KeyHandle::X509Key {
             private: private.clone(),
@@ -62,7 +64,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
-        // Can you process the keyhande?
+        // Can you process the keyhandle?
         let key_cert = match maybe_key_handle {
             Some(KeyHandle::X509Key { private, x509 }) => (private, x509),
             /*
@@ -170,7 +172,7 @@ impl<'a> QueryServerReadTransaction<'a> {
                 return Ok(ReplIncrementalContext::UnwillingToSupply);
             }
             RangeDiffStatus::NoRUVOverlap => {
-                error!("Replication Critical - Consumers RUV has desynchronsied and diverged! This must be immediately investigated!");
+                error!("Replication Critical - Consumers RUV has desynchronised and diverged! This must be immediately investigated!");
                 debug!(consumer_ranges = ?ctx_ranges);
                 debug!(supplier_ranges = ?our_ranges);
                 return Ok(ReplIncrementalContext::UnwillingToSupply);

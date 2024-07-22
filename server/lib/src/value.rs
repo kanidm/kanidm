@@ -890,9 +890,22 @@ impl PartialValue {
         }
     }
 
-    #[allow(clippy::unimplemented)]
-    pub fn get_idx_sub_key(&self) -> String {
-        unimplemented!();
+    pub fn get_idx_sub_key(&self) -> Option<String> {
+        match self {
+            PartialValue::Utf8(s)
+            | PartialValue::Iutf8(s)
+            | PartialValue::Iname(s)
+            // | PartialValue::Nsuniqueid(s)
+            | PartialValue::EmailAddress(s)
+            | PartialValue::RestrictedString(s) => Some(s.to_lowercase()),
+
+            PartialValue::Cred(tag)
+            | PartialValue::PublicBinary(tag)
+            | PartialValue::SshKey(tag) => Some(tag.to_lowercase()),
+
+            // PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
+            _ => None,
+        }
     }
 }
 
@@ -2123,7 +2136,7 @@ impl Value {
         if UNICODE_CONTROL_RE.is_match(s) {
             error!("value contains invalid unicode control character",);
             // Trace only, could be an injection attack of some kind.
-            trace!(?s, "Invalid Uncode Control");
+            trace!(?s, "Invalid Unicode Control");
             false
         } else {
             true

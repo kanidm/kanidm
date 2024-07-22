@@ -179,7 +179,7 @@ Device enrollments do not require a password
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 On a mobile device we should NOT require a password to be entered to the account. This is because
-the password rules we attempt to enforce in Kanidm should create passwords that are *not* memorisable
+the password rules we attempt to enforce in Kanidm should create passwords that are *not* memorable
 meaning that the user is likely to store this in a password manager. Since the password manager
 is already on the mobile device, then compromise of the device yields access to the password, nullifying
 its security benefit.

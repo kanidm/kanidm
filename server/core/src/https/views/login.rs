@@ -1,35 +1,25 @@
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use askama::Template;
-
 use axum::{
     extract::State,
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
-
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-
 use compact_jwt::{Jws, JwsSigner};
-
-use kanidmd_lib::prelude::OperationError;
-
+use kanidm_proto::internal::{
+    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+};
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
 };
-
-use kanidmd_lib::prelude::*;
-
-use kanidm_proto::internal::{COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_USERNAME};
-
-use kanidmd_lib::idm::AuthState;
-
 use kanidmd_lib::idm::event::AuthResult;
-
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
-
-use webauthn_rs::prelude::PublicKeyCredential;
-
+use kanidmd_lib::idm::AuthState;
+use kanidmd_lib::prelude::OperationError;
+use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use webauthn_rs::prelude::PublicKeyCredential;
 
 use super::{empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
 
@@ -98,6 +88,45 @@ struct LoginWebauthnView {
     passkey: bool,
     // chal: RequestChallengeResponse,
     chal: String,
+}
+
+#[derive(Template, Default)]
+#[template(path = "login_denied.html")]
+struct LoginDeniedView {
+    reason: String,
+    operation_id: Uuid,
+}
+
+pub async fn view_logout_get(
+    State(state): State<ServerState>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Extension(kopid): Extension<KOpId>,
+    mut jar: CookieJar,
+) -> Response {
+    if let Err(err_code) = state
+        .qe_w_ref
+        .handle_logout(client_auth_info, kopid.eventid)
+        .await
+    {
+        HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response()
+    } else {
+        let response = Redirect::to("/ui/login").into_response();
+
+        jar = if let Some(bearer_cookie) = jar.get(COOKIE_BEARER_TOKEN) {
+            let mut bearer_cookie = bearer_cookie.clone();
+            bearer_cookie.make_removal();
+            bearer_cookie.set_path("/");
+            jar.add(bearer_cookie)
+        } else {
+            jar
+        };
+
+        (jar, response).into_response()
+    }
 }
 
 pub async fn view_index_get(
@@ -596,7 +625,7 @@ async fn view_login_step(
                 match issue {
                     AuthIssueSession::Token => {
                         error!(
-                            "Impossible state, should not recieve token in a htmx view auth flow"
+                            "Impossible state, should not receive token in a htmx view auth flow"
                         );
                         return Err(OperationError::InvalidState);
                     }
@@ -606,6 +635,7 @@ async fn view_login_step(
                         let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
                         bearer_cookie.set_secure(state.secure_cookies);
                         bearer_cookie.set_same_site(SameSite::Lax);
+                        // Prevent Document.cookie accessing this. Still works with fetch.
                         bearer_cookie.set_http_only(true);
                         // We set a domain here because it allows subdomains
                         // of the idm to share the cookie. If domain was incorrect
@@ -617,10 +647,10 @@ async fn view_login_step(
                             let mut username_cookie =
                                 Cookie::new(COOKIE_USERNAME, session_context.username.clone());
                             username_cookie.set_secure(state.secure_cookies);
-                            username_cookie.set_same_site(SameSite::Strict);
+                            username_cookie.set_same_site(SameSite::Lax);
                             username_cookie.set_http_only(true);
                             username_cookie.set_domain(state.domain.clone());
-                            username_cookie.set_path("/");
+                            username_cookie.set_path("/ui/login");
                             jar.add(username_cookie)
                         } else {
                             jar
@@ -630,18 +660,27 @@ async fn view_login_step(
                             .add(bearer_cookie)
                             .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                        let res = Redirect::to("/ui/apps").into_response();
+                        // Now, we need to decided where to go. If this
+
+                        let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
+                            Redirect::to("/ui/oauth2/resume").into_response()
+                        } else {
+                            Redirect::to("/ui/apps").into_response()
+                        };
 
                         break res;
                     }
                 }
             }
-            AuthState::Denied(_reason) => {
+            AuthState::Denied(reason) => {
                 debug!("🧩 -> AuthState::Denied");
                 jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                // Render a denial.
-                break Redirect::temporary("/ui/getrekt").into_response();
+                break HtmlTemplate(LoginDeniedView {
+                    reason,
+                    operation_id: kopid.eventid,
+                })
+                .into_response();
             }
         }
     };

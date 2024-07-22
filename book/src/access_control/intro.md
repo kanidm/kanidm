@@ -20,8 +20,8 @@ possible harm that an attacker may make if they gain access to these roles.
 Kanidm supports [privilege access mode](../accounts/authentication_and_credentials.md) so that
 high-level permissions can be assigned to users who must reauthenticate before using those
 privileges. The privileges then are only accessible for a short period of time. This can allow you
-to assign high level permissions to regular persions accounts rather than requiring separete
-privilege access accounts (PAA) or privileged access workstations (PAW).
+to assign high level permissions to regular person accounts rather than requiring separate privilege
+access accounts (PAA) or privileged access workstations (PAW).
 
 ## Assigning Permissions to Service Accounts
 

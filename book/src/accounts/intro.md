@@ -61,7 +61,7 @@ within a short time window.
 However, these sessions always retain their _read_ privileges - meaning that they can still access
 and view high levels of data at any time without reauthentication.
 
-In high risk environments you should still consider assigning seperate administration accounts to
+In high risk environments you should still consider assigning separate administration accounts to
 users if this is considered a risk.
 
 ## Recovering the Initial Admin Accounts

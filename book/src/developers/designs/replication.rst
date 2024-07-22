@@ -370,7 +370,7 @@ transmission of the difference in the sets.
 
 To calculate this, we can use our changelog to construct a table called the replication
 update vector. The RUV is a single servers changelog state, categorised by the originating
-server of the change. A psudeo example of this is:
+server of the change. A pseudo example of this is:
 
 ::
 
@@ -486,7 +486,7 @@ TODO: Must origUUID,
 Object Level Conflict Handling
 ===============================
 
-With the constructs defined, we have enough in place to be able to handle various scenarioes.
+With the constructs defined, we have enough in place to be able to handle various scenarios.
 For the purposes of these discussions we will present two servers with a series of changes
 over time.
 

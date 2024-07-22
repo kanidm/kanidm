@@ -125,7 +125,7 @@ override_homedir = /home/%U
 ignore_group_members = True
 
 # Disable caching of credentials by SSSD. SSSD uses less secure local password storage
-# mechanisims, and is a risk for credential disclosure.
+# mechanisms, and is a risk for credential disclosure.
 #
 # ⚠️  NEVER CHANGE THIS VALUE ⚠️
 cache_credentials = False

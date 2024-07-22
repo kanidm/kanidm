@@ -46,7 +46,7 @@ Some types of queries can take more time than others. For example:
 * Indexed searches that have a large number of results.
 * Write operations that affect many entries.
 
-These necesitate the following limits:
+These necessitate the following limits:
 
 * No unindexed searches allowed
 * Prevent searching on terms that do not exist (done, filter schema validation)

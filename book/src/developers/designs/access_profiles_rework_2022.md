@@ -44,7 +44,7 @@ members can write self" meaning that any member of that group can write to thems
 themself.
 
 In the future we could also create different target/receiver specifiers to allow other extended
-management and delegation scenarioes. This improves the situation making things more flexible from
+management and delegation scenarios. This improves the situation making things more flexible from
 the current filter system. It also may allow filters to be simplified to remove the SELF uuid
 resolve step in some cases.
 
@@ -58,7 +58,7 @@ allowing us to move from filter based access controls to "group" targeted.
 A risk of filter based groups is "infinite churn" because of recursion. This can occur if you had a
 rule such a "and not memberof = self" on a dynamic group. Because of this, filters on dynamic groups
 may not use "memberof" unless they are internally provided by the kanidm project so that we can vet
-these rules as correct and without creating infinite recursion scenarioes.
+these rules as correct and without creating infinite recursion scenarios.
 
 ### Access rules extracted to ACI entries on targets
 

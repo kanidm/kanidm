@@ -10,7 +10,7 @@ missing or if you have a question, please
 
 The version of this document found
 [on the project page](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) is
-considered authoritive and applies to all versions.
+considered authoritative and applies to all versions.
 
 ## Release Schedule and Versioning
 
@@ -87,7 +87,7 @@ before the servers release.
 ### API stability
 
 Kanidm has a number of APIs with different stability guarantees. APIs that are stable will only
-recieve breaking changes in the case of an ethics, security or potential data corruption issue.
+receive breaking changes in the case of an ethics, security or potential data corruption issue.
 
 Stable APIs are:
 
@@ -123,7 +123,7 @@ All code changes will include full type-casting wherever possible.
 
 ### Project Discretion
 
-In the event of an unforseen or extraordinary situation, the project team may make decisions
+In the event of an unforeseen or extraordinary situation, the project team may make decisions
 contradictory to this document at their discretion. In these situation, the project team will make
 every effort to communicate the reason for the decision and will attempt to minimise disruption to
 users.

@@ -49,9 +49,9 @@ accessible - otherwise people will not run the tests, leading to poor quality.
 The project must be simple. Any one should be able to understand how it works and why those
 decisions were made.
 
-### Hierachy of Controls
+### Hierarchy of Controls
 
-When a possible risk arises we should always consider the [hierachy of controls]. In descedending
+When a possible risk arises we should always consider the [hierarchy of controls]. In descedending
 order of priority
 
 - Elimination - eliminate the risk from existing
@@ -60,7 +60,7 @@ order of priority
 - Administrative Controls - educate about the risk, add warnings
 - Personal Protection - document the risk
 
-[hierachy of controls]: https://en.wikipedia.org/wiki/Hierarchy_of_hazard_controls
+[hierarchy of controls]: https://en.wikipedia.org/wiki/Hierarchy_of_hazard_controls
 
 ### Languages
 
@@ -333,7 +333,7 @@ For example, this will set the CPU flags to "none" and the location for the Web 
 `/usr/share/kanidm/ui/pkg`:
 
 ```bash
-KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd
+KANIDM_BUILD_PROFILE=release_linux cargo build --release --bin kanidmd
 ```
 
 ### Building the Web UI

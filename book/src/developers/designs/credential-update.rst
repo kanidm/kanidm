@@ -29,7 +29,7 @@ do not, the credential update session is rejected.
 If they do have the access, a new credential update session is created, and the user is given a time
 limited token allowing them to interact with the credential update session.
 
-If the credental update session is abandoned it can not be re-accessed until it is expired.
+If the credential update session is abandoned it can not be re-accessed until it is expired.
 
 Onboarding/Reset Account Workflow
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

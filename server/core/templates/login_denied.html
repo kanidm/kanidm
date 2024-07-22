@@ -1,0 +1,13 @@
+(% extends "login_base.html" %)
+
+(% block logincontainer %)
+	<h3>Login Failed</h3>
+	<main id="main">
+		<p>Reason: (( reason ))</p>
+		<p>Operation ID: (( operation_id ))</p>
+		<a href="/ui/login">
+			<button type="button" class="btn btn-success">Return to Login</button>
+		</a>
+	</main>
+
+(% endblock %)

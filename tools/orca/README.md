@@ -44,7 +44,7 @@ the parameters of the test you wish to perform.
 
 A statefile is the fully generated state of all entries that will be created and then used in the
 load test. The state file can be recreated from a profile and it's seed at anytime. The reason to
-seperate these is that state files may get quite large, when what you really just need is the
+separate these is that state files may get quite large, when what you really just need is the
 ability to recreate them when needed.
 
 This state file also contains all the details about accounts and entries so that during test

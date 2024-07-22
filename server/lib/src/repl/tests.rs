@@ -98,7 +98,7 @@ fn repl_incremental(
     trace!(?b_ruv_range);
 
     // May need to be "is subset" for future when we are testing
-    // some more complex scenarioes.
+    // some more complex scenarios.
     let valid = match ReplicationUpdateVector::range_diff(&a_ruv_range, &b_ruv_range) {
         RangeDiffStatus::Ok(require) => require.is_empty(),
         _ => false,

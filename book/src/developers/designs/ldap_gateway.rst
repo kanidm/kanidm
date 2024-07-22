@@ -27,7 +27,7 @@ will be Read Only as a result. The ability to write via LDAP will not be support
 Most LDAP servers offer their schema in a readonly interface. Translating Kanidm's schema into a way
 that clients could interpret is of little value as many clients do not request this, or parse it.
 
-While Kanidm is entry based, and NoSQL, similar to LDAP, our datamodel is subtely different enough
+While Kanidm is entry based, and NoSQL, similar to LDAP, our datamodel is subtly different enough
 that not all attributes can be representing in LDAP. Some data transformation will need to occur as
 a result to expose data that LDAP clients expect. Not all data may be able to be presented, nor
 should it (ie radius_secret, you should use the kanidm radius integration instead of the LDAP
@@ -107,7 +107,7 @@ accounts would need the attributes to exist to work with these.
 Entry and Attribute Transformations
 ===================================
 
-Some attributes and items will need transformatio to "make sense" to clients. This includes:
+Some attributes and items will need transformation to "make sense" to clients. This includes:
 
 member/memberOf: Member in LDAP is a DN, where in Kanidm it's a reference type with SPN. We will need
 to transform this in filters *and* in entries that are sent back.

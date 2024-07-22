@@ -921,7 +921,11 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: true,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::Presence],
+                index: vec![
+                    IndexType::Equality,
+                    IndexType::Presence,
+                    IndexType::SubString,
+                ],
                 syntax: SyntaxType::Utf8StringIname,
             },
         );
@@ -1254,7 +1258,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: false,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::SubString],
+                index: vec![IndexType::Equality],
                 syntax: SyntaxType::JsonFilter,
             },
         );
@@ -1289,7 +1293,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 phantom: false,
                 sync_allowed: false,
                 replicated: true,
-                index: vec![IndexType::Equality, IndexType::SubString],
+                index: vec![IndexType::Equality],
                 syntax: SyntaxType::JsonFilter,
             },
         );
@@ -2585,7 +2589,7 @@ mod tests {
             ..Default::default()
         };
 
-        // Since valueset now disallows such shenangians at a type level, this can't occur
+        // Since valueset now disallows such shenanigans at a type level, this can't occur
         /*
         let rvs = unsafe {
             valueset![

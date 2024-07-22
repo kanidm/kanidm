@@ -140,7 +140,7 @@ server to be "authoritative".
 
 The KRC is enabled as a replication parameter. This informs the node that it must not contact other
 nodes for its replication topology, and it prepares the node for serving that replication metadata.
-This is analgous to a single node operation configuration.
+This is analogous to a single node operation configuration.
 
 ```
 [replication]
@@ -201,11 +201,11 @@ server entries will increment the generation counter. This allows us to detect w
 requires a new configuration or not.
 
 If a server's entry in the database is marked to be `Revoked` then it will remain in the database,
-but be inelligible for replication participation. This is to allow for forced removal of a
+but be ineligible for replication participation. This is to allow for forced removal of a
 potentially compromised node.
 
 The KRC will periodically examine its RUV. For any server entry whose UUID is not contained in the
-RUV, and whose "time first seen + trime window" is less than now, then the server entry will be
+RUV, and whose "time first seen + time window" is less than now, then the server entry will be
 REMOVED for inactivity since it has now been trimmed from the RUV.
 
 ### Moving the Replication Coordinator Role
@@ -241,8 +241,8 @@ Imagine the following example. Here, Node A is acting as the KRC.
 
 This would allow Node A to be aware of B, C, D and then create a full mesh.
 
-We wish to decommision Node A and promote Node B to become the new KRC. Imagine at this point we cut
-over Node D to point its KRC at Node B.
+We wish to decommission Node A and promote Node B to become the new KRC. Imagine at this point we
+cut over Node D to point its KRC at Node B.
 
 ```
 ┌─────────────────┐                ┌─────────────────┐

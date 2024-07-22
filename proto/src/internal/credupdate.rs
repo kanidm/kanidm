@@ -54,7 +54,7 @@ impl TotpSecret {
     }
 
     pub fn get_secret(&self) -> String {
-        base32::encode(base32::Alphabet::RFC4648 { padding: false }, &self.secret)
+        base32::encode(base32::Alphabet::Rfc4648 { padding: false }, &self.secret)
     }
 }
 

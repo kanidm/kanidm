@@ -67,7 +67,7 @@ if [ "$(which cargo | wc -l)" -eq 0 ]; then
 fi
 
 # this assumes the versions are in lock-step, which is fine at the moment.
-# Debian is picky abour dashes in version strings, so a bit of conversion
+# Debian is picky about dashes in version strings, so a bit of conversion
 # is needed for the first one to prevent interference.
 KANIDM_VERSION="$(grep -ioE 'version.*' Cargo.toml | head -n1 | awk '{print $NF}' | tr -d '"' | sed -e 's/-/~/')"
 

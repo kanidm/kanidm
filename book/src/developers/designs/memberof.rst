@@ -94,7 +94,7 @@ modification of our memberOf + our uuid. So translated:
     member: G2      member: U
     memberOf: -     memberOf: G1    memberOf: G2, G1
 
-It's important to note, we only recures on Groups - nothing else. This is what breaks the
+It's important to note, we only recurse on Groups - nothing else. This is what breaks the
 cycle on U, as memberOf is now fully applied.
 
 

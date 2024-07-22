@@ -1165,7 +1165,7 @@ mod tests {
             // Scope to limit the key object
         }
 
-        // Will fail to be signed with the former key, since it is now revoked, and the ct preceeds
+        // Will fail to be signed with the former key, since it is now revoked, and the ct precedes
         // the validity of the new key
         {
             let key_object_loaded = write_txn

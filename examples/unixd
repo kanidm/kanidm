@@ -60,6 +60,23 @@ pam_allowed_login_groups = ["posix_group"]
 
 # home_attr = "uuid"
 
+# Controls the prefix that will be appended to the home alias when mounting home directories. Must
+# end with a trailing `/`. If unset, defaults to the value of the `home_prefix`.
+#
+# This is option is useful when implementing a networked home directory layout. A common implementation
+# is to configure a networked filesystem that contains user directories mounted at `/u/` (eg /u/$user_uuid)
+# and then symlink the mounted directory into /home/$user_name when the user logs in. This can be accomplished
+# with a configuration that includes the following:
+#
+# > home_attr = "uuid"
+# > home_alias = "name"
+# > home_prefix = "/u/"
+# > home_mount_prefix = "/home/"
+#
+# Default: unset
+#
+# home_mount_prefix = "/home/"
+#
 
 # The default token attribute used for generating symlinks pointing to the user's home
 # directory. If set, this will become the value of the home path to nss calls. It is recommended you
@@ -115,5 +132,3 @@ pam_allowed_login_groups = ["posix_group"]
 # Default: Empty set (no overrides)
 
 # allow_local_account_override = ["admin"]
-
-

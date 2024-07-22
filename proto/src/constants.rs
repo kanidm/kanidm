@@ -2,6 +2,8 @@
 //!
 pub mod uri;
 
+use std::time::Duration;
+
 /// The default location for the `kanidm` CLI tool's token cache.
 pub const CLIENT_TOKEN_CACHE: &str = "~/.cache/kanidm_tokens";
 
@@ -40,6 +42,15 @@ pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 /// Default replication configuration
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
 pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
+
+/// Default replication poll window in seconds.
+pub const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
+
+/// Default grace window for authentication tokens. This allows a token to be
+/// validated by another replica before the backing database session has been
+/// replicated to the partner. If replication stalls until this point then
+/// the token will be considered INVALID.
+pub const AUTH_TOKEN_GRACE_WINDOW: Duration = Duration::from_secs(5 * 60);
 
 // IF YOU CHANGE THESE VALUES YOU BREAK EVERYTHING
 pub const ATTR_ACCOUNT_EXPIRE: &str = "account_expire";
@@ -147,6 +158,7 @@ pub const ATTR_OAUTH2_RS_SCOPE_MAP: &str = "oauth2_rs_scope_map";
 pub const ATTR_OAUTH2_RS_SUP_SCOPE_MAP: &str = "oauth2_rs_sup_scope_map";
 pub const ATTR_OAUTH2_RS_TOKEN_KEY: &str = "oauth2_rs_token_key";
 pub const ATTR_OAUTH2_SESSION: &str = "oauth2_session";
+pub const ATTR_OAUTH2_STRICT_REDIRECT_URI: &str = "oauth2_strict_redirect_uri";
 pub const ATTR_OBJECTCLASS: &str = "objectclass";
 pub const ATTR_OTHER_NO_INDEX: &str = "other-no-index";
 pub const ATTR_PASSKEYS: &str = "passkeys";

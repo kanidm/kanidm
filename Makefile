@@ -7,6 +7,7 @@ CONTAINER_BUILD_ARGS ?=
 MARKDOWN_FORMAT_ARGS ?= --options-line-width=100
 CONTAINER_TOOL ?= docker
 BUILDKIT_PROGRESS ?= plain
+KANIDM_FEATURES ?= ""
 TESTS ?=
 BOOK_VERSION ?= master
 GIT_COMMIT := $(shell git rev-parse HEAD)
@@ -48,7 +49,7 @@ buildx/kanidmd:
 		-t $(IMAGE_BASE)/server:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
-		--build-arg "KANIDM_FEATURES=" \
+		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--compress \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
@@ -64,7 +65,7 @@ buildx/kanidm_tools:
 		-t $(IMAGE_BASE)/tools:$(IMAGE_EXT_VERSION) \
 		--progress $(BUILDKIT_PROGRESS) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
-		--build-arg "KANIDM_FEATURES=" \
+		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .
@@ -101,7 +102,7 @@ build/orca:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f tools/orca/Dockerfile \
 		-t $(IMAGE_BASE)/orca:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
-		--build-arg "KANIDM_FEATURES=" \
+		--build-arg "KANIDM_FEATURES=$(KANIDM_FEATURES)" \
 		--label "com.kanidm.git-commit=$(GIT_COMMIT)" \
 		--label "com.kanidm.version=$(IMAGE_EXT_VERSION)" \
 		$(CONTAINER_BUILD_ARGS) .

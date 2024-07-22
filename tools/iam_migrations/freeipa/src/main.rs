@@ -1001,7 +1001,7 @@ fn ipa_to_scim_entry(
             .into(),
         ))
     } else if oc.contains("ipatokentotp") {
-        // Skip for now, we don't supporty multiple totp yet.
+        // Skip for now, we don't support multiple totp yet.
         Ok(None)
     } else {
         debug!("Skipping entry {} with oc {:?}", dn, oc);

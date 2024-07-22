@@ -1,8 +1,7 @@
 # POSIX Accounts and Groups
 
 Kanidm has features that enable its accounts and groups to be consumed on POSIX-like machines, such
-as Linux, FreeBSD or others. Both service accounts and person accounts can be used on POSIX
-systems.
+as Linux, FreeBSD or others. Both service accounts and person accounts can be used on POSIX systems.
 
 ## Notes on POSIX Features
 

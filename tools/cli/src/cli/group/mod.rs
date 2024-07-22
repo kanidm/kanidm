@@ -7,7 +7,7 @@ mod account_policy;
 impl GroupOpt {
     pub fn debug(&self) -> bool {
         match self {
-            GroupOpt::List(copt) => copt.debug,
+            GroupOpt::List(copt) | GroupOpt::Search { copt, .. } => copt.debug,
             GroupOpt::Get(gcopt) => gcopt.copt.debug,
             GroupOpt::SetEntryManagedBy { copt, .. } | GroupOpt::Create { copt, .. } => copt.debug,
             GroupOpt::Delete(gcopt) => gcopt.copt.debug,
@@ -31,6 +31,22 @@ impl GroupOpt {
             GroupOpt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_group_list().await {
+                    Ok(r) => match copt.output_mode {
+                        OutputMode::Json => {
+                            let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();
+                            println!(
+                                "{}",
+                                serde_json::to_string(&r_attrs).expect("Failed to serialise json")
+                            );
+                        }
+                        OutputMode::Text => r.iter().for_each(|ent| println!("{}", ent)),
+                    },
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                }
+            }
+            GroupOpt::Search { copt, name } => {
+                let client = copt.to_client(OpType::Read).await;
+                match client.idm_group_search(name).await {
                     Ok(r) => match copt.output_mode {
                         OutputMode::Json => {
                             let r_attrs: Vec<_> = r.iter().map(|entry| &entry.attrs).collect();

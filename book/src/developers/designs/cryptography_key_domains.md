@@ -1,6 +1,6 @@
 # Cryptography Key Domains
 
-Within Kanidm we have to manage a number of private keys with various cryptograhpic purposes. In the
+Within Kanidm we have to manage a number of private keys with various cryptographic purposes. In the
 current design, we have evolved where for each purposes keys are managed in unique ways. However we
 need to improve this for a number reasons including shared keys for Oauth2 domains and a future
 integration with PKCS11.
@@ -31,7 +31,7 @@ keys but preserve existing api-token signatures. Currently we have no mechanism 
 
 ## Design
 
-To accomodate future changes, keys will be associated to a Key Provider. Key Objects relate to a
+To accommodate future changes, keys will be associated to a Key Provider. Key Objects relate to a
 single Key Provider. Migration of a Key Object to another Key Provider in the future _may_ be
 possible.
 
@@ -211,7 +211,7 @@ In the future we may need to migrate keyObjects to be part of their own "securit
 represents a pkcs11 or other key-trust store.
 
 Key trust stores need to consider that some handlers are single threaded only, so we need to design
-some form of asynchronisity into our handlers so that they can use work queues to the HSM for keys.
+some form of asynchronicity into our handlers so that they can use work queues to the HSM for keys.
 
 We also need to consider key-wrapping for import of keys to HSM's on disjoint nodes. As well we
 probably need to consider keyObjects that are not always accessible to all nodes so that the

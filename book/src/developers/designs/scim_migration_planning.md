@@ -24,7 +24,7 @@ There are three expected methods of using the synchronisation tools for Kanidm
   is performed where Kanidm 'gains authority' over all identity data and the existing IDM is
   disabled.
 
-In these processes there may be a need to "reset" the synchronsied data. The diagram below shows the
+In these processes there may be a need to "reset" the synchronised data. The diagram below shows the
 possible work flows which account for the above.
 
                               ┏━━━━━━━━━━━━━━━━━┓
@@ -79,7 +79,7 @@ To achieve this, we initially provide synchronisation primitives in the
 ### Transform
 
 This process will be custom developed by the user, or may have a generic driver that we provide. Our
-generic tools may provide attribute mapping abilitys so that we can allow some limited
+generic tools may provide attribute mapping abilities so that we can allow some limited
 customisation.
 
 ### Load

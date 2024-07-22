@@ -28,6 +28,7 @@ pub const COOKIE_AUTH_SESSION_ID: &str = "auth-session-id";
 pub const COOKIE_BEARER_TOKEN: &str = "bearer";
 pub const COOKIE_CU_SESSION_TOKEN: &str = "cu-session-token";
 pub const COOKIE_USERNAME: &str = "username";
+pub const COOKIE_OAUTH2_REQ: &str = "o2-authreq";
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
 /// This is a description of a linked or connected application for a user. This is
@@ -243,6 +244,12 @@ pub struct DomainUpgradeCheckReport {
 pub enum DomainUpgradeCheckStatus {
     Pass6To7Gidnumber,
     Fail6To7Gidnumber,
+
+    Pass7To8SecurityKeys,
+    Fail7To8SecurityKeys,
+
+    Pass7To8Oauth2StrictRedirectUri,
+    Fail7To8Oauth2StrictRedirectUri,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

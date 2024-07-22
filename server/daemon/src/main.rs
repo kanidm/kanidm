@@ -24,6 +24,7 @@ use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use sketching::LogLevel;
+use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
@@ -180,51 +181,89 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
             }
         },
 
-        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => match output_mode {
-            ConsoleOutputMode::JSON => {
-                let json_output = serde_json::json!({
-                    "domain_upgrade_check": report
-                });
-                println!("{}", json_output);
-            }
-            ConsoleOutputMode::Text => {
-                let ProtoDomainUpgradeCheckReport {
-                    name,
-                    uuid,
-                    current_level,
-                    upgrade_level,
-                    report_items,
-                } = report;
+        Some(Ok(AdminTaskResponse::DomainUpgradeCheck { report })) => {
+            match output_mode {
+                ConsoleOutputMode::JSON => {
+                    let json_output = serde_json::json!({
+                        "domain_upgrade_check": report
+                    });
+                    println!("{}", json_output);
+                }
+                ConsoleOutputMode::Text => {
+                    let ProtoDomainUpgradeCheckReport {
+                        name,
+                        uuid,
+                        current_level,
+                        upgrade_level,
+                        report_items,
+                    } = report;
 
-                info!("domain_name            : {}", name);
-                info!("domain_uuid            : {}", uuid);
-                info!("domain_current_level   : {}", current_level);
-                info!("domain_upgrade_level   : {}", upgrade_level);
+                    info!("domain_name            : {}", name);
+                    info!("domain_uuid            : {}", uuid);
+                    info!("domain_current_level   : {}", current_level);
+                    info!("domain_upgrade_level   : {}", upgrade_level);
 
-                for item in report_items {
-                    info!("------------------------");
-                    match item.status {
-                        ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
-                            info!("upgrade_item           : gidnumber range validity");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : PASS");
-                        }
-                        ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
-                            info!("upgrade_item           : gidnumber range validity");
-                            debug!("from_level             : {}", item.from_level);
-                            debug!("to_level               : {}", item.to_level);
-                            info!("status                 : FAIL");
-                            info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
-                            info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
-                            for entry_id in item.affected_entries {
-                                info!("affected_entry         : {}", entry_id);
+                    for item in report_items {
+                        info!("------------------------");
+                        match item.status {
+                            ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber => {
+                                info!("upgrade_item           : gidnumber range validity");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
+                            }
+                            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber => {
+                                info!("upgrade_item           : gidnumber range validity");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : The automatically allocated gidnumbers for posix accounts was found to allocate numbers into systemd-reserved ranges. These can no longer be used.");
+                                info!("action                 : Modify the gidnumber of affected entries so that they are in the range 65536 to 524287 OR reset the gidnumber to cause it to automatically regenerate.");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
+                            }
+                            // ===========
+                            ProtoDomainUpgradeCheckStatus::Pass7To8SecurityKeys => {
+                                info!("upgrade_item           : security key usage");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
+                            }
+                            ProtoDomainUpgradeCheckStatus::Fail7To8SecurityKeys => {
+                                info!("upgrade_item           : security key usage");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : Security keys no longer function as a second factor due to the introduction of CTAP2 and greater forcing PIN interactions.");
+                                info!("action                 : Modify the accounts in question to remove their security key and add it as a passkey or enable TOTP");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
+                            }
+                            // ===========
+                            ProtoDomainUpgradeCheckStatus::Pass7To8Oauth2StrictRedirectUri => {
+                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : PASS");
+                            }
+                            ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri => {
+                                info!("upgrade_item           : oauth2 strict redirect uri enforcement");
+                                debug!("from_level             : {}", item.from_level);
+                                debug!("to_level               : {}", item.to_level);
+                                info!("status                 : FAIL");
+                                info!("description            : To harden against possible public client open redirection vulnerabilities, redirect uris must now be registered ahead of time and are validated rather than the former origin verification process.");
+                                info!("action                 : Verify the redirect uri's for OAuth2 clients and then enable strict-redirect-uri on each client.");
+                                for entry_id in item.affected_entries {
+                                    info!("affected_entry         : {}", entry_id);
+                                }
                             }
                         }
                     }
                 }
             }
-        },
+        }
 
         Some(Ok(AdminTaskResponse::DomainRaise { level })) => match output_mode {
             ConsoleOutputMode::JSON => {
@@ -1006,50 +1045,34 @@ async fn kanidm_main(
                     let ca_cert_path = PathBuf::from(ca_cert);
                     match ca_cert_path.exists() {
                         true => {
-                            let ca_contents = match std::fs::read_to_string(ca_cert_path.clone()) {
-                                Ok(val) => val,
-                                Err(e) => {
-                                    error!(
-                                        "Failed to read {:?} from filesystem: {:?}",
-                                        ca_cert_path, e
-                                    );
-                                    return ExitCode::FAILURE;
-                                }
-                            };
-                            let content = ca_contents
-                                .split("-----END CERTIFICATE-----")
-                                .filter_map(|c| {
-                                    if c.trim().is_empty() {
-                                        None
-                                    } else {
-                                        Some(c.trim().to_string())
-                                    }
-                                })
-                                .collect::<Vec<String>>();
-                            let content = match content.last() {
-                                Some(val) => val,
-                                None => {
-                                    error!(
-                                        "Failed to parse {:?} as valid certificate",
-                                        ca_cert_path
-                                    );
-                                    return ExitCode::FAILURE;
-                                }
-                            };
-                            let content = format!("{}-----END CERTIFICATE-----", content);
+                            let mut cert_buf = Vec::new();
+                            if let Err(err) = std::fs::File::open(&ca_cert_path)
+                                .and_then(|mut file| file.read_to_end(&mut cert_buf))
+                            {
+                                error!(
+                                    "Failed to read {:?} from filesystem: {:?}",
+                                    ca_cert_path, err
+                                );
+                                return ExitCode::FAILURE;
+                            }
 
-                            let ca_cert_parsed =
-                                match reqwest::Certificate::from_pem(content.as_bytes()) {
+                            let ca_chain_parsed =
+                                match reqwest::Certificate::from_pem_bundle(&cert_buf) {
                                     Ok(val) => val,
                                     Err(e) => {
                                         error!(
-                                            "Failed to parse {} into CA certificate!\nError: {:?}",
-                                            ca_cert, e
+                                            "Failed to parse {:?} into CA chain!\nError: {:?}",
+                                            ca_cert_path, e
                                         );
                                         return ExitCode::FAILURE;
                                     }
                                 };
-                            client.add_root_certificate(ca_cert_parsed)
+
+                            // Need at least 2 certs for the leaf + chain. We skip the leaf.
+                            for cert in ca_chain_parsed.into_iter().skip(1) {
+                                client = client.add_root_certificate(cert)
+                            }
+                            client
                         }
                         false => {
                             warn!("Couldn't find ca cert {} but carrying on...", ca_cert);

@@ -15,6 +15,7 @@ use crate::repl::proto::{
     ReplAttestedPasskeyV4V1, ReplAttrV1, ReplCredV1, ReplIntentTokenV1, ReplPasskeyV4V1,
 };
 use crate::schema::SchemaAttribute;
+use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -122,6 +123,16 @@ impl ValueSetT for ValueSetCredential {
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
         self.map.keys().cloned().collect()
+    }
+
+    fn generate_idx_sub_keys(&self) -> Vec<String> {
+        let lower: Vec<_> = self.map.keys().map(|s| s.to_lowercase()).collect();
+        let mut trigraphs: Vec<_> = lower.iter().flat_map(|v| trigraph_iter(v)).collect();
+
+        trigraphs.sort_unstable();
+        trigraphs.dedup();
+
+        trigraphs.into_iter().map(String::from).collect()
     }
 
     fn syntax(&self) -> SyntaxType {

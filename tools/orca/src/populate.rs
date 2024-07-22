@@ -40,7 +40,7 @@ async fn preflight_person(
         }
     }
 
-    // For each role we are part of, did we have other permissions required to fufil that?
+    // For each role we are part of, did we have other permissions required to fulfil that?
     for role in &person.roles {
         if let Some(need_groups) = role.requires_membership_to() {
             for group_name in need_groups {

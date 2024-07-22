@@ -1646,7 +1646,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::with_capacity(0),
+                                    IndexType::SubString => vs
+                                        .generate_idx_sub_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
@@ -1682,7 +1686,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::with_capacity(0),
+                                    IndexType::SubString => vs
+                                        .generate_idx_sub_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 // For each value
                                 //
@@ -1728,7 +1736,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Err((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::with_capacity(0),
+                                    IndexType::SubString => pre_vs
+                                        .generate_idx_sub_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
@@ -1747,17 +1759,30 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         vec![Ok((&ikey.attr, ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SubString => Vec::with_capacity(0),
+                                    IndexType::SubString => post_vs
+                                        .generate_idx_sub_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Ok((&ikey.attr, ikey.itype, idx_key)))
+                                        .collect(),
                                 };
                                 changes
                             }
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the difference within the attr.
-
-                                let mut pre_idx_keys = pre_vs.generate_idx_eq_keys();
-                                pre_idx_keys.sort_unstable();
-                                let mut post_idx_keys = post_vs.generate_idx_eq_keys();
-                                post_idx_keys.sort_unstable();
+                                let (mut pre_idx_keys, mut post_idx_keys) = match ikey.itype {
+                                    IndexType::Equality => (
+                                        pre_vs.generate_idx_eq_keys(),
+                                        post_vs.generate_idx_eq_keys(),
+                                    ),
+                                    IndexType::Presence => {
+                                        // No action - we still are "present", so nothing to do!
+                                        (Vec::with_capacity(0), Vec::with_capacity(0))
+                                    }
+                                    IndexType::SubString => (
+                                        pre_vs.generate_idx_sub_keys(),
+                                        post_vs.generate_idx_sub_keys(),
+                                    ),
+                                };
 
                                 let sz = if pre_idx_keys.len() > post_idx_keys.len() {
                                     pre_idx_keys.len()
@@ -1765,54 +1790,58 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     post_idx_keys.len()
                                 };
 
-                                let mut pre_iter = pre_idx_keys.iter();
-                                let mut post_iter = post_idx_keys.iter();
-
-                                let mut pre = pre_iter.next();
-                                let mut post = post_iter.next();
-
                                 let mut added_vs = Vec::with_capacity(sz);
-
                                 let mut removed_vs = Vec::with_capacity(sz);
 
-                                loop {
-                                    match (pre, post) {
-                                        (Some(a), Some(b)) => {
-                                            match a.cmp(b) {
-                                                Ordering::Less => {
-                                                    removed_vs.push(a.clone());
-                                                    pre = pre_iter.next();
-                                                }
-                                                Ordering::Equal => {
-                                                    // In both - no action needed.
-                                                    pre = pre_iter.next();
-                                                    post = post_iter.next();
-                                                }
-                                                Ordering::Greater => {
-                                                    added_vs.push(b.clone());
-                                                    post = post_iter.next();
+                                if sz > 0 {
+                                    pre_idx_keys.sort_unstable();
+                                    post_idx_keys.sort_unstable();
+
+                                    let mut pre_iter = pre_idx_keys.iter();
+                                    let mut post_iter = post_idx_keys.iter();
+
+                                    let mut pre = pre_iter.next();
+                                    let mut post = post_iter.next();
+
+                                    loop {
+                                        match (pre, post) {
+                                            (Some(a), Some(b)) => {
+                                                match a.cmp(b) {
+                                                    Ordering::Less => {
+                                                        removed_vs.push(a.clone());
+                                                        pre = pre_iter.next();
+                                                    }
+                                                    Ordering::Equal => {
+                                                        // In both - no action needed.
+                                                        pre = pre_iter.next();
+                                                        post = post_iter.next();
+                                                    }
+                                                    Ordering::Greater => {
+                                                        added_vs.push(b.clone());
+                                                        post = post_iter.next();
+                                                    }
                                                 }
                                             }
-                                        }
-                                        (Some(a), None) => {
-                                            removed_vs.push(a.clone());
-                                            pre = pre_iter.next();
-                                        }
-                                        (None, Some(b)) => {
-                                            added_vs.push(b.clone());
-                                            post = post_iter.next();
-                                        }
-                                        (None, None) => {
-                                            break;
+                                            (Some(a), None) => {
+                                                removed_vs.push(a.clone());
+                                                pre = pre_iter.next();
+                                            }
+                                            (None, Some(b)) => {
+                                                added_vs.push(b.clone());
+                                                post = post_iter.next();
+                                            }
+                                            (None, None) => {
+                                                break;
+                                            }
                                         }
                                     }
-                                }
+                                } // end sz > 0
 
                                 let mut diff =
                                     Vec::with_capacity(removed_vs.len() + added_vs.len());
 
                                 match ikey.itype {
-                                    IndexType::Equality => {
+                                    IndexType::SubString | IndexType::Equality => {
                                         removed_vs
                                             .into_iter()
                                             .map(|idx_key| Err((&ikey.attr, ikey.itype, idx_key)))
@@ -1825,7 +1854,6 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     IndexType::Presence => {
                                         // No action - we still are "present", so nothing to do!
                                     }
-                                    IndexType::SubString => {}
                                 };
                                 // Return the diff
                                 diff
@@ -2972,10 +3000,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .unwrap_or(false)
     }
 
-    // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
+    // Since EntryValid/Invalid is just about class adherence, not Value correctness, we
     // can now apply filters to invalid entries - why? Because even if they aren't class
     // valid, we still have strict typing checks between the filter -> entry to guarantee
-    // they should be functional. We'll never match something that isn't syntactially valid.
+    // they should be functional. We'll never match something that isn't syntactically valid.
     #[inline(always)]
     #[instrument(level = "trace", name = "entry::entry_match_no_index", skip(self))]
     /// Test if the following filter applies to and matches this entry.

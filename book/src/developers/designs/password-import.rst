@@ -14,7 +14,7 @@ One area that is lacking however is the ability to provide external password
 material to an account. This is a case where kanidm never sees the plaintext
 password, we are only sent a hash of the material.
 
-Scenarioes
+Scenarios
 ----------
 
 * Once off account import - this is where we are migrating from an existing system to kanidm

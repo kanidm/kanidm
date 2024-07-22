@@ -59,6 +59,7 @@ const EXPECT_VERSION: &str = env!("CARGO_PKG_VERSION");
 #[derive(Debug)]
 pub enum ClientError {
     Unauthorized,
+    SessionExpired,
     Http(reqwest::StatusCode, Option<OperationError>, String),
     Transport(reqwest::Error),
     AuthenticationFailed,
@@ -108,11 +109,13 @@ pub struct KanidmClientConfigInstance {
 /// 3. All of these may be overridden by setting environment variables.
 ///
 pub struct KanidmClientConfig {
+    // future editors, please leave this public so others can parse the config!
     #[serde(flatten)]
-    default: KanidmClientConfigInstance,
+    pub default: KanidmClientConfigInstance,
 
     #[serde(flatten)]
-    instances: BTreeMap<String, KanidmClientConfigInstance>,
+    // future editors, please leave this public so others can parse the config!
+    pub instances: BTreeMap<String, KanidmClientConfigInstance>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -633,10 +636,16 @@ impl KanidmClient {
     }
 
     pub async fn logout(&self) -> Result<(), ClientError> {
-        self.perform_get_request("/v1/logout").await?;
-        let mut tguard = self.bearer_token.write().await;
-        *tguard = None;
-        Ok(())
+        match self.perform_get_request("/v1/logout").await {
+            Err(ClientError::Unauthorized)
+            | Err(ClientError::Http(reqwest::StatusCode::UNAUTHORIZED, _, _))
+            | Ok(()) => {
+                let mut tguard = self.bearer_token.write().await;
+                *tguard = None;
+                Ok(())
+            }
+            e => e,
+        }
     }
 
     pub fn get_token_cache_path(&self) -> String {
