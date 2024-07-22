@@ -14,6 +14,6 @@ idm_admin_password = ""
 model = "writer"
 person_count = 500
 seed = -1236045086759770365
-test_time = 180
+test_time = 60
 thread_count = 20
 warmup_time = 10
