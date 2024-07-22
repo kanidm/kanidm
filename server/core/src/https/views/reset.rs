@@ -5,7 +5,7 @@ use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
-use axum_htmx::{HxEvent, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
+use axum_htmx::{HxEvent, HxLocation, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
 use futures_util::TryFutureExt;
 use qrcode::render::svg;
 use qrcode::QrCode;
@@ -31,6 +31,7 @@ use crate::https::ServerState;
 #[template(path = "credentials_reset_form.html")]
 struct ResetCredFormView {
     domain: String,
+    wrong_code: bool,
 }
 
 #[derive(Template)]
@@ -129,7 +130,6 @@ pub(crate) struct TOTPRemoveData {
     name: String,
 }
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub(crate) enum TotpCheckResult {
     Init {
@@ -201,9 +201,8 @@ pub(crate) async fn commit(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok((Redirect::to("/ui").into_response(), HxRetarget("body".to_string())).into_response())
+    Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
 }
-
 
 pub(crate) async fn cancel(
     State(state): State<ServerState>,
@@ -220,9 +219,8 @@ pub(crate) async fn cancel(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok((Redirect::to("/ui").into_response(), HxRetarget("body".to_string())).into_response())
+    Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
 }
-
 
 pub(crate) async fn cancel_mfareg(
     State(state): State<ServerState>,
@@ -542,9 +540,6 @@ pub(crate) async fn view_reset_get(
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
-    let cred_form_view = ResetCredFormView {
-        domain: domain_display_name.clone(),
-    };
 
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
@@ -580,22 +575,45 @@ pub(crate) async fn view_reset_get(
         Ok(template.into_response())
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
-        let (cu_session_token, cu_status): (CUSessionToken, CUStatus) = state
+        match state
             .qe_w_ref
             .handle_idmcredentialexchangeintent(CUIntentToken { token }, kopid.eventid)
-            .map_err(|op_err| HtmxError::new(&kopid, op_err))
-            .await?;
+            .await
+        {
+            Ok((cu_session_token, cu_status)) => {
+                let template = get_cu_template(domain_display_name, cu_status);
 
-        let template = get_cu_template(domain_display_name, cu_status);
+                let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
+                token_cookie.set_secure(state.secure_cookies);
+                token_cookie.set_same_site(SameSite::Strict);
+                token_cookie.set_http_only(true);
+                jar = jar.add(token_cookie);
 
-        let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
-        token_cookie.set_secure(state.secure_cookies);
-        token_cookie.set_same_site(SameSite::Strict);
-        token_cookie.set_http_only(true);
-        jar = jar.add(token_cookie);
+                Ok((jar, HxPushUrl(Uri::from_static("/ui/reset")), template).into_response())
+            }
+            Err(OperationError::SessionExpired) | Err(OperationError::Wait(_)) => {
+                let cred_form_view = ResetCredFormView {
+                    domain: domain_display_name.clone(),
+                    wrong_code: true,
+                };
 
-        Ok((jar, HxPushUrl(Uri::from_static("/ui/reset")), template).into_response())
+                // Reset code expired
+                Ok((
+                    HxPushUrl(Uri::from_static("/ui/reset")),
+                    HxRetarget("body".to_string()),
+                    HtmlTemplate(cred_form_view),
+                )
+                    .into_response())
+            }
+            Err(op_err) => Err(ErrorResponse::from(
+                HtmxError::new(&kopid, op_err).into_response(),
+            )),
+        }
     } else {
+        let cred_form_view = ResetCredFormView {
+            domain: domain_display_name.clone(),
+            wrong_code: false,
+        };
         // We don't have any credential, show reset token input form
         Ok((
             HxPushUrl(Uri::from_static("/ui/reset")),
