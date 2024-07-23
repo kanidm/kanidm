@@ -41,15 +41,9 @@ Kanidm relies on modern CPU optimisations for many operations. As a result your 
 Older or unsupported CPUs may raise a `SIGILL` (Illegal Instruction) on hardware that is not
 supported by the project.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-alert.md
-imagepath=images
-title=Tip
-text=You can check your cpu flags on Linux with the command `lscpu`
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!TIP]
+>
+> You can check your CPU flags on Linux with the command `lscpu`
 
 #### Memory
 

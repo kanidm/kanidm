@@ -42,7 +42,7 @@ description from the users returned (But that implies they DID match, which is a
 
 More concrete:
 
-```
+```text
 search {
     action: allow
     targetscope: Eq("class", "group")
@@ -67,7 +67,7 @@ SearchRequest {
 
 A potential defense is:
 
-```
+```text
 acp class group: Pres(name) and Pres(desc) both in target attr, allow
 acp class user: Pres(name) allow, Pres(desc) deny. Invert and Append
 ```
@@ -113,7 +113,7 @@ search {
 
 Now we have a single user where we can read `description`. So the compiled filter above as:
 
-```
+```text
 And: {
     AndNot: {
         Eq("class", "user")

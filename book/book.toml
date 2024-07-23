@@ -16,7 +16,7 @@ git-repository-icon = "fa-github"
 additional-css = ["theme.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
-[preprocessor.template]
+[preprocessor.alerts]
 
 [preprocessor.mermaid]
 command = "mdbook-mermaid"

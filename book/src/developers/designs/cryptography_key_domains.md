@@ -2,15 +2,15 @@
 
 Within Kanidm we have to manage a number of private keys with various cryptographic purposes. In the
 current design, we have evolved where for each purposes keys are managed in unique ways. However we
-need to improve this for a number reasons including shared keys for Oauth2 domains and a future
+need to improve this for a number reasons including shared keys for OAuth2 domains and a future
 integration with PKCS11.
 
 ## Current System
 
 In the current system we store keys in database records in a variety of bespoke ways for different
 uses. Often this means that keys are associated to the object they are integrated with, such as the
-oauth2 client configuration. However this limits us since we may have users that wish to combine
-multiple oauth2 clients into a single security domain, where access tokens may be exchanged between
+OAuth2 client configuration. However this limits us since we may have users that wish to combine
+multiple OAuth2 clients into a single security domain, where access tokens may be exchanged between
 clients for forwarded authentication.
 
 Another example is api-tokens for service accounts. In the past we associated a private key to each
@@ -37,7 +37,7 @@ possible.
 
 Entities that rely on a cryptographic key will relate to a Key Object.
 
-```
+```text
   ┌─────────────────────┐
   │                     │
   │                     │
@@ -75,7 +75,7 @@ Entities that rely on a cryptographic key will relate to a Key Object.
 ```
 
 Key Objects have a Key Type denoting the type of material they contain. The types will be named
-after the JWA algorithms from [rfc7518](https://www.rfc-editor.org/rfc/rfc7518). This allows easy
+after the JWA algorithms from [RFC7518](https://www.rfc-editor.org/rfc/rfc7518). This allows easy
 mapping to OAuth2 concepts and PKCS11 in the future.
 
 - `ES256` (ECDSA using P-256 and SHA-256, `CKM_ECDSA_SHA256`)
@@ -107,7 +107,7 @@ defines the currently active signing key for the object.
 
 We have 3 keys defined with:
 
-```
+```text
 k1 { status: valid, valid_from: 10 }
 k2 { status: valid, valid_from: 14 }
 k3 { status: valid, valid_from: 19 }
@@ -135,7 +135,7 @@ On rotation the private key is _discarded_ to prevent future use of a rotated ke
 
 Keys must be merged, and not deleted.
 
-```
+```text
 class: KeyObject
 uuid: ...
 key_object_type: ECDSA_SHA256
@@ -151,7 +151,7 @@ hs256_private: { id: ..., status: valid, public_key, private_key }
 rs256_public: { id: ..., status: valid, public_key }
 ```
 
-```
+```text
      ┌─────────────────────┐                ┌─────────────────────┐
     ┌┴────────────────────┐│               ┌┴────────────────────┐│
   ┌─┴───────────────────┐ ││             ┌─┴───────────────────┐ ││
@@ -187,7 +187,7 @@ these keys at run time. The object store must extract and have key-id lookup to 
 
 Entries that use a keyObject have a reference to it.
 
-```
+```text
 class: oauth2_rs
 key_object: Refer( ... )
 ```

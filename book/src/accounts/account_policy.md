@@ -184,7 +184,7 @@ kanidm system denied-names show
 
 To allow a name to be used again it can be removed from the list:
 
-```
+```shell
 kanidm system denied-names remove <name> [<name> ...]
 ```
 
