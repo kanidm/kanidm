@@ -20,6 +20,7 @@ mod apps;
 mod errors;
 mod login;
 mod oauth2;
+mod profile;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -32,6 +33,7 @@ pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
         .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
+        .route("/profile", get(profile::view_profile_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get))
         .route("/oauth2/resume", get(oauth2::view_resume_get))
