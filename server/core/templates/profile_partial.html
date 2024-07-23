@@ -1,0 +1,33 @@
+<main class="p-3 x-auto">
+    <div class="(( crate::https::ui::CSS_PAGE_HEADER ))">
+        <h2>Profile</h2>
+    </div>
+
+    <div>
+        (% if !can_rw %)
+            <h2>Name: (( name ))</h2>
+            <h2>Legal Name: (( legal_name ))</h2>
+            (% if let Some(email) = email %)
+                <h2>Email: (( email ))</h2>
+            (% else %)
+                <h3>Email is not set</h3>
+            (% endif %)
+
+
+            <button class="btn btn-secondary">Edit Profile</button>
+
+            (% if posix_enabled %)
+                <fieldset>
+                    <legend>POSIX Settings</legend>
+                    <label for="posix-pwd-input">Posix Password</label>
+                    <input type="text" id="posix-pwd-input" name="posix-pwd" disabled value="*********">
+                </fieldset>
+                <button class="btn btn-secondary">Edit Posix</button>
+            (% endif %)
+        (% else %)
+            <button class="btn btn-primary" type="button" hx-post="/ui/api/reauth">Unlock Profile Settings 🔒</button>
+            <!-- Profile here -->
+            <!-- Credential updater -->
+        (% endif %)
+    </div>
+</main>
