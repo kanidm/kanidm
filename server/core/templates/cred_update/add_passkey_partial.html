@@ -7,7 +7,7 @@
 
         <form id="passkeyNamingForm" class="g-2 d-none">
             <label for="passkey-label" class="form-label">Please name this Passkey</label>
-            <input type="text" name="name" id="passkey-label" required class="form-control">
+            <input type="text" name="name" id="passkey-label" autofocus required class="form-control">
 
             <!-- Hidden inputs to put info passkey into form submission -->
             <input hidden type="text" name="creationData" id="passkey-create-data">
@@ -15,10 +15,11 @@
             <div class="d-flex justify-content-end pt-3 g-3" hx-target="#credentialUpdateDynamicSection">
                 <button id="password-cancel" type="button" class="btn btn-danger" hx-post="/ui/api/cancel_mfareg">Cancel</button>
                 <button
+                        type="submit"
                         hx-post="/ui/api/finish_passkey"
                         hx-vals='{"class": "(( class ))"}'
                         id="passkeyNamingSubmitBtn"
-                        type="button" class="btn btn-success d-none ms-2" disabled
+                        class="btn btn-success d-none ms-2" disabled
                 >Submit</button>
             </div>
         </form>
