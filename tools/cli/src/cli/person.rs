@@ -1127,7 +1127,7 @@ fn display_warnings(warnings: &[CURegWarning]) {
         print!(" ⚠️   ");
         match warning {
             CURegWarning::MfaRequired => {
-                println!("Multifactor authentication required - add totp, or use remove your password for passkeys");
+                println!("Multi-factor authentication required - add TOTP or replace your password with more secure method.");
             }
             CURegWarning::PasskeyRequired => {
                 println!("Passkeys required");
