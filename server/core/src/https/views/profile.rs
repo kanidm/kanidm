@@ -13,13 +13,13 @@ use crate::https::views::errors::HtmxError;
 use crate::https::views::HtmlTemplate;
 
 #[derive(Template)]
-#[template(path = "profile.html")]
+#[template(path = "user_settings.html")]
 struct ProfileView {
     profile_partial: ProfilePartialView,
 }
 
 #[derive(Template, Clone)]
-#[template(path = "profile_partial.html")]
+#[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
     can_rw: bool,
     account_name: String,

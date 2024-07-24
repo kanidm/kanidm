@@ -44,6 +44,7 @@ pub fn view_router() -> Router<ServerState> {
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
         .route("/login", get(login::view_index_get))
+        .route("/reauth", post(login::view_reauth_post))
         .route(
             "/login/passkey",
             post(login::view_login_passkey_post).get(|| async { Redirect::to("/ui") }),

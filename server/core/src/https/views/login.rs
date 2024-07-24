@@ -20,7 +20,7 @@ use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use webauthn_rs::prelude::PublicKeyCredential;
-
+use crate::https::errors::WebError;
 use super::{empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Default, Serialize, Deserialize)]
@@ -127,6 +127,89 @@ pub async fn view_logout_get(
 
         (jar, response).into_response()
     }
+}
+
+pub async fn view_reauth_post(
+    State(state): State<ServerState>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Extension(kopid): Extension<KOpId>,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let session_valid_result = state
+        .qe_r_ref
+        .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
+        .await;
+
+    return Ok(match session_valid_result {
+        Ok(()) => {
+            let inter = state
+                .qe_r_ref
+                .handle_reauth(client_auth_info, AuthIssueSession::Cookie, kopid.eventid)
+                .await;
+
+            match inter {
+                Ok(auth_res) => {
+                    match auth_res.state {
+                        AuthState::Choose(_) => {
+                            // Choosing is not allowed for reauth
+                            eprintln!("User somehow got into an invalid state");
+                            WebError::InternalServerError("choosing ? during reauth ".to_string()).into_response()
+                        }
+                        AuthState::Continue(s) => {
+                            // Choosing is not allowed for reauth
+                            // TODO: Render template to continuepage
+                            WebError::InternalServerError("temp".to_string()).into_response()
+                        }
+                        AuthState::Denied(_) => {
+                            eprintln!("User somehow got into an invalid state");
+                            WebError::InternalServerError("denied".to_string()).into_response()
+                        }
+                        AuthState::Success(token, _) => {
+                            let token_str = token.to_string();
+                            let mut bearer_cookie =
+                                Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
+                            bearer_cookie.set_secure(state.secure_cookies);
+                            bearer_cookie.set_same_site(SameSite::Lax);
+                            bearer_cookie.set_http_only(true);
+                            // We set a domain here because it allows subdomains
+                            // of the idm to share the cookie. If domain was incorrect
+                            // then webauthn won't work anyway!
+                            bearer_cookie.set_domain(state.domain.clone());
+                            bearer_cookie.set_path("/");
+                            let jar = jar
+                                .add(bearer_cookie)
+                                .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+
+                            (jar, Redirect::to("/ui/uwu").into_response()).into_response()
+                        }
+                    }
+                }
+                Err(op_err) => {
+                    WebError::from(op_err).into_response()
+                }
+            }
+        }
+        Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
+            // cookie jar with remember me.
+            let username = jar
+                .get(COOKIE_USERNAME)
+                .map(|c| c.value().to_string())
+                .unwrap_or_default();
+
+            let remember_me = !username.is_empty();
+
+            HtmlTemplate(LoginView {
+                username,
+                remember_me,
+            })
+                .into_response()
+        }
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+            .into_response(),
+    });
 }
 
 pub async fn view_index_get(
