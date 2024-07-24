@@ -32,9 +32,6 @@ if [ "${PACKAGING}" -eq 1 ]; then
         fakeroot \
         dh-make \
         debmake
-fi
-
-if [ "${PACKAGING}" -eq 1 ]; then
     export INSTALL_RUST=1
 fi
 
@@ -46,6 +43,10 @@ if [ -z "$(which cargo)" ]; then
         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
         #shellcheck disable=SC1091
         source "$HOME/.cargo/env"
+    else
+        echo "#############################################################"
+        echo "Couldn't find rust and you didn't say to install it..."
+        echo "#############################################################"
     fi
 
 fi
