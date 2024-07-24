@@ -22,7 +22,8 @@ struct ProfileView {
 #[template(path = "profile_partial.html")]
 struct ProfilePartialView {
     can_rw: bool,
-    name: String,
+    account_name: String,
+    display_name: String,
     legal_name: String,
     email: Option<String>,
     posix_enabled: bool
@@ -44,7 +45,8 @@ pub(crate) async fn view_profile_get(
 
     let profile_partial_view = ProfilePartialView {
         can_rw,
-        name: uat.displayname.clone(),
+        account_name: uat.name().to_string(),
+        display_name: uat.displayname.clone(),
         legal_name: uat.name().to_string(),
         email: uat.mail_primary.clone(),
         posix_enabled: false,
