@@ -709,7 +709,7 @@ impl Resolver {
     }
 
     // Get ssh keys for an account id
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
         Ok(token
@@ -792,12 +792,12 @@ impl Resolver {
         }))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self)]
     pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Name(account_id.to_string())).await
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Gid(gid)).await
     }
@@ -842,17 +842,17 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, ()> {
         self.get_nssgroup(Id::Name(grp_id.to_string())).await
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, ()> {
         self.get_nssgroup(Id::Gid(gid)).await
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
@@ -881,7 +881,7 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self, shutdown_rx)]
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
@@ -1154,7 +1154,7 @@ impl Resolver {
     }
 
     // Can this be cfg debug/test?
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self, password))]
     pub async fn pam_account_authenticate(
         &self,
         account_id: &str,
@@ -1222,7 +1222,7 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_beginsession(
         &self,
         account_id: &str,
