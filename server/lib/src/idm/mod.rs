@@ -32,7 +32,7 @@ pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
     Denied(String),
-    Success(JwsCompact, AuthIssueSession),
+    Success(Box<JwsCompact>, AuthIssueSession),
 }
 
 impl fmt::Debug for AuthState {

@@ -110,7 +110,7 @@ impl<'a> GraphemeClusterIter<'a> {
             char_bounds
         };
 
-        let window_max = char_bounds.len().checked_sub(window).unwrap_or(0);
+        let window_max = char_bounds.len().saturating_sub(window);
         let range = 0..window_max;
 
         GraphemeClusterIter {
@@ -134,7 +134,7 @@ impl<'a> Iterator for GraphemeClusterIter<'a> {
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let clusters = self.char_bounds.len().checked_sub(1).unwrap_or(0);
+        let clusters = self.char_bounds.len().saturating_sub(1);
         (clusters, Some(clusters))
     }
 }

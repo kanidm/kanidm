@@ -148,7 +148,7 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
                 if authz_type == "basic" {
                     (Some(authz_data.to_string()), None)
                 } else if authz_type == "bearer" {
-                    if let Some(jwsc) = JwsCompact::from_str(authz_data).ok() {
+                    if let Ok(jwsc) = JwsCompact::from_str(authz_data) {
                         (None, Some(jwsc))
                     } else {
                         warn!("bearer jws invalid");

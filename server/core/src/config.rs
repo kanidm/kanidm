@@ -4,7 +4,7 @@
 //! These components should be "per server". Any "per domain" config should be in the system
 //! or domain entries that are able to be replicated.
 
-use std::fmt;
+use std::fmt::{self, Display};
 use std::fs::File;
 use std::io::Read;
 use std::path::{Path, PathBuf};
@@ -431,12 +431,12 @@ pub enum ServerRole {
     ReadOnlyReplica,
 }
 
-impl ToString for ServerRole {
-    fn to_string(&self) -> String {
+impl Display for ServerRole {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ServerRole::WriteReplica => "write replica".to_string(),
-            ServerRole::WriteReplicaNoUI => "write replica (no ui)".to_string(),
-            ServerRole::ReadOnlyReplica => "read only replica".to_string(),
+            ServerRole::WriteReplica => f.write_str("write replica"),
+            ServerRole::WriteReplicaNoUI => f.write_str("write replica (no ui)"),
+            ServerRole::ReadOnlyReplica => f.write_str("read only replica"),
         }
     }
 }
@@ -537,8 +537,8 @@ impl fmt::Display for Configuration {
             self.integration_test_config.is_some()
         )?;
         write!(f, "console output format: {:?} ", self.output_mode)?;
-        write!(f, "log_level: {}", self.log_level.clone().to_string())?;
-        write!(f, "role: {}, ", self.role.to_string())?;
+        write!(f, "log_level: {}", self.log_level.clone())?;
+        write!(f, "role: {}, ", self.role)?;
         match &self.repl_config {
             Some(repl) => {
                 write!(f, "replication: enabled")?;
@@ -662,7 +662,7 @@ impl Configuration {
     }
 
     pub fn update_db_fs_type(&mut self, p: &Option<FsType>) {
-        self.db_fs_type = p.to_owned();
+        p.clone_into(&mut self.db_fs_type);
     }
 
     pub fn update_bind(&mut self, b: &Option<String>) {
@@ -673,12 +673,12 @@ impl Configuration {
     }
 
     pub fn update_ldapbind(&mut self, l: &Option<String>) {
-        self.ldapaddress = l.clone();
+        self.ldapaddress.clone_from(l);
     }
 
     pub fn update_admin_bind_path(&mut self, p: &Option<String>) {
         if let Some(p) = p {
-            self.adminbindpath = p.clone();
+            self.adminbindpath.clone_from(p);
         }
     }
 

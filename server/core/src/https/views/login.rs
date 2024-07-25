@@ -335,7 +335,7 @@ pub async fn view_login_totp_post(
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
     // trim leading and trailing white space.
-    let Ok(totp) = u32::from_str(&login_totp_form.totp.trim()) else {
+    let Ok(totp) = u32::from_str(login_totp_form.totp.trim()) else {
         // If not an int, we need to re-render with an error
         return HtmlTemplate(LoginTotpView {
             totp: String::default(),
@@ -591,7 +591,8 @@ async fn view_login_step(
                                 HtmlTemplate(LoginBackupCodeView {}).into_response()
                             }
                             AuthAllowed::SecurityKey(chal) => {
-                                let chal_json = serde_json::to_string(&chal).unwrap();
+                                let chal_json = serde_json::to_string(&chal)
+                                    .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
                                     passkey: false,
                                     chal: chal_json,
@@ -599,7 +600,8 @@ async fn view_login_step(
                                 .into_response()
                             }
                             AuthAllowed::Passkey(chal) => {
-                                let chal_json = serde_json::to_string(&chal).unwrap();
+                                let chal_json = serde_json::to_string(&chal)
+                                    .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
                                     passkey: true,
                                     chal: chal_json,
