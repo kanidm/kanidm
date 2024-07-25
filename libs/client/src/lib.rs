@@ -22,6 +22,7 @@ use std::io::{ErrorKind, Read};
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::os::unix::fs::MetadataExt;
 use std::path::Path;
+use std::sync::Arc;
 use std::time::Duration;
 
 use compact_jwt::Jwk;
@@ -30,10 +31,11 @@ use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
     ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID,
-    KVERSION,
+    KSESSIONID, KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
+use reqwest::cookie::{CookieStore, Jar};
 use reqwest::Response;
 pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
@@ -192,10 +194,12 @@ fn test_kanidmclientbuilder_display() {
 #[derive(Debug)]
 pub struct KanidmClient {
     pub(crate) client: reqwest::Client,
+    client_cookies: Arc<Jar>,
     pub(crate) addr: String,
     pub(crate) origin: Url,
     pub(crate) builder: KanidmClientBuilder,
     pub(crate) bearer_token: RwLock<Option<String>>,
+    pub(crate) auth_session_id: RwLock<Option<String>>,
     pub(crate) check_version: Mutex<bool>,
     /// Where to store the tokens when you auth, only modify in testing.
     token_cache_path: String,
@@ -501,11 +505,14 @@ impl KanidmClientBuilder {
 
         self.display_warnings(&address);
 
+        let client_cookies = Arc::new(Jar::default());
+
         let client_builder = reqwest::Client::builder()
             .user_agent(KanidmClientBuilder::user_agent())
             // We don't directly use cookies, but it may be required for load balancers that
             // implement sticky sessions with cookies.
             .cookie_store(true)
+            .cookie_provider(client_cookies.clone())
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
@@ -546,9 +553,11 @@ impl KanidmClientBuilder {
 
         Ok(KanidmClient {
             client,
+            client_cookies,
             addr: address,
             builder: self,
             bearer_token: RwLock::new(None),
+            auth_session_id: RwLock::new(None),
             origin,
             check_version: Mutex::new(true),
             token_cache_path,
@@ -765,13 +774,26 @@ impl KanidmClient {
     ) -> Result<T, ClientError> {
         trace!("perform_auth_post_request connecting to {}", dest);
 
-        let response = self.client.post(self.make_url(dest)).json(&request);
+        let auth_url = self.make_url(dest);
+
+        let response = self.client.post(auth_url.clone()).json(&request);
 
         // If we have a bearer token, set it now.
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {
                 response.bearer_auth(token)
+            } else {
+                response
+            }
+        };
+
+        // If we have a session header, set it now. This is only used when connecting
+        // to an older server.
+        let response = {
+            let sguard = self.auth_session_id.read().await;
+            if let Some(sessionid) = &(*sguard) {
+                response.header(KSESSIONID, sessionid)
             } else {
                 response
             }
@@ -795,6 +817,42 @@ impl KanidmClient {
                     response.json().await.ok(),
                     opid,
                 ))
+            }
+        }
+
+        // Do we have a cookie? Our job here isn't to parse and validate the cookies, but just to
+        // know if the session id was set *in* our cookie store at all.
+        let cookie_present = self
+            .client_cookies
+            .cookies(&auth_url)
+            .map(|cookie_header| {
+                cookie_header
+                    .to_str()
+                    .ok()
+                    .map(|cookie_str| {
+                        cookie_str
+                            .split(';')
+                            .filter_map(|c| c.split_once('='))
+                            .any(|(name, _)| name == COOKIE_AUTH_SESSION_ID)
+                    })
+                    .unwrap_or_default()
+            })
+            .unwrap_or_default();
+
+        {
+            let headers = response.headers();
+
+            let mut sguard = self.auth_session_id.write().await;
+            trace!(?cookie_present);
+            if cookie_present {
+                // Clear and auth session id if present, we have the cookie instead.
+                *sguard = None;
+            } else {
+                // This situation occurs when a newer client connects to an older server
+                debug!("Auth SessionID cookie not present, falling back to header.");
+                *sguard = headers
+                    .get(KSESSIONID)
+                    .and_then(|hv| hv.to_str().ok().map(str::to_string));
             }
         }
 
