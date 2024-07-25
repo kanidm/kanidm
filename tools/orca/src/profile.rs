@@ -1,6 +1,7 @@
 use crate::error::Error;
-use crate::state::Model;
+use crate::state::{GroupName, Model};
 use rand::{thread_rng, Rng};
+use serde::de::{value, IntoDeserializer};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::Path;
@@ -239,6 +240,24 @@ impl Profile {
             Error::Io
         })
     }
+
+    fn validate_group_names_and_member_count(&self) -> Result<(), Error> {
+        for (group_name, group_properties) in self.group.iter() {
+            let _ = GroupName::deserialize(group_name.as_str().into_deserializer()).map_err(
+                |_: value::Error| {
+                    error!("Invalid group name provided: {group_name}");
+                    Error::InvalidState
+                },
+            )?;
+            let provided_member_count = group_properties.member_count.unwrap_or_default();
+            let max_member_count = self.person_count();
+            if provided_member_count > max_member_count {
+                error!("Member count of {group_name} is out of bound: max value is {max_member_count}, but {provided_member_count} was provided");
+                return Err(Error::InvalidState);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl TryFrom<&Path> for Profile {
@@ -250,9 +269,12 @@ impl TryFrom<&Path> for Profile {
             Error::Io
         })?;
 
-        toml::from_str(&file_contents).map_err(|toml_err| {
+        let profile: Profile = toml::from_str(&file_contents).map_err(|toml_err| {
             error!(?toml_err);
             Error::SerdeToml
-        })
+        })?;
+        profile.validate_group_names_and_member_count()?;
+
+        Ok(profile)
     }
 }

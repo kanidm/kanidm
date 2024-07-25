@@ -1,8 +1,8 @@
-admin_password = "tjj5FfwpgUUBdpERraXvxJsHqbft7s4pKVg1gNTYNE9aNLM3"
-control_uri = "https://localhost:8440"
+admin_password = ""
+control_uri = "https://localhost:8443"
 extra_uris = []
 group_count = 5
-idm_admin_password = "pzfQudetejqBfWQeVuHzqJBgMP3NZEe7rc5dAAgVHBMEgdz3"
+idm_admin_password = ""
 model = "writer"
 person_count = 500
 seed = -1236045086759770365
@@ -10,15 +10,15 @@ test_time = 60
 thread_count = 20
 warmup_time = 10
 
-[group."role_people_self_write_mail"]
+[group.role_people_self_mail_write]
 member_count = 500
-[group."role_people_self_set_password"]
+[group.role_people_self_set_password]
 member_count = 0
-[group."role_people_pii_reader"]
+[group.role_people_pii_reader]
 member_count = 0
-[group."role_people_self_read_account"]
+[group.role_people_self_read_profile]
 member_count = 0
-[group."role_people_self_read_memberof"]
+[group.role_people_self_read_member_of]
 member_count = 0
-[group."role_people_group_admin"]
+[group.role_people_group_admin]
 member_count = 0

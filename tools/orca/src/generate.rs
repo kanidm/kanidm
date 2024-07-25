@@ -2,7 +2,7 @@ use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
 use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Group, Person, PreflightState, State};
+use crate::state::{Credential, Flag, Group, GroupName, Person, PreflightState, State};
 use hashbrown::HashMap;
 use rand::distributions::{Alphanumeric, DistString, Uniform};
 use rand::seq::{index, SliceRandom};
@@ -62,27 +62,27 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // These decide what each person is supposed to do with their life.
     let mut groups = vec![
         Group {
-            name: "role_people_self_set_password".to_string(),
+            name: GroupName::RolePeopleSelfSetPassword,
             role: ActorRole::PeopleSelfSetPassword,
             ..Default::default()
         },
         Group {
-            name: "role_people_pii_reader".to_string(),
+            name: GroupName::RolePeoplePiiReader,
             role: ActorRole::PeoplePiiReader,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_write_mail".to_string(),
+            name: GroupName::RolePeopleSelfMailWrite,
             role: ActorRole::PeopleSelfMailWrite,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_read_account".to_string(),
+            name: GroupName::RolePeopleSelfReadProfile,
             role: ActorRole::PeopleSelfReadProfile,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_read_memberof".to_string(),
+            name: GroupName::RolePeopleSelfReadMemberOf,
             role: ActorRole::PeopleSelfReadMemberOf,
             ..Default::default()
         },
@@ -147,10 +147,13 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // them a baseline of required accounts with some variation. This
     // way in each test it's guaranteed that *at least* one person
     // to each role always will exist and be operational.
-    let member_count_by_group: HashMap<&String, u64> = profile
+    let member_count_by_group: HashMap<GroupName, u64> = profile
         .get_properties_by_group()
-        .iter()
-        .filter_map(|(name, properties)| properties.member_count.map(|count| (name, count)))
+        .into_iter()
+        .filter_map(|(&ref name, properties)| {
+            let group_name = GroupName::try_from(name).ok()?;
+            properties.member_count.map(|count| (group_name, count))
+        })
         .collect();
 
     for group in groups.iter_mut() {

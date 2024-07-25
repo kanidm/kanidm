@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::model::{ActorModel, ActorRole};
 use crate::models;
 use crate::profile::Profile;
+use core::fmt::Display;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -113,8 +114,71 @@ pub struct Person {
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Group {
-    pub name: String,
+    pub name: GroupName,
     pub preflight_state: PreflightState,
     pub role: ActorRole,
     pub members: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Default, Ord, Eq, PartialEq, PartialOrd)]
+#[serde(rename_all = "snake_case")]
+pub enum GroupName {
+    RolePeopleSelfSetPassword,
+    #[default]
+    RolePeoplePiiReader,
+    RolePeopleSelfMailWrite,
+    RolePeopleSelfReadProfile,
+    RolePeopleSelfReadMemberOf,
+    RolePeopleGroupAdmin,
+}
+
+impl Display for GroupName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            toml::to_string(self)
+                .expect("Failed to parse group name as string")
+                .trim_matches('"')
+        )
+    }
+}
+
+impl TryFrom<&String> for GroupName {
+    type Error = toml::de::Error;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        toml::from_str(&format!("\"{value}\""))
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::GroupName;
+
+    #[test]
+    fn test_group_names_parsing() {
+        let group_names = vec![
+            GroupName::RolePeopleGroupAdmin,
+            GroupName::RolePeoplePiiReader,
+            GroupName::RolePeopleSelfReadMemberOf,
+        ];
+        for name in group_names {
+            let str = name.to_string();
+            let parsed_group_name = GroupName::try_from(&str).expect("Failed to parse group name");
+
+            assert_eq!(parsed_group_name, name);
+            dbg!(str);
+        }
+    }
+
+    #[test]
+    fn test_group_name_from_str() {
+        let group_admin = "role_people_group_admin";
+        assert_eq!(
+            GroupName::RolePeopleGroupAdmin,
+            GroupName::try_from(&group_admin.to_string()).unwrap()
+        )
+    }
 }
