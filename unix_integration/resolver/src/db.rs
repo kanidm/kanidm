@@ -310,7 +310,7 @@ impl<'a> DbTxn<'a> {
         key: &K,
     ) -> Result<(), CacheError> {
         let data = serde_json::to_vec(key).map_err(|e| {
-            error!("insert_hsm_machine_key json error -> {:?}", e);
+            error!("json error -> {:?}", e);
             CacheError::SerdeJson
         })?;
 
@@ -451,7 +451,6 @@ impl<'a> DbTxn<'a> {
     }
 
     pub fn commit(mut self) -> Result<(), CacheError> {
-        // debug!("Committing BE txn");
         if self.committed {
             error!("Invalid state, SQL transaction was already committed!");
             return Err(CacheError::TransactionInvalidState);
@@ -1016,7 +1015,7 @@ impl<'a> Drop for DbTxn<'a> {
 mod tests {
 
     use super::{Cache, Db};
-    use crate::idprovider::interface::{GroupToken, Id, UserToken};
+    use crate::idprovider::interface::{GroupToken, Id, ProviderOrigin, UserToken};
     use kanidm_hsm_crypto::{AuthValue, Tpm};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -1042,6 +1041,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UserToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1126,6 +1126,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = GroupToken {
+            provider: ProviderOrigin::Files,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
@@ -1201,6 +1202,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let gt1 = GroupToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             gidnumber: 2000,
@@ -1208,6 +1210,7 @@ mod tests {
         };
 
         let gt2 = GroupToken {
+            provider: ProviderOrigin::Files,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
@@ -1215,6 +1218,7 @@ mod tests {
         };
 
         let mut ut1 = UserToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1284,6 +1288,7 @@ mod tests {
 
         let uuid1 = uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16");
         let mut ut1 = UserToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1353,6 +1358,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = GroupToken {
+            provider: ProviderOrigin::Files,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
@@ -1360,6 +1366,7 @@ mod tests {
         };
 
         let gt2 = GroupToken {
+            provider: ProviderOrigin::Files,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
@@ -1408,6 +1415,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UserToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1420,6 +1428,7 @@ mod tests {
         };
 
         let ut2 = UserToken {
+            provider: ProviderOrigin::Files,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),

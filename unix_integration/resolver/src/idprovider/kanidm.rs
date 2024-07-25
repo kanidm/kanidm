@@ -17,6 +17,7 @@ use super::interface::{
     Id,
     IdProvider,
     IdpError,
+    ProviderOrigin,
     UserToken,
 };
 use kanidm_unix_common::unix_proto::PamAuthRequest;
@@ -52,6 +53,7 @@ impl From<UnixUserToken> for UserToken {
         let groups = groups.into_iter().map(GroupToken::from).collect();
 
         UserToken {
+            provider: ProviderOrigin::Kanidm,
             name,
             spn,
             uuid,
@@ -75,6 +77,7 @@ impl From<UnixGroupToken> for GroupToken {
         } = value;
 
         GroupToken {
+            provider: ProviderOrigin::Kanidm,
             name,
             spn,
             uuid,

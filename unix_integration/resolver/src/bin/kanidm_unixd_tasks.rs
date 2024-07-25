@@ -150,7 +150,7 @@ fn create_home_directory(
     debug!(?use_selinux, "selinux for home dir labeling");
     #[cfg(all(target_family = "unix", feature = "selinux"))]
     let labeler = if use_selinux {
-        selinux_util::SelinuxLabeler::new(info.gid, home_prefix)?
+        selinux_util::SelinuxLabeler::new(info.gid, &home_mount_prefix_path)?
     } else {
         selinux_util::SelinuxLabeler::new_noop()
     };

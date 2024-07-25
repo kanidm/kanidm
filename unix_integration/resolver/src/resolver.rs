@@ -68,6 +68,7 @@ pub struct Resolver {
     hmac_key: HmacKey,
 
     // A local passwd/shadow resolver.
+    nxset: Mutex<HashSet<Id>>,
 
     // A set of remote resolvers
     client: Box<dyn IdProvider + Sync + Send>,
@@ -83,7 +84,6 @@ pub struct Resolver {
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
     allow_id_overrides: HashSet<Id>,
-    nxset: Mutex<HashSet<Id>>,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
 
@@ -209,6 +209,7 @@ impl Resolver {
         self.set_cachestate(CacheState::Offline).await;
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn clear_cache(&self) -> Result<(), ()> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
@@ -216,6 +217,7 @@ impl Resolver {
         dbtxn.clear().and_then(|_| dbtxn.commit()).map_err(|_| ())
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn invalidate(&self) -> Result<(), ()> {
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
@@ -596,8 +598,8 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip(self))]
     async fn get_usertoken(&self, account_id: Id) -> Result<Option<UserToken>, ()> {
-        debug!("get_usertoken");
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
@@ -648,8 +650,8 @@ impl Resolver {
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     async fn get_grouptoken(&self, grp_id: Id) -> Result<Option<GroupToken>, ()> {
-        debug!("get_grouptoken");
         let (expired, item) = self.get_cached_grouptoken(&grp_id).await.map_err(|e| {
             debug!("get_grouptoken error -> {:?}", e);
         })?;
@@ -707,6 +709,7 @@ impl Resolver {
     }
 
     // Get ssh keys for an account id
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
         Ok(token
@@ -763,6 +766,7 @@ impl Resolver {
         .to_string()
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
         self.get_cached_usertokens().await.map(|l| {
             l.into_iter()
@@ -788,10 +792,12 @@ impl Resolver {
         }))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Name(account_id.to_string())).await
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssaccount_gid(&self, gid: u32) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Gid(gid)).await
     }
@@ -805,6 +811,7 @@ impl Resolver {
         .to_string()
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
         let l = self.get_cached_grouptokens().await?;
         let mut r: Vec<_> = Vec::with_capacity(l.len());
@@ -835,14 +842,17 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroup_name(&self, grp_id: &str) -> Result<Option<NssGroup>, ()> {
         self.get_nssgroup(Id::Name(grp_id.to_string())).await
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroup_gid(&self, gid: u32) -> Result<Option<NssGroup>, ()> {
         self.get_nssgroup(Id::Gid(gid)).await
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
@@ -871,6 +881,7 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
@@ -945,6 +956,7 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn pam_account_authenticate_step(
         &self,
         auth_session: &mut AuthSession,
@@ -1142,6 +1154,7 @@ impl Resolver {
     }
 
     // Can this be cfg debug/test?
+    #[instrument(level = "debug", skip_all)]
     pub async fn pam_account_authenticate(
         &self,
         account_id: &str,
@@ -1209,6 +1222,7 @@ impl Resolver {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn pam_account_beginsession(
         &self,
         account_id: &str,
@@ -1224,6 +1238,7 @@ impl Resolver {
         }))
     }
 
+    #[instrument(level = "debug", skip_all)]
     pub async fn test_connection(&self) -> bool {
         let state = self.get_cachestate().await;
         match state {
