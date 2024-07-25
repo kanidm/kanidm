@@ -87,6 +87,7 @@
   - [Replication Coordinator](developers/designs/replication_coordinator.md)
   - [Replication Design and Notes](developers/designs/replication_design_and_notes.md)
   - [REST Interface](developers/designs/rest_interface.md)
+  - [Unixd Multi Resolver 2024](developers/designs/unixd_multi_resolver_2024.md)
 - [Python Module](developers/python_module.md)
 - [RADIUS Module Development](developers/radius.md)
 - [Release Checklist](developers/release_checklist.md)

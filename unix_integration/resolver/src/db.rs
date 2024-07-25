@@ -1,12 +1,8 @@
 use std::convert::TryFrom;
 use std::fmt;
-use std::time::Duration;
 
 use crate::idprovider::interface::{GroupToken, Id, UserToken};
 use async_trait::async_trait;
-use kanidm_lib_crypto::CryptoPolicy;
-use kanidm_lib_crypto::DbPasswordV1;
-use kanidm_lib_crypto::Password;
 use libc::umask;
 use rusqlite::{Connection, OptionalExtension};
 use tokio::sync::{Mutex, MutexGuard};
@@ -14,7 +10,7 @@ use uuid::Uuid;
 
 use serde::{de::DeserializeOwned, Serialize};
 
-use kanidm_hsm_crypto::{HmacKey, LoadableHmacKey, LoadableMachineKey, Tpm};
+use kanidm_hsm_crypto::{LoadableHmacKey, LoadableMachineKey};
 
 const DBV_MAIN: &str = "main";
 
@@ -49,13 +45,11 @@ pub enum CacheError {
 
 pub struct Db {
     conn: Mutex<Connection>,
-    crypto_policy: CryptoPolicy,
 }
 
 pub struct DbTxn<'a> {
     conn: MutexGuard<'a, Connection>,
     committed: bool,
-    crypto_policy: &'a CryptoPolicy,
 }
 
 pub struct KeyStoreTxn<'a, 'b> {
@@ -83,15 +77,9 @@ impl Db {
             DbError::Sqlite
         })?;
         let _ = unsafe { umask(before) };
-        // We only build a single thread. If we need more than one, we'll
-        // need to re-do this to account for path = "" for debug.
-        let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
-
-        debug!("Configured {:?}", crypto_policy);
 
         Ok(Db {
             conn: Mutex::new(conn),
-            crypto_policy,
         })
     }
 }
@@ -103,7 +91,7 @@ impl Cache for Db {
     #[allow(clippy::expect_used)]
     async fn write<'db>(&'db self) -> Self::Txn<'db> {
         let conn = self.conn.lock().await;
-        DbTxn::new(conn, &self.crypto_policy)
+        DbTxn::new(conn)
     }
 }
 
@@ -114,16 +102,15 @@ impl fmt::Debug for Db {
 }
 
 impl<'a> DbTxn<'a> {
-    fn new(conn: MutexGuard<'a, Connection>, crypto_policy: &'a CryptoPolicy) -> Self {
+    fn new(conn: MutexGuard<'a, Connection>) -> Self {
         // Start the transaction
-        // debug!("Starting db WR txn ...");
+        // trace!("Starting db WR txn ...");
         #[allow(clippy::expect_used)]
         conn.execute("BEGIN TRANSACTION", [])
             .expect("Unable to begin transaction!");
         DbTxn {
             committed: false,
             conn,
-            crypto_policy,
         }
     }
 
@@ -324,7 +311,7 @@ impl<'a> DbTxn<'a> {
             ":value": &data,
         })
         .map(|r| {
-            debug!("insert -> {:?}", r);
+            trace!("insert -> {:?}", r);
         })
         .map_err(|e| self.sqlite_error("execute", &e))
     }
@@ -545,7 +532,7 @@ impl<'a> DbTxn<'a> {
             ":value": &data,
         })
         .map(|r| {
-            debug!("insert -> {:?}", r);
+            trace!("insert -> {:?}", r);
         })
         .map_err(|e| self.sqlite_error("execute", &e))
     }
@@ -587,7 +574,7 @@ impl<'a> DbTxn<'a> {
             ":value": &data,
         })
         .map(|r| {
-            debug!("insert -> {:?}", r);
+            trace!("insert -> {:?}", r);
         })
         .map_err(|e| self.sqlite_error("execute", &e))
     }
@@ -715,7 +702,7 @@ impl<'a> DbTxn<'a> {
                 ":expiry": &expire,
             })
             .map(|r| {
-                debug!("insert -> {:?}", r);
+                trace!("insert -> {:?}", r);
             })
             .map_err(|error| self.sqlite_transaction_error(&error, &stmt))?;
         }
@@ -730,7 +717,7 @@ impl<'a> DbTxn<'a> {
 
         stmt.execute([&account_uuid])
             .map(|r| {
-                debug!("delete memberships -> {:?}", r);
+                trace!("delete memberships -> {:?}", r);
             })
             .map_err(|error| self.sqlite_transaction_error(&error, &stmt))?;
 
@@ -745,7 +732,7 @@ impl<'a> DbTxn<'a> {
                 ":g_uuid": &g.uuid.as_hyphenated().to_string(),
             })
             .map(|r| {
-                debug!("insert membership -> {:?}", r);
+                trace!("insert membership -> {:?}", r);
             })
             .map_err(|error| self.sqlite_transaction_error(&error, &stmt))
         })
@@ -769,88 +756,6 @@ impl<'a> DbTxn<'a> {
             )
             .map(|_| ())
             .map_err(|e| self.sqlite_error("account_t delete", &e))
-    }
-
-    pub fn update_account_password(
-        &mut self,
-        a_uuid: Uuid,
-        cred: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
-    ) -> Result<(), CacheError> {
-        let pw =
-            Password::new_argon2id_hsm(self.crypto_policy, cred, hsm, hmac_key).map_err(|e| {
-                error!("password error -> {:?}", e);
-                CacheError::Cryptography
-            })?;
-
-        let dbpw = pw.to_dbpasswordv1();
-        let data = serde_json::to_vec(&dbpw).map_err(|e| {
-            error!("json error -> {:?}", e);
-            CacheError::SerdeJson
-        })?;
-
-        self.conn
-            .execute(
-                "UPDATE account_t SET password = :data WHERE uuid = :a_uuid",
-                named_params! {
-                    ":a_uuid": &a_uuid.as_hyphenated().to_string(),
-                    ":data": &data,
-                },
-            )
-            .map_err(|e| self.sqlite_error("update account_t password", &e))
-            .map(|_| ())
-    }
-
-    pub fn check_account_password(
-        &mut self,
-        a_uuid: Uuid,
-        cred: &str,
-        hsm: &mut dyn Tpm,
-        hmac_key: &HmacKey,
-    ) -> Result<bool, CacheError> {
-        let mut stmt = self
-            .conn
-            .prepare("SELECT password FROM account_t WHERE uuid = :a_uuid AND password IS NOT NULL")
-            .map_err(|e| self.sqlite_error("select prepare", &e))?;
-
-        // Makes tuple (token, expiry)
-        let data_iter = stmt
-            .query_map([a_uuid.as_hyphenated().to_string()], |row| row.get(0))
-            .map_err(|e| self.sqlite_error("query_map", &e))?;
-        let data: Result<Vec<Vec<u8>>, _> = data_iter
-            .map(|v| v.map_err(|e| self.sqlite_error("map", &e)))
-            .collect();
-
-        let data = data?;
-
-        if data.is_empty() {
-            info!("No cached password, failing authentication");
-            return Ok(false);
-        }
-
-        if data.len() >= 2 {
-            error!("invalid db state, multiple entries matched query?");
-            return Err(CacheError::TooManyResults);
-        }
-
-        let pw = data.first().map(|raw| {
-            // Map the option from data.first.
-            let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
-                error!("json error -> {:?}", e);
-            })?;
-            Password::try_from(dbpw)
-        });
-
-        let pw = match pw {
-            Some(Ok(p)) => p,
-            _ => return Ok(false),
-        };
-
-        pw.verify_ctx(cred, Some((hsm, hmac_key))).map_err(|e| {
-            error!("password error -> {:?}", e);
-            CacheError::Cryptography
-        })
     }
 
     pub fn get_group(&mut self, grp_id: &Id) -> Result<Option<(GroupToken, u64)>, CacheError> {
@@ -907,7 +812,7 @@ impl<'a> DbTxn<'a> {
         data.iter()
             .map(|token| {
                 // token convert with json.
-                // debug!("{:?}", token);
+                // trace!("{:?}", token);
                 serde_json::from_slice(token.as_slice()).map_err(|e| {
                     error!("json error -> {:?}", e);
                     CacheError::SerdeJson
@@ -935,7 +840,7 @@ impl<'a> DbTxn<'a> {
             .iter()
             .filter_map(|token| {
                 // token convert with json.
-                // debug!("{:?}", token);
+                // trace!("{:?}", token);
                 serde_json::from_slice(token.as_slice())
                     .map_err(|e| {
                         error!("json error -> {:?}", e);
@@ -971,7 +876,7 @@ impl<'a> DbTxn<'a> {
             ":expiry": &expire,
         })
         .map(|r| {
-            debug!("insert -> {:?}", r);
+            trace!("insert -> {:?}", r);
         })
         .map_err(|e| self.sqlite_error("execute", &e))
     }
@@ -1002,7 +907,7 @@ impl<'a> Drop for DbTxn<'a> {
     // Abort
     fn drop(&mut self) {
         if !self.committed {
-            // debug!("Aborting BE WR txn");
+            // trace!("Aborting BE WR txn");
             #[allow(clippy::expect_used)]
             self.conn
                 .execute("ROLLBACK TRANSACTION", [])
@@ -1013,25 +918,8 @@ impl<'a> Drop for DbTxn<'a> {
 
 #[cfg(test)]
 mod tests {
-
     use super::{Cache, Db};
     use crate::idprovider::interface::{GroupToken, Id, ProviderOrigin, UserToken};
-    use kanidm_hsm_crypto::{AuthValue, Tpm};
-
-    const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
-    const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
-
-    #[cfg(feature = "tpm")]
-    fn setup_tpm() -> Box<dyn Tpm> {
-        use kanidm_hsm_crypto::tpm::TpmTss;
-        Box::new(TpmTss::new("device:/dev/tpmrm0").expect("Unable to build Tpm Context"))
-    }
-
-    #[cfg(not(feature = "tpm"))]
-    fn setup_tpm() -> Box<dyn Tpm> {
-        use kanidm_hsm_crypto::soft::SoftTpm;
-        Box::new(SoftTpm::new())
-    }
 
     #[tokio::test]
     async fn test_cache_db_account_basic() {
@@ -1041,7 +929,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UserToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1051,6 +939,7 @@ mod tests {
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
             valid: true,
+            extra_keys: Default::default(),
         };
 
         let id_name = Id::Name("testuser".to_string());
@@ -1126,11 +1015,12 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = GroupToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
             uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
+            extra_keys: Default::default(),
         };
 
         let id_name = Id::Name("testgroup".to_string());
@@ -1202,23 +1092,25 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let gt1 = GroupToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             gidnumber: 2000,
             uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
+            extra_keys: Default::default(),
         };
 
         let gt2 = GroupToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
             uuid: uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"),
+            extra_keys: Default::default(),
         };
 
         let mut ut1 = UserToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1228,6 +1120,7 @@ mod tests {
             groups: vec![gt1.clone(), gt2],
             sshkeys: vec!["key-a".to_string()],
             valid: true,
+            extra_keys: Default::default(),
         };
 
         // First, add the groups.
@@ -1266,91 +1159,6 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_cache_db_account_password() {
-        sketching::test_init();
-
-        let db = Db::new("").expect("failed to create.");
-
-        let mut dbtxn = db.write().await;
-        assert!(dbtxn.migrate().is_ok());
-
-        let mut hsm = setup_tpm();
-
-        let auth_value = AuthValue::ephemeral().unwrap();
-
-        let loadable_machine_key = hsm.machine_key_create(&auth_value).unwrap();
-        let machine_key = hsm
-            .machine_key_load(&auth_value, &loadable_machine_key)
-            .unwrap();
-
-        let loadable_hmac_key = hsm.hmac_key_create(&machine_key).unwrap();
-        let hmac_key = hsm.hmac_key_load(&machine_key, &loadable_hmac_key).unwrap();
-
-        let uuid1 = uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16");
-        let mut ut1 = UserToken {
-            provider: ProviderOrigin::Files,
-            name: "testuser".to_string(),
-            spn: "testuser@example.com".to_string(),
-            displayname: "Test User".to_string(),
-            gidnumber: 2000,
-            uuid: uuid1,
-            shell: None,
-            groups: Vec::new(),
-            sshkeys: vec!["key-a".to_string()],
-            valid: true,
-        };
-
-        // Test that with no account, is false
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
-            Ok(false)
-        ));
-        // test adding an account
-        dbtxn.update_account(&ut1, 0).unwrap();
-        // check with no password is false.
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
-            Ok(false)
-        ));
-        // update the pw
-        assert!(dbtxn
-            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key)
-            .is_ok());
-        // Check it now works.
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
-            Ok(true)
-        ));
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
-            Ok(false)
-        ));
-        // Update the pw
-        assert!(dbtxn
-            .update_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key)
-            .is_ok());
-        // Check it matches.
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_A, &mut *hsm, &hmac_key),
-            Ok(false)
-        ));
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
-            Ok(true)
-        ));
-
-        // Check that updating the account does not break the password.
-        ut1.displayname = "Test User Update".to_string();
-        dbtxn.update_account(&ut1, 0).unwrap();
-        assert!(matches!(
-            dbtxn.check_account_password(uuid1, TESTACCOUNT1_PASSWORD_B, &mut *hsm, &hmac_key),
-            Ok(true)
-        ));
-
-        assert!(dbtxn.commit().is_ok());
-    }
-
-    #[tokio::test]
     async fn test_cache_db_group_rename_duplicate() {
         sketching::test_init();
         let db = Db::new("").expect("failed to create.");
@@ -1358,19 +1166,21 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = GroupToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2000,
             uuid: uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"),
+            extra_keys: Default::default(),
         };
 
         let gt2 = GroupToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testgroup".to_string(),
             spn: "testgroup@example.com".to_string(),
             gidnumber: 2001,
             uuid: uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"),
+            extra_keys: Default::default(),
         };
 
         let id_name = Id::Name("testgroup".to_string());
@@ -1415,7 +1225,7 @@ mod tests {
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UserToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1425,10 +1235,11 @@ mod tests {
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
             valid: true,
+            extra_keys: Default::default(),
         };
 
         let ut2 = UserToken {
-            provider: ProviderOrigin::Files,
+            provider: ProviderOrigin::System,
             name: "testuser".to_string(),
             spn: "testuser@example.com".to_string(),
             displayname: "Test User".to_string(),
@@ -1438,6 +1249,7 @@ mod tests {
             groups: Vec::new(),
             sshkeys: vec!["key-a".to_string()],
             valid: true,
+            extra_keys: Default::default(),
         };
 
         let id_name = Id::Name("testuser".to_string());
