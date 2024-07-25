@@ -537,7 +537,7 @@ impl fmt::Display for Configuration {
             self.integration_test_config.is_some()
         )?;
         write!(f, "console output format: {:?} ", self.output_mode)?;
-        write!(f, "log_level: {}", self.log_level.clone())?;
+        write!(f, "log_level: {}", self.log_level)?;
         write!(f, "role: {}, ", self.role)?;
         match &self.repl_config {
             Some(repl) => {
