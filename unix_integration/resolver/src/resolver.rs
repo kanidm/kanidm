@@ -792,7 +792,7 @@ impl Resolver {
         }))
     }
 
-    #[instrument(level = "debug", skip(self)]
+    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssaccount_name(&self, account_id: &str) -> Result<Option<NssUser>, ()> {
         self.get_nssaccount(Id::Name(account_id.to_string())).await
     }
@@ -881,7 +881,7 @@ impl Resolver {
         }
     }
 
-    #[instrument(level = "debug", skip(self, shutdown_rx)]
+    #[instrument(level = "debug", skip(self, shutdown_rx))]
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
