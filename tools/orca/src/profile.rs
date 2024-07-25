@@ -2,6 +2,7 @@ use crate::error::Error;
 use crate::state::Model;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -13,6 +14,11 @@ const DEFAULT_PERSON_COUNT: u64 = 10;
 
 const DEFAULT_WARMUP_TIME: u64 = 10;
 const DEFAULT_TEST_TIME: Option<u64> = Some(180);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GroupProperties {
+    pub member_count: Option<u64>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Profile {
@@ -28,7 +34,7 @@ pub struct Profile {
     person_count: u64,
     thread_count: Option<usize>,
     model: Model,
-    person_count_by_group: Vec<(String, u64)>,
+    group: BTreeMap<String, GroupProperties>,
 }
 
 impl Profile {
@@ -61,8 +67,8 @@ impl Profile {
         self.thread_count
     }
 
-    pub fn person_count_by_group(&self) -> &Vec<(String, u64)> {
-        &self.person_count_by_group
+    pub fn get_properties_by_group(&self) -> &BTreeMap<String, GroupProperties> {
+        &self.group
     }
 
     pub fn seed(&self) -> u64 {
@@ -98,7 +104,6 @@ pub struct ProfileBuilder {
     pub group_count: Option<u64>,
     pub person_count: Option<u64>,
     pub thread_count: Option<usize>,
-    pub person_count_by_group: Vec<(String, u64)>,
     pub model: Model,
 }
 
@@ -123,7 +128,6 @@ impl ProfileBuilder {
         idm_admin_password: String,
         model: Model,
         thread_count: Option<usize>,
-        person_count_by_group: Vec<(String, u64)>,
     ) -> Self {
         ProfileBuilder {
             control_uri,
@@ -136,7 +140,6 @@ impl ProfileBuilder {
             group_count: None,
             person_count: None,
             thread_count,
-            person_count_by_group,
             model,
         }
     }
@@ -182,7 +185,6 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
-            person_count_by_group,
             model,
         } = self;
 
@@ -191,11 +193,8 @@ impl ProfileBuilder {
             rng.gen()
         });
 
-        for (_, size) in person_count_by_group.iter() {
-            if size > &person_count.unwrap_or_default() {
-                return Err(Error::ProfileBuilder);
-            }
-        }
+        //TODO: Allow to specify group properties from the CLI
+        let group = BTreeMap::new();
 
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
@@ -222,7 +221,7 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
-            person_count_by_group,
+            group,
             model,
         })
     }

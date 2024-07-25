@@ -98,7 +98,6 @@ fn main() -> ExitCode {
                 idm_admin_password,
                 model,
                 threads,
-                Vec::new(), // for now we don't support specifying person_count_by_group from the wizard
             )
             .seed(seed);
 
