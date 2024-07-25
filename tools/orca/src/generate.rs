@@ -86,6 +86,11 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
             role: ActorRole::PeopleSelfReadMemberOf,
             ..Default::default()
         },
+        Group {
+            name: GroupName::RolePeopleGroupAdmin,
+            role: ActorRole::PeopleGroupAdmin,
+            ..Default::default()
+        },
     ];
 
     // PHASE 3 - generate persons

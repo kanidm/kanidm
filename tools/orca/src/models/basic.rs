@@ -34,7 +34,7 @@ impl ActorModel for ActorBasic {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<Vec<EventRecord>, Error> {
         let transition = self.next_transition(&person.roles);
 
         if let Some(delay) = transition.delay {
@@ -106,7 +106,9 @@ impl ActorBasic {
                         delay: Some(Duration::from_secs(3)),
                         action: TransitionAction::WriteSelfPassword,
                     },
-                    ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
+                    ActorRole::PeoplePiiReader | ActorRole::PeopleGroupAdmin | ActorRole::None => {
+                        logout_transition
+                    }
                 },
                 None => logout_transition,
             },

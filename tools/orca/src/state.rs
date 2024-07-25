@@ -3,6 +3,7 @@ use crate::model::{ActorModel, ActorRole};
 use crate::models;
 use crate::profile::Profile;
 use core::fmt::Display;
+use kanidm_client::KanidmClient;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
@@ -84,15 +85,29 @@ pub enum Model {
     Reader,
     /// This model only performs write requests in a loop
     Writer,
+    /// This model adds empty group to a sever and measures how long it takes before they are replicated to the other servers
+    LatencyMeasurer,
 }
 
 impl Model {
-    pub fn as_dyn_object(self, rng_seed: u64) -> Result<Box<dyn ActorModel + Send>, Error> {
+    pub fn as_dyn_object(
+        self,
+        rng_seed: u64,
+        additional_uris: Vec<KanidmClient>,
+        person_name: &str,
+    ) -> Result<Box<dyn ActorModel + Send + '_>, Error> {
         Ok(match self {
             Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
             Model::Basic => Box::new(models::basic::ActorBasic::new()),
             Model::Reader => Box::new(models::read::ActorReader::new(rng_seed)),
             Model::Writer => Box::new(models::write::ActorWriter::new(rng_seed)),
+            Model::LatencyMeasurer => {
+                Box::new(models::latency_measurer::ActorLatencyMeasurer::new(
+                    rng_seed,
+                    additional_uris,
+                    person_name,
+                )?)
+            }
         })
     }
 }

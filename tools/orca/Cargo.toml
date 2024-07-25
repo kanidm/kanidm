@@ -1,46 +1,46 @@
 [package]
-name = "orca"
 description = "Orca - load testing for LDAP and Kanidm"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
+name = "orca"
 
-version = { workspace = true }
-authors = { workspace = true }
-rust-version = { workspace = true }
-edition = { workspace = true }
-license = { workspace = true }
-homepage = { workspace = true }
-repository = { workspace = true }
+authors = {workspace = true}
+edition = {workspace = true}
+homepage = {workspace = true}
+license = {workspace = true}
+repository = {workspace = true}
+rust-version = {workspace = true}
+version = {workspace = true}
 
 [[bin]]
+doctest = false
 name = "orca"
 path = "src/main.rs"
 test = true
-doctest = false
 
 [dependencies]
-async-trait = { workspace = true }
-chrono = { workspace = true }
-clap = { workspace = true }
-crossbeam = { workspace = true }
-csv = { workspace = true }
-futures-util = { workspace = true, features = ["sink"] }
-hashbrown = { workspace = true }
-kanidm_client = { workspace = true }
-kanidm_proto = { workspace = true }
-mathru = { workspace = true }
-rand = { workspace = true }
-rand_chacha = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
-serde_json = { workspace = true }
-tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
-toml = { workspace = true }
-tracing = { workspace = true }
-tracing-subscriber = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4" ] }
+async-trait = {workspace = true}
+chrono = {workspace = true}
+clap = {workspace = true}
+crossbeam = {workspace = true}
+csv = {workspace = true}
+futures-util = {workspace = true, features = ["sink"]}
+hashbrown = {workspace = true}
+idlset = {workspace = true}
+kanidm_client = {workspace = true}
+kanidm_proto = {workspace = true}
+mathru = {workspace = true}
+rand = {workspace = true}
+rand_chacha = {workspace = true}
+serde = {workspace = true, features = ["derive"]}
+serde_json = {workspace = true}
+tokio = {workspace = true, features = ["rt-multi-thread", "sync"]}
+toml = {workspace = true}
+tracing = {workspace = true}
+tracing-subscriber = {workspace = true}
+uuid = {workspace = true, features = ["serde", "v4"]}
 
 [target.'cfg(not(any(target_family = "windows", target_os = "illumos")))'.dependencies]
-mimalloc = { workspace = true }
+mimalloc = {workspace = true}
 
 [build-dependencies]
-kanidm_build_profiles = { workspace = true }
-
+kanidm_build_profiles = {workspace = true}

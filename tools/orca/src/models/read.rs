@@ -37,7 +37,7 @@ impl ActorModel for ActorReader {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<Vec<EventRecord>, Error> {
         let transition = self.next_transition();
 
         if let Some(delay) = transition.delay {
