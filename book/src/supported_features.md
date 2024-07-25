@@ -52,7 +52,7 @@ This is a list of supported features and standards within Kanidm.
 - [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
   - RBAC claim and scope mapping
   - PII scope claim requests
-  - ES256 id\_token signatures
+  - ES256 `id_token` signatures
 - [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
 
 # RADIUS

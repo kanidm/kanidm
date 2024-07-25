@@ -18,7 +18,7 @@ cargo install wasm-bindgen-cli
 ### Cargo Tasks
 
 - [ ] Update MSRV if applicable
-- [ ] RUSTC\_BOOTSTRAP=1 cargo udeps
+- [ ] `RUSTC_BOOTSTRAP=1 cargo udeps`
 - [ ] cargo outdated -R
 - [ ] cargo audit
 - [ ] cargo test

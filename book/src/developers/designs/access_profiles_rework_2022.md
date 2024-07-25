@@ -107,7 +107,7 @@ The "admins" role is responsible to manage:
 
 #### Service Account Admin
 
-The role would be called "sa\_admins" and would be responsible for top level management of service
+The role would be called `sa_admins` and would be responsible for top level management of service
 accounts, and delegating authority for service account administration to managing users.
 
 - Create service accounts

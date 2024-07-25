@@ -37,7 +37,9 @@ You can check the privileged tasks daemon is running with:
 systemctl status kanidm-unixd-tasks
 ```
 
-> **NOTE** The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If
+> [!NOTE]
+>
+> The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If
 > disabled, your system will function as usual. It is however strongly recommended due to the
 > features it provides supporting Kanidm's capabilities.
 
