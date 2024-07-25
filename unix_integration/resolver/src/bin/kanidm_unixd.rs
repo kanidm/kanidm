@@ -36,6 +36,7 @@ use kanidm_unix_resolver::unix_config::{HsmType, KanidmUnixdConfig};
 
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
+use sketching::tracing::span;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
@@ -211,6 +212,9 @@ async fn handle_client(
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
+        let span = span!(Level::INFO, "client_request");
+        let _enter = span.enter();
+
         let resp = match req {
             ClientRequest::SshKey(account_id) => {
                 debug!("sshkey req");

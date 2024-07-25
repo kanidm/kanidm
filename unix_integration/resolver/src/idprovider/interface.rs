@@ -39,8 +39,20 @@ pub enum Id {
     Gid(u32),
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub enum ProviderOrigin {
+    // To allow transition, we have an ignored type that effectively
+    // causes these items to be nixed.
+    #[default]
+    Ignore,
+    Files,
+    Kanidm,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupToken {
+    #[serde(default)]
+    pub provider: ProviderOrigin,
     pub name: String,
     pub spn: String,
     pub uuid: Uuid,
@@ -49,6 +61,8 @@ pub struct GroupToken {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserToken {
+    #[serde(default)]
+    pub provider: ProviderOrigin,
     pub name: String,
     pub spn: String,
     pub uuid: Uuid,
