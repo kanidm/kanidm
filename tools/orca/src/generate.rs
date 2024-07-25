@@ -154,8 +154,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // to each role always will exist and be operational.
     let member_count_by_group: HashMap<GroupName, u64> = profile
         .get_properties_by_group()
-        .into_iter()
-        .filter_map(|(&ref name, properties)| {
+        .iter()
+        .filter_map(|(name, properties)| {
             let group_name = GroupName::try_from(name).ok()?;
             properties.member_count.map(|count| (group_name, count))
         })

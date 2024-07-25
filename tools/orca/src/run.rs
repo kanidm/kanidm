@@ -39,6 +39,7 @@ async fn actor_person(
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct EventRecord {
     pub start: Instant,
     pub duration: Duration,

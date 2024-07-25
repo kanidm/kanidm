@@ -1,4 +1,5 @@
 use std::{
+    iter,
     str::FromStr,
     time::{Duration, Instant},
 };
@@ -51,21 +52,21 @@ enum State {
     CheckedPersonalGroupReplicationStatus,
 }
 
-pub struct ActorLatencyMeasurer<'a> {
+pub struct ActorLatencyMeasurer {
     state: State,
     cha_rng: ChaCha8Rng,
     additional_clients: Vec<KanidmClient>,
     group_index: u64,
-    personal_group_name: &'a str,
+    personal_group_name: String,
     groups_creation_time: HashMap<u64, Instant>,
     unreplicated_groups_by_client: Vec<IDLBitRange>,
 }
 
-impl<'a> ActorLatencyMeasurer<'a> {
+impl ActorLatencyMeasurer {
     pub fn new(
         rng_seed: u64,
         additional_clients: Vec<KanidmClient>,
-        person_name: &'a str,
+        person_name: &str,
     ) -> Result<Self, Error> {
         if additional_clients.is_empty() {
             return Err(Error::InvalidState);
@@ -76,7 +77,7 @@ impl<'a> ActorLatencyMeasurer<'a> {
             cha_rng: ChaCha8Rng::seed_from_u64(rng_seed),
             additional_clients,
             group_index: 0,
-            personal_group_name: person_name,
+            personal_group_name: format!("{person_name}-personal-group"),
             groups_creation_time: HashMap::new(),
             unreplicated_groups_by_client: vec![IDLBitRange::new(); additional_clients_len],
         })
@@ -84,7 +85,7 @@ impl<'a> ActorLatencyMeasurer<'a> {
 }
 
 #[async_trait]
-impl<'a> ActorModel for ActorLatencyMeasurer<'a> {
+impl ActorModel for ActorLatencyMeasurer {
     async fn transition(
         &mut self,
         client: &KanidmClient,
@@ -96,15 +97,30 @@ impl<'a> ActorModel for ActorLatencyMeasurer<'a> {
             tokio::time::sleep(delay).await;
         }
 
-        // Once we get to here, we want the transition to go ahead.
         let (result, event) = match transition.action {
-            TransitionAction::Login => model::login(client, person).await,
+            TransitionAction::Login => {
+                let mut event_records = Vec::new();
+                let mut final_res = TransitionResult::Ok;
+
+                // We need to login on all the instances. Every time one of the login fails, we abort
+                for client in iter::once(client).chain(self.additional_clients.iter()) {
+                    let (res, more_records) = model::login(client, person).await?;
+                    final_res = res;
+                    event_records.extend(more_records);
+                    if let TransitionResult::Error = final_res {
+                        break;
+                    }
+                }
+                Ok((final_res, event_records))
+            }
+            // PrivilegeReauth is only useful to create new groups, so we just need it on our main client
             TransitionAction::PrivilegeReauth => model::privilege_reauth(client, person).await,
             TransitionAction::CreatePersonalGroup => {
                 model::person_create_group(client, &self.personal_group_name).await
             }
             TransitionAction::CreateGroup => {
                 self.generate_new_group_name();
+                println!("Now creating another group!!: {}", &self.get_group_name());
                 let outcome = model::person_create_group(client, &self.get_group_name()).await;
                 // We need to check if the group was successfully created or not, and act accordingly!
                 if let Ok((transition_result, _)) = &outcome {
@@ -117,8 +133,12 @@ impl<'a> ActorModel for ActorLatencyMeasurer<'a> {
                 outcome
             }
             TransitionAction::AddCreatedGroupToPersonalGroup => {
-                model::person_add_group_members(client, &person.username, &[&self.get_group_name()])
-                    .await
+                model::person_add_group_members(
+                    client,
+                    &self.personal_group_name,
+                    &[&self.get_group_name()],
+                )
+                .await
             }
             TransitionAction::CheckPersonalGroupReplicationStatus => {
                 let mut event_records = Vec::new();
@@ -138,14 +158,10 @@ impl<'a> ActorModel for ActorLatencyMeasurer<'a> {
                         Err(event_record) => event_records.push(event_record),
                     };
                 }
-
-                let transition_result = if event_records.is_empty() {
-                    TransitionResult::Error
-                } else {
-                    TransitionResult::Ok
-                };
-
-                Ok((transition_result, event_records))
+                // Note for the future folks ending up here: we MUST always return TransitionResult::Ok otherwise we will loop here forever (believe me
+                // I know from personal experience). If we loop here we never do TransitionAction::CreateGroup, which is basically the only transition we care
+                // about in this model. If you really need to change this then you also need to change the `next_state` function below
+                Ok((TransitionResult::Ok, event_records))
             }
         }?;
 
@@ -155,7 +171,7 @@ impl<'a> ActorModel for ActorLatencyMeasurer<'a> {
     }
 }
 
-impl<'a> ActorLatencyMeasurer<'a> {
+impl ActorLatencyMeasurer {
     fn generate_new_group_name(&mut self) {
         self.group_index += 1;
     }
@@ -206,7 +222,8 @@ impl<'a> ActorLatencyMeasurer<'a> {
         groups_read_time: Instant,
     ) -> Vec<EventRecord> {
         let group_id_from_group_name =
-            |group_name: &String| u64::from_str(group_name.split("-").skip(1).next()?).ok();
+            |group_name: &String| u64::from_str(group_name.split(&['-', '@']).nth(3)?).ok();
+
         let replicated_group_ids: Vec<u64> = replicated_group_names
             .iter()
             .filter_map(group_id_from_group_name)
@@ -251,15 +268,15 @@ impl<'a> ActorLatencyMeasurer<'a> {
 
     fn next_transition(&mut self) -> Transition {
         match self.state {
-            // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
+            // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 2000ms (2s)
             State::Unauthenticated => Transition {
                 delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 1000)),
+                    self.cha_rng.sample(Uniform::new(0, 2000)),
                 )),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(5)),
+                delay: Some(Duration::from_secs(3)),
                 action: TransitionAction::PrivilegeReauth,
             },
             State::AuthenticatedWithReauth => Transition {

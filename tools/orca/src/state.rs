@@ -93,7 +93,7 @@ impl Model {
     pub fn as_dyn_object(
         self,
         rng_seed: u64,
-        additional_uris: Vec<KanidmClient>,
+        additional_clients: Vec<KanidmClient>,
         person_name: &str,
     ) -> Result<Box<dyn ActorModel + Send + '_>, Error> {
         Ok(match self {
@@ -104,7 +104,7 @@ impl Model {
             Model::LatencyMeasurer => {
                 Box::new(models::latency_measurer::ActorLatencyMeasurer::new(
                     rng_seed,
-                    additional_uris,
+                    additional_clients,
                     person_name,
                 )?)
             }
@@ -137,6 +137,7 @@ pub struct Group {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Hash, Default, Ord, Eq, PartialEq, PartialOrd)]
 #[serde(rename_all = "snake_case")]
+#[allow(clippy::enum_variant_names)]
 pub enum GroupName {
     RolePeopleSelfSetPassword,
     #[default]
