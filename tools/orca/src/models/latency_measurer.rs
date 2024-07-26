@@ -120,7 +120,6 @@ impl ActorModel for ActorLatencyMeasurer {
             }
             TransitionAction::CreateGroup => {
                 self.generate_new_group_name();
-                println!("Now creating another group!!: {}", &self.get_group_name());
                 let outcome = model::person_create_group(client, &self.get_group_name()).await;
                 // We need to check if the group was successfully created or not, and act accordingly!
                 if let Ok((transition_result, _)) = &outcome {
