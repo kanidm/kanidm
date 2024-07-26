@@ -263,6 +263,7 @@ impl Modify for SecurityAddon {
             internal::CURegWarning,
             internal::IdentifyUserResponse,
             internal::AppLink,
+            scim_v1::ScimEntryGeneric,
 
             internal::IdentifyUserRequest,
             // terrible workaround for other things
