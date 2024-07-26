@@ -50,8 +50,8 @@ function stillSwapFailureResponse(event) {
 }
 
 function startPasskeyEnrollment() {
-    let data_elem = document.getElementById('data');
-    let credentialRequestOptions = JSON.parse(data_elem.textContent);
+    const data_elem = document.getElementById('data');
+    const credentialRequestOptions = JSON.parse(data_elem.textContent);
     credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
     credentialRequestOptions.publicKey.user.id = Base64.toUint8Array(credentialRequestOptions.publicKey.user.id);
 
@@ -92,7 +92,7 @@ function setupSubmitBtnVisibility() {
 }
 
 function updateSubmitButtonVisibility(event) {
-    let submitButton = document.getElementById("passkeyNamingSubmitBtn");
+    const submitButton = document.getElementById("passkeyNamingSubmitBtn");
     submitButton.disabled = event.value === "";
 }
 
