@@ -24,6 +24,7 @@ time = { workspace = true, features = ["local-offset", "formatting", "parsing", 
 tracing = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde"] }
+utoipa.workspace = true
 
 [dev-dependencies]
 tracing-subscriber = { workspace = true }

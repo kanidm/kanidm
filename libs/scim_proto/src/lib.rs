@@ -113,7 +113,7 @@ pub struct ScimEntry {
     pub meta: Option<ScimMeta>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, utoipa::ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEntryGeneric {
     pub schemas: Vec<String>,
