@@ -6,8 +6,7 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
-use rand::distributions::Uniform;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 
 use std::time::Duration;
@@ -20,14 +19,17 @@ enum State {
 
 pub struct ActorWriter {
     state: State,
-    cha_rng: ChaCha8Rng,
+    randomised_backoff_time: Duration,
 }
 
 impl ActorWriter {
-    pub fn new(rng_seed: u64) -> Self {
+    pub fn new(mut cha_rng: ChaCha8Rng, warmup_time_ms: u64) -> Self {
+        let max_backoff_time_in_ms = 2 * warmup_time_ms / 3;
+        let randomised_backoff_time =
+            Duration::from_millis(cha_rng.gen_range(0..max_backoff_time_in_ms));
         ActorWriter {
             state: State::Unauthenticated,
-            cha_rng: ChaCha8Rng::seed_from_u64(rng_seed),
+            randomised_backoff_time,
         }
     }
 }
@@ -69,15 +71,12 @@ impl ActorModel for ActorWriter {
 impl ActorWriter {
     fn next_transition(&mut self) -> Transition {
         match self.state {
-            // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
             State::Unauthenticated => Transition {
-                delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 1000)),
-                )),
+                delay: Some(self.randomised_backoff_time),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(5)),
+                delay: Some(Duration::from_secs(2)),
                 action: TransitionAction::PrivilegeReauth,
             },
             State::AuthenticatedWithReauth => Transition {

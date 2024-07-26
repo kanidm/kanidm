@@ -9,7 +9,7 @@ use idlset::v2::IDLBitRange;
 
 use hashbrown::HashMap;
 use kanidm_client::KanidmClient;
-use rand::{distributions::Uniform, Rng, SeedableRng};
+use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 
 use crate::{
@@ -54,7 +54,7 @@ enum State {
 
 pub struct ActorLatencyMeasurer {
     state: State,
-    cha_rng: ChaCha8Rng,
+    randomised_backoff_time: Duration,
     additional_clients: Vec<KanidmClient>,
     group_index: u64,
     personal_group_name: String,
@@ -64,17 +64,22 @@ pub struct ActorLatencyMeasurer {
 
 impl ActorLatencyMeasurer {
     pub fn new(
-        rng_seed: u64,
+        mut cha_rng: ChaCha8Rng,
         additional_clients: Vec<KanidmClient>,
         person_name: &str,
+        warmup_time_ms: u64,
     ) -> Result<Self, Error> {
         if additional_clients.is_empty() {
             return Err(Error::InvalidState);
         };
         let additional_clients_len = additional_clients.len();
+
+        let max_backoff_time_in_ms = 2 * warmup_time_ms / 3;
+        let randomised_backoff_time =
+            Duration::from_millis(cha_rng.gen_range(0..max_backoff_time_in_ms));
         Ok(ActorLatencyMeasurer {
             state: State::Unauthenticated,
-            cha_rng: ChaCha8Rng::seed_from_u64(rng_seed),
+            randomised_backoff_time,
             additional_clients,
             group_index: 0,
             personal_group_name: format!("{person_name}-personal-group"),
@@ -267,15 +272,12 @@ impl ActorLatencyMeasurer {
 
     fn next_transition(&mut self) -> Transition {
         match self.state {
-            // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 2000ms (2s)
             State::Unauthenticated => Transition {
-                delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 2000)),
-                )),
+                delay: Some(self.randomised_backoff_time),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(3)),
+                delay: Some(Duration::from_secs(2)),
                 action: TransitionAction::PrivilegeReauth,
             },
             State::AuthenticatedWithReauth => Transition {

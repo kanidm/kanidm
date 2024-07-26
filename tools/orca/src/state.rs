@@ -4,9 +4,12 @@ use crate::models;
 use crate::profile::Profile;
 use core::fmt::Display;
 use kanidm_client::KanidmClient;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::time::Duration;
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
@@ -95,17 +98,21 @@ impl Model {
         rng_seed: u64,
         additional_clients: Vec<KanidmClient>,
         person_name: &str,
+        warmup_time: Duration,
     ) -> Result<Box<dyn ActorModel + Send + '_>, Error> {
+        let cha_rng = ChaCha8Rng::seed_from_u64(rng_seed);
+        let warmup_time_as_ms = warmup_time.as_millis() as u64;
         Ok(match self {
             Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
-            Model::Basic => Box::new(models::basic::ActorBasic::new()),
-            Model::Reader => Box::new(models::read::ActorReader::new(rng_seed)),
-            Model::Writer => Box::new(models::write::ActorWriter::new(rng_seed)),
+            Model::Basic => Box::new(models::basic::ActorBasic::new(cha_rng, warmup_time_as_ms)),
+            Model::Reader => Box::new(models::read::ActorReader::new(cha_rng, warmup_time_as_ms)),
+            Model::Writer => Box::new(models::write::ActorWriter::new(cha_rng, warmup_time_as_ms)),
             Model::LatencyMeasurer => {
                 Box::new(models::latency_measurer::ActorLatencyMeasurer::new(
-                    rng_seed,
+                    cha_rng,
                     additional_clients,
                     person_name,
+                    warmup_time_as_ms,
                 )?)
             }
         })

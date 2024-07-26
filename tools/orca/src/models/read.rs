@@ -6,8 +6,7 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
-use rand::distributions::Uniform;
-use rand::{Rng, SeedableRng};
+use rand::Rng;
 use rand_chacha::ChaCha8Rng;
 
 use std::time::Duration;
@@ -19,14 +18,17 @@ enum State {
 
 pub struct ActorReader {
     state: State,
-    cha_rng: ChaCha8Rng,
+    randomised_backoff_time: Duration,
 }
 
 impl ActorReader {
-    pub fn new(rng_seed: u64) -> Self {
+    pub fn new(mut cha_rng: ChaCha8Rng, warmup_time_ms: u64) -> Self {
+        let max_backoff_time_in_ms = warmup_time_ms - 1000;
+        let randomised_backoff_time =
+            Duration::from_millis(cha_rng.gen_range(0..max_backoff_time_in_ms));
         ActorReader {
             state: State::Unauthenticated,
-            cha_rng: ChaCha8Rng::seed_from_u64(rng_seed),
+            randomised_backoff_time,
         }
     }
 }
@@ -67,10 +69,7 @@ impl ActorReader {
     fn next_transition(&mut self) -> Transition {
         match self.state {
             State::Unauthenticated => Transition {
-                // If we are unauthenticated we use our cha_rng to pick an arbitrary delay between 0 and 5000ms (5s)
-                delay: Some(Duration::from_millis(
-                    self.cha_rng.sample(Uniform::new(0, 1000)),
-                )),
+                delay: Some(self.randomised_backoff_time),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
@@ -84,7 +83,7 @@ impl ActorReader {
         // Is this a design flaw? We probably need to know what the state was that we
         // requested to move to?
         match (&self.state, action, result) {
-            (State::Unauthenticated, TransitionAction::Login, TransitionResult::Ok) => {
+            (State::Unauthenticated { .. }, TransitionAction::Login, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
             (State::Authenticated, TransitionAction::ReadSelfMemberOf, TransitionResult::Ok) => {
@@ -94,7 +93,7 @@ impl ActorReader {
             (_, _, TransitionResult::Ok) => unreachable!(),
 
             (_, _, TransitionResult::Error) => {
-                self.state = State::Unauthenticated;
+                self.state = State::Unauthenticated {};
             }
         }
     }

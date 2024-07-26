@@ -22,10 +22,12 @@ async fn actor_person(
     mut actor_rx: broadcast::Receiver<Signal>,
     rng_seed: u64,
     additional_clients: Vec<KanidmClient>,
+    warmup_time: Duration,
 ) -> Result<(), Error> {
-    let mut model = person
-        .model
-        .as_dyn_object(rng_seed, additional_clients, &person.username)?;
+    let mut model =
+        person
+            .model
+            .as_dyn_object(rng_seed, additional_clients, &person.username, warmup_time)?;
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
         let events = model.transition(&main_client, &person).await?;
@@ -196,6 +198,7 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
             c_actor_rx,
             state.profile.seed(),
             cloned_clients,
+            state.profile.warmup_time(),
         )))
     }
 
