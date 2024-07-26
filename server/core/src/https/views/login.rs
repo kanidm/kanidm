@@ -781,6 +781,7 @@ fn add_session_cookie(state: &ServerState, jar: CookieJar, session_context: &mut
     token_cookie.set_secure(state.secure_cookies);
     token_cookie.set_same_site(SameSite::Strict);
     token_cookie.set_http_only(true);
+    token_cookie.set_path("/ui/login");
     // Not setting domains limits the cookie to precisely this
     // url that was used.
     // token_cookie.set_domain(state.domain.clone());
