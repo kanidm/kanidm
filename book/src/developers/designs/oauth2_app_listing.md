@@ -1,4 +1,4 @@
-# Oauth2 Application Listing
+# OAuth2 Application Listing
 
 A feature of some other IDM systems is to also double as a portal to linked applications. This
 allows a convenient access point for users to discover and access linked applications without having
@@ -14,20 +14,20 @@ already authenticated, and the IDM becomes the single "gateway" to accessing oth
 
 ## Access Control
 
-The current design of the oauth2 resource servers (oauth2rs) is modeled around what the oauth2
-protocol requires. This defines that in an oauth2 request, all of the requested scopes need be
+The current design of the OAuth2 resource servers (oauth2rs) is modeled around what the OAuth2
+protocol requires. This defines that in an OAuth2 request, all of the requested scopes need be
 granted else it can not proceed. The current design is:
 
 - scope maps - a relation of groups to the set of scopes that they grant
 - implicit scopes - a set of scopes granted to all persons
 
-While this works well for the oauth2 authorisation design, it doesn't work well from the kanidm side
+While this works well for the OAuth2 authorisation design, it doesn't work well from the kanidm side
 for managing _our_ knowledge of who is granted access to the application.
 
 In order to limit who can see what applications we will need a new method to define who is allowed
 access to the resource server on the Kanidm side, while also preserving OAuth2 semantics.
 
-To fix this the current definition of scopes on oauth2 resource servers need to change.
+To fix this the current definition of scopes on OAuth2 resource servers need to change.
 
 - access scopes - a list of scopes (similar to implicit) that are used by the resource server for
   granting access to the resource.
@@ -38,10 +38,10 @@ To fix this the current definition of scopes on oauth2 resource servers need to 
 By changing to this method this removes the arbitrary implicit scope/scope map rules, and clearly
 defines the set of scopes that grant access to the application, while also allow extended scopes to
 be sent that can attenuate the application behaviour. This also allows the access members reference
-to be used to generate knowledge on the kanidm side of "who can access this oauth2 resource". This
-can be used to limit the listed applications to these oauth2 applications. In addition we can then
-use these access members to create access controls to strictly limit who can see what oauth2
-applications to the admins of oauth2 applications, and the users of them.
+to be used to generate knowledge on the kanidm side of "who can access this OAuth2 resource". This
+can be used to limit the listed applications to these OAuth2 applications. In addition we can then
+use these access members to create access controls to strictly limit who can see what OAuth2
+applications to the admins of OAuth2 applications, and the users of them.
 
 To support this, we should allow dynamic groups to be created so that the 'implicit scope' behaviour
 which allow all persons to access an application can be emulated by making all persons a member of

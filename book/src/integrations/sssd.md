@@ -3,15 +3,10 @@
 [SSSD](https://sssd.io/) is an alternative [PAM and nsswitch](./pam_and_nsswitch) provider that is
 commonly available on Linux.
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template ../templates/kani-warning.md
-imagepath=../images
-title=WARNING
-text=SSSD should be considered a "last resort". If possible, always use the native Kanidm pam and nsswitch tools instead.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!WARNING]
+>
+> SSSD should be considered a "last resort". If possible, always use the native Kanidm
+> pam and nsswitch tools instead.
 
 ## Limitations
 
@@ -48,7 +43,7 @@ compatibility and issue resolution.
 
 An example configuration for SSSD is provided.
 
-```
+```toml
 # Example configuration for SSSD to resolve accounts via Kanidm
 #
 # This should always be a "last resort". If possible you should always use the

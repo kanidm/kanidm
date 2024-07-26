@@ -39,7 +39,7 @@ kanidm person get nest_example --name anonymous
 
 This should result in output similar to:
 
-```
+```text
 memberof: idm_all_persons@localhost
 memberof: idm_all_accounts@localhost
 memberof: group_2@localhost

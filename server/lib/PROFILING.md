@@ -1,4 +1,6 @@
-```
+# Running DHAT profiling
+
+```shell
 cargo test --features=dhat-heap test_idm_authsession_simple_password_mech
 
 cargo install cargo-flamegraph

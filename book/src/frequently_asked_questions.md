@@ -108,7 +108,7 @@ review, assessment and improvement.
 
 No, it is not possible swap out the SQLite database for any other type of SQL server.
 
-_ATTEMPTING THIS WILL BREAK YOUR KANIDM INSTANCE IRREPARABLY_
+**_ATTEMPTING THIS WILL BREAK YOUR KANIDM INSTANCE IRREPARABLY_**
 
 This question is normally asked because people want to setup multiple Kanidm servers connected to a
 single database.

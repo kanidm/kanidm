@@ -1119,6 +1119,35 @@ async fn passkey_remove_prompt(
     }
 }
 
+fn display_warnings(warnings: &[CURegWarning]) {
+    if !warnings.is_empty() {
+        println!("Warnings:");
+    }
+    for warning in warnings {
+        print!(" ⚠️   ");
+        match warning {
+            CURegWarning::MfaRequired => {
+                println!("Multi-factor authentication required - add TOTP or replace your password with more secure method.");
+            }
+            CURegWarning::PasskeyRequired => {
+                println!("Passkeys required");
+            }
+            CURegWarning::AttestedPasskeyRequired => {
+                println!("Attested Passkeys required");
+            }
+            CURegWarning::AttestedResidentKeyRequired => {
+                println!("Attested Resident Keys required");
+            }
+            CURegWarning::WebauthnAttestationUnsatisfiable => {
+                println!("Attestation is unsatisfiable. Contact your administrator.");
+            }
+            CURegWarning::Unsatisfiable => {
+                println!("Account policy is unsatisfiable. Contact your administrator.");
+            }
+        }
+    }
+}
+
 fn display_status(status: CUStatus) {
     let CUStatus {
         spn,
@@ -1150,30 +1179,6 @@ fn display_status(status: CUStatus) {
             println!("    Visit {} to update your account details.", url.as_str());
         }
     };
-
-    for warning in warnings {
-        print!(" ⚠️   ");
-        match warning {
-            CURegWarning::MfaRequired => {
-                println!("Multifactor authentication required - add totp, or use passkeys");
-            }
-            CURegWarning::PasskeyRequired => {
-                println!("Passkeys required");
-            }
-            CURegWarning::AttestedPasskeyRequired => {
-                println!("Attested Passkeys required");
-            }
-            CURegWarning::AttestedResidentKeyRequired => {
-                println!("Attested Resident Keys required");
-            }
-            CURegWarning::WebauthnAttestationUnsatisfiable => {
-                println!("Attestation is unsatisfiable. Contact your administrator.");
-            }
-            CURegWarning::Unsatisfiable => {
-                println!("Account policy is unsatisfiable. Contact your administrator.");
-            }
-        }
-    }
 
     println!("Primary Credential:");
 
@@ -1265,6 +1270,7 @@ fn display_status(status: CUStatus) {
     // We may need to be able to display if there are dangling
     // curegstates, but the cli ui statemachine can match the
     // server so it may not be needed?
+    display_warnings(&warnings);
 
     println!("Can Commit: {}", can_commit);
 }
@@ -1457,6 +1463,23 @@ async fn credential_update_exec(
                 break;
             }
             CUAction::Commit => {
+                match client
+                    .idm_account_credential_update_status(&session_token)
+                    .await
+                {
+                    Ok(status) => {
+                        if !status.can_commit {
+                            display_warnings(&status.warnings);
+                        }
+                        // Reset the loop
+                        println!("Changes have NOT been saved.");
+                        continue;
+                    }
+                    Err(e) => {
+                        eprintln!("An error occurred -> {:?}", e);
+                    }
+                }
+
                 if Confirm::new()
                     .with_prompt("Do you want to commit your changes?")
                     .interact()
@@ -1467,10 +1490,11 @@ async fn credential_update_exec(
                         .await
                     {
                         eprintln!("An error occurred -> {:?}", e);
+                        println!("Changes have NOT been saved.");
                     } else {
-                        println!("success");
+                        println!("Success - Changes have been saved.");
+                        break;
                     }
-                    break;
                 } else {
                     println!("Changes have NOT been saved.");
                 }

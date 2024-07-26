@@ -65,7 +65,7 @@ groups.
 | `idm_access_control_admins`  | write access controls                                                   |
 | `idm_account_policy_admins`  | modify account policy requirements for user authentication              |
 | `idm_group_admins`           | create and modify groups                                                |
-| `idm_oauth2_admins`          | create and modify oauth2 integrations                                   |
+| `idm_oauth2_admins`          | create and modify OAuth2 integrations                                   |
 | `idm_people_admins`          | create and modify persons                                               |
 | `idm_people_on_boarding`     | create (but not modify) persons. Intended for use with service accounts |
 | `idm_people_pii_read`        | allow read to personally identifying information                        |

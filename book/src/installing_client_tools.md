@@ -12,9 +12,11 @@ Kanidm currently is packaged for the following systems:
 - OpenSUSE Leap 15.4/15.5/15.6
 - MacOS
 - Arch Linux
-- NixOS
-- Fedora 38
 - CentOS Stream 9
+- Debian
+- Fedora 38
+- NixOS
+- Ubuntu
 
 The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
 
@@ -56,21 +58,13 @@ brew install kanidm
 
 [Kanidm on AUR](https://aur.archlinux.org/packages?O=0&K=kanidm)
 
-### NixOS
-
-[Kanidm in NixOS](https://search.nixos.org/packages?sort=relevance&type=packages&query=kanidm)
-
 ### Fedora / Centos Stream
 
-<!-- deno-fmt-ignore-start -->
-
-{{#template templates/kani-warning.md
-imagepath=images
-title=Take Note!
-text=Kanidm frequently uses new Rust versions and features, however Fedora and Centos frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm versions available.
-}}
-
-<!-- deno-fmt-ignore-end -->
+> [!NOTE]
+>
+> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS
+> frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm
+> versions available.
 
 Fedora has limited support through the development repository. You need to add the repository
 metadata into the correct directory:
@@ -88,6 +82,14 @@ You can then install with:
 dnf install kanidm-clients
 ```
 
+### NixOS
+
+[Kanidm in NixOS](https://search.nixos.org/packages?sort=relevance&type=packages&query=kanidm)
+
+### Ubuntu and Debian
+
+See <https://kanidm.github.io/kanidm_ppa/> for nightly-built packages of the current development builds, and how to install them.
+
 ## Tools Container
 
 In some cases if your distribution does not have native kanidm-client support, and you can't access
@@ -101,9 +103,9 @@ chmod 666 ~/.cache/kanidm_tokens
 docker pull kanidm/tools:latest
 docker run --rm -i -t \
     --network host \
-    -v /etc/kanidm/config:/etc/kanidm/config:ro \
-    -v ~/.config/kanidm:/home/kanidm/.config/kanidm:ro \
-    -v ~/.cache/kanidm_tokens:/home/kanidm/.cache/kanidm_tokens \
+    --mount "type=bind,src=/etc/kanidm/config,target=/etc/kanidm/config" \
+    --mount "type=bind,src=$HOME/.config/kanidm,target=/home/kanidm/.config/kanidm" \
+    --mount "type=bind,src=$HOME/.cache/kanidm_tokens,target=/home/kanidm/.cache/kanidm_tokens" \
     kanidm/tools:latest \
     /sbin/kanidm --help
 ```

@@ -1,5 +1,11 @@
 #!/bin/bash
 
+if [ -z "${TZ}" ]; then
+    export TZ="UTC"
+fi
+
+ln -snf "/usr/share/zoneinfo/$TZ" "/etc/localtime" && echo "$TZ" > /etc/timezone
+
 # Install dependencies, for example make!
 scripts/install_ubuntu_dependencies.sh
 

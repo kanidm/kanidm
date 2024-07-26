@@ -1,6 +1,6 @@
 use kanidm_utils_users::get_user_name_by_uid;
-use std::ffi::CString;
-use std::path::Path;
+use std::ffi::{CString, OsStr};
+use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use selinux::{
@@ -20,14 +20,13 @@ pub fn supported() -> bool {
     }
 }
 
-fn do_setfscreatecon_for_path(path_raw: &str, labeler: &Labeler<File>) -> Result<(), String> {
-    match labeler.look_up(&CString::new(path_raw.to_owned()).unwrap(), 0) {
-        Ok(context) => {
-            if context.set_for_new_file_system_objects(true).is_err() {
-                return Err("Failed setting creation context home directory path".to_string());
-            }
-            Ok(())
-        }
+fn do_setfscreatecon_for_path(path_raw: &Path, labeler: &Labeler<File>) -> Result<(), String> {
+    let path_c_string = CString::new(path_raw.as_os_str().as_encoded_bytes())
+        .map_err(|_| "Invalid Path String".to_string())?;
+    match labeler.look_up(&path_c_string, 0) {
+        Ok(context) => context
+            .set_for_new_file_system_objects(true)
+            .map_err(|_| "Failed setting creation context home directory path".to_string()),
         Err(_) => {
             return Err("Failed looking up default context for home directory path".to_string());
         }
@@ -46,12 +45,12 @@ pub enum SelinuxLabeler {
     None,
     Enabled {
         labeler: Labeler<File>,
-        sel_lookup_path_raw: String,
+        sel_lookup_path_raw: PathBuf,
     },
 }
 
 impl SelinuxLabeler {
-    pub fn new(gid: u32, home_prefix: &str) -> Result<Self, String> {
+    pub fn new(gid: u32, home_prefix: &Path) -> Result<Self, String> {
         let labeler = get_labeler()?;
 
         // Construct a path for SELinux context lookups.
@@ -64,7 +63,7 @@ impl SelinuxLabeler {
         #[cfg(all(target_family = "unix", feature = "selinux"))]
         // Yes, gid, because we use the GID number for both the user's UID and primary GID
         let sel_lookup_path_raw = match get_user_name_by_uid(gid) {
-            Some(v) => format!("{}{}", home_prefix, v.to_str().unwrap()),
+            Some(v) => home_prefix.join(v),
             None => {
                 return Err("Failed looking up username by uid for SELinux relabeling".to_string());
             }
@@ -97,23 +96,32 @@ impl SelinuxLabeler {
                 labeler,
                 sel_lookup_path_raw,
             } => {
-                let sel_lookup_path = Path::new(&sel_lookup_path_raw).join(path.as_ref());
-                do_setfscreatecon_for_path(&sel_lookup_path.to_str().unwrap().to_string(), &labeler)
+                let sel_lookup_path = sel_lookup_path_raw.join(path.as_ref());
+                do_setfscreatecon_for_path(&sel_lookup_path, &labeler)
             }
         }
     }
 
-    pub fn setup_equivalence_rule<P: AsRef<Path>>(&self, path: P) -> Result<(), String> {
+    pub fn setup_equivalence_rule<P: AsRef<OsStr>>(&self, path: P) -> Result<(), String> {
         match &self {
             SelinuxLabeler::None => Ok(()),
             SelinuxLabeler::Enabled {
                 labeler: _,
                 sel_lookup_path_raw,
-            } => Command::new("semanage")
-                .args(["fcontext", "-ae", sel_lookup_path_raw, path.as_ref()])
-                .spawn()
-                .map(|_| ())
-                .map_err(|_| "Failed creating SELinux policy equivalence rule".to_string()),
+            } => {
+                // Looks weird but needed to force the type to be os str
+                let arg1: &OsStr = "fcontext".as_ref();
+                Command::new("semanage")
+                    .args([
+                        arg1,
+                        "-ae".as_ref(),
+                        sel_lookup_path_raw.as_ref(),
+                        path.as_ref(),
+                    ])
+                    .spawn()
+                    .map(|_| ())
+                    .map_err(|_| "Failed creating SELinux policy equivalence rule".to_string())
+            }
         }
     }
 

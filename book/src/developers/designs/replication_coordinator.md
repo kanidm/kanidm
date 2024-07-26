@@ -14,7 +14,7 @@ replicas as easy as possible for new sites.
 The intent of the replication coordinator (KRC) is to allow nodes to subscribe to the KRC which
 configures the state of replication across the topology.
 
-```
+```text
 1. Out of band -                ┌────────────────┐
  issue KRC ca + ────────────────┤                │
    Client JWT.                  │                │
@@ -92,14 +92,14 @@ There are two nodes, A and B.
 
 The administrator configures both kanidm servers with replication urls.
 
-```
+```toml
 # Server A
 [replication]
 origin = "repl://kanidmd_a:8444"
 bindaddress = "[::]:8444"
 ```
 
-```
+```toml
 # Server B
 [replication]
 origin = "repl://kanidmd_b:8444"
@@ -109,7 +109,7 @@ bindaddress = "[::]:8444"
 The administrator extracts their replication certificates with the kanidmd binary admin features.
 This will reflect the `node_url` in the certificate.
 
-```
+```shell
 kanidmd replication get-certificate
 ```
 
@@ -117,7 +117,7 @@ For each node, a replication configuration is created in json.
 
 For A pulling from B.
 
-```
+```toml
 [replication."repl://kanidmd_b:8444"]
 type = "mutual-pull"
 partner_cert = "M..."
@@ -126,7 +126,7 @@ automatic_refresh = false
 
 For B pulling from A.
 
-```
+```toml
 [replication."repl://kanidmd_a:8444"]
 type = "mutual-pull"
 partner_cert = "M..."
@@ -142,7 +142,7 @@ The KRC is enabled as a replication parameter. This informs the node that it mus
 nodes for its replication topology, and it prepares the node for serving that replication metadata.
 This is analogous to a single node operation configuration.
 
-```
+```toml
 [replication]
 origin = "repl://kanidmd_a:8444"
 bindaddress = "[::]:8444"
@@ -155,7 +155,7 @@ krc_enable = true
 
 All other nodes will have a configuration of:
 
-```
+```toml
 [replication]
 origin = "repl://kanidmd_b:8444"
 bindaddress = "[::]:8444"
@@ -215,7 +215,7 @@ another node.
 
 Imagine the following example. Here, Node A is acting as the KRC.
 
-```
+```text
 ┌─────────────────┐                ┌─────────────────┐
 │                 │                │                 │
 │                 │                │                 │
@@ -244,7 +244,7 @@ This would allow Node A to be aware of B, C, D and then create a full mesh.
 We wish to decommission Node A and promote Node B to become the new KRC. Imagine at this point we
 cut over Node D to point its KRC at Node B.
 
-```
+```text
 ┌─────────────────┐                ┌─────────────────┐
 │                 │                │                 │
 │                 │                │                 │
@@ -280,9 +280,8 @@ This allows a time window where servers can be moved from Node A to Node B.
 
 Server Start Up Process
 
-```
-Token is read from a file defined in the env.
-	works with systemd + docker secrets
+```text
+Token is read from a file defined in the env - this works with systemd + docker secrets
 
 Token is JWT with HS256. (OR JWE + AES-GCM)
 
@@ -298,40 +297,36 @@ No TOKEN -> Implies KRC role.
 
 Client Process
 
-```
-connect to KRC
-- provide token for site binding
-- submit my server_uuid
-- submit my public cert with the request
-- submit current domain_uuid + generation if possible
+- Connect to KRC
+  - Provide token for site binding
+  - Submit my server_uuid
+  - Submit my public cert with the request
+  - Submit current domain_uuid + generation if possible
 
-- reply from KRC -> repl config map.
-    - config_map contains issuing KRC server uuid.
-    - if config_map generation > current config_map
-        - reload config.
-    - if config_map == None
-      - current map remains valid.
-```
+- Reply from KRC -> repl config map.
+  - Config_map contains issuing KRC server uuid.
+  - If config_map generation > current config_map
+    - Reload config.
+  - If config_map == None
+    - Current map remains valid.
 
 KRC Process
 
-```
 - Validate Token
-- is server_uuid present as a server entry?
-    - if no: add it with site association
-    - if yes: verify site associated to token
-- is server_uuid certificate the same as before?
-    - if no: replace it.
-- compare domain_uuid + generation
-    - if different supply config
-    - else None (no change)
-```
+- Is server_uuid present as a server entry?
+  - If no: add it with site association
+  - If yes: verify site associated to token
+- Is server_uuid certificate the same as before?
+  - If no: replace it.
+- Compare domain_uuid + generation
+  - If different supply config
+  - Else None (no change)
 
 ### FUTURE: Possible Read Only nodes
 
 For R/O nodes, we need to define how R/W will pass through. I can see a possibility like
 
-```
+```text
                                 No direct line
        ┌ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ of sight─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ─ ┐
 

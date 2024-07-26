@@ -1,6 +1,6 @@
 # LDAP
 
-If you have an LDAP server that supports sync repl (rfc4533 content synchronisation) then you are
+If you have an LDAP server that supports sync repl (RFC4533 content synchronisation) then you are
 able to synchronise from it to Kanidm for the purposes of coexistence or migration.
 
 If there is a specific Kanidm sync tool for your LDAP server, you should use that instead of the
@@ -34,14 +34,14 @@ enable synchronisation.
 
 You must enable the syncprov overlay in slapd.conf
 
-```
+```text
 moduleload syncprov.la
 overlay syncprov
 ```
 
 In addition you must grant an account full read access and raise its search limits.
 
-```
+```text
 access to *
     by dn.base="cn=sync,dc=example,dc=com" read
     by * break
