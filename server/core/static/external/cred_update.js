@@ -42,7 +42,7 @@ function setupInteractivePwdFormListeners() {
 }
 
 function stillSwapFailureResponse(event) {
-    if (event.detail.xhr.status === 422) {
+    if (event.detail.xhr.status === 422 || event.detail.xhr.status === 500) {
         console.log("Still swapping failure response")
         event.detail.shouldSwap = true;
         event.detail.isError = false;

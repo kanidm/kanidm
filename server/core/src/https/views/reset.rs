@@ -424,9 +424,9 @@ pub(crate) async fn view_new_totp(
                     },
                 }
             } else {
-                return Err(ErrorResponse::from(HtmxError::internal(
+                return Err(ErrorResponse::from(HtmxError::new(
                     &kopid,
-                    "Another MFA session appears to be ongoing.".to_string(),
+                    OperationError::CannotStartMFADuringOngoingMFASession,
                 )));
             };
 

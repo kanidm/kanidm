@@ -1,12 +1,13 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
+use axum_htmx::{HxReswap, HxRetarget, SwapOption};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use kanidm_proto::internal::OperationError;
 
 use crate::https::middleware::KOpId;
-
+use crate::https::views::{HtmlTemplate, UnrecoverableErrorView};
 // #[derive(Template)]
 // #[template(path = "recoverable_error_partial.html")]
 // struct ErrorPartialView {
@@ -21,26 +22,18 @@ use crate::https::middleware::KOpId;
 pub(crate) enum HtmxError {
     /// Something went wrong when doing things.
     OperationError(Uuid, OperationError),
-    InternalServerError(Uuid, String),
 }
 
 impl HtmxError {
     pub(crate) fn new(kopid: &KOpId, operr: OperationError) -> Self {
         HtmxError::OperationError(kopid.eventid, operr)
     }
-
-    pub(crate) fn internal(kopid: &KOpId, msg: String) -> Self {
-        HtmxError::InternalServerError(kopid.eventid, msg)
-    }
 }
 
 impl IntoResponse for HtmxError {
     fn into_response(self) -> Response {
         match self {
-            HtmxError::InternalServerError(_kopid, inner) => {
-                (StatusCode::INTERNAL_SERVER_ERROR, inner).into_response()
-            }
-            HtmxError::OperationError(_kopid, inner) => {
+            HtmxError::OperationError(kopid, inner) => {
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
                 let response = match &inner {
                     OperationError::NotAuthenticated
@@ -58,7 +51,18 @@ impl IntoResponse for HtmxError {
                     | OperationError::CU0003WebauthnUserNotVerified => {
                         (StatusCode::BAD_REQUEST, body).into_response()
                     }
-                    _ => (StatusCode::INTERNAL_SERVER_ERROR, body).into_response(),
+                    _ => (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        HxRetarget("body".to_string()),
+                        HxReswap(SwapOption::OuterHtml),
+                        HtmlTemplate(UnrecoverableErrorView {
+                            err_code: inner,
+                            operation_id: kopid,
+                        })
+                    )
+                        .into_response(),
+
+
                 };
                 response
             }
