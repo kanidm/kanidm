@@ -153,6 +153,8 @@ To reauthenticate
 kanidm reauth -D william
 ```
 
-> **NOTE** During reauthentication an account must use the same credential that was used to
+> [!NOTE]
+>
+> During reauthentication an account must use the same credential that was used to
 > initially authenticate to the session. The reauth flow will not allow any other credentials to be
 > used!

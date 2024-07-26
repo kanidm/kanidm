@@ -7,8 +7,7 @@ considerations you should be aware of for production deployments.
 
 ## Requirements
 
-- docker or podman
-- `x86_64` cpu supporting `x86_64_v2` OR `aarch64` cpu supporting `neon`
+The only thing you'll need for this is Docker, Podman, or a compatible containerd environment installed and running.
 
 ## Get the software
 
@@ -16,7 +15,15 @@ considerations you should be aware of for production deployments.
 docker pull docker.io/kanidm/server:latest
 ```
 
-## Configure the container
+## Create your configuration
+
+Create `server.toml`. The important parts are the `domain` and `origin`. For this example, if you use `localhost` and `https://localhost:8443` this will match later commands.
+
+```toml
+{{#rustdoc_include ../../examples/server_container.toml}}
+```
+
+## Start the container
 
 ```bash
 docker volume create kanidmd
@@ -27,15 +34,7 @@ docker create --name kanidmd \
   docker.io/kanidm/kanidm/server:latest
 ```
 
-## Configure the server
-
-Create server.toml
-
-```toml
-{{#rustdoc_include ../../examples/server_container.toml}}
-```
-
-## Add configuration to container
+## Copy the configuration to the container
 
 ```bash
 docker cp server.toml kanidmd:/data/server.toml
@@ -73,10 +72,12 @@ docker exec -i -t kanidmd \
 
 ## Setup the client configuration
 
+This happens on your computer, not in the container.
+
 ```toml
 # ~/.config/kanidm
 
-uri = "https://localhost:443"
+uri = "https://localhost:8443"
 verify_ca = false
 ```
 
@@ -102,4 +103,10 @@ Then follow the presented steps.
 
 ## What next?
 
-You can now follow the steps in the [administration section](administration.md)
+You'll probably want to set it up properly, so that other computers can access it, so [choose a domain name](choosing_a_domain_name.md) and complete the full server installation.
+
+Alternatively you might like to try configurig one of these:
+
+- [OAuth2](integrations/oauth2.md) for web services
+- [PAM and nsswitch](integrations/pam_and_nsswitch.md) for authentication to Linux systems
+- [Replication](repl/readme.md), if one Kanidm instance isn't enough

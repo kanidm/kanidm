@@ -12,7 +12,7 @@ state machine, for the idv state machine go [here](#the-identity-verification-st
 
 ![idv api diagram](diagrams/idv_api_diagram.drawio.svg)
 
-Note that the endpoint path is _/v1/person/:id/\_identify_user_, therefore every request is made up
+Note that the endpoint path is _`/v1/person/:id/_identify_user`_, therefore every request is made up
 by the _IdentifyUserRequest_ and an Id. Furthermore to use the api a user needs to be authenticated,
 so we link their userid to all their idv requests. Since all requests contains this additional
 information, there is a subset of responses that solely depend on it and therefore can **always** be
