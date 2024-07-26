@@ -30,7 +30,7 @@ pub struct OnlineBackup {
     ///
     /// - every day at 22:00 UTC (default): `"00 22 * * *"`
     /// - every 6th hours (four times a day) at 3 minutes past the hour, :
-    /// `"03 */6 * * *"`
+    ///   `"03 */6 * * *"`
     ///
     /// We also support non standard cron syntax, with the following format:
     ///

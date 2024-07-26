@@ -84,6 +84,10 @@ impl ScimValue {
             ScimValue::MultiComplex(a) => a.len(),
         }
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
