@@ -463,7 +463,7 @@ async fn start_daemon(
                 warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
         }
-        config.update_db_path(&db_path);
+        config.update_db_path(db_path);
     } else {
         error!("No db_path set in configuration, server startup will FAIL!");
         return ExitCode::FAILURE;
