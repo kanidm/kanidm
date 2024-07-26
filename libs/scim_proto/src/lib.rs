@@ -28,7 +28,7 @@ pub mod prelude {
     pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryGeneric, ScimMeta, ScimValue};
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 #[serde(untagged)]
 pub enum ScimAttr {
     Bool(bool),
@@ -68,7 +68,7 @@ impl PartialEq for ScimAttr {
 
 pub type ScimComplexAttr = BTreeMap<String, ScimAttr>;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(untagged)]
 pub enum ScimValue {
     Simple(ScimAttr),
@@ -114,7 +114,7 @@ pub struct ScimEntry {
     pub meta: Option<ScimMeta>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, utoipa::ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEntryGeneric {
     pub schemas: Vec<String>,
