@@ -13,7 +13,9 @@ Unix/Posix Settings
     (% if can_rw %)
         <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_posix">Edit</button>
     (% else %)
-        <button class="btn btn-primary" type="button" hx-post="/ui/reauth">Unlock Edit 🔒</button>
+        <a href="/ui/reauth" hx-boost="false">
+            <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+        </a>
     (% endif %)
 (% endblock %)
 
