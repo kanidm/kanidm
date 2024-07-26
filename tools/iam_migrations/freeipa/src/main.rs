@@ -52,7 +52,7 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntry, ScimExternalMember, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
+    MultiValueAttr, ScimEntryGeneric, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
     ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 
@@ -524,7 +524,7 @@ async fn process_ipa_sync_result(
     entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
     sync_password_as_unix_password: bool,
-) -> Result<Vec<ScimEntry>, ()> {
+) -> Result<Vec<ScimEntryGeneric>, ()> {
     // Because of how TOTP works with freeipa it's a soft referral from
     // the totp toward the user. This means if a TOTP is added or removed
     // we see those as unique entries in the syncrepl but we are missing
@@ -775,7 +775,7 @@ fn ipa_to_scim_entry(
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
     sync_password_as_unix_password: bool,
-) -> Result<Option<ScimEntry>, ()> {
+) -> Result<Option<ScimEntryGeneric>, ()> {
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
@@ -928,24 +928,25 @@ fn ipa_to_scim_entry(
         let login_shell = entry.remove_ava_single(Attribute::LoginShell.as_ref());
         let external_id = Some(entry.dn);
 
-        Ok(Some(
-            ScimSyncPerson {
-                id,
-                external_id,
-                user_name,
-                display_name,
-                gidnumber,
-                password_import,
-                unix_password_import,
-                totp_import,
-                login_shell,
-                mail,
-                ssh_publickey,
-                account_expire,
-                account_valid_from,
-            }
-            .into(),
-        ))
+        let scim_sync_person = ScimSyncPerson::builder(id, user_name, display_name)
+            .set_gidnumber(gidnumber)
+            .set_password_import(password_import)
+            .set_unix_password_import(unix_password_import)
+            .set_totp_import(totp_import)
+            .set_login_shell(login_shell)
+            .set_mail(mail)
+            .set_ssh_publickey(ssh_publickey)
+            .set_account_expire(account_expire)
+            .set_account_valid_from(account_valid_from)
+            .set_external_id(external_id)
+            .build();
+
+        let scim_entry_generic: ScimEntryGeneric =
+            scim_sync_person.try_into().map_err(|json_err| {
+                error!(?json_err, "Unable to convert group to scim_sync_group");
+            })?;
+
+        Ok(Some(scim_entry_generic))
     } else if oc.contains(LDAP_CLASS_GROUPOFNAMES) {
         let LdapSyncReplEntry {
             entry_uuid,
@@ -980,26 +981,24 @@ fn ipa_to_scim_entry(
 
         let members: Vec<_> = entry
             .remove_ava(Attribute::Member.as_ref())
-            .map(|set| {
-                set.into_iter()
-                    .map(|external_id| ScimExternalMember { external_id })
-                    .collect()
-            })
+            .map(|set| set.into_iter().collect())
             .unwrap_or_default();
 
         let external_id = Some(entry.dn);
 
-        Ok(Some(
-            ScimSyncGroup {
-                id,
-                external_id,
-                name,
-                description,
-                gidnumber,
-                members,
-            }
-            .into(),
-        ))
+        let scim_sync_group = ScimSyncGroup::builder(name, id)
+            .set_description(description)
+            .set_gidnumber(gidnumber)
+            .set_members(members.into_iter())
+            .set_external_id(external_id)
+            .build();
+
+        let scim_entry_generic: ScimEntryGeneric =
+            scim_sync_group.try_into().map_err(|json_err| {
+                error!(?json_err, "Unable to convert group to scim_sync_group");
+            })?;
+
+        Ok(Some(scim_entry_generic))
     } else if oc.contains("ipatokentotp") {
         // Skip for now, we don't support multiple totp yet.
         Ok(None)

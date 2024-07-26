@@ -548,7 +548,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
         changes: &'b ScimSyncRequest,
-    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>, bool), OperationError> {
+    ) -> Result<
+        (
+            Uuid,
+            BTreeSet<String>,
+            BTreeMap<Uuid, &'b ScimEntryGeneric>,
+            bool,
+        ),
+        OperationError,
+    > {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -616,7 +624,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
-        let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
+        let change_entries: BTreeMap<Uuid, &ScimEntryGeneric> = changes
             .entries
             .iter()
             .map(|scim_entry| (scim_entry.id, scim_entry))
@@ -628,7 +636,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_2(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         if change_entries.is_empty() {
@@ -751,7 +759,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_refresh_cleanup(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         // If this is a refresh, then the providing server is sending a full state of entries
@@ -808,7 +816,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn scim_attr_to_values(
         &mut self,
         scim_attr_name: &str,
-        scim_attr: &ScimAttr,
+        scim_attr: &ScimValue,
     ) -> Result<Vec<Value>, OperationError> {
         let schema = self.qs_write.get_schema();
 
@@ -822,40 +830,30 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (
                 SyntaxType::Utf8StringIname,
                 false,
-                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+                ScimValue::Simple(ScimAttr::String(value)),
             ) => Ok(vec![Value::new_iname(value)]),
             (
                 SyntaxType::Utf8String,
                 false,
-                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+                ScimValue::Simple(ScimAttr::String(value)),
             ) => Ok(vec![Value::new_utf8(value.clone())]),
             (
                 SyntaxType::Utf8StringInsensitive,
                 false,
-                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+                ScimValue::Simple(ScimAttr::String(value)),
             ) => Ok(vec![Value::new_iutf8(value)]),
             (
                 SyntaxType::Uint32,
                 false,
-                ScimAttr::SingleSimple(ScimSimpleAttr::Number(js_value)),
-            ) => js_value
-                .as_u64()
-                .ok_or_else(|| {
-                    error!("Invalid value - not a valid unsigned integer");
+                ScimValue::Simple(ScimAttr::Integer(int_value)),
+            ) => u32::try_from(*int_value).map_err(|_| {
+                    error!("Invalid value - not within the bounds of a u32");
                     OperationError::InvalidAttribute(format!(
-                        "Invalid unsigned integer - {scim_attr_name}"
+                        "Out of bounds unsigned integer - {scim_attr_name}"
                     ))
                 })
-                .and_then(|i| {
-                    u32::try_from(i).map_err(|_| {
-                        error!("Invalid value - not within the bounds of a u32");
-                        OperationError::InvalidAttribute(format!(
-                            "Out of bounds unsigned integer - {scim_attr_name}"
-                        ))
-                    })
-                })
                 .map(|value| vec![Value::Uint32(value)]),
-            (SyntaxType::ReferenceUuid, true, ScimAttr::MultiComplex(values)) => {
+            (SyntaxType::ReferenceUuid, true, ScimValue::MultiComplex(values)) => {
                 // In this case, because it's a reference uuid only, despite the multicomplex structure, it's a list of
                 // "external_id" to external_ids. These *might* also be uuids. So we need to use sync_external_id_to_uuid
                 // here to resolve things.
@@ -866,7 +864,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 let mut vs = Vec::with_capacity(values.len());
                 for complex in values.iter() {
-                    let external_id = complex.attrs.get("external_id").ok_or_else(|| {
+                    let external_id = complex.get("external_id").ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key external_id");
                         OperationError::InvalidAttribute(format!(
                             "missing required key external_id - {scim_attr_name}"
@@ -874,7 +872,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     })?;
 
                     let value = match external_id {
-                        ScimSimpleAttr::String(value) => Ok(value.as_str()),
+                        ScimAttr::String(value) => Ok(value.as_str()),
                         _ => {
                             error!("Invalid external_id attribute - must be scim simple string");
                             Err(OperationError::InvalidAttribute(format!(
@@ -897,12 +895,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
-            (SyntaxType::TotpSecret, true, ScimAttr::MultiComplex(values)) => {
+            (SyntaxType::TotpSecret, true, ScimValue::MultiComplex(values)) => {
                 // We have to break down each complex value into a totp.
                 let mut vs = Vec::with_capacity(values.len());
                 for complex in values.iter() {
                     let external_id = complex
-                        .attrs
                         .get("external_id")
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key external_id");
@@ -911,7 +908,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|external_id| match external_id {
-                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            ScimAttr::String(value) => Ok(value.clone()),
                             _ => {
                                 error!(
                                     "Invalid external_id attribute - must be scim simple string"
@@ -923,7 +920,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         })?;
 
                     let secret = complex
-                        .attrs
                         .get(SCIM_SECRET)
                         .ok_or_else(|| {
                             error!("Invalid SCIM complex attr - missing required key secret");
@@ -932,7 +928,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|secret| match secret {
-                            ScimSimpleAttr::String(value) => {
+                            ScimAttr::String(value) => {
                                 STANDARD.decode(value.as_str())
                                     .map_err(|_| {
                                         error!("Invalid secret attribute - must be base64 string");
@@ -949,7 +945,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let algo = complex.attrs.get(SCIM_ALGO)
+                    let algo = complex.get(SCIM_ALGO)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key algo");
                             OperationError::InvalidAttribute(format!(
@@ -958,7 +954,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         })
                         .and_then(|algo_str| {
                             match algo_str {
-                                ScimSimpleAttr::String(value) => {
+                                ScimAttr::String(value) => {
                                     match value.as_str() {
                                         "sha1" => Ok(TotpAlgo::Sha1),
                                         "sha256" => Ok(TotpAlgo::Sha256),
@@ -980,33 +976,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let step = complex.attrs.get(SCIM_STEP).ok_or_else(|| {
+                    let step = complex.get(SCIM_STEP).ok_or_else(|| {
                         error!("Invalid scim complex attr - missing required key step");
                         OperationError::InvalidAttribute(format!(
                             "missing required key step - {scim_attr_name}"
                         ))
                     }).and_then(|step| {
                         match step {
-                            ScimSimpleAttr::Number(value) => {
-                                match value.as_u64() {
-                                    Some(s) if s >= 30 => Ok(s),
-                                    _ =>
-                                        Err(OperationError::InvalidAttribute(format!(
-                                            "step must be a positive integer value equal to or greater than 30 - {scim_attr_name}"
-                                        ))),
-                                }
-                            }
-                            _ => {
-                                error!("Invalid step attribute - must be scim simple number");
+                            ScimAttr::Integer(s) if *s >= 30 => Ok(*s as u64),
+                            _ =>
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "step must be scim simple number - {scim_attr_name}"
-                                )))
-                            }
+                                    "step must be a positive integer value equal to or greater than 30 - {scim_attr_name}"
+                                ))),
                         }
                     })?;
 
                     let digits = complex
-                        .attrs
                         .get(SCIM_DIGITS)
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key digits");
@@ -1015,17 +1000,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|digits| match digits {
-                            ScimSimpleAttr::Number(value) => match value.as_u64() {
-                                Some(6) => Ok(TotpDigits::Six),
-                                Some(8) => Ok(TotpDigits::Eight),
-                                _ => Err(OperationError::InvalidAttribute(format!(
-                                    "digits must be a positive integer value of 6 OR 8 - {scim_attr_name}"
-                                ))),
-                            },
+                            ScimAttr::Integer(6) => Ok(TotpDigits::Six),
+                            ScimAttr::Integer(8) => Ok(TotpDigits::Eight),
                             _ => {
-                                error!("Invalid digits attribute - must be scim simple number");
+                                error!("Invalid digits attribute - must be scim simple integer with the value 6 or 8");
                                 Err(OperationError::InvalidAttribute(format!(
-                                    "digits must be scim simple number - {scim_attr_name}"
+                                    "digits must be a positive integer value of 6 OR 8 - {scim_attr_name}"
                                 )))
                             }
                         })?;
@@ -1035,11 +1015,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
-            (SyntaxType::EmailAddress, true, ScimAttr::MultiComplex(values)) => {
+            (SyntaxType::EmailAddress, true, ScimValue::MultiComplex(values)) => {
                 let mut vs = Vec::with_capacity(values.len());
                 for complex in values.iter() {
                     let mail_addr = complex
-                        .attrs
                         .get("value")
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key value");
@@ -1048,7 +1027,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|external_id| match external_id {
-                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            ScimAttr::String(value) => Ok(value.clone()),
                             _ => {
                                 error!("Invalid value attribute - must be scim simple string");
                                 Err(OperationError::InvalidAttribute(format!(
@@ -1057,9 +1036,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             }
                         })?;
 
-                    let primary = if let Some(primary) = complex.attrs.get("primary") {
+                    let primary = if let Some(primary) = complex.get("primary") {
                         match primary {
-                            ScimSimpleAttr::Bool(value) => Ok(*value),
+                            ScimAttr::Bool(value) => Ok(*value),
                             _ => {
                                 error!("Invalid primary attribute - must be scim simple bool");
                                 Err(OperationError::InvalidAttribute(format!(
@@ -1075,11 +1054,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }
                 Ok(vs)
             }
-            (SyntaxType::SshKey, true, ScimAttr::MultiComplex(values)) => {
+            (SyntaxType::SshKey, true, ScimValue::MultiComplex(values)) => {
                 let mut vs = Vec::with_capacity(values.len());
                 for complex in values.iter() {
                     let label = complex
-                        .attrs
                         .get("label")
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key label");
@@ -1088,7 +1066,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|external_id| match external_id {
-                            ScimSimpleAttr::String(value) => Ok(value.clone()),
+                            ScimAttr::String(value) => Ok(value.clone()),
                             _ => {
                                 error!("Invalid value attribute - must be scim simple string");
                                 Err(OperationError::InvalidAttribute(format!(
@@ -1098,7 +1076,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         })?;
 
                     let value = complex
-                        .attrs
                         .get("value")
                         .ok_or_else(|| {
                             error!("Invalid scim complex attr - missing required key value");
@@ -1107,7 +1084,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ))
                         })
                         .and_then(|external_id| match external_id {
-                            ScimSimpleAttr::String(value) => SshPublicKey::from_string(value)
+                            ScimAttr::String(value) => SshPublicKey::from_string(value)
                                 .map_err(|err| {
                                     error!(?err, "Invalid ssh key provided via scim");
                                     OperationError::SC0001IncomingSshPublicKey
@@ -1127,7 +1104,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             (
                 SyntaxType::DateTime,
                 false,
-                ScimAttr::SingleSimple(ScimSimpleAttr::String(value)),
+                ScimValue::Simple(ScimAttr::String(value)),
             ) => {
                 Value::new_datetime_s(value)
                     .map(|v| vec![v])
@@ -1149,7 +1126,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn scim_entry_to_mod(
         &mut self,
-        scim_ent: &ScimEntry,
+        scim_ent: &ScimEntryGeneric,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,
         sync_allow_attr_set: &BTreeSet<String>,
@@ -1279,7 +1256,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_3(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntry>,
+        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
         sync_uuid: Uuid,
         sync_authority_set: &BTreeSet<String>,
     ) -> Result<(), OperationError> {
@@ -1941,14 +1918,14 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntry {
+            entries: vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                    ScimValue::Simple(ScimAttr::String("william".to_string()))
                 ),),
             }],
             retain: ScimSyncRetentionMode::Ignore,
@@ -2009,14 +1986,14 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntry {
+            entries: vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("william".to_string()))
+                    ScimValue::Simple(ScimAttr::String("william".to_string()))
                 ),),
             }],
             retain: ScimSyncRetentionMode::Ignore,
@@ -2037,7 +2014,7 @@ mod tests {
 
     async fn apply_phase_3_test(
         idms: &IdmServer,
-        entries: Vec<ScimEntry>,
+        entries: Vec<ScimEntryGeneric>,
     ) -> Result<(), OperationError> {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let mut idms_prox_write = idms.proxy_write(ct).await;
@@ -2075,14 +2052,14 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntry {
+            vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                 ),),
             }]
         )
@@ -2116,7 +2093,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntry {
+            vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2124,11 +2101,11 @@ mod tests {
                 attrs: btreemap!(
                     (
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),
                     (
                         Attribute::Uuid.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                        ScimValue::Simple(ScimAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))
                     )
@@ -2149,7 +2126,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntry {
+            vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2157,11 +2134,11 @@ mod tests {
                 attrs: btreemap!(
                     (
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),
                     (
                         "sync_parent_uuid".to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String(
+                        ScimValue::Simple(ScimAttr::String(
                             "2c019619-f894-4a94-b356-05d371850e3d".to_string()
                         ))
                     )
@@ -2182,7 +2159,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntry {
+            vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2190,11 +2167,11 @@ mod tests {
                 attrs: btreemap!(
                     (
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),
                     (
                         Attribute::Class.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("posixgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("posixgroup".to_string()))
                     )
                 ),
             }]
@@ -2214,14 +2191,14 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntry {
+            vec![ScimEntryGeneric {
                 schemas: vec![format!("{SCIM_SCHEMA_SYNC_1}system")],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                 ),),
             }]
         )
@@ -2252,14 +2229,14 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntry {
+            entries: vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                 ),),
             }],
             retain: ScimSyncRetentionMode::Ignore,
@@ -2436,24 +2413,24 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
-                ScimEntry {
+                ScimEntryGeneric {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntry {
+                ScimEntryGeneric {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("anothergroup".to_string()))
                     ),),
                 },
             ],
@@ -2520,24 +2497,24 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
-                ScimEntry {
+                ScimEntryGeneric {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntry {
+                ScimEntryGeneric {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
                     meta: None,
                     attrs: btreemap!((
                         Attribute::Name.to_string(),
-                        ScimAttr::SingleSimple(ScimSimpleAttr::String("anothergroup".to_string()))
+                        ScimValue::Simple(ScimAttr::String("anothergroup".to_string()))
                     ),),
                 },
             ],
@@ -2617,14 +2594,14 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntry {
+            entries: vec![ScimEntryGeneric {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: sync_uuid_a,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
                 meta: None,
                 attrs: btreemap!((
                     Attribute::Name.to_string(),
-                    ScimAttr::SingleSimple(ScimSimpleAttr::String("testgroup".to_string()))
+                    ScimAttr::String("testgroup".to_string()).into()
                 ),),
             }],
             retain: ScimSyncRetentionMode::Ignore,
