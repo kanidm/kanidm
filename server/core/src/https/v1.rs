@@ -422,10 +422,7 @@ pub async fn json_rest_event_delete_attr(
     kopid: KOpId,
     client_auth_info: ClientAuthInfo,
 ) -> Result<Json<()>, WebError> {
-    let values = match values {
-        Some(val) => val,
-        None => vec![],
-    };
+    let values = values.unwrap_or_default();
 
     if values.is_empty() {
         state
@@ -1993,7 +1990,6 @@ pub async fn person_id_unix_post(
     security(("token_jwt" = [])),
     tag = "v1/service_account",
 )]
-///
 #[instrument(, level = "INFO", skip(id, state, kopid))]
 pub async fn service_account_id_unix_post(
     State(state): State<ServerState>,

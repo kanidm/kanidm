@@ -582,7 +582,7 @@ pub trait BackendTransaction {
             Some(idx_key) => {
                 match self
                     .get_idlayer()
-                    .get_idl(attr, IndexType::SubString, &idx_key)?
+                    .get_idl(attr, IndexType::SubString, idx_key)?
                 {
                     Some(idl) => idl,
                     None => return Ok((IdList::AllIds, FilterPlan::SubCorrupt(attr.clone()))),

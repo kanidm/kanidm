@@ -72,7 +72,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     config.address = format!("127.0.0.1:{}", port);
     config.integration_test_config = Some(int_config);
     config.domain = "localhost".to_string();
-    config.origin = addr.clone();
+    config.origin.clone_from(&addr);
 
     let core_handle = match create_server_core(config, false).await {
         Ok(val) => val,
@@ -320,7 +320,7 @@ pub async fn test_read_attrs(
                 .await
                 .unwrap()
                 .is_some(),
-            _ => e.attrs.get(attr.as_ref()).is_some(),
+            _ => e.attrs.contains_key(attr.as_ref()),
         };
         trace!("is_ok: {}, is_readable: {}", is_ok, is_readable);
         assert!(is_ok == is_readable)

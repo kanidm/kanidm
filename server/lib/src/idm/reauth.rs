@@ -396,7 +396,7 @@ mod tests {
                 let r = idms.delayed_action(ct, da).await;
                 assert!(r.is_ok());
 
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }
@@ -467,7 +467,7 @@ mod tests {
                 let r = idms.delayed_action(ct, da).await;
                 assert!(r.is_ok());
 
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }
@@ -545,7 +545,7 @@ mod tests {
                 // NOTE: Unlike initial auth we don't need to check the auth session in the queue
                 // since we don't re-issue it.
 
-                Some(token)
+                Some(*token)
             }
             _ => unreachable!(),
         }
@@ -615,7 +615,7 @@ mod tests {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }

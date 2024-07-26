@@ -2603,7 +2603,7 @@ mod tests {
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
 
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }
@@ -2669,7 +2669,7 @@ mod tests {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }
@@ -2737,7 +2737,7 @@ mod tests {
                 // Process the auth session
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }
@@ -2812,7 +2812,7 @@ mod tests {
                 let da = idms_delayed.try_recv().expect("invalid");
                 assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
 
-                Some(token)
+                Some(*token)
             }
             _ => None,
         }

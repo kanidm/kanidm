@@ -539,7 +539,7 @@ fn ldap_to_scim_entry(
             entry
                 .get_ava_single(&sync_config.person_attr_gidnumber)
                 .map(|gid| {
-                    u32::from_str(&gid).map_err(|_| {
+                    u32::from_str(gid).map_err(|_| {
                         error!(
                             "Invalid gidnumber - {} is not a u32 (person_attr_gidnumber)",
                             sync_config.person_attr_gidnumber
@@ -664,7 +664,7 @@ fn ldap_to_scim_entry(
         let gidnumber = entry
             .get_ava_single(&sync_config.group_attr_gidnumber)
             .map(|gid| {
-                u32::from_str(&gid).map_err(|_| {
+                u32::from_str(gid).map_err(|_| {
                     error!(
                         "Invalid gidnumber - {} is not a u32 (group_attr_gidnumber)",
                         sync_config.group_attr_gidnumber

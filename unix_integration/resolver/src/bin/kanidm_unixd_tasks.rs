@@ -104,7 +104,7 @@ fn create_home_directory(
         .map_err(|e| format!("{:?}", e))?;
 
     let home_mount_prefix_path = home_mount_prefix_path
-        .unwrap_or_else(|| &home_prefix_path)
+        .unwrap_or(&home_prefix_path)
         .canonicalize()
         .map_err(|e| format!("{:?}", e))?;
 
