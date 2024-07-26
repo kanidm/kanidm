@@ -18,7 +18,7 @@ docs page for your particular build.
 
 > [!WARNING]
 >
-> You MUST set the "domain", "origin", "tls_chain" and "tls_path" options via one method
+> You MUST set the `domain`, `origin`, `tls_chain` and `tls_path` options via one method
 > or the other, or the server cannot start!
 
 The following is a commented example configuration.
@@ -54,7 +54,7 @@ configuration file in `/data/server.toml`.
 docker run -p 443:8443 -v kanidmd:/data kanidm/server:latest
 ```
 
-### Using the NET\_BIND\_SERVICE capability
+### Using the `NET_BIND_SERVICE` capability
 
 If you plan to run without using docker port mapping or some other reverse proxy, and your
 `bindaddress` or `ldapbindaddress` port is less than `1024` you will need the `NET_BIND_SERVICE` in

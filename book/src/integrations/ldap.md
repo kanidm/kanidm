@@ -36,8 +36,8 @@ tree. Kanidm is a flat model, so we have to emulate some tree-like elements, and
 For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.
 
 - The Kanidm domain name is used to generate the DN of the suffix by default.
-- The domain\_info object becomes the suffix root.
-- All other entries are direct subordinates of the domain\_info for DN purposes.
+- The `domain_info` object becomes the suffix root.
+- All other entries are direct subordinates of the `domain_info` for DN purposes.
 - Distinguished Names (DNs) are generated from the spn, name, or uuid attribute.
 - Bind DNs can be remapped and rewritten, and may not even be a DN during bind.
 
@@ -142,7 +142,9 @@ they can be used to gain extended read permissions for those service accounts.
 Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
 with a dn of `dn=token` and provide the api token in the password.
 
-> **NOTE** The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it
+> [!NOTE]
+>
+> The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it
 > was chosen as the keyword to initiate api token binds.
 
 ```bash

@@ -12,7 +12,9 @@ YAML to update the LetsEncrypt account email for your domain and the FQDN where 
 available. Ensure you adjust this file or Kanidm's configuration to have a matching HTTPS port; the
 line `traefik.http.services.kanidm.loadbalancer.server.port=8443` sets this on the Traefik side.
 
-> **NOTE** You will need to generate self-signed certificates for Kanidm, and copy the configuration
+> [!NOTE]
+>
+> You will need to generate self-signed certificates for Kanidm, and copy the configuration
 > into the `kanidm_data` volume. Some instructions are available in the "Installing the Server"
 > section of this book.
 

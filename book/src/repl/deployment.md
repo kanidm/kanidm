@@ -30,7 +30,9 @@ Once configured, deploy this config to your servers and restart the nodes.
 
 ## Manual Node Configurations
 
-> **NOTE** In the future we will develop a replication coordinator so that you don't have to
+> [!NOTE]
+>
+> In the future we will develop a replication coordinator so that you don't have to
 > manually configure this. But for now, if you want replication, you have to do it the hard way.
 
 Each node has an identify certificate that is internally generated and used to communicate with
@@ -91,7 +93,9 @@ docker exec -i -t <container name> \
 
 ## Partially Automated Node Configurations
 
-> **NOTE** In the future we will develop a replication coordinator so that you don't have to
+> [!NOTE]
+>
+> In the future we will develop a replication coordinator so that you don't have to
 > manually configure this. But for now, if you want replication, you have to do it the hard way.
 
 This is the same as the manual process, but a single server is defined as the "primary" and the

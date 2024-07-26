@@ -201,9 +201,9 @@ From this token, retrieve the related synchronisation entry.
 Assert that the batch updates from and to state identifiers are consistent with the synchronisation
 entry.
 
-Retrieve the sync\_parent\_uuid from the sync entry.
+Retrieve the `sync_parent_uuid` from the sync entry.
 
-Retrieve the sync\_authority value from the sync entry.
+Retrieve the `sync_authority` value from the sync entry.
 
 ### Phase 2 - Entry Location, Creation and Authority
 
@@ -213,17 +213,17 @@ such that the subsequent operations are all "modifications" rather than mixed cr
 
 For each entry in the sync request, if an entry with that uuid exists retrieve it.
 
-- If an entry exists in the database, assert that its sync\_parent\_uuid is the same as our
+- If an entry exists in the database, assert that its `sync_parent_uuid` is the same as our
   agreements.
-  - If there is no sync\_parent\_uuid or the sync\_parent\_uuid does not match, reject the
+  - If there is no `sync_parent_uuid` or the `sync_parent_uuid` does not match, reject the
     operation.
 
-- If no entry exists in the database, create a "stub" entry with our sync\_parent\_uuid
+- If no entry exists in the database, create a "stub" entry with our `sync_parent_uuid`
   - Create the entry immediately, and then retrieve it.
 
 ### Phase 3 - Entry Assertion
 
-Remove all attributes in the sync that are overlapped with our sync\_authority value.
+Remove all attributes in the sync that are overlapped with our `sync_authority` value.
 
 For all uuids in the entry present set Assert their attributes match what was synced in. Resolve
 types that need resolving (name2uuid, externalid2uuid)
@@ -232,12 +232,12 @@ Write all
 
 ### Phase 4 - Entry Removal
 
-For all uuids in the delete\_uuids set: if their sync\_parent\_uuid matches ours, assert they are
+For all uuids in the `delete_uuids` set: if their `sync_parent_uuid` matches ours, assert they are
 deleted (recycled).
 
 ### Phase 5 - Commit
 
-Write the updated "state" from the request to\_state to our current state of the sync
+Write the updated "state" from the request `to_state` to our current state of the sync
 
 Write an updated "authority" value to the agreement of what attributes we can change.
 
