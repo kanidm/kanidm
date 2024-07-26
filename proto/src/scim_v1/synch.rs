@@ -101,7 +101,7 @@ impl TryInto<ScimEntryGeneric> for ScimSyncPerson {
     type Error = serde_json::Error;
 
     fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
-        serde_json::to_value(self).and_then(|value| serde_json::from_value(value))
+        serde_json::to_value(self).and_then(serde_json::from_value)
     }
 }
 
@@ -227,7 +227,7 @@ impl TryInto<ScimEntryGeneric> for ScimSyncGroup {
     type Error = serde_json::Error;
 
     fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
-        serde_json::to_value(self).and_then(|value| serde_json::from_value(value))
+        serde_json::to_value(self).and_then(serde_json::from_value)
     }
 }
 
