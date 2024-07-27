@@ -14,6 +14,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 pub mod constants;
@@ -27,7 +28,7 @@ pub mod prelude {
     pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryGeneric, ScimMeta, ScimValue};
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
 #[serde(untagged)]
 pub enum ScimAttr {
     Bool(bool),
@@ -67,7 +68,7 @@ impl PartialEq for ScimAttr {
 
 pub type ScimComplexAttr = BTreeMap<String, ScimAttr>;
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(untagged)]
 pub enum ScimValue {
     Simple(ScimAttr),
@@ -90,7 +91,7 @@ impl ScimValue {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct ScimMeta {
     pub resource_type: String,
@@ -102,7 +103,7 @@ pub struct ScimMeta {
     pub version: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEntry {
     pub schemas: Vec<String>,
@@ -113,7 +114,7 @@ pub struct ScimEntry {
     pub meta: Option<ScimMeta>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEntryGeneric {
     pub schemas: Vec<String>,

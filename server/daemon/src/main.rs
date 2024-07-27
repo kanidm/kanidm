@@ -537,8 +537,7 @@ fn main() -> ExitCode {
     #[cfg(all(target_os = "linux", not(debug_assertions)))]
     if let Err(code) = prctl::set_dumpable(false) {
         println!(
-            ?code,
-            "CRITICAL: Unable to set prctl flags, which breaches our security model, quitting!"
+            "CRITICAL: Unable to set prctl flags, which breaches our security model, quitting! {:?}", code
         );
         return ExitCode::FAILURE;
     }

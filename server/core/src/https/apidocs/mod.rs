@@ -206,6 +206,10 @@ impl Modify for SecurityAddon {
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
+            scim_v1::ScimEntryGeneric,
+            scim_v1::ScimValue,
+            scim_v1::ScimMeta,
+            scim_v1::ScimAttr,
             // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
             // v1::Entry,
             internal::ApiToken,
@@ -283,7 +287,7 @@ impl Modify for SecurityAddon {
             response_schema::ScimEntry,
             // terrible workaround for other things
             response_schema::Jwk,
-
+            response_schema::ScimComplexAttr,
             WebError,
         )
     ),
