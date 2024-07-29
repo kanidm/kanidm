@@ -69,7 +69,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install Rust
-        uses: dtolnay/rust-toolchain@{{ matrix.rust_version }}
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "{{ matrix.rust_version }}"
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.5
         with:
