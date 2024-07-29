@@ -55,9 +55,10 @@ jobs:
       - name: "Check disk space at the end"
         run:
           du -shc *
-
   rust_build_next:
+    # build future versions to find possible next-version bugs
     runs-on: ubuntu-latest
+    continue-on-error: true
     env:
       SCCACHE_GHA_ENABLED: true
       RUSTC_WRAPPER: sccache
