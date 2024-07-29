@@ -16,11 +16,11 @@ jobs:
     runs-on: ubuntu-latest
     name: set lower case owner name
     steps:
-    - id: step1
-      run: |
-        echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_OUTPUT}"
-      env:
-        OWNER: '${{ github.repository_owner }}'
+      - id: step1
+        run: |
+          echo "OWNER_LC=${OWNER,,}" >> "${GITHUB_OUTPUT}"
+        env:
+          OWNER: '${{ github.repository_owner }}'
     outputs:
       owner_lc: ${{ steps.step1.outputs.OWNER_LC }}
 
@@ -69,5 +69,7 @@ jobs:
       # features, but ORAS will: https://oras.land/docs/commands/oras_copy
       - name: Push image to GHCR
         run: |
-          echo "${{ secrets.GITHUB_TOKEN }}" | oras login -u "${{ github.actor }}" --password-stdin ghcr.io
-          oras copy --from-oci-layout "/tmp/radius-docker.tar:devel" "ghcr.io/${{ github.repository_owner }}/radius:devel"
+          echo "${{ secrets.GITHUB_TOKEN }}" | \
+            oras login -u "${{ github.actor }}" --password-stdin ghcr.io
+          oras copy --from-oci-layout "/tmp/radius-docker.tar:devel" \
+            "ghcr.io/${{ github.repository_owner }}/radius:devel"
