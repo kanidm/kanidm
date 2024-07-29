@@ -55,6 +55,51 @@ jobs:
       - name: "Check disk space at the end"
         run:
           du -shc *
+
+  rust_build_next:
+    runs-on: ubuntu-latest
+    env:
+      SCCACHE_GHA_ENABLED: true
+      RUSTC_WRAPPER: sccache
+      CARGO_INCREMENTAL: 0
+      CARGO_TERM_COLOR: always
+    strategy:
+      matrix:
+        rust_version: ['beta', 'nightly']
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@{{ matrix.rust_version }}
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.5
+        with:
+          version: "v0.4.2"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update && \
+          sudo apt-get install -y \
+            libpam0g-dev \
+            libudev-dev \
+            libssl-dev
+
+      - name: "Build the workspace"
+        run: cargo build --workspace
+      - name: "Check disk space and size of target, then clean it"
+        run: |
+          df -h
+          echo "Checking base dir"
+          du -shc *
+          echo "Checking target dir"
+          du -shc target/*
+          rm -rf target/*
+
+      - name: "Run cargo test"
+        run: cargo test
+      - name: "Check disk space at the end"
+        run:
+          du -shc *
+
   run_release:
     runs-on: ubuntu-latest
     env:
