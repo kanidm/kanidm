@@ -75,12 +75,16 @@
         (% if broken_app %)
             <button id="totp-submit" type="button" class="btn btn-warning"
                     hx-post="/ui/reset/add_totp"
+                    hx-target="#newTotpForm"
+                    hx-select="#newTotpForm > *"
                     hx-vals='{"ignoreBrokenApp": true}'
                     hx-include="#newTotpForm"
             >Accept SHA1</button>
         (% else %)
             <button id="totp-submit" type="button" class="btn btn-primary"
                     hx-post="/ui/reset/add_totp"
+                    hx-target="#newTotpForm"
+                    hx-select="#newTotpForm > *"
                     hx-vals='{"ignoreBrokenApp": false}'
                     hx-include="#newTotpForm"
             >Submit</button>

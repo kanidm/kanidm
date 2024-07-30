@@ -5,7 +5,7 @@ use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
-use axum_htmx::{HxEvent, HxLocation, HxPushUrl, HxRequest, HxResponseTrigger, HxRetarget};
+use axum_htmx::{HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget, SwapOption};
 use futures_util::TryFutureExt;
 use qrcode::render::svg;
 use qrcode::QrCode;
@@ -237,7 +237,7 @@ pub(crate) async fn cancel_mfareg(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok(get_cu_partial_template(cu_status).into_response())
+    Ok(get_cu_partial_response(cu_status))
 }
 
 async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
@@ -251,6 +251,24 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
     } else {
         Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
     };
+}
+
+pub(crate) async fn remove_alt_creds(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(cu_session_token, CURequest::PrimaryRemove, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok(get_cu_partial_response(cu_status))
 }
 
 pub(crate) async fn remove_totp(
@@ -273,7 +291,7 @@ pub(crate) async fn remove_totp(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok(get_cu_partial_template(cu_status).into_response())
+    Ok(get_cu_partial_response(cu_status))
 }
 
 pub(crate) async fn remove_passkey(
@@ -296,7 +314,7 @@ pub(crate) async fn remove_passkey(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok(get_cu_partial_template(cu_status).into_response())
+    Ok(get_cu_partial_response(cu_status))
 }
 
 pub(crate) async fn finish_passkey(
@@ -324,7 +342,7 @@ pub(crate) async fn finish_passkey(
                 .map_err(|op_err| HtmxError::new(&kopid, op_err))
                 .await?;
 
-            Ok(get_cu_partial_template(cu_status).into_response())
+            Ok(get_cu_partial_response(cu_status))
         }
         Err(e) => {
             error!("Bad request for passkey creation: {e}");
@@ -374,7 +392,12 @@ pub(crate) async fn view_new_passkey(
 
     let passkey_init_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasskeySwapped".to_string())]);
-    Ok((passkey_init_trigger, response).into_response())
+    Ok((
+        passkey_init_trigger,
+        HxPushUrl(Uri::from_static("/ui/reset/add_passkey")),
+        response,
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_new_totp(
@@ -386,10 +409,12 @@ pub(crate) async fn view_new_totp(
     opt_form: Option<Form<NewTotp>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token = get_cu_session(jar).await?;
+    let push_url = HxPushUrl(Uri::from_static("/ui/reset/add_totp"));
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
 
     let new_totp = match opt_form {
+        // Initial response handling, user is entering the form for first time
         None => {
             let cu_status = state
                 .qe_r_ref
@@ -430,18 +455,22 @@ pub(crate) async fn view_new_totp(
                 )));
             };
 
-            return Ok((swapped_handler_trigger, HtmlTemplate(partial)).into_response());
+            return Ok((swapped_handler_trigger, push_url, HtmlTemplate(partial)).into_response());
         }
+
+        // User has submitted a totp code
         Some(Form(new_totp)) => new_totp,
     };
 
     let cu_status = if new_totp.ignore_broken_app {
+        // Cope with SHA1 apps because the user has intended to do so, their totp code was already verified
         state.qe_r_ref.handle_idmcredentialupdate(
             cu_session_token,
             CURequest::TotpAcceptSha1,
             kopid.eventid,
         )
     } else {
+        // Validate totp code example
         state.qe_r_ref.handle_idmcredentialupdate(
             cu_session_token,
             CURequest::TotpVerify(new_totp.check_totpcode, new_totp.name),
@@ -453,7 +482,7 @@ pub(crate) async fn view_new_totp(
 
     let warnings = vec![];
     let check_res = match &cu_status.mfaregstate {
-        CURegState::None => return Ok(get_cu_partial_template(cu_status).into_response()),
+        CURegState::None => return Ok(get_cu_partial_response(cu_status)),
         CURegState::TotpTryAgain => TotpCheckResult::Failure {
             wrong_code: true,
             broken_app: false,
@@ -476,7 +505,7 @@ pub(crate) async fn view_new_totp(
     };
 
     let template = HtmlTemplate(AddTotpPartial { check_res });
-    Ok((swapped_handler_trigger, template).into_response())
+    Ok((swapped_handler_trigger, push_url, template).into_response())
 }
 
 pub(crate) async fn view_new_pwd(
@@ -512,7 +541,7 @@ pub(crate) async fn view_new_pwd(
             )
             .await;
         match res {
-            Ok(cu_status) => return Ok(get_cu_partial_template(cu_status).into_response()),
+            Ok(cu_status) => return Ok(get_cu_partial_response(cu_status)),
             Err(OperationError::PasswordQuality(password_feedback)) => {
                 (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
             }
@@ -528,7 +557,13 @@ pub(crate) async fn view_new_pwd(
     };
     let template = HtmlTemplate(AddPasswordPartial { check_res });
 
-    Ok((status, swapped_handler_trigger, template).into_response())
+    Ok((
+        status,
+        swapped_handler_trigger,
+        HxPushUrl(Uri::from_static("/ui/reset/change_password")),
+        template,
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_reset_get(
@@ -540,7 +575,7 @@ pub(crate) async fn view_reset_get(
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
-
+    let push_url = HxPushUrl(Uri::from_static("/ui/reset"));
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
         // We already have a session
@@ -560,8 +595,8 @@ pub(crate) async fn view_reset_get(
                 | OperationError::InvalidState,
             ) => {
                 // If our previous credential update session expired we want to see the reset form again.
-
                 jar = jar.remove(Cookie::from(COOKIE_CU_SESSION_TOKEN));
+
                 if let Some(token) = params.token {
                     let token_uri_string = format!("/ui/reset?token={token}");
                     return Ok((jar, Redirect::to(token_uri_string.as_str())).into_response());
@@ -570,9 +605,10 @@ pub(crate) async fn view_reset_get(
             }
             Err(op_err) => return Ok(HtmxError::new(&kopid, op_err).into_response()),
         };
-        let template = get_cu_template(domain_display_name, cu_status);
 
-        Ok(template.into_response())
+        // CU Session cookie is okay
+        let cu_resp = get_cu_response(domain_display_name, cu_status);
+        Ok(cu_resp)
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
         match state
@@ -581,7 +617,7 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let template = get_cu_template(domain_display_name, cu_status);
+                let cu_resp = get_cu_response(domain_display_name, cu_status);
 
                 let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
                 token_cookie.set_secure(state.secure_cookies);
@@ -589,7 +625,7 @@ pub(crate) async fn view_reset_get(
                 token_cookie.set_http_only(true);
                 jar = jar.add(token_cookie);
 
-                Ok((jar, HxPushUrl(Uri::from_static("/ui/reset")), template).into_response())
+                Ok((jar, cu_resp).into_response())
             }
             Err(OperationError::SessionExpired) | Err(OperationError::Wait(_)) => {
                 let cred_form_view = ResetCredFormView {
@@ -598,12 +634,7 @@ pub(crate) async fn view_reset_get(
                 };
 
                 // Reset code expired
-                Ok((
-                    HxPushUrl(Uri::from_static("/ui/reset")),
-                    HxRetarget("body".to_string()),
-                    HtmlTemplate(cred_form_view),
-                )
-                    .into_response())
+                Ok((push_url, HtmlTemplate(cred_form_view)).into_response())
             }
             Err(op_err) => Err(ErrorResponse::from(
                 HtmxError::new(&kopid, op_err).into_response(),
@@ -615,12 +646,7 @@ pub(crate) async fn view_reset_get(
             wrong_code: false,
         };
         // We don't have any credential, show reset token input form
-        Ok((
-            HxPushUrl(Uri::from_static("/ui/reset")),
-            HxRetarget("body".to_string()),
-            HtmlTemplate(cred_form_view),
-        )
-            .into_response())
+        Ok((push_url, HtmlTemplate(cred_form_view)).into_response())
     }
 }
 
@@ -649,22 +675,33 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
     };
 }
 
-fn get_cu_partial_template(cu_status: CUStatus) -> HtmlTemplate<CredResetPartialView> {
+fn get_cu_partial_response(cu_status: CUStatus) -> Response {
     let credentials_update_partial = get_cu_partial(cu_status);
-    HtmlTemplate(credentials_update_partial)
+    return (
+        HxPushUrl(Uri::from_static("/ui/reset")),
+        HxRetarget("#credentialUpdateDynamicSection".to_string()),
+        HxReselect("#credentialUpdateDynamicSection".to_string()),
+        HxReswap(SwapOption::OuterHtml),
+        HtmlTemplate(credentials_update_partial),
+    )
+        .into_response();
 }
 
-fn get_cu_template(domain: String, cu_status: CUStatus) -> HtmlTemplate<CredResetView> {
+fn get_cu_response(domain: String, cu_status: CUStatus) -> Response {
     let spn = cu_status.spn.clone();
     let displayname = cu_status.displayname.clone();
     let (username, _domain) = spn.split_once('@').unwrap_or(("", &spn));
     let names = format!("{} ({})", displayname, username);
     let credentials_update_partial = get_cu_partial(cu_status);
-    HtmlTemplate(CredResetView {
-        domain,
-        names,
-        credentials_update_partial,
-    })
+    (
+        HxPushUrl(Uri::from_static("/ui/reset")),
+        HtmlTemplate(CredResetView {
+            domain,
+            names,
+            credentials_update_partial,
+        }),
+    )
+        .into_response()
 }
 
 // Any filter defined in the module `filters` is accessible in your template.
