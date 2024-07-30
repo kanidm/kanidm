@@ -242,12 +242,9 @@ async fn repl_run_consumer(
     idms: &IdmServer,
     consumer_conn_settings: &ConsumerConnSettings,
 ) -> Option<SocketAddr> {
-    let Some((socket_addr, mut supplier_conn)) =
+    let (socket_addr, mut supplier_conn) =
         repl_consumer_connect_supplier(domain, sock_addrs, tls_connector, consumer_conn_settings)
-            .await
-    else {
-        return None;
-    };
+            .await?;
 
     // Perform incremental.
     let consumer_ruv_range = {

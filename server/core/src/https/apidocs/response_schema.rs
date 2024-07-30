@@ -94,3 +94,6 @@ pub(crate) struct ScimEntry {}
 
 #[derive(Debug, Clone, ToSchema)]
 pub(crate) struct Jwk {}
+
+#[derive(Debug, Clone, ToSchema)]
+pub(crate) struct ScimComplexAttr {}

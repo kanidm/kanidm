@@ -23,7 +23,6 @@ use std::fs::{metadata, File};
 use fs4::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
-use sketching::LogLevel;
 use std::io::Read;
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
@@ -128,7 +127,7 @@ impl KanidmdOpt {
 /// Get information on the windows username
 #[cfg(target_family = "windows")]
 fn get_user_details_windows() {
-    debug!(
+    eprintln!(
         "Running on windows, current username is: {:?}",
         whoami::username()
     );
@@ -319,117 +318,8 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
     }
 }
 
-fn main() -> ExitCode {
-    // On linux when debug assertions are disabled, prevent ptrace
-    // from attaching to us.
-    #[cfg(all(target_os = "linux", not(debug_assertions)))]
-    if let Err(code) = prctl::set_dumpable(false) {
-        error!(?code, "CRITICAL: Unable to set prctl flags");
-        return ExitCode::FAILURE;
-    }
-
-    // We need enough backtrace depth to find leak sources if they exist.
-    #[cfg(feature = "dhat-heap")]
-    let _profiler = dhat::Profiler::builder().trim_backtraces(Some(40)).build();
-
-    // Read CLI args, determine what the user has asked us to do.
-    let opt = KanidmdParser::parse();
-
-    // print the app version and bail
-    if let KanidmdOpt::Version(_) = &opt.commands {
-        println!("kanidmd {}", env!("KANIDM_PKG_VERSION"));
-        return ExitCode::SUCCESS;
-    };
-
-    //we set up a list of these so we can set the log config THEN log out the errors.
-    let mut config_error: Vec<String> = Vec::new();
-    let mut config = Configuration::new();
-
-    let Ok(default_config_path) = PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")) else {
-        eprintln!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_DEFAULT_CONFIG_PATH value");
-        return ExitCode::FAILURE;
-    };
-
-    let maybe_config_path = if let Some(p) = opt.config_path() {
-        Some(p)
-    } else {
-        // The user didn't ask for a file, lets check if the default path exists?
-        if default_config_path.exists() {
-            // It does, lets use it.
-            Some(default_config_path)
-        } else {
-            // No default config, and no config specified, lets assume the user
-            // has selected environment variables.
-            None
-        }
-    };
-
-    let sconfig = match ServerConfig::new(maybe_config_path) {
-        Ok(c) => Some(c),
-        Err(e) => {
-            config_error.push(format!("Config Parse failure {:?}", e));
-            return ExitCode::FAILURE;
-        }
-    };
-
-    // We only allow config file for log level now.
-    let log_filter = match sconfig.as_ref() {
-        Some(val) => val.log_level.unwrap_or_default(),
-        None => LogLevel::Info,
-    };
-
-    println!("Log filter: {:?}", log_filter);
-
-    // if we have a server config and it has an otel url, then we'll start the logging pipeline
-    let otel_grpc_url = sconfig
-        .as_ref()
-        .and_then(|config| config.otel_grpc_url.clone());
-
-    // TODO: only send to stderr when we're not in a TTY
-    let sub = match sketching::otel::start_logging_pipeline(
-        otel_grpc_url,
-        log_filter,
-        "kanidmd".to_string(),
-    ) {
-        Err(err) => {
-            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
-            return ExitCode::FAILURE;
-        }
-        Ok(val) => val,
-    };
-
-    if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
-        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
-        ExitCode::FAILURE
-    }) {
-        return err;
-    };
-
-    // guard which shuts down the logging/tracing providers when we close out
-    let _otelguard = TracingPipelineGuard {};
-
-    // Get information on the windows username
-    #[cfg(target_family = "windows")]
-    get_user_details_windows();
-
-    if !config_error.is_empty() {
-        for e in config_error {
-            error!("{}", e);
-        }
-        return ExitCode::FAILURE;
-    }
-
-    let sconfig = match sconfig {
-        Some(val) => val,
-        None => {
-            error!("Somehow you got an empty ServerConfig after error checking?");
-            return ExitCode::FAILURE;
-        }
-    };
-
-    // ===========================================================================
-    // Config ready, start to setup pre-run checks.
-
+/// Check what we're running as and various filesystem permissions.
+fn check_file_ownership(opt: &KanidmdParser) -> Result<(), ExitCode> {
     // Get info about who we are.
     #[cfg(target_family = "unix")]
     let (cuid, ceuid) = {
@@ -447,7 +337,7 @@ fn main() -> ExitCode {
         if cuid != ceuid || cgid != cegid {
             error!("{} != {} || {} != {}", cuid, ceuid, cgid, cegid);
             error!("Refusing to run - uid and euid OR gid and egid must be consistent.");
-            return ExitCode::FAILURE;
+            return Err(ExitCode::FAILURE);
         }
         (cuid, ceuid)
     };
@@ -469,27 +359,70 @@ fn main() -> ExitCode {
             } {
                 if !kanidm_lib_file_permissions::readonly(&cfg_meta) {
                     warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-                            cfg_path.to_str().unwrap_or("invalid file path"));
+                        cfg_path.to_str().unwrap_or("invalid file path"));
                 }
 
                 if cfg_meta.mode() & 0o007 != 0 {
                     warn!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-                            cfg_path.to_str().unwrap_or("invalid file path")
-                            );
+                        cfg_path.to_str().unwrap_or("invalid file path")
+                        );
                 }
 
                 if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
                     warn!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-                            cfg_path.to_str().unwrap_or("invalid file path")
-                            );
+                        cfg_path.to_str().unwrap_or("invalid file path")
+                        );
                 }
             }
         }
     }
+    Ok(())
+}
+
+// We have to do this because we can't use tracing until we've started the logging pipeline, and we can't start the logging pipeline until the tokio runtime's doing its thing.
+async fn start_daemon(
+    opt: KanidmdParser,
+    mut config: Configuration,
+    sconfig: ServerConfig,
+) -> ExitCode {
+    // if we have a server config and it has an OTEL URL, then we'll start the logging pipeline now.
+
+    // TODO: only send to stderr when we're not in a TTY
+    let sub = match sketching::otel::start_logging_pipeline(
+        &sconfig.otel_grpc_url,
+        sconfig.log_level.unwrap_or_default(),
+        "kanidmd",
+    ) {
+        Err(err) => {
+            eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+            return ExitCode::FAILURE;
+        }
+        Ok(val) => val,
+    };
+
+    if let Err(err) = tracing::subscriber::set_global_default(sub).map_err(|err| {
+        eprintln!("Error starting logger - {:} - Bailing on startup!", err);
+        ExitCode::FAILURE
+    }) {
+        return err;
+    };
+
+    // ************************************************
+    // HERE'S WHERE YOU CAN START USING THE LOGGER
+    // ************************************************
+
+    // guard which shuts down the logging/tracing providers when we close out
+    let _otelguard = TracingPipelineGuard {};
+
+    // ===========================================================================
+    // Start pre-run checks
 
     // Check the permissions of the files from the configuration.
-    if let Some(db_path) = sconfig.db_path.clone() {
-        #[allow(clippy::expect_used)]
+    if let Err(err) = check_file_ownership(&opt) {
+        return err;
+    };
+
+    if let Some(db_path) = sconfig.db_path.as_ref() {
         let db_pathbuf = PathBuf::from(db_path.as_str());
         // We can't check the db_path permissions because it may not exist yet!
         if let Some(db_parent_path) = db_pathbuf.parent() {
@@ -530,7 +463,7 @@ fn main() -> ExitCode {
                 warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str().unwrap_or("invalid file path"));
             }
         }
-        config.update_db_path(&db_path);
+        config.update_db_path(db_path);
     } else {
         error!("No db_path set in configuration, server startup will FAIL!");
         return ExitCode::FAILURE;
@@ -557,16 +490,6 @@ fn main() -> ExitCode {
     config.update_admin_bind_path(&sconfig.adminbindpath);
     config.update_replication_config(sconfig.repl_config.clone());
 
-    // We always set threads to 1 unless it's the main server.
-    if matches!(&opt.commands, KanidmdOpt::Server(_)) {
-        // If not updated, will default to maximum
-        if let Some(threads) = sconfig.thread_count {
-            config.update_threads_count(threads);
-        }
-    } else {
-        config.update_threads_count(1);
-    };
-
     match &opt.commands {
         // we aren't going to touch the DB so we can carry on
         KanidmdOpt::ShowReplicationCertificate { .. }
@@ -582,14 +505,14 @@ fn main() -> ExitCode {
                 None => std::env::temp_dir()
                     .join("kanidmd.klock")
                     .to_str()
-                    .expect("Unable to create klock path")
+                    .expect("Unable to create klock path, this is a critical error!")
                     .to_string(),
             };
 
             let flock = match File::create(&klock_path) {
                 Ok(flock) => flock,
                 Err(e) => {
-                    error!("ERROR: Refusing to start - unable to create kanidm exclusive lock at {} - {:?}", klock_path, e);
+                    error!("ERROR: Refusing to start - unable to create kanidmd exclusive lock at {} - {:?}", klock_path, e);
                     return ExitCode::FAILURE;
                 }
             };
@@ -597,13 +520,106 @@ fn main() -> ExitCode {
             match flock.try_lock_exclusive() {
                 Ok(()) => debug!("Acquired kanidm exclusive lock"),
                 Err(e) => {
-                    error!("ERROR: Refusing to start - unable to lock kanidm exclusive lock at {} - {:?}", klock_path, e);
-                    error!("Is another kanidm process running?");
+                    error!("ERROR: Refusing to start - unable to lock kanidmd exclusive lock at {} - {:?}", klock_path, e);
+                    error!("Is another kanidmd process running?");
                     return ExitCode::FAILURE;
                 }
             };
         }
     }
+
+    kanidm_main(sconfig, config, opt).await
+}
+
+fn main() -> ExitCode {
+    // On linux when debug assertions are disabled, prevent ptrace
+    // from attaching to us.
+    #[cfg(all(target_os = "linux", not(debug_assertions)))]
+    if let Err(code) = prctl::set_dumpable(false) {
+        println!(
+            "CRITICAL: Unable to set prctl flags, which breaches our security model, quitting! {:?}", code
+        );
+        return ExitCode::FAILURE;
+    }
+
+    // We need enough backtrace depth to find leak sources if they exist.
+    #[cfg(feature = "dhat-heap")]
+    let _profiler = dhat::Profiler::builder().trim_backtraces(Some(40)).build();
+
+    // Read CLI args, determine what the user has asked us to do.
+    let opt = KanidmdParser::parse();
+
+    // print the app version and bail
+    if let KanidmdOpt::Version(_) = &opt.commands {
+        println!("kanidmd {}", env!("KANIDM_PKG_VERSION"));
+        return ExitCode::SUCCESS;
+    };
+
+    //we set up a list of these so we can set the log config THEN log out the errors.
+    let mut config_error: Vec<String> = Vec::new();
+    let mut config = Configuration::new();
+
+    let Ok(default_config_path) = PathBuf::from_str(env!("KANIDM_DEFAULT_CONFIG_PATH")) else {
+        println!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_DEFAULT_CONFIG_PATH value");
+        return ExitCode::FAILURE;
+    };
+
+    let maybe_config_path = if let Some(p) = opt.config_path() {
+        Some(p)
+    } else {
+        // The user didn't ask for a file, lets check if the default path exists?
+        if default_config_path.exists() {
+            // It does, lets use it.
+            Some(default_config_path)
+        } else {
+            // No default config, and no config specified, lets assume the user
+            // has selected environment variables.
+            None
+        }
+    };
+
+    let sconfig = match ServerConfig::new(maybe_config_path) {
+        Ok(c) => Some(c),
+        Err(e) => {
+            config_error.push(format!("Config Parse failure {:?}", e));
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // Get information on the windows username
+    #[cfg(target_family = "windows")]
+    get_user_details_windows();
+
+    if !config_error.is_empty() {
+        println!("There were errors on startup, which prevent the server from starting:");
+        for e in config_error {
+            println!(" - {}", e);
+        }
+        return ExitCode::FAILURE;
+    }
+
+    let sconfig = match sconfig {
+        Some(val) => val,
+        None => {
+            println!("Somehow you got an empty ServerConfig after error checking? Cannot start!");
+            return ExitCode::FAILURE;
+        }
+    };
+
+    // ===========================================================================
+    // Config ready
+
+    // We always set threads to 1 unless it's the main server.
+    if matches!(&opt.commands, KanidmdOpt::Server(_)) {
+        // If not updated, will default to maximum
+        if let Some(threads) = sconfig.thread_count {
+            config.update_threads_count(threads);
+        }
+    } else {
+        config.update_threads_count(1);
+    };
+
+    // Start the runtime
 
     let maybe_rt = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(config.threads)
@@ -624,7 +640,7 @@ fn main() -> ExitCode {
         }
     };
 
-    rt.block_on(kanidm_main(sconfig, config, opt))
+    rt.block_on(start_daemon(opt, config, sconfig))
 }
 
 /// Build and execute the main server. The ServerConfig are the configuration options

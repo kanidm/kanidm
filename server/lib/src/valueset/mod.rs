@@ -840,7 +840,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::EmailAddress(primary, set) => ValueSetEmailAddress::from_dbvs2(primary, set),
         DbValueSetV2::Passkey(set) => ValueSetPasskey::from_dbvs2(set),
         DbValueSetV2::AttestedPasskey(set) => ValueSetAttestedPasskey::from_dbvs2(set),
-        DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(set),
+        DbValueSetV2::Session(set) => ValueSetSession::from_dbvs2(&set),
         DbValueSetV2::ApiToken(set) => ValueSetApiToken::from_dbvs2(set),
         DbValueSetV2::Oauth2Session(set) => ValueSetOauth2Session::from_dbvs2(set),
         DbValueSetV2::JwsKeyEs256(set) => ValueSetJwsKeyEs256::from_dbvs2(&set),

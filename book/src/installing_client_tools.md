@@ -1,6 +1,8 @@
 # Installing Client Tools
 
-> **NOTE** Running different release versions will likely present incompatibilities. Ensure you're
+> [!NOTE]
+>
+> Running different release versions will likely present incompatibilities. Ensure you're
 > running matching release versions of client and server binaries. If you have any issues, check
 > that you are running the latest version of Kanidm.
 
@@ -112,7 +114,9 @@ docker run --rm -i -t \
 
 If you have a ca.pem you may need to bind mount this in as required as well.
 
-> **TIP** You can alias the docker run command to make the tools easier to access such as:
+> [!TIP]
+>
+> You can alias the docker run command to make the tools easier to access such as:
 
 ```bash
 alias kanidm="docker run ..."

@@ -46,6 +46,7 @@ use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificat
 
 use serde::de::DeserializeOwned;
 use sketching::*;
+use std::fmt::Write;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::broadcast,
@@ -228,8 +229,10 @@ pub async fn create_https_server(
 
     let js_checksums: String = js_directives
         .iter()
-        .map(|value| format!(" 'sha384-{}'", value))
-        .collect();
+        .fold(String::new(), |mut output, value| {
+            let _ = write!(output, " 'sha384-{}'", value);
+            output
+        });
 
     let csp_header = format!(
         concat!(

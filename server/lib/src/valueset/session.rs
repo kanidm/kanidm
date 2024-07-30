@@ -191,7 +191,7 @@ impl ValueSetSession {
         Ok(Box::new(ValueSetSession { map }))
     }
 
-    pub fn from_dbvs2(data: Vec<DbValueSession>) -> Result<ValueSet, OperationError> {
+    pub fn from_dbvs2(data: &[DbValueSession]) -> Result<ValueSet, OperationError> {
         Self::from_dbv_iter(data.iter())
     }
 

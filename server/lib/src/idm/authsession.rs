@@ -1496,7 +1496,7 @@ impl AuthSession {
 
                         (
                             Some(AuthSessionState::Success),
-                            Ok(AuthState::Success(token, self.issue)),
+                            Ok(AuthState::Success(Box::new(token), self.issue)),
                         )
                     }
                     CredState::Continue(allowed) => {
@@ -1858,7 +1858,7 @@ mod tests {
                 let jws_verifier = JwsDangerReleaseWithoutVerify::default();
 
                 jws_verifier
-                    .verify(&jwsc)
+                    .verify(&*jwsc)
                     .unwrap()
                     .from_json::<UserAuthToken>()
                     .unwrap()

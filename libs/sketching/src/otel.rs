@@ -30,18 +30,15 @@ pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
 
 /// This does all the startup things for the logging pipeline
 pub fn start_logging_pipeline(
-    otlp_endpoint: Option<String>,
+    otlp_endpoint: &Option<String>,
     log_filter: crate::LogLevel,
-    service_name: String,
+    service_name: &'static str,
 ) -> Result<Box<dyn Subscriber + Send + Sync>, String> {
     let forest_filter: EnvFilter = EnvFilter::builder()
         .with_default_directive(log_filter.into())
         .from_env_lossy();
 
     // TODO: work out how to do metrics things
-    // let meter_provider = init_metrics()
-    //     .map_err(|err| eprintln!("failed to start metrics provider: {:?}", err))?;
-
     match otlp_endpoint {
         Some(endpoint) => {
             // adding these filters because when you close out the process the OTLP comms layer is NOISY

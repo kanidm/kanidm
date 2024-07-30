@@ -137,7 +137,7 @@ async fn oauth2_auth_req(
             // We store the auth_req into the cookie.
             let kref = &state.jws_signer;
 
-            let token = match Jws::into_json(&auth_req)
+            let token = Jws::into_json(&auth_req)
                 .map_err(|err| {
                     error!(?err, "Failed to serialise AuthorisationRequest");
                     OperationError::InvalidSessionState
@@ -148,8 +148,9 @@ async fn oauth2_auth_req(
                         OperationError::InvalidSessionState
                     })
                 })
-                .map(|jwss| jwss.to_string())
-            {
+                .map(|jwss| jwss.to_string());
+
+            let token = match token {
                 Ok(jws) => jws,
                 Err(err_code) => {
                     return HtmlTemplate(UnrecoverableErrorView {

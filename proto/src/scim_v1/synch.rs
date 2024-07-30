@@ -1,18 +1,10 @@
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
-use std::collections::BTreeMap;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-pub use scim_proto::prelude::{ScimAttr, ScimComplexAttr, ScimEntry, ScimError, ScimSimpleAttr};
-pub use scim_proto::user::MultiValueAttr;
-use scim_proto::*;
-
-use crate::constants::{
-    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_DESCRIPTION, ATTR_DISPLAYNAME,
-    ATTR_GIDNUMBER, ATTR_LOGINSHELL, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_PASSWORD_IMPORT,
-    ATTR_SSH_PUBLICKEY, ATTR_TOTP_IMPORT, ATTR_UNIX_PASSWORD_IMPORT,
-};
+use scim_proto::user::MultiValueAttr;
+use scim_proto::{ScimEntry, ScimEntryGeneric};
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncState {
@@ -38,8 +30,9 @@ pub struct ScimSyncRequest {
     pub from_state: ScimSyncState,
     pub to_state: ScimSyncState,
 
-    // How do I want to represent different entities to kani? Split by type? All in one?
-    pub entries: Vec<ScimEntry>,
+    // These entries are created with serde_json::to_value(ScimSyncGroup) for
+    // example. This is how we can mix/match the different types.
+    pub entries: Vec<ScimEntryGeneric>,
 
     pub retain: ScimSyncRetentionMode,
 }
@@ -55,11 +48,6 @@ impl ScimSyncRequest {
     }
 }
 
-pub const SCIM_ALGO: &str = "algo";
-pub const SCIM_DIGITS: &str = "digits";
-pub const SCIM_SECRET: &str = "secret";
-pub const SCIM_STEP: &str = "step";
-
 pub const SCIM_SCHEMA_SYNC_1: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:";
 pub const SCIM_SCHEMA_SYNC_ACCOUNT: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:account";
 pub const SCIM_SCHEMA_SYNC_GROUP: &str = "urn:ietf:params:scim:schemas:kanidm:sync:1:group";
@@ -69,7 +57,12 @@ pub const SCIM_SCHEMA_SYNC_POSIXACCOUNT: &str =
 pub const SCIM_SCHEMA_SYNC_POSIXGROUP: &str =
     "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup";
 
-#[derive(Serialize, Debug, Clone)]
+pub const SCIM_ALGO: &str = "algo";
+pub const SCIM_DIGITS: &str = "digits";
+pub const SCIM_SECRET: &str = "secret";
+pub const SCIM_STEP: &str = "step";
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScimTotp {
     /// maps to "label" in kanidm.
     pub external_id: String,
@@ -79,65 +72,18 @@ pub struct ScimTotp {
     pub digits: u32,
 }
 
-// Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fulfilled
-#[allow(clippy::from_over_into)]
-impl Into<ScimComplexAttr> for ScimTotp {
-    fn into(self) -> ScimComplexAttr {
-        let ScimTotp {
-            external_id,
-            secret,
-            algo,
-            step,
-            digits,
-        } = self;
-        let mut attrs = BTreeMap::default();
-
-        attrs.insert(
-            "external_id".to_string(),
-            ScimSimpleAttr::String(external_id),
-        );
-
-        attrs.insert(SCIM_SECRET.to_string(), ScimSimpleAttr::String(secret));
-
-        attrs.insert(SCIM_ALGO.to_string(), ScimSimpleAttr::String(algo));
-
-        attrs.insert(SCIM_STEP.to_string(), ScimSimpleAttr::Number(step.into()));
-
-        attrs.insert(
-            SCIM_DIGITS.to_string(),
-            ScimSimpleAttr::Number(digits.into()),
-        );
-
-        ScimComplexAttr { attrs }
-    }
-}
-
-#[derive(Serialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScimSshPubKey {
     pub label: String,
     pub value: String,
 }
 
-#[allow(clippy::from_over_into)]
-impl Into<ScimComplexAttr> for ScimSshPubKey {
-    fn into(self) -> ScimComplexAttr {
-        let ScimSshPubKey { label, value } = self;
-
-        let mut attrs = BTreeMap::default();
-
-        attrs.insert("label".to_string(), ScimSimpleAttr::String(label));
-
-        attrs.insert("value".to_string(), ScimSimpleAttr::String(value));
-        ScimComplexAttr { attrs }
-    }
-}
-
-#[derive(Serialize, Debug, Clone)]
-#[serde(into = "ScimEntry")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimSyncPerson {
-    pub id: Uuid,
-    pub external_id: Option<String>,
+    #[serde(flatten)]
+    pub entry: ScimEntry,
+
     pub user_name: String,
     pub display_name: String,
     pub gidnumber: Option<u32>,
@@ -151,133 +97,200 @@ pub struct ScimSyncPerson {
     pub account_expire: Option<String>,
 }
 
-// Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fulfilled
-#[allow(clippy::from_over_into)]
-impl Into<ScimEntry> for ScimSyncPerson {
-    fn into(self) -> ScimEntry {
-        let ScimSyncPerson {
-            id,
-            external_id,
-            user_name,
-            display_name,
-            gidnumber,
-            password_import,
-            unix_password_import,
-            totp_import,
-            login_shell,
-            mail,
-            ssh_publickey,
-            account_valid_from,
-            account_expire,
-        } = self;
+impl TryInto<ScimEntryGeneric> for ScimSyncPerson {
+    type Error = serde_json::Error;
 
-        let schemas = if gidnumber.is_some() {
-            vec![
-                SCIM_SCHEMA_SYNC_PERSON.to_string(),
-                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
-                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
-            ]
-        } else {
-            vec![
-                SCIM_SCHEMA_SYNC_PERSON.to_string(),
-                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
-            ]
-        };
+    fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
+        serde_json::to_value(self).and_then(serde_json::from_value)
+    }
+}
 
-        let mut attrs = BTreeMap::default();
+pub struct ScimSyncPersonBuilder {
+    inner: ScimSyncPerson,
+}
 
-        set_string!(attrs, ATTR_NAME, user_name);
-        set_string!(attrs, ATTR_DISPLAYNAME, display_name);
-        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
-        set_option_string!(attrs, ATTR_PASSWORD_IMPORT, password_import);
-        set_option_string!(attrs, ATTR_UNIX_PASSWORD_IMPORT, unix_password_import);
-        set_multi_complex!(attrs, ATTR_TOTP_IMPORT, totp_import);
-        set_option_string!(attrs, ATTR_LOGINSHELL, login_shell);
-        set_multi_complex!(attrs, ATTR_MAIL, mail);
-        set_multi_complex!(attrs, ATTR_SSH_PUBLICKEY, ssh_publickey); // with the underscore
-        set_option_string!(attrs, ATTR_ACCOUNT_EXPIRE, account_expire);
-        set_option_string!(attrs, ATTR_ACCOUNT_VALID_FROM, account_valid_from);
-
-        ScimEntry {
-            schemas,
-            id,
-            external_id,
-            meta: None,
-            attrs,
+impl ScimSyncPerson {
+    pub fn builder(id: Uuid, user_name: String, display_name: String) -> ScimSyncPersonBuilder {
+        ScimSyncPersonBuilder {
+            inner: ScimSyncPerson {
+                entry: ScimEntry {
+                    schemas: vec![
+                        SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                        SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                    ],
+                    id,
+                    external_id: None,
+                    meta: None,
+                },
+                user_name,
+                display_name,
+                gidnumber: None,
+                password_import: None,
+                unix_password_import: None,
+                totp_import: Vec::with_capacity(0),
+                login_shell: None,
+                mail: Vec::with_capacity(0),
+                ssh_publickey: Vec::with_capacity(0),
+                account_valid_from: None,
+                account_expire: None,
+            },
         }
     }
 }
 
-#[derive(Serialize, Debug, Clone)]
+impl ScimSyncPersonBuilder {
+    pub fn set_password_import(mut self, password_import: Option<String>) -> Self {
+        self.inner.password_import = password_import;
+        self
+    }
+
+    pub fn set_unix_password_import(mut self, unix_password_import: Option<String>) -> Self {
+        self.inner.unix_password_import = unix_password_import;
+        self
+    }
+
+    pub fn set_totp_import(mut self, totp_import: Vec<ScimTotp>) -> Self {
+        self.inner.totp_import = totp_import;
+        self
+    }
+
+    pub fn set_mail(mut self, mail: Vec<MultiValueAttr>) -> Self {
+        self.inner.mail = mail;
+        self
+    }
+
+    pub fn set_ssh_publickey(mut self, ssh_publickey: Vec<ScimSshPubKey>) -> Self {
+        self.inner.ssh_publickey = ssh_publickey;
+        self
+    }
+
+    pub fn set_login_shell(mut self, login_shell: Option<String>) -> Self {
+        self.inner.login_shell = login_shell;
+        self
+    }
+
+    pub fn set_account_valid_from(mut self, account_valid_from: Option<String>) -> Self {
+        self.inner.account_valid_from = account_valid_from;
+        self
+    }
+
+    pub fn set_account_expire(mut self, account_expire: Option<String>) -> Self {
+        self.inner.account_expire = account_expire;
+        self
+    }
+
+    pub fn set_gidnumber(mut self, gidnumber: Option<u32>) -> Self {
+        self.inner.gidnumber = gidnumber;
+        if self.inner.gidnumber.is_some() {
+            self.inner.entry.schemas = vec![
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+                SCIM_SCHEMA_SYNC_POSIXACCOUNT.to_string(),
+            ];
+        } else {
+            self.inner.entry.schemas = vec![
+                SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
+                SCIM_SCHEMA_SYNC_PERSON.to_string(),
+            ];
+        }
+        self
+    }
+
+    pub fn set_external_id(mut self, external_id: Option<String>) -> Self {
+        self.inner.entry.external_id = external_id;
+        self
+    }
+
+    pub fn build(self) -> ScimSyncPerson {
+        self.inner
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ScimExternalMember {
     pub external_id: String,
 }
 
-// Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fulfilled
-#[allow(clippy::from_over_into)]
-impl Into<ScimComplexAttr> for ScimExternalMember {
-    fn into(self) -> ScimComplexAttr {
-        let ScimExternalMember { external_id } = self;
-        let mut attrs = BTreeMap::default();
-
-        attrs.insert(
-            "external_id".to_string(),
-            ScimSimpleAttr::String(external_id),
-        );
-
-        ScimComplexAttr { attrs }
-    }
-}
-
-#[derive(Serialize, Debug, Clone)]
-#[serde(into = "ScimEntry")]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimSyncGroup {
-    pub id: Uuid,
-    pub external_id: Option<String>,
+    #[serde(flatten)]
+    pub entry: ScimEntry,
+
     pub name: String,
     pub description: Option<String>,
     pub gidnumber: Option<u32>,
     pub members: Vec<ScimExternalMember>,
 }
 
-// Need to allow this because clippy is broken and doesn't realise scimentry is out of crate
-// so this can't be fulfilled
-#[allow(clippy::from_over_into)]
-impl Into<ScimEntry> for ScimSyncGroup {
-    fn into(self) -> ScimEntry {
-        let ScimSyncGroup {
-            id,
-            external_id,
-            name,
-            description,
-            gidnumber,
-            members,
-        } = self;
+impl TryInto<ScimEntryGeneric> for ScimSyncGroup {
+    type Error = serde_json::Error;
 
-        let schemas = if gidnumber.is_some() {
-            vec![
+    fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
+        serde_json::to_value(self).and_then(serde_json::from_value)
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimSyncGroupBuilder {
+    inner: ScimSyncGroup,
+}
+
+impl ScimSyncGroup {
+    pub fn builder(name: String, id: Uuid) -> ScimSyncGroupBuilder {
+        ScimSyncGroupBuilder {
+            inner: ScimSyncGroup {
+                entry: ScimEntry {
+                    schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
+                    id,
+                    external_id: None,
+                    meta: None,
+                },
+                name,
+                description: None,
+                gidnumber: None,
+                members: Vec::with_capacity(0),
+            },
+        }
+    }
+}
+
+impl ScimSyncGroupBuilder {
+    pub fn set_description(mut self, desc: Option<String>) -> Self {
+        self.inner.description = desc;
+        self
+    }
+
+    pub fn set_gidnumber(mut self, gidnumber: Option<u32>) -> Self {
+        self.inner.gidnumber = gidnumber;
+        if self.inner.gidnumber.is_some() {
+            self.inner.entry.schemas = vec![
                 SCIM_SCHEMA_SYNC_GROUP.to_string(),
                 SCIM_SCHEMA_SYNC_POSIXGROUP.to_string(),
-            ]
+            ];
         } else {
-            vec![SCIM_SCHEMA_SYNC_GROUP.to_string()]
-        };
-
-        let mut attrs = BTreeMap::default();
-
-        set_string!(attrs, ATTR_NAME, name);
-        set_option_u32!(attrs, ATTR_GIDNUMBER, gidnumber);
-        set_option_string!(attrs, ATTR_DESCRIPTION, description);
-        set_multi_complex!(attrs, ATTR_MEMBER, members);
-
-        ScimEntry {
-            schemas,
-            id,
-            external_id,
-            meta: None,
-            attrs,
+            self.inner.entry.schemas = vec![SCIM_SCHEMA_SYNC_GROUP.to_string()];
         }
+        self
+    }
+
+    pub fn set_members<I>(mut self, member_iter: I) -> Self
+    where
+        I: Iterator<Item = String>,
+    {
+        self.inner.members = member_iter
+            .map(|external_id| ScimExternalMember { external_id })
+            .collect();
+        self
+    }
+
+    pub fn set_external_id(mut self, external_id: Option<String>) -> Self {
+        self.inner.entry.external_id = external_id;
+        self
+    }
+
+    pub fn build(self) -> ScimSyncGroup {
+        self.inner
     }
 }

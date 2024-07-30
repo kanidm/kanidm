@@ -59,7 +59,7 @@ jobs:
   upload-to-releases:
     permissions:
       # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
-      contents: write # allows the action to create a release
+      contents: write  # allows the action to create a release
 
     name: Upload to releases
     needs: build-deb-package

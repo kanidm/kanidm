@@ -35,7 +35,7 @@ impl IntoResponse for HtmxError {
         match self {
             HtmxError::OperationError(kopid, inner) => {
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
-                let response = match &inner {
+                match &inner {
                     OperationError::NotAuthenticated
                     | OperationError::SessionExpired
                     | OperationError::InvalidSessionState => Redirect::to("/ui").into_response(),
@@ -61,10 +61,7 @@ impl IntoResponse for HtmxError {
                         })
                     )
                         .into_response(),
-
-
-                };
-                response
+                }
             }
         }
     }

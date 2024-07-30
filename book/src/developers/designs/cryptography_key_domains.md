@@ -79,7 +79,7 @@ after the JWA algorithms from [RFC7518](https://www.rfc-editor.org/rfc/rfc7518).
 mapping to OAuth2 concepts and PKCS11 in the future.
 
 - `ES256` (ECDSA using P-256 and SHA-256, `CKM_ECDSA_SHA256`)
-- `RS256` (RSASSA-PKCS1-v1\_5 using SHA-256, `CKM_SHA256_RSA_PKCS`)
+- `RS256` (`RSASSA-PKCS1-v1_5` using `SHA-256`, `CKM_SHA256_RSA_PKCS`)
 - `HS256` (HMAC using SHA-256, `CKM_SHA256_HMAC`)
 
 Possible future classes could be

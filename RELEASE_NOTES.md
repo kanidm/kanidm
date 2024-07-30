@@ -70,7 +70,7 @@ tools to interact with Kanidm.
 - Replication for two node environments is now supported
 - Account policy supports password minimum length
 - Improve performance of webui
-- Add transitional compatability with SSSD
+- Add transitional compatibility with SSSD
 - Improve TPM interfaces in unix clients
 - Allow importing more weak password schemes from FreeIPA
 - Support Attestation of Passkeys/Webauthn - this makes us the first IDM to support this!
@@ -227,7 +227,7 @@ for a future supported release.
 
 The project is shaping up very nicely, and a beta will be coming soon!
 
-### Upgrade Note!
+### Upgrade Note
 
 This version will _require_ TLS on all servers, even if behind a load balancer or TLS terminating
 proxy. You should be ready for this change when you upgrade to the latest version.

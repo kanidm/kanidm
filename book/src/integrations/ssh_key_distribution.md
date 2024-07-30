@@ -44,12 +44,12 @@ Enter password:
 
 ### Public Key Caching Configuration
 
-If you have kanidm\_unixd running, you can use it to locally cache SSH public keys. This means you
+If you have `kanidm_unixd` running, you can use it to locally cache SSH public keys. This means you
 can still SSH into your machines, even if your network is down, you move away from Kanidm, or some
 other interruption occurs.
 
-The kanidm\_ssh\_authorizedkeys command is part of the kanidm-unix-clients package, so should be
-installed on the servers. It communicates to kanidm\_unixd, so you should have a configured
+The `kanidm_ssh_authorizedkeys` command is part of the `kanidm-unix-clients` package, so should be
+installed on the servers. It communicates to `kanidm_unixd`, so you should have a configured
 PAM/nsswitch setup as well.
 
 You can test this is configured correctly by running:
@@ -75,8 +75,10 @@ Restart sshd, and then attempt to authenticate with the keys.
 It's highly recommended you keep your client configuration and sshd_configuration in a configuration
 management tool such as salt or ansible.
 
-> **NOTICE:** With a working SSH key setup, you should also consider adding the following
-> sshd\_config options as hardening.
+> [!NOTE]
+>
+> With a working SSH key setup, you should also consider adding the following
+> `sshd_config` options as hardening.
 
 ```text
 PermitRootLogin no
@@ -90,11 +92,13 @@ KerberosAuthentication no
 
 In this mode, the authorised keys commands will contact Kanidm directly.
 
-> **NOTICE:** As Kanidm is contacted directly there is no SSH public key cache. Any network outage
+> [!NOTE]
+>
+> As Kanidm is being contacted directly there is no SSH public key cache. Any network outage
 > or communication loss may prevent you accessing your systems. You should only use this version if
 > you have a requirement for it.
 
-The kanidm\_ssh\_authorizedkeys\_direct command is part of the kanidm-clients package, so should be
+The `kanidm_ssh_authorizedkeys_direct` command is part of the kanidm-clients package, so should be
 installed on the servers.
 
 To configure the tool, you should edit /etc/kanidm/config, as documented in

@@ -2367,7 +2367,7 @@ mod tests {
 
         idms_auth.commit().expect("Must not fail");
 
-        token
+        *token
     }
 
     #[idm_test]

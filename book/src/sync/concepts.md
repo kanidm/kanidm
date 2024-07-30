@@ -37,7 +37,7 @@ submitted.
 ## Creating a Sync Account
 
 Creating a sync account requires administration permissions. By default this is available to members
-of the "system\_admins" group which "admin" is a memberof by default.
+of the `system_admins` group which `admin` is a memberof by default.
 
 ```bash
 kanidm system sync create <sync account name>
