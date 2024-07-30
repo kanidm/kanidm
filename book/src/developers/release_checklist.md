@@ -18,6 +18,7 @@ cargo install wasm-bindgen-cli
 ### Cargo Tasks
 
 - [ ] Update MSRV if applicable
+- [ ] cargo update
 - [ ] `RUSTC_BOOTSTRAP=1 cargo udeps`
 - [ ] cargo outdated -R
 - [ ] cargo audit
@@ -29,15 +30,14 @@ cargo install wasm-bindgen-cli
 ### Code Changes
 
 - [ ] upgrade crypto policy values if required
-- [ ] bump index version in constants
 - [ ] check for breaking db entry changes.
 
 ### Administration
 
-- [ ] cargo test
 - [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
+- [ ] cargo test
 - [ ] git commit
 - [ ] git push origin YYYYMMDD-pre-release
 - [ ] Merge PR
