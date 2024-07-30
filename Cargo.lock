@@ -4490,6 +4490,7 @@ dependencies = [
  "csv",
  "futures-util",
  "hashbrown 0.14.5",
+ "idlset",
  "kanidm_build_profiles",
  "kanidm_client",
  "kanidm_proto",

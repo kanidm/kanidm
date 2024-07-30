@@ -25,6 +25,7 @@ crossbeam = { workspace = true }
 csv = { workspace = true }
 futures-util = { workspace = true, features = ["sink"] }
 hashbrown = { workspace = true }
+idlset = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 mathru = { workspace = true }

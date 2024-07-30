@@ -13,10 +13,10 @@ static GLOBAL: mimalloc::MiMalloc = mimalloc::MiMalloc;
 #[macro_use]
 extern crate tracing;
 
-use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
+use opt::OrcaOpt;
 
 use crate::profile::{Profile, ProfileBuilder};
 
@@ -27,13 +27,12 @@ mod generate;
 mod kani;
 mod model;
 mod models;
+mod opt;
 mod populate;
 mod profile;
 mod run;
 mod state;
 mod stats;
-
-include!("./opt.rs");
 
 impl OrcaOpt {
     fn debug(&self) -> bool {
@@ -77,6 +76,7 @@ fn main() -> ExitCode {
             seed,
             profile_path,
             threads,
+            model,
         } => {
             // For now I hardcoded some dimensions, but we should prompt
             // the user for these later.
@@ -96,6 +96,7 @@ fn main() -> ExitCode {
                 extra_uris,
                 admin_password,
                 idm_admin_password,
+                model,
                 threads,
             )
             .seed(seed);

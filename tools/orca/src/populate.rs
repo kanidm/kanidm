@@ -55,10 +55,10 @@ async fn preflight_person(
 }
 
 async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> Result<(), Error> {
-    if client.group_exists(group.name.as_str()).await? {
+    if client.group_exists(&group.name.to_string()).await? {
         // Do nothing? Do we need to reset them later?
     } else {
-        client.group_create(group.name.as_str()).await?;
+        client.group_create(&group.name.to_string()).await?;
     }
 
     // We can submit all the members in one go.
@@ -66,7 +66,7 @@ async fn preflight_group(client: Arc<kani::KanidmOrcaClient>, group: Group) -> R
     let members = group.members.iter().map(|s| s.as_str()).collect::<Vec<_>>();
 
     client
-        .group_set_members(group.name.as_str(), members.as_slice())
+        .group_set_members(&group.name.to_string(), members.as_slice())
         .await?;
 
     Ok(())

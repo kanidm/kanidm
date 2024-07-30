@@ -1,6 +1,9 @@
 use crate::error::Error;
+use crate::state::{GroupName, Model};
 use rand::{thread_rng, Rng};
+use serde::de::{value, IntoDeserializer};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::path::Path;
 use std::time::Duration;
 
@@ -12,6 +15,11 @@ const DEFAULT_PERSON_COUNT: u64 = 10;
 
 const DEFAULT_WARMUP_TIME: u64 = 10;
 const DEFAULT_TEST_TIME: Option<u64> = Some(180);
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct GroupProperties {
+    pub member_count: Option<u64>,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Profile {
@@ -26,6 +34,8 @@ pub struct Profile {
     group_count: u64,
     person_count: u64,
     thread_count: Option<usize>,
+    model: Model,
+    group: BTreeMap<String, GroupProperties>,
 }
 
 impl Profile {
@@ -58,12 +68,20 @@ impl Profile {
         self.thread_count
     }
 
+    pub fn get_properties_by_group(&self) -> &BTreeMap<String, GroupProperties> {
+        &self.group
+    }
+
     pub fn seed(&self) -> u64 {
         if self.seed < 0 {
             self.seed.wrapping_mul(-1) as u64
         } else {
             self.seed as u64
         }
+    }
+
+    pub fn model(&self) -> &Model {
+        &self.model
     }
 
     pub fn warmup_time(&self) -> Duration {
@@ -87,6 +105,7 @@ pub struct ProfileBuilder {
     pub group_count: Option<u64>,
     pub person_count: Option<u64>,
     pub thread_count: Option<usize>,
+    pub model: Model,
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
@@ -108,6 +127,7 @@ impl ProfileBuilder {
         extra_uris: Vec<String>,
         admin_password: String,
         idm_admin_password: String,
+        model: Model,
         thread_count: Option<usize>,
     ) -> Self {
         ProfileBuilder {
@@ -121,6 +141,7 @@ impl ProfileBuilder {
             group_count: None,
             person_count: None,
             thread_count,
+            model,
         }
     }
 
@@ -165,12 +186,16 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
+            model,
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
             let mut rng = thread_rng();
             rng.gen()
         });
+
+        //TODO: Allow to specify group properties from the CLI
+        let group = BTreeMap::new();
 
         let group_count = validate_u64_bound(group_count, DEFAULT_GROUP_COUNT)?;
         let person_count = validate_u64_bound(person_count, DEFAULT_PERSON_COUNT)?;
@@ -197,6 +222,8 @@ impl ProfileBuilder {
             group_count,
             person_count,
             thread_count,
+            group,
+            model,
         })
     }
 }
@@ -213,6 +240,24 @@ impl Profile {
             Error::Io
         })
     }
+
+    fn validate_group_names_and_member_count(&self) -> Result<(), Error> {
+        for (group_name, group_properties) in self.group.iter() {
+            let _ = GroupName::deserialize(group_name.as_str().into_deserializer()).map_err(
+                |_: value::Error| {
+                    error!("Invalid group name provided: {group_name}");
+                    Error::InvalidState
+                },
+            )?;
+            let provided_member_count = group_properties.member_count.unwrap_or_default();
+            let max_member_count = self.person_count();
+            if provided_member_count > max_member_count {
+                error!("Member count of {group_name} is out of bound: max value is {max_member_count}, but {provided_member_count} was provided");
+                return Err(Error::InvalidState);
+            }
+        }
+        Ok(())
+    }
 }
 
 impl TryFrom<&Path> for Profile {
@@ -224,9 +269,12 @@ impl TryFrom<&Path> for Profile {
             Error::Io
         })?;
 
-        toml::from_str(&file_contents).map_err(|toml_err| {
+        let profile: Profile = toml::from_str(&file_contents).map_err(|toml_err| {
             error!(?toml_err);
             Error::SerdeToml
-        })
+        })?;
+        profile.validate_group_names_and_member_count()?;
+
+        Ok(profile)
     }
 }

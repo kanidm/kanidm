@@ -6,6 +6,8 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
+use rand::Rng;
+use rand_chacha::ChaCha8Rng;
 
 use std::collections::BTreeSet;
 use std::time::Duration;
@@ -18,12 +20,17 @@ enum State {
 
 pub struct ActorBasic {
     state: State,
+    randomised_backoff_time: Duration,
 }
 
 impl ActorBasic {
-    pub fn new() -> Self {
+    pub fn new(mut cha_rng: ChaCha8Rng, warmup_time_ms: u64) -> Self {
+        let max_backoff_time_in_ms = 2 * warmup_time_ms / 3;
+        let randomised_backoff_time =
+            Duration::from_millis(cha_rng.gen_range(0..max_backoff_time_in_ms));
         ActorBasic {
             state: State::Unauthenticated,
+            randomised_backoff_time,
         }
     }
 }
@@ -34,7 +41,7 @@ impl ActorModel for ActorBasic {
         &mut self,
         client: &KanidmClient,
         person: &Person,
-    ) -> Result<EventRecord, Error> {
+    ) -> Result<Vec<EventRecord>, Error> {
         let transition = self.next_transition(&person.roles);
 
         if let Some(delay) = transition.delay {
@@ -78,11 +85,11 @@ impl ActorBasic {
         };
         match self.state {
             State::Unauthenticated => Transition {
-                delay: Some(Duration::from_secs(15)),
+                delay: Some(self.randomised_backoff_time),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_secs(10)),
+                delay: Some(Duration::from_secs(2)),
                 action: TransitionAction::PrivilegeReauth,
             },
             // Since this is the basic model we don't want to get too fancy and do too many things, but since the struct Person
@@ -106,7 +113,9 @@ impl ActorBasic {
                         delay: Some(Duration::from_secs(3)),
                         action: TransitionAction::WriteSelfPassword,
                     },
-                    ActorRole::PeoplePiiReader | ActorRole::None => logout_transition,
+                    ActorRole::PeoplePiiReader | ActorRole::PeopleGroupAdmin | ActorRole::None => {
+                        logout_transition
+                    }
                 },
                 None => logout_transition,
             },

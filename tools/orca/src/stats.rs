@@ -28,6 +28,7 @@ pub trait DataCollector {
 enum OpKind {
     WriteOp,
     ReadOp,
+    ReplicationDelay,
     Auth, //TODO! does this make sense?
 }
 
@@ -37,11 +38,15 @@ impl From<EventDetail> for OpKind {
             EventDetail::PersonGetSelfMemberOf | EventDetail::PersonGetSelfAccount => {
                 OpKind::ReadOp
             }
-            EventDetail::PersonSetSelfMail | EventDetail::PersonSetSelfPassword => OpKind::WriteOp,
+            EventDetail::PersonSetSelfMail
+            | EventDetail::PersonSetSelfPassword
+            | EventDetail::PersonCreateGroup
+            | EventDetail::PersonAddGroupMembers => OpKind::WriteOp,
             EventDetail::Error
             | EventDetail::Login
             | EventDetail::Logout
             | EventDetail::PersonReauth => OpKind::Auth,
+            EventDetail::GroupReplicationDelay => OpKind::ReplicationDelay,
         }
     }
 }
@@ -117,6 +122,7 @@ impl DataCollector for BasicStatistics {
 
         let mut readop_times = Vec::new();
         let mut writeop_times = Vec::new();
+        let mut replication_delays = Vec::new();
 
         // We will drain this now.
         while let Some(event_record) = stats_queue.pop() {
@@ -132,28 +138,22 @@ impl DataCollector for BasicStatistics {
                 OpKind::WriteOp => {
                     writeop_times.push(event_record.duration.as_secs_f64());
                 }
+                OpKind::ReplicationDelay => {
+                    replication_delays.push(event_record.duration.as_secs_f64())
+                }
                 OpKind::Auth => {}
             }
         }
 
-        if readop_times.is_empty() && writeop_times.is_empty() {
-            error!("For some weird reason no read and write operations were recorded, exiting...");
-            return Err(Error::InvalidState);
-        }
-
-        if writeop_times.is_empty() {
-            error!("For some weird reason no write operations were recorded, exiting...");
-            return Err(Error::InvalidState);
-        }
-
-        if readop_times.is_empty() {
-            error!("For some weird reason no read operations were recorded, exiting...");
+        if readop_times.is_empty() && writeop_times.is_empty() && replication_delays.is_empty() {
+            error!("For some weird reason no valid data was recorded in this benchmark, bailing out...");
             return Err(Error::InvalidState);
         }
 
         let stats = StatsContainer::new(
             &readop_times,
             &writeop_times,
+            &replication_delays,
             self.node_count,
             self.person_count,
             self.group_count,
@@ -167,16 +167,26 @@ impl DataCollector for BasicStatistics {
         info!("Received {} read events", stats.read_events);
 
         info!("mean: {} seconds", stats.read_mean);
-        info!("variance: {}", stats.read_variance);
+        info!("variance: {} seconds", stats.read_variance);
         info!("SD: {} seconds", stats.read_sd);
         info!("95%: {}", stats.read_95);
 
         info!("Received {} write events", stats.write_events);
 
         info!("mean: {} seconds", stats.write_mean);
-        info!("variance: {}", stats.write_variance);
+        info!("variance: {} seconds", stats.write_variance);
         info!("SD: {} seconds", stats.write_sd);
         info!("95%: {}", stats.write_95);
+
+        info!(
+            "Received {} replication delays",
+            stats.replication_delay_events
+        );
+
+        info!("mean: {} seconds", stats.replication_delay_mean);
+        info!("variance: {} seconds", stats.replication_delay_variance);
+        info!("SD: {} seconds", stats.replication_delay_sd);
+        info!("95%: {}", stats.replication_delay_95);
 
         let now = Local::now();
         let filepath = format!("orca-run-{}.csv", now.to_rfc3339());
@@ -207,35 +217,78 @@ struct StatsContainer {
     write_mean: f64,
     write_variance: f64,
     write_95: f64,
+    replication_delay_events: usize,
+    replication_delay_sd: f64,
+    replication_delay_mean: f64,
+    replication_delay_variance: f64,
+    replication_delay_95: f64,
 }
+
+// These should help prevent confusion when using 'compute_stats_from_timings_vec'
+type EventCount = usize;
+type Mean = f64;
+type Sd = f64;
+type Variance = f64;
+type Percentile95 = f64;
 
 impl StatsContainer {
     fn new(
         readop_times: &Vec<f64>,
         writeop_times: &Vec<f64>,
+        replication_delays: &Vec<f64>,
         node_count: usize,
         person_count: usize,
         group_count: usize,
     ) -> Self {
-        let readop_distrib: Normal<f64> = Normal::from_data(readop_times);
-        let read_sd = readop_distrib.variance().sqrt();
-        let writeop_distrib: Normal<f64> = Normal::from_data(writeop_times);
-        let write_sd = writeop_distrib.variance().sqrt();
+        let (read_events, read_mean, read_variance, read_sd, read_95) =
+            Self::compute_stats_from_timings_vec(readop_times);
+
+        let (write_events, write_mean, write_variance, write_sd, write_95) =
+            Self::compute_stats_from_timings_vec(writeop_times);
+
+        let (
+            replication_delay_events,
+            replication_delay_mean,
+            replication_delay_variance,
+            replication_delay_sd,
+            replication_delay_95,
+        ) = Self::compute_stats_from_timings_vec(replication_delays);
 
         StatsContainer {
             person_count,
             group_count,
             node_count,
-            read_events: readop_times.len(),
-            read_sd: readop_distrib.variance().sqrt(),
-            read_mean: readop_distrib.mean(),
-            read_variance: readop_distrib.variance(),
-            read_95: readop_distrib.mean() + (2.0 * read_sd),
-            write_events: writeop_times.len(),
-            write_sd: writeop_distrib.variance().sqrt(),
-            write_mean: writeop_distrib.mean(),
-            write_variance: writeop_distrib.variance(),
-            write_95: writeop_distrib.mean() + (2.0 * write_sd),
+            read_events,
+            read_sd,
+            read_mean,
+            read_variance,
+            read_95,
+            write_events,
+            write_sd,
+            write_mean,
+            write_variance,
+            write_95,
+            replication_delay_events,
+            replication_delay_sd,
+            replication_delay_mean,
+            replication_delay_variance,
+            replication_delay_95,
+        }
+    }
+
+    fn compute_stats_from_timings_vec(
+        op_times: &Vec<f64>,
+    ) -> (EventCount, Mean, Variance, Sd, Percentile95) {
+        let op_times_len = op_times.len();
+        if op_times_len >= 2 {
+            let distr = Normal::from_data(op_times);
+            let mean = distr.mean();
+            let variance = distr.variance();
+            let sd = variance.sqrt();
+            let percentile_95 = mean + 2. * sd;
+            (op_times_len, mean, variance, sd, percentile_95)
+        } else {
+            (0, 0., 0., 0., 0.)
         }
     }
 }

@@ -2,9 +2,14 @@ use crate::error::Error;
 use crate::model::{ActorModel, ActorRole};
 use crate::models;
 use crate::profile::Profile;
+use core::fmt::Display;
+use kanidm_client::KanidmClient;
+use rand::SeedableRng;
+use rand_chacha::ChaCha8Rng;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::path::Path;
+use std::time::Duration;
 /// A serialisable state representing the content of a kanidm database and potential
 /// test content that can be created and modified.
 ///
@@ -71,20 +76,45 @@ pub enum PreflightState {
 /// This compliments ActorRoles, which define the extended actions an Actor may
 /// choose to perform. If ActorRoles are present, the model MAY choose to use
 /// these roles to perform extended operations.
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(clap::ValueEnum, Debug, Serialize, Deserialize, Clone, Default, Copy)]
+#[serde(rename_all = "snake_case")]
 pub enum Model {
     /// This is a "hardcoded" model that just authenticates and searches
     AuthOnly,
     /// A simple linear executor that does actions in a loop.
     #[default]
     Basic,
+    /// This model only performs read requests in a loop
+    Reader,
+    /// This model only performs write requests in a loop
+    Writer,
+    /// This model adds empty group to a sever and measures how long it takes before they are replicated to the other servers
+    LatencyMeasurer,
 }
 
 impl Model {
-    pub fn as_dyn_object(&self) -> Result<Box<dyn ActorModel + Send>, Error> {
+    pub fn as_dyn_object(
+        self,
+        rng_seed: u64,
+        additional_clients: Vec<KanidmClient>,
+        person_name: &str,
+        warmup_time: Duration,
+    ) -> Result<Box<dyn ActorModel + Send + '_>, Error> {
+        let cha_rng = ChaCha8Rng::seed_from_u64(rng_seed);
+        let warmup_time_as_ms = warmup_time.as_millis() as u64;
         Ok(match self {
             Model::AuthOnly => Box::new(models::auth_only::ActorAuthOnly::new()),
-            Model::Basic => Box::new(models::basic::ActorBasic::new()),
+            Model::Basic => Box::new(models::basic::ActorBasic::new(cha_rng, warmup_time_as_ms)),
+            Model::Reader => Box::new(models::read::ActorReader::new(cha_rng, warmup_time_as_ms)),
+            Model::Writer => Box::new(models::write::ActorWriter::new(cha_rng, warmup_time_as_ms)),
+            Model::LatencyMeasurer => {
+                Box::new(models::latency_measurer::ActorLatencyMeasurer::new(
+                    cha_rng,
+                    additional_clients,
+                    person_name,
+                    warmup_time_as_ms,
+                )?)
+            }
         })
     }
 }
@@ -106,8 +136,72 @@ pub struct Person {
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct Group {
-    pub name: String,
+    pub name: GroupName,
     pub preflight_state: PreflightState,
     pub role: ActorRole,
     pub members: BTreeSet<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Hash, Default, Ord, Eq, PartialEq, PartialOrd)]
+#[serde(rename_all = "snake_case")]
+#[allow(clippy::enum_variant_names)]
+pub enum GroupName {
+    RolePeopleSelfSetPassword,
+    #[default]
+    RolePeoplePiiReader,
+    RolePeopleSelfMailWrite,
+    RolePeopleSelfReadProfile,
+    RolePeopleSelfReadMemberOf,
+    RolePeopleGroupAdmin,
+}
+
+impl Display for GroupName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}",
+            toml::to_string(self)
+                .expect("Failed to parse group name as string")
+                .trim_matches('"')
+        )
+    }
+}
+
+impl TryFrom<&String> for GroupName {
+    type Error = toml::de::Error;
+
+    fn try_from(value: &String) -> Result<Self, Self::Error> {
+        toml::from_str(&format!("\"{value}\""))
+    }
+}
+
+#[cfg(test)]
+mod test {
+
+    use super::GroupName;
+
+    #[test]
+    fn test_group_names_parsing() {
+        let group_names = vec![
+            GroupName::RolePeopleGroupAdmin,
+            GroupName::RolePeoplePiiReader,
+            GroupName::RolePeopleSelfReadMemberOf,
+        ];
+        for name in group_names {
+            let str = name.to_string();
+            let parsed_group_name = GroupName::try_from(&str).expect("Failed to parse group name");
+
+            assert_eq!(parsed_group_name, name);
+            dbg!(str);
+        }
+    }
+
+    #[test]
+    fn test_group_name_from_str() {
+        let group_admin = "role_people_group_admin";
+        assert_eq!(
+            GroupName::RolePeopleGroupAdmin,
+            GroupName::try_from(&group_admin.to_string()).unwrap()
+        )
+    }
 }
