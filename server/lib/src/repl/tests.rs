@@ -337,6 +337,108 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     drop(server_b_txn);
 }
 
+#[qs_pair_test]
+async fn test_repl_increment_write_ops_reset(server_a: &QueryServer, server_b: &QueryServer) {
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    // we first increase the write count in b so it's no 0
+    let mut server_b_txn = server_b.read().await;
+
+    assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
+        .and_then(|_| server_a_txn.commit())
+        .is_ok());
+
+    // Add an entry.
+    drop(server_b_txn);
+
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+
+    let t_uuid = Uuid::new_v4();
+    assert!(server_b_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(t_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_b_txn.commit().expect("Failed to commit");
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    server_a_txn.reset_write_ops_since_last_repl();
+    assert!(server_a_txn.commit().is_ok());
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    assert!(server_a_txn
+        .internal_create(vec![entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(Uuid::new_v4())),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        ),])
+        .is_ok());
+    server_a_txn.commit().expect("Failed to commit");
+
+    // let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.read().await;
+
+    // Verify the write ops counter has been increased
+    assert_eq!(server_a_txn.get_write_ops_since_last_repl(), 1);
+    // Assert the entry is not on A.
+    assert_eq!(
+        server_a_txn.internal_search_uuid(t_uuid),
+        Err(OperationError::NoMatchingEntries)
+    );
+
+    let a_ruv_range = server_a_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range A");
+    let b_ruv_range = server_b_txn
+        .get_be_txn()
+        .get_ruv()
+        .current_ruv_range()
+        .expect("Failed to get RUV range B");
+
+    trace!(?a_ruv_range);
+    trace!(?b_ruv_range);
+    assert!(a_ruv_range != b_ruv_range);
+
+    // Now setup the consumer state for the next incremental replication.
+    let a_ruv_range = server_a_txn
+        .consumer_get_state()
+        .expect("Unable to access RUV range");
+    // End the read.
+    drop(server_a_txn);
+
+    // Incremental.
+    // Should now be on the other partner.
+
+    // Get the changes.
+    let changes = server_b_txn
+        .supplier_provide_changes(a_ruv_range)
+        .expect("Unable to generate supplier changes");
+
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+
+    server_a_txn
+        .consumer_apply_changes(&changes)
+        .expect("Unable to apply changes to consumer.");
+
+    server_a_txn.commit().expect("Failed to commit");
+
+    // Verify the write ops counter has been reset after replication
+    assert_eq!(server_a.read().await.get_write_ops_since_last_repl(), 0);
+}
+
 // Test that adding an entry to one side, then recycling it replicates correctly.
 #[qs_pair_test]
 async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_b: &QueryServer) {
