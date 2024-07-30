@@ -24,7 +24,7 @@ impl WriteOperationCounter {
 
 impl Plugin for WriteOperationCounter {
     fn id() -> &'static str {
-        "write_operation_counter_plugin"
+        "plugin_write_operation_counter"
     }
 
     fn post_create(
