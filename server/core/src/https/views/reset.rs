@@ -434,7 +434,7 @@ pub(crate) async fn view_new_totp(
                     Ok(qr) => qr.render::<svg::Color>().build(),
                     Err(qr_err) => {
                         error!("Failed to create TOTP QR code: {qr_err}");
-                        "QR Code broke".to_string()
+                        "QR Code Generation Failed".to_string()
                     }
                 };
 
