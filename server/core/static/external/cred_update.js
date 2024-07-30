@@ -49,36 +49,57 @@ function stillSwapFailureResponse(event) {
     }
 }
 
+function onPasskeyCreated(assertion) {
+    try {
+        console.log(assertion)
+        let creationData = {};
+
+        creationData.id = assertion.id;
+        creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId))
+        creationData.response = {};
+        creationData.response.attestationObject = Base64.fromUint8Array(new Uint8Array(assertion.response.attestationObject))
+        creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON))
+        creationData.type = assertion.type
+        creationData.extensions = assertion.getClientExtensionResults()
+        creationData.extensions.uvm = undefined
+
+        // Put the passkey creation data into the form for submission
+        document.getElementById("passkey-create-data").value = JSON.stringify(creationData)
+
+        // Make the name input visible and hide the "Begin Passkey Enrollment" button
+        document.getElementById("passkeyNamingSafariBtn").classList.add("d-none")
+        document.getElementById("passkeyNamingForm").classList.remove("d-none")
+        document.getElementById("passkeyNamingSubmitBtn").classList.remove("d-none")
+    } catch (e) {
+        console.log(e)
+        if (confirm("Failed to encode your new passkey's data for transmission, confirm to reload this page.\nReport this issue if it keeps occurring.")) {
+            window.location.reload();
+        }
+    }
+}
+
 function startPasskeyEnrollment() {
-    const data_elem = document.getElementById('data');
-    const credentialRequestOptions = JSON.parse(data_elem.textContent);
-    credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
-    credentialRequestOptions.publicKey.user.id = Base64.toUint8Array(credentialRequestOptions.publicKey.user.id);
+    try {
+        const data_elem = document.getElementById('data');
+        const credentialRequestOptions = JSON.parse(data_elem.textContent);
+        credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
+        credentialRequestOptions.publicKey.user.id = Base64.toUint8Array(credentialRequestOptions.publicKey.user.id);
 
-    console.log(credentialRequestOptions)
-    navigator.credentials
-        .create({publicKey: credentialRequestOptions.publicKey})
-        .then((assertion) => {
-            console.log(assertion)
-            let creationData = {};
-
-            creationData.id = assertion.id;
-            creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId))
-            creationData.response = {};
-            creationData.response.attestationObject = Base64.fromUint8Array(new Uint8Array(assertion.response.attestationObject))
-            creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON))
-            creationData.type = assertion.type
-            creationData.extensions = assertion.getClientExtensionResults()
-            creationData.extensions.uvm = undefined
-
-            // Put the passkey creation data into the form for submission
-            document.getElementById("passkey-create-data").value = JSON.stringify(creationData)
-
-            // Make the name input visible and hide the "Begin Passkey Enrollment" button
-            document.getElementById("passkeyNamingSafariBtn")?.classList.add("d-none")
-            document.getElementById("passkeyNamingForm")?.classList.remove("d-none")
-            document.getElementById("passkeyNamingSubmitBtn")?.classList.remove("d-none")
-        });
+        console.log(credentialRequestOptions)
+        navigator.credentials
+            .create({publicKey: credentialRequestOptions.publicKey})
+            .then((assertion) => {
+                onPasskeyCreated(assertion);
+            }, (reason) => {
+                alert("Passkey creation failed " +  reason.toString())
+                console.log("Passkey creation failed: " + reason.toString())
+            });
+    } catch (e) {
+        console.log(e)
+        if (confirm("Failed to initialize passkey creation, confirm to reload this page.\nReport this issue if it keeps occurring.")) {
+            window.location.reload();
+        }
+    }
 }
 
 function setupPasskeyNamingSafariButton() {
