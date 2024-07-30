@@ -52,6 +52,7 @@ pub struct ReplicationConfiguration {
     pub task_poll_interval: Option<u64>,
     /// This enables a new replication trigger algorithm that should ensure the lowest possible replication delay.
     /// IT MAY CAUSE A PERFORMANCE DROP, USE AT YOUR OWN PERIL  
+    #[serde(default)]
     pub enable_experimental_replication_trigger: bool,
 
     #[serde(flatten)]
