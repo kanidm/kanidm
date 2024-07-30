@@ -50,6 +50,9 @@ pub struct ReplicationConfiguration {
     /// [kanidm_proto::constants::DEFAULT_REPL_TASK_POLL_INTERVAL] but may
     /// not exceed [kanidm_proto::constants::AUTH_TOKEN_GRACE_WINDOW].
     pub task_poll_interval: Option<u64>,
+    /// This enables a new replication trigger algorithm that should ensure the lowest possible replication delay.
+    /// IT MAY CAUSE A PERFORMANCE DROP, USE AT YOUR OWN PERIL  
+    pub enable_experimental_replication_trigger: bool,
 
     #[serde(flatten)]
     pub manual: BTreeMap<Url, RepNodeConfig>,
@@ -70,6 +73,7 @@ impl Default for ReplicationConfiguration {
             bindaddress,
             task_poll_interval: None,
             manual: BTreeMap::new(),
+            enable_experimental_replication_trigger: false,
         }
     }
 }

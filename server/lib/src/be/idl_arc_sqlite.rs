@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::convert::TryInto;
+use std::ops::Deref;
 use std::ops::DerefMut;
 use std::sync::Arc;
 use std::time::Duration;
@@ -58,6 +59,7 @@ pub struct IdlArcSqlite {
     op_ts_max: CowCell<Option<Duration>>,
     allids: CowCell<IDLBitRange>,
     maxid: CowCell<u64>,
+    write_ops_since_last_repl: CowCell<u64>,
     keyhandles: CowCell<HashMap<KeyHandleId, KeyHandle>>,
 }
 
@@ -67,6 +69,7 @@ pub struct IdlArcSqliteReadTransaction<'a> {
     idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>, ()>,
     name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue, ()>,
     allids: CowCellReadTxn<IDLBitRange>,
+    write_ops_since_last_repl: CowCellReadTxn<u64>,
 }
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
@@ -77,6 +80,7 @@ pub struct IdlArcSqliteWriteTransaction<'a> {
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
     allids: CowCellWriteTxn<'a, IDLBitRange>,
     maxid: CowCellWriteTxn<'a, u64>,
+    write_ops_since_last_repl: CowCellWriteTxn<'a, u64>,
     pub(super) keyhandles: CowCellWriteTxn<'a, HashMap<KeyHandleId, KeyHandle>>,
 }
 
@@ -359,6 +363,8 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_key_handles(&mut self) -> Result<BTreeMap<KeyHandleId, KeyHandle>, OperationError>;
 
+    fn get_write_ops_since_last_repl(&mut self) -> u64;
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 
     fn is_dirty(&self) -> bool;
@@ -478,6 +484,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.get_id2entry(id)
     }
+
+    fn get_write_ops_since_last_repl(&mut self) -> u64 {
+        *self.write_ops_since_last_repl.deref()
+    }
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
@@ -576,6 +586,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.get_id2entry(id)
     }
+
+    fn get_write_ops_since_last_repl(&mut self) -> u64 {
+        *self.write_ops_since_last_repl.deref()
+    }
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
@@ -608,6 +622,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             allids,
             maxid,
             keyhandles,
+            write_ops_since_last_repl,
         } = self;
 
         // Write any dirty items to the disk.
@@ -675,6 +690,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         db.commit()?;
 
         // Can no longer fail from this point.
+        write_ops_since_last_repl.commit();
         op_ts_max.commit();
         name_cache.commit();
         idl_cache.commit();
@@ -1192,6 +1208,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 *self.maxid = mid;
             })
     }
+
+    pub fn increase_write_ops_since_last_repl(&mut self) {
+        *self.write_ops_since_last_repl.deref_mut() += 1;
+    }
+
+    pub fn reset_write_ops_since_last_repl(&mut self) {
+        *self.write_ops_since_last_repl.deref_mut() = 0;
+    }
 }
 
 impl IdlArcSqlite {
@@ -1274,6 +1298,8 @@ impl IdlArcSqlite {
 
         let op_ts_max = CowCell::new(None);
 
+        let write_ops_since_last_repl = CowCell::new(0);
+
         Ok(IdlArcSqlite {
             db,
             entry_cache,
@@ -1283,6 +1309,7 @@ impl IdlArcSqlite {
             allids,
             maxid,
             keyhandles,
+            write_ops_since_last_repl,
         })
     }
 
@@ -1299,6 +1326,7 @@ impl IdlArcSqlite {
         let idl_cache_read = self.idl_cache.read();
         let name_cache_read = self.name_cache.read();
         let allids_read = self.allids.read();
+        let write_ops_since_last_repl_read = self.write_ops_since_last_repl.read();
 
         Ok(IdlArcSqliteReadTransaction {
             db: db_read,
@@ -1306,6 +1334,7 @@ impl IdlArcSqlite {
             idl_cache: idl_cache_read,
             name_cache: name_cache_read,
             allids: allids_read,
+            write_ops_since_last_repl: write_ops_since_last_repl_read,
         })
     }
 
@@ -1319,6 +1348,7 @@ impl IdlArcSqlite {
         let allids_write = self.allids.write();
         let maxid_write = self.maxid.write();
         let keyhandles_write = self.keyhandles.write();
+        let write_ops_since_last_repl_write = self.write_ops_since_last_repl.write();
 
         Ok(IdlArcSqliteWriteTransaction {
             db: db_write,
@@ -1329,6 +1359,7 @@ impl IdlArcSqlite {
             allids: allids_write,
             maxid: maxid_write,
             keyhandles: keyhandles_write,
+            write_ops_since_last_repl: write_ops_since_last_repl_write,
         })
     }
 

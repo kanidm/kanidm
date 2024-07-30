@@ -46,6 +46,30 @@ pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
 /// Default replication poll window in seconds.
 pub const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
 
+/// Minimum replication poll window in seconds:
+pub const MIN_REPL_TASK_POLL_INTERVAL: u64 = 3;
+
+// Estimate of max write ops that can be processed in the corresponding replication poll window
+pub const MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL: [(u64, u64); 13] = [
+    (2945, 3),
+    (4081, 4),
+    (5294, 5),
+    (6351, 6),
+    (7408, 7),
+    (8280, 8),
+    (9105, 9),
+    (10476, 10),
+    (11919, 11),
+    (12395, 12),
+    (12770, 13),
+    (14293, 14),
+    (15893, 15),
+];
+
+// This represents the percentage of the current MAX_WRITE_THROUGHPUT (determined by the current replication window)
+// above which we will not trigger replication as we are too close to the maximum throughput and we risk to lower the server performance
+pub const REPLICATION_TRIGGER_SAFETY_THRESHOLD: f64 = 0.8;
+
 /// Default grace window for authentication tokens. This allows a token to be
 /// validated by another replica before the backing database session has been
 /// replicated to the partner. If replication stalls until this point then

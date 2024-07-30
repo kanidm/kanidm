@@ -210,6 +210,10 @@ pub trait QueryServerTransaction<'a> {
 
     fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
+    fn get_write_ops_since_last_repl(&mut self) -> u64 {
+        self.get_be_txn().get_write_ops_since_last_repl()
+    }
+
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
 
@@ -2169,11 +2173,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn get_txn_cid(&self) -> &Cid {
         &self.cid
     }
+
+    pub fn increase_write_ops_since_last_repl(&mut self) {
+        self.be_txn.increase_write_ops_since_last_repl()
+    }
+
+    pub fn reset_write_ops_since_last_repl(&mut self) {
+        self.be_txn.reset_write_ops_since_last_repl()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
+
+    #[qs_test]
+    async fn test_write_ops_since_last_repl(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        server_txn.reset_write_ops_since_last_repl();
+        assert!(server_txn.commit().is_ok());
+
+        let write_ops = server.read().await.get_write_ops_since_last_repl();
+
+        assert_eq!(0, write_ops);
+
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        server_txn.increase_write_ops_since_last_repl();
+        assert!(server_txn.commit().is_ok());
+
+        let write_ops = server.read().await.get_write_ops_since_last_repl();
+        assert_eq!(1, write_ops);
+    }
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {

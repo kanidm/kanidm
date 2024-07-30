@@ -27,6 +27,7 @@ mod refint;
 mod session;
 mod spn;
 mod valuedeny;
+mod write_ops_counter;
 
 trait Plugin {
     fn id() -> &'static str;
@@ -259,6 +260,7 @@ impl Plugins {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_create(qs, cand, ce)?;
+        write_ops_counter::WriteOperationCounter::post_create(qs, cand, ce)?;
         memberof::MemberOf::post_create(qs, cand, ce)
     }
 
@@ -295,6 +297,7 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)?;
         spn::Spn::post_modify(qs, pre_cand, cand, me)?;
+        write_ops_counter::WriteOperationCounter::post_modify(qs, pre_cand, cand, me)?;
         memberof::MemberOf::post_modify(qs, pre_cand, cand, me)
     }
 
@@ -331,6 +334,7 @@ impl Plugins {
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_batch_modify(qs, pre_cand, cand, me)?;
         spn::Spn::post_batch_modify(qs, pre_cand, cand, me)?;
+        write_ops_counter::WriteOperationCounter::post_batch_modify(qs, pre_cand, cand, me)?;
         memberof::MemberOf::post_batch_modify(qs, pre_cand, cand, me)
     }
 
@@ -351,6 +355,8 @@ impl Plugins {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_delete(qs, cand, de)?;
+        write_ops_counter::WriteOperationCounter::post_delete(qs, cand, de)?;
+
         memberof::MemberOf::post_delete(qs, cand, de)
     }
 
@@ -368,6 +374,7 @@ impl Plugins {
         cand: &[EntrySealedCommitted],
     ) -> Result<(), OperationError> {
         refint::ReferentialIntegrity::post_repl_refresh(qs, cand)?;
+        write_ops_counter::WriteOperationCounter::post_repl_refresh(qs, cand)?;
         memberof::MemberOf::post_repl_refresh(qs, cand)
     }
 
@@ -394,7 +401,12 @@ impl Plugins {
         conflict_uuids: &mut BTreeSet<Uuid>,
     ) -> Result<(), OperationError> {
         // Attr unique MUST BE FIRST.
-        attrunique::AttrUnique::post_repl_incremental_conflict(qs, cand, conflict_uuids)
+        attrunique::AttrUnique::post_repl_incremental_conflict(qs, cand, conflict_uuids)?;
+        write_ops_counter::WriteOperationCounter::post_repl_incremental_conflict(
+            qs,
+            cand,
+            conflict_uuids,
+        )
     }
 
     #[instrument(level = "debug", name = "plugins::run_post_repl_incremental", skip_all)]

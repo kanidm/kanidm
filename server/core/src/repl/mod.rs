@@ -8,7 +8,6 @@ use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::broadcast;
 use tokio::sync::mpsc;
 use tokio::sync::oneshot;
 use tokio::sync::Mutex;
@@ -17,11 +16,17 @@ use tokio::{
     net::{TcpListener, TcpStream},
     task::JoinHandle,
 };
+use tokio::{sync::broadcast, time::Instant};
 use tokio_openssl::SslStream;
 use tokio_util::codec::{Framed, FramedRead, FramedWrite};
 use tracing::{error, Instrument};
 use url::Url;
 use uuid::Uuid;
+
+use kanidm_proto::constants::{
+    MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL, MIN_REPL_TASK_POLL_INTERVAL,
+    REPLICATION_TRIGGER_SAFETY_THRESHOLD,
+};
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
@@ -363,11 +368,60 @@ async fn repl_run_consumer(
     Some(socket_addr)
 }
 
+#[instrument(level="info", skip(idms), fields(eventid=Uuid::new_v4().to_string()))]
+async fn replication_trigger(
+    idms: &IdmServer,
+    last_replication_instant: &Instant,
+    enable_experimental_replication_trigger: bool,
+    replication_interval: Duration,
+) {
+    tokio::select! {
+        _ = async {
+            let mut read_txn = idms.proxy_read().await;
+
+            let mut one_sec_int = interval(Duration::from_secs(1));
+            // sleep for the minimum window size before we do anything
+            sleep(Duration::from_secs(MIN_REPL_TASK_POLL_INTERVAL)).await;
+            loop {
+                let write_ops_since_last_repl = read_txn.qs_read.get_write_ops_since_last_repl();
+                let time_since_last_repl = last_replication_instant.elapsed().as_secs();
+
+                let Some(write_throughput_index) = time_since_last_repl.checked_sub(MIN_REPL_TASK_POLL_INTERVAL) else {
+                    error!("Negative replication window index detected, aborting...");
+                    return;
+                };
+
+                let (current_max_throughput, current_repl_window) = MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL[write_throughput_index as usize];
+
+                // Check that we're reading the right indexed value
+                if current_repl_window != time_since_last_repl {
+                    error!("Inconsistent max throughput reading, aborting...");
+                    return;
+                }
+
+                let max_throughput_threshold = (current_max_throughput as f64 * REPLICATION_TRIGGER_SAFETY_THRESHOLD).round() as u64;
+
+                // If we're under the safety threshold it means it's safe to replicate, so we do it!
+                if write_ops_since_last_repl < max_throughput_threshold {
+                    return;
+                } else {
+                    // Otherwise we repeat the process after one
+                    one_sec_int.tick().await;
+                }
+
+            };
+        }, if enable_experimental_replication_trigger => {}
+
+        _ = sleep(replication_interval) => {}
+    }
+}
+
 #[derive(Debug, Clone)]
 struct ConsumerConnSettings {
     max_frame_bytes: usize,
     task_poll_interval: Duration,
     replica_connect_timeout: Duration,
+    enable_experimental_replication_trigger: bool,
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -452,13 +506,12 @@ async fn repl_task(
     ssl_builder.set_verify(SslVerifyMode::PEER);
     let tls_connector = ssl_builder.build();
 
-    let mut repl_interval = interval(consumer_conn_settings.task_poll_interval);
-
     info!("Replica task for {} has started.", origin);
 
     // we keep track of the "last known good" socketaddr so we can try that first next time.
     let mut last_working_address: Option<SocketAddr> = None;
 
+    let mut last_replication_instant = Instant::now();
     // Okay, all the parameters are setup. Now we wait on our interval.
     loop {
         // if the target address worked last time, then let's use it this time!
@@ -494,8 +547,10 @@ async fn repl_task(
                     }
                 }
             }
-            _ = repl_interval.tick() => {
-                // Interval passed, attempt a replication run.
+            _ = replication_trigger(&idms, &last_replication_instant,
+                    consumer_conn_settings.enable_experimental_replication_trigger,
+                    consumer_conn_settings.task_poll_interval) => {
+                // Trigger determined it's time to replicate, we obey
                 repl_run_consumer(
                     domain,
                     &sorted_socket_addrs,
@@ -505,6 +560,7 @@ async fn repl_task(
                     &consumer_conn_settings
                 )
                 .await;
+                last_replication_instant = Instant::now();
             }
         }
     }
@@ -611,6 +667,8 @@ async fn repl_acceptor(
         max_frame_bytes,
         task_poll_interval: repl_config.get_task_poll_interval(),
         replica_connect_timeout,
+        enable_experimental_replication_trigger: repl_config
+            .enable_experimental_replication_trigger,
     };
 
     // Setup a broadcast to control our tasks.
