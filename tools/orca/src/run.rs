@@ -4,8 +4,7 @@ use crate::stats::{BasicStatistics, TestPhase};
 
 use std::sync::Arc;
 
-use rand::seq::SliceRandom;
-use rand::SeedableRng;
+use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha8Rng;
 
 use crossbeam::queue::{ArrayQueue, SegQueue};
@@ -17,23 +16,32 @@ use tokio::sync::broadcast;
 use std::time::{Duration, Instant};
 
 async fn actor_person(
-    client: KanidmClient,
+    main_client: KanidmClient,
     person: Person,
     stats_queue: Arc<SegQueue<EventRecord>>,
     mut actor_rx: broadcast::Receiver<Signal>,
+    rng_seed: u64,
+    additional_clients: Vec<KanidmClient>,
+    warmup_time: Duration,
 ) -> Result<(), Error> {
-    let mut model = person.model.as_dyn_object()?;
+    let mut model =
+        person
+            .model
+            .as_dyn_object(rng_seed, additional_clients, &person.username, warmup_time)?;
 
     while let Err(broadcast::error::TryRecvError::Empty) = actor_rx.try_recv() {
-        let event = model.transition(&client, &person).await?;
+        let events = model.transition(&main_client, &person).await?;
         debug!("Pushed event to queue!");
-        stats_queue.push(event);
+        for event in events.into_iter() {
+            stats_queue.push(event);
+        }
     }
 
     debug!("Stopped person {}", person.username);
     Ok(())
 }
 
+#[derive(Debug)]
 pub struct EventRecord {
     pub start: Instant,
     pub duration: Duration,
@@ -49,6 +57,9 @@ pub enum EventDetail {
     PersonGetSelfMemberOf,
     PersonSetSelfPassword,
     PersonReauth,
+    PersonCreateGroup,
+    PersonAddGroupMembers,
+    GroupReplicationDelay,
     Error,
 }
 
@@ -162,24 +173,32 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
     // Start the actors
     let mut tasks = Vec::with_capacity(state.persons.len());
     for person in state.persons.into_iter() {
-        let client = clients
-            .choose(&mut seeded_rng)
-            .expect("Invalid client set")
-            .new_session()
-            .map_err(|err| {
-                error!(?err, "Unable to create kanidm client");
-                Error::KanidmClient
-            })?;
+        // this is not super efficient but we don't really care as we are not even inside the warmup time window, so we're not in a hurry
+        let mut cloned_clients: Vec<KanidmClient> = clients
+            .iter()
+            .map(|client| {
+                client.new_session().map_err(|err| {
+                    error!(?err, "Unable to create a new kanidm client session");
+                    Error::KanidmClient
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        let main_client_index = seeded_rng.gen_range(0..cloned_clients.len());
+        let main_client = cloned_clients.remove(main_client_index);
+        //note that cloned_clients now contains all other clients except the first one
 
         let c_stats_queue = stats_queue.clone();
 
         let c_actor_rx = actor_tx.subscribe();
 
         tasks.push(tokio::spawn(actor_person(
-            client,
+            main_client,
             person,
             c_stats_queue,
             c_actor_rx,
+            state.profile.seed(),
+            cloned_clients,
+            state.profile.warmup_time(),
         )))
     }
 

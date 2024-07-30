@@ -6,6 +6,8 @@ use crate::state::*;
 use kanidm_client::KanidmClient;
 
 use async_trait::async_trait;
+use rand::Rng;
+use rand_chacha::ChaCha8Rng;
 
 use std::time::Duration;
 
@@ -14,20 +16,25 @@ enum State {
     Authenticated,
 }
 
-pub struct ActorAuthOnly {
+pub struct ActorReader {
     state: State,
+    randomised_backoff_time: Duration,
 }
 
-impl ActorAuthOnly {
-    pub fn new() -> Self {
-        ActorAuthOnly {
+impl ActorReader {
+    pub fn new(mut cha_rng: ChaCha8Rng, warmup_time_ms: u64) -> Self {
+        let max_backoff_time_in_ms = warmup_time_ms - 1000;
+        let randomised_backoff_time =
+            Duration::from_millis(cha_rng.gen_range(0..max_backoff_time_in_ms));
+        ActorReader {
             state: State::Unauthenticated,
+            randomised_backoff_time,
         }
     }
 }
 
 #[async_trait]
-impl ActorModel for ActorAuthOnly {
+impl ActorModel for ActorReader {
     async fn transition(
         &mut self,
         client: &KanidmClient,
@@ -43,7 +50,13 @@ impl ActorModel for ActorAuthOnly {
         let (result, event) = match transition.action {
             TransitionAction::Login => model::login(client, person).await,
             TransitionAction::Logout => model::logout(client, person).await,
-            _ => Err(Error::InvalidState),
+            TransitionAction::PrivilegeReauth
+            | TransitionAction::WriteAttributePersonMail
+            | TransitionAction::ReadSelfAccount
+            | TransitionAction::WriteSelfPassword => return Err(Error::InvalidState),
+            TransitionAction::ReadSelfMemberOf => {
+                model::person_get_self_memberof(client, person).await
+            }
         }?;
 
         self.next_state(transition.action, result);
@@ -52,35 +65,35 @@ impl ActorModel for ActorAuthOnly {
     }
 }
 
-impl ActorAuthOnly {
+impl ActorReader {
     fn next_transition(&mut self) -> Transition {
         match self.state {
             State::Unauthenticated => Transition {
-                delay: None,
+                delay: Some(self.randomised_backoff_time),
                 action: TransitionAction::Login,
             },
             State::Authenticated => Transition {
-                delay: Some(Duration::from_millis(100)),
-                action: TransitionAction::Logout,
+                delay: Some(Duration::from_secs(1)),
+                action: TransitionAction::ReadSelfMemberOf,
             },
         }
     }
 
     fn next_state(&mut self, action: TransitionAction, result: TransitionResult) {
+        // Is this a design flaw? We probably need to know what the state was that we
+        // requested to move to?
         match (&self.state, action, result) {
-            (State::Unauthenticated, TransitionAction::Login, TransitionResult::Ok) => {
+            (State::Unauthenticated { .. }, TransitionAction::Login, TransitionResult::Ok) => {
                 self.state = State::Authenticated;
             }
-            (State::Authenticated, TransitionAction::Logout, TransitionResult::Ok) => {
-                self.state = State::Unauthenticated;
+            (State::Authenticated, TransitionAction::ReadSelfMemberOf, TransitionResult::Ok) => {
+                self.state = State::Authenticated;
             }
-            // Shouldn't be reachable?
             #[allow(clippy::unreachable)]
-            (_, _, TransitionResult::Ok) => {
-                unreachable!();
-            }
+            (_, _, TransitionResult::Ok) => unreachable!(),
+
             (_, _, TransitionResult::Error) => {
-                self.state = State::Unauthenticated;
+                self.state = State::Unauthenticated {};
             }
         }
     }

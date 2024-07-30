@@ -2,7 +2,8 @@ use crate::error::Error;
 use crate::kani::KanidmOrcaClient;
 use crate::model::ActorRole;
 use crate::profile::Profile;
-use crate::state::{Credential, Flag, Group, Model, Person, PreflightState, State};
+use crate::state::{Credential, Flag, Group, GroupName, Person, PreflightState, State};
+use hashbrown::HashMap;
 use rand::distributions::{Alphanumeric, DistString, Uniform};
 use rand::seq::{index, SliceRandom};
 use rand::{Rng, SeedableRng};
@@ -61,28 +62,33 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // These decide what each person is supposed to do with their life.
     let mut groups = vec![
         Group {
-            name: "role_people_self_set_password".to_string(),
+            name: GroupName::RolePeopleSelfSetPassword,
             role: ActorRole::PeopleSelfSetPassword,
             ..Default::default()
         },
         Group {
-            name: "role_people_pii_reader".to_string(),
+            name: GroupName::RolePeoplePiiReader,
             role: ActorRole::PeoplePiiReader,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_write_mail".to_string(),
+            name: GroupName::RolePeopleSelfMailWrite,
             role: ActorRole::PeopleSelfMailWrite,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_read_account".to_string(),
+            name: GroupName::RolePeopleSelfReadProfile,
             role: ActorRole::PeopleSelfReadProfile,
             ..Default::default()
         },
         Group {
-            name: "role_people_self_read_memberof".to_string(),
+            name: GroupName::RolePeopleSelfReadMemberOf,
             role: ActorRole::PeopleSelfReadMemberOf,
+            ..Default::default()
+        },
+        Group {
+            name: GroupName::RolePeopleGroupAdmin,
+            role: ActorRole::PeopleGroupAdmin,
             ..Default::default()
         },
     ];
@@ -91,6 +97,8 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     //         - assign them credentials of various types.
     let mut persons = Vec::with_capacity(profile.person_count() as usize);
     let mut person_usernames = BTreeSet::new();
+
+    let model = *profile.model();
 
     for _ in 0..profile.person_count() {
         let given_name = given_names
@@ -122,8 +130,6 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
         let roles = BTreeSet::new();
 
-        let model = Model::Basic;
-
         // Data is ready, make changes to the server. These should be idempotent if possible.
         let p = Person {
             preflight_state: PreflightState::Present,
@@ -146,15 +152,26 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
     // them a baseline of required accounts with some variation. This
     // way in each test it's guaranteed that *at least* one person
     // to each role always will exist and be operational.
+    let member_count_by_group: HashMap<GroupName, u64> = profile
+        .get_properties_by_group()
+        .iter()
+        .filter_map(|(name, properties)| {
+            let group_name = GroupName::try_from(name).ok()?;
+            properties.member_count.map(|count| (group_name, count))
+        })
+        .collect();
 
     for group in groups.iter_mut() {
-        // For now, our baseline is 20%. We can adjust this in future per
-        // role for example.
-        let baseline = persons.len() / 3;
-        let inverse = persons.len() - baseline;
-        // Randomly add extra from the inverse
-        let extra = Uniform::new(0, inverse);
-        let persons_to_choose = baseline + seeded_rng.sample(extra);
+        let persons_to_choose = match member_count_by_group.get(&group.name) {
+            Some(person_count) => *person_count as usize,
+            None => {
+                let baseline = persons.len() / 3;
+                let inverse = persons.len() - baseline;
+                // Randomly add extra from the inverse
+                let extra = Uniform::new(0, inverse);
+                baseline + seeded_rng.sample(extra)
+            }
+        };
 
         assert!(persons_to_choose <= persons.len());
 
@@ -186,8 +203,10 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
     // PHASE 7 - given the integrations and groupings,
 
-    // Return the state.
+    drop(member_count_by_group); // it looks ugly but we have to do this to reassure the borrow checker we can return profile, as we were borrowing
+                                 //the group names from it
 
+    // Return the state.
     let state = State {
         profile,
         // ---------------

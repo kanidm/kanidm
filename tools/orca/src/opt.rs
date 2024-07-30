@@ -1,5 +1,11 @@
+use std::path::PathBuf;
+
+use clap::Parser;
+
+use crate::state::Model;
+
 #[derive(Debug, Parser)]
-struct CommonOpt {
+pub struct CommonOpt {
     #[clap(short, long)]
     /// Enable debug logging
     pub debug: bool,
@@ -7,28 +13,30 @@ struct CommonOpt {
 
 #[derive(Debug, Parser)]
 #[clap(name = "orca", about = "Orca Load Testing Utility")]
-enum OrcaOpt {
+pub enum OrcaOpt {
     /*
-    #[clap(name = "conntest")]
-    /// Perform a connection test against the specified target
-    TestConnection(SetupOpt),
-    #[clap(name = "generate")]
-    /// Generate a new dataset that can be used for testing. Parameters can be provided
-    /// to affect the type and quantity of data created.
-    Generate(GenerateOpt),
-    #[clap(name = "preprocess")]
-    /// Preprocess a dataset that can be used for testing
-    PreProc(PreProcOpt),
-    #[clap(name = "setup")]
-    /// Setup a server as defined by a test profile
-    Setup(SetupOpt),
-    #[clap(name = "run")]
-    /// Run the load test as defined by the test profile
-    Run(RunOpt),
-    #[clap(name = "configure")]
-    /// Update a config file
-    Configure(ConfigOpt),
-    */
+            #[clap(name = "conntest")]
+            /// Perform a connection test against the specified target
+            TestConnection(SetupOpt),
+            #[clap(name = "generate")]
+            /// Generate a new dataset that can be used for testing. Parameters can
+    use state::Model; be provided
+            ///
+        use state::Model; to affect the type and quantity of data created.
+            Generate(GenerateOpt),
+            #[clap(name = "preprocess")]
+            /// Preprocess a dataset that can be used for testing
+            PreProc(PreProcOpt),
+            #[clap(name = "setup")]
+            /// Setup a server as defined by a test profile
+            Setup(SetupOpt),
+            #[clap(name = "run")]
+            /// Run the load test as defined by the test profile
+            Run(RunOpt),
+            #[clap(name = "configure")]
+            /// Update a config file
+            Configure(ConfigOpt),
+            */
     SetupWizard {
         #[clap(flatten)]
         common: CommonOpt,
@@ -58,6 +66,10 @@ enum OrcaOpt {
         #[clap(long)]
         /// Optional thread count, defaults to maximum available on the system
         threads: Option<usize>,
+
+        #[clap(long, default_value_t, value_enum)]
+        // Optional model to run the benchmark, defaults to the `Basic` model
+        model: Model,
     },
 
     #[clap(name = "conntest")]
