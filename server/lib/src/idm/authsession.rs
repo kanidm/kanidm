@@ -1732,7 +1732,7 @@ mod tests {
 
         let webauthn = create_webauthn();
 
-        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
 
         let asd = AuthSessionData {
             account: anon_account,

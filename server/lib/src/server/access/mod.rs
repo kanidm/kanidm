@@ -3099,7 +3099,7 @@ mod tests {
 
     #[test]
     fn test_access_delete_protect_system_ranges() {
-        let ev1: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        let ev1: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
         let ev1 = ev1.into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 

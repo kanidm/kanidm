@@ -1,4 +1,3 @@
-use crate::value::CredentialType;
 use std::time::Duration;
 
 use crate::prelude::*;
@@ -80,13 +79,13 @@ impl QueryServer {
         // are created in the next phase of migrations.
         write_txn.set_phase(ServerPhase::SchemaReady);
 
-        // Init idm will now set the system config version and minimum domain
-        // level if none was present
-        write_txn.initialise_domain_info()?;
-
         // No domain info was present, so neither was the rest of the IDM. We need to bootstrap
         // the base entries here.
         if db_domain_version == 0 {
+            // Init idm will now set the system config version and minimum domain
+            // level if none was present
+            write_txn.initialise_domain_info()?;
+
             // In this path because we create the dyn groups they are immediately added to the
             // dyngroup cache and begin to operate.
             write_txn.initialise_idm()?;
@@ -292,273 +291,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
             Err(OperationError::InvalidDbState)
         }
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// This migration will
-    ///  * Trigger a "once off" mfa account policy rule on all persons.
-    pub(crate) fn migrate_domain_2_to_3(&mut self) -> Result<(), OperationError> {
-        let idm_all_persons = match self.internal_search_uuid(UUID_IDM_ALL_PERSONS) {
-            Ok(entry) => entry,
-            Err(OperationError::NoMatchingEntries) => return Ok(()),
-            Err(e) => return Err(e),
-        };
-
-        let credential_policy =
-            idm_all_persons.get_ava_single_credential_type(Attribute::CredentialTypeMinimum);
-
-        if credential_policy.is_some() {
-            debug!("Credential policy already present, not applying change.");
-            return Ok(());
-        }
-
-        self.internal_modify_uuid(
-            UUID_IDM_ALL_PERSONS,
-            &ModifyList::new_purge_and_set(
-                Attribute::CredentialTypeMinimum,
-                CredentialType::Mfa.into(),
-            ),
-        )
-        .map(|()| {
-            info!("Upgraded default account policy to enforce MFA");
-        })
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// Migrations for Oauth to support multiple origins, and custom claims.
-    pub(crate) fn migrate_domain_3_to_4(&mut self) -> Result<(), OperationError> {
-        let idm_schema_attrs = [
-            SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
-            SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
-                .clone()
-                .into(),
-        ];
-
-        idm_schema_attrs
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_3_to_4 -> Error");
-                err
-            })?;
-
-        let idm_schema_classes = [
-            SCHEMA_CLASS_OAUTH2_RS_DL4.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
-            IDM_ACP_OAUTH2_MANAGE_DL4.clone().into(),
-        ];
-
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_3_to_4 -> Error");
-                err
-            })
-    }
-
-    #[instrument(level = "info", skip_all)]
-    /// Migrations for Oauth to move rs name from a dedicated type to name
-    /// and to allow oauth2 sessions on resource servers for client credentials
-    /// grants. Accounts, persons and service accounts have some attributes
-    /// relocated to allow oauth2 rs to become accounts.
-    pub(crate) fn migrate_domain_4_to_5(&mut self) -> Result<(), OperationError> {
-        let idm_schema_classes = [
-            SCHEMA_CLASS_PERSON_DL5.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL5.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
-            IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
-        ];
-
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_4_to_5 -> Error");
-                err
-            })?;
-
-        // Reload mid txn so that the next modification works.
-        self.force_schema_reload();
-        self.reload()?;
-
-        // Now we remove attributes from service accounts that have been unable to be set
-        // via a user interface for more than a year.
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::Account.into()),
-            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
-        ]));
-        let modlist = ModifyList::new_list(vec![
-            Modify::Purged(Attribute::PassKeys.into()),
-            Modify::Purged(Attribute::AttestedPasskeys.into()),
-            Modify::Purged(Attribute::CredentialUpdateIntentToken.into()),
-            Modify::Purged(Attribute::RadiusSecret.into()),
-        ]);
-        self.internal_modify(&filter, &modlist)?;
-
-        // Now move all oauth2 rs name.
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
-            f_pres(Attribute::OAuth2RsName),
-        ]));
-
-        let pre_candidates = self.internal_search(filter).map_err(|err| {
-            admin_error!(?err, "migrate_domain_4_to_5 internal search failure");
-            err
-        })?;
-
-        let modset: Vec<_> = pre_candidates
-            .into_iter()
-            .filter_map(|ent| {
-                ent.get_ava_single_iname(Attribute::OAuth2RsName)
-                    .map(|rs_name| {
-                        let modlist = vec![
-                            Modify::Present(Attribute::Class.into(), EntryClass::Account.into()),
-                            Modify::Present(Attribute::Name.into(), Value::new_iname(rs_name)),
-                            m_purge(Attribute::OAuth2RsName),
-                        ];
-
-                        (ent.get_uuid(), ModifyList::new_list(modlist))
-                    })
-            })
-            .collect();
-
-        // If there is nothing, we don't need to do anything.
-        if modset.is_empty() {
-            admin_info!("migrate_domain_4_to_5 no entries to migrate, complete");
-            return Ok(());
-        }
-
-        // Apply the batch mod.
-        self.internal_batch_modify(modset.into_iter())
-    }
-
-    /// Migration domain level 5 to 6 - support query limits in account policy.
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_5_to_6(&mut self) -> Result<(), OperationError> {
-        let idm_schema_classes = [
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
-            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
-            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
-            SCHEMA_CLASS_GROUP_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
-            SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
-        ];
-
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
-
-        self.reload()?;
-
-        let idm_data = [
-            // Update access controls.
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
-            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
-            // Update anonymous with the correct entry manager,
-            BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into(),
-            // Add the internal key provider.
-            E_KEY_PROVIDER_INTERNAL_DL6.clone(),
-        ];
-
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
-
-        // all existing built-in objects get a builtin class
-        let filter = f_lt(
-            Attribute::Uuid,
-            PartialValue::Uuid(DYNAMIC_RANGE_MINIMUM_UUID),
-        );
-        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::Builtin.into())]);
-
-        self.internal_modify(&filter!(filter), &modlist)?;
-
-        // Reload such that the new default key provider is loaded.
-        self.reload()?;
-
-        // Update the domain entry to contain its key object, which can now be generated.
-        let idm_data = [
-            IDM_ACP_DOMAIN_ADMIN_DL6.clone().into(),
-            E_DOMAIN_INFO_DL6.clone(),
-        ];
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_5_to_6 -> Error");
-                err
-            })?;
-
-        // At this point we reload to show the new key objects on the domain.
-        self.reload()?;
-
-        // Migrate the domain key to a retained key on the key object.
-        let domain_es256_private_key = self.get_domain_es256_private_key().map_err(|err| {
-            error!(?err, "migrate_domain_5_to_6 -> Error");
-            err
-        })?;
-
-        // Migrate all service/scim account keys to the domain key for verification.
-        let filter = filter!(f_or!([
-            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
-            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
-        ]));
-        let entry_keys_to_migrate = self.internal_search(filter)?;
-
-        let mut modlist = Vec::with_capacity(1 + entry_keys_to_migrate.len());
-
-        modlist.push(Modify::Present(
-            Attribute::KeyActionImportJwsEs256.into(),
-            Value::PrivateBinary(domain_es256_private_key),
-        ));
-
-        for entry in entry_keys_to_migrate {
-            // In these entries, the keys are in JwsEs256PrivateKey.
-            if let Some(jws_signer) =
-                entry.get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            {
-                let es256_private_key = jws_signer.private_key_to_der().map_err(|err| {
-                    error!(?err, uuid = ?entry.get_display_id(), "unable to convert signer to der");
-                    OperationError::InvalidValueState
-                })?;
-
-                modlist.push(Modify::Present(
-                    Attribute::KeyActionImportJwsEs256.into(),
-                    Value::PrivateBinary(es256_private_key),
-                ));
-            }
-        }
-
-        let modlist = ModifyList::new_list(modlist);
-
-        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
-
-        Ok(())
     }
 
     /// Migration domain level 6 to 7
@@ -859,6 +591,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    /// Migration domain level 8 to 9
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_8_to_9(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
+            error!("Unable to raise domain level from 8 to 9.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        // =========== Apply changes ==============
+
+        Ok(())
+    }
+
     #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
@@ -966,6 +711,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_DENIED_NAME.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_TYPE_MINIMUM.clone().into(),
             SCHEMA_ATTR_WEBAUTHN_ATTESTATION_CA_LIST.clone().into(),
+            // DL4
+            SCHEMA_ATTR_OAUTH2_RS_CLAIM_MAP_DL4.clone().into(),
+            SCHEMA_ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT_DL4
+                .clone()
+                .into(),
+            // DL5
+            // DL6
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS_DL6.clone().into(),
+            SCHEMA_ATTR_LIMIT_SEARCH_MAX_FILTER_TEST_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_INTERNAL_DATA_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
+            SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
         ];
 
         let r = idm_schema
@@ -984,21 +743,30 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // DO NOT MODIFY THIS DEFINITION
         let idm_schema_classes_dl1: Vec<EntryInitNew> = vec![
-            SCHEMA_CLASS_ACCOUNT.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_POLICY.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO.clone().into(),
             SCHEMA_CLASS_DYNGROUP.clone().into(),
-            SCHEMA_CLASS_GROUP.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS.clone().into(),
             SCHEMA_CLASS_ORGPERSON.clone().into(),
-            SCHEMA_CLASS_PERSON.clone().into(),
             SCHEMA_CLASS_POSIXACCOUNT.clone().into(),
             SCHEMA_CLASS_POSIXGROUP.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT.clone().into(),
-            SCHEMA_CLASS_SYNC_ACCOUNT.clone().into(),
             SCHEMA_CLASS_SYSTEM_CONFIG.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_BASIC.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_PUBLIC.clone().into(),
+            // DL4
+            SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
+            // DL5
+            SCHEMA_CLASS_PERSON_DL5.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
+            // DL6
+            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
+            SCHEMA_CLASS_GROUP_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
+            SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_classes_dl1
@@ -1018,18 +786,24 @@ impl<'a> QueryServerWriteTransaction<'a> {
     #[instrument(level = "info", skip_all)]
     /// This function is idempotent, runs all the startup functionality and checks
     pub fn initialise_domain_info(&mut self) -> Result<(), OperationError> {
-        // First, check the system_info object. This stores some server information
-        // and details. It's a pretty const thing. Also check anonymous, important to many
-        // concepts.
-        let res = self
-            .internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
-            .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_V1.clone()))
-            .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()));
-        if res.is_err() {
-            admin_error!("initialise_domain_info -> result {:?}", res);
-        }
-        debug_assert!(res.is_ok());
-        res
+        // Configure the default key provider. This needs to exist *before* the
+        // domain info!
+        self.internal_migrate_or_create(E_KEY_PROVIDER_INTERNAL_DL6.clone())
+            .and_then(|_| self.reload())
+            .map_err(|err| {
+                error!(?err, "initialise_domain_info::E_KEY_PROVIDER_INTERNAL_DL6");
+                debug_assert!(false);
+                err
+            })?;
+
+        self.internal_migrate_or_create(E_SYSTEM_INFO_V1.clone())
+            .and_then(|_| self.internal_migrate_or_create(E_DOMAIN_INFO_DL6.clone()))
+            .and_then(|_| self.internal_migrate_or_create(E_SYSTEM_CONFIG_V1.clone()))
+            .map_err(|err| {
+                error!(?err, "initialise_domain_info");
+                debug_assert!(false);
+                err
+            })
     }
 
     #[instrument(level = "info", skip_all)]
@@ -1048,9 +822,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Each item individually logs it's result
             .try_for_each(|ent| self.internal_migrate_or_create(ent));
         if res.is_ok() {
-            admin_debug!("initialise_idm p1 -> result Ok!");
+            debug!("initialise_idm p1 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p1 -> result");
+            error!(?res, "initialise_idm p1 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -1059,9 +833,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|e| self.internal_migrate_or_create(e.clone().try_into()?));
         if res.is_ok() {
-            admin_debug!("initialise_idm p2 -> result Ok!");
+            debug!("initialise_idm p2 -> result Ok!");
         } else {
-            admin_error!(?res, "initialise_idm p2 -> result");
+            error!(?res, "initialise_idm p2 -> result");
         }
         debug_assert!(res.is_ok());
         res?;
@@ -1079,9 +853,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_ACP_MANAGE_V1.clone(),
             IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone(),
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_V1.clone(),
-            IDM_ACP_OAUTH2_MANAGE_V1.clone(),
-            IDM_ACP_DOMAIN_ADMIN_V1.clone(),
             IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone(),
             IDM_ACP_RADIUS_SERVERS_V1.clone(),
             IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone(),
@@ -1091,16 +862,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
             IDM_ACP_SELF_NAME_WRITE_V1.clone(),
             IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
-            IDM_ACP_ACCOUNT_MAIL_READ_V1.clone(),
             IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
             IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
             IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone(),
             IDM_ACP_GROUP_READ_V1.clone(),
-            IDM_ACP_GROUP_MANAGE_V1.clone(),
             IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone(),
             IDM_ACP_PEOPLE_PII_READ_V1.clone(),
             IDM_ACP_PEOPLE_PII_MANAGE_V1.clone(),
-            IDM_ACP_PEOPLE_CREATE_V1.clone(),
             IDM_ACP_PEOPLE_READ_V1.clone(),
             IDM_ACP_PEOPLE_MANAGE_V1.clone(),
             IDM_ACP_PEOPLE_DELETE_V1.clone(),
@@ -1112,6 +880,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1.clone(),
             IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
+            // DL4
+            // DL5
+            IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
+            // DL6
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
+            IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -1375,46 +1152,6 @@ mod tests {
         }
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_5)]
-    async fn test_migrations_dl5_dl6(server: &QueryServer) {
-        // Assert our instance was setup to version 5
-        let mut write_txn = server.write(duration_from_epoch_now()).await;
-
-        let db_domain_version = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain entry")
-            .get_ava_single_uint32(Attribute::Version)
-            .expect("Attribute Version not present");
-
-        assert_eq!(db_domain_version, DOMAIN_LEVEL_5);
-
-        // Entry doesn't exist yet.
-        let _entry_not_found = write_txn
-            .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
-            .expect_err("unable to newly migrated schema entry");
-
-        // Set the version to 6.
-        write_txn
-            .internal_modify_uuid(
-                UUID_DOMAIN_INFO,
-                &ModifyList::new_purge_and_set(
-                    Attribute::Version,
-                    Value::new_uint32(DOMAIN_LEVEL_6),
-                ),
-            )
-            .expect("Unable to set domain level to version 6");
-
-        // Re-load - this applies the migrations.
-        write_txn.reload().expect("Unable to reload transaction");
-
-        // It now exists as the migrations were run.
-        let _entry = write_txn
-            .internal_search_uuid(UUID_SCHEMA_ATTR_LIMIT_SEARCH_MAX_RESULTS)
-            .expect("unable to newly migrated schema entry");
-
-        write_txn.commit().expect("Unable to commit");
-    }
-
     #[qs_test(domain_level=DOMAIN_LEVEL_6)]
     async fn test_migrations_dl6_dl7(server: &QueryServer) {
         // Assert our instance was setup to version 6
@@ -1460,17 +1197,8 @@ mod tests {
 
         // Set the version to 7.
         write_txn
-            .internal_modify_uuid(
-                UUID_DOMAIN_INFO,
-                &ModifyList::new_purge_and_set(
-                    Attribute::Version,
-                    Value::new_uint32(DOMAIN_LEVEL_7),
-                ),
-            )
+            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
             .expect("Unable to set domain level to version 7");
-
-        // Re-load - this applies the migrations.
-        write_txn.reload().expect("Unable to reload transaction");
 
         // post migration verification.
         let domain_entry = write_txn
@@ -1582,20 +1310,14 @@ mod tests {
 
         // Set the version to 8.
         write_txn
-            .internal_modify_uuid(
-                UUID_DOMAIN_INFO,
-                &ModifyList::new_purge_and_set(
-                    Attribute::Version,
-                    Value::new_uint32(DOMAIN_LEVEL_8),
-                ),
-            )
+            .internal_apply_domain_migration(DOMAIN_LEVEL_8)
             .expect("Unable to set domain level to version 8");
-
-        // Re-load - this applies the migrations.
-        write_txn.reload().expect("Unable to reload transaction");
 
         // post migration verification.
 
         write_txn.commit().expect("Unable to commit");
     }
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_8)]
+    async fn test_migrations_dl8_dl9(_server: &QueryServer) {}
 }

@@ -1890,20 +1890,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
         debug!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
 
-        if previous_version <= DOMAIN_LEVEL_2 && domain_info_version >= DOMAIN_LEVEL_3 {
-            self.migrate_domain_2_to_3()?;
-        }
-
-        if previous_version <= DOMAIN_LEVEL_3 && domain_info_version >= DOMAIN_LEVEL_4 {
-            self.migrate_domain_3_to_4()?;
-        }
-
-        if previous_version <= DOMAIN_LEVEL_4 && domain_info_version >= DOMAIN_LEVEL_5 {
-            self.migrate_domain_4_to_5()?;
-        }
-
-        if previous_version <= DOMAIN_LEVEL_5 && domain_info_version >= DOMAIN_LEVEL_6 {
-            self.migrate_domain_5_to_6()?;
+        // We have to check for DL0 since that's the initialisation level.
+        if previous_version <= DOMAIN_LEVEL_5 && previous_version != DOMAIN_LEVEL_0 {
+            error!("UNABLE TO PROCEED. You are attempting a Skip update which is NOT SUPPORTED. You must upgrade one-version of Kanidm at a time.");
+            error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
+            error!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
+            error!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
+            return Err(OperationError::MG0008SkipUpgradeAttempted);
         }
 
         if previous_version <= DOMAIN_LEVEL_6 && domain_info_version >= DOMAIN_LEVEL_7 {
@@ -1918,6 +1911,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if previous_version <= DOMAIN_LEVEL_7 && domain_info_version >= DOMAIN_LEVEL_8 {
             self.migrate_domain_7_to_8()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_8 && domain_info_version >= DOMAIN_LEVEL_9 {
+            self.migrate_domain_8_to_9()?;
         }
 
         // This is here to catch when we increase domain levels but didn't create the migration

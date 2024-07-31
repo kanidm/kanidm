@@ -423,15 +423,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 mod tests {
     use std::time::Duration;
 
-    use compact_jwt::traits::JwsVerifiable;
     use compact_jwt::{dangernoverify::JwsDangerReleaseWithoutVerify, JwsVerifier};
     use kanidm_proto::internal::ApiToken;
 
     use super::{DestroyApiTokenEvent, GenerateApiTokenEvent};
     use crate::idm::server::IdmServerTransaction;
     use crate::prelude::*;
-    use crate::server::keys::KeyProvidersTransaction;
-    use crate::value::KeyStatus;
 
     const TEST_CURRENT_TIME: u64 = 6000;
 
@@ -517,114 +514,6 @@ mod tests {
                 .expect_err("Should not succeed")
                 == OperationError::SessionExpired
         );
-
-        assert!(idms_prox_write.commit().is_ok());
-    }
-
-    #[idm_test(domain_level=DOMAIN_LEVEL_5)]
-    async fn test_idm_service_account_dl5_dl6_api_token(
-        idms: &IdmServer,
-        _idms_delayed: &mut IdmServerDelayed,
-    ) {
-        let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
-
-        let mut idms_prox_write = idms.proxy_write(ct).await;
-
-        assert_eq!(
-            idms_prox_write.qs_write.get_domain_version(),
-            DOMAIN_LEVEL_5
-        );
-
-        let testaccount_uuid = Uuid::new_v4();
-
-        let e1 = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::ServiceAccount.to_value()),
-            (Attribute::Name, Value::new_iname("test_account_only")),
-            (Attribute::Uuid, Value::Uuid(testaccount_uuid)),
-            (Attribute::Description, Value::new_utf8s("testaccount")),
-            (Attribute::DisplayName, Value::new_utf8s("testaccount"))
-        );
-
-        idms_prox_write
-            .qs_write
-            .internal_create(vec![e1])
-            .expect("Failed to create service account");
-
-        let gte = GenerateApiTokenEvent::new_internal(testaccount_uuid, "TestToken", Some(exp));
-
-        let api_token = idms_prox_write
-            .service_account_generate_api_token(&gte, ct)
-            .expect("failed to generate new api token");
-
-        trace!(?api_token);
-
-        assert!(idms_prox_write.commit().is_ok());
-
-        // Now trigger 5 -> 6
-        let mut idms_prox_write = idms.proxy_write(ct).await;
-        idms_prox_write
-            .qs_write
-            .internal_apply_domain_migration(DOMAIN_LEVEL_6)
-            .expect("Unable to set domain level to version 6");
-        assert!(idms_prox_write.commit().is_ok());
-
-        // Now check our api token still validates.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
-
-        // Check a new token is domain key signed.
-        let gte = GenerateApiTokenEvent::new_internal(testaccount_uuid, "TestToken", Some(exp));
-
-        let new_api_token = idms_prox_write
-            .service_account_generate_api_token(&gte, ct)
-            .expect("failed to generate new api token");
-
-        assert_ne!(api_token.kid(), new_api_token.kid());
-
-        // Check that both tokens verify and work.
-        let _ident = idms_prox_write
-            .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
-            .expect("Unable to verify old api token.");
-
-        let _ident = idms_prox_write
-            .validate_client_auth_info_to_ident(new_api_token.clone().into(), ct)
-            .expect("Unable to verify new api token.");
-
-        // The former key is now on the domain object.
-        let key_object = idms_prox_write
-            .qs_write
-            .get_key_providers()
-            .get_key_object(UUID_DOMAIN_INFO)
-            .expect("Unable to retrieve key object by uuid");
-
-        // Assert the former key is now in the domain key object, and now is "retained".
-        let former_kid = api_token.kid().unwrap().to_string();
-        let status = key_object
-            .kid_status(&former_kid)
-            .expect("Failed to access kid status");
-        assert_eq!(status, Some(KeyStatus::Retained));
-
-        assert!(idms_prox_write.commit().is_ok());
-
-        // Now trigger 6 -> 7
-        let mut idms_prox_write = idms.proxy_write(ct).await;
-        idms_prox_write
-            .qs_write
-            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
-            .expect("Unable to set domain level to version 7");
-        assert!(idms_prox_write.commit().is_ok());
-
-        // The key on the service account is removed.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
-
-        let service_entry = idms_prox_write
-            .qs_write
-            .internal_search_uuid(testaccount_uuid)
-            .expect("Unable to access service account");
-
-        assert!(!service_entry.attribute_pres(Attribute::JwsEs256PrivateKey));
 
         assert!(idms_prox_write.commit().is_ok());
     }

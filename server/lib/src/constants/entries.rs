@@ -800,18 +800,6 @@ lazy_static! {
         (Attribute::Version, Value::Uint32(20))
     );
 
-    pub static ref E_DOMAIN_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class, EntryClass::Object.to_value()),
-        (Attribute::Class, EntryClass::DomainInfo.to_value()),
-        (Attribute::Class, EntryClass::System.to_value()),
-        (Attribute::Name, Value::new_iname("domain_local")),
-        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
-        (
-            Attribute::Description,
-            Value::new_utf8s("This local domain's info and metadata object.")
-        )
-    );
-
     pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::DomainInfo.to_value()),
@@ -917,17 +905,6 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref BUILTIN_ACCOUNT_ANONYMOUS_V1: BuiltinAccount = BuiltinAccount {
-        account_type: AccountType::ServiceAccount,
-        entry_managed_by: None,
-        name: "anonymous",
-        uuid: UUID_ANONYMOUS,
-        description: "Anonymous access account.",
-        displayname: "Anonymous",
-    };
-}
-
-lazy_static! {
     pub static ref BUILTIN_ACCOUNT_ANONYMOUS_DL6: BuiltinAccount = BuiltinAccount {
         account_type: AccountType::ServiceAccount,
         entry_managed_by: Some(UUID_IDM_ADMINS),
@@ -940,9 +917,9 @@ lazy_static! {
 
 pub fn builtin_accounts() -> Vec<&'static BuiltinAccount> {
     vec![
-        &BUILTIN_ACCOUNT_ANONYMOUS_V1,
         &BUILTIN_ACCOUNT_ADMIN,
         &BUILTIN_ACCOUNT_IDM_ADMIN,
+        &BUILTIN_ACCOUNT_ANONYMOUS_DL6,
     ]
 }
 
@@ -981,7 +958,6 @@ lazy_static! {
 /// Build a list of internal admin entries
 pub fn idm_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> {
     let mut res: Vec<EntryInitNew> = vec![
-        BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into(),
         BUILTIN_ACCOUNT_ADMIN.clone().into(),
         BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
     ];
@@ -989,5 +965,9 @@ pub fn idm_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> 
         let g: EntryInitNew = group.clone().try_into()?;
         res.push(g);
     }
+
+    // We need to push anonymous *after* groups due to entry-managed-by
+    res.push(BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into());
+
     Ok(res)
 }

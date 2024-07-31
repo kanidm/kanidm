@@ -970,7 +970,7 @@ mod tests {
 
     #[test]
     fn test_idm_account_from_anonymous() {
-        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_V1.clone().into();
+        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
         debug!("{:?}", account);
         // I think that's it? we may want to check anonymous mech ...
     }
