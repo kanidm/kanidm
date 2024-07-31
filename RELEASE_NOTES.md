@@ -24,14 +24,14 @@ You should review our
 [support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md)
 as this may have important effects on your distribution or upgrades in future.
 
-Before upgrading you should review [our upgrade documentation](https://kanidm.github.io/kanidm/stable/server_updates.html#general-update-notes)
+Before upgrading you should review [our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes)
 
 ### 1.3.0 Important Changes
 
 - New GID number constraints are now enforced in this version. To upgrade from 1.2.0 all accounts
   and groups must adhere to these rules. See [our upgrade documentation].
   about tools to help you detect and correct affected entries.
-- Oauth2 URI require stricter matching rules to be applied from 1.4.0.
+- OAuth2 URIs require stricter matching rules to be applied from 1.4.0.
 - Security Keys will be removed as a second factor alternative to TOTP from accounts in 1.4.0. It
   has not been possible to register a new security for more than 1 year. Security Keys are surpassed
   by PassKeys which give a better user experience.
@@ -54,10 +54,10 @@ Before upgrading you should review [our upgrade documentation](https://kanidm.gi
 - Significant improvements to performance for write and search operations
 - Support Illumos
 - Begin rewrite of the webui
-- Oauth2 allows multiple origins
-- Lengthen replication mtls certificate life
-- Unixd allows home paths to be in an external mount folder
-- Strict redirect URI enforcement in Oauth2
+- OAuth2 allows multiple origins
+- Lengthen replication MTLS certificate lifetime
+- UNIX daemon allows home paths to be in an external mount folder
+- Strict redirect URI enforcement in OAuth2
 - Substring indexing for improved search performance
 
 ## 2024-05-01 - Kanidm 1.2.0
