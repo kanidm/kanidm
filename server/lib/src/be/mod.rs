@@ -215,10 +215,6 @@ pub trait BackendTransaction {
 
     fn get_idxmeta_ref(&self) -> &IdxMeta;
 
-    fn get_write_ops_since_last_repl(&mut self) -> u64 {
-        self.get_idlayer().get_write_ops_since_last_repl()
-    }
-
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
@@ -2072,14 +2068,6 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn increase_write_ops_since_last_repl(&mut self) {
-        self.get_idlayer().increase_write_ops_since_last_repl()
-    }
-
-    pub fn reset_write_ops_since_last_repl(&mut self) {
-        self.get_idlayer().reset_write_ops_since_last_repl()
-    }
-
     fn get_db_index_version(&mut self) -> Result<i64, OperationError> {
         self.get_idlayer().get_db_index_version()
     }
@@ -2314,23 +2302,6 @@ mod tests {
             let t = $expect.map(|v: Vec<u64>| IDLBitRange::from_iter(v));
             assert_eq!(t_idl, t);
         }};
-    }
-
-    #[test]
-    fn test_write_ops_since_last_repl() {
-        run_test!(|be: &mut BackendWriteTransaction| {
-            trace!("Test write ops since last_repl");
-            be.reset_write_ops_since_last_repl();
-
-            let write_ops = be.get_write_ops_since_last_repl();
-
-            assert_eq!(0, write_ops);
-
-            be.increase_write_ops_since_last_repl();
-
-            let write_ops = be.get_write_ops_since_last_repl();
-            assert_eq!(1, write_ops);
-        });
     }
 
     #[test]
