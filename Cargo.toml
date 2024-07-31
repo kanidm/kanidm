@@ -4,7 +4,7 @@ authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
 ]
-rust-version = "1.77"
+rust-version = "1.79"
 edition = "2021"
 license = "MPL-2.0"
 homepage = "https://github.com/kanidm/kanidm/"
@@ -179,7 +179,7 @@ fs4 = "^0.8.3"
 futures = "^0.3.30"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.30", features = ["sink"] }
-gix = { version = "0.53.1", default-features = false }
+gix = { version = "0.64.0", default-features = false }
 gloo = "^0.8.1"
 gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }

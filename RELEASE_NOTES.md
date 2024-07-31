@@ -14,6 +14,52 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2024-08-07 - Kanidm 1.3.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is
+the combined effort of our community and we appreciate their invaluable contributions, comments,
+questions, feedback and support.
+
+You should review our
+[support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md)
+as this may have important effects on your distribution or upgrades in future.
+
+Before upgrading you should review [our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes)
+
+### 1.3.0 Important Changes
+
+- New GID number constraints are now enforced in this version. To upgrade from 1.2.0 all accounts
+  and groups must adhere to these rules. See [our upgrade documentation].
+  about tools to help you detect and correct affected entries.
+- OAuth2 URIs require stricter matching rules to be applied from 1.4.0.
+- Security Keys will be removed as a second factor alternative to TOTP from accounts in 1.4.0. It
+  has not been possible to register a new security for more than 1 year. Security Keys are surpassed
+  by PassKeys which give a better user experience.
+- Kanidm now supports FreeBSD and Illumos in addition to Linux
+
+### 1.3.0 Release Highlights
+
+- TOTP update user interface improvements
+- Improved error messages when a load balancer is failing
+- Reduced server log noise to improve event clarity
+- Replace jemalloc with mimalloc
+- User session storage can optionally use cookies
+- Strictly enforce same-version for backup/restore processes
+- Allow name self-write to be withheld
+- Add support for LDAP Compare operations
+- Upgrade Axum HTTP framework to the latest stable
+- Reduced memory usage
+- Improved update flow when changing from dev to stable server versions
+- PIV authentication foundations
+- Significant improvements to performance for write and search operations
+- Support Illumos
+- Begin rewrite of the webui
+- OAuth2 allows multiple origins
+- Lengthen replication MTLS certificate lifetime
+- UNIX daemon allows home paths to be in an external mount folder
+- Strict redirect URI enforcement in OAuth2
+- Substring indexing for improved search performance
+
 ## 2024-05-01 - Kanidm 1.2.0
 
 This is the first stable release of the Kanidm Identity Management project. We want to thank every
