@@ -376,43 +376,47 @@ async fn replication_trigger(
     replication_interval: Duration,
 ) {
     tokio::select! {
-        _ = async {
-            let mut read_txn = idms.proxy_read().await;
-
-            let mut one_sec_int = interval(Duration::from_secs(1));
-            // sleep for the minimum window size before we do anything
-            sleep(Duration::from_secs(MIN_REPL_TASK_POLL_INTERVAL)).await;
-            loop {
-                let write_ops_since_last_repl = read_txn.qs_read.get_write_ops_since_last_repl();
-                let time_since_last_repl = last_replication_instant.elapsed().as_secs();
-
-                let Some(write_throughput_index) = time_since_last_repl.checked_sub(MIN_REPL_TASK_POLL_INTERVAL) else {
-                    error!("Negative replication window index detected, aborting...");
-                    return;
-                };
-
-                let (current_max_throughput, current_repl_window) = MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL[write_throughput_index as usize];
-
-                // Check that we're reading the right indexed value
-                if current_repl_window != time_since_last_repl {
-                    error!("Inconsistent max throughput reading, aborting...");
-                    return;
-                }
-
-                let max_throughput_threshold = (current_max_throughput as f64 * REPLICATION_TRIGGER_SAFETY_THRESHOLD).round() as u64;
-
-                // If we're under the safety threshold it means it's safe to replicate, so we do it!
-                if write_ops_since_last_repl < max_throughput_threshold {
-                    return;
-                } else {
-                    // Otherwise we repeat the process after one
-                    one_sec_int.tick().await;
-                }
-
-            };
-        }, if enable_experimental_replication_trigger => {}
-
+        _ = experimental_replication_trigger(idms, last_replication_instant), if enable_experimental_replication_trigger => {}
         _ = sleep(replication_interval) => {}
+    }
+}
+
+async fn experimental_replication_trigger(idms: &IdmServer, last_replication_instant: &Instant) {
+    let mut read_txn = idms.proxy_read().await;
+
+    let mut one_sec_int = interval(Duration::from_secs(1));
+    // sleep for the minimum poll interval before we do anything
+    sleep(Duration::from_secs(MIN_REPL_TASK_POLL_INTERVAL)).await;
+    loop {
+        let write_ops_since_last_repl = read_txn.qs_read.get_write_ops_since_last_repl();
+        let time_elapsed_since_last_repl = last_replication_instant.elapsed().as_secs();
+
+        let write_throughput_index =
+            time_elapsed_since_last_repl.saturating_sub(MIN_REPL_TASK_POLL_INTERVAL);
+
+        let Some(&(current_max_throughput, current_poll_interval)) =
+            MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL.get(write_throughput_index as usize)
+        else {
+            error!("Invalid poll interval index detected, replicating immediately...");
+            return;
+        };
+
+        // Check that we're reading the right indexed value
+        if current_poll_interval != time_elapsed_since_last_repl {
+            error!("Inconsistent max throughput reading, replicating immediately...");
+            return;
+        }
+
+        let max_throughput_threshold =
+            (current_max_throughput as f64 * REPLICATION_TRIGGER_SAFETY_THRESHOLD).round() as u64;
+
+        // If we're under the safety threshold it means it's safe to replicate, so we do it!
+        if write_ops_since_last_repl < max_throughput_threshold {
+            return;
+        } else {
+            // Otherwise we repeat the process after one
+            one_sec_int.tick().await;
+        }
     }
 }
 

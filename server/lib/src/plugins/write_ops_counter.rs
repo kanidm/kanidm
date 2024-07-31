@@ -100,7 +100,7 @@ impl Plugin for WriteOperationCounter {
 mod tests {
     use crate::prelude::*;
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
+    #[qs_test]
     async fn entry_creation(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
         server_txn.reset_write_ops_since_last_repl();
@@ -125,7 +125,7 @@ mod tests {
         assert_eq!(1, write_ops);
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
+    #[qs_test]
     async fn entry_update(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 
@@ -168,7 +168,7 @@ mod tests {
         assert_eq!(1, write_ops);
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
+    #[qs_test]
     async fn entry_delete(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await;
 

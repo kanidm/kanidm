@@ -43,13 +43,13 @@ pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
 pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
 
-/// Default replication poll window in seconds.
+/// Default replication poll interval in seconds.
 pub const DEFAULT_REPL_TASK_POLL_INTERVAL: u64 = 15;
 
-/// Minimum replication poll window in seconds:
+/// Minimum replication poll interval in seconds:
 pub const MIN_REPL_TASK_POLL_INTERVAL: u64 = 3;
 
-// Estimate of max write ops that can be processed in the corresponding replication poll window
+// Estimate of max write ops that can be processed in the corresponding replication poll interval
 pub const MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL: [(u64, u64); 13] = [
     (2945, 3),
     (4081, 4),
@@ -66,7 +66,7 @@ pub const MAX_WRITE_THROUGHPUT_BY_TASK_POLL_INTERVAL: [(u64, u64); 13] = [
     (15893, 15),
 ];
 
-// This represents the percentage of the current MAX_WRITE_THROUGHPUT (determined by the current replication window)
+// This represents the percentage of the current MAX_WRITE_THROUGHPUT (determined by the current replication interval)
 // above which we will not trigger replication as we are too close to the maximum throughput and we risk to lower the server performance
 pub const REPLICATION_TRIGGER_SAFETY_THRESHOLD: f64 = 0.8;
 
