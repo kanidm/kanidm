@@ -122,6 +122,7 @@ pub enum OperationError {
     ReplDomainUuidMismatch,
     ReplServerUuidSplitDataState,
     TransactionAlreadyCommitted,
+    CannotStartMFADuringOngoingMFASession,
     /// when you ask for a gid that overlaps a system reserved range
     /// When a name is denied by the system config
     ValueDenyName,
@@ -280,6 +281,7 @@ impl OperationError {
             Self::QueueDisconnected => None,
             Self::Webauthn => None,
             Self::Wait(_) => None,
+            Self::CannotStartMFADuringOngoingMFASession => Some("Cannot start a new MFA authentication flow when there already is one active."),
             Self::ReplReplayFailure => None,
             Self::ReplEntryNotChanged => None,
             Self::ReplInvalidRUVState => None,

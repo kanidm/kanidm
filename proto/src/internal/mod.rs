@@ -26,6 +26,7 @@ pub use self::token::*;
 
 pub const COOKIE_AUTH_SESSION_ID: &str = "auth-session-id";
 pub const COOKIE_BEARER_TOKEN: &str = "bearer";
+pub const COOKIE_CU_SESSION_TOKEN: &str = "cu-session-token";
 pub const COOKIE_USERNAME: &str = "username";
 pub const COOKIE_OAUTH2_REQ: &str = "o2-authreq";
 
