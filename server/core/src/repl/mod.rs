@@ -213,11 +213,14 @@ async fn repl_run_consumer_refresh(
     {
         // Scope the transaction.
         let ct = duration_from_epoch_now();
-        let mut write_txn = idms.proxy_write(ct).await;
-        write_txn
-            .qs_write
-            .consumer_apply_refresh(&refresh)
-            .and_then(|cs| write_txn.commit().map(|()| cs))
+        idms.proxy_write(ct)
+            .await
+            .and_then(|mut write_txn| {
+                write_txn
+                    .qs_write
+                    .consumer_apply_refresh(&refresh)
+                    .and_then(|cs| write_txn.commit().map(|()| cs))
+            })
             .map_err(|err| error!(?err, "Consumer was not able to apply refresh."))?;
     }
 
@@ -248,8 +251,11 @@ async fn repl_run_consumer(
 
     // Perform incremental.
     let consumer_ruv_range = {
-        let mut read_txn = idms.proxy_read().await;
-        match read_txn.qs_read.consumer_get_state() {
+        let consumer_state = idms
+            .proxy_read()
+            .await
+            .and_then(|mut read_txn| read_txn.qs_read.consumer_get_state());
+        match consumer_state {
             Ok(ruv_range) => ruv_range,
             Err(err) => {
                 error!(
@@ -292,12 +298,12 @@ async fn repl_run_consumer(
     // Now apply the changes if possible
     let consumer_state = {
         let ct = duration_from_epoch_now();
-        let mut write_txn = idms.proxy_write(ct).await;
-        match write_txn
-            .qs_write
-            .consumer_apply_changes(&changes)
-            .and_then(|cs| write_txn.commit().map(|()| cs))
-        {
+        match idms.proxy_write(ct).await.and_then(|mut write_txn| {
+            write_txn
+                .qs_write
+                .consumer_apply_changes(&changes)
+                .and_then(|cs| write_txn.commit().map(|()| cs))
+        }) {
             Ok(state) => state,
             Err(err) => {
                 error!(?err, "consumer was not able to apply changes.");
@@ -349,12 +355,12 @@ async fn repl_run_consumer(
 
     // Now apply the refresh if possible
     let ct = duration_from_epoch_now();
-    let mut write_txn = idms.proxy_write(ct).await;
-    if let Err(err) = write_txn
-        .qs_write
-        .consumer_apply_refresh(&refresh)
-        .and_then(|cs| write_txn.commit().map(|()| cs))
-    {
+    if let Err(err) = idms.proxy_write(ct).await.and_then(|mut write_txn| {
+        write_txn
+            .qs_write
+            .consumer_apply_refresh(&refresh)
+            .and_then(|cs| write_txn.commit().map(|()| cs))
+    }) {
         error!(?err, "consumer was not able to apply refresh.");
         return None;
     }
@@ -549,12 +555,11 @@ async fn handle_repl_conn(
                 }
             }
             Ok(ConsumerRequest::Incremental(consumer_ruv_range)) => {
-                let mut read_txn = idms.proxy_read().await;
-
-                let changes = match read_txn
-                    .qs_read
-                    .supplier_provide_changes(consumer_ruv_range)
-                {
+                let changes = match idms.proxy_read().await.and_then(|mut read_txn| {
+                    read_txn
+                        .qs_read
+                        .supplier_provide_changes(consumer_ruv_range)
+                }) {
                     Ok(changes) => changes,
                     Err(err) => {
                         error!(?err, "supplier provide changes failed.");
@@ -568,9 +573,11 @@ async fn handle_repl_conn(
                 }
             }
             Ok(ConsumerRequest::Refresh) => {
-                let mut read_txn = idms.proxy_read().await;
-
-                let changes = match read_txn.qs_read.supplier_provide_refresh() {
+                let changes = match idms
+                    .proxy_read()
+                    .await
+                    .and_then(|mut read_txn| read_txn.qs_read.supplier_provide_refresh())
+                {
                     Ok(changes) => changes,
                     Err(err) => {
                         error!(?err, "supplier provide refresh failed.");
@@ -659,11 +666,12 @@ async fn repl_acceptor(
         // Get the private key / cert.
         let res = {
             let ct = duration_from_epoch_now();
-            let mut idms_prox_write = idms.proxy_write(ct).await;
-            idms_prox_write
-                .qs_write
-                .supplier_get_key_cert(&domain_name)
-                .and_then(|res| idms_prox_write.commit().map(|()| res))
+            idms.proxy_write(ct).await.and_then(|mut idms_prox_write| {
+                idms_prox_write
+                    .qs_write
+                    .supplier_get_key_cert(&domain_name)
+                    .and_then(|res| idms_prox_write.commit().map(|()| res))
+            })
         };
 
         let (server_key, server_cert) = match res {
@@ -808,11 +816,13 @@ async fn repl_acceptor(
                                 // Renew the cert.
                                 let res = {
                                     let ct = duration_from_epoch_now();
-                                    let mut idms_prox_write = idms.proxy_write(ct).await;
+                                    idms.proxy_write(ct).await
+                                        .and_then(|mut idms_prox_write|
                                     idms_prox_write
                                         .qs_write
                                         .supplier_renew_key_cert(&domain_name)
                                         .and_then(|res| idms_prox_write.commit().map(|()| res))
+                                        )
                                 };
 
                                 let success = res.is_ok();

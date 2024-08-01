@@ -19,7 +19,7 @@ impl QueryServer {
     ) -> Result<(), OperationError> {
         // We need to perform this in a single transaction pass to prevent tainting
         // databases during upgrades.
-        let mut write_txn = self.write(ts).await;
+        let mut write_txn = self.write(ts).await?;
 
         // Check our database version - attempt to do an initial indexing
         // based on the in memory configuration. This ONLY triggers ONCE on
@@ -1130,23 +1130,23 @@ mod tests {
     async fn test_init_idempotent_schema_core(server: &QueryServer) {
         {
             // Setup and abort.
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn.initialise_schema_core().is_ok());
         }
         {
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
         {
             // Now do it again in a new txn, but abort
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn.initialise_schema_core().is_ok());
         }
         {
             // Now do it again in a new txn.
-            let mut server_txn = server.write(duration_from_epoch_now()).await;
+            let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn.initialise_schema_core().is_ok());
             assert!(server_txn.commit().is_ok());
         }
@@ -1155,7 +1155,7 @@ mod tests {
     #[qs_test(domain_level=DOMAIN_LEVEL_6)]
     async fn test_migrations_dl6_dl7(server: &QueryServer) {
         // Assert our instance was setup to version 6
-        let mut write_txn = server.write(duration_from_epoch_now()).await;
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let db_domain_version = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
@@ -1228,7 +1228,7 @@ mod tests {
     #[qs_test(domain_level=DOMAIN_LEVEL_7)]
     async fn test_migrations_dl7_dl8(server: &QueryServer) {
         // Assert our instance was setup to version 7
-        let mut write_txn = server.write(duration_from_epoch_now()).await;
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let db_domain_version = write_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
@@ -1277,7 +1277,7 @@ mod tests {
         // pre migration verification.
         // check we currently would fail a migration.
 
-        let mut read_txn = server.read().await;
+        let mut read_txn = server.read().await.unwrap();
 
         match read_txn.domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri() {
             Ok(ProtoDomainUpgradeCheckItem {
@@ -1296,7 +1296,7 @@ mod tests {
 
         // Okay, fix the problem.
 
-        let mut write_txn = server.write(duration_from_epoch_now()).await;
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         write_txn
             .internal_modify_uuid(

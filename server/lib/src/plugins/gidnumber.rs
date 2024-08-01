@@ -191,7 +191,7 @@ mod tests {
 
     #[qs_test(domain_level=DOMAIN_LEVEL_7)]
     async fn test_gidnumber_generate(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
 
         // Test that the gid number is generated on create
         {
@@ -427,7 +427,7 @@ mod tests {
 
     #[qs_test(domain_level=DOMAIN_LEVEL_6)]
     async fn test_gidnumber_domain_level_6(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
 
         // This will be INVALID in DL 7 but it's allowed for DL6
         let user_a_uuid = uuid!("d90fb0cb-6785-4f36-94cb-e364d9c13255");
@@ -460,7 +460,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, do the DL6 upgrade check - will FAIL because the above user has an invalid ID.
-        let mut server_txn = server.read().await;
+        let mut server_txn = server.read().await.unwrap();
 
         let check_item = server_txn
             .domain_upgrade_check_6_to_7_gidnumber()
@@ -473,7 +473,7 @@ mod tests {
 
         drop(server_txn);
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
 
         // Test rejection of important gid values.
         let user_b_uuid = uuid!("33afc396-2434-47e5-b143-05176148b50e");

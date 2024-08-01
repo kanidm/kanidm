@@ -255,7 +255,7 @@ mod tests {
         let time_p1 = duration_from_epoch_now();
         let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
 
-        let mut server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await.unwrap();
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let filt_i_rc = filter_all!(f_eq(Attribute::Class, EntryClass::Recycled.into()));
@@ -364,7 +364,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let mut server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await.unwrap();
 
         //  purge to tombstone, now that time has passed.
         assert!(server_txn.purge_recycled().is_ok());
@@ -394,7 +394,7 @@ mod tests {
     #[qs_test]
     async fn test_qs_recycle_advanced(server: &QueryServer) {
         // Create items
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let e1 = entry_init!(
@@ -435,7 +435,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_star_recycle(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -513,7 +513,7 @@ mod tests {
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
         trace!("test_tombstone_start");
-        let mut server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await.unwrap();
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         let filt_i_ts = filter_all!(f_eq(Attribute::Class, EntryClass::Tombstone.into()));
@@ -560,7 +560,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let mut server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await.unwrap();
         assert!(server_txn.purge_recycled().is_ok());
 
         // Now test the tombstone properties.
@@ -596,7 +596,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // New txn, push the cid forward.
-        let mut server_txn = server.write(time_p3).await;
+        let mut server_txn = server.write(time_p3).await.unwrap();
 
         // Now purge
         assert!(server_txn.purge_tombstones().is_ok());
@@ -665,7 +665,7 @@ mod tests {
     #[qs_test]
     async fn test_revive_advanced_directmemberships(server: &QueryServer) {
         // Create items
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
         // Right need a user in a direct group.

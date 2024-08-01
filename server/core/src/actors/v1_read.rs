@@ -73,7 +73,7 @@ impl QueryServerReadV1 {
     ) -> Result<SearchResponse, OperationError> {
         // Begin a read
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -113,7 +113,7 @@ impl QueryServerReadV1 {
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let ct = duration_from_epoch_now();
-        let mut idm_auth = self.idms.auth().await;
+        let mut idm_auth = self.idms.auth().await?;
         security_info!(?sessionid, ?req, "Begin auth event");
 
         // Destructure it.
@@ -154,7 +154,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<AuthResult, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idm_auth = self.idms.auth().await;
+        let mut idm_auth = self.idms.auth().await?;
         security_info!("Begin reauth event");
 
         let ident = idm_auth
@@ -211,7 +211,7 @@ impl QueryServerReadV1 {
 
         // Scope to limit the read txn.
         {
-            let mut idms_prox_read = self.idms.proxy_read().await;
+            let mut idms_prox_read = self.idms.proxy_read().await?;
             idms_prox_read
                 .qs_read
                 .get_be_txn()
@@ -322,7 +322,7 @@ impl QueryServerReadV1 {
     ) -> Result<WhoamiResponse, OperationError> {
         // Begin a read
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         // Make an event from the whoami request. This will process the event and
         // generate a selfuuid search.
         //
@@ -367,7 +367,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<UserAuthToken, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         // Make an event from the whoami request. This will process the event and
         // generate a selfuuid search.
         //
@@ -390,7 +390,7 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
     ) -> Result<ImageValue, OperationError> {
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_read
@@ -435,7 +435,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -479,7 +479,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -537,7 +537,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -580,7 +580,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -640,7 +640,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -687,7 +687,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -740,7 +740,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -786,7 +786,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -849,7 +849,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -913,7 +913,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ApiToken>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -945,7 +945,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<UatStatus>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -979,7 +979,7 @@ impl QueryServerReadV1 {
     ) -> Result<IdentifyUserResponse, OperationError> {
         trace!("{:?}", &user_request);
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -1019,7 +1019,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idm_auth = self.idms.auth().await;
+        let mut idm_auth = self.idms.auth().await?;
         // resolve the id
         let ident = idm_auth
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -1068,7 +1068,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -1114,7 +1114,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<BackupCodesView, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -1167,7 +1167,7 @@ impl QueryServerReadV1 {
 
         // Don't proceed unless the token parses
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await?;
 
         idms_cred_update
             .credential_update_status(&session_token, ct)
@@ -1200,7 +1200,7 @@ impl QueryServerReadV1 {
             })?;
 
         let ct = duration_from_epoch_now();
-        let idms_cred_update = self.idms.cred_update_transaction().await;
+        let idms_cred_update = self.idms.cred_update_transaction().await?;
 
         debug!(?scr);
 
@@ -1356,7 +1356,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -1409,7 +1409,11 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self
+            .idms
+            .proxy_read()
+            .await
+            .map_err(Oauth2Error::ServerError)?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -1433,7 +1437,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Url, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -1456,7 +1460,11 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self
+            .idms
+            .proxy_read()
+            .await
+            .map_err(Oauth2Error::ServerError)?;
         // Now we can send to the idm server for introspection checking.
         idms_prox_read.check_oauth2_token_introspect(&client_auth_info, &intr_req, ct)
     }
@@ -1473,7 +1481,11 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<OidcToken, Oauth2Error> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self
+            .idms
+            .proxy_read()
+            .await
+            .map_err(Oauth2Error::ServerError)?;
         idms_prox_read.oauth2_openid_userinfo(&client_id, token, ct)
     }
 
@@ -1487,7 +1499,7 @@ impl QueryServerReadV1 {
         client_id: String,
         eventid: Uuid,
     ) -> Result<OidcDiscoveryResponse, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await;
+        let idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_openid_discovery(&client_id)
     }
 
@@ -1501,7 +1513,7 @@ impl QueryServerReadV1 {
         client_id: String,
         eventid: Uuid,
     ) -> Result<Oauth2Rfc8414MetadataResponse, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await;
+        let idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_rfc8414_metadata(&client_id)
     }
 
@@ -1515,7 +1527,7 @@ impl QueryServerReadV1 {
         client_id: String,
         eventid: Uuid,
     ) -> Result<JwkKeySet, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await;
+        let idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_openid_publickey(&client_id)
     }
 
@@ -1530,7 +1542,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<AppLink>, OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
@@ -1547,9 +1559,9 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn get_domain_display_name(&self, eventid: Uuid) -> String {
-        let idms_prox_read = self.idms.proxy_read().await;
-        idms_prox_read.qs_read.get_domain_display_name().to_string()
+    pub async fn get_domain_display_name(&self, eventid: Uuid) -> Result<String, OperationError> {
+        let idms_prox_read = self.idms.proxy_read().await?;
+        Ok(idms_prox_read.qs_read.get_domain_display_name().to_string())
     }
 
     #[instrument(
@@ -1563,7 +1575,7 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -1585,7 +1597,7 @@ impl QueryServerReadV1 {
         key_id: String,
         eventid: Uuid,
     ) -> Result<Jwk, OperationError> {
-        let mut idms_prox_read = self.idms.proxy_read().await;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
 
         idms_prox_read.jws_public_jwk(key_id.as_str())
     }

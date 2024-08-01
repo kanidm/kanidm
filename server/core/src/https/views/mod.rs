@@ -19,8 +19,8 @@ use crate::https::{
 mod apps;
 mod errors;
 mod login;
-mod reset;
 mod oauth2;
+mod reset;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -38,7 +38,6 @@ pub fn view_router() -> Router<ServerState> {
         .route("/oauth2", get(oauth2::view_index_get))
         .route("/oauth2/resume", get(oauth2::view_resume_get))
         .route("/oauth2/consent", post(oauth2::view_consent_post))
-  
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.

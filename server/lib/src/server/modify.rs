@@ -554,7 +554,7 @@ mod tests {
     #[qs_test]
     async fn test_modify(server: &QueryServer) {
         // Create an object
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -676,7 +676,7 @@ mod tests {
 
     #[qs_test]
     async fn test_modify_assert(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let t_uuid = Uuid::new_v4();
         let r_uuid = Uuid::new_v4();
@@ -716,7 +716,7 @@ mod tests {
     async fn test_modify_invalid_class(server: &QueryServer) {
         // Test modifying an entry and adding an extra class, that would cause the entry
         // to no longer conform to schema.
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -804,7 +804,7 @@ mod tests {
             (Attribute::Description, Value::new_utf8s("testperson1")),
             (Attribute::DisplayName, Value::new_utf8s("testperson1"))
         );
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add the entry. Today we have no syntax to take simple str to a credential
         // but honestly, that's probably okay :)
         let ce = CreateEvent::new_internal(vec![e1]);

@@ -154,7 +154,11 @@ pub(crate) async fn manifest(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
+    let domain_display_name = state
+        .qe_r_ref
+        .get_domain_display_name(kopid.eventid)
+        .await
+        .unwrap_or_default();
     // TODO: fix the None here to make it the request host
     let manifest_string =
         match serde_json::to_string_pretty(&manifest_data(None, domain_display_name)) {

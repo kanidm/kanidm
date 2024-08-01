@@ -190,7 +190,7 @@ mod tests {
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
 
     async fn setup_testaccount(idms: &IdmServer, ct: Duration) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -211,7 +211,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> WebauthnAuthenticator<SoftPasskey> {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let testperson = idms_prox_write
             .qs_write
             .internal_search_uuid(TESTPERSON_UUID)
@@ -226,7 +226,7 @@ mod tests {
 
         // Update session is setup.
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
 
         let mut wa = WebauthnAuthenticator::new(SoftPasskey::new(true));
@@ -254,7 +254,7 @@ mod tests {
         assert!(c_status.can_commit());
 
         drop(cutxn);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         idms_prox_write
             .commit_credential_update(&cust, ct)
@@ -266,7 +266,7 @@ mod tests {
     }
 
     async fn setup_testaccount_password_totp(idms: &IdmServer, ct: Duration) -> (String, Totp) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let testperson = idms_prox_write
             .qs_write
             .internal_search_uuid(TESTPERSON_UUID)
@@ -279,7 +279,7 @@ mod tests {
             .expect("Failed to begin credential update.");
         idms_prox_write.commit().expect("Failed to commit txn");
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         let pw = crate::utils::password_from_random();
 
@@ -312,7 +312,7 @@ mod tests {
         assert!(c_status.can_commit());
 
         drop(cutxn);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         idms_prox_write
             .commit_credential_update(&cust, ct)
@@ -329,7 +329,7 @@ mod tests {
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
         let origin = idms_auth.get_origin().clone();
 
         let auth_init = AuthEvent::named_init("testperson");
@@ -409,7 +409,7 @@ mod tests {
         token: &Totp,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -478,7 +478,7 @@ mod tests {
         ct: Duration,
         client_auth_info: ClientAuthInfo,
     ) -> Identity {
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
@@ -492,7 +492,7 @@ mod tests {
         wa: &mut WebauthnAuthenticator<SoftPasskey>,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
         let origin = idms_auth.get_origin().clone();
 
         let auth_allowed = idms_auth
@@ -559,7 +559,7 @@ mod tests {
         token: &Totp,
         idms_delayed: &mut IdmServerDelayed,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_allowed = idms_auth
             .reauth_init(

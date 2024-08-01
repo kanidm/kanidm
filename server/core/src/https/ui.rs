@@ -64,7 +64,11 @@ pub(crate) async fn ui_handler_generic(
     kopid: KOpId,
     wasmloader: &str,
 ) -> Response<String> {
-    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
+    let domain_display_name = state
+        .qe_r_ref
+        .get_domain_display_name(kopid.eventid)
+        .await
+        .unwrap_or_default();
 
     // let's get the tags we want to load the javascript files
     let mut jsfiles: Vec<String> = state

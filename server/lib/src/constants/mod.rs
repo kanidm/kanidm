@@ -101,6 +101,11 @@ pub const PURGE_FREQUENCY: u64 = 600;
 /// some latency while dequeuing and writing those operations.
 pub const DELAYED_ACTION_BATCH_SIZE: usize = 256;
 
+/// The amount of time to wait to acquire a database ticket before timing out.
+/// Higher values allow greater operation queuing but can cause feedback
+/// loops where operations will stall for long periods.
+pub const DB_LOCK_ACQUIRE_TIMEOUT_MILLIS: u64 = 5000;
+
 #[cfg(test)]
 /// In test, we limit the changelog to 10 minutes.
 pub const CHANGELOG_MAX_AGE: u64 = 600;

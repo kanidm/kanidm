@@ -215,7 +215,7 @@ mod tests {
     #[qs_test]
     async fn test_delete(server: &QueryServer) {
         // Create
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),

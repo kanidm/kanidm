@@ -77,7 +77,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_applinks_list(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Create an RS, the user and a group..
         let usr_uuid = Uuid::new_v4();
@@ -140,7 +140,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now do an applink query, they will not be there.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .qs_read
@@ -156,7 +156,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Add them to the group.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Refer(grp_uuid))),
             ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid)),
@@ -164,7 +164,7 @@ mod tests {
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .qs_read

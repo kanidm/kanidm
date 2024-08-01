@@ -5,7 +5,10 @@ use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::cookie::{Cookie, SameSite};
 use axum_extra::extract::CookieJar;
-use axum_htmx::{HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget, SwapOption};
+use axum_htmx::{
+    HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
+    SwapOption,
+};
 use futures_util::TryFutureExt;
 use qrcode::render::svg;
 use qrcode::QrCode;
@@ -574,7 +577,11 @@ pub(crate) async fn view_reset_get(
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let domain_display_name = state.qe_r_ref.get_domain_display_name(kopid.eventid).await;
+    let domain_display_name = state
+        .qe_r_ref
+        .get_domain_display_name(kopid.eventid)
+        .await
+        .unwrap_or_default();
     let push_url = HxPushUrl(Uri::from_static("/ui/reset"));
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {

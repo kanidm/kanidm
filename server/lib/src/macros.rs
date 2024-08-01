@@ -52,7 +52,8 @@ macro_rules! setup_test {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(qs.write(duration_from_epoch_now()));
+                .block_on(qs.write(duration_from_epoch_now()))
+                .expect("txn");
             qs_write
                 .internal_create($preload_entries)
                 .expect("Failed to preload entries");
@@ -93,7 +94,8 @@ macro_rules! run_create_test {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(qs.write(duration_from_epoch_now()));
+                .block_on(qs.write(duration_from_epoch_now()))
+                .unwrap();
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
             assert!(r == $expect);
@@ -149,7 +151,8 @@ macro_rules! run_modify_test {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(qs.write(duration_from_epoch_now()));
+                .block_on(qs.write(duration_from_epoch_now()))
+                .expect("txn");
             $pre_hook(&mut qs_write);
             qs_write.commit().expect("commit failure!");
         }
@@ -164,7 +167,8 @@ macro_rules! run_modify_test {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(qs.write(duration_from_epoch_now()));
+                .block_on(qs.write(duration_from_epoch_now()))
+                .expect("txn");
             let r = qs_write.modify(&me);
             $check(&mut qs_write);
             trace!("test result: {:?}", r);
@@ -217,7 +221,8 @@ macro_rules! run_delete_test {
                 .enable_all()
                 .build()
                 .unwrap()
-                .block_on(qs.write(duration_from_epoch_now()));
+                .block_on(qs.write(duration_from_epoch_now()))
+                .expect("txn");
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
             $check(&mut qs_write);

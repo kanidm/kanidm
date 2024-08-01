@@ -2037,7 +2037,7 @@ mod tests {
         let time_p2 = time_p1 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
         let time_p3 = time_p2 + Duration::from_secs(CHANGELOG_MAX_AGE * 2);
 
-        let mut server_txn = server.write(time_p1).await;
+        let mut server_txn = server.write(time_p1).await.expect("txn");
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -2093,11 +2093,11 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Now, establish enough time for the recycled items to be purged.
-        let mut server_txn = server.write(time_p2).await;
+        let mut server_txn = server.write(time_p2).await.expect("txn");
         assert!(server_txn.purge_recycled().is_ok());
         assert!(server_txn.commit().is_ok());
 
-        let mut server_txn = server.write(time_p3).await;
+        let mut server_txn = server.write(time_p3).await.expect("txn");
         assert!(server_txn.purge_tombstones().is_ok());
 
         // ===== ✅ now ready to test!
@@ -2134,7 +2134,7 @@ mod tests {
 
     #[qs_test]
     async fn test_filter_depth_limits(server: &QueryServer) {
-        let mut r_txn = server.read().await;
+        let mut r_txn = server.read().await.unwrap();
 
         let mut inv_proto = ProtoFilter::Pres(Attribute::Class.to_string());
         for _i in 0..(DEFAULT_LIMIT_FILTER_DEPTH_MAX + 1) {
@@ -2160,7 +2160,7 @@ mod tests {
         std::mem::drop(r_txn);
 
         // proto + write
-        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let mut wr_txn = server.write(duration_from_epoch_now()).await.expect("txn");
         let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }
@@ -2168,7 +2168,7 @@ mod tests {
     #[qs_test]
     async fn test_filter_max_element_limits(server: &QueryServer) {
         const LIMIT: usize = 4;
-        let mut r_txn = server.read().await;
+        let mut r_txn = server.read().await.unwrap();
 
         let inv_proto = ProtoFilter::And(
             (0..(LIMIT * 2))
@@ -2197,7 +2197,7 @@ mod tests {
         std::mem::drop(r_txn);
 
         // proto + write
-        let mut wr_txn = server.write(duration_from_epoch_now()).await;
+        let mut wr_txn = server.write(duration_from_epoch_now()).await.expect("txn");
         let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
         assert!(res == Err(OperationError::ResourceLimit));
     }

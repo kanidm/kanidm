@@ -1121,7 +1121,7 @@ mod tests {
         // really protects us *a lot* here, but it's nice to have defence and
         // layers of validation.
 
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         acp_from_entry_err!(
             &mut qs_write,
@@ -1190,7 +1190,7 @@ mod tests {
 
     #[qs_test]
     async fn test_access_acp_delete_parser(qs: &QueryServer) {
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         acp_from_entry_err!(
             &mut qs_write,
@@ -1238,7 +1238,7 @@ mod tests {
     #[qs_test]
     async fn test_access_acp_search_parser(qs: &QueryServer) {
         // Test that parsing search access controls works.
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         // Missing class acp
         acp_from_entry_err!(
@@ -1326,7 +1326,7 @@ mod tests {
     #[qs_test]
     async fn test_access_acp_modify_parser(qs: &QueryServer) {
         // Test that parsing modify access controls works.
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         acp_from_entry_err!(
             &mut qs_write,
@@ -1406,7 +1406,7 @@ mod tests {
     #[qs_test]
     async fn test_access_acp_create_parser(qs: &QueryServer) {
         // Test that parsing create access controls works.
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         acp_from_entry_err!(
             &mut qs_write,
@@ -1487,7 +1487,7 @@ mod tests {
         // given a single &str, we can evaluate all types from a single record.
         // This is valid, and could exist, IE a rule to allow create, search and modify
         // over a single scope.
-        let mut qs_write = qs.write(duration_from_epoch_now()).await;
+        let mut qs_write = qs.write(duration_from_epoch_now()).await.unwrap();
 
         let e = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),

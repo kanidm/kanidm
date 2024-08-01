@@ -113,7 +113,7 @@ mod tests {
     use crate::prelude::*;
 
     async fn setup_name_deny(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
@@ -131,7 +131,7 @@ mod tests {
     async fn test_valuedeny_create(server: &QueryServer) {
         setup_name_deny(server).await;
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
@@ -150,7 +150,7 @@ mod tests {
     async fn test_valuedeny_modify(server: &QueryServer) {
         setup_name_deny(server).await;
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
@@ -178,7 +178,7 @@ mod tests {
     async fn test_valuedeny_batch_modify(server: &QueryServer) {
         setup_name_deny(server).await;
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(

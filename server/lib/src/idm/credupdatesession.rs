@@ -2361,7 +2361,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let testaccount_uuid = Uuid::new_v4();
 
@@ -2478,7 +2478,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Remove the default all persons policy, it interfers with our test.
         let modlist = ModifyList::new_purge(Attribute::CredentialTypeMinimum);
@@ -2527,7 +2527,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let testperson = idms_prox_write
             .qs_write
@@ -2547,7 +2547,7 @@ mod tests {
     }
 
     async fn commit_session(idms: &IdmServer, ct: Duration, cust: CredentialUpdateSessionToken) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         idms_prox_write
             .commit_credential_update(&cust, ct)
@@ -2562,7 +2562,7 @@ mod tests {
         pw: &str,
         ct: Duration,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -2616,7 +2616,7 @@ mod tests {
         token: &Totp,
         ct: Duration,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -2682,7 +2682,7 @@ mod tests {
         code: &str,
         ct: Duration,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -2750,7 +2750,7 @@ mod tests {
         origin: Url,
         ct: Duration,
     ) -> Option<JwsCompact> {
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
 
         let auth_init = AuthEvent::named_init("testperson");
 
@@ -2826,7 +2826,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         // The session exists
         let c_status = cutxn.credential_update_status(&cust, ct);
         assert!(c_status.is_ok());
@@ -2836,7 +2836,7 @@ mod tests {
         let (_cust, _) =
             renew_test_session(idms, ct + MAXIMUM_CRED_UPDATE_TTL + Duration::from_secs(1)).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Now fake going back in time .... allows the tokne to decrypt, but the session
         // is gone anyway!
@@ -2856,7 +2856,7 @@ mod tests {
 
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -2887,7 +2887,7 @@ mod tests {
 
         // Test deleting the pw
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         let c_status = cutxn
             .credential_update_status(&cust, ct)
@@ -2920,7 +2920,7 @@ mod tests {
 
         // Get the radius pw
 
-        let mut r_txn = idms.proxy_read().await;
+        let mut r_txn = idms.proxy_read().await.unwrap();
 
         let radius_secret = r_txn
             .qs_read
@@ -2932,7 +2932,7 @@ mod tests {
 
         drop(r_txn);
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -3030,7 +3030,7 @@ mod tests {
         // Set the account policy min pw length
         let test_pw_min_length = PW_MIN_LENGTH * 2;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::AuthPasswordMinimumLength,
@@ -3046,7 +3046,7 @@ mod tests {
 
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -3112,7 +3112,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Setup the PW
         let c_status = cutxn
@@ -3175,7 +3175,7 @@ mod tests {
 
         // If we remove TOTP, show it reverts back.
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         let c_status = cutxn
             .credential_primary_remove_totp(&cust, ct, "totp")
@@ -3206,7 +3206,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Setup the PW
         let c_status = cutxn
@@ -3280,7 +3280,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Setup the PW
         let _c_status = cutxn
@@ -3356,7 +3356,7 @@ mod tests {
 
         // Renew to start the next steps
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Only 7 codes left.
         let c_status = cutxn
@@ -3417,7 +3417,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Setup the PW
         let c_status = cutxn
@@ -3513,7 +3513,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
 
         // Create a soft passkey
@@ -3537,7 +3537,7 @@ mod tests {
 
         // Now test removing the token
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());
@@ -3572,7 +3572,7 @@ mod tests {
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let sync_uuid = Uuid::new_v4();
 
@@ -3645,7 +3645,7 @@ mod tests {
             CredentialState::AccessDeny
         ));
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // let origin = cutxn.get_origin().clone();
 
@@ -3728,7 +3728,7 @@ mod tests {
         let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::CredentialTypeMinimum,
@@ -3744,7 +3744,7 @@ mod tests {
 
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -3805,7 +3805,7 @@ mod tests {
 
         // If we remove TOTP, it blocks commit.
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         let c_status = cutxn
             .credential_primary_remove_totp(&cust, ct, "totp")
@@ -3850,7 +3850,7 @@ mod tests {
         let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::CredentialTypeMinimum,
@@ -3866,7 +3866,7 @@ mod tests {
 
         let (cust, _) = setup_test_session(idms, ct).await;
 
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Get the credential status - this should tell
         // us the details of the credentials, as well as
@@ -3925,7 +3925,7 @@ mod tests {
             .unwrap();
         let att_ca_list = att_ca_builder.build();
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::WebauthnAttestationCaList,
@@ -3947,7 +3947,7 @@ mod tests {
         // Setup the cred update session.
 
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
 
         // Our status needs the correct device names for UI hinting.
@@ -4069,7 +4069,7 @@ mod tests {
 
         // Remove attested passkey works.
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());
@@ -4123,7 +4123,7 @@ mod tests {
 
         trace!(?att_ca_list);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::WebauthnAttestationCaList,
@@ -4150,7 +4150,7 @@ mod tests {
 
         // Enroll the attested keys
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
 
         // -------------------------------------------------------
@@ -4191,7 +4191,7 @@ mod tests {
         );
 
         // Change policy
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::WebauthnAttestationCaList,
@@ -4220,7 +4220,7 @@ mod tests {
 
         //  Update creds
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         // Invalid key removed
         let c_status = cutxn
@@ -4266,7 +4266,7 @@ mod tests {
 
         trace!(?att_ca_list);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge_and_set(
             Attribute::WebauthnAttestationCaList,
@@ -4281,7 +4281,7 @@ mod tests {
 
         // Enroll the attested keys
         let (cust, _) = setup_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
         let origin = cutxn.get_origin().clone();
 
         // -------------------------------------------------------
@@ -4322,7 +4322,7 @@ mod tests {
         );
 
         // Change policy
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_purge(Attribute::WebauthnAttestationCaList);
         idms_prox_write
@@ -4341,7 +4341,7 @@ mod tests {
 
         // Show it still exists, but can only be deleted now.
         let (cust, _) = renew_test_session(idms, ct).await;
-        let cutxn = idms.cred_update_transaction().await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
 
         let c_status = cutxn
             .credential_update_status(&cust, ct)

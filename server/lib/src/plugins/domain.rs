@@ -158,7 +158,7 @@ mod tests {
     // test we can create and generate the id
     #[qs_test]
     async fn test_domain_generate_uuid(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let e_dom = server_txn
             .internal_search_uuid(UUID_DOMAIN_INFO)
             .expect("must not fail");

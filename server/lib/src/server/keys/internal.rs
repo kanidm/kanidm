@@ -985,7 +985,7 @@ mod tests {
     #[qs_test]
     async fn test_key_object_internal_es256(server: &QueryServer) {
         let ct = duration_from_epoch_now();
-        let mut write_txn = server.write(ct).await;
+        let mut write_txn = server.write(ct).await.unwrap();
 
         // Assert the default provider is the internal one.
         let default_key_provider = write_txn

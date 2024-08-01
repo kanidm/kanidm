@@ -348,7 +348,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
                 // Any needed teardown?
                 // assert!(test_server.clear_cache().await.is_ok());
                 // Make sure there are no errors.
-                let mut idm_read_txn = test_server.proxy_read().await;
+                let mut idm_read_txn = test_server.proxy_read().await.unwrap();
                 let verifications = idm_read_txn.qs_read.verify();
                 trace!("Verification result: {:?}", verifications);
                 assert!(verifications.len() == 0);
