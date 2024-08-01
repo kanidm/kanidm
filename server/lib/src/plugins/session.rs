@@ -214,7 +214,7 @@ mod tests {
         let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
@@ -281,7 +281,7 @@ mod tests {
         assert!(matches!(session.state, SessionState::ExpiresAt(_)));
 
         assert!(server_txn.commit().is_ok());
-        let mut server_txn = server.write(exp_curtime).await;
+        let mut server_txn = server.write(exp_curtime).await.unwrap();
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
@@ -324,7 +324,7 @@ mod tests {
         let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
         let rs_uuid = Uuid::new_v4();
@@ -452,7 +452,7 @@ mod tests {
 
         // Note as we are now past exp time, the oauth2 session will be removed, but the uat session
         // will remain.
-        let mut server_txn = server.write(exp_curtime).await;
+        let mut server_txn = server.write(exp_curtime).await.unwrap();
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
@@ -498,7 +498,7 @@ mod tests {
         let cred_id = cred.uuid;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
         let rs_uuid = Uuid::new_v4();
@@ -623,7 +623,7 @@ mod tests {
 
         // We need the time to be past grace_window.
         assert!(server_txn.commit().is_ok());
-        let mut server_txn = server.write(exp_curtime).await;
+        let mut server_txn = server.write(exp_curtime).await.unwrap();
 
         // Mod again - remove the parent session.
         let modlist = ModifyList::new_remove(
@@ -669,7 +669,7 @@ mod tests {
         // let exp_curtime_odt = OffsetDateTime::UNIX_EPOCH + exp_curtime;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
         let rs_uuid = Uuid::new_v4();
@@ -760,7 +760,7 @@ mod tests {
 
         // Note the exp_curtime now is past the gracewindow. This will trigger
         // consistency to purge the un-matched session.
-        let mut server_txn = server.write(exp_curtime).await;
+        let mut server_txn = server.write(exp_curtime).await.unwrap();
 
         // Mod again - anything will do.
         let modlist = ModifyList::new_purge_and_set(
@@ -798,7 +798,7 @@ mod tests {
         let cred_id = cred.uuid;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
@@ -867,7 +867,7 @@ mod tests {
         assert!(server_txn.commit().is_ok());
 
         // Notice we keep the time the same for the txn.
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         // Remove the primary credential
         let modlist = ModifyList::new_purge(Attribute::PrimaryCredential);

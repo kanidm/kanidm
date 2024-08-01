@@ -323,7 +323,7 @@ mod test {
         _idms_delayed: &IdmServerDelayed,
     ) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let self_uuid = Uuid::new_v4();
         let valid_user_uuid = Uuid::new_v4();
@@ -336,7 +336,7 @@ mod test {
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .qs_read
@@ -383,7 +383,7 @@ mod test {
     #[idm_test]
     async fn test_invalid_user_id(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let invalid_user_uuid = Uuid::new_v4();
         let valid_user_a_uuid = Uuid::new_v4();
@@ -400,7 +400,7 @@ mod test {
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .qs_read
@@ -437,7 +437,7 @@ mod test {
     #[idm_test]
     async fn test_start_event(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let valid_user_a_uuid = Uuid::new_v4();
 
@@ -446,7 +446,7 @@ mod test {
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .qs_read
@@ -470,7 +470,7 @@ mod test {
                 // enforce some flow checks, but this is not the primary scope of this test
     async fn test_code_correctness(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let user_a_uuid = Uuid::new_v4();
         let user_b_uuid = Uuid::new_v4();
         let e1 = create_valid_user_account(user_a_uuid);
@@ -480,7 +480,7 @@ mod test {
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident_a = idms_prox_read
             .qs_read
@@ -558,7 +558,7 @@ mod test {
 
     async fn test_totps_differ(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let user_a_uuid = Uuid::new_v4();
         let user_b_uuid = Uuid::new_v4();
         let e1 = create_valid_user_account(user_a_uuid);
@@ -568,7 +568,7 @@ mod test {
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident_a = idms_prox_read
             .qs_read

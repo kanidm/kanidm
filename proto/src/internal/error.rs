@@ -66,6 +66,7 @@ pub enum ConsistencyError {
 #[derive(Serialize, Deserialize, Debug, ToSchema)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
+    // Logic errors, or "soft" errors.
     SessionExpired,
     EmptyRequest,
     Backend,
@@ -126,6 +127,12 @@ pub enum OperationError {
     /// when you ask for a gid that overlaps a system reserved range
     /// When a name is denied by the system config
     ValueDenyName,
+    /// When the DB is potentially over-loaded a timeout can occur starting
+    /// your operation.
+    DatabaseLockAcquisitionTimeout,
+
+    // Specific internal errors.
+
     // What about something like this for unique errors?
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -290,6 +297,7 @@ impl OperationError {
             Self::ReplServerUuidSplitDataState => None,
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
+            Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later."),
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
             Self::CU0001WebauthnAttestationNotTrusted => None,

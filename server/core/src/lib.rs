@@ -420,7 +420,10 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Start reindex phase ...");
 
-    let mut qs_write = qs.write(duration_from_epoch_now()).await;
+    let Ok(mut qs_write) = qs.write(duration_from_epoch_now()).await else {
+        error!("Unable to acquire write transaction");
+        return;
+    };
     let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
@@ -486,7 +489,10 @@ pub async fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Start Index Phase 2 ...");
 
-    let mut qs_write = qs.write(duration_from_epoch_now()).await;
+    let Ok(mut qs_write) = qs.write(duration_from_epoch_now()).await else {
+        error!("Unable to acquire write transaction");
+        return;
+    };
     let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
@@ -550,7 +556,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     let new_domain_name = config.domain.as_str();
 
     // make sure we're actually changing the domain name...
-    match qs.read().await.get_db_domain_name() {
+    match qs.read().await.and_then(|mut qs| qs.get_db_domain_name()) {
         Ok(old_domain_name) => {
             admin_info!(?old_domain_name, ?new_domain_name);
             if old_domain_name == new_domain_name {
@@ -569,7 +575,10 @@ pub async fn domain_rename_core(config: &Configuration) {
         }
     }
 
-    let mut qs_write = qs.write(duration_from_epoch_now()).await;
+    let Ok(mut qs_write) = qs.write(duration_from_epoch_now()).await else {
+        error!("Unable to acquire write transaction");
+        return;
+    };
     let r = qs_write
         .danger_domain_rename(new_domain_name)
         .and_then(|_| qs_write.commit());
@@ -864,7 +873,10 @@ pub async fn create_server_core(
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let Ok(mut idms_prox_write) = idms.proxy_write(duration_from_epoch_now()).await else {
+                error!("Unable to acquire write transaction");
+                return Err(());
+            };
             // We need to set the admin pw.
             match idms_prox_write.recover_account(&itc.admin_user, Some(&itc.admin_password)) {
                 Ok(_) => {}

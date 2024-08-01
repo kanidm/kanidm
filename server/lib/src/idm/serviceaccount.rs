@@ -441,7 +441,7 @@ mod tests {
         let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + AUTH_TOKEN_GRACE_WINDOW;
         let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
         let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let testaccount_uuid = Uuid::new_v4();
 

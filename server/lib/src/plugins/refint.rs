@@ -1079,7 +1079,7 @@ mod tests {
         let cred_id = cred.uuid;
 
         // Create a user
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tuuid = Uuid::parse_str(TEST_TESTGROUP_B_UUID).unwrap();
         let rs_uuid = Uuid::new_v4();
@@ -1222,7 +1222,7 @@ mod tests {
         // we still want to ignore invalid memberOf values and certain invalid
         // member sets from dyngroups to allow them to self-heal at run time.
         let curtime = duration_from_epoch_now();
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let tgroup_uuid = Uuid::new_v4();
         let dyn_uuid = Uuid::new_v4();
@@ -1282,7 +1282,7 @@ mod tests {
     #[qs_test]
     async fn test_entry_managed_by_references(server: &QueryServer) {
         let curtime = duration_from_epoch_now();
-        let mut server_txn = server.write(curtime).await;
+        let mut server_txn = server.write(curtime).await.unwrap();
 
         let manages_uuid = Uuid::new_v4();
         let e_manages: Entry<EntryInit, EntryNew> = entry_init!(

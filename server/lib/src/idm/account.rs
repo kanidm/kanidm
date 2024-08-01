@@ -978,7 +978,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_account_ui_hints(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let target_uuid = Uuid::new_v4();
 

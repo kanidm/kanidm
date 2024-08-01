@@ -70,7 +70,7 @@ enum LdapBindTarget {
 impl LdapServer {
     pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -299,7 +299,7 @@ impl LdapServer {
             admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
-            let mut idm_read = idms.proxy_read().await;
+            let mut idm_read = idms.proxy_read().await.unwrap();
             // Now start the txn - we need it for resolving filter components.
 
             // join the filter, with ext_filter
@@ -406,7 +406,7 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth().await;
+        let mut idm_auth = idms.auth().await.unwrap();
 
         let target: LdapBindTarget = if dn.is_empty() {
             if pw.is_empty() {
@@ -507,7 +507,7 @@ impl LdapServer {
         };
 
         let ct = duration_from_epoch_now();
-        let mut idm_read = idms.proxy_read().await;
+        let mut idm_read = idms.proxy_read().await.unwrap();
         // Now start the txn - we need it for resolving filter components.
 
         // join the filter, with ext_filter
@@ -809,7 +809,7 @@ mod tests {
     async fn test_ldap_simple_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
@@ -842,7 +842,7 @@ mod tests {
 
         // Setting UNIX_PW_BIND flag to false:
         // Hence all of the below authentication will fail (asserts are still satisfied)
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         let disallow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(Attribute::LdapAllowUnixPwBind, Value::Bool(false)),
@@ -861,7 +861,7 @@ mod tests {
         assert!(admin_t.is_none() == true);
 
         // Setting UNIX_PW_BIND flag to true :
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         let allow_unix_pw_flag = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_purge_and_set(Attribute::LdapAllowUnixPwBind, Value::Bool(true)),
@@ -1053,7 +1053,7 @@ mod tests {
                 )
             );
 
-            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             let ce = CreateEvent::new_internal(vec![e1]);
             assert!(server_txn
                 .qs_write
@@ -1252,7 +1252,7 @@ mod tests {
 
             let ct = duration_from_epoch_now();
 
-            let mut server_txn = idms.proxy_write(ct).await;
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
             let ce = CreateEvent::new_internal(vec![e1, e2]);
             assert!(server_txn.qs_write.create(&ce).is_ok());
 
@@ -1384,7 +1384,7 @@ mod tests {
                 (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
-            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -1453,7 +1453,7 @@ mod tests {
                 (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
-            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -1566,7 +1566,7 @@ mod tests {
 
         // Change the domain basedn
 
-        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         // make the admin a valid posix account
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
@@ -1635,7 +1635,7 @@ mod tests {
                 (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
-            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])
@@ -1743,7 +1743,7 @@ mod tests {
                 (Attribute::DisplayName, Value::new_utf8s("testperson1"))
             );
 
-            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1])

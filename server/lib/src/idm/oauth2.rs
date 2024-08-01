@@ -2766,7 +2766,7 @@ mod tests {
         enable_legacy_crypto: bool,
         prefer_short_username: bool,
     ) -> (String, UserAuthToken, Identity, Uuid) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let rs_uuid = Uuid::new_v4();
 
@@ -2932,7 +2932,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
     ) -> (UserAuthToken, Identity, Uuid) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let rs_uuid = Uuid::new_v4();
 
@@ -3062,7 +3062,7 @@ mod tests {
     }
 
     async fn setup_idm_admin(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let account = idms_prox_write
             .target_to_account(UUID_IDM_ADMIN)
             .expect("account must exist");
@@ -3093,7 +3093,7 @@ mod tests {
         let (secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3116,7 +3116,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -3156,7 +3156,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_uat, ident, _) = setup_oauth2_resource_server_public(idms, ct).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Get an ident/uat for now.
 
@@ -3181,7 +3181,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -3227,7 +3227,7 @@ mod tests {
         let (_idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct).await;
 
         // Need a uat from a user not in the group. Probs anonymous.
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -3407,7 +3407,7 @@ mod tests {
         let (_secret, uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let mut uat_wrong_session_id = uat.clone();
         uat_wrong_session_id.session_id = uuid::Uuid::new_v4();
@@ -3435,7 +3435,7 @@ mod tests {
 
         // Now start the test
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -3455,7 +3455,7 @@ mod tests {
             };
 
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Invalid permits
         //  * expired token, aka past ttl.
@@ -3515,7 +3515,7 @@ mod tests {
                 + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1),
         );
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3535,7 +3535,7 @@ mod tests {
             };
 
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // == Manually submit the consent token to the permit for the permit_success
         let permit_success = idms_prox_write
@@ -3668,7 +3668,7 @@ mod tests {
         let (secret, uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3704,7 +3704,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -3738,7 +3738,7 @@ mod tests {
         // ============================================================================
         // Now repeat the test with the app url.
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Reload the ident since it pins an entry in memory.
         let ident = idms_prox_read
@@ -3788,7 +3788,7 @@ mod tests {
         };
 
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let token_response = idms_prox_write
             .check_oauth2_token_exchange(&ClientAuthInfo::none(), &token_req, ct)
@@ -3808,7 +3808,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3829,7 +3829,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -3848,7 +3848,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Okay, now we have the token, we can check it works with introspect.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token,
@@ -3870,7 +3870,7 @@ mod tests {
         drop(idms_prox_read);
         // start a write,
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         // Expire the account, should cause introspect to return inactive.
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
@@ -3886,7 +3886,7 @@ mod tests {
 
         // start a new read
         // check again.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
             .expect("Failed to inspect token");
@@ -3902,7 +3902,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -3923,7 +3923,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -3945,7 +3945,7 @@ mod tests {
         // Okay, now we have the token, we can check behaviours with the revoke interface.
 
         // First, assert it is valid, similar to the introspect api.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
@@ -3958,7 +3958,7 @@ mod tests {
         drop(idms_prox_read);
 
         // First, the revoke needs basic auth. Provide incorrect auth, and we fail.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let bad_client_authz = ClientAuthInfo::encode_basic("test_resource_server", "12345");
 
@@ -3973,7 +3973,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now submit a non-existent/invalid token. Does not affect our tokens validity.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: "this is an invalid token, nothing will happen!".to_string(),
             token_type_hint: None,
@@ -3985,7 +3985,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Check our token is still valid.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
             .expect("Failed to inspect token");
@@ -3993,7 +3993,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Finally revoke it.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
@@ -4004,7 +4004,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Assert it is now invalid.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
             .expect("Failed to inspect token");
@@ -4013,7 +4013,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Force trim the session and wait for the grace window to pass. The token will be invalidated
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let filt = filter!(f_eq(
             Attribute::Uuid,
             PartialValue::Uuid(ident.get_uuid().unwrap())
@@ -4032,7 +4032,7 @@ mod tests {
 
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         // Grace window in effect.
         let intr_response = idms_prox_read
             .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
@@ -4049,7 +4049,7 @@ mod tests {
         drop(idms_prox_read);
 
         // A second invalidation of the token "does nothing".
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token,
             token_type_hint: None,
@@ -4071,7 +4071,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -4092,7 +4092,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -4125,7 +4125,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Process it to ensure the record exists.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Check it is now there
         let entry = idms_prox_write
@@ -4174,7 +4174,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         let ident2 = {
-            let mut idms_prox_write = idms.proxy_write(ct).await;
+            let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
             let account = idms_prox_write
                 .target_to_account(UUID_IDM_ADMIN)
                 .expect("account must exist");
@@ -4193,7 +4193,7 @@ mod tests {
             ident2
         };
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
         let redirect_uri = Url::parse("https://demo.example.com/oauth2/result").unwrap();
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -4254,7 +4254,7 @@ mod tests {
         let (_secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // check the discovery end point works as we expect
         assert!(
@@ -4362,7 +4362,7 @@ mod tests {
         let (_secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // check the discovery end point works as we expect
         assert!(
@@ -4506,7 +4506,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -4527,7 +4527,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -4563,7 +4563,7 @@ mod tests {
         // Get the read txn for inspecting the tokens
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let mut jwkset = idms_prox_read
             .oauth2_openid_publickey("test_resource_server")
@@ -4638,7 +4638,7 @@ mod tests {
         // Importantly, we need to persist the nonce through access/refresh token operations
         // because some clients like the rust openidconnect library require it always for claim
         // verification.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
             refresh_token,
@@ -4656,7 +4656,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Okay, refresh done, lets check it.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let userinfo = idms_prox_read
             .oauth2_openid_userinfo("test_resource_server", access_token, ct)
@@ -4691,7 +4691,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -4712,7 +4712,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -4736,7 +4736,7 @@ mod tests {
             JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
 
         assert!(idms_prox_write.commit().is_ok());
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let mut jwkset = idms_prox_read
             .oauth2_openid_publickey("test_resource_server")
@@ -4779,7 +4779,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -4800,7 +4800,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -4824,7 +4824,7 @@ mod tests {
             JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
 
         assert!(idms_prox_write.commit().is_ok());
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let mut jwkset = idms_prox_read
             .oauth2_openid_publickey("test_resource_server")
@@ -4874,7 +4874,7 @@ mod tests {
         let (_secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -4914,7 +4914,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, false, true, false).await;
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
         // The public key url should offer an rs key
         // discovery should offer RS256
         let discovery = idms_prox_read
@@ -4963,7 +4963,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5017,7 +5017,7 @@ mod tests {
         let (_secret, uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
         let consent_request = good_authorisation_request!(
@@ -5038,7 +5038,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let _permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5047,7 +5047,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // == Now try the authorise again, should be in the permitted state.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // We need to reload our identity
         let ident = idms_prox_read
@@ -5074,7 +5074,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Great! Now change the scopes on the OAuth2 instance, this revokes the permit.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
@@ -5099,7 +5099,7 @@ mod tests {
 
         // And do the workflow once more to see if we need to consent again.
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // We need to reload our identity
         let ident = idms_prox_read
@@ -5140,7 +5140,7 @@ mod tests {
         // Success! We had to consent again due to the change :)
 
         // Now change the supplemental scopes on the OAuth2 instance, this revokes the permit.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let me_extend_scopes = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
@@ -5159,7 +5159,7 @@ mod tests {
 
         // And do the workflow once more to see if we need to consent again.
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         // We need to reload our identity
         let ident = idms_prox_read
@@ -5214,7 +5214,7 @@ mod tests {
         // Assert there are no consent maps yet.
         assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
         let consent_request = good_authorisation_request!(
@@ -5235,7 +5235,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let _permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5303,7 +5303,7 @@ mod tests {
         let (secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Get an ident/uat for now.
 
@@ -5338,7 +5338,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5380,7 +5380,7 @@ mod tests {
         let (secret, _uat, ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, false, false, false).await;
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // Get an ident/uat for now.
 
@@ -5430,7 +5430,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5468,7 +5468,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -5486,7 +5486,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -5524,7 +5524,7 @@ mod tests {
         // test basic refresh while access still valid.
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 10);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5555,7 +5555,7 @@ mod tests {
         let ct =
             Duration::from_secs(TEST_CURRENT_TIME + 20 + access_token_response_2.expires_in as u64);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_2
             .refresh_token
@@ -5601,7 +5601,7 @@ mod tests {
             TEST_CURRENT_TIME + refresh_exp as u64 + access_token_response_3.expires_in as u64,
         );
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_3
             .refresh_token
@@ -5638,7 +5638,7 @@ mod tests {
         // ============================================
         // Revoke the OAuth2 session
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: access_token_response_1.access_token.clone(),
             token_type_hint: None,
@@ -5650,7 +5650,7 @@ mod tests {
 
         // ============================================
         // then attempt a refresh.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5690,7 +5690,7 @@ mod tests {
         // ============================================
         // Refresh with invalid client authz
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5727,7 +5727,7 @@ mod tests {
         // ============================================
         // Refresh with different scopes
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5766,7 +5766,7 @@ mod tests {
         // ============================================
         // Use the refresh token once
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 1);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5788,7 +5788,7 @@ mod tests {
 
         // Now use it again. - this will cause an error and the session to be terminated.
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 2);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5844,7 +5844,7 @@ mod tests {
         // ============================================
         // Use the refresh token once
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 1);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_1
             .refresh_token
@@ -5868,7 +5868,7 @@ mod tests {
 
         // ============================================
         let ct = Duration::from_secs(TEST_CURRENT_TIME + 2);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let refresh_token = access_token_response_2
             .refresh_token
@@ -5914,7 +5914,7 @@ mod tests {
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
         // Setup custom claim maps here.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_list(vec![
             // Member of a claim map.
@@ -5990,7 +5990,7 @@ mod tests {
         // Claim maps setup, lets go.
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
@@ -6011,7 +6011,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -6040,7 +6040,7 @@ mod tests {
         // Get the read txn for inspecting the tokens
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let mut jwkset = idms_prox_read
             .oauth2_openid_publickey("test_resource_server")
@@ -6149,7 +6149,7 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_uat, ident, oauth2_rs_uuid) = setup_oauth2_resource_server_public(idms, ct).await;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
             Attribute::OAuth2AllowLocalhostRedirect.into(),
@@ -6166,7 +6166,7 @@ mod tests {
 
         assert!(idms_prox_write.commit().is_ok());
 
-        let idms_prox_read = idms.proxy_read().await;
+        let idms_prox_read = idms.proxy_read().await.unwrap();
 
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -6200,7 +6200,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let permit_success = idms_prox_write
             .check_oauth2_authorise_permit(&ident, &consent_token, ct)
@@ -6242,7 +6242,7 @@ mod tests {
         let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
 
         // scope: Some(btreeset!["invalid_scope".to_string()]),
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::ClientCredentials { scope: None },
@@ -6260,7 +6260,7 @@ mod tests {
         assert!(oauth2_token.token_type == "Bearer");
 
         // Check Oauth2 Token Introspection
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
@@ -6288,7 +6288,7 @@ mod tests {
         drop(idms_prox_read);
 
         // Assert we can revoke.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let revoke_request = TokenRevokeRequest {
             token: oauth2_token.access_token.clone(),
             token_type_hint: None,
@@ -6300,7 +6300,7 @@ mod tests {
 
         // Now must be invalid.
         let ct = ct + AUTH_TOKEN_GRACE_WINDOW;
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let intr_request = AccessTokenIntrospectRequest {
             token: oauth2_token.access_token.clone(),
@@ -6324,7 +6324,7 @@ mod tests {
         let (secret, _uat, _ident, _) =
             setup_oauth2_resource_server_basic(idms, ct, true, false, false).await;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Public Client
         let token_req = AccessTokenRequest {

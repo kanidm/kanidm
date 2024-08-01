@@ -58,7 +58,7 @@ impl IntoResponse for HtmxError {
                         HtmlTemplate(UnrecoverableErrorView {
                             err_code: inner,
                             operation_id: kopid,
-                        })
+                        }),
                     )
                         .into_response(),
                 }

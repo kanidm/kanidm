@@ -330,7 +330,7 @@ mod tests {
 
     #[qs_test]
     async fn test_spn_regen_domain_rename(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let ex1 = Value::new_spn_str("admin", "example.com");
         let ex2 = Value::new_spn_str("admin", "new.example.com");

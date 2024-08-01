@@ -1573,13 +1573,13 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, sync_token) = create_scim_sync_account(&mut idms_prox_write, ct);
 
         assert!(idms_prox_write.commit().is_ok());
 
         // Do a get_state to get the current "state cookie" if any.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
         let ident = idms_prox_read
             .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
@@ -1608,7 +1608,7 @@ mod tests {
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let sync_uuid = Uuid::new_v4();
 
@@ -1636,7 +1636,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // -- Check the happy path.
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let ident = idms_prox_read
             .validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct)
             .expect("Failed to validate sync token");
@@ -1645,7 +1645,7 @@ mod tests {
 
         // -- Revoke the session
 
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(
                 Attribute::Name,
@@ -1657,14 +1657,14 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Must fail
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let fail =
             idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
         drop(idms_prox_read);
 
         // -- New session, reset the JWS
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let gte = GenerateScimSyncTokenEvent::new_internal(sync_uuid, "Sync Connector");
         let sync_token = idms_prox_write
@@ -1686,7 +1686,7 @@ mod tests {
 
         assert!(idms_prox_write.commit().is_ok());
 
-        let mut idms_prox_read = idms.proxy_read().await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let fail =
             idms_prox_read.validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct);
         assert!(matches!(fail, Err(OperationError::NotAuthenticated)));
@@ -1768,7 +1768,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -1794,7 +1794,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -1846,7 +1846,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
 
         let user_sync_uuid = Uuid::new_v4();
@@ -1904,7 +1904,7 @@ mod tests {
         entries: Vec<ScimEntryGeneric>,
     ) -> Result<(), OperationError> {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -1954,7 +1954,7 @@ mod tests {
         .is_ok());
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let ent = idms_prox_write
             .qs_write
@@ -2105,7 +2105,7 @@ mod tests {
         // Create an entry via sync
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent {
             ident: ident.clone(),
@@ -2133,7 +2133,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now we can attempt the delete.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let sse = ScimSyncUpdateEvent { ident };
 
         let changes = ScimSyncRequest {
@@ -2174,7 +2174,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2203,7 +2203,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let user_sync_uuid = Uuid::new_v4();
         assert!(idms_prox_write
@@ -2240,7 +2240,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let user_sync_uuid = Uuid::new_v4();
         assert!(idms_prox_write
@@ -2288,7 +2288,7 @@ mod tests {
         // Create an entry via sync
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent {
             ident: ident.clone(),
@@ -2328,7 +2328,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now retain only a single entry
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let sse = ScimSyncUpdateEvent { ident };
 
         let changes = ScimSyncRequest {
@@ -2372,7 +2372,7 @@ mod tests {
         let sync_uuid_b = Uuid::new_v4();
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent {
             ident: ident.clone(),
@@ -2412,7 +2412,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now retain no entries at all
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let sse = ScimSyncUpdateEvent { ident };
 
         let changes = ScimSyncRequest {
@@ -2470,7 +2470,7 @@ mod tests {
         let sync_uuid_a = Uuid::new_v4();
 
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent {
             ident: ident.clone(),
@@ -2498,7 +2498,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now retain no entries at all
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let sse = ScimSyncUpdateEvent { ident };
 
         let changes = ScimSyncRequest {
@@ -2532,7 +2532,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent {
             ident: ident.clone(),
@@ -2551,7 +2551,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Advance the from -> to state.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let sse = ScimSyncUpdateEvent { ident };
 
         let changes = ScimSyncRequest {
@@ -2601,7 +2601,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2613,7 +2613,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Test properties of the imported entries.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let testgroup = get_single_entry("testgroup", &mut idms_prox_write);
         assert!(
@@ -2676,7 +2676,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now apply updates.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let changes =
             serde_json::from_str(TEST_SYNC_SCIM_IPA_2).expect("failed to parse scim sync");
 
@@ -2684,7 +2684,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Test properties of the updated entries.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // Deleted
         assert!(idms_prox_write
@@ -2738,7 +2738,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (_sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2870,7 +2870,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2927,7 +2927,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_scim_sync_finalise_1(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2939,7 +2939,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Finalise the sync account.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let ident = idms_prox_write
             .qs_write
@@ -2975,7 +2975,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_scim_sync_finalise_2(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -2994,7 +2994,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Finalise the sync account.
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let ident = idms_prox_write
             .qs_write
@@ -3039,7 +3039,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -3051,7 +3051,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Terminate the sync account
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let ident = idms_prox_write
             .qs_write
@@ -3090,7 +3090,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
         let (sync_uuid, ident) = test_scim_sync_apply_setup_ident(&mut idms_prox_write, ct);
         let sse = ScimSyncUpdateEvent { ident };
 
@@ -3109,7 +3109,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Terminate the sync account
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let ident = idms_prox_write
             .qs_write

@@ -113,16 +113,16 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
     // To ensure we have a spectrum of content, we do some setup here such as creating
     // tombstones.
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
-    let mut server_b_txn = server_b.read().await;
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
 
     // Verify the content of server_a and server_b are identical.
-    let mut server_a_txn = server_a.read().await;
+    let mut server_a_txn = server_a.read().await.unwrap();
 
     let domain_entry_a = server_a_txn
         .internal_search_uuid(UUID_DOMAIN_INFO)
@@ -196,16 +196,16 @@ async fn test_repl_refresh_basic(server_a: &QueryServer, server_b: &QueryServer)
 // Test that adding an entry to one side replicates correctly.
 #[qs_pair_test]
 async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &QueryServer) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
-    let mut server_b_txn = server_b.read().await;
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
 
     //  - incremental - no changes should be present
-    let mut server_a_txn = server_a.read().await;
+    let mut server_a_txn = server_a.read().await.unwrap();
     let a_ruv_range = server_a_txn
         .consumer_get_state()
         .expect("Unable to access RUV range");
@@ -218,7 +218,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
         .expect("Unable to generate supplier changes");
 
     // Check the changes = should be empty.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     server_a_txn
         .consumer_apply_changes(&changes)
@@ -245,7 +245,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -260,9 +260,9 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
-    // let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.read().await;
+    // let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     // Assert the entry is not on A.
     assert_eq!(
@@ -301,7 +301,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
         .expect("Unable to generate supplier changes");
 
     // Check the changes = should be empty.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     server_a_txn
         .consumer_apply_changes(&changes)
@@ -340,8 +340,8 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
 // Test that adding an entry to one side, then recycling it replicates correctly.
 #[qs_pair_test]
 async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_b: &QueryServer) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -349,7 +349,7 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -370,8 +370,8 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
 
     // Assert the entry is not on A.
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -399,8 +399,8 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
 async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -408,7 +408,7 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -429,15 +429,15 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
     // Now move past the recyclebin time.
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     // Clean out the recycle bin.
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A.
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -470,8 +470,8 @@ async fn test_repl_increment_consumer_lagging_tombstone(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -479,7 +479,7 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -500,7 +500,7 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     // Now move past the recyclebin time.
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     // Clean out the recycle bin.
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -508,15 +508,15 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     // Now move past the tombstone trim time.
     let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE + 1);
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     // Clean out the recycle bin.
     assert!(server_b_txn.purge_tombstones().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A *or* B.
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -574,8 +574,8 @@ async fn test_repl_increment_basic_bidirectional_write(
     server_a: &QueryServer,
     server_b: &QueryServer,
 ) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -583,7 +583,7 @@ async fn test_repl_increment_basic_bidirectional_write(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -599,8 +599,8 @@ async fn test_repl_increment_basic_bidirectional_write(
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -628,8 +628,8 @@ async fn test_repl_increment_basic_bidirectional_write(
     drop(server_b_txn);
 
     // Incremental repl in the reverse direction.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     //               from               to
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -655,8 +655,8 @@ async fn test_repl_increment_basic_bidirectional_write(
 
 #[qs_pair_test]
 async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b: &QueryServer) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -664,7 +664,7 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -681,15 +681,15 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
 
     // Delete an attribute so that the changestate doesn't reflect it's
     // presence
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     assert!(server_a_txn
         .internal_modify_uuid(t_uuid, &ModifyList::new_purge(Attribute::Description))
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     // Incremental repl in the reverse direction.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     //               from               to
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -723,8 +723,8 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     server_a: &QueryServer,
     server_b: &QueryServer,
 ) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -732,7 +732,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -748,8 +748,8 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -780,7 +780,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     drop(server_b_txn);
 
     // Also write to B.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     assert!(server_b_txn
         .internal_modify_uuid(
             t_uuid,
@@ -791,23 +791,23 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
     server_b_txn.commit().expect("Failed to commit");
 
     // Incremental repl in the both directions.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     //               from               to
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
     //               from               to
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
 
     // Validate they are the same again.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
@@ -835,8 +835,8 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -844,7 +844,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -860,8 +860,8 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert_eq!(
         server_a_txn.internal_search_uuid(t_uuid),
@@ -884,13 +884,13 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     drop(server_b_txn);
 
     // Delete on A
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     // Repl A -> B
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -909,7 +909,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     drop(server_a_txn);
 
     // At an earlier time make a change on A.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_revive_uuid(t_uuid).is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
@@ -917,13 +917,13 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
 
     // Now TS on B.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Repl A -> B - B will silently reject the update due to the TS state on B.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -945,8 +945,8 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
     drop(server_a_txn);
 
     // Repl B -> A - will have a TS at the end.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
@@ -977,8 +977,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -986,7 +986,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1002,8 +1002,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     server_b_txn.commit().expect("Failed to commit");
 
     // Assert the entry is not on A.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     //               from               to
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1022,18 +1022,18 @@ async fn test_repl_increment_basic_bidirectional_recycle(
 
     // On both servers, at separate timestamps, run the recycle.
     let ct = ct + Duration::from_secs(1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     let ct = ct + Duration::from_secs(2);
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Send server a -> b - ignored.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -1080,8 +1080,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
     assert!(valid);
 
     // Now go the other way. They'll be equal again.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
@@ -1113,7 +1113,7 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1131,8 +1131,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     server_b_txn.commit().expect("Failed to commit");
 
     // Now setup repl
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
 
@@ -1150,18 +1150,18 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
 
     // Now on both servers, perform a recycle -> ts at different times.
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_recycled().is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     let ct = ct + Duration::from_secs(1);
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Now do B -> A - no change on A as it's TS was earlier.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
@@ -1182,8 +1182,8 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
     drop(server_b_txn);
 
     // A -> B - B should now have the A TS time.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -1211,8 +1211,8 @@ async fn test_repl_increment_creation_uuid_conflict(
     server_b: &QueryServer,
 ) {
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
 
@@ -1231,19 +1231,19 @@ async fn test_repl_increment_creation_uuid_conflict(
         (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Get a new time.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     // Replicate A to B. B should ignore.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1288,8 +1288,8 @@ async fn test_repl_increment_creation_uuid_conflict(
 
     // Replicate B to A. A should replace with B, and create the
     // conflict entry as it's the origin of the conflict.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1339,8 +1339,8 @@ async fn test_repl_increment_creation_uuid_conflict(
     // At this point server a now has the conflict entry, and we have to confirm
     // it can be sent to b.
 
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1397,8 +1397,8 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     server_b: &QueryServer,
 ) {
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
 
@@ -1417,7 +1417,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
         (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
@@ -1427,7 +1427,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
 
     // Get a new time.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
     // Immediately send it to the shadow realm
     assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
@@ -1435,15 +1435,15 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
 
     // Tombstone the entry.
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_recycled().is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
     // Do B -> A - no change on A. Normally this would create the conflict
     // on A since it's the origin, but here since it's a TS it now takes
     // precedence.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1465,8 +1465,8 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
 
     // Now A -> B - this should cause B to become a TS even though it's AT is
     // earlier.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1491,8 +1491,8 @@ async fn test_repl_increment_create_tombstone_conflict(
     server_b: &QueryServer,
 ) {
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
 
@@ -1511,7 +1511,7 @@ async fn test_repl_increment_create_tombstone_conflict(
         (Attribute::DisplayName, Value::new_utf8s("testperson1"))
     );
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_create(vec![e_init.clone(),]).is_ok());
     // Immediately send it to the shadow realm
     assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
@@ -1519,7 +1519,7 @@ async fn test_repl_increment_create_tombstone_conflict(
 
     // Get a new time.
     let ct = ct + Duration::from_secs(1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.internal_create(vec![e_init.clone(),]).is_ok());
     // Immediately send it to the shadow realm
     assert!(server_a_txn.internal_delete_uuid(t_uuid).is_ok());
@@ -1527,12 +1527,12 @@ async fn test_repl_increment_create_tombstone_conflict(
 
     // Tombstone on both sides.
     let ct = ct + Duration::from_secs(RECYCLEBIN_MAX_AGE + 1);
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_recycled().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     let ct = ct + Duration::from_secs(1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_recycled().is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
@@ -1540,8 +1540,8 @@ async fn test_repl_increment_create_tombstone_conflict(
 
     // This means A -> B - no change on B, it's the persisting tombstone.
     let ct = ct + Duration::from_secs(1);
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1562,8 +1562,8 @@ async fn test_repl_increment_create_tombstone_conflict(
     drop(server_a_txn);
 
     // B -> A - A should now have the lower AT reflected.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1587,8 +1587,8 @@ async fn test_repl_increment_create_tombstone_conflict(
 #[qs_pair_test]
 async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn).is_ok());
 
@@ -1596,7 +1596,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     drop(server_b_txn);
 
     // Setup the entry we plan to break.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1611,8 +1611,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1636,7 +1636,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     // This is a really rare/wild change to swap an object out to a group but it
     // works well for our test here.
     let ct = ct + Duration::from_secs(1);
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let modlist = ModifyList::new_list(vec![
         Modify::Removed(Attribute::Class.into(), EntryClass::Person.into()),
         Modify::Removed(Attribute::Class.into(), EntryClass::Account.into()),
@@ -1650,7 +1650,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
 
     // On A we'll change the displayname which is predicated on being a person still
     let ct = ct + Duration::from_secs(1);
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn
         .internal_modify_uuid(
             t_uuid,
@@ -1666,8 +1666,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     // because *both* should end in the conflict state.
     //
     // B -> A
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1682,8 +1682,8 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     drop(server_b_txn);
 
     // A -> B
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -1707,8 +1707,8 @@ async fn test_repl_increment_consumer_lagging_attributes(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -1716,7 +1716,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 
     // Add an entry.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1734,8 +1734,8 @@ async fn test_repl_increment_consumer_lagging_attributes(
 
     // Now setup bidirectional replication. We only need to trigger B -> A
     // here because that's all that has changes.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1755,7 +1755,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     // Okay, now we do a change on B and then we'll push time ahead of changelog
     // ruv trim. This should mean that the indexes to find those changes are lost.
     let ct = ct + Duration::from_secs(1);
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn
         .internal_modify_uuid(
             t_uuid,
@@ -1771,14 +1771,14 @@ async fn test_repl_increment_consumer_lagging_attributes(
     let ct = ct + Duration::from_secs(CHANGELOG_MAX_AGE + 1);
 
     // And setup the ruv trim. This is triggered by purge/reap tombstones.
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_tombstones().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // Okay, ready to go. When we do A -> B or B -> A we should get appropriate
     // errors regarding the delay state.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     let a_ruv_range = server_a_txn
         .consumer_get_state()
@@ -1800,8 +1800,8 @@ async fn test_repl_increment_consumer_lagging_attributes(
     drop(server_b_txn);
 
     // Reverse it!
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     let b_ruv_range = server_b_txn
         .consumer_get_state()
@@ -1831,8 +1831,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -1842,7 +1842,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     // Add an entry. We need at least one change on B, else it won't have anything
     // to ship in it's RUV to A.
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1861,8 +1861,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     // Now setup bidirectional replication. We only need to trigger B -> A
     // here because that's all that has changes.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -1888,11 +1888,11 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
 
     // And setup the ruv trim. This is triggered by purge/reap tombstones.
     // Apply this to both nodes so that they shift their RUV states.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_tombstones().is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_tombstones().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
@@ -1901,8 +1901,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
 
     // Now check incremental in both directions. Should show *no* changes
     // needed (rather than an error/lagging).
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     let a_ruv_range = server_a_txn
         .consumer_get_state()
@@ -1928,8 +1928,8 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     drop(server_b_txn);
 
     // Reverse it!
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     let b_ruv_range = server_b_txn
         .consumer_get_state()
@@ -1966,8 +1966,8 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
     let changelog_quarter_life = Duration::from_secs(CHANGELOG_MAX_AGE / 4);
     let one_second = Duration::from_secs(1);
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -1977,7 +1977,7 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
     // Add an entry. We need at least one change on B, else it won't have anything
     // to ship in it's RUV to A.
     let ct = ct + one_second;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -1996,8 +1996,8 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
     // Now setup bidirectional replication. We only need to trigger B -> A
     // here because that's all that has changes.
     let ct = ct + one_second;
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -2022,13 +2022,13 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
         trace!("========================================");
         trace!("repl iteration {}", i);
         // Purge tombstones.
-        let mut server_a_txn = server_a.write(ct).await;
+        let mut server_a_txn = server_a.write(ct).await.unwrap();
         assert!(server_a_txn.purge_tombstones().is_ok());
         server_a_txn.commit().expect("Failed to commit");
 
         ct += one_second;
 
-        let mut server_b_txn = server_b.write(ct).await;
+        let mut server_b_txn = server_b.write(ct).await.unwrap();
         assert!(server_b_txn.purge_tombstones().is_ok());
         server_b_txn.commit().expect("Failed to commit");
 
@@ -2036,8 +2036,8 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
 
         // Now check incremental in both directions. Should show *no* changes
         // needed (rather than an error/lagging).
-        let mut server_a_txn = server_a.write(ct).await;
-        let mut server_b_txn = server_b.read().await;
+        let mut server_a_txn = server_a.write(ct).await.unwrap();
+        let mut server_b_txn = server_b.read().await.unwrap();
 
         let a_ruv_range = server_a_txn
             .consumer_get_state()
@@ -2063,8 +2063,8 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
         ct += one_second;
 
         // Reverse it!
-        let mut server_a_txn = server_a.read().await;
-        let mut server_b_txn = server_b.write(ct).await;
+        let mut server_a_txn = server_a.read().await.unwrap();
+        let mut server_b_txn = server_b.write(ct).await.unwrap();
 
         let b_ruv_range = server_b_txn
             .consumer_get_state()
@@ -2098,8 +2098,8 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
 async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2107,7 +2107,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     drop(server_b_txn);
 
     // Rename the domain. We do this on server_a.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn
         .danger_domain_rename("new.example.com")
         .and_then(|_| server_a_txn.commit())
@@ -2119,7 +2119,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     // Test domain rename where the receiver of the rename has added entries, and
     // they need spn regen to stabilise.
 
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -2136,8 +2136,8 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     // Now replicate from a to b. This will be fun won't it.
     // This means A -> B - no change on B, it's the persisting tombstone.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2203,8 +2203,8 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
     //
     // Possible to check the webauthn rp_id?
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     trace!("========================================");
     //               from               to
@@ -2253,15 +2253,15 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
     drop(server_b_txn);
 
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     // Add a new schema entry/item.
     let s_uuid = Uuid::new_v4();
     assert!(server_a_txn
@@ -2278,7 +2278,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     server_a_txn.commit().expect("Failed to commit");
 
     // Now use the new schema in an entry.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2293,8 +2293,8 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
     // Now replicate from A to B. B should not only get the new schema,
     // but should accept the entry that was created.
 
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2326,8 +2326,8 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
 async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2337,7 +2337,7 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
     // Since memberof isn't replicated, we have to check that when a group with
     // a member is sent over, it's re-calced on the other side.
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2366,8 +2366,8 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
 
     // Now replicated A -> B
 
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2407,8 +2407,8 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
 async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2416,7 +2416,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
     drop(server_b_txn);
 
     // First, we need to create a group on b that will conflict
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let g_uuid = Uuid::new_v4();
 
     assert!(server_b_txn
@@ -2431,7 +2431,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
     server_b_txn.commit().expect("Failed to commit");
 
     // Now on a, use the same uuid, make the user and a group as it's member.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2459,8 +2459,8 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
     // Now do A -> B. B should show that the second group was a conflict and
     // the membership drops.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2483,8 +2483,8 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
     drop(server_a_txn);
 
     // Now B -> A. A will now reflect the conflict as well.
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -2523,8 +2523,8 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2532,7 +2532,7 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     drop(server_b_txn);
 
     // Create a person / group on a. Don't add membership yet.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2561,8 +2561,8 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
     // A -> B repl.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2572,13 +2572,13 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
     // On B, delete the person.
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // On A, add person to group.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn
         .internal_modify_uuid(
             g_uuid,
@@ -2589,8 +2589,8 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
     // A -> B - B should remove the reference.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2606,8 +2606,8 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
     // B -> A - A should remove the reference, everything is consistent again.
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -2633,8 +2633,8 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
 
 #[qs_pair_test]
 async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &QueryServer) {
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2642,7 +2642,7 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     drop(server_b_txn);
 
     // On B, create a conflicting person.
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_b_txn
         .internal_create(vec![entry_init!(
@@ -2658,7 +2658,7 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     server_b_txn.commit().expect("Failed to commit");
 
     // Create a person / group on a. Add person to group.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -2685,8 +2685,8 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     server_a_txn.commit().expect("Failed to commit");
 
     // A -> B - B should remove the reference.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2708,8 +2708,8 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
     drop(server_a_txn);
 
     // B -> A - A should remove the reference.
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -2741,8 +2741,8 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -2750,7 +2750,7 @@ async fn test_repl_increment_refint_delete_to_member_holder(
     drop(server_b_txn);
 
     // Create a person / group on a. Don't add membership yet.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2779,8 +2779,8 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 
     // A -> B repl.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2790,7 +2790,7 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 
     // On A, add person to group.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn
         .internal_modify_uuid(
             g_uuid,
@@ -2801,14 +2801,14 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 
     // On B, delete the person.
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.internal_delete_uuid(t_uuid).is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
     // B -> A - A should remove the reference, everything is consistent again.
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -2823,8 +2823,8 @@ async fn test_repl_increment_refint_delete_to_member_holder(
 
     // A -> B - Should just reflect what happened on A.
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2857,15 +2857,15 @@ async fn test_repl_increment_attrunique_conflict_basic(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
     drop(server_b_txn);
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     // To test memberof, we add a user who is MO A/B
     let t_uuid = Uuid::new_v4();
@@ -2920,8 +2920,8 @@ async fn test_repl_increment_attrunique_conflict_basic(
 
     // Now replicated A -> B
 
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -2949,7 +2949,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
     // At this point both sides now have the groups. Now on each node we will rename them
     // so that they conflict.
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
     assert!(server_a_txn
         .internal_modify_uuid(
             g_a_uuid,
@@ -2958,7 +2958,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
     assert!(server_b_txn
         .internal_modify_uuid(
             g_b_uuid,
@@ -2973,8 +2973,8 @@ async fn test_repl_increment_attrunique_conflict_basic(
     // Order of replication doesn't matter here! Which ever one see's it first will
     // conflict the entries. In this case, A will detect the attr unique violation
     // and create the conflicts.
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -3014,8 +3014,8 @@ async fn test_repl_increment_attrunique_conflict_basic(
 
     // Reverse it - The conflicts will now be sent back A -> B, meaning that
     // everything is consistent once more.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -3048,15 +3048,15 @@ async fn test_repl_increment_attrunique_conflict_complex(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
         .is_ok());
     drop(server_b_txn);
 
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     // Create two entries on A - The entry that will be an attrunique conflict
     // and the entry that will UUID conflict to the second entry. The second entry
@@ -3084,7 +3084,7 @@ async fn test_repl_increment_attrunique_conflict_complex(
 
     server_a_txn.commit().expect("Failed to commit");
 
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     // Create an entry on B that is a uuid conflict to the second entry on A. This entry
     // should *also* have an attr conflict to name on the first entry from A.
@@ -3103,8 +3103,8 @@ async fn test_repl_increment_attrunique_conflict_complex(
 
     // We have to replicate B -> A first. This is so that A will not load the conflict
     // entry, and the entries g_a_uuid and g_b_uuid stay present.
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -3128,8 +3128,8 @@ async fn test_repl_increment_attrunique_conflict_complex(
     // Replicate A -> B now. This will cause the entry to be persisted as a conflict
     // as this is the origin node. We should end up with the two entries from
     // server A remaining.
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -3165,8 +3165,8 @@ async fn test_repl_increment_attrunique_conflict_complex(
 async fn test_repl_initial_consumer_join(server_a: &QueryServer, server_b: &QueryServer) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     let a_ruv_range = server_a_txn
         .consumer_get_state()
@@ -3188,8 +3188,8 @@ async fn test_repl_initial_consumer_join(server_a: &QueryServer, server_b: &Quer
     drop(server_b_txn);
 
     // Then a refresh resolves.
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -3205,7 +3205,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 
     // First create a user.
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     let t_uuid = Uuid::new_v4();
 
@@ -3232,8 +3232,8 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 
     server_b_txn.commit().expect("Failed to commit");
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -3242,7 +3242,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 
     // Update a session on A.
 
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
 
     let curtime_odt = OffsetDateTime::UNIX_EPOCH + ct;
     let exp_curtime = ct + Duration::from_secs(60);
@@ -3283,7 +3283,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     // And a session on B.
 
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     let curtime_odt = OffsetDateTime::UNIX_EPOCH + ct;
     let exp_curtime = ct + Duration::from_secs(60);
@@ -3324,8 +3324,8 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     // Now incremental in both directions.
 
     let ct = duration_from_epoch_now();
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
@@ -3358,8 +3358,8 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     drop(server_a_txn);
 
     let ct = duration_from_epoch_now();
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
 
     trace!("========================================");
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
@@ -3417,8 +3417,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
 ) {
     let ct = duration_from_epoch_now();
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     assert!(repl_initialise(&mut server_b_txn, &mut server_a_txn)
         .and_then(|_| server_a_txn.commit())
@@ -3426,7 +3426,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
     drop(server_b_txn);
 
     // - A accepts a change setting it's RUV to A: 1
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -3448,8 +3448,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
     server_a_txn.commit().expect("Failed to commit");
 
     // - A replicates to B, setting B ruv to A: 1
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -3468,7 +3468,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
     // - B working properly, creates an update within the max win
     let ct_half = ct + Duration::from_secs(CHANGELOG_MAX_AGE / 2);
 
-    let mut server_b_txn = server_b.write(ct_half).await;
+    let mut server_b_txn = server_b.write(ct_half).await.unwrap();
     assert!(server_b_txn.purge_tombstones().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
@@ -3478,11 +3478,11 @@ async fn test_repl_increment_consumer_lagging_refresh(
     trace!("========================================");
     // Purge tombstones - this triggers a write anchor to be created
     // on both servers, and it will also trim the old values from the ruv.
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_tombstones().is_ok());
     server_a_txn.commit().expect("Failed to commit");
 
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     assert!(server_b_txn.purge_tombstones().is_ok());
     server_b_txn.commit().expect("Failed to commit");
 
@@ -3490,8 +3490,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
     //   direction.
     let ct = ct + Duration::from_secs(1);
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     // The ruvs must be different
     let a_ruv_range = server_a_txn
@@ -3528,8 +3528,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
     //   behind the changelog max age.
     let ct = ct + Duration::from_secs(1);
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     // First, build the refresh context.
     let refresh_context = server_b_txn
@@ -3571,7 +3571,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
 
     // - Then A does a RUV trim. This set's it's RUV to A: X where X is > 1 + CL max.
 
-    let mut server_a_txn = server_a.write(ct).await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     assert!(server_a_txn.purge_tombstones().is_ok());
 
     let a_ruv_range = server_a_txn
@@ -3591,8 +3591,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
 
     let ct = ct + Duration::from_secs(1);
 
-    let mut server_a_txn = server_a.write(ct).await;
-    let mut server_b_txn = server_b.read().await;
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
+    let mut server_b_txn = server_b.read().await.unwrap();
 
     repl_incremental(&mut server_b_txn, &mut server_a_txn);
 
@@ -3608,8 +3608,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
 
-    let mut server_a_txn = server_a.read().await;
-    let mut server_b_txn = server_b.write(ct).await;
+    let mut server_a_txn = server_a.read().await.unwrap();
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
 
     repl_incremental(&mut server_a_txn, &mut server_b_txn);
 
@@ -3635,13 +3635,13 @@ async fn test_repl_increment_consumer_lagging_refresh(
         trace!("========================================");
         trace!("repl iteration {}", i);
         // Purge tombstones.
-        let mut server_a_txn = server_a.write(ct).await;
+        let mut server_a_txn = server_a.write(ct).await.unwrap();
         assert!(server_a_txn.purge_tombstones().is_ok());
         server_a_txn.commit().expect("Failed to commit");
 
         ct += one_second;
 
-        let mut server_b_txn = server_b.write(ct).await;
+        let mut server_b_txn = server_b.write(ct).await.unwrap();
         assert!(server_b_txn.purge_tombstones().is_ok());
         server_b_txn.commit().expect("Failed to commit");
 
@@ -3649,8 +3649,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
 
         // Now check incremental in both directions. Should show *no* changes
         // needed (rather than an error/lagging).
-        let mut server_a_txn = server_a.write(ct).await;
-        let mut server_b_txn = server_b.read().await;
+        let mut server_a_txn = server_a.write(ct).await.unwrap();
+        let mut server_b_txn = server_b.read().await.unwrap();
 
         let a_ruv_range = server_a_txn
             .consumer_get_state()
@@ -3676,8 +3676,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
         ct += one_second;
 
         // Reverse it!
-        let mut server_a_txn = server_a.read().await;
-        let mut server_b_txn = server_b.write(ct).await;
+        let mut server_a_txn = server_a.read().await.unwrap();
+        let mut server_b_txn = server_b.write(ct).await.unwrap();
 
         let b_ruv_range = server_b_txn
             .consumer_get_state()
@@ -3704,8 +3704,8 @@ async fn test_repl_increment_consumer_lagging_refresh(
     }
 
     // Finally, verify that the former server RUV has been trimmed out.
-    let mut server_b_txn = server_b.read().await;
-    let mut server_a_txn = server_a.read().await;
+    let mut server_b_txn = server_b.read().await.unwrap();
+    let mut server_a_txn = server_a.read().await.unwrap();
 
     assert_ne!(server_a_initial_uuid, server_a_rotated_uuid);
 

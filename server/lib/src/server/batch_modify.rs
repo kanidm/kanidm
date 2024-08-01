@@ -302,7 +302,7 @@ mod tests {
 
     #[qs_test]
     async fn test_batch_modify_basic(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Setup entries.
         let uuid_a = Uuid::new_v4();
         let uuid_b = Uuid::new_v4();

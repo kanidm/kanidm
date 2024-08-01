@@ -1338,7 +1338,7 @@ impl QueryServer {
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn read_acquire_ticket(&self) -> (SemaphorePermit<'_>, SemaphorePermit<'_>) {
+    async fn read_acquire_ticket(&self) -> Option<(SemaphorePermit<'_>, SemaphorePermit<'_>)> {
         // Get a read ticket. Basically this forces us to queue with other readers, while preventing
         // us from competing with writers on the db tickets. This tilts us to write prioritising
         // on db operations by always making sure a writer can get a db ticket.
@@ -1348,11 +1348,22 @@ impl QueryServer {
                 .try_acquire()
                 .expect("unable to acquire db_ticket for qsr")
         } else {
-            #[allow(clippy::expect_used)]
-            self.read_tickets
-                .acquire()
-                .await
-                .expect("unable to acquire db_ticket for qsr")
+            let fut = tokio::time::timeout(
+                Duration::from_millis(DB_LOCK_ACQUIRE_TIMEOUT_MILLIS),
+                self.read_tickets.acquire(),
+            );
+
+            match fut.await {
+                Ok(Ok(ticket)) => ticket,
+                Ok(Err(_)) => {
+                    error!("Failed to acquire read ticket, may be poisoned.");
+                    return None;
+                }
+                Err(_) => {
+                    error!("Failed to acquire read ticket, server is overloaded.");
+                    return None;
+                }
+            }
         };
 
         // We need to ensure a db conn will be available. At this point either a db ticket
@@ -1372,11 +1383,14 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsr")
         };
 
-        (read_ticket, db_ticket)
+        Some((read_ticket, db_ticket))
     }
 
-    pub async fn read(&self) -> QueryServerReadTransaction<'_> {
-        let (read_ticket, db_ticket) = self.read_acquire_ticket().await;
+    pub async fn read(&self) -> Result<QueryServerReadTransaction<'_>, OperationError> {
+        let (read_ticket, db_ticket) = self
+            .read_acquire_ticket()
+            .await
+            .ok_or(OperationError::DatabaseLockAcquisitionTimeout)?;
         // Point of no return - we now have a DB thread AND the read ticket, we MUST complete
         // as soon as possible! The following locks and elements below are SYNCHRONOUS but
         // will never be contented at this point, and will always progress.
@@ -1388,8 +1402,7 @@ impl QueryServer {
             .sub_secs(CHANGELOG_MAX_AGE)
             .expect("unable to generate trim cid");
 
-        #[allow(clippy::expect_used)]
-        QueryServerReadTransaction {
+        Ok(QueryServerReadTransaction {
             be_txn: self
                 .be
                 .read()
@@ -1403,11 +1416,11 @@ impl QueryServer {
             _read_ticket: read_ticket,
             resolve_filter_cache: self.resolve_filter_cache.read(),
             trim_cid,
-        }
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
-    async fn write_acquire_ticket(&self) -> (SemaphorePermit<'_>, SemaphorePermit<'_>) {
+    async fn write_acquire_ticket(&self) -> Option<(SemaphorePermit<'_>, SemaphorePermit<'_>)> {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
         let write_ticket = if cfg!(test) {
@@ -1415,10 +1428,22 @@ impl QueryServer {
                 .try_acquire()
                 .expect("unable to acquire writer_ticket for qsw")
         } else {
-            self.write_ticket
-                .acquire()
-                .await
-                .expect("unable to acquire writer_ticket for qsw")
+            let fut = tokio::time::timeout(
+                Duration::from_millis(DB_LOCK_ACQUIRE_TIMEOUT_MILLIS),
+                self.write_ticket.acquire(),
+            );
+
+            match fut.await {
+                Ok(Ok(ticket)) => ticket,
+                Ok(Err(_)) => {
+                    error!("Failed to acquire write ticket, may be poisoned.");
+                    return None;
+                }
+                Err(_) => {
+                    error!("Failed to acquire write ticket, server is overloaded.");
+                    return None;
+                }
+            }
         };
 
         // We need to ensure a db conn will be available. At this point either a db ticket
@@ -1437,21 +1462,23 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsw")
         };
 
-        (write_ticket, db_ticket)
+        Some((write_ticket, db_ticket))
     }
 
-    pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
-        let (write_ticket, db_ticket) = self.write_acquire_ticket().await;
+    pub async fn write(
+        &self,
+        curtime: Duration,
+    ) -> Result<QueryServerWriteTransaction<'_>, OperationError> {
+        let (write_ticket, db_ticket) = self
+            .write_acquire_ticket()
+            .await
+            .ok_or(OperationError::DatabaseLockAcquisitionTimeout)?;
 
         // Point of no return - we now have a DB thread AND the write ticket, we MUST complete
         // as soon as possible! The following locks and elements below are SYNCHRONOUS but
         // will never be contented at this point, and will always progress.
 
-        #[allow(clippy::expect_used)]
-        let be_txn = self
-            .be
-            .write()
-            .expect("unable to create backend write transaction");
+        let be_txn = self.be.write()?;
 
         let schema_write = self.schema.write();
         let d_info = self.d_info.write();
@@ -1467,7 +1494,7 @@ impl QueryServer {
             .sub_secs(CHANGELOG_MAX_AGE)
             .expect("unable to generate trim cid");
 
-        QueryServerWriteTransaction {
+        Ok(QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
             // take ownership of the value, and cause the commit to "only be run
             // once".
@@ -1491,20 +1518,22 @@ impl QueryServer {
             resolve_filter_cache: self.resolve_filter_cache.read(),
             dyngroup_cache: self.dyngroup_cache.write(),
             key_providers: self.key_providers.write(),
-        }
+        })
     }
 
     #[cfg(any(test, debug_assertions))]
     pub async fn clear_cache(&self) -> Result<(), OperationError> {
         let ct = duration_from_epoch_now();
-        let mut w_txn = self.write(ct).await;
+        let mut w_txn = self.write(ct).await?;
         w_txn.clear_cache()?;
         w_txn.commit()
     }
 
     pub async fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
-        let mut r_txn = self.read().await;
-        r_txn.verify()
+        match self.read().await {
+            Ok(mut r_txn) => r_txn.verify(),
+            Err(_) => vec![Err(ConsistencyError::Unknown)],
+        }
     }
 }
 
@@ -2190,7 +2219,7 @@ mod tests {
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
@@ -2227,7 +2256,7 @@ mod tests {
 
     #[qs_test]
     async fn test_external_id_to_uuid(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let t_uuid = Uuid::new_v4();
         assert!(server_txn
@@ -2258,7 +2287,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_spn(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -2291,7 +2320,7 @@ mod tests {
 
     #[qs_test]
     async fn test_uuid_to_rdn(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
@@ -2324,7 +2353,7 @@ mod tests {
 
     #[qs_test]
     async fn test_clone_value(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let e1 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
@@ -2388,7 +2417,7 @@ mod tests {
             (Attribute::Description, Value::new_utf8s("Test Class")),
             (Attribute::May, Attribute::Name.to_value())
         );
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new class.
         let ce_class = CreateEvent::new_internal(vec![e_cd.clone()]);
         assert!(server_txn.create(&ce_class).is_ok());
@@ -2400,7 +2429,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add the class to an object
         // should work
         let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -2410,7 +2439,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // delete the class
         let de_class = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::ClassName,
@@ -2421,7 +2450,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Trying to add now should fail
         let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
         assert!(server_txn.create(&ce_fail).is_err());
@@ -2467,7 +2496,7 @@ mod tests {
             )
         );
 
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new attribute.
         let ce_attr = CreateEvent::new_internal(vec![e_ad.clone()]);
         assert!(server_txn.create(&ce_attr).is_ok());
@@ -2479,7 +2508,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add the attr to an object
         // should work
         let ce_work = CreateEvent::new_internal(vec![e1.clone()]);
@@ -2489,7 +2518,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::AttributeName,
@@ -2500,7 +2529,7 @@ mod tests {
         server_txn.commit().expect("should not fail");
 
         // Start a new write
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Trying to add now should fail
         let ce_fail = CreateEvent::new_internal(vec![e1.clone()]);
         assert!(server_txn.create(&ce_fail).is_err());

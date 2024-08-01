@@ -184,7 +184,7 @@ mod tests {
 
     #[qs_test]
     async fn test_create_user(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
         let admin = server_txn.internal_search_uuid(UUID_ADMIN).expect("failed");
 
@@ -262,8 +262,8 @@ mod tests {
 
     #[qs_pair_test]
     async fn test_pair_create_user(server_a: &QueryServer, server_b: &QueryServer) {
-        let mut server_a_txn = server_a.write(duration_from_epoch_now()).await;
-        let mut server_b_txn = server_b.write(duration_from_epoch_now()).await;
+        let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+        let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
 
         // Create on server a
         let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname("testperson")));
