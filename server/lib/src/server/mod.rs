@@ -1337,7 +1337,8 @@ impl QueryServer {
         self.resolve_filter_cache.try_quiesce();
     }
 
-    pub async fn read(&self) -> QueryServerReadTransaction<'_> {
+    #[instrument(level = "debug", skip_all)]
+    async fn read_acquire_ticket(&self) -> (SemaphorePermit<'_>, SemaphorePermit<'_>) {
         // Get a read ticket. Basically this forces us to queue with other readers, while preventing
         // us from competing with writers on the db tickets. This tilts us to write prioritising
         // on db operations by always making sure a writer can get a db ticket.
@@ -1371,6 +1372,14 @@ impl QueryServer {
                 .expect("unable to acquire db_ticket for qsr")
         };
 
+        (read_ticket, db_ticket)
+    }
+
+    pub async fn read(&self) -> QueryServerReadTransaction<'_> {
+        let (read_ticket, db_ticket) = self.read_acquire_ticket().await;
+        // Point of no return - we now have a DB thread AND the read ticket, we MUST complete
+        // as soon as possible! The following locks and elements below are SYNCHRONOUS but
+        // will never be contented at this point, and will always progress.
         let schema = self.schema.read();
 
         let cid_max = self.cid_max.read();
@@ -1397,7 +1406,8 @@ impl QueryServer {
         }
     }
 
-    pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
+    #[instrument(level = "debug", skip_all)]
+    async fn write_acquire_ticket(&self) -> (SemaphorePermit<'_>, SemaphorePermit<'_>) {
         // Guarantee we are the only writer on the thread pool
         #[allow(clippy::expect_used)]
         let write_ticket = if cfg!(test) {
@@ -1426,6 +1436,12 @@ impl QueryServer {
                 .await
                 .expect("unable to acquire db_ticket for qsw")
         };
+
+        (write_ticket, db_ticket)
+    }
+
+    pub async fn write(&self, curtime: Duration) -> QueryServerWriteTransaction<'_> {
+        let (write_ticket, db_ticket) = self.write_acquire_ticket().await;
 
         // Point of no return - we now have a DB thread AND the write ticket, we MUST complete
         // as soon as possible! The following locks and elements below are SYNCHRONOUS but
