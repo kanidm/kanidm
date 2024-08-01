@@ -1,0 +1,94 @@
+<div>
+    <div id="totpInfo">
+        (% if let TotpCheckResult::Init with { secret, qr_code_svg, steps, digits, algo, uri } = check_res %)
+            <div>((qr_code_svg|safe))
+            </div>
+            <code>((uri|safe))</code>
+
+            <h3>TOTP details</h3>
+            <ul>
+                <li>Secret: (( secret ))</li>
+                <li>Algorithm: (( algo ))</li>
+                <li>Time Steps: (( steps )) sec</li>
+                <li>Code size: (( digits )) digits</li>
+            </ul>
+        (% endif %)
+
+    </div>
+    <form class="row g-2 pb-3 needs-validation" id="newTotpForm" novalidate>
+        (% let potentially_invalid_name_class = "" %)
+        (% let potentially_invalid_check_class = "" %)
+        (% let wrong_code = false %)
+        (% let broken_app = false %)
+        (% if let TotpCheckResult::Failure with { wrong_code, broken_app, warnings } = check_res %)
+            (% let wrong_code = wrong_code.clone() %)
+            (% let broken_app = broken_app.clone() %)
+            (% let potentially_invalid_name_class = "is-invalid"|blank_if(warnings.len() == 0) %)
+            (% let potentially_invalid_check_class = "is-invalid"|blank_iff(wrong_code) %)
+        (% endif %)
+
+        <label for="new-totp-name" class="form-label">Enter a name for your TOTP</label>
+        <input
+                aria-describedby="totp-name-validation-feedback"
+                class="form-control ((potentially_invalid_name_class))"
+                name="name"
+                id="new-totp-name"
+                required
+                autofocus
+        />
+        <!-- bootstrap hides the feedback if we remove is-invalid from the input above -->
+        (% if let TotpCheckResult::Failure with { wrong_code, broken_app, warnings } = check_res %)
+        <div id="totp-name-validation-feedback" class="invalid-feedback d-block">
+            <ul>
+                (% for warn in warnings %)
+                <li>(( warn ))</li>
+                (% endfor %)
+            </ul>
+        </div>
+        (% endif %)
+
+        <label for="new-totp-check" class="form-label">Enter a TOTP code to confirm it's working</label>
+        <input
+                aria-describedby="new-totp-check-feedback"
+                class="form-control ((potentially_invalid_check_class))"
+                name="checkTOTPCode"
+                id="new-totp-check"
+                type="number"
+                required
+        />
+        (% if broken_app || wrong_code %)
+            <div id="neq-totp-validation-feedback" class="invalid-feedback">
+                <ul>
+                    (% if wrong_code %)
+                    <li>Incorrect TOTP code - Please try again</li>
+                    (% endif %)
+                    (% if broken_app %)
+                    <li>Your authenticator appears to be implemented in a way that uses SHA1, rather than SHA256. Are you sure you want to proceed? If you want to try with a new authenticator, enter a new code.</li>
+                    (% endif %)
+                </ul>
+            </div>
+        (% endif %)
+
+    </form>
+    <div class="g-3 d-flex justify-content-end" hx-target="#credentialUpdateDynamicSection">
+        <button id="totp-cancel" type="button" class="btn btn-danger me-2" hx-post="/ui/api/cancel_mfareg">Cancel</button>
+        (% if broken_app %)
+            <button id="totp-submit" type="button" class="btn btn-warning"
+                    hx-post="/ui/reset/add_totp"
+                    hx-target="#newTotpForm"
+                    hx-select="#newTotpForm > *"
+                    hx-vals='{"ignoreBrokenApp": true}'
+                    hx-include="#newTotpForm"
+            >Accept SHA1</button>
+        (% else %)
+            <button id="totp-submit" type="button" class="btn btn-primary"
+                    hx-post="/ui/reset/add_totp"
+                    hx-target="#newTotpForm"
+                    hx-select="#newTotpForm > *"
+                    hx-vals='{"ignoreBrokenApp": false}'
+                    hx-include="#newTotpForm"
+            >Submit</button>
+        (% endif %)
+    </div>
+</div>
+

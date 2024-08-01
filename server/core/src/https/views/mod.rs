@@ -19,6 +19,7 @@ use crate::https::{
 mod apps;
 mod errors;
 mod login;
+mod reset;
 mod oauth2;
 
 #[derive(Template)]
@@ -32,10 +33,12 @@ pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
         .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
+        .route("/reset", get(reset::view_reset_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get))
         .route("/oauth2/resume", get(oauth2::view_resume_get))
         .route("/oauth2/consent", post(oauth2::view_consent_post))
+  
         // The login routes are htmx-free to make them simpler, which means
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
@@ -72,7 +75,19 @@ pub fn view_router() -> Router<ServerState> {
     // The webauthn post is unguarded because it's not a htmx event.
 
     // Anything that is a partial only works if triggered from htmx
-    let guarded_router = Router::new().layer(HxRequestGuardLayer::new("/ui"));
+    let guarded_router = Router::new()
+        .route("/reset/add_totp", post(reset::view_new_totp))
+        .route("/reset/add_password", post(reset::view_new_pwd))
+        .route("/reset/change_password", post(reset::view_new_pwd))
+        .route("/reset/add_passkey", post(reset::view_new_passkey))
+        .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
+        .route("/api/remove_totp", post(reset::remove_totp))
+        .route("/api/remove_passkey", post(reset::remove_passkey))
+        .route("/api/finish_passkey", post(reset::finish_passkey))
+        .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .route("/api/cu_cancel", post(reset::cancel))
+        .route("/api/cu_commit", post(reset::commit))
+        .layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
 }

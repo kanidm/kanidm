@@ -139,7 +139,7 @@ pub enum CUCredState {
     // Disabled,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]
 pub enum CURegWarning {
     MfaRequired,
     PasskeyRequired,
@@ -388,7 +388,7 @@ impl fmt::Display for PasswordFeedback {
             }
             PasswordFeedback::TooShort(minlength) => write!(
                 f,
-                "Password too was short, needs to be at least {} characters long.",
+                "Password was too short, needs to be at least {} characters long.",
                 minlength
             ),
             PasswordFeedback::UseAFewWordsAvoidCommonPhrases => {

@@ -47,6 +47,7 @@ libc = { workspace = true }
 openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 # opentelemetry_api = { workspace = true, features = ["logs"] }
+qrcode = { workspace = true, features = ["svg"] }
 rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
