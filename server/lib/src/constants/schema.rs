@@ -839,23 +839,6 @@ pub static ref SCHEMA_CLASS_ORGPERSON: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_GROUP: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_GROUP,
-    name: EntryClass::Group.into(),
-    description: "Object representation of a group".to_string(),
-
-    sync_allowed: true,
-    systemmay: vec![
-        Attribute::Member.into(),
-        Attribute::GrantUiHint.into(),
-        Attribute::Description.into()
-    ],
-    systemmust: vec![
-        Attribute::Name.into(),
-        Attribute::Spn.into()],
-    ..Default::default()
-};
-
 pub static ref SCHEMA_CLASS_GROUP_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_GROUP,
     name: EntryClass::Group.into(),
@@ -881,22 +864,6 @@ pub static ref SCHEMA_CLASS_DYNGROUP: SchemaClass = SchemaClass {
 
     systemmust: vec![Attribute::DynGroupFilter.into()],
     systemmay: vec![Attribute::DynMember.into()],
-    systemsupplements: vec![Attribute::Group.into()],
-    ..Default::default()
-};
-
-pub static ref SCHEMA_CLASS_ACCOUNT_POLICY: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
-    name: EntryClass::AccountPolicy.into(),
-    description: "Policies applied to accounts that are members of a group".to_string(),
-
-    systemmay: vec![
-        Attribute::AuthSessionExpiry.into(),
-        Attribute::PrivilegeExpiry.into(),
-        Attribute::AuthPasswordMinimumLength.into(),
-        Attribute::CredentialTypeMinimum.into(),
-        Attribute::WebauthnAttestationCaList.into(),
-    ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()
 };
@@ -977,43 +944,6 @@ pub static ref SCHEMA_CLASS_ACCOUNT_DL5: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
-    name: EntryClass::ServiceAccount.into(),
-    description: "Object representation of service account".to_string(),
-
-    sync_allowed: true,
-    systemmay: vec![
-        Attribute::Mail.into(),
-        Attribute::PrimaryCredential.into(),
-        Attribute::JwsEs256PrivateKey.into(),
-        Attribute::ApiTokenSession.into(),
-    ],
-    systemexcludes: vec![EntryClass::Person.into()],
-    ..Default::default()
-};
-
-pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL5: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
-    name: EntryClass::ServiceAccount.into(),
-    description: "Object representation of service account".to_string(),
-
-    sync_allowed: true,
-    systemmay: vec![
-        Attribute::SshPublicKey.into(),
-        Attribute::UserAuthTokenSession.into(),
-        Attribute::OAuth2Session.into(),
-        Attribute::Description.into(),
-
-        Attribute::Mail.into(),
-        Attribute::PrimaryCredential.into(),
-        Attribute::JwsEs256PrivateKey.into(),
-        Attribute::ApiTokenSession.into(),
-    ],
-    systemexcludes: vec![EntryClass::Person.into()],
-    ..Default::default()
-};
-
 pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SERVICE_ACCOUNT,
     name: EntryClass::ServiceAccount.into(),
@@ -1058,22 +988,6 @@ pub static ref SCHEMA_CLASS_SERVICE_ACCOUNT_DL7: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_SYNC_ACCOUNT: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
-    name: EntryClass::SyncAccount.into(),
-    description: "Object representation of sync account".to_string(),
-
-    systemmust: vec![Attribute::Name.into(), Attribute::JwsEs256PrivateKey.into()],
-    systemmay: vec![
-        Attribute::SyncTokenSession.into(),
-        Attribute::SyncCookie.into(),
-        Attribute::SyncCredentialPortal.into(),
-        Attribute::SyncYieldAuthority.into(),
-    ],
-    systemexcludes: vec![EntryClass::Account.into()],
-    ..Default::default()
-};
-
 pub static ref SCHEMA_CLASS_SYNC_ACCOUNT_DL6: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_SYNC_ACCOUNT,
     name: EntryClass::SyncAccount.into(),
@@ -1104,29 +1018,6 @@ pub static ref SCHEMA_CLASS_SYNC_ACCOUNT_DL7: SchemaClass = SchemaClass {
         Attribute::SyncYieldAuthority.into(),
     ],
     systemexcludes: vec![EntryClass::Account.into()],
-    ..Default::default()
-};
-
-pub static ref SCHEMA_CLASS_DOMAIN_INFO: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
-    name: EntryClass::DomainInfo.into(),
-    description: "Local domain information and partial configuration".to_string(),
-
-    systemmay: vec![
-        Attribute::DomainSsid.into(),
-        Attribute::DomainLdapBasedn.into(),
-        Attribute::LdapAllowUnixPwBind.into()
-    ],
-    systemmust: vec![
-        Attribute::Name.into(),
-        Attribute::DomainUuid.into(),
-        Attribute::DomainName.into(),
-        Attribute::DomainDisplayName.into(),
-        Attribute::FernetPrivateKeyStr.into(),
-        Attribute::Es256PrivateKeyDer.into(),
-        Attribute::PrivateCookieKey.into(),
-        Attribute::Version.into(),
-    ],
     ..Default::default()
 };
 
@@ -1213,31 +1104,6 @@ pub static ref SCHEMA_CLASS_SYSTEM_CONFIG: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_OAUTH2_RS: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
-    name: EntryClass::OAuth2ResourceServer.into(),
-    description: "The class representing a configured Oauth2 Resource Server".to_string(),
-
-    systemmay: vec![
-        Attribute::Description.into(),
-        Attribute::OAuth2RsScopeMap.into(),
-        Attribute::OAuth2RsSupScopeMap.into(),
-        Attribute::Rs256PrivateKeyDer.into(),
-        Attribute::OAuth2JwtLegacyCryptoEnable.into(),
-        Attribute::OAuth2PreferShortUsername.into(),
-        Attribute::OAuth2RsOriginLanding.into(),
-        Attribute::Image.into(),
-    ],
-    systemmust: vec![
-        Attribute::OAuth2RsName.into(),
-        Attribute::DisplayName.into(),
-        Attribute::OAuth2RsOrigin.into(),
-        Attribute::OAuth2RsTokenKey.into(),
-        Attribute::Es256PrivateKeyDer.into(),
-    ],
-    ..Default::default()
-};
-
 pub static ref SCHEMA_CLASS_OAUTH2_RS_DL4: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
     name: EntryClass::OAuth2ResourceServer.into(),
@@ -1315,17 +1181,6 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL7: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
-    name: EntryClass::OAuth2ResourceServerBasic.into(),
-    description: "The class representing a configured Oauth2 Resource Server authenticated with http basic authentication".to_string(),
-
-    systemmay: vec![ Attribute::OAuth2AllowInsecureClientDisablePkce.into()],
-    systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
-    systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
-    ..Default::default()
-};
-
 pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC,
     name: EntryClass::OAuth2ResourceServerBasic.into(),
@@ -1336,15 +1191,6 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5: SchemaClass = SchemaClass {
     ],
     systemmust: vec![ Attribute::OAuth2RsBasicSecret.into()],
     systemexcludes: vec![ EntryClass::OAuth2ResourceServerPublic.into()],
-    ..Default::default()
-};
-
-pub static ref SCHEMA_CLASS_OAUTH2_RS_PUBLIC: SchemaClass = SchemaClass {
-    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS_PUBLIC,
-    name: EntryClass::OAuth2ResourceServerPublic.into(),
-    description: "The class representing a configured Oauth2 Resource Server with public clients and pkce verification".to_string(),
-
-    systemexcludes: vec![EntryClass::OAuth2ResourceServerBasic.into()],
     ..Default::default()
 };
 

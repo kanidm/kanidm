@@ -292,6 +292,7 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
     }
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use super::{KeyProvider, KeyProvidersTransaction};
@@ -299,85 +300,5 @@ mod tests {
     use crate::value::KeyStatus;
     use compact_jwt::{JwsEs256Signer, JwsSigner};
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_5)]
-    async fn test_key_provider_internal_migration(server: &QueryServer) {
-        let mut write_txn = server.write(duration_from_epoch_now()).await;
-
-        // Read the initial state of the domain object, including it's
-        // private key.
-        let domain_object_initial = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain object");
-
-        let initial_private_es256_key = domain_object_initial
-            .get_ava_single_private_binary(Attribute::Es256PrivateKeyDer)
-            .map(|s| s.to_vec())
-            .expect("No private key found");
-
-        let initial_jwt_signer =
-            JwsEs256Signer::from_es256_der(&initial_private_es256_key).unwrap();
-
-        let former_kid = initial_jwt_signer.get_legacy_kid().to_string();
-
-        // Set the version to 6.
-        write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_6)
-            .expect("Unable to set domain level to version 6");
-
-        // The internal key provider is created from dl 5 to 6
-        let key_provider_object = write_txn
-            .internal_search_uuid(UUID_KEY_PROVIDER_INTERNAL)
-            .expect("Unable to find key provider entry.");
-
-        assert!(key_provider_object.attribute_equality(
-            Attribute::Name,
-            &PartialValue::new_iname("key_provider_internal")
-        ));
-
-        // Check that is loaded in the qs.
-        let key_provider = write_txn
-            .get_key_providers()
-            .get_uuid(UUID_KEY_PROVIDER_INTERNAL)
-            .expect("Unable to access key provider object.");
-
-        // Because there is only one variant today ...
-        #[allow(irrefutable_let_patterns)]
-        let KeyProvider::Internal(key_provider_internal) = key_provider
-        else {
-            unreachable!()
-        };
-
-        // Run the providers internal test
-        assert!(key_provider_internal.test().is_ok());
-
-        // Now at this point, the domain object should now be a key object, and have it's
-        // keys migrated.
-        let key_object = write_txn
-            .get_key_providers()
-            .get_key_object(UUID_DOMAIN_INFO)
-            .expect("Unable to retrieve key object by uuid");
-
-        // Assert the former key is now in the domain key object, and now is "retained".
-        let status = key_object
-            .kid_status(&former_kid)
-            .expect("Failed to access kid status");
-        assert_eq!(status, Some(KeyStatus::Retained));
-
-        // Now from DL6 -> 7 the keys are actually removed.
-        write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
-            .expect("Unable to set domain level to version 7");
-
-        let domain_object_migrated = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain object");
-
-        assert!(!domain_object_migrated.attribute_pres(Attribute::Es256PrivateKeyDer));
-
-        assert!(!domain_object_migrated.attribute_pres(Attribute::FernetPrivateKeyStr));
-
-        assert!(!domain_object_migrated.attribute_pres(Attribute::PrivateCookieKey));
-
-        write_txn.commit().expect("Failed to commit");
-    }
 }
+*/

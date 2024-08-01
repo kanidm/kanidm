@@ -154,6 +154,7 @@ pub enum OperationError {
     MG0005GidConstraintsNotMet,
     MG0006SKConstraintsNotMet,
     MG0007Oauth2StrictConstraintsNotMet,
+    MG0008SkipUpgradeAttempted,
     //
     KP0001KeyProviderNotLoaded,
     KP0002KeyProviderInvalidClass,
@@ -308,6 +309,7 @@ impl OperationError {
             Self::MG0005GidConstraintsNotMet => None,
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present."),
             Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled."),
+            Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted."),
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,

@@ -48,6 +48,7 @@ const TEST_INTEGRATION_RS_ID: &str = "test_integration";
 const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
 const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
 const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
+const TEST_INTEGRATION_REDIRECT_URL: &str = "https://demo.example.com/oauth2/flow";
 
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
@@ -65,6 +66,14 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         )
         .await
         .expect("Failed to create oauth2 config");
+
+    rsclient
+        .idm_oauth2_client_add_origin(
+            TEST_INTEGRATION_RS_ID,
+            &Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+        )
+        .await
+        .expect("Failed to update oauth2 config");
 
     // Extend the admin account with extended details for openid claims.
     rsclient
@@ -236,7 +245,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
             ("state", "YWJjZGVm"),
             ("code_challenge", pkce_code_challenge.as_str()),
             ("code_challenge_method", "S256"),
-            ("redirect_uri", "https://demo.example.com/oauth2/flow"),
+            ("redirect_uri", TEST_INTEGRATION_REDIRECT_URL),
             ("scope", "email read openid"),
         ])
         .send()
@@ -303,7 +312,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let form_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
         code: code.to_string(),
-        redirect_uri: Url::parse("https://demo.example.com/oauth2/flow").expect("Invalid URL"),
+        redirect_uri: Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
         code_verifier: Some(pkce_code_verifier.secret().clone()),
     }
     .into();
@@ -496,6 +505,14 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to create oauth2 config");
 
+    rsclient
+        .idm_oauth2_client_add_origin(
+            TEST_INTEGRATION_RS_ID,
+            &Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+        )
+        .await
+        .expect("Failed to update oauth2 config");
+
     // Extend the admin account with extended details for openid claims.
     rsclient
         .idm_person_account_create("oauth_test", "oauth_test")
@@ -616,7 +633,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
             ("state", "YWJjZGVm"),
             ("code_challenge", pkce_code_challenge.as_str()),
             ("code_challenge_method", "S256"),
-            ("redirect_uri", "https://demo.example.com/oauth2/flow"),
+            ("redirect_uri", TEST_INTEGRATION_REDIRECT_URL),
             ("scope", "email read openid"),
         ])
         .send()
@@ -683,7 +700,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let form_req = AccessTokenRequest {
         grant_type: GrantTypeReq::AuthorizationCode {
             code: code.to_string(),
-            redirect_uri: Url::parse("https://demo.example.com/oauth2/flow").expect("Invalid URL"),
+            redirect_uri: Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
             code_verifier: Some(pkce_code_verifier.secret().clone()),
         },
         client_id: Some("test_integration".to_string()),
