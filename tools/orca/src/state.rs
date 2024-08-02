@@ -58,6 +58,7 @@ impl TryFrom<&Path> for State {
 #[derive(Debug, Serialize, Deserialize)]
 pub enum Flag {
     DisableAllPersonsMFAPolicy,
+    ExtendPrivilegedAuthExpiry,
 }
 
 #[derive(Default, Debug, Serialize, Deserialize)]

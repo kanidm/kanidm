@@ -70,6 +70,10 @@ pub enum OrcaOpt {
         #[clap(long, default_value_t, value_enum)]
         // Optional model to run the benchmark, defaults to the `Basic` model
         model: Model,
+
+        #[clap(long, default_value_t)]
+        /// Dump raw data to a separate csv file, defaults to false
+        dump_raw_data: bool,
     },
 
     #[clap(name = "conntest")]

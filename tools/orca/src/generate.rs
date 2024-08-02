@@ -53,8 +53,11 @@ pub async fn populate(_client: &KanidmOrcaClient, profile: Profile) -> Result<St
 
     let thread_count = profile.thread_count();
 
-    // PHASE 0 - For now, set require MFA off.
-    let preflight_flags = vec![Flag::DisableAllPersonsMFAPolicy];
+    // PHASE 0 - For now, set require MFA off and extend the privilege expiry.
+    let preflight_flags = vec![
+        Flag::DisableAllPersonsMFAPolicy,
+        Flag::ExtendPrivilegedAuthExpiry,
+    ];
 
     // PHASE 1 - generate a pool of persons that are not-yet created for future import.
 

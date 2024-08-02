@@ -12,6 +12,7 @@ async fn apply_flags(client: Arc<kani::KanidmOrcaClient>, flags: &[Flag]) -> Res
     for flag in flags {
         match flag {
             Flag::DisableAllPersonsMFAPolicy => client.disable_mfa_requirement().await?,
+            Flag::ExtendPrivilegedAuthExpiry => client.extend_privilege_expiry().await?,
         }
     }
     Ok(())
