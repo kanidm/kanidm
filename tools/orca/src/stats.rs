@@ -22,6 +22,7 @@ pub trait DataCollector {
         &mut self,
         stats_queue: Arc<SegQueue<EventRecord>>,
         ctrl: Arc<ArrayQueue<TestPhase>>,
+        dump_raw_data: bool,
     ) -> Result<(), Error>;
 }
 
@@ -30,6 +31,7 @@ enum OpKind {
     ReadOp,
     ReplicationDelay,
     Auth, //TODO! does this make sense?
+    Error,
 }
 
 impl From<EventDetail> for OpKind {
@@ -42,11 +44,9 @@ impl From<EventDetail> for OpKind {
             | EventDetail::PersonSetSelfPassword
             | EventDetail::PersonCreateGroup
             | EventDetail::PersonAddGroupMembers => OpKind::WriteOp,
-            EventDetail::Error
-            | EventDetail::Login
-            | EventDetail::Logout
-            | EventDetail::PersonReauth => OpKind::Auth,
+            EventDetail::Login | EventDetail::Logout | EventDetail::PersonReauth => OpKind::Auth,
             EventDetail::GroupReplicationDelay => OpKind::ReplicationDelay,
+            EventDetail::Error => OpKind::Error,
         }
     }
 }
@@ -76,6 +76,7 @@ impl DataCollector for BasicStatistics {
         &mut self,
         stats_queue: Arc<SegQueue<EventRecord>>,
         ctrl: Arc<ArrayQueue<TestPhase>>,
+        dump_raw_data: bool,
     ) -> Result<(), Error> {
         debug!("Started statistics collector");
 
@@ -123,12 +124,20 @@ impl DataCollector for BasicStatistics {
         let mut readop_times = Vec::new();
         let mut writeop_times = Vec::new();
         let mut replication_delays = Vec::new();
+        let mut raw_stats = Vec::new();
 
         // We will drain this now.
         while let Some(event_record) = stats_queue.pop() {
             if event_record.start < start || event_record.start > end {
                 // Skip event, outside of the test time window
                 continue;
+            }
+
+            if dump_raw_data {
+                raw_stats.push(SerializableEventRecord::from_event_record(
+                    &event_record,
+                    start,
+                ));
             }
 
             match OpKind::from(event_record.details) {
@@ -142,6 +151,7 @@ impl DataCollector for BasicStatistics {
                     replication_delays.push(event_record.duration.as_secs_f64())
                 }
                 OpKind::Auth => {}
+                OpKind::Error => {}
             }
         }
 
@@ -196,9 +206,37 @@ impl DataCollector for BasicStatistics {
         let mut wrt = Writer::from_path(filepath).map_err(|_| Error::Io)?;
         wrt.serialize(stats).map_err(|_| Error::Io)?;
 
+        if dump_raw_data {
+            let raw_data_filepath = format!("orca-run-{}-raw.csv", now.to_rfc3339());
+            info!("Now saving raw data as '{raw_data_filepath}'");
+
+            let mut wrt = Writer::from_path(raw_data_filepath).map_err(|_| Error::Io)?;
+
+            for record in raw_stats.iter() {
+                wrt.serialize(record).map_err(|_| Error::Io)?;
+            }
+        }
+
         debug!("Ended statistics collector");
 
         Ok(())
+    }
+}
+
+#[derive(Serialize)]
+struct SerializableEventRecord {
+    time_from_start_ms: u128,
+    duration_ms: u128,
+    details: EventDetail,
+}
+
+impl SerializableEventRecord {
+    fn from_event_record(event_record: &EventRecord, test_start: Instant) -> Self {
+        SerializableEventRecord {
+            time_from_start_ms: event_record.start.duration_since(test_start).as_millis(),
+            duration_ms: event_record.duration.as_millis(),
+            details: event_record.details.clone(),
+        }
     }
 }
 

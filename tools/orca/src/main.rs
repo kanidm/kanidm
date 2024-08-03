@@ -77,6 +77,7 @@ fn main() -> ExitCode {
             profile_path,
             threads,
             model,
+            dump_raw_data,
         } => {
             // For now I hardcoded some dimensions, but we should prompt
             // the user for these later.
@@ -98,6 +99,7 @@ fn main() -> ExitCode {
                 idm_admin_password,
                 model,
                 threads,
+                dump_raw_data,
             )
             .seed(seed);
 

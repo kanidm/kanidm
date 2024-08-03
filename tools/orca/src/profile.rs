@@ -36,6 +36,8 @@ pub struct Profile {
     thread_count: Option<usize>,
     model: Model,
     group: BTreeMap<String, GroupProperties>,
+    #[serde(default)]
+    dump_raw_data: bool,
 }
 
 impl Profile {
@@ -91,6 +93,10 @@ impl Profile {
     pub fn test_time(&self) -> Option<Duration> {
         self.test_time.map(Duration::from_secs)
     }
+
+    pub fn dump_raw_data(&self) -> bool {
+        self.dump_raw_data
+    }
 }
 
 pub struct ProfileBuilder {
@@ -106,6 +112,7 @@ pub struct ProfileBuilder {
     pub person_count: Option<u64>,
     pub thread_count: Option<usize>,
     pub model: Model,
+    pub dump_raw_data: bool,
 }
 
 fn validate_u64_bound(value: Option<u64>, default: u64) -> Result<u64, Error> {
@@ -129,6 +136,7 @@ impl ProfileBuilder {
         idm_admin_password: String,
         model: Model,
         thread_count: Option<usize>,
+        dump_raw_data: bool,
     ) -> Self {
         ProfileBuilder {
             control_uri,
@@ -142,6 +150,7 @@ impl ProfileBuilder {
             person_count: None,
             thread_count,
             model,
+            dump_raw_data,
         }
     }
 
@@ -187,6 +196,7 @@ impl ProfileBuilder {
             person_count,
             thread_count,
             model,
+            dump_raw_data,
         } = self;
 
         let seed: u64 = seed.unwrap_or_else(|| {
@@ -224,6 +234,7 @@ impl ProfileBuilder {
             thread_count,
             group,
             model,
+            dump_raw_data,
         })
     }
 }

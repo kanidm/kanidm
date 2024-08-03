@@ -32,6 +32,7 @@ impl Transition {
     }
 }
 
+#[derive(Eq, PartialEq, Ord, PartialOrd)]
 pub enum TransitionResult {
     // Success
     Ok,

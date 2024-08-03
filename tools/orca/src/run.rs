@@ -11,6 +11,7 @@ use crossbeam::queue::{ArrayQueue, SegQueue};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
+use serde::Serialize;
 use tokio::sync::broadcast;
 
 use std::time::{Duration, Instant};
@@ -48,7 +49,7 @@ pub struct EventRecord {
     pub details: EventDetail,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Clone)]
 pub enum EventDetail {
     Login,
     Logout,
@@ -145,8 +146,11 @@ pub async fn execute(state: State, control_rx: broadcast::Receiver<Signal>) -> R
     let mut dyn_data_collector =
         BasicStatistics::new(state.persons.len(), state.groups.len(), node_count);
 
-    let stats_task =
-        tokio::task::spawn_blocking(move || dyn_data_collector.run(c_stats_queue, c_stats_ctrl));
+    let dump_raw_data = state.profile.dump_raw_data();
+
+    let stats_task = tokio::task::spawn_blocking(move || {
+        dyn_data_collector.run(c_stats_queue, c_stats_ctrl, dump_raw_data)
+    });
 
     // Create clients. Note, we actually seed these deterministically too, so that
     // or persons are spread over the clients that exist, in a way that is also

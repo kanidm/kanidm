@@ -64,6 +64,24 @@ impl KanidmOrcaClient {
             })
     }
 
+    pub async fn extend_privilege_expiry(&self) -> Result<(), Error> {
+        self.idm_admin_client
+            .group_account_policy_privilege_expiry_set("idm_all_persons", 3600)
+            .await
+            .map_err(|err| {
+                error!(?err, "Unable to modify idm_all_persons policy");
+                Error::KanidmClient
+            })?;
+
+        self.idm_admin_client
+            .group_account_policy_privilege_expiry_set("idm_all_accounts", 3600)
+            .await
+            .map_err(|err| {
+                error!(?err, "Unable to modify idm_all_accounts policy");
+                Error::KanidmClient
+            })
+    }
+
     pub async fn person_exists(&self, username: &str) -> Result<bool, Error> {
         self.idm_admin_client
             .idm_person_account_get(username)
