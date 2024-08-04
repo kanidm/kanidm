@@ -2000,7 +2000,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 mut_d_info.d_name,
             );
             admin_warn!(
-                    "If you think this is an error, see https://kanidm.github.io/kanidm/stable/administrivia.html#rename-the-domain"
+                    "If you think this is an error, see https://kanidm.github.io/kanidm/master/domain_rename.html"
                 );
             mut_d_info.d_name = domain_name;
         }
