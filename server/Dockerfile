@@ -76,8 +76,9 @@ COPY --from=builder /usr/src/kanidm/server/web_ui/pkg /pkg
 COPY --from=builder /usr/src/kanidm/server/core/static /hpkg
 RUN chmod +x /sbin/kanidmd
 
+WORKDIR /data
+
 EXPOSE 8443 3636
-VOLUME /data
 
 ENV RUST_BACKTRACE 1
 
