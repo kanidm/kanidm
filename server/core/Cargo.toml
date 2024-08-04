@@ -26,7 +26,7 @@ axum-htmx = { workspace = true }
 axum-auth = "0.7.0"
 axum-extra = { version = "0.9.3", features = ["cookie"] }
 axum-macros = "0.4.1"
-axum-server = { version = "0.6.0", features = ["tls-openssl"] }
+axum-server = { version = "0.7.1", features = ["tls-openssl"] }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
