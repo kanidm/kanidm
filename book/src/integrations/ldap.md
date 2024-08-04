@@ -136,7 +136,7 @@ should not grant the same privileges as the accounts standard credentials.
 ## Service Accounts
 
 If you have
-[issued api tokens for a service account](../accounts_and_groups.html#using-api-tokens-with-service-accounts)
+[issued api tokens for a service account](../accounts/service_accounts.md#using-api-tokens-with-service-accounts)
 they can be used to gain extended read permissions for those service accounts.
 
 Api tokens can also be used to gain extended search permissions with LDAP. To do this you can bind

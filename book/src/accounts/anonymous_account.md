@@ -45,6 +45,6 @@ data.
 ## Disabling the Anonymous Account
 
 The anonymous is like any other and can be expired to prevent its use. See the
-[account validity section](./people#account-validity)
+[account validity section](./people_accounts.md#account-validity)
 
 When disabled, this will prevent stateless unix clients from authenticating to Kanidm.

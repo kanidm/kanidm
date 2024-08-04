@@ -25,6 +25,8 @@ Create `server.toml`. The important parts are the `domain` and `origin`. For thi
 
 ## Start the container
 
+First we create a docker volume to store the data, then we start the container.
+
 ```bash
 docker volume create kanidmd
 docker create --name kanidmd \
@@ -107,6 +109,6 @@ You'll probably want to set it up properly, so that other computers can access i
 
 Alternatively you might like to try configurig one of these:
 
-- [OAuth2](integrations/oauth2.md) for web services
-- [PAM and nsswitch](integrations/pam_and_nsswitch.md) for authentication to Linux systems
-- [Replication](repl/readme.md), if one Kanidm instance isn't enough
+- [OAuth2](./integrations/oauth2.md) for web services
+- [PAM and nsswitch](./integrations/pam_and_nsswitch.md) for authentication to Linux systems
+- [Replication](repl/), if one Kanidm instance isn't enough

@@ -38,7 +38,7 @@ This example is located in
 ### Check the configuration is valid
 
 You should test your configuration is valid before you proceed. This defaults to using
-`-c /data/server.toml`.
+`-c /data/server.toml`. The `kanidmd` volume was created in the [evaluation quickstart](evaluation_quickstart.md)
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
