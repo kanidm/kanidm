@@ -173,9 +173,9 @@ impl IdmServer {
                 if valid {
                     Ok(url)
                 } else {
-                    admin_error!("Effective domain is not a descendent of server domain name (rp_id).");
-                    admin_error!("You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
-                    admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/server_configuration.html");
+                    admin_error!("Effective domain (ed) is not a descendent of server domain name (rp_id).");
+                    admin_error!("You must change origin or domain name to be consistent. ded: {:?} - rp_id: {:?}", origin, rp_id);
+                    admin_error!("To change the origin or domain name see: https://kanidm.github.io/kanidm/master/server_configuration.html");
                     Err(OperationError::InvalidState)
                 }
             })?;

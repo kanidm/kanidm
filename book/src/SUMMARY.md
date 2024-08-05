@@ -71,7 +71,7 @@
 
 # For Developers
 
-- [Developer Guide](developers/readme.md)
+- [Developer Guide](./developers/readme.md)
 - [Developer Ethics](developers/developer_ethics.md)
 - [Frequently Asked Questions](developers/faq.md)
 - [Design Documents]()

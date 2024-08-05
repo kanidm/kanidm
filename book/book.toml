@@ -1,9 +1,5 @@
 [book]
-authors = [
-    "William Brown",
-    "James Hodgkinson",
-    "Carla Schroder",
-]
+authors = ["William Brown", "James Hodgkinson", "Carla Schroder"]
 language = "en"
 multilingual = false
 src = "src"
@@ -16,7 +12,9 @@ git-repository-icon = "fa-github"
 additional-css = ["theme.css"]
 additional-js = ["mermaid.min.js", "mermaid-init.js"]
 
+# Github-flavoured markdown alerts, install mdbook-alerts
 [preprocessor.alerts]
 
+# mermaid graph rendering, you need mdbook-mermaid
 [preprocessor.mermaid]
 command = "mdbook-mermaid"

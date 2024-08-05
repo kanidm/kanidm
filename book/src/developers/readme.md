@@ -84,7 +84,7 @@ deployment, will aim to provide a positive experience to all people.
 It's important before you start trying to write code and contribute that you understand what Kanidm
 does and its goals.
 
-An important first step is to [install the server](installing_the_server.md) so if you have not done
+An important first step is to [install the server](../installing_the_server.md) so if you have not done
 that yet, go and try that now! 😄
 
 ## Setting up your Machine
@@ -390,7 +390,7 @@ cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp
 ```
 
 You may find it easier to modify `~/.config/kanidm` per the
-[book client tools section](client_tools.md) for extended administration locally.
+[book client tools section](../client_tools.md) for extended administration locally.
 
 ### Raw actions
 

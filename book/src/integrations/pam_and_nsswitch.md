@@ -91,8 +91,8 @@ passwd: compat kanidm
 group: compat kanidm
 ```
 
-You can [create a user](../accounts_and_groups.md#creating-accounts) then
-[enable POSIX feature on the user](../posix_accounts.md#enabling-posix-attributes-on-accounts).
+You can [create a user](../accounts/intro.md) then
+[enable POSIX feature on the user](../accounts/posix_accounts_and_groups.md#enabling-posix-attributes-on-accounts).
 
 You can then test that the POSIX extended user is able to be resolved with:
 

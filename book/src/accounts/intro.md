@@ -70,7 +70,7 @@ By default the `admin` and `idm_admin` accounts have no password, and can not be
 to be "recovered" from the server that is running the kanidmd server.
 
 You should have already recovered the admin account during your setup process. If not, refer to the
-[server configuration chapter](server_configuration.md#default-admin-account) on how to recover
+[server configuration chapter](../server_configuration.md#default-admin-account) on how to recover
 these accounts.
 
 These accounts will be used through the remainder of this document for managing the server.

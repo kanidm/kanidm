@@ -74,7 +74,7 @@ docker pull kanidm/tools:latest
 
 ### Perform a backup
 
-See [backup and restore](backup_restore.md)
+See [backup and restore](backup_and_restore.md)
 
 ### Update your Instance
 

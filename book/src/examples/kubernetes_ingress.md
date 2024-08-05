@@ -6,7 +6,7 @@ Guard your Kubernetes ingress with Kanidm authentication and authorization.
 
 We recommend you have the following before continuing:
 
-- [Kanidm](../installing_the_server.html)
+- [Kanidm](../installing_the_server.md)
 - [Kubernetes v1.23 or above](https://docs.k0sproject.io/v1.23.6+k0s.2/install/)
 - [Nginx Ingress](https://kubernetes.github.io/ingress-nginx/deploy/)
 - A fully qualified domain name with an A record pointing to your k8s ingress.
@@ -16,14 +16,13 @@ We recommend you have the following before continuing:
 
 1. Create a Kanidm account and group:
    1. Create a Kanidm account. Please see the section
-      [Creating Accounts](../accounts_and_groups.md).
-   1. Give the account a password. Please see the section
-      [Resetting Account Credentials](../accounts_and_groups.md).
-   1. Make the account a person. Please see the section
-      [People Accounts](../accounts_and_groups.md).
-   1. Create a Kanidm group. Please see the section [Creating Accounts](../accounts_and_groups.md).
-   1. Add the account you created to the group you create. Please see the section
-      [Creating Accounts](../accounts_and_groups.md).
+      [Creating Accounts](../accounts/intro.md).
+   2. Give the account a password. Please see the section
+      [Resetting Account Credentials](../accounts/authentication_and_credentials.md).
+   3. Make the account a person. Please see the section
+      [People Accounts](../accounts/people_accounts.md).
+   4. Create a Kanidm group. Please see the section [Creating Accounts](../accounts/groups.md).
+   5. Add the account you created to the group you create.
 2. Create a Kanidm OAuth2 resource:
    1. Create the OAuth2 resource for your domain. Please see the section
       [Create the Kanidm Configuration](../integrations/oauth2.md).
@@ -31,9 +30,11 @@ We recommend you have the following before continuing:
       profile, and email scopes. Please see the section
       [Create the Kanidm Configuration](../integrations/oauth2.md).
 3. Create a `Cookie Secret` to for the placeholder `<COOKIE_SECRET>` in step 4:
+
    ```shell
    docker run -ti --rm python:3-alpine python -c 'import secrets,base64; print(base64.b64encode(base64.b64encode(secrets.token_bytes(16))).decode("utf-8"));'
    ```
+
 4. Create a file called `k8s.kanidm-nginx-auth-example.yaml` with the block below. Replace every
    `<string>` (drop the `<>`) with appropriate values:
    1. `<FQDN>`: The fully qualified domain name with an A record pointing to your k8s ingress.
@@ -223,11 +224,15 @@ We recommend you have the following before continuing:
        - <FQDN>
        secretName: <FQDN>-ingress-tls # replace . with - in the hostname
    ```
+
 5. Apply the configuration by running the following command:
+
    ```bash
    kubectl apply -f k8s.kanidm-nginx-auth-example.yaml
    ```
+
 6. Check your deployment succeeded by running the following commands:
+
    ```bash
    kubectl -n kanidm-example get all
    kubectl -n kanidm-example get ingress
@@ -246,6 +251,7 @@ We recommend you have the following before continuing:
 ## Cleaning Up
 
 1. Remove the resources create for this example from k8s:
+
    ```bash
    kubectl delete namespace kanidm-example
    ```
