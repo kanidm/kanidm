@@ -1,5 +1,5 @@
-use serde::{Deserialize, Serialize};
 use crate::unix_passwd::{EtcGroup, EtcUser};
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NssUser {
@@ -12,7 +12,8 @@ pub struct NssUser {
 }
 
 impl<T> From<&T> for NssUser
-    where T: AsRef<EtcUser>
+where
+    T: AsRef<EtcUser>,
 {
     fn from(etc_user: &T) -> Self {
         let etc_user = etc_user.as_ref();
@@ -35,7 +36,8 @@ pub struct NssGroup {
 }
 
 impl<T> From<&T> for NssGroup
-    where T: AsRef<EtcGroup>
+where
+    T: AsRef<EtcGroup>,
 {
     fn from(etc_group: &T) -> Self {
         let etc_group = etc_group.as_ref();

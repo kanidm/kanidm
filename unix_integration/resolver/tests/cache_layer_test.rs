@@ -121,9 +121,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .machine_key_load(&auth_value, &loadable_machine_key)
         .unwrap();
 
-    let system_provider = SystemProvider::new(
-        vec!["masked_group".to_string()],
-    ).unwrap();
+    let system_provider = SystemProvider::new().unwrap();
 
     let idprovider = KanidmProvider::new(
         rsclient,
@@ -796,9 +794,10 @@ async fn test_cache_nxset_account() {
         .await
         .expect("failed to list all accounts");
 
-    let us: Vec<_> = us.into_iter().filter(|nss_user| {
-        nss_user.name == "testaccount1"
-    }).collect();
+    let us: Vec<_> = us
+        .into_iter()
+        .filter(|nss_user| nss_user.name == "testaccount1")
+        .collect();
 
     assert_eq!(us.len(), 1);
     assert_eq!(us[0].gid, 30000);
@@ -877,56 +876,14 @@ async fn test_cache_nxset_group() {
         .await
         .expect("failed to list all groups");
 
-    let gs: Vec<_> = gs.into_iter().filter(|nss_group| {
-        nss_group.name == "testgroup1"
-    }).collect();
+    let gs: Vec<_> = gs
+        .into_iter()
+        .filter(|nss_group| nss_group.name == "testgroup1")
+        .collect();
 
     debug!("{:?}", gs);
     assert_eq!(gs.len(), 1);
     assert_eq!(gs[0].gid, 30001);
-}
-
-#[tokio::test]
-async fn test_cache_nxset_allow_overrides() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
-
-    // Important! masked_group is set as an allowed override group even though
-    // it's been "inserted" to the nxset. This means it will still resolve!
-    cachelayer
-        .reload_system_identities(
-            vec![],
-            vec![EtcGroup {
-                name: "masked_group".to_string(),
-                gid: 20003,
-                ..Default::default()
-            }],
-        )
-        .await;
-
-    // Force offline. Show we have no groups.
-    cachelayer.mark_offline().await;
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_none());
-
-    // go online. Get the group
-    cachelayer.mark_next_check_now(SystemTime::now()).await;
-    assert!(cachelayer.test_connection().await);
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_some());
-
-    // go offline. still works
-    cachelayer.mark_offline().await;
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_some());
 }
 
 /// Issue 1830. If cache items expire where we have an account and a group, and we

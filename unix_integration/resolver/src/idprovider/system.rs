@@ -1,27 +1,12 @@
-use crate::db::KeyStoreTxn;
-use async_trait::async_trait;
-use kanidm_client::{ClientError, KanidmClient, StatusCode};
-use kanidm_proto::internal::OperationError;
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
-use std::time::{Duration, SystemTime};
-use tokio::sync::{broadcast, Mutex};
-use std::sync::Arc;
 use hashbrown::HashMap;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
-use kanidm_lib_crypto::CryptoPolicy;
-use kanidm_lib_crypto::DbPasswordV1;
-use kanidm_lib_crypto::Password;
-
-use super::interface::{
-    tpm::{self, HmacKey, Tpm},
-    AuthCredHandler, AuthRequest, AuthResult, GroupToken, GroupTokenState, Id, IdProvider,
-    IdpError, ProviderOrigin, UserToken, UserTokenState,
-};
-use kanidm_unix_common::unix_proto::{PamAuthRequest, NssUser, NssGroup};
+use super::interface::{Id, IdpError};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_unix_common::unix_proto::{NssGroup, NssUser};
 
 pub struct SystemProviderInternal {
-    allow_group_overrides: Vec<String>,
     users: HashMap<Id, Arc<EtcUser>>,
     user_list: Vec<Arc<EtcUser>>,
     groups: HashMap<Id, Arc<EtcGroup>>,
@@ -33,27 +18,18 @@ pub struct SystemProvider {
 }
 
 impl SystemProvider {
-    pub fn new(
-        // To be removed in a future version, it's too primitive.
-        allow_group_overrides: Vec<String>,
-    ) -> Result<Self, IdpError> {
+    pub fn new() -> Result<Self, IdpError> {
         Ok(SystemProvider {
-            inner:
-            Mutex::new(
-                SystemProviderInternal {
-                    allow_group_overrides,
-                    users: Default::default(),
-                    user_list: Default::default(),
-                    groups: Default::default(),
-                    group_list: Default::default(),
-                }
-            ),
+            inner: Mutex::new(SystemProviderInternal {
+                users: Default::default(),
+                user_list: Default::default(),
+                groups: Default::default(),
+                group_list: Default::default(),
+            }),
         })
     }
 
-    pub async fn reload(
-        &self, users: Vec<EtcUser>, groups: Vec<EtcGroup>
-    ) {
+    pub async fn reload(&self, users: Vec<EtcUser>, groups: Vec<EtcGroup>) {
         let mut system_ids_txn = self.inner.lock().await;
         system_ids_txn.users.clear();
         system_ids_txn.user_list.clear();
@@ -88,17 +64,23 @@ impl SystemProvider {
                 if group.name != user.name {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group does not appear to have the same name as the user, this may be a security risk!");
                 }
-                if !(group.members.is_empty() || (group.members.len() == 1 && group.members.get(0) == Some(&user.name))) {
+                if !(group.members.is_empty()
+                    || (group.members.len() == 1 && group.members.get(0) == Some(&user.name)))
+                {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }
             } else {
                 warn!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");
-                let group = EtcGroup {
+                let group = Arc::new(EtcGroup {
                     name: user.name.clone(),
                     password: String::new(),
                     gid: user.gid,
-                    members: vec![user.name.clone()]
-                };
+                    members: vec![user.name.clone()],
+                });
+
+                system_ids_txn.groups.insert(name.clone(), group.clone());
+                system_ids_txn.groups.insert(gid.clone(), group.clone());
+                system_ids_txn.group_list.push(group);
             }
 
             let user = Arc::new(user);
@@ -124,29 +106,21 @@ impl SystemProvider {
 
     pub async fn get_nssaccount(&self, account_id: &Id) -> Option<NssUser> {
         let inner = self.inner.lock().await;
-        inner.users.get(account_id)
-            .map(NssUser::from)
+        inner.users.get(account_id).map(NssUser::from)
     }
 
     pub async fn get_nssaccounts(&self) -> Vec<NssUser> {
         let inner = self.inner.lock().await;
-        inner.user_list.iter()
-            .map(NssUser::from)
-            .collect()
+        inner.user_list.iter().map(NssUser::from).collect()
     }
 
     pub async fn get_nssgroup(&self, grp_id: &Id) -> Option<NssGroup> {
         let inner = self.inner.lock().await;
-        inner.groups.get(grp_id)
-            .map(NssGroup::from)
+        inner.groups.get(grp_id).map(NssGroup::from)
     }
 
     pub async fn get_nssgroups(&self) -> Vec<NssGroup> {
         let inner = self.inner.lock().await;
-        inner.group_list.iter()
-            .map(NssGroup::from)
-            .collect()
+        inner.group_list.iter().map(NssGroup::from).collect()
     }
-
 }
-

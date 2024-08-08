@@ -902,7 +902,6 @@ async fn main() -> ExitCode {
             };
 
             let Ok(system_provider) = SystemProvider::new(
-                cfg.allow_local_account_override.clone()
             ) else {
                 error!("Failed to configure System Provider");
                 return ExitCode::FAILURE

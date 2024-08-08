@@ -1,6 +1,6 @@
 // use async_trait::async_trait;
-use hashbrown::{HashMap, HashSet};
-use std::collections::{BTreeMap, BTreeSet};
+use hashbrown::HashMap;
+use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::num::NonZeroUsize;
 use std::ops::DerefMut;
@@ -118,9 +118,7 @@ impl Resolver {
             warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
         }
 
-        let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![
-            client,
-        ];
+        let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
 
         let client_ids: HashMap<_, _> = clients
             .iter()
@@ -634,18 +632,16 @@ impl Resolver {
 
         let cached = self.get_cached_usertokens().await?;
 
-        Ok(system_nss_users.into_iter()
-            .chain(
-                cached.into_iter()
-                    .map(|tok| NssUser {
-                        homedir: self.token_abs_homedirectory(&tok),
-                        name: self.token_uidattr(&tok),
-                        uid: tok.gidnumber,
-                        gid: tok.gidnumber,
-                        gecos: tok.displayname,
-                        shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
-                    })
-            )
+        Ok(system_nss_users
+            .into_iter()
+            .chain(cached.into_iter().map(|tok| NssUser {
+                homedir: self.token_abs_homedirectory(&tok),
+                name: self.token_uidattr(&tok),
+                uid: tok.gidnumber,
+                gid: tok.gidnumber,
+                gecos: tok.displayname,
+                shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
+            }))
             .collect())
     }
 
@@ -653,7 +649,7 @@ impl Resolver {
     async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
         if let Some(nss_user) = self.system_provider.get_nssaccount(&account_id).await {
             debug!("system provider satisfied request");
-            return Ok(Some(nss_user))
+            return Ok(Some(nss_user));
         }
 
         let token = self.get_usertoken(&account_id).await?;
@@ -706,7 +702,7 @@ impl Resolver {
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
         if let Some(nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
-            return Ok(Some(nss_group))
+            return Ok(Some(nss_group));
         }
 
         let token = self.get_grouptoken(grp_id).await?;
