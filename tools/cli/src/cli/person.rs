@@ -1470,10 +1470,11 @@ async fn credential_update_exec(
                     Ok(status) => {
                         if !status.can_commit {
                             display_warnings(&status.warnings);
+                            // Reset the loop
+                            println!("Changes have NOT been saved.");
+                            continue;
                         }
-                        // Reset the loop
-                        println!("Changes have NOT been saved.");
-                        continue;
+                        // Can proceed
                     }
                     Err(e) => {
                         eprintln!("An error occurred -> {:?}", e);
