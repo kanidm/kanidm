@@ -53,7 +53,7 @@ jobs:
     # This step is split so that we don't apply "packages: write" permission
     # except when uploading the final Docker image to GHCR.
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' && github.repository == 'kanidm/kanidm'
+    if: ( github.ref_type == 'tag' || github.ref == 'refs/heads/master' ) && github.repository == 'kanidm/kanidm'
     needs: radius_build
     permissions:
       packages: write
