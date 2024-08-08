@@ -826,7 +826,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect::<Vec<_>>();
 
         if !affected_entries.is_empty() {
-            error!("Unable to proceed. Not all entries meet gid/uid constraints.");
+            error!("Unable to proceed. Some accounts still use legacy security keys, which need to be removed.");
             for sk_present in affected_entries {
                 error!(%sk_present);
             }
