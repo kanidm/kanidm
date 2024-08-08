@@ -169,7 +169,7 @@ impl UserToken {
             }
         };
 
-        let pw_value = match serde_json::to_value(&pw.to_dbpasswordv1()) {
+        let pw_value = match serde_json::to_value(pw.to_dbpasswordv1()) {
             Ok(pw) => pw,
             Err(reason) => {
                 // Clear cached pw.

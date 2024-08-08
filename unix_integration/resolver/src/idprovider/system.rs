@@ -65,7 +65,7 @@ impl SystemProvider {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group does not appear to have the same name as the user, this may be a security risk!");
                 }
                 if !(group.members.is_empty()
-                    || (group.members.len() == 1 && group.members.get(0) == Some(&user.name)))
+                    || (group.members.len() == 1 && group.members.first() == Some(&user.name)))
                 {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }

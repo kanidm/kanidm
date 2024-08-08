@@ -407,7 +407,7 @@ impl Resolver {
             }
         } else {
             // We've never seen it before, so iterate over the providers in priority order.
-            'search: loop {
+            'search: {
                 for client in self.clients.iter() {
                     match client
                         .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut(), now)
@@ -476,7 +476,7 @@ impl Resolver {
             }
         } else {
             // We've never seen it before, so iterate over the providers in priority order.
-            'search: loop {
+            'search: {
                 for client in self.clients.iter() {
                     match client
                         .unix_group_get(grp_id, hsm_lock.deref_mut(), now)
@@ -518,13 +518,13 @@ impl Resolver {
     #[instrument(level = "debug", skip(self))]
     async fn get_usertoken(&self, account_id: &Id) -> Result<Option<UserToken>, ()> {
         // get the item from the cache
-        let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
+        let (expired, item) = self.get_cached_usertoken(account_id).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
         // If the token isn't found, get_cached will set expired = true.
         if expired {
-            self.refresh_usertoken(&account_id, item).await
+            self.refresh_usertoken(account_id, item).await
         } else {
             // Still valid, return the cached entry.
             Ok(item)
