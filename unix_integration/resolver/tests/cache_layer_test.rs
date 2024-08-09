@@ -755,7 +755,10 @@ async fn test_cache_nxset_account() {
                 name: "testaccount1".to_string(),
                 uid: 30000,
                 gid: 30000,
-                ..Default::default()
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
             }],
             vec![],
         )
@@ -817,7 +820,8 @@ async fn test_cache_nxset_group() {
                 // Important! We set the GID to differ from what kanidm stores so we can
                 // tell we got the system version.
                 gid: 30001,
-                ..Default::default()
+                password: Default::default(),
+                members: Default::default(),
             }],
         )
         .await;

@@ -5,7 +5,7 @@ use serde::{
 
 use std::fmt;
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EtcUser {
     pub name: String,
     pub password: String,
@@ -51,7 +51,7 @@ where
     deserializer.deserialize_str(InnerCsv)
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug)]
 pub struct EtcGroup {
     pub name: String,
     pub password: String,
