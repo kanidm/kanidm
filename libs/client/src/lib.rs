@@ -692,8 +692,11 @@ impl KanidmClient {
 
         #[cfg(any(test, debug_assertions))]
         if !matching {
-            error!("You're in debug/dev mode, so we're going to quit here.");
-            std::process::exit(1);
+            if !std::env::var("KANIDM_DEV_YOLO").is_ok() {
+                eprintln!("⚠️  You're in debug/dev mode, so we're going to quit here.");
+                eprintln!("If you really must do this, set KANIDM_DEV_YOLO=1");
+                std::process::exit(1);
+            }
         }
 
         // Check is done once, mark as no longer needing to occur

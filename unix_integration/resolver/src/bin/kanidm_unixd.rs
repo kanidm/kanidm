@@ -828,6 +828,8 @@ async fn main() -> ExitCode {
 
             // Check for and create the hsm pin if required.
             if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+                info!(%diag);
                 error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());
                 return ExitCode::FAILURE
             };
@@ -836,6 +838,8 @@ async fn main() -> ExitCode {
             let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
                 Ok(hp) => hp,
                 Err(err) => {
+                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+                    info!(%diag);
                     error!(?err, "Failed to read HSM PIN from {}", cfg.hsm_pin_path.as_str());
                     return ExitCode::FAILURE
                 }
@@ -964,6 +968,8 @@ async fn main() -> ExitCode {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
+                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.task_sock_path.as_ref());
+                    info!(%diag);
                     error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
                     return ExitCode::FAILURE
                 }
