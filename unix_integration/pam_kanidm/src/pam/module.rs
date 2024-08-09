@@ -51,7 +51,7 @@ extern "C" {
 
     fn pam_get_user(
         pamh: *const PamHandle,
-        user: &*mut c_char,
+        user: &mut *const c_char,
         prompt: *const c_char,
     ) -> PamResultCode;
 }
@@ -176,19 +176,22 @@ impl PamHandle {
     /// See `pam_get_user` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub fn get_user(&self, prompt: Option<&str>) -> PamResult<String> {
-        let ptr: *mut c_char = ptr::null_mut();
+        let mut ptr: *const c_char = ptr::null_mut();
         let res = match prompt {
             Some(p) => {
                 let c_prompt = CString::new(p).unwrap();
-                unsafe { pam_get_user(self, &ptr, c_prompt.as_ptr()) }
+                unsafe { pam_get_user(self, &mut ptr, c_prompt.as_ptr()) }
             }
-            None => unsafe { pam_get_user(self, &ptr, ptr::null()) },
+            None => unsafe { pam_get_user(self, &mut ptr, ptr::null()) },
         };
 
-        if PamResultCode::PAM_SUCCESS == res && !ptr.is_null() {
-            let const_ptr = ptr as *const c_char;
-            let bytes = unsafe { CStr::from_ptr(const_ptr).to_bytes() };
-            String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
+        if PamResultCode::PAM_SUCCESS == res {
+            if ptr.is_null() {
+                Err(PamResultCode::PAM_AUTHINFO_UNAVAIL)
+            } else {
+                let bytes = unsafe { CStr::from_ptr(ptr).to_bytes() };
+                String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
+            }
         } else {
             Err(res)
         }
