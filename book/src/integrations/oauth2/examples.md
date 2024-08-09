@@ -169,7 +169,7 @@ kanidm group create 'grafana_users'
 Setup the claim-map that will set what role each group will map to in Grafana:
 
 ```bash
-kanidmm oauth2 update-claim-map-join 'grafana' 'grafana_role' array
+kanidm system oauth2 update-claim-map-join 'grafana' 'grafana_role' array
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_superadmins' 'GrafanaAdmin'
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_admins' 'Admin'
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_editors' 'Editor'
