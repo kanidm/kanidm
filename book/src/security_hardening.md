@@ -149,7 +149,9 @@ You can then use this to run the Kanidm server in docker with a user:
 docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
 ```
 
-> **HINT** You need to use the UID or GID number with the `-u` argument, as the container can't
+> [!HINT]
+>
+> You need to use the UID or GID number with the `-u` argument, as the container can't
 > resolve usernames from the host system.
 
 ## Minimum TLS key lengths

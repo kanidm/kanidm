@@ -54,11 +54,10 @@ RUN \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
 
-# == Construct the orca container 
+# == Construct the orca container
 FROM repos
 
-ENV RUST_BACKTRACE 1
-
+ENV RUST_BACKTRACE=1
 
 COPY --from=builder /usr/src/kanidm/target/release/orca /sbin/
 COPY ./tools/orca/profile-sample.toml /etc/kanidm/profile-sample.toml

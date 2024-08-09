@@ -8,7 +8,7 @@ responses belong to the same enum, the colors are meant to provide additional in
 response means that the input was valid and therefore it contains the next step in the identity
 verification flow, while a red response means the input was invalid and the flow terminates there.
 Note that the protocol is completely stateless, so the following diagram is not to be intended as a
-state machine, for the idv state machine go [here](#the-identity-verification-state-machine-idv).
+state machine, for the idv state machine go [here](#the-identity-verification-state-machine).
 
 ![idv api diagram](diagrams/idv_api_diagram.drawio.svg)
 

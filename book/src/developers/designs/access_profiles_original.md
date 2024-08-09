@@ -185,11 +185,12 @@ moment.
 
 An example:
 
-> Alice should only be able to modify a user's password if that user is a member of the students
-> group.
+Alice should only be able to modify a user's password if that user is a member of the students group.
 
-**Note:** `modify` does not imply `read` of the attribute. Care should be taken that we don't
-disclose the current value in any error messages if the operation fails.
+> [!NOTE]
+>
+> `modify` does not imply `read` of the attribute. Care should be taken that we don't
+> disclose the current value in any error messages if the operation fails.
 
 ## Targeting Requirements
 
@@ -332,7 +333,9 @@ A complete schema would be:
 | access_control_modify  |                                   | `[acp_modify_removedattr, acp_modify_presentattr, acp_modify_class]` |
 | access_control_create  |                                   | `[acp_create_class, acp_create_attr]`                                |
 
-**Important**: empty sets really mean empty sets!
+> [!NOTE]
+>
+> empty sets really mean empty sets!
 
 The ACP code will assert that both `access_control_profile` _and_ one of the
 `search/delete/modify/create` classes exists on an ACP. An important factor of this design is now
@@ -411,10 +414,12 @@ However, a possible issue is that Option #2 means that a delete request of
 This is also a concern for modification, where the modification attempt may or may not fail
 depending on the entries and if you can/can't see them.
 
-**IDEA:** You can only `delete`/`modify` within the read scope you have. If you can't read it (based
-on the read rules of `search`), you can't `delete` it. This is in addition to the filter rules of
-the `delete` applying as well. So performing a `delete` of `Pres(class)`, will only delete in your
-`read` scope and will never disclose if you are denied access.
+> [!NOTE]
+>
+> You can only `delete`/`modify` within the read scope you have. If you can't read it (based
+> on the read rules of `search`), you can't `delete` it. This is in addition to the filter rules of
+> the `delete` applying as well. So performing a `delete` of `Pres(class)`, will only delete in your
+> `read` scope and will never disclose if you are denied access.
 
 <!-- TODO
 @yaleman: This goes back to the commentary on Option #2 and feels icky like SQL's `DELETE FROM <table>` just deleting everything. It's more complex from the client - you have to search for a set of things to delete - then delete them.

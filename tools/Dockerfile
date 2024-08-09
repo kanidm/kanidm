@@ -65,7 +65,7 @@ RUN \
 # == Construct the tools container
 FROM repos
 
-ENV RUST_BACKTRACE 1
+ENV RUST_BACKTRACE=1
 
 RUN \
     --mount=type=cache,id=zypp,target=/var/cache/zypp \
