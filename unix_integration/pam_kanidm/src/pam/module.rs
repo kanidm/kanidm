@@ -185,10 +185,14 @@ impl PamHandle {
             None => unsafe { pam_get_user(self, &ptr, ptr::null()) },
         };
 
-        if PamResultCode::PAM_SUCCESS == res && !ptr.is_null() {
-            let const_ptr = ptr as *const c_char;
-            let bytes = unsafe { CStr::from_ptr(const_ptr).to_bytes() };
-            String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
+        if PamResultCode::PAM_SUCCESS == res {
+            if ptr.is_null() {
+                Err(PamResultCode::PAM_AUTHINFO_UNAVAIL)
+            } else {
+                let const_ptr = ptr as *const c_char;
+                let bytes = unsafe { CStr::from_ptr(const_ptr).to_bytes() };
+                String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
+            }
         } else {
             Err(res)
         }
