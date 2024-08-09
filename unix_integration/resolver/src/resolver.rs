@@ -1,11 +1,12 @@
 // use async_trait::async_trait;
-use hashbrown::HashSet;
+use hashbrown::HashMap;
 use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::num::NonZeroUsize;
-use std::ops::{Add, DerefMut, Sub};
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::string::ToString;
+use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use lru::LruCache;
@@ -14,47 +15,48 @@ use uuid::Uuid;
 
 use crate::db::{Cache, Db};
 use crate::idprovider::interface::{
-    AuthCacheAction,
     AuthCredHandler,
     AuthResult,
     GroupToken,
+    GroupTokenState,
     Id,
     IdProvider,
     IdpError,
+    ProviderOrigin,
     // KeyStore,
     UserToken,
+    UserTokenState,
 };
+use crate::idprovider::system::SystemProvider;
 use crate::unix_config::{HomeAttr, UidAttr};
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
 use kanidm_unix_common::unix_proto::{
-    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse,
+    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, ProviderStatus,
 };
 
-use kanidm_hsm_crypto::{BoxedDynTpm, HmacKey, MachineKey, Tpm};
+use kanidm_hsm_crypto::BoxedDynTpm;
 
 use tokio::sync::broadcast;
 
 const NXCACHE_SIZE: NonZeroUsize = unsafe { NonZeroUsize::new_unchecked(128) };
 
-#[derive(Debug, Clone)]
-enum CacheState {
-    Online,
-    Offline,
-    OfflineNextCheck(SystemTime),
-}
-
-#[derive(Debug)]
 pub enum AuthSession {
-    InProgress {
+    Online {
+        client: Arc<dyn IdProvider + Sync + Send>,
         account_id: String,
         id: Id,
         token: Option<Box<UserToken>>,
-        online_at_init: bool,
         cred_handler: AuthCredHandler,
         /// Some authentication operations may need to spawn background tasks. These tasks need
         /// to know when to stop as the caller has disconnected. This reciever allows that, so
         /// that tasks which .resubscribe() to this channel can then select! on it and be notified
         /// when they need to stop.
         shutdown_rx: broadcast::Receiver<()>,
+    },
+    Offline {
+        client: Arc<dyn IdProvider + Sync + Send>,
+        token: Box<UserToken>,
+        cred_handler: AuthCredHandler,
     },
     Success,
     Denied,
@@ -64,17 +66,16 @@ pub struct Resolver {
     // Generic / modular types.
     db: Db,
     hsm: Mutex<BoxedDynTpm>,
-    machine_key: MachineKey,
-    hmac_key: HmacKey,
 
     // A local passwd/shadow resolver.
-    nxset: Mutex<HashSet<Id>>,
+    system_provider: Arc<SystemProvider>,
 
-    // A set of remote resolvers
-    client: Box<dyn IdProvider + Sync + Send>,
+    // client: Box<dyn IdProvider + Sync + Send>,
+    client_ids: HashMap<ProviderOrigin, Arc<dyn IdProvider + Sync + Send>>,
 
-    // Types to update still.
-    state: Mutex<CacheState>,
+    // A set of remote resolvers, ordered by priority.
+    clients: Vec<Arc<dyn IdProvider + Sync + Send>>,
+
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
     default_shell: String,
@@ -83,7 +84,6 @@ pub struct Resolver {
     home_alias: Option<HomeAttr>,
     uid_attr_map: UidAttr,
     gid_attr_map: UidAttr,
-    allow_id_overrides: HashSet<Id>,
     nxcache: Mutex<LruCache<Id, SystemTime>>,
 }
 
@@ -100,10 +100,9 @@ impl Resolver {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
         db: Db,
-        client: Box<dyn IdProvider + Sync + Send>,
+        system_provider: Arc<SystemProvider>,
+        client: Arc<dyn IdProvider + Sync + Send>,
         hsm: BoxedDynTpm,
-        machine_key: MachineKey,
-        // cache timeout
         timeout_seconds: u64,
         pam_allow_groups: Vec<String>,
         default_shell: String,
@@ -112,69 +111,28 @@ impl Resolver {
         home_alias: Option<HomeAttr>,
         uid_attr_map: UidAttr,
         gid_attr_map: UidAttr,
-        allow_id_overrides: Vec<String>,
     ) -> Result<Self, ()> {
         let hsm = Mutex::new(hsm);
-        let mut hsm_lock = hsm.lock().await;
-
-        // Setup our internal keys
-        let mut dbtxn = db.write().await;
-
-        let loadable_hmac_key = match dbtxn.get_hsm_hmac_key() {
-            Ok(Some(hmk)) => hmk,
-            Ok(None) => {
-                // generate a new key.
-                let loadable_hmac_key = hsm_lock.hmac_key_create(&machine_key).map_err(|err| {
-                    error!(?err, "Unable to create hmac key");
-                })?;
-
-                dbtxn
-                    .insert_hsm_hmac_key(&loadable_hmac_key)
-                    .map_err(|err| {
-                        error!(?err, "Unable to persist hmac key");
-                    })?;
-
-                loadable_hmac_key
-            }
-            Err(err) => {
-                error!(?err, "Unable to retrieve loadable hmac key from db");
-                return Err(());
-            }
-        };
-
-        let hmac_key = hsm_lock
-            .hmac_key_load(&machine_key, &loadable_hmac_key)
-            .map_err(|err| {
-                error!(?err, "Unable to load hmac key");
-            })?;
-
-        // Ask the client what keys it wants the HSM to configure.
-
-        let result = client
-            .configure_hsm_keys(&mut (&mut dbtxn).into(), hsm_lock.deref_mut(), &machine_key)
-            .await;
-
-        drop(hsm_lock);
-
-        result.map_err(|err| {
-            error!(?err, "Client was unable to configure hsm keys");
-        })?;
-
-        dbtxn.commit().map_err(|_| ())?;
 
         if pam_allow_groups.is_empty() {
             warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
         }
+
+        let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
+
+        let client_ids: HashMap<_, _> = clients
+            .iter()
+            .map(|provider| (provider.origin(), provider.clone()))
+            .collect();
 
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok(Resolver {
             db,
             hsm,
-            machine_key,
-            hmac_key,
-            client,
-            state: Mutex::new(CacheState::OfflineNextCheck(SystemTime::now())),
+            system_provider,
+            clients,
+            client_ids,
             timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
             default_shell,
@@ -183,30 +141,23 @@ impl Resolver {
             home_alias,
             uid_attr_map,
             gid_attr_map,
-            allow_id_overrides: allow_id_overrides.into_iter().map(Id::Name).collect(),
-            nxset: Mutex::new(HashSet::new()),
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
+            // system_identities,
         })
     }
 
-    async fn get_cachestate(&self) -> CacheState {
-        let g = self.state.lock().await;
-        (*g).clone()
+    #[instrument(level = "debug", skip_all)]
+    pub async fn mark_next_check_now(&self, now: SystemTime) {
+        for c in self.clients.iter() {
+            c.mark_next_check(now).await;
+        }
     }
 
-    async fn set_cachestate(&self, state: CacheState) {
-        let mut g = self.state.lock().await;
-        *g = state;
-    }
-
-    // Need a way to mark online/offline.
-    pub async fn attempt_online(&self) {
-        self.set_cachestate(CacheState::OfflineNextCheck(SystemTime::now()))
-            .await;
-    }
-
+    #[instrument(level = "debug", skip_all)]
     pub async fn mark_offline(&self) {
-        self.set_cachestate(CacheState::Offline).await;
+        for c in self.clients.iter() {
+            c.mark_offline().await;
+        }
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -249,26 +200,8 @@ impl Resolver {
         nxcache_txn.get(id).copied()
     }
 
-    pub async fn reload_nxset(&self, iter: impl Iterator<Item = (String, u32)>) {
-        let mut nxset_txn = self.nxset.lock().await;
-        nxset_txn.clear();
-        for (name, gid) in iter {
-            let name = Id::Name(name);
-            let gid = Id::Gid(gid);
-
-            // Skip anything that the admin opted in to
-            if !(self.allow_id_overrides.contains(&gid) || self.allow_id_overrides.contains(&name))
-            {
-                debug!("Adding {:?}:{:?} to resolver exclusion set", name, gid);
-                nxset_txn.insert(name);
-                nxset_txn.insert(gid);
-            }
-        }
-    }
-
-    pub async fn check_nxset(&self, name: &str, idnumber: u32) -> bool {
-        let nxset_txn = self.nxset.lock().await;
-        nxset_txn.contains(&Id::Gid(idnumber)) || nxset_txn.contains(&Id::Name(name.to_string()))
+    pub async fn reload_system_identities(&self, users: Vec<EtcUser>, groups: Vec<EtcGroup>) {
+        self.system_provider.reload(users, groups).await
     }
 
     async fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UserToken>), ()> {
@@ -401,15 +334,6 @@ impl Resolver {
             token.shell = Some(self.default_shell.clone())
         }
 
-        // Filter out groups that are in the nxset
-        {
-            let nxset_txn = self.nxset.lock().await;
-            token.groups.retain(|g| {
-                !(nxset_txn.contains(&Id::Gid(g.gidnumber))
-                    || nxset_txn.contains(&Id::Name(g.name.clone())))
-            });
-        }
-
         let mut dbtxn = self.db.write().await;
         token
             .groups
@@ -456,87 +380,70 @@ impl Resolver {
             .map_err(|_| ())
     }
 
-    async fn set_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<(), ()> {
-        let mut dbtxn = self.db.write().await;
-        let mut hsm_txn = self.hsm.lock().await;
-        dbtxn
-            .update_account_password(a_uuid, cred, hsm_txn.deref_mut(), &self.hmac_key)
-            .and_then(|x| dbtxn.commit().map(|_| x))
-            .map_err(|_| ())
-    }
-
-    async fn check_cache_userpassword(&self, a_uuid: Uuid, cred: &str) -> Result<bool, ()> {
-        let mut dbtxn = self.db.write().await;
-        let mut hsm_txn = self.hsm.lock().await;
-        dbtxn
-            .check_account_password(a_uuid, cred, hsm_txn.deref_mut(), &self.hmac_key)
-            .and_then(|x| dbtxn.commit().map(|_| x))
-            .map_err(|_| ())
-    }
-
     async fn refresh_usertoken(
         &self,
         account_id: &Id,
         token: Option<UserToken>,
     ) -> Result<Option<UserToken>, ()> {
+        // TODO: Move this to the caller.
+        let now = SystemTime::now();
+
         let mut hsm_lock = self.hsm.lock().await;
 
-        let user_get_result = self
-            .client
-            .unix_user_get(
-                account_id,
-                token.as_ref(),
-                hsm_lock.deref_mut(),
-                &self.machine_key,
-            )
-            .await;
+        let user_get_result = if let Some(tok) = token.as_ref() {
+            // Re-use the provider that the token is from.
+            match self.client_ids.get(&tok.provider) {
+                Some(client) => {
+                    client
+                        .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut(), now)
+                        .await
+                }
+                None => {
+                    error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
+                    // We don't know if this is permanent or transient, so just useCached, unless
+                    // the admin clears tokens from providers that are no longer present.
+                    Ok(UserTokenState::UseCached)
+                }
+            }
+        } else {
+            // We've never seen it before, so iterate over the providers in priority order.
+            'search: {
+                for client in self.clients.iter() {
+                    match client
+                        .unix_user_get(account_id, token.as_ref(), hsm_lock.deref_mut(), now)
+                        .await
+                    {
+                        // Ignore this one.
+                        Ok(UserTokenState::NotFound) => {}
+                        result => break 'search result,
+                    }
+                }
+                break 'search Ok(UserTokenState::NotFound);
+            }
+        };
 
         drop(hsm_lock);
 
         match user_get_result {
-            Ok(mut n_tok) => {
-                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
-                    // Refuse to release the token, it's in the denied set.
-                    debug!(
-                        "Account {:?} is in denied set, refusing to release token. It may need to be in the allow_local_account_override configuration list.",
-                        account_id
-                    );
-                    self.delete_cache_usertoken(n_tok.uuid).await?;
-                    Ok(None)
-                } else {
-                    // We have the token!
-                    self.set_cache_usertoken(&mut n_tok).await?;
-                    Ok(Some(n_tok))
-                }
+            Ok(UserTokenState::Update(mut n_tok)) => {
+                // We have the token!
+                self.set_cache_usertoken(&mut n_tok).await?;
+                Ok(Some(n_tok))
             }
-            Err(IdpError::Transport) => {
-                error!("transport error, moving to offline");
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                Ok(token)
-            }
-            Err(IdpError::ProviderUnauthorised) => {
-                // Something went wrong, mark offline to force a re-auth ASAP.
-                let time = SystemTime::now().sub(Duration::from_secs(1));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                Ok(token)
-            }
-            Err(IdpError::NotFound) => {
-                // We were able to contact the server but the entry has been removed, or
-                // is not longer a valid posix account.
+            Ok(UserTokenState::NotFound) => {
+                // It previously existed, so now purge it.
                 if let Some(tok) = token {
                     self.delete_cache_usertoken(tok.uuid).await?;
                 };
                 // Cache the NX here.
                 self.set_nxcache(account_id).await;
-
                 Ok(None)
             }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => {
-                // Some other transient error, continue with the token.
+            Ok(UserTokenState::UseCached) => Ok(token),
+            Err(err) => {
+                // Something went wrong, we don't know what, but lets return the token
+                // anyway.
+                error!(?err);
                 Ok(token)
             }
         }
@@ -547,43 +454,51 @@ impl Resolver {
         grp_id: &Id,
         token: Option<GroupToken>,
     ) -> Result<Option<GroupToken>, ()> {
+        // TODO: Move this to the caller.
+        let now = SystemTime::now();
+
         let mut hsm_lock = self.hsm.lock().await;
 
-        let group_get_result = self
-            .client
-            .unix_group_get(grp_id, hsm_lock.deref_mut())
-            .await;
+        let group_get_result = if let Some(tok) = token.as_ref() {
+            // Re-use the provider that the token is from.
+            match self.client_ids.get(&tok.provider) {
+                Some(client) => {
+                    client
+                        .unix_group_get(grp_id, hsm_lock.deref_mut(), now)
+                        .await
+                }
+                None => {
+                    error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
+                    // We don't know if this is permanent or transient, so just useCached, unless
+                    // the admin clears tokens from providers that are no longer present.
+                    Ok(GroupTokenState::UseCached)
+                }
+            }
+        } else {
+            // We've never seen it before, so iterate over the providers in priority order.
+            'search: {
+                for client in self.clients.iter() {
+                    match client
+                        .unix_group_get(grp_id, hsm_lock.deref_mut(), now)
+                        .await
+                    {
+                        // Ignore this one.
+                        Ok(GroupTokenState::NotFound) => {}
+                        result => break 'search result,
+                    }
+                }
+                break 'search Ok(GroupTokenState::NotFound);
+            }
+        };
 
         drop(hsm_lock);
 
         match group_get_result {
-            Ok(n_tok) => {
-                if self.check_nxset(&n_tok.name, n_tok.gidnumber).await {
-                    // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_grouptoken(n_tok.uuid).await?;
-                    Ok(None)
-                } else {
-                    // We have the token!
-                    self.set_cache_grouptoken(&n_tok).await?;
-                    Ok(Some(n_tok))
-                }
+            Ok(GroupTokenState::Update(n_tok)) => {
+                self.set_cache_grouptoken(&n_tok).await?;
+                Ok(Some(n_tok))
             }
-            Err(IdpError::Transport) => {
-                error!("transport error, moving to offline");
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                Ok(token)
-            }
-            Err(IdpError::ProviderUnauthorised) => {
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                Ok(token)
-            }
-            Err(IdpError::NotFound) => {
+            Ok(GroupTokenState::NotFound) => {
                 if let Some(tok) = token {
                     self.delete_cache_grouptoken(tok.uuid).await?;
                 };
@@ -591,58 +506,28 @@ impl Resolver {
                 self.set_nxcache(grp_id).await;
                 Ok(None)
             }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => {
+            Ok(GroupTokenState::UseCached) => Ok(token),
+            Err(err) => {
                 // Some other transient error, continue with the token.
+                error!(?err);
                 Ok(token)
             }
         }
     }
 
     #[instrument(level = "debug", skip(self))]
-    async fn get_usertoken(&self, account_id: Id) -> Result<Option<UserToken>, ()> {
+    async fn get_usertoken(&self, account_id: &Id) -> Result<Option<UserToken>, ()> {
         // get the item from the cache
-        let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
+        let (expired, item) = self.get_cached_usertoken(account_id).await.map_err(|e| {
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
-        let state = self.get_cachestate().await;
-
-        match (expired, state) {
-            (_, CacheState::Offline) => {
-                debug!("offline, returning cached item");
-                Ok(item)
-            }
-            (false, CacheState::OfflineNextCheck(time)) => {
-                debug!(
-                    "offline valid, next check {:?}, returning cached item",
-                    time
-                );
-                // Still valid within lifetime, return.
-                Ok(item)
-            }
-            (false, CacheState::Online) => {
-                debug!("online valid, returning cached item");
-                // Still valid within lifetime, return.
-                Ok(item)
-            }
-            (true, CacheState::OfflineNextCheck(time)) => {
-                debug!("offline expired, next check {:?}, refresh cache", time);
-                // Attempt to refresh the item
-                // Return it.
-                if SystemTime::now() >= time && self.test_connection().await {
-                    // We brought ourselves online, lets go
-                    self.refresh_usertoken(&account_id, item).await
-                } else {
-                    // Unable to bring up connection, return cache.
-                    Ok(item)
-                }
-            }
-            (true, CacheState::Online) => {
-                debug!("online expired, refresh cache");
-                // Attempt to refresh the item
-                // Return it.
-                self.refresh_usertoken(&account_id, item).await
-            }
+        // If the token isn't found, get_cached will set expired = true.
+        if expired {
+            self.refresh_usertoken(account_id, item).await
+        } else {
+            // Still valid, return the cached entry.
+            Ok(item)
         }
         .map(|t| {
             debug!("token -> {:?}", t);
@@ -656,45 +541,16 @@ impl Resolver {
             debug!("get_grouptoken error -> {:?}", e);
         })?;
 
-        let state = self.get_cachestate().await;
-
-        match (expired, state) {
-            (_, CacheState::Offline) => {
-                debug!("offline, returning cached item");
-                Ok(item)
-            }
-            (false, CacheState::OfflineNextCheck(time)) => {
-                debug!(
-                    "offline valid, next check {:?}, returning cached item",
-                    time
-                );
-                // Still valid within lifetime, return.
-                Ok(item)
-            }
-            (false, CacheState::Online) => {
-                debug!("online valid, returning cached item");
-                // Still valid within lifetime, return.
-                Ok(item)
-            }
-            (true, CacheState::OfflineNextCheck(time)) => {
-                debug!("offline expired, next check {:?}, refresh cache", time);
-                // Attempt to refresh the item
-                // Return it.
-                if SystemTime::now() >= time && self.test_connection().await {
-                    // We brought ourselves online, lets go
-                    self.refresh_grouptoken(&grp_id, item).await
-                } else {
-                    // Unable to bring up connection, return cache.
-                    Ok(item)
-                }
-            }
-            (true, CacheState::Online) => {
-                debug!("online expired, refresh cache");
-                // Attempt to refresh the item
-                // Return it.
-                self.refresh_grouptoken(&grp_id, item).await
-            }
+        if expired {
+            self.refresh_grouptoken(&grp_id, item).await
+        } else {
+            // Still valid, return the cached entry.
+            Ok(item)
         }
+        .map(|t| {
+            debug!("token -> {:?}", t);
+            t
+        })
     }
 
     async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
@@ -711,7 +567,9 @@ impl Resolver {
     // Get ssh keys for an account id
     #[instrument(level = "debug", skip(self))]
     pub async fn get_sshkeys(&self, account_id: &str) -> Result<Vec<String>, ()> {
-        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
+        let token = self
+            .get_usertoken(&Id::Name(account_id.to_string()))
+            .await?;
         Ok(token
             .map(|t| {
                 // Only return keys if the account is valid
@@ -768,24 +626,37 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     pub async fn get_nssaccounts(&self) -> Result<Vec<NssUser>, ()> {
-        self.get_cached_usertokens().await.map(|l| {
-            l.into_iter()
-                .map(|tok| NssUser {
-                    homedir: self.token_abs_homedirectory(&tok),
-                    name: self.token_uidattr(&tok),
-                    gid: tok.gidnumber,
-                    gecos: tok.displayname,
-                    shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
-                })
-                .collect()
-        })
+        // We don't need to filter the cached tokens as the cache shouldn't
+        // have anything that collides with system.
+        let system_nss_users = self.system_provider.get_nssaccounts().await;
+
+        let cached = self.get_cached_usertokens().await?;
+
+        Ok(system_nss_users
+            .into_iter()
+            .chain(cached.into_iter().map(|tok| NssUser {
+                homedir: self.token_abs_homedirectory(&tok),
+                name: self.token_uidattr(&tok),
+                uid: tok.gidnumber,
+                gid: tok.gidnumber,
+                gecos: tok.displayname,
+                shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
+            }))
+            .collect())
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn get_nssaccount(&self, account_id: Id) -> Result<Option<NssUser>, ()> {
-        let token = self.get_usertoken(account_id).await?;
+        if let Some(nss_user) = self.system_provider.get_nssaccount(&account_id).await {
+            debug!("system provider satisfied request");
+            return Ok(Some(nss_user));
+        }
+
+        let token = self.get_usertoken(&account_id).await?;
         Ok(token.map(|tok| NssUser {
             homedir: self.token_abs_homedirectory(&tok),
             name: self.token_uidattr(&tok),
+            uid: tok.gidnumber,
             gid: tok.gidnumber,
             gecos: tok.displayname,
             shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
@@ -813,8 +684,10 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
+        let mut r = self.system_provider.get_nssgroups().await;
+
         let l = self.get_cached_grouptokens().await?;
-        let mut r: Vec<_> = Vec::with_capacity(l.len());
+        r.reserve(l.len());
         for tok in l.into_iter() {
             let members = self.get_groupmembers(tok.uuid).await;
             r.push(NssGroup {
@@ -827,6 +700,11 @@ impl Resolver {
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
+        if let Some(nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
+            debug!("system provider satisfied request");
+            return Ok(Some(nss_group));
+        }
+
         let token = self.get_grouptoken(grp_id).await?;
         // Get members set.
         match token {
@@ -854,7 +732,9 @@ impl Resolver {
 
     #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
-        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
+        let token = self
+            .get_usertoken(&Id::Name(account_id.to_string()))
+            .await?;
 
         if self.pam_allow_groups.is_empty() {
             // can't allow anything if the group list is zero...
@@ -874,7 +754,7 @@ impl Resolver {
                 );
                 let intersection_count = user_set.intersection(&self.pam_allow_groups).count();
                 debug!("Number of intersecting groups: {}", intersection_count);
-                debug!("User has valid token: {}", tok.valid);
+                debug!("User token is valid: {}", tok.valid);
 
                 intersection_count > 0 && tok.valid
             }))
@@ -892,67 +772,133 @@ impl Resolver {
         // weird interactions - they should assume online/offline only for
         // the duration of their operation. A failure of connectivity during
         // an online operation will take the cache offline however.
+        let now = SystemTime::now();
 
         let id = Id::Name(account_id.to_string());
-        let (_expired, token) = self.get_cached_usertoken(&id).await?;
-        let state = self.get_cachestate().await;
 
-        let online_at_init = if !matches!(state, CacheState::Online) {
-            // Attempt a cache online.
-            self.test_connection().await
-        } else {
-            true
-        };
+        if self.system_provider.contains_account(&id).await {
+            debug!("Ignoring auth request for system user");
+            return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+        }
 
-        let maybe_err = if online_at_init {
-            let mut hsm_lock = self.hsm.lock().await;
-            let mut dbtxn = self.db.write().await;
+        let token = self.get_usertoken(&id).await?;
 
-            self.client
-                .unix_user_online_auth_init(
-                    account_id,
-                    token.as_ref(),
-                    &mut (&mut dbtxn).into(),
-                    hsm_lock.deref_mut(),
-                    &self.machine_key,
-                    &shutdown_rx,
-                )
-                .await
-        } else {
-            let mut dbtxn = self.db.write().await;
+        // Get the provider associated to this token.
 
-            // Can the auth proceed offline?
-            self.client
-                .unix_user_offline_auth_init(account_id, token.as_ref(), &mut (&mut dbtxn).into())
-                .await
-        };
+        let mut hsm_lock = self.hsm.lock().await;
 
-        match maybe_err {
-            Ok((next_req, cred_handler)) => {
-                let auth_session = AuthSession::InProgress {
-                    account_id: account_id.to_string(),
-                    id,
-                    token: token.map(Box::new),
-                    online_at_init,
-                    cred_handler,
-                    shutdown_rx,
-                };
+        // We don't care if we are expired - we will always attempt to go
+        // online and perform this operation online if possible.
 
-                // Now identify what credentials are needed next. The auth session tells
-                // us this.
+        if let Some(token) = token {
+            // We have a token, we know what provider is needed
+            let client = self.client_ids.get(&token.provider)
+                .cloned()
+                .ok_or_else(|| {
+                    error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
+                })?;
 
-                Ok((auth_session, next_req.into()))
-            }
-            Err(IdpError::NotFound) => Ok((AuthSession::Denied, PamAuthResponse::Unknown)),
-            Err(IdpError::ProviderUnauthorised) | Err(IdpError::Transport) => {
-                error!("transport error, moving to offline");
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
+            let online_at_init = client.attempt_online(hsm_lock.deref_mut(), now).await;
+            // if we are online, we try and start an online auth.
+            debug!(?online_at_init);
+
+            if online_at_init {
+                let init_result = client
+                    .unix_user_online_auth_init(
+                        account_id,
+                        &token,
+                        hsm_lock.deref_mut(),
+                        &shutdown_rx,
+                    )
                     .await;
-                Err(())
+
+                match init_result {
+                    Ok((next_req, cred_handler)) => {
+                        let auth_session = AuthSession::Online {
+                            client,
+                            account_id: account_id.to_string(),
+                            id,
+                            token: Some(Box::new(token)),
+                            cred_handler,
+                            shutdown_rx,
+                        };
+                        Ok((auth_session, next_req.into()))
+                    }
+                    Err(err) => {
+                        error!(?err, "Unable to start authentication");
+                        Err(())
+                    }
+                }
+            } else {
+                // Can the auth proceed offline?
+                let init_result = client.unix_user_offline_auth_init(&token).await;
+
+                match init_result {
+                    Ok((next_req, cred_handler)) => {
+                        let auth_session = AuthSession::Offline {
+                            client,
+                            token: Box::new(token),
+                            cred_handler,
+                        };
+                        Ok((auth_session, next_req.into()))
+                    }
+                    Err(err) => {
+                        error!(?err, "Unable to start authentication");
+                        Err(())
+                    }
+                }
             }
-            Err(IdpError::BadRequest) | Err(IdpError::KeyStore) | Err(IdpError::Tpm) => Err(()),
+        } else {
+            // We don't know anything about this user. Can we try to auth them?
+
+            // TODO: If any provider is offline should we fail the auth? I can imagine a possible
+            // issue where if we had provides A, B, C stacked, and A was offline, then B could
+            // service an auth that A *should* have serviced.
+
+            for client in self.clients.iter() {
+                let online_at_init = client.attempt_online(hsm_lock.deref_mut(), now).await;
+                debug!(?online_at_init);
+
+                if !online_at_init {
+                    warn!(?account_id, "Unable to proceed with authentication, all providers must be online for unknown user authentication.");
+                    return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+                }
+            }
+
+            for client in self.clients.iter() {
+                let init_result = client
+                    .unix_unknown_user_online_auth_init(
+                        account_id,
+                        hsm_lock.deref_mut(),
+                        &shutdown_rx,
+                    )
+                    .await;
+
+                match init_result {
+                    Ok(Some((next_req, cred_handler))) => {
+                        let auth_session = AuthSession::Online {
+                            client: client.clone(),
+                            account_id: account_id.to_string(),
+                            id,
+                            token: None,
+                            cred_handler,
+                            shutdown_rx,
+                        };
+                        return Ok((auth_session, next_req.into()));
+                    }
+                    Ok(None) => {
+                        // Not for us, check the next provider.
+                    }
+                    Err(err) => {
+                        error!(?err, "Unable to start authentication");
+                        return Err(());
+                    }
+                }
+            }
+
+            // No module signaled that they want it, bail.
+            warn!("No provider is willing to service authentication of unknown account.");
+            Ok((AuthSession::Denied, PamAuthResponse::Unknown))
         }
     }
 
@@ -962,194 +908,63 @@ impl Resolver {
         auth_session: &mut AuthSession,
         pam_next_req: PamAuthRequest,
     ) -> Result<PamAuthResponse, ()> {
-        let state = self.get_cachestate().await;
-
-        let maybe_err = match (&mut *auth_session, state) {
-            (
-                &mut AuthSession::InProgress {
-                    ref account_id,
-                    id: _,
-                    token: _,
-                    online_at_init: true,
-                    ref mut cred_handler,
-                    ref shutdown_rx,
-                },
-                CacheState::Online,
-            ) => {
+        let maybe_err = match &mut *auth_session {
+            &mut AuthSession::Online {
+                ref client,
+                ref account_id,
+                id: _,
+                token: _,
+                ref mut cred_handler,
+                ref shutdown_rx,
+            } => {
                 let mut hsm_lock = self.hsm.lock().await;
-                let mut dbtxn = self.db.write().await;
-
-                let maybe_cache_action = self
-                    .client
+                client
                     .unix_user_online_auth_step(
                         account_id,
                         cred_handler,
                         pam_next_req,
-                        &mut (&mut dbtxn).into(),
                         hsm_lock.deref_mut(),
-                        &self.machine_key,
                         shutdown_rx,
                     )
-                    .await;
-
-                drop(hsm_lock);
-                dbtxn.commit().map_err(|_| ())?;
-
-                match maybe_cache_action {
-                    Ok((res, AuthCacheAction::None)) => Ok(res),
-                    Ok((
-                        AuthResult::Success { token },
-                        AuthCacheAction::PasswordHashUpdate { cred },
-                    )) => {
-                        // Might need a rework with the tpm code.
-                        self.set_cache_userpassword(token.uuid, &cred).await?;
-                        Ok(AuthResult::Success { token })
-                    }
-                    // I think this state is actually invalid?
-                    Ok((_, AuthCacheAction::PasswordHashUpdate { .. })) => {
-                        // Ok(res)
-                        error!("provider gave back illogical password hash update with a nonsuccess condition");
-                        Err(IdpError::BadRequest)
-                    }
-                    Err(e) => Err(e),
-                }
+                    .await
             }
-            /*
-            (
-                &mut AuthSession::InProgress {
-                    account_id: _,
-                    id: _,
-                    token: _,
-                    online_at_init: true,
-                    cred_handler: _,
-                },
-                _,
-            ) => {
-                // Fail, we went offline.
-                error!("Unable to proceed with authentication, resolver has gone offline");
-                Err(IdpError::Transport)
-            }
-            */
-            (
-                &mut AuthSession::InProgress {
-                    ref account_id,
-                    id: _,
-                    token: Some(ref token),
-                    online_at_init,
-                    ref mut cred_handler,
-                    // Only need in online auth.
-                    shutdown_rx: _,
-                },
-                _,
-            ) => {
+            &mut AuthSession::Offline {
+                ref client,
+                ref token,
+                ref mut cred_handler,
+            } => {
                 // We are offline, continue. Remember, authsession should have
                 // *everything you need* to proceed here!
-                //
-                // Rather than calling client, should this actually be self
-                // contained to the resolver so that it has generic offline-paths
-                // that are possible?
-                match (&cred_handler, &pam_next_req) {
-                    (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
-                        match self.check_cache_userpassword(token.uuid, cred).await {
-                            Ok(true) => Ok(AuthResult::Success {
-                                token: *token.clone(),
-                            }),
-                            Ok(false) => Ok(AuthResult::Denied),
-                            Err(()) => {
-                                // We had a genuine backend error of some description.
-                                return Err(());
-                            }
-                        }
-                    }
-                    (AuthCredHandler::Password, _) => {
-                        // AuthCredHandler::Password is only valid with a cred provided
-                        return Err(());
-                    }
-                    (AuthCredHandler::DeviceAuthorizationGrant, _) => {
-                        // AuthCredHandler::DeviceAuthorizationGrant is invalid for offline auth
-                        return Err(());
-                    }
-                    (AuthCredHandler::MFA { .. }, _) => {
-                        // AuthCredHandler::MFA is invalid for offline auth
-                        return Err(());
-                    }
-                    (AuthCredHandler::SetupPin, _) => {
-                        // AuthCredHandler::SetupPin is invalid for offline auth
-                        return Err(());
-                    }
-                    (AuthCredHandler::Pin, PamAuthRequest::Pin { .. }) => {
-                        // The Pin acts as a single device password, and can be
-                        // used to unlock the TPM to validate the authentication.
-                        let mut hsm_lock = self.hsm.lock().await;
-                        let mut dbtxn = self.db.write().await;
-
-                        let auth_result = self
-                            .client
-                            .unix_user_offline_auth_step(
-                                account_id,
-                                token,
-                                cred_handler,
-                                pam_next_req,
-                                &mut (&mut dbtxn).into(),
-                                hsm_lock.deref_mut(),
-                                &self.machine_key,
-                                online_at_init,
-                            )
-                            .await;
-
-                        drop(hsm_lock);
-                        dbtxn.commit().map_err(|_| ())?;
-
-                        auth_result
-                    }
-                    (AuthCredHandler::Pin, _) => {
-                        // AuthCredHandler::Pin is only valid with a cred provided
-                        return Err(());
-                    }
-                }
+                let mut hsm_lock = self.hsm.lock().await;
+                client
+                    .unix_user_offline_auth_step(
+                        token,
+                        cred_handler,
+                        pam_next_req,
+                        hsm_lock.deref_mut(),
+                    )
+                    .await
             }
-            (&mut AuthSession::InProgress { token: None, .. }, _) => {
-                // Can't do much with offline auth when there is no token ...
-                warn!("Unable to proceed with offline auth, no token available");
-                Err(IdpError::NotFound)
-            }
-            (&mut AuthSession::Success, _) | (&mut AuthSession::Denied, _) => {
-                Err(IdpError::BadRequest)
-            }
+            &mut AuthSession::Success | &mut AuthSession::Denied => Err(IdpError::BadRequest),
         };
 
         match maybe_err {
             // What did the provider direct us to do next?
             Ok(AuthResult::Success { mut token }) => {
-                if self.check_nxset(&token.name, token.gidnumber).await {
-                    // Refuse to release the token, it's in the denied set.
-                    self.delete_cache_usertoken(token.uuid).await?;
-                    *auth_session = AuthSession::Denied;
+                debug!("provider authentication success.");
+                self.set_cache_usertoken(&mut token).await?;
+                *auth_session = AuthSession::Success;
 
-                    Ok(PamAuthResponse::Unknown)
-                } else {
-                    debug!("provider authentication success.");
-                    self.set_cache_usertoken(&mut token).await?;
-                    *auth_session = AuthSession::Success;
-
-                    Ok(PamAuthResponse::Success)
-                }
+                Ok(PamAuthResponse::Success)
             }
             Ok(AuthResult::Denied) => {
                 *auth_session = AuthSession::Denied;
+
                 Ok(PamAuthResponse::Denied)
             }
             Ok(AuthResult::Next(req)) => Ok(req.into()),
             Err(IdpError::NotFound) => Ok(PamAuthResponse::Unknown),
-            Err(IdpError::ProviderUnauthorised) | Err(IdpError::Transport) => {
-                error!("transport error, moving to offline");
-                // Something went wrong, mark offline.
-                let time = SystemTime::now().add(Duration::from_secs(15));
-                self.set_cachestate(CacheState::OfflineNextCheck(time))
-                    .await;
-                Err(())
-            }
-            Err(IdpError::KeyStore) | Err(IdpError::BadRequest) | Err(IdpError::Tpm) => Err(()),
+            _ => Err(()),
         }
     }
 
@@ -1227,7 +1042,9 @@ impl Resolver {
         &self,
         account_id: &str,
     ) -> Result<Option<HomeDirectoryInfo>, ()> {
-        let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
+        let token = self
+            .get_usertoken(&Id::Name(account_id.to_string()))
+            .await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
             gid: tok.gidnumber,
             name: self.token_homedirectory_attr(tok),
@@ -1238,43 +1055,37 @@ impl Resolver {
         }))
     }
 
+    pub async fn provider_status(&self) -> Vec<ProviderStatus> {
+        let now = SystemTime::now();
+        let mut hsm_lock = self.hsm.lock().await;
+
+        let mut results = Vec::with_capacity(self.clients.len());
+
+        for client in self.clients.iter() {
+            let online = client.attempt_online(hsm_lock.deref_mut(), now).await;
+
+            let name = client.origin().to_string();
+
+            results.push(ProviderStatus { name, online })
+        }
+
+        results
+    }
+
     #[instrument(level = "debug", skip_all)]
     pub async fn test_connection(&self) -> bool {
-        let state = self.get_cachestate().await;
-        match state {
-            CacheState::Offline => {
-                debug!("Offline -> no change");
-                false
-            }
-            CacheState::OfflineNextCheck(_time) => {
-                let mut hsm_lock = self.hsm.lock().await;
+        let now = SystemTime::now();
+        let mut hsm_lock = self.hsm.lock().await;
 
-                let prov_auth_result = self
-                    .client
-                    .provider_authenticate(hsm_lock.deref_mut())
-                    .await;
+        for client in self.clients.iter() {
+            let status = client.attempt_online(hsm_lock.deref_mut(), now).await;
 
-                drop(hsm_lock);
-
-                match prov_auth_result {
-                    Ok(()) => {
-                        debug!("OfflineNextCheck -> authenticated");
-                        self.set_cachestate(CacheState::Online).await;
-                        true
-                    }
-                    Err(e) => {
-                        debug!("OfflineNextCheck -> disconnected, staying offline. {:?}", e);
-                        let time = SystemTime::now().add(Duration::from_secs(15));
-                        self.set_cachestate(CacheState::OfflineNextCheck(time))
-                            .await;
-                        false
-                    }
-                }
-            }
-            CacheState::Online => {
-                debug!("Online, no change");
-                true
+            if !status {
+                return false;
             }
         }
+
+        // All online
+        true
     }
 }

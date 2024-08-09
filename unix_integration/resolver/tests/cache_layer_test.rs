@@ -2,7 +2,8 @@
 use std::future::Future;
 use std::pin::Pin;
 use std::sync::atomic::Ordering;
-use std::time::Duration;
+use std::sync::Arc;
+use std::time::{Duration, SystemTime};
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
@@ -10,9 +11,11 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
 use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::interface::Id;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
@@ -101,18 +104,13 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .build()
         .expect("Failed to build client");
 
-    let idprovider = KanidmProvider::new(rsclient);
-
     let db = Db::new(
         "", // The sqlite db path, this is in memory.
     )
     .expect("Failed to setup DB");
 
     let mut dbtxn = db.write().await;
-    dbtxn
-        .migrate()
-        .and_then(|_| dbtxn.commit())
-        .expect("Unable to migrate cache db");
+    dbtxn.migrate().expect("Unable to migrate cache db");
 
     let mut hsm = BoxedDynTpm::new(SoftTpm::new());
 
@@ -123,11 +121,26 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         .machine_key_load(&auth_value, &loadable_machine_key)
         .unwrap();
 
+    let system_provider = SystemProvider::new().unwrap();
+
+    let idprovider = KanidmProvider::new(
+        rsclient,
+        SystemTime::now(),
+        &mut (&mut dbtxn).into(),
+        &mut hsm,
+        &machine_key,
+    )
+    .unwrap();
+
+    drop(machine_key);
+
+    dbtxn.commit().expect("Unable to commit dbtxn");
+
     let cachelayer = Resolver::new(
         db,
-        Box::new(idprovider),
+        Arc::new(system_provider),
+        Arc::new(idprovider),
         hsm,
-        machine_key,
         300,
         vec!["allowed_group".to_string()],
         DEFAULT_SHELL.to_string(),
@@ -136,7 +149,6 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
         DEFAULT_HOME_ALIAS,
         DEFAULT_UID_ATTR_MAP,
         DEFAULT_GID_ATTR_MAP,
-        vec!["masked_group".to_string()],
     )
     .await
     .expect("Failed to build cache layer.");
@@ -231,7 +243,7 @@ async fn test_cache_sshkey() {
     assert!(sk.is_empty());
 
     // Bring ourselves online.
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     let sk = cachelayer
@@ -262,7 +274,7 @@ async fn test_cache_account() {
     assert!(ut.is_none());
 
     // go online
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // get the account
@@ -305,7 +317,7 @@ async fn test_cache_group() {
     assert!(gt.is_none());
 
     // go online. Get the group
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     let gt = cachelayer
         .get_nssgroup_name("testgroup1")
@@ -326,7 +338,7 @@ async fn test_cache_group() {
 
     // clear cache, go online
     assert!(cachelayer.invalidate().await.is_ok());
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // get an account with the group
@@ -361,7 +373,7 @@ async fn test_cache_group() {
 async fn test_cache_group_delete() {
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
     // get the group
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     let gt = cachelayer
         .get_nssgroup_name("testgroup1")
@@ -395,7 +407,7 @@ async fn test_cache_group_delete() {
 async fn test_cache_account_delete() {
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
     // get the account
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     let ut = cachelayer
         .get_nssaccount_name("testaccount1")
@@ -435,7 +447,7 @@ async fn test_cache_account_delete() {
 #[tokio::test]
 async fn test_cache_account_password() {
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     // Test authentication failure.
     let a1 = cachelayer
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
@@ -513,7 +525,7 @@ async fn test_cache_account_password() {
     assert!(a7.is_none());
 
     // go online
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // test auth success
@@ -527,7 +539,7 @@ async fn test_cache_account_password() {
 #[tokio::test]
 async fn test_cache_account_pam_allowed() {
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
 
     // Should fail
     let a1 = cachelayer
@@ -559,7 +571,7 @@ async fn test_cache_account_pam_allowed() {
 #[tokio::test]
 async fn test_cache_account_pam_nonexist() {
     let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
 
     let a1 = cachelayer
         .pam_account_allowed("NO_SUCH_ACCOUNT")
@@ -591,7 +603,7 @@ async fn test_cache_account_pam_nonexist() {
 #[tokio::test]
 async fn test_cache_account_expiry() {
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // We need one good auth first to prime the cache with a hash.
@@ -636,12 +648,13 @@ async fn test_cache_account_expiry() {
     // go offline
     cachelayer.mark_offline().await;
 
-    // Now, check again ...
+    // Now, check again. Since this uses the cached pw and we are offline, this
+    // will now succeed.
     let a4 = cachelayer
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a4 == Some(false));
+    assert!(a4 == Some(true));
 
     // ssh keys should be empty
     let sk = cachelayer
@@ -661,7 +674,7 @@ async fn test_cache_account_expiry() {
 #[tokio::test]
 async fn test_cache_nxcache() {
     let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     // Is it in the nxcache?
 
@@ -737,20 +750,22 @@ async fn test_cache_nxset_account() {
     // Important! This is what sets up that testaccount1 won't be resolved
     // because it's in the "local" user set.
     cachelayer
-        .reload_nxset(vec![("testaccount1".to_string(), 20000)].into_iter())
+        .reload_system_identities(
+            vec![EtcUser {
+                name: "testaccount1".to_string(),
+                uid: 30000,
+                gid: 30000,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
+            }],
+            vec![],
+        )
         .await;
 
-    // Force offline. Show we have no account
-    cachelayer.mark_offline().await;
-
-    let ut = cachelayer
-        .get_nssaccount_name("testaccount1")
-        .await
-        .expect("Failed to get from cache");
-    assert!(ut.is_none());
-
     // go online
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // get the account
@@ -758,7 +773,10 @@ async fn test_cache_nxset_account() {
         .get_nssaccount_name("testaccount1")
         .await
         .expect("Failed to get from cache");
-    assert!(ut.is_none());
+
+    let ut = ut.unwrap();
+    // Assert the user is the system version.
+    assert_eq!(ut.uid, 30000);
 
     // go offline
     cachelayer.mark_offline().await;
@@ -768,14 +786,24 @@ async fn test_cache_nxset_account() {
         .get_nssaccount_name("testaccount1")
         .await
         .expect("Failed to get from cache");
-    assert!(ut.is_none());
 
-    // Finally, check it's not in all accounts.
+    let ut = ut.unwrap();
+    // Assert the user is the system version.
+    assert_eq!(ut.uid, 30000);
+
+    // Finally, check it's the system version in all accounts.
     let us = cachelayer
         .get_nssaccounts()
         .await
         .expect("failed to list all accounts");
-    assert!(us.is_empty());
+
+    let us: Vec<_> = us
+        .into_iter()
+        .filter(|nss_user| nss_user.name == "testaccount1")
+        .collect();
+
+    assert_eq!(us.len(), 1);
+    assert_eq!(us[0].gid, 30000);
 }
 
 #[tokio::test]
@@ -785,25 +813,30 @@ async fn test_cache_nxset_group() {
     // Important! This is what sets up that testgroup1 won't be resolved
     // because it's in the "local" group set.
     cachelayer
-        .reload_nxset(vec![("testgroup1".to_string(), 20001)].into_iter())
+        .reload_system_identities(
+            vec![],
+            vec![EtcGroup {
+                name: "testgroup1".to_string(),
+                // Important! We set the GID to differ from what kanidm stores so we can
+                // tell we got the system version.
+                gid: 30001,
+                password: Default::default(),
+                members: Default::default(),
+            }],
+        )
         .await;
 
-    // Force offline. Show we have no groups.
-    cachelayer.mark_offline().await;
-    let gt = cachelayer
-        .get_nssgroup_name("testgroup1")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_none());
-
     // go online. Get the group
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
     let gt = cachelayer
         .get_nssgroup_name("testgroup1")
         .await
         .expect("Failed to get from cache");
-    assert!(gt.is_none());
+
+    // We get the group, it's the system version. Check the gid.
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 30001);
 
     // go offline. still works
     cachelayer.mark_offline().await;
@@ -811,15 +844,16 @@ async fn test_cache_nxset_group() {
         .get_nssgroup_name("testgroup1")
         .await
         .expect("Failed to get from cache");
-    assert!(gt.is_none());
+
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 30001);
 
     // clear cache, go online
     assert!(cachelayer.invalidate().await.is_ok());
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
-    // get an account with the group
-    // DO NOT get the group yet.
+    // get a kanidm account with the kanidm equivalent group
     let ut = cachelayer
         .get_nssaccount_name("testaccount1")
         .await
@@ -829,56 +863,31 @@ async fn test_cache_nxset_group() {
     // go offline.
     cachelayer.mark_offline().await;
 
-    // show we have the group despite no direct calls
+    // show that the group we have is still the system version, and lacks our
+    // member.
     let gt = cachelayer
         .get_nssgroup_name("testgroup1")
         .await
         .expect("Failed to get from cache");
-    assert!(gt.is_none());
 
-    // Finally, check we only have the upg in the list
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 30001);
+    assert!(gt.members.is_empty());
+
+    // Finally, check we only have the system group version in the list.
     let gs = cachelayer
         .get_nssgroups()
         .await
         .expect("failed to list all groups");
-    assert!(gs.len() == 1);
-    assert!(gs[0].name == "testaccount1@idm.example.com");
-}
 
-#[tokio::test]
-async fn test_cache_nxset_allow_overrides() {
-    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+    let gs: Vec<_> = gs
+        .into_iter()
+        .filter(|nss_group| nss_group.name == "testgroup1")
+        .collect();
 
-    // Important! masked_group is set as an allowed override group even though
-    // it's been "inserted" to the nxset. This means it will still resolve!
-    cachelayer
-        .reload_nxset(vec![("masked_group".to_string(), 20003)].into_iter())
-        .await;
-
-    // Force offline. Show we have no groups.
-    cachelayer.mark_offline().await;
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_none());
-
-    // go online. Get the group
-    cachelayer.attempt_online().await;
-    assert!(cachelayer.test_connection().await);
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_some());
-
-    // go offline. still works
-    cachelayer.mark_offline().await;
-    let gt = cachelayer
-        .get_nssgroup_name("masked_group")
-        .await
-        .expect("Failed to get from cache");
-    assert!(gt.is_some());
+    debug!("{:?}", gs);
+    assert_eq!(gs.len(), 1);
+    assert_eq!(gs[0].gid, 30001);
 }
 
 /// Issue 1830. If cache items expire where we have an account and a group, and we
@@ -892,7 +901,7 @@ async fn test_cache_nxset_allow_overrides() {
 async fn test_cache_group_fk_deferred() {
     let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
 
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // Get the account then the group.
@@ -912,7 +921,7 @@ async fn test_cache_group_fk_deferred() {
     // Invalidate all items.
     cachelayer.mark_offline().await;
     assert!(cachelayer.invalidate().await.is_ok());
-    cachelayer.attempt_online().await;
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // Get the *group*. It *should* still have it's members.

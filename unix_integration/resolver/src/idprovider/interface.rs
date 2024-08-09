@@ -1,11 +1,16 @@
-use crate::db::KeyStoreTxn;
 use async_trait::async_trait;
 use kanidm_unix_common::unix_proto::{
     DeviceAuthorizationResponse, PamAuthRequest, PamAuthResponse,
 };
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::collections::BTreeMap;
+use std::fmt;
+use std::time::SystemTime;
 use tokio::sync::broadcast;
 use uuid::Uuid;
+
+pub type XKeyId = String;
 
 pub use kanidm_hsm_crypto as tpm;
 
@@ -33,20 +38,57 @@ pub enum IdpError {
     Tpm,
 }
 
+pub enum UserTokenState {
+    /// Indicate to the resolver that the cached UserToken should be used, if present.
+    UseCached,
+    /// The requested entity is not found, or has been removed.
+    NotFound,
+
+    /// Update the cache state with the data found in this UserToken.
+    Update(UserToken),
+}
+
+pub enum GroupTokenState {
+    /// Indicate to the resolver that the cached GroupToken should be used, if present.
+    UseCached,
+    /// The requested entity is not found, or has been removed.
+    NotFound,
+
+    /// Update the cache state with the data found in this GroupToken.
+    Update(GroupToken),
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Id {
     Name(String),
     Gid(u32),
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+#[derive(Debug, Serialize, Deserialize, Clone, Default, Eq, PartialEq, Hash)]
 pub enum ProviderOrigin {
     // To allow transition, we have an ignored type that effectively
     // causes these items to be nixed.
     #[default]
     Ignore,
-    Files,
+    /// Provided by /etc/passwd or /etc/group
+    System,
     Kanidm,
+}
+
+impl fmt::Display for ProviderOrigin {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ProviderOrigin::Ignore => {
+                write!(f, "Ignored")
+            }
+            ProviderOrigin::System => {
+                write!(f, "System")
+            }
+            ProviderOrigin::Kanidm => {
+                write!(f, "Kanidm")
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -57,12 +99,16 @@ pub struct GroupToken {
     pub spn: String,
     pub uuid: Uuid,
     pub gidnumber: u32,
+
+    #[serde(flatten)]
+    pub extra_keys: BTreeMap<XKeyId, Value>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserToken {
     #[serde(default)]
     pub provider: ProviderOrigin,
+
     pub name: String,
     pub spn: String,
     pub uuid: Uuid,
@@ -70,10 +116,16 @@ pub struct UserToken {
     pub displayname: String,
     pub shell: Option<String>,
     pub groups: Vec<GroupToken>,
+
     // Could there be a better type here?
     pub sshkeys: Vec<String>,
     // Defaults to false.
     pub valid: bool,
+
+    // These are opaque extra keys that the provider can interpret for internal
+    // functions.
+    #[serde(flatten)]
+    pub extra_keys: BTreeMap<XKeyId, Value>,
 }
 
 #[derive(Debug)]
@@ -147,22 +199,21 @@ pub enum AuthResult {
     Next(AuthRequest),
 }
 
-pub enum AuthCacheAction {
-    None,
-    PasswordHashUpdate { cred: String },
-}
-
 #[async_trait]
 #[allow(clippy::too_many_arguments)]
 pub trait IdProvider {
-    async fn configure_hsm_keys(
-        &self,
-        _keystore: &mut KeyStoreTxn,
-        _tpm: &mut tpm::BoxedDynTpm,
-        _machine_key: &tpm::MachineKey,
-    ) -> Result<(), IdpError> {
-        Ok(())
-    }
+    /// Retrieve this providers origin
+    fn origin(&self) -> ProviderOrigin;
+
+    /// Attempt to go online *immediately*
+    async fn attempt_online(&self, _tpm: &mut tpm::BoxedDynTpm, _now: SystemTime) -> bool;
+
+    /// Mark that this provider should attempt to go online next time it
+    /// recieves a request
+    async fn mark_next_check(&self, _now: SystemTime);
+
+    /// Force this provider offline immediately.
+    async fn mark_offline(&self);
 
     /// This is similar to a "domain join" process. What do we actually need to pass here
     /// for this to work for kanidm or himmelblau? Should we make it take a generic?
@@ -177,23 +228,19 @@ pub trait IdProvider {
     }
     */
 
-    async fn provider_authenticate(&self, _tpm: &mut tpm::BoxedDynTpm) -> Result<(), IdpError>;
-
     async fn unix_user_get(
         &self,
         _id: &Id,
         _token: Option<&UserToken>,
         _tpm: &mut tpm::BoxedDynTpm,
-        _machine_key: &tpm::MachineKey,
-    ) -> Result<UserToken, IdpError>;
+        _now: SystemTime,
+    ) -> Result<UserTokenState, IdpError>;
 
     async fn unix_user_online_auth_init(
         &self,
         _account_id: &str,
-        _token: Option<&UserToken>,
-        _keystore: &mut KeyStoreTxn,
+        _token: &UserToken,
         _tpm: &mut tpm::BoxedDynTpm,
-        _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
@@ -202,17 +249,20 @@ pub trait IdProvider {
         _account_id: &str,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
-        _machine_key: &tpm::MachineKey,
         _shutdown_rx: &broadcast::Receiver<()>,
-    ) -> Result<(AuthResult, AuthCacheAction), IdpError>;
+    ) -> Result<AuthResult, IdpError>;
+
+    async fn unix_unknown_user_online_auth_init(
+        &self,
+        _account_id: &str,
+        _tpm: &mut tpm::BoxedDynTpm,
+        _shutdown_rx: &broadcast::Receiver<()>,
+    ) -> Result<Option<(AuthRequest, AuthCredHandler)>, IdpError>;
 
     async fn unix_user_offline_auth_init(
         &self,
-        _account_id: &str,
-        _token: Option<&UserToken>,
-        _keystore: &mut KeyStoreTxn,
+        _token: &UserToken,
     ) -> Result<(AuthRequest, AuthCredHandler), IdpError>;
 
     // I thought about this part of the interface a lot. we could have the
@@ -236,19 +286,16 @@ pub trait IdProvider {
     // TPM key.
     async fn unix_user_offline_auth_step(
         &self,
-        _account_id: &str,
         _token: &UserToken,
         _cred_handler: &mut AuthCredHandler,
         _pam_next_req: PamAuthRequest,
-        _keystore: &mut KeyStoreTxn,
         _tpm: &mut tpm::BoxedDynTpm,
-        _machine_key: &tpm::MachineKey,
-        _online_at_init: bool,
     ) -> Result<AuthResult, IdpError>;
 
     async fn unix_group_get(
         &self,
         id: &Id,
         _tpm: &mut tpm::BoxedDynTpm,
-    ) -> Result<GroupToken, IdpError>;
+        _now: SystemTime,
+    ) -> Result<GroupTokenState, IdpError>;
 }

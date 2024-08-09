@@ -1,12 +1,31 @@
+use crate::unix_passwd::{EtcGroup, EtcUser};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NssUser {
     pub name: String,
+    pub uid: u32,
     pub gid: u32,
     pub gecos: String,
     pub homedir: String,
     pub shell: String,
+}
+
+impl<T> From<&T> for NssUser
+where
+    T: AsRef<EtcUser>,
+{
+    fn from(etc_user: &T) -> Self {
+        let etc_user = etc_user.as_ref();
+        NssUser {
+            name: etc_user.name.clone(),
+            uid: etc_user.uid,
+            gid: etc_user.gid,
+            gecos: etc_user.gecos.clone(),
+            homedir: etc_user.homedir.clone(),
+            shell: etc_user.shell.clone(),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -14,6 +33,20 @@ pub struct NssGroup {
     pub name: String,
     pub gid: u32,
     pub members: Vec<String>,
+}
+
+impl<T> From<&T> for NssGroup
+where
+    T: AsRef<EtcGroup>,
+{
+    fn from(etc_group: &T) -> Self {
+        let etc_group = etc_group.as_ref();
+        NssGroup {
+            name: etc_group.name.clone(),
+            gid: etc_group.gid,
+            members: etc_group.members.clone(),
+        }
+    }
 }
 
 /* RFC8628: 3.2. Device Authorization Response */
@@ -112,6 +145,12 @@ impl ClientRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct ProviderStatus {
+    pub name: String,
+    pub online: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientResponse {
     SshKeys(Vec<String>),
     NssAccounts(Vec<NssUser>),
@@ -121,6 +160,8 @@ pub enum ClientResponse {
 
     PamStatus(Option<bool>),
     PamAuthenticateStepResponse(PamAuthResponse),
+
+    ProviderStatus(Vec<ProviderStatus>),
 
     Ok,
     Error,
