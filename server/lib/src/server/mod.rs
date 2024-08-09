@@ -1,6 +1,7 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
+use std::ops::DerefMut;
 use std::str::FromStr;
 use std::sync::Arc;
 
@@ -87,6 +88,7 @@ pub struct SystemConfig {
 pub struct QueryServer {
     phase: Arc<CowCell<ServerPhase>>,
     pub(crate) d_info: Arc<CowCell<DomainInfo>>,
+    pub(crate) write_ops_since_last_repl: Arc<CowCell<u64>>,
     system_config: Arc<CowCell<SystemConfig>>,
     be: Backend,
     schema: Arc<Schema>,
@@ -105,6 +107,7 @@ pub struct QueryServerReadTransaction<'a> {
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
     pub(crate) d_info: CowCellReadTxn<DomainInfo>,
+    pub(crate) write_ops_since_last_repl: CowCellReadTxn<u64>,
     system_config: CowCellReadTxn<SystemConfig>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
@@ -144,6 +147,7 @@ pub struct QueryServerWriteTransaction<'a> {
     trim_cid: Cid,
     pub(crate) be_txn: BackendWriteTransaction<'a>,
     pub(crate) schema: SchemaWriteTransaction<'a>,
+    pub(crate) write_ops_since_last_repl: CowCellWriteTxn<'a, u64>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
     key_providers: KeyProvidersWriteTransaction<'a>,
     // We store a set of flags that indicate we need a reload of
@@ -209,6 +213,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_display_name(&self) -> &str;
 
     fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a>;
+
+    fn get_write_ops_since_last_repl(&mut self) -> u64;
 
     // Because of how borrowck in rust works, if we need to get two inner types we have to get them
     // in a single fn.
@@ -1095,6 +1101,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_domain_display_name(&self) -> &str {
         &self.d_info.d_display
     }
+
+    fn get_write_ops_since_last_repl(&mut self) -> u64 {
+        *self.write_ops_since_last_repl
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -1247,6 +1257,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     fn get_domain_display_name(&self) -> &str {
         &self.d_info.d_display
     }
+
+    fn get_write_ops_since_last_repl(&mut self) -> u64 {
+        *self.write_ops_since_last_repl
+    }
 }
 
 impl QueryServer {
@@ -1288,6 +1302,8 @@ impl QueryServer {
             d_ldap_allow_unix_pw_bind: false,
         }));
 
+        let write_ops_since_last_repl = Arc::new(CowCell::new(0));
+
         let cid = Cid::new_lamport(s_uuid, curtime, &ts_max);
         let cid_max = Arc::new(CowCell::new(cid));
 
@@ -1317,6 +1333,7 @@ impl QueryServer {
         Ok(QueryServer {
             phase,
             d_info,
+            write_ops_since_last_repl,
             system_config,
             be,
             schema: Arc::new(schema),
@@ -1409,6 +1426,7 @@ impl QueryServer {
                 .expect("unable to create backend read transaction"),
             schema,
             d_info: self.d_info.read(),
+            write_ops_since_last_repl: self.write_ops_since_last_repl.read(),
             system_config: self.system_config.read(),
             accesscontrols: self.accesscontrols.read(),
             key_providers: self.key_providers.read(),
@@ -1482,6 +1500,7 @@ impl QueryServer {
 
         let schema_write = self.schema.write();
         let d_info = self.d_info.write();
+        let write_ops_since_last_repl = self.write_ops_since_last_repl.write();
         let system_config = self.system_config.write();
         let phase = self.phase.write();
 
@@ -1504,6 +1523,7 @@ impl QueryServer {
             committed: false,
             phase,
             d_info,
+            write_ops_since_last_repl,
             system_config,
             curtime,
             cid,
@@ -2165,6 +2185,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             committed,
             phase,
             d_info,
+            write_ops_since_last_repl,
             system_config,
             mut be_txn,
             schema,
@@ -2200,6 +2221,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         schema
             .commit()
             .map(|_| d_info.commit())
+            .map(|_| write_ops_since_last_repl.commit())
             .map(|_| system_config.commit())
             .map(|_| phase.commit())
             .map(|_| dyngroup_cache.commit())
@@ -2211,11 +2233,38 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn get_txn_cid(&self) -> &Cid {
         &self.cid
     }
+
+    pub fn increase_write_ops_since_last_repl(&mut self) {
+        *self.write_ops_since_last_repl.deref_mut() += 1;
+    }
+
+    pub fn reset_write_ops_since_last_repl(&mut self) {
+        *self.write_ops_since_last_repl.deref_mut() = 0;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
+
+    #[qs_test]
+    async fn test_write_ops_since_last_repl(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+        server_txn.reset_write_ops_since_last_repl();
+        assert!(server_txn.commit().is_ok());
+
+        let write_ops = server.read().await.get_write_ops_since_last_repl();
+
+        assert_eq!(0, write_ops);
+
+        let mut server_txn = server.write(duration_from_epoch_now()).await;
+
+        server_txn.increase_write_ops_since_last_repl();
+        assert!(server_txn.commit().is_ok());
+
+        let write_ops = server.read().await.get_write_ops_since_last_repl();
+        assert_eq!(1, write_ops);
+    }
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
