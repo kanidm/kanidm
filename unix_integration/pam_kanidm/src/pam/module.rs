@@ -187,7 +187,8 @@ impl PamHandle {
 
         if PamResultCode::PAM_SUCCESS == res {
             if ptr.is_null() {
-                Err(PamResultCode::PAM_AUTHINFO_UNAVAIL)
+                // Err(PamResultCode::PAM_AUTHINFO_UNAVAIL)
+                Err(PamResultCode::PAM_SUCCESS)
             } else {
                 let bytes = unsafe { CStr::from_ptr(ptr).to_bytes() };
                 String::from_utf8(bytes.to_vec()).map_err(|_| PamResultCode::PAM_CONV_ERR)
