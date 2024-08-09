@@ -212,7 +212,7 @@ async fn handle_client(
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client_request");
+        let span = span!(Level::DEBUG, "client_request");
         let _enter = span.enter();
 
         let resp = match req {
