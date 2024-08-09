@@ -52,13 +52,15 @@ You can also configure some unixd-specific options with the file /etc/kanidm/uni
 {{#rustdoc_include ../../../examples/unixd}}
 ```
 
-> **NOTICE:** All users in Kanidm can change their name (and their spn) at any time. If you change
+> [!NOTE]
+>
+> All users in Kanidm can change their name (and their spn) at any time. If you change
 > `home_attr` from `uuid` you _must_ have a plan on how to manage these directory renames in your
 > system. We recommend that you have a stable ID (like the UUID), and symlinks from the name to the
 > UUID folder. Automatic support is provided for this via the unixd tasks daemon, as documented
 > here.
 >
-> **NOTE:** Ubuntu users please see:
+> Ubuntu users please see:
 > [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
 
 You can then check the communication status of the daemon:
@@ -110,13 +112,17 @@ getent group testgroup
 testgroup:x:2439676479:testunix
 ```
 
-> **HINT** Remember to also create a UNIX password with something like
+> [!HINT]
+>
+> Remember to also create a UNIX password with something like
 > `kanidm account posix set_password --name idm_admin demo_user`. Otherwise there will be no
 > credential for the account to authenticate with.
 
 ## PAM
 
-> **WARNING:** Modifications to PAM configuration _may_ leave your system in a state where you are
+> [!WARNING]
+>
+> Modifications to PAM configuration _may_ leave your system in a state where you are
 > unable to login or authenticate. You should always have a recovery shell open while making changes
 > (for example, root), or have access to single-user mode at the machine's console.
 

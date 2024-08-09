@@ -169,7 +169,7 @@ kanidm group create 'grafana_users'
 Setup the claim-map that will set what role each group will map to in Grafana:
 
 ```bash
-kanidmm oauth2 update-claim-map-join 'grafana' 'grafana_role' array
+kanidm system oauth2 update-claim-map-join 'grafana' 'grafana_role' array
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_superadmins' 'GrafanaAdmin'
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_admins' 'Admin'
 kanidm system oauth2 update-claim-map 'grafana' 'grafana_role' 'grafana_editors' 'Editor'
@@ -205,15 +205,19 @@ allow_assign_grafana_admin = true
 
 ## Vouch Proxy
 
-> **WARNING** Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It
+> [!WARNING]
+>
+> Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It
 > uses the fields "username" or "email" as primary identifiers instead. As a result, this can cause
 > user or deployment issues, at worst security bypasses. You should avoid Vouch Proxy if possible
 > due to these issues.
 >
 > - <https://github.com/vouch/vouch-proxy/issues/309>
 > - <https://github.com/vouch/vouch-proxy/issues/310>
-
-Note: **You need to run at least the version 0.37.0**
+&nbsp;
+> [!NOTE]
+>
+> You need to run at least version 0.37.0
 
 Vouch Proxy supports multiple OAuth and OIDC login providers. To configure it you need to pass:
 

@@ -328,7 +328,9 @@ KANIDM_BUILD_PROFILE=release_linux cargo build --release --bin kanidmd
 
 ### Building the Web UI
 
-**NOTE:** There is a pre-packaged version of the Web UI at `/server/web_ui/pkg/`, which can be used
+> [!NOTE:]
+>
+> There is a pre-packaged version of the Web UI at `/server/web_ui/pkg/`, which can be used
 directly. This means you don't need to build the Web UI yourself.
 
 The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
