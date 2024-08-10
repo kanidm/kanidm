@@ -49,6 +49,10 @@ communication channels.
 This is another reason why we do not allow the server to start without a TLS certificate being
 configured.
 
+### WebAuthn
+
+Similarly, WebAuthn and its various other names like Passkeys, FIDO2 or "scan the QR code to log in" will [only work over TLS](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API).
+
 ## OAuth2
 
 [RFC6819 - OAuth2 Threat Model and Security Considerations](https://www.rfc-editor.org/rfc/rfc6819)
