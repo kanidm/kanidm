@@ -207,14 +207,16 @@ allow_assign_grafana_admin = true
 
 > [!WARNING]
 >
-> Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It
-> uses the fields "username" or "email" as primary identifiers instead. As a result, this can cause
-> user or deployment issues, at worst security bypasses. You should avoid Vouch Proxy if possible
-> due to these issues.
+> Vouch proxy requires a unique identifier but does not use the proper scope, "sub". It uses the
+> fields "username" or "email" as primary identifiers instead. As a result, this can cause user or
+> deployment issues, at worst security bypasses. You should avoid Vouch Proxy if possible due to
+> these issues.
 >
 > - <https://github.com/vouch/vouch-proxy/issues/309>
 > - <https://github.com/vouch/vouch-proxy/issues/310>
+
 &nbsp;
+
 > [!NOTE]
 >
 > You need to run at least version 0.37.0

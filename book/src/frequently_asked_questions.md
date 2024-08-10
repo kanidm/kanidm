@@ -6,14 +6,32 @@
 
 You may have noticed that Kanidm requires you to configure TLS in your container or server install.
 
-We are a secure-by-design rather than secure-by-configuration system, so TLS for all connections is
-considered mandatory and a default rather than an optional feature you add later.
+One of the fundamental goals of the project is a secure-by-design rather than
+secure-by-configuration system, so TLS for all connections is mandatory. It is not an optional
+feature you add later.
 
-### Can Kanidm work without TLS?
+> [!NOTE]
+>
+> Please respect our decision. We've had this discussion. A lot.
+>
+> You're at the FAQ because you have questions, and this is the final answer on the matter.
+>
+> If this means you won't use Kanidm, thank you for your consideration.
 
-No, it can not. TLS is required due to our use of `secure-cookies`. `secure-cookies` is a flag set
-in cookies that asks a client to transmit them back to the origin site if and only if the client
-sees HTTPS is present in the URL.
+### Why not allow HTTP (without TLS) between my load balancer and Kanidm?
+
+Because Kanidm is one of the keys to a secure network, and insecure connections to them are not best
+practice. This can allow account hijacking, privilege escalation, credential disclosures, personal
+information leaks and more.
+
+We believe that the entire path between a client and the server must be protected at all times.
+
+### Can Kanidm authentication work without TLS?
+
+No, it can not. TLS is required due to our use of the `Secure` flag our cookies, which requires a
+client to transmit them back to the origin site
+[if and only if the client
+sees HTTPS as the protocol in the URL](https://developer.mozilla.org/en-US/docs/Web/HTTP/Cookies#security).
 
 Kanidm's authentication system is a stepped challenge response design, where you initially request
 an "intent" to authenticate. Once you establish this intent, the server sets up a session-id into a
@@ -24,18 +42,12 @@ detects this as an invalid-state request in the authentication design, and immed
 connection, because it appears insecure. This prevents credential disclosure since the
 authentication session was not able to be established due to the lost session-id cookie.
 
-Simply put, we are trying to use settings like `secure_cookies` to add constraints to the server so
+Simply put, we are trying to use settings like secure cookies to add constraints to the server so
 that you _must_ perform and adhere to best practices - such as having TLS present on your
 communication channels.
 
-This is also why we do not allow the server to start without a TLS certificate being configured.
-
-### Why disallow HTTP (without TLS) between my load balancer and Kanidm?
-
-Because Kanidm is one of the keys to a secure network, and insecure connections to them are not best
-practice. This can allow account hijacking, privilege escalation, credential disclosures, personal
-information leaks and more. The entire path between a client and the server must be protected at all
-times.
+This is another reason why we do not allow the server to start without a TLS certificate being
+configured.
 
 ## OAuth2
 
@@ -78,6 +90,12 @@ mitigations, authorisation code interception is not prevented by the presence or
 We would strongly encourage OAuth2 client implementations to implement and support PKCE, as it
 provides defense in depth to known and exploited authorisation code interception attacks.
 
+### Why do you allow disabling PKCE but not TLS?
+
+Because there are still many applications where PKCE is not available and it is not trivial to solve
+for all downstream applications. This is not the case with TLS, which is required for the web to
+work and trivial to configure.
+
 ### Why is RSA considered legacy
 
 While RSA is cryptographically sound, to achieve the same level as security as ECDSA it requires
@@ -106,7 +124,8 @@ review, assessment and improvement.
 
 ## Can I change the database backend from SQLite to - name of favourite database here -
 
-No, it is not possible swap out the SQLite database for any other type of SQL server.
+No, it is not possible swap out the SQLite database for any other type of SQL server, nor will it be
+considered as an option.
 
 **_ATTEMPTING THIS WILL BREAK YOUR KANIDM INSTANCE IRREPARABLY_**
 
@@ -152,4 +171,4 @@ Don't [ask](https://www.youtube.com/watch?v=0QaAKi0NFkA). They just
 
 ## Why won't you take this FAQ thing seriously?
 
-Look, people just haven't asked many questions yet.
+Look, people just haven't asked many questions yet. Why are you still reading this?
