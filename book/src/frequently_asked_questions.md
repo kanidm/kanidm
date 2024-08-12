@@ -12,11 +12,8 @@ feature you add later.
 
 > [!NOTE]
 >
-> Please respect our decision. We've had this discussion. A lot.
->
-> You're at the FAQ because you have questions, and this is the final answer on the matter.
->
-> If this means you won't use Kanidm, thank you for your consideration.
+> Please respect the maintainers decision on TLS-by-default, no discussions on this topic will be
+> entered into.
 
 ### Why not allow HTTP (without TLS) between my load balancer and Kanidm?
 
@@ -24,7 +21,8 @@ Because Kanidm is one of the keys to a secure network, and insecure connections 
 practice. This can allow account hijacking, privilege escalation, credential disclosures, personal
 information leaks and more.
 
-We believe that the entire path between a client and the server must be protected at all times.
+We believe that the **entire** path between a client and the server must be protected at all times.
+This includes the path between load balancers or proxies and Kanidm.
 
 ### Can Kanidm authentication work without TLS?
 
@@ -51,7 +49,8 @@ configured.
 
 ### WebAuthn
 
-Similarly, WebAuthn and its various other names like Passkeys, FIDO2 or "scan the QR code to log in" will [only work over TLS](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API).
+Similarly, WebAuthn and its various other names like Passkeys, FIDO2 or "scan the QR code to log in"
+will [only work over TLS](https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API).
 
 ## OAuth2
 
@@ -97,8 +96,10 @@ provides defense in depth to known and exploited authorisation code interception
 ### Why do you allow disabling PKCE but not TLS?
 
 Because there are still many applications where PKCE is not available and it is not trivial to solve
-for all downstream applications. This is not the case with TLS, which is required for the web to
-work and trivial to configure.
+for all downstream applications. In the case that PKCE is absent on a single OAuth2 client, the
+scope of failure is reduced to that single client. This is not the case with TLS, which is trivial
+to configure, and in the case of compromise of an internal network between a load balancer and
+Kanidm, the attacker can access and steal all traffic and authentication data.
 
 ### Why is RSA considered legacy
 
@@ -175,4 +176,5 @@ Don't [ask](https://www.youtube.com/watch?v=0QaAKi0NFkA). They just
 
 ## Why won't you take this FAQ thing seriously?
 
-Look, people just haven't asked many questions yet. Why are you still reading this?
+Look, people just haven't asked many questions yet. Sorry, there are no easter eggs in this
+document, but there may be elsewhere 🥚
