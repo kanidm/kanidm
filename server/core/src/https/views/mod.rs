@@ -17,11 +17,12 @@ use crate::https::{
 };
 
 mod apps;
+mod cookies;
 mod errors;
 mod login;
 mod oauth2;
-mod reset;
 mod profile;
+mod reset;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -36,6 +37,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
         .route("/profile", get(profile::view_profile_get))
+        .route("/profile/unlock", get(profile::view_profile_unlock_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get))
         .route("/oauth2/resume", get(oauth2::view_resume_get))
@@ -44,7 +46,6 @@ pub fn view_router() -> Router<ServerState> {
         // they need manual guarding for direct get requests which can occur
         // if a user attempts to reload the page.
         .route("/login", get(login::view_index_get))
-        .route("/reauth", get(login::view_reauth_get))
         .route(
             "/login/passkey",
             post(login::view_login_passkey_post).get(|| async { Redirect::to("/ui") }),

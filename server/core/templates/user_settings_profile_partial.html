@@ -19,7 +19,7 @@ Profile
     (% if can_rw %)
         <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile">Edit</button>
     (% else %)
-        <a href="/ui/reauth" hx-boost="false">
+        <a href="/ui/profile/unlock" hx-boost="false">
             <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
         </a>
     (% endif %)

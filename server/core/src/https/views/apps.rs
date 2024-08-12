@@ -6,7 +6,7 @@ use axum::{
     Extension,
 };
 use axum_htmx::extractors::HxRequest;
-use axum_htmx::{HxPushUrl};
+use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::AppLink;
 
