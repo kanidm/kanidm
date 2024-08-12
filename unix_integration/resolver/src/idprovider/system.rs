@@ -70,7 +70,7 @@ impl SystemProvider {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }
             } else {
-                warn!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");
+                info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");
                 let group = Arc::new(EtcGroup {
                     name: user.name.clone(),
                     password: String::new(),

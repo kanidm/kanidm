@@ -231,7 +231,11 @@ async fn main() -> ExitCode {
                     Ok(r) => match r {
                         ClientResponse::ProviderStatus(results) => {
                             for provider in results {
-                                println!("{}: {}", provider.name, provider.online);
+                                println!(
+                                    "{}: {}",
+                                    provider.name,
+                                    if provider.online { "online" } else { "offline" }
+                                );
                             }
                         }
                         _ => {
