@@ -726,7 +726,9 @@ impl LdapServer {
                     return Err(OperationError::NoMatchingEntries);
                 }
 
-                let mut idm_auth = idms.auth().await;
+                // I think this is a bug here.
+                debug_assert!(false);
+                let mut idm_auth = idms.auth().await?;
                 let usr_uuid = idm_auth.qs_read.name_to_uuid(usr).map_err(|e| {
                     error!(err = ?e, ?usr, "Error resolving rdn to target");
                     e
@@ -1114,7 +1116,7 @@ mod tests {
             );
 
             let ct = duration_from_epoch_now();
-            let mut server_txn = idms.proxy_write(ct).await;
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1, e2, e3])
@@ -1193,7 +1195,7 @@ mod tests {
             );
 
             let ct = duration_from_epoch_now();
-            let mut server_txn = idms.proxy_write(ct).await;
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1, e2, e3])
@@ -1210,7 +1212,7 @@ mod tests {
 
         {
             let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
                 .internal_modify_uuid(grp_uuid, &ml)
@@ -1229,7 +1231,7 @@ mod tests {
         let pass2: String;
         let pass3: String;
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
             let ev = GenerateApplicationPasswordEvent::new_internal(
                 usr_uuid,
@@ -1252,7 +1254,7 @@ mod tests {
             assert!(idms_prox_write.commit().is_ok());
 
             // Application password overwritten on duplicated label
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             let ev = GenerateApplicationPasswordEvent::new_internal(
                 usr_uuid,
                 app_uuid,
@@ -1375,7 +1377,7 @@ mod tests {
             );
 
             let ct = duration_from_epoch_now();
-            let mut server_txn = idms.proxy_write(ct).await;
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1, e2, e3, e4, e5])
@@ -1386,7 +1388,7 @@ mod tests {
         let pass_app1: String;
         let pass_app2: String;
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
             let ev = GenerateApplicationPasswordEvent::new_internal(
                 usr_uuid,
@@ -1436,7 +1438,7 @@ mod tests {
         // Add user to grp2
         {
             let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_prox_write
                 .qs_write
                 .internal_modify_uuid(grp2_uuid, &ml)
@@ -1468,7 +1470,7 @@ mod tests {
 
         // Bind error, app not exists
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
                 Attribute::Uuid,
                 PartialValue::Uuid(app2_uuid)
@@ -1497,7 +1499,7 @@ mod tests {
     const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
 
     async fn set_account_valid_time(idms: &IdmServer, acct: Uuid) {
-        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await;
+        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
         let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
@@ -1561,14 +1563,14 @@ mod tests {
             );
 
             let ct = duration_from_epoch_now();
-            let mut server_txn = idms.proxy_write(ct).await;
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
             assert!(server_txn
                 .qs_write
                 .internal_create(vec![e1, e2, e3])
                 .and_then(|_| server_txn.commit())
                 .is_ok());
 
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
             let ev = GenerateApplicationPasswordEvent::new_internal(
                 usr_uuid,
@@ -1602,7 +1604,7 @@ mod tests {
         let time = Duration::from_secs(TEST_CURRENT_TIME);
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
-        let mut idms_auth = idms.auth().await;
+        let mut idms_auth = idms.auth().await.unwrap();
         let lae = LdapApplicationAuthEvent::from_parts(app1_name, usr_uuid, pass_app1)
             .expect("Failed to build auth event");
 

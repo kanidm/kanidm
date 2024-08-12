@@ -2032,7 +2032,7 @@ lazy_static! {
             EntryClass::AccessControlSearch
         ],
         name: "idm_acp_application_entry_manager",
-        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER_V1,
+        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER,
         description: "Builtin IDM Control for allowing EntryManager to read and modify applications",
         receiver: BuiltinAcpReceiver::EntryManager,
         // Any application

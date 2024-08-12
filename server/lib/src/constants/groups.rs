@@ -405,12 +405,13 @@ lazy_static! {
             UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
-    }
+        ..Default::default()
+    };
 
     pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
         name: "idm_ldap_application_admins",
-        description: "Builtin Application Administration Group.",
         uuid: UUID_IDM_APPLICATION_ADMINS,
+        description: "Builtin Application Administration Group.",
         entry_managed_by: Some(UUID_IDM_ADMINS),
         members: vec![UUID_IDM_ADMINS],
         ..Default::default()

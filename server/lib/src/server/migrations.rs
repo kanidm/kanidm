@@ -513,20 +513,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 err
             })?;
 
-        let idm_data = [
-            // Update access controls.
-            IDM_ACP_APPLICATION_MANAGE_DL7.clone().into(),
-            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7.clone().into(),
-        ];
-
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
-                err
-            })?;
-
         Ok(())
     }
 
@@ -624,6 +610,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
         self.reload()?;
+
+        let idm_data = [
+            // Update access controls.
+            // IDM_ACP_APPLICATION_MANAGE_DL7.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
 
         Ok(())
     }

@@ -653,7 +653,7 @@ pub enum DbValueCertificate {
     V1 { certificate_der: Vec<u8> },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub enum DbValueApplicationPassword {
     V1 {
         #[serde(rename = "u")]

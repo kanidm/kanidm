@@ -1,7 +1,7 @@
 use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
 use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
-use crate::repl::proto::{ReplApplicationPassword, ReplAttrV1};
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use std::collections::BTreeMap;
 
@@ -23,7 +23,9 @@ impl ValueSetApplicationPassword {
         Box::new(ValueSetApplicationPassword { map })
     }
 
-    pub fn from_dbvs2(data: Vec<DbValueApplicationPassword>) -> Result<ValueSet, OperationError> {
+    fn from_dbv_iter(
+        data: impl Iterator<Item = DbValueApplicationPassword>,
+    ) -> Result<ValueSet, OperationError> {
         let mut map: BTreeMap<Uuid, Vec<ApplicationPassword>> = BTreeMap::new();
         for ap in data {
             let ap = match ap {
@@ -44,25 +46,26 @@ impl ValueSetApplicationPassword {
         Ok(Box::new(ValueSetApplicationPassword { map }))
     }
 
-    pub fn from_repl_v1(data: &[ReplApplicationPassword]) -> Result<ValueSet, OperationError> {
-        let mut map: BTreeMap<Uuid, Vec<ApplicationPassword>> = BTreeMap::new();
-        for ap in data {
-            let ap = match ap {
-                ReplApplicationPassword::V1 {
-                    refer,
-                    application_refer,
-                    label,
-                    password,
-                } => ApplicationPassword {
-                    uuid: *refer,
-                    application: *application_refer,
-                    label: label.to_string(),
-                    password: Password::try_from(password).expect("Failed to parse"),
-                },
-            };
-            map.entry(ap.application).or_default().push(ap);
-        }
-        Ok(Box::new(ValueSetApplicationPassword { map }))
+    pub fn from_dbvs2(data: Vec<DbValueApplicationPassword>) -> Result<ValueSet, OperationError> {
+        Self::from_dbv_iter(data.into_iter())
+    }
+
+    pub fn from_repl_v1(data: &[DbValueApplicationPassword]) -> Result<ValueSet, OperationError> {
+        Self::from_dbv_iter(data.into_iter().cloned())
+    }
+
+    fn to_vec_dbvs(&self) -> Vec<DbValueApplicationPassword> {
+        self.map
+            .iter()
+            .flat_map(|(_, v)| {
+                v.into_iter().map(|ap| DbValueApplicationPassword::V1 {
+                    refer: ap.uuid,
+                    application_refer: ap.application,
+                    label: ap.label.clone(),
+                    password: ap.password.to_dbpasswordv1(),
+                })
+            })
+            .collect()
     }
 }
 
@@ -183,36 +186,13 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
-        DbValueSetV2::ApplicationPassword(
-            self.map
-                .iter()
-                .flat_map(|(_, v)| {
-                    v.into_iter().map(|ap| DbValueApplicationPassword::V1 {
-                        refer: ap.uuid,
-                        application_refer: ap.application,
-                        label: ap.label.clone(),
-                        password: ap.password.to_dbpasswordv1(),
-                    })
-                })
-                .collect(),
-        )
+        let data = self.to_vec_dbvs();
+        DbValueSetV2::ApplicationPassword(data)
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::ApplicationPassword {
-            set: self
-                .map
-                .iter()
-                .flat_map(|(_, v)| {
-                    v.into_iter().map(|ap| ReplApplicationPassword::V1 {
-                        refer: ap.uuid,
-                        application_refer: ap.application,
-                        label: ap.label.clone(),
-                        password: ap.password.to_repl_v1(),
-                    })
-                })
-                .collect(),
-        }
+        let set = self.to_vec_dbvs();
+        ReplAttrV1::ApplicationPassword { set }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

@@ -283,7 +283,7 @@ mod tests {
     #[idm_test]
     async fn test_idm_application_excludes(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         // ServiceAccount, Application and Person not allowed together
         let test_grp_name = "testgroup1";
@@ -418,7 +418,7 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let test_entry_uuid = Uuid::new_v4();
 
@@ -453,7 +453,7 @@ mod tests {
         let test_grp_uuid = Uuid::new_v4();
 
         {
-            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
 
             let e1 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
@@ -486,7 +486,7 @@ mod tests {
         }
 
         {
-            let mut idms_prox_read = idms.proxy_read().await;
+            let mut idms_prox_read = idms.proxy_read().await.unwrap();
             let app = idms_prox_read
                 .qs_read
                 .internal_search_uuid(test_entry_uuid)
@@ -512,7 +512,7 @@ mod tests {
                 Attribute::Uuid,
                 PartialValue::Uuid(test_grp_uuid)
             )));
-            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_proxy_write.qs_write.delete(&de).is_err());
         }
 
@@ -521,7 +521,7 @@ mod tests {
                 Attribute::Uuid,
                 PartialValue::Uuid(test_entry_uuid)
             )));
-            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
             assert!(idms_proxy_write.qs_write.commit().is_ok());
         }
@@ -531,7 +531,7 @@ mod tests {
                 Attribute::Uuid,
                 PartialValue::Uuid(test_grp_uuid)
             )));
-            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
             assert!(idms_proxy_write.qs_write.commit().is_ok());
         }
@@ -548,7 +548,7 @@ mod tests {
 
         {
             let ct = duration_from_epoch_now();
-            let mut idms_prox_write = idms.proxy_write(ct).await;
+            let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
             let e1 = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
@@ -596,7 +596,7 @@ mod tests {
         }
 
         {
-            let mut idms_prox_read = idms.proxy_read().await;
+            let mut idms_prox_read = idms.proxy_read().await.unwrap();
             let account = idms_prox_read
                 .qs_read
                 .internal_search_uuid(test_usr_uuid)
@@ -616,13 +616,13 @@ mod tests {
                 Attribute::Uuid,
                 PartialValue::Uuid(test_app_uuid)
             )));
-            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await;
+            let mut idms_proxy_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
             assert!(idms_proxy_write.qs_write.delete(&de).is_ok());
             assert!(idms_proxy_write.qs_write.commit().is_ok());
         }
 
         {
-            let mut idms_prox_read = idms.proxy_read().await;
+            let mut idms_prox_read = idms.proxy_read().await.unwrap();
             assert!(idms_prox_read
                 .qs_read
                 .internal_search_uuid(test_app_uuid)
@@ -630,7 +630,7 @@ mod tests {
         }
 
         {
-            let mut idms_prox_read = idms.proxy_read().await;
+            let mut idms_prox_read = idms.proxy_read().await.unwrap();
             let account = idms_prox_read
                 .qs_read
                 .internal_search_uuid(test_usr_uuid)
@@ -652,10 +652,10 @@ mod tests {
         _idms_delayed: &mut IdmServerDelayed,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + GRACE_WINDOW;
+        let past_grc = Duration::from_secs(TEST_CURRENT_TIME + 1) + AUTH_TOKEN_GRACE_WINDOW;
         let exp = Duration::from_secs(TEST_CURRENT_TIME + 6000);
         let post_exp = Duration::from_secs(TEST_CURRENT_TIME + 6010);
-        let mut idms_prox_write = idms.proxy_write(ct).await;
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let test_entry_uuid = Uuid::new_v4();
         let test_group_uuid = Uuid::new_v4();

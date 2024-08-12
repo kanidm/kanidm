@@ -152,7 +152,7 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, domain_level, oauth2rs_set) = {
+        let (rp_id, rp_name, domain_level, oauth2rs_set, application_set) = {
             let mut qs_read = qs.read().await?;
             (
                 qs_read.get_domain_name().to_string(),
