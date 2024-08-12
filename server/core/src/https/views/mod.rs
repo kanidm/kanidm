@@ -17,9 +17,11 @@ use crate::https::{
 };
 
 mod apps;
+mod cookies;
 mod errors;
 mod login;
 mod oauth2;
+mod profile;
 mod reset;
 
 #[derive(Template)]
@@ -34,6 +36,8 @@ pub fn view_router() -> Router<ServerState> {
         .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
+        .route("/profile", get(profile::view_profile_get))
+        .route("/profile/unlock", get(profile::view_profile_unlock_get))
         .route("/logout", get(login::view_logout_get))
         .route("/oauth2", get(oauth2::view_index_get))
         .route("/oauth2/resume", get(oauth2::view_resume_get))
