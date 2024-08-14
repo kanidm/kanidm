@@ -53,7 +53,7 @@ auth        required      pam_deny.so
 # Controls flow of what happens when a user invokes the passwd command. Currently does NOT
 # push password changes back to kanidm
 password    [default=1 ignore=ignore success=ok] pam_localuser.so
-password    required    pam_unix.so use_authtok nullok shadow try_first_pass
+password    required    pam_unix.so nullok shadow try_first_pass
 password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
 password    required    pam_kanidm.so
 
