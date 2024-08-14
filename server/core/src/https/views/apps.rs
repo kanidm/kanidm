@@ -5,7 +5,6 @@ use axum::{
     response::{IntoResponse, Response},
     Extension,
 };
-use axum_htmx::extractors::HxRequest;
 use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::AppLink;
@@ -29,7 +28,6 @@ struct AppsPartialView {
 pub(crate) async fn view_apps_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
     // Because this is the route where the login page can land, we need to actually alter
@@ -44,16 +42,12 @@ pub(crate) async fn view_apps_get(
 
     let apps_partial = AppsPartialView { apps: app_links };
 
-    Ok(if hx_request {
+    Ok({
+        let apps_view = AppsView { apps_partial };
         (
-            // On the redirect during a login we don't push urls. We set these headers
-            // so that the url is updated, and we swap the correct element.
             HxPushUrl(Uri::from_static("/ui/apps")),
-            HtmlTemplate(apps_partial),
+            HtmlTemplate(apps_view).into_response(),
         )
             .into_response()
-    } else {
-        let apps_view = AppsView { apps_partial };
-        HtmlTemplate(apps_view).into_response()
     })
 }
