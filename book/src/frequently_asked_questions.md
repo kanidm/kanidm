@@ -40,7 +40,7 @@ detects this as an invalid-state request in the authentication design, and immed
 connection, because it appears insecure. This prevents credential disclosure since the
 authentication session was not able to be established due to the lost session-id cookie.
 
-Simply put, we are trying to use settings like secure cookies to add constraints to the server so
+Simply put, we are using settings like secure cookies to add constraints to the server so
 that you _must_ perform and adhere to best practices - such as having TLS present on your
 communication channels.
 
