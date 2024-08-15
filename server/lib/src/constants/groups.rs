@@ -409,7 +409,7 @@ lazy_static! {
     };
 
     pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
-        name: "idm_ldap_application_admins",
+        name: "idm_application_admins",
         uuid: UUID_IDM_APPLICATION_ADMINS,
         description: "Builtin Application Administration Group.",
         entry_managed_by: Some(UUID_IDM_ADMINS),

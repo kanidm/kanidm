@@ -769,13 +769,12 @@ pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_LINKED_GROUP_DL7: SchemaAttribute = SchemaAttribute {
+pub static ref SCHEMA_ATTR_LINKED_GROUP_DL8: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LINKED_GROUP,
     name: Attribute::LinkedGroup.into(),
-    description: "A reference to the group linked to the entry".to_string(),
+    description: "A reference to the group linked to an entry".to_string(),
 
     multivalue: false,
-    sync_allowed: false,
     syntax: SyntaxType::ReferenceUuid,
     ..Default::default()
 };
@@ -789,7 +788,7 @@ pub static ref SCHEMA_ATTR_CERTIFICATE_DL7: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD_DL7: SchemaAttribute = SchemaAttribute {
+pub static ref SCHEMA_ATTR_APPLICATION_PASSWORD_DL8: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_APPLICATION_PASSWORD,
     name: Attribute::ApplicationPassword.into(),
     description: "A set of application passwords".to_string(),
@@ -844,7 +843,7 @@ pub static ref SCHEMA_CLASS_PERSON_DL5: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_PERSON_DL7: SchemaClass = SchemaClass {
+pub static ref SCHEMA_CLASS_PERSON_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_PERSON,
     name: EntryClass::Person.into(),
     description: "Object representation of a person".to_string(),
@@ -1339,7 +1338,7 @@ pub static ref SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
-pub static ref SCHEMA_CLASS_APPLICATION_DL7: SchemaClass = SchemaClass {
+pub static ref SCHEMA_CLASS_APPLICATION_DL8: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_APPLICATION,
     name: EntryClass::Application.into(),
 

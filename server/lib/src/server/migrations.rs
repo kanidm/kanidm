@@ -595,10 +595,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // =========== Apply changes ==============
 
         let idm_schema_classes = [
-            SCHEMA_ATTR_LINKED_GROUP_DL7.clone().into(),
-            SCHEMA_ATTR_APPLICATION_PASSWORD_DL7.clone().into(),
-            SCHEMA_CLASS_APPLICATION_DL7.clone().into(),
-            SCHEMA_CLASS_PERSON_DL7.clone().into(),
+            SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
+            SCHEMA_CLASS_PERSON_DL8.clone().into(),
         ];
 
         idm_schema_classes
