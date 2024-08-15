@@ -772,7 +772,7 @@ pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
 pub static ref SCHEMA_ATTR_LINKED_GROUP_DL8: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_LINKED_GROUP,
     name: Attribute::LinkedGroup.into(),
-    description: "A reference to the group linked to an entry".to_string(),
+    description: "A reference linking a group to an entry".to_string(),
 
     multivalue: false,
     syntax: SyntaxType::ReferenceUuid,

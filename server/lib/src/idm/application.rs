@@ -13,7 +13,7 @@ use uuid::Uuid;
 pub(crate) struct Application {
     pub uuid: Uuid,
     pub name: String,
-    pub linked_group: Option<Uuid>,
+    pub linked_group: Uuid,
 }
 
 impl Application {
@@ -40,7 +40,13 @@ impl Application {
                 ))
             })?;
 
-        let linked_group: Option<Uuid> = value.get_ava_single_refer(Attribute::LinkedGroup);
+        let linked_group = value.get_ava_single_refer(Attribute::LinkedGroup)
+            .ok_or_else(|| {
+                OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::LinkedGroup
+                ))
+            })?;
 
         Ok(Application {
             name,
@@ -82,7 +88,9 @@ impl<'a> LdapApplicationsWriteTransaction<'a> {
                     .get_ava_single_iname(Attribute::Name)
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
-                let linked_group = ent.get_ava_single_refer(Attribute::LinkedGroup);
+
+                let linked_group = ent.get_ava_single_refer(Attribute::LinkedGroup)
+                    .ok_or(OperationError::InvalidValueState)?;
 
                 let app = Application {
                     uuid,
@@ -144,29 +152,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         let usr_entry = self.get_qs_txn().internal_search_uuid(lae.target)?;
 
-        let within_valid_window = Account::check_within_valid_time(
-            ct,
-            usr_entry
-                .get_ava_single_datetime(Attribute::AccountValidFrom)
-                .as_ref(),
-            usr_entry
-                .get_ava_single_datetime(Attribute::AccountExpire)
-                .as_ref(),
-        );
-
-        if !within_valid_window {
-            security_info!("Account has expired or is not yet valid, not allowing to proceed");
-            return Err(OperationError::SessionExpired);
-        }
-
         let account: Account =
             Account::try_from_entry_ro(&usr_entry, &mut self.qs_read).map_err(|e| {
-                admin_error!("Failed to search account {:?}", e);
+                error!("Failed to search account {:?}", e);
                 e
             })?;
 
         if account.is_anonymous() {
             return Err(OperationError::InvalidUuid);
+        }
+
+        if !account.is_within_valid_time(ct) {
+            security_info!("Account has expired or is not yet valid, not allowing to proceed");
+            return Err(OperationError::SessionExpired);
         }
 
         let application = self
@@ -175,33 +173,23 @@ impl<'a> IdmServerAuthTransaction<'a> {
             .set
             .get(&lae.application)
             .ok_or_else(|| {
-                admin_info!("Application {:?} not found", lae.application);
+                info!("Application {:?} not found", lae.application);
                 OperationError::NoMatchingEntries
             })?;
 
         // Check linked group membership
-        let linked_group_uuid = match application.linked_group {
-            Some(u) => u,
-            None => {
-                admin_warn!(
-                    "Application {:?} does not have a linked group.",
-                    application.name
-                );
-                return Ok(None);
-            }
-        };
-
         let is_memberof = usr_entry
             .get_ava_refer(Attribute::MemberOf)
-            .map(|member_of_set| member_of_set.contains(&linked_group_uuid))
+            .map(|member_of_set| member_of_set.contains(&application.linked_group))
             .unwrap_or_default();
 
         if !is_memberof {
-            trace!(
-                "User {:?} not member of application {:?} linked group {:?}",
+            debug!(
+                "User {:?} not member of application {}:{:?} linked group {:?}",
                 account.uuid,
+                application.name,
                 application.uuid,
-                linked_group_uuid
+                application.linked_group,
             );
             return Ok(None);
         }
@@ -210,10 +198,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Some(_) => {
                 let session_id = Uuid::new_v4();
                 security_info!(
-                    "Starting session {} for {} {}",
+                    "Starting session {} for {} {} with application {}:{:?}",
                     session_id,
                     account.spn,
-                    account.uuid
+                    account.uuid,
+                    application.name,
+                    application.uuid,
                 );
 
                 Ok(Some(LdapBoundToken {
@@ -500,9 +490,9 @@ mod tests {
             assert!(app.is_ok());
 
             let app = app.unwrap();
-            assert!(app.name == "test_app_name");
-            assert!(app.uuid == test_entry_uuid);
-            assert!(app.linked_group.is_some_and(|u| u == test_grp_uuid));
+            assert_eq!(app.name, "test_app_name");
+            assert_eq!(app.uuid, test_entry_uuid);
+            assert_eq!(app.linked_group, test_grp_uuid);
         }
 
         // Test reference integrity. An attempt to remove a linked group blocks

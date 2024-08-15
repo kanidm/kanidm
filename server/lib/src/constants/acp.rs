@@ -1076,7 +1076,45 @@ lazy_static! {
 lazy_static! {
     pub static ref IDM_ACP_SELF_READ_V1: BuiltinAcp = BuiltinAcp {
         name: "idm_acp_self_read",
-        uuid: UUID_IDM_ACP_SELF_READ_V1,
+        uuid: UUID_IDM_ACP_SELF_READ,
+        description:
+            "Builtin IDM Control for self read - required for whoami and many other functions",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ALL_ACCOUNTS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Class,
+            Attribute::MemberOf,
+            Attribute::Mail,
+            Attribute::RadiusSecret,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::Uuid,
+            Attribute::SyncParentUuid,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PrimaryCredential,
+            Attribute::UserAuthTokenSession,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SELF_READ_DL8: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_read",
+        uuid: UUID_IDM_ACP_SELF_READ,
         description:
             "Builtin IDM Control for self read - required for whoami and many other functions",
         classes: vec![
@@ -1179,6 +1217,42 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SELF_WRITE_DL8: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_write",
+        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write - required for people to update their own credentials in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
+        ],
+        modify_present_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
