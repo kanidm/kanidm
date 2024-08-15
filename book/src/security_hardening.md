@@ -151,8 +151,8 @@ docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/k
 
 > [!HINT]
 >
-> You need to use the UID or GID number with the `-u` argument, as the container can't
-> resolve usernames from the host system.
+> You need to use the UID or GID number with the `-u` argument, as the container can't resolve
+> usernames from the host system.
 
 ## Minimum TLS key lengths
 

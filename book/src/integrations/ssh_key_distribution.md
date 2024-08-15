@@ -77,8 +77,8 @@ management tool such as salt or ansible.
 
 > [!NOTE]
 >
-> With a working SSH key setup, you should also consider adding the following
-> `sshd_config` options as hardening.
+> With a working SSH key setup, you should also consider adding the following `sshd_config` options
+> as hardening.
 
 ```text
 PermitRootLogin no
@@ -94,9 +94,9 @@ In this mode, the authorised keys commands will contact Kanidm directly.
 
 > [!NOTE]
 >
-> As Kanidm is being contacted directly there is no SSH public key cache. Any network outage
-> or communication loss may prevent you accessing your systems. You should only use this version if
-> you have a requirement for it.
+> As Kanidm is being contacted directly there is no SSH public key cache. Any network outage or
+> communication loss may prevent you accessing your systems. You should only use this version if you
+> have a requirement for it.
 
 The `kanidm_ssh_authorizedkeys_direct` command is part of the kanidm-clients package, so should be
 installed on the servers.

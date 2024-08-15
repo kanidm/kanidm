@@ -16,8 +16,8 @@ You must then copy the new certificate to other nodes in the topology.
 
 > [!NOTE]
 >
-> In the future we will develop a replication coordinator so that you don't have to
-> manually renew this. But for now, if you want replication, you have to do it the hard way.
+> In the future we will develop a replication coordinator so that you don't have to manually renew
+> this. But for now, if you want replication, you have to do it the hard way.
 
 ## Refresh a Lagging Consumer
 

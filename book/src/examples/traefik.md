@@ -14,9 +14,9 @@ line `traefik.http.services.kanidm.loadbalancer.server.port=8443` sets this on t
 
 > [!NOTE]
 >
-> You will need to generate self-signed certificates for Kanidm, and copy the configuration
-> into the `kanidm_data` volume. Some instructions are available in the "Installing the Server"
-> section of this book.
+> You will need to generate self-signed certificates for Kanidm, and copy the configuration into the
+> `kanidm_data` volume. Some instructions are available in the "Installing the Server" section of
+> this book.
 
 `docker-compose.yml`
 

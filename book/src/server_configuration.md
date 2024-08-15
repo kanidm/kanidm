@@ -18,8 +18,8 @@ docs page for your particular build.
 
 > [!WARNING]
 >
-> You MUST set the `domain`, `origin`, `tls_chain` and `tls_path` options via one method
-> or the other, or the server cannot start!
+> You MUST set the `domain`, `origin`, `tls_chain` and `tls_path` options via one method or the
+> other, or the server cannot start!
 
 The following is a commented example configuration.
 
@@ -32,13 +32,14 @@ This example is located in
 
 > [!WARNING]
 >
-> You MUST set the "domain" name correctly, aligned with your "origin", else the server
-> may refuse to start or some features (e.g. WebAuthn, OAuth2) may not work correctly!
+> You MUST set the "domain" name correctly, aligned with your "origin", else the server may refuse
+> to start or some features (e.g. WebAuthn, OAuth2) may not work correctly!
 
 ### Check the configuration is valid
 
 You should test your configuration is valid before you proceed. This defaults to using
-`-c /data/server.toml`. The `kanidmd` volume was created in the [evaluation quickstart](evaluation_quickstart.md)
+`-c /data/server.toml`. The `kanidmd` volume was created in the
+[evaluation quickstart](evaluation_quickstart.md)
 
 ```bash
 docker run --rm -i -t -v kanidmd:/data \
@@ -69,8 +70,8 @@ docker run --cap-add NET_BIND_SERVICE \
 
 > [!TIP]
 >
-> However you choose to run your server, you should document and keep note of the docker run
-> / create command you chose to start the instance. This will be used in the upgrade procedure.
+> However you choose to run your server, you should document and keep note of the docker run /
+> create command you chose to start the instance. This will be used in the upgrade procedure.
 
 ### Default Admin Accounts
 

@@ -2,8 +2,8 @@
 
 OAuth is a web authorisation protocol that allows "single sign on". It's key to note OAuth only
 provides authorisation, as the protocol in its default forms do not provide identity or
-authentication information. All that OAuth can provide is information that an entity is authorised for
-the requested resources.
+authentication information. All that OAuth can provide is information that an entity is authorised
+for the requested resources.
 
 OAuth can tie into extensions allowing an identity provider to reveal information about authorised
 sessions. This extends OAuth from an authorisation only system to a system capable of identity and
@@ -12,11 +12,13 @@ connect.
 
 ## Resource Server and Clients
 
-This is the resource that a user wants to access. Common [examples](oauth2/examples.md) could be Nextcloud, a Wiki, or a
-chat service. In these cases the service is both the _client_ and the _resource server_ within the
-OAuth2 workflow. We will refer to the combination of both client and resource server as a service.
+This is the resource that a user wants to access. Common [examples](oauth2/examples.md) could be
+Nextcloud, a Wiki, or a chat service. In these cases the service is both the _client_ and the
+_resource server_ within the OAuth2 workflow. We will refer to the combination of both client and
+resource server as a service.
 
-It's important for you to know _how_ your service will interact with OAuth2. For example, does it rely on OpenID connect for identity information, or does it support RFC7662 token introspection?
+It's important for you to know _how_ your service will interact with OAuth2. For example, does it
+rely on OpenID connect for identity information, or does it support RFC7662 token introspection?
 
 Kanidm will expose its OAuth2 APIs at the following URLs:
 
@@ -36,8 +38,8 @@ Kanidm issues tokens that are RFC9068 JWT's allowing service introspection.
 
 > [!NOTE]
 >
-> Previous versions of this document incorrectly named clients as resource servers due to
-> clarity issues in the OAuth2 RFC.
+> Previous versions of this document incorrectly named clients as resource servers due to clarity
+> issues in the OAuth2 RFC.
 
 ### OAuth2 Server Metadata
 
@@ -64,10 +66,12 @@ You need to substitute your OAuth2 `:client_id:` in the following urls:
 
 ### Create the Kanidm Configuration
 
-By default, members of the `system_admins` or `idm_hp_oauth2_manage_priv` groups are able to create or manage OAuth2 client integrations.
+By default, members of the `system_admins` or `idm_hp_oauth2_manage_priv` groups are able to create
+or manage OAuth2 client integrations.
 
 You can create a new client by specifying its client name, application display name and the landing
-page (home page) of the client. The landing page is where users will be redirected to from the Kanidm application portal.
+page (home page) of the client. The landing page is where users will be redirected to from the
+Kanidm application portal.
 
 ```bash
 kanidm system oauth2 create <name> <displayname> <landing page url>
@@ -90,13 +94,13 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 
 > [!TIP]
 >
-> OpenID connect allows a number of scopes that affect the content of the resulting
-> authorisation token. If one of the following scopes are requested by the OpenID client, then the
-> associated claims may be added to the authorisation token. It is not guaranteed that all of the
-> associated claims will be added.
+> OpenID connect allows a number of scopes that affect the content of the resulting authorisation
+> token. If one of the following scopes are requested by the OpenID client, then the associated
+> claims may be added to the authorisation token. It is not guaranteed that all of the associated
+> claims will be added.
 >
-> - **profile** - name, family_name, given_name, middle_name, nickname, preferred_username,
->   profile, picture, website, gender, birthdate, zoneinfo, locale, and updated_at
+> - **profile** - name, family_name, given_name, middle_name, nickname, preferred_username, profile,
+>   picture, website, gender, birthdate, zoneinfo, locale, and updated_at
 > - **email** - email, email_verified
 > - **address** - address
 > - **phone** - phone_number, phone_number_verified
@@ -105,8 +109,8 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 
 > [!WARNING]
 >
-> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map
-> named `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
+> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map named
+> `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
 
 You can create a supplemental scope map with:
 
@@ -148,9 +152,10 @@ You should now be able to test authorisation to the client.
 
 ## Scope Relationships
 
-For an authorisation to proceed, the client will request a list of scopes. For example, when a user wishes to login to the admin panel of the resource server, it may
-request the "admin" scope from Kanidm for authorisation. But when a user wants to login, it may only
-request "access" as a scope from Kanidm.
+For an authorisation to proceed, the client will request a list of scopes. For example, when a user
+wishes to login to the admin panel of the resource server, it may request the "admin" scope from
+Kanidm for authorisation. But when a user wants to login, it may only request "access" as a scope
+from Kanidm.
 
 As each service may have its own scopes and understanding of these, Kanidm isolates scopes to each
 service connected to Kanidm. Kanidm has two methods of granting scopes to accounts (users).
@@ -162,11 +167,11 @@ groups/roles in Kanidm which can be specific to that service.
 For an authorisation to proceed, all scopes requested by the client must be available in the final
 scope set that is granted to the account.
 
-The second part is supplemental scope mappings. These function the same as scope maps where membership of
-a group provides a set of scopes to the account. However these scopes are NOT consulted during
-authorisation decisions made by Kanidm. These scopes exist to allow optional properties to be
-provided (such as personal information about a subset of accounts to be revealed) or so that the
-service may make its own authorisation decisions based on the provided scopes.
+The second part is supplemental scope mappings. These function the same as scope maps where
+membership of a group provides a set of scopes to the account. However these scopes are NOT
+consulted during authorisation decisions made by Kanidm. These scopes exist to allow optional
+properties to be provided (such as personal information about a subset of accounts to be revealed)
+or so that the service may make its own authorisation decisions based on the provided scopes.
 
 This use of scopes is the primary means to control who can access what resources. These access
 decisions can take place either on Kanidm or the service.
@@ -214,8 +219,8 @@ kanidm system oauth2 enable-localhost-redirects mywebapp
 >
 > You **MUST NOT** share a single OAuth2 client definition between multiple applications.
 >
-> The ability to configure multiple redirect URLs is **NOT** intended to allow you to share a single Kanidm
-> client definition between multiple OAuth2 clients.
+> The ability to configure multiple redirect URLs is **NOT** intended to allow you to share a single
+> Kanidm client definition between multiple OAuth2 clients.
 >
 > Sharing OAuth2 client configurations between applications **FUNDAMENTALLY BREAKS** the OAuth2
 > security model and is **NOT SUPPORTED** as a configuration. The Kanidm Project **WILL NOT**
@@ -266,8 +271,8 @@ settings are explained in detail in [our FAQ](../frequently_asked_questions.html
 
 > [!WARNING]
 >
-> Changing these settings MAY have serious consequences on the security of your services.
-> You should avoid changing these if at all possible!
+> Changing these settings MAY have serious consequences on the security of your services. You should
+> avoid changing these if at all possible!
 
 To disable PKCE for a confidential client:
 

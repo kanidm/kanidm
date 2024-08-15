@@ -8,9 +8,9 @@ interface for these legacy applications and services.
 
 > [!WARNING]
 >
-> The LDAP server in Kanidm is not a complete LDAP implementation. This is intentional,
-> as Kanidm wants to cover the common use cases - simple bind and search. The parts we do support
-> are RFC compliant however.
+> The LDAP server in Kanidm is not a complete LDAP implementation. This is intentional, as Kanidm
+> wants to cover the common use cases - simple bind and search. The parts we do support are RFC
+> compliant however.
 
 ## What is LDAP
 
@@ -144,8 +144,8 @@ with a dn of `dn=token` and provide the api token in the password.
 
 > [!NOTE]
 >
-> The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it
-> was chosen as the keyword to initiate api token binds.
+> The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it was chosen
+> as the keyword to initiate api token binds.
 
 ```bash
 ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"
@@ -163,8 +163,8 @@ name.
 
 > [!WARNING]
 >
-> Changing the LDAP Basedn will require you to reconfigure your client applications so
-> they search the correct basedn. Be careful when changing this value!
+> Changing the LDAP Basedn will require you to reconfigure your client applications so they search
+> the correct basedn. Be careful when changing this value!
 
 As an admin you can change the domain ldap basedn with:
 

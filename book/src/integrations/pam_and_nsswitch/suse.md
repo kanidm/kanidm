@@ -71,5 +71,5 @@ session optional    pam_env.so
 
 > [!WARNING]
 >
-> Ensure that `pam_mkhomedir` or `pam_oddjobd` are _not_ present in any stage of your
-> PAM configuration, as they interfere with the correct operation of the Kanidm tasks daemon.
+> Ensure that `pam_mkhomedir` or `pam_oddjobd` are _not_ present in any stage of your PAM
+> configuration, as they interfere with the correct operation of the Kanidm tasks daemon.
