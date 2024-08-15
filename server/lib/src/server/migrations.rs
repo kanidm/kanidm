@@ -611,10 +611,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
+        // Update access controls.
         let idm_data = [
-            // Update access controls.
-            // IDM_ACP_APPLICATION_MANAGE_DL7.clone().into(),
-            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7.clone().into(),
+            IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
         ];
 
         idm_data

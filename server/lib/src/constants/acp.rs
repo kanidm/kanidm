@@ -2059,7 +2059,80 @@ lazy_static! {
 }
 
 lazy_static! {
-    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGER_DL7: BuiltinAcp = BuiltinAcp {
+    pub static ref IDM_ACP_APPLICATION_MANAGE_DL8: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_application_manage",
+        uuid: UUID_IDM_ACP_APPLICATION_MANAGE,
+        description: "Builtin IDM Control for creating and deleting applications in the directory",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_APPLICATION_ADMINS] ),
+        // Any application
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+            EntryClass::Application,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
             EntryClass::AccessControlProfile,
@@ -2070,25 +2143,41 @@ lazy_static! {
         uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER,
         description: "Builtin IDM Control for allowing EntryManager to read and modify applications",
         receiver: BuiltinAcpReceiver::EntryManager,
-        // Any application
+        // Applications that belong to the Entry Manager.
         target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
             match_class_filter!(EntryClass::Application),
             FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
         ])),
         search_attrs: vec![
             Attribute::Class,
-            Attribute::Name,
             Attribute::Uuid,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
             Attribute::Description,
             Attribute::LinkedGroup,
             Attribute::EntryManagedBy,
         ],
         modify_present_attrs: vec![
+            Attribute::Name,
             Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
             Attribute::LinkedGroup,
         ],
         modify_removed_attrs: vec![
+            Attribute::Name,
             Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
             Attribute::LinkedGroup,
         ],
         ..Default::default()
