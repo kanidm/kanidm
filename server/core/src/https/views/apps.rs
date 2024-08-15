@@ -6,7 +6,7 @@ use axum::{
     Extension,
 };
 use axum_htmx::extractors::HxRequest;
-use axum_htmx::{HxPushUrl, HxReswap, HxRetarget, SwapOption};
+use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::AppLink;
 
@@ -42,25 +42,18 @@ pub(crate) async fn view_apps_get(
         .await
         .map_err(|old| HtmxError::new(&kopid, old))?;
 
-    let apps_view = AppsView {
-        apps_partial: AppsPartialView { apps: app_links },
-    };
+    let apps_partial = AppsPartialView { apps: app_links };
 
     Ok(if hx_request {
         (
             // On the redirect during a login we don't push urls. We set these headers
             // so that the url is updated, and we swap the correct element.
             HxPushUrl(Uri::from_static("/ui/apps")),
-            // Tell htmx that we want to update the body instead. There is no need
-            // set the swap value as it defaults to innerHTML. This is because we came here
-            // from an htmx request so we only need to render the inner portion.
-            HxRetarget("body".to_string()),
-            // We send our own main, replace the existing one.
-            HxReswap(SwapOption::OuterHtml),
-            HtmlTemplate(apps_view),
+            HtmlTemplate(apps_partial),
         )
             .into_response()
     } else {
+        let apps_view = AppsView { apps_partial };
         HtmlTemplate(apps_view).into_response()
     })
 }

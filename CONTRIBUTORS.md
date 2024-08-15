@@ -39,6 +39,7 @@
 - Tobias Krischer (tobikris)
 - Daniil Egortsev (playhardgopro)
 - Anton Loukianov (antonl)
+- fossdd
 
 ## Acknowledgements
 

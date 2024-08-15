@@ -1,4 +1,3 @@
-use compact_jwt::{Jws, JwsSigner};
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
@@ -18,11 +17,11 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     Extension, Form,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
-use super::{HtmlTemplate, UnrecoverableErrorView};
+use super::{cookies, HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
 #[template(path = "oauth2_consent_request.html")]
@@ -55,10 +54,8 @@ pub async fn view_resume_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> Response {
-    let maybe_auth_req = jar
-        .get(COOKIE_OAUTH2_REQ)
-        .map(|c| c.value())
-        .and_then(|s| state.deserialise_from_str::<AuthorisationRequest>(s));
+    let maybe_auth_req =
+        cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
     if let Some(auth_req) = maybe_auth_req {
         oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
@@ -134,24 +131,16 @@ async fn oauth2_auth_req(
             .into_response()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
-            // We store the auth_req into the cookie.
-            let kref = &state.jws_signer;
-
-            let token = Jws::into_json(&auth_req)
-                .map_err(|err| {
-                    error!(?err, "Failed to serialise AuthorisationRequest");
-                    OperationError::InvalidSessionState
+            // Sign the auth req and hide it in our cookie.
+            let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, "/ui")
+                .map(|mut cookie| {
+                    cookie.set_same_site(SameSite::Strict);
+                    jar.add(cookie)
                 })
-                .and_then(|jws| {
-                    kref.sign(&jws).map_err(|err| {
-                        error!(?err, "Failed to sign AuthorisationRequest");
-                        OperationError::InvalidSessionState
-                    })
-                })
-                .map(|jwss| jwss.to_string());
+                .ok_or(OperationError::InvalidSessionState);
 
-            let token = match token {
-                Ok(jws) => jws,
+            match maybe_jar {
+                Ok(jar) => (jar, Redirect::to("/ui/login")).into_response(),
                 Err(err_code) => {
                     return HtmlTemplate(UnrecoverableErrorView {
                         err_code,
@@ -159,17 +148,7 @@ async fn oauth2_auth_req(
                     })
                     .into_response();
                 }
-            };
-
-            let mut authreq_cookie = Cookie::new(COOKIE_OAUTH2_REQ, token);
-            authreq_cookie.set_secure(state.secure_cookies);
-            authreq_cookie.set_same_site(SameSite::Strict);
-            authreq_cookie.set_http_only(true);
-            authreq_cookie.set_domain(state.domain.clone());
-            authreq_cookie.set_path("/ui");
-            let jar = jar.add(authreq_cookie);
-
-            (jar, Redirect::to("/ui/login")).into_response()
+            }
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
@@ -227,21 +206,13 @@ pub async fn view_consent_post(
             state,
             code,
         }) => {
-            let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-                let mut authreq_cookie = authreq_cookie.clone();
-                authreq_cookie.make_removal();
-                authreq_cookie.set_path("/ui");
-                jar.add(authreq_cookie)
-            } else {
-                jar
-            };
+            let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
             redirect_uri
                 .query_pairs_mut()
                 .clear()
                 .append_pair("state", &state)
                 .append_pair("code", &code);
-
             (
                 jar,
                 [
