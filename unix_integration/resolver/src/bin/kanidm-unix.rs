@@ -102,6 +102,7 @@ async fn main() -> ExitCode {
                         | ClientResponse::NssAccount(_)
                         | ClientResponse::NssGroup(_)
                         | ClientResponse::NssGroups(_)
+                        | ClientResponse::ProviderStatus(_)
                         | ClientResponse::Ok
                         | ClientResponse::Error
                         | ClientResponse::PamStatus(_) => {
@@ -228,7 +229,15 @@ async fn main() -> ExitCode {
             } else {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {
-                        ClientResponse::Ok => println!("working!"),
+                        ClientResponse::ProviderStatus(results) => {
+                            for provider in results {
+                                println!(
+                                    "{}: {}",
+                                    provider.name,
+                                    if provider.online { "online" } else { "offline" }
+                                );
+                            }
+                        }
                         _ => {
                             error!("Error: unexpected response -> {:?}", r);
                         }

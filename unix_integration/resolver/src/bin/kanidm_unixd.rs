@@ -19,7 +19,7 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::str::FromStr;
 use std::sync::Arc;
-use std::time::Duration;
+use std::time::{Duration, SystemTime};
 
 use bytes::{BufMut, BytesMut};
 use clap::{Arg, ArgAction, Command};
@@ -31,6 +31,7 @@ use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
+use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
 use kanidm_unix_resolver::unix_config::{HsmType, KanidmUnixdConfig};
 
@@ -409,11 +410,8 @@ async fn handle_client(
             }
             ClientRequest::Status => {
                 debug!("status check");
-                if cachelayer.test_connection().await {
-                    ClientResponse::Ok
-                } else {
-                    ClientResponse::Error
-                }
+                let status = cachelayer.provider_status().await;
+                ClientResponse::ProviderStatus(status)
             }
         };
         reqs.send(resp).await?;
@@ -447,12 +445,7 @@ async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn E
 
     let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
 
-    let id_iter = users
-        .iter()
-        .map(|user| (user.name.clone(), user.uid))
-        .chain(groups.iter().map(|group| (group.name.clone(), group.gid)));
-
-    cachelayer.reload_nxset(id_iter).await;
+    cachelayer.reload_system_identities(users, groups).await;
 
     Ok(())
 }
@@ -815,8 +808,6 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let idprovider = KanidmProvider::new(rsclient);
-
             let db = match Db::new(cfg.db_path.as_str()) {
                 Ok(db) => db,
                 Err(_e) => {
@@ -837,6 +828,8 @@ async fn main() -> ExitCode {
 
             // Check for and create the hsm pin if required.
             if let Err(err) = write_hsm_pin(cfg.hsm_pin_path.as_str()).await {
+                let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+                info!(%diag);
                 error!(?err, "Failed to create HSM PIN into {}", cfg.hsm_pin_path.as_str());
                 return ExitCode::FAILURE
             };
@@ -845,6 +838,8 @@ async fn main() -> ExitCode {
             let hsm_pin = match read_hsm_pin(cfg.hsm_pin_path.as_str()).await {
                 Ok(hp) => hp,
                 Err(err) => {
+                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.hsm_pin_path.as_ref());
+                    info!(%diag);
                     error!(?err, "Failed to read HSM PIN from {}", cfg.hsm_pin_path.as_str());
                     return ExitCode::FAILURE
                 }
@@ -910,6 +905,25 @@ async fn main() -> ExitCode {
                 }
             };
 
+            let Ok(system_provider) = SystemProvider::new(
+            ) else {
+                error!("Failed to configure System Provider");
+                return ExitCode::FAILURE
+            };
+
+            let Ok(idprovider) = KanidmProvider::new(
+                rsclient,
+                SystemTime::now(),
+                &mut (&mut db_txn).into(),
+                &mut hsm,
+                &machine_key
+            ) else {
+                error!("Failed to configure Kanidm Provider");
+                return ExitCode::FAILURE
+            };
+
+            drop(machine_key);
+
             if let Err(err) = db_txn.commit() {
                 error!(?err, "Failed to commit database transaction, unable to proceed");
                 return ExitCode::FAILURE
@@ -926,9 +940,9 @@ async fn main() -> ExitCode {
 
             let cl_inner = match Resolver::new(
                 db,
-                Box::new(idprovider),
+                Arc::new(system_provider),
+                Arc::new(idprovider),
                 hsm,
-                machine_key,
                 cfg.cache_timeout,
                 cfg.pam_allowed_login_groups.clone(),
                 cfg.default_shell.clone(),
@@ -937,7 +951,6 @@ async fn main() -> ExitCode {
                 cfg.home_alias,
                 cfg.uid_attr_map,
                 cfg.gid_attr_map,
-                cfg.allow_local_account_override.clone(),
             )
             .await
             {
@@ -955,6 +968,8 @@ async fn main() -> ExitCode {
             let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
                 Ok(l) => l,
                 Err(_e) => {
+                    let diag = kanidm_lib_file_permissions::diagnose_path(cfg.task_sock_path.as_ref());
+                    info!(%diag);
                     error!("Failed to bind UNIX socket {}", cfg.task_sock_path.as_str());
                     return ExitCode::FAILURE
                 }
