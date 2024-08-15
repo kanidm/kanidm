@@ -1,3 +1,4 @@
+use super::{cookies, empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use askama::Template;
 use axum::{
@@ -6,7 +7,6 @@ use axum::{
     Extension, Form, Json,
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
-use compact_jwt::{Jws, JwsSigner};
 use kanidm_proto::internal::{
     COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
 };
@@ -20,8 +20,6 @@ use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use webauthn_rs::prelude::PublicKeyCredential;
-
-use super::{empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Default, Serialize, Deserialize)]
 struct SessionContext {
@@ -37,6 +35,9 @@ struct SessionContext {
     password: Option<String>,
     #[serde(rename = "t", default, skip_serializing_if = "Option::is_none")]
     totp: Option<String>,
+
+    #[serde(rename = "a", default, skip_serializing_if = "Option::is_none")]
+    after_auth_loc: Option<String>,
 }
 
 #[derive(Template)]
@@ -116,17 +117,97 @@ pub async fn view_logout_get(
     } else {
         let response = Redirect::to("/ui/login").into_response();
 
-        jar = if let Some(bearer_cookie) = jar.get(COOKIE_BEARER_TOKEN) {
-            let mut bearer_cookie = bearer_cookie.clone();
-            bearer_cookie.make_removal();
-            bearer_cookie.set_path("/");
-            jar.add(bearer_cookie)
-        } else {
-            jar
-        };
+        jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
 
         (jar, response).into_response()
     }
+}
+
+pub async fn view_reauth_get(
+    state: ServerState,
+    client_auth_info: ClientAuthInfo,
+    kopid: KOpId,
+    jar: CookieJar,
+    return_location: &str,
+) -> axum::response::Result<Response> {
+    let session_valid_result = state
+        .qe_r_ref
+        .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
+        .await;
+
+    let res = match session_valid_result {
+        Ok(()) => {
+            let inter = state
+                .qe_r_ref
+                .handle_reauth(
+                    client_auth_info.clone(),
+                    AuthIssueSession::Cookie,
+                    kopid.eventid,
+                )
+                .await;
+
+            // Now process the response if ok.
+            match inter {
+                Ok(ar) => {
+                    let session_context = SessionContext {
+                        id: Some(ar.sessionid),
+                        username: "".to_string(),
+                        password: None,
+                        totp: None,
+                        remember_me: false,
+                        after_auth_loc: Some(return_location.to_string()),
+                    };
+
+                    match view_login_step(
+                        state,
+                        kopid.clone(),
+                        jar,
+                        ar,
+                        client_auth_info,
+                        session_context,
+                    )
+                    .await
+                    {
+                        Ok(r) => r,
+                        // Okay, these errors are actually REALLY bad.
+                        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                            err_code,
+                            operation_id: kopid.eventid,
+                        })
+                        .into_response(),
+                    }
+                }
+                // Probably needs to be way nicer on login, especially something like no matching users ...
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
+            }
+        }
+        Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
+            // cookie jar with remember me.
+
+            let username = cookies::get_unsigned(&jar, COOKIE_USERNAME)
+                .map(String::from)
+                .unwrap_or_default();
+
+            let remember_me = !username.is_empty();
+
+            HtmlTemplate(LoginView {
+                username,
+                remember_me,
+            })
+            .into_response()
+        }
+        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+            err_code,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
+    };
+
+    return Ok(res);
 }
 
 pub async fn view_index_get(
@@ -221,6 +302,7 @@ pub async fn view_login_begin_post(
         password,
         totp,
         remember_me,
+        after_auth_loc: None,
     };
 
     // Now process the response if ok.
@@ -266,14 +348,9 @@ pub async fn view_login_mech_choose_post(
     jar: CookieJar,
     Form(login_mech_form): Form<LoginMechForm>,
 ) -> Response {
-    let session_context = jar
-        .get(COOKIE_AUTH_SESSION_ID)
-        .map(|c| c.value())
-        .and_then(|s| {
-            trace!(id_jws = %s);
-            state.deserialise_from_str::<SessionContext>(s)
-        })
-        .unwrap_or_default();
+    let session_context =
+        cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
+            .unwrap_or_default();
 
     debug!("Session ID: {:?}", session_context.id);
 
@@ -411,14 +488,9 @@ async fn credential_step(
     client_auth_info: ClientAuthInfo,
     auth_cred: AuthCredential,
 ) -> Response {
-    let session_context = jar
-        .get(COOKIE_AUTH_SESSION_ID)
-        .map(|c| c.value())
-        .and_then(|s| {
-            trace!(id_jws = %s);
-            state.deserialise_from_str::<SessionContext>(s)
-        })
-        .unwrap_or_default();
+    let session_context =
+        cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
+            .unwrap_or_default();
 
     let inter = state // This may change in the future ...
         .qe_r_ref
@@ -477,6 +549,7 @@ async fn view_login_step(
         state: mut auth_state,
         sessionid,
     } = auth_result;
+    session_context.id = Some(sessionid);
 
     let mut safety = 3;
 
@@ -493,28 +566,8 @@ async fn view_login_step(
         match auth_state {
             AuthState::Choose(allowed) => {
                 debug!("🧩 -> AuthState::Choose");
-                let kref = &state.jws_signer;
-                // Set the sessionid.
-                session_context.id = Some(sessionid);
-                let jws = Jws::into_json(&session_context).map_err(|e| {
-                    error!(?e);
-                    OperationError::InvalidSessionState
-                })?;
 
-                // Get the header token ready.
-                let token = kref.sign(&jws).map(|jwss| jwss.to_string()).map_err(|e| {
-                    error!(?e);
-                    OperationError::InvalidSessionState
-                })?;
-
-                let mut token_cookie = Cookie::new(COOKIE_AUTH_SESSION_ID, token);
-                token_cookie.set_secure(state.secure_cookies);
-                token_cookie.set_same_site(SameSite::Strict);
-                token_cookie.set_http_only(true);
-                // Not setting domains limits the cookie to precisely this
-                // url that was used.
-                // token_cookie.set_domain(state.domain.clone());
-                jar = jar.add(token_cookie);
+                jar = add_session_cookie(&state, jar, &session_context)?;
 
                 let res = match allowed.len() {
                     // Should never happen.
@@ -564,6 +617,11 @@ async fn view_login_step(
                 break res;
             }
             AuthState::Continue(allowed) => {
+                // Reauth inits its session here so we need to be able to add cookie here ig.
+                if jar.get(COOKIE_AUTH_SESSION_ID).is_none() {
+                    jar = add_session_cookie(&state, jar, &session_context)?;
+                }
+
                 let res = match allowed.len() {
                     // Shouldn't be possible.
                     0 => {
@@ -634,25 +692,25 @@ async fn view_login_step(
                     AuthIssueSession::Cookie => {
                         // Update jar
                         let token_str = token.to_string();
-                        let mut bearer_cookie = Cookie::new(COOKIE_BEARER_TOKEN, token_str.clone());
-                        bearer_cookie.set_secure(state.secure_cookies);
-                        bearer_cookie.set_same_site(SameSite::Lax);
-                        // Prevent Document.cookie accessing this. Still works with fetch.
-                        bearer_cookie.set_http_only(true);
-                        // We set a domain here because it allows subdomains
-                        // of the idm to share the cookie. If domain was incorrect
-                        // then webauthn won't work anyway!
-                        bearer_cookie.set_domain(state.domain.clone());
-                        bearer_cookie.set_path("/");
+
+                        // Important - this can be make unsigned as token_str has it's own
+                        // signatures.
+                        let bearer_cookie = cookies::make_unsigned(
+                            &state,
+                            COOKIE_BEARER_TOKEN,
+                            token_str.clone(),
+                            "/",
+                        );
 
                         jar = if session_context.remember_me {
-                            let mut username_cookie =
-                                Cookie::new(COOKIE_USERNAME, session_context.username.clone());
-                            username_cookie.set_secure(state.secure_cookies);
-                            username_cookie.set_same_site(SameSite::Lax);
-                            username_cookie.set_http_only(true);
-                            username_cookie.set_domain(state.domain.clone());
-                            username_cookie.set_path("/ui/login");
+                            // Important - can be unsigned as username is just for remember
+                            // me and no other purpose.
+                            let username_cookie = cookies::make_unsigned(
+                                &state,
+                                COOKIE_USERNAME,
+                                session_context.username.clone(),
+                                "/ui/login",
+                            );
                             jar.add(username_cookie)
                         } else {
                             jar
@@ -662,10 +720,11 @@ async fn view_login_step(
                             .add(bearer_cookie)
                             .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                        // Now, we need to decided where to go. If this
-
+                        // Now, we need to decided where to go.
                         let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
                             Redirect::to("/ui/oauth2/resume").into_response()
+                        } else if let Some(auth_loc) = session_context.after_auth_loc {
+                            Redirect::to(auth_loc.as_str()).into_response()
                         } else {
                             Redirect::to("/ui/apps").into_response()
                         };
@@ -688,4 +747,18 @@ async fn view_login_step(
     };
 
     Ok((jar, response).into_response())
+}
+
+fn add_session_cookie(
+    state: &ServerState,
+    jar: CookieJar,
+    session_context: &SessionContext,
+) -> Result<CookieJar, OperationError> {
+    cookies::make_signed(state, COOKIE_AUTH_SESSION_ID, session_context, "/ui/login")
+        .map(|mut cookie| {
+            // Not needed when redirecting into this site
+            cookie.set_same_site(SameSite::Strict);
+            jar.add(cookie)
+        })
+        .ok_or(OperationError::InvalidSessionState)
 }

@@ -243,19 +243,6 @@ pub(crate) async fn cancel_mfareg(
     Ok(get_cu_partial_response(cu_status))
 }
 
-async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
-    let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
-    return if let Some(cookie) = cookie {
-        let cu_session_token = cookie.value();
-        let cu_session_token = CUSessionToken {
-            token: cu_session_token.into(),
-        };
-        Ok(cu_session_token)
-    } else {
-        Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
-    };
-}
-
 pub(crate) async fn remove_alt_creds(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -709,6 +696,19 @@ fn get_cu_response(domain: String, cu_status: CUStatus) -> Response {
         }),
     )
         .into_response()
+}
+
+async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
+    let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
+    return if let Some(cookie) = cookie {
+        let cu_session_token = cookie.value();
+        let cu_session_token = CUSessionToken {
+            token: cu_session_token.into(),
+        };
+        Ok(cu_session_token)
+    } else {
+        Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
+    };
 }
 
 // Any filter defined in the module `filters` is accessible in your template.

@@ -84,7 +84,7 @@ fn figure_out_if_we_have_all_the_routes() {
     }
     // now we check the things
     for (module, routes) in found_routes {
-        if ["ui"].contains(&module.as_str()) {
+        if ["ui", "cookies"].contains(&module.as_str()) {
             println!(
                 "We can skip checking {} because it's allow-listed for docs",
                 module
