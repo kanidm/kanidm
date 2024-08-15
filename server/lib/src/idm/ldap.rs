@@ -16,7 +16,7 @@ use uuid::Uuid;
 
 use crate::event::SearchEvent;
 use crate::idm::event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent};
-use crate::idm::server::{IdmServer, IdmServerTransaction};
+use crate::idm::server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction};
 use crate::prelude::*;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
@@ -428,8 +428,8 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let target = self.bind_target_from_bind_dn(idms, dn, pw).await?;
         let mut idm_auth = idms.auth().await.unwrap();
+        let target = self.bind_target_from_bind_dn(&mut idm_auth, dn, pw).await?;
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
@@ -696,9 +696,9 @@ impl LdapServer {
         } // end match server op
     }
 
-    async fn bind_target_from_bind_dn(
+    async fn bind_target_from_bind_dn<'a>(
         &self,
-        idms: &IdmServer,
+        idm_auth: &mut IdmServerAuthTransaction<'a>,
         dn: &str,
         pw: &str,
     ) -> Result<LdapBindTarget, OperationError> {
@@ -726,9 +726,6 @@ impl LdapServer {
                     return Err(OperationError::NoMatchingEntries);
                 }
 
-                // I think this is a bug here.
-                debug_assert!(false);
-                let mut idm_auth = idms.auth().await?;
                 let usr_uuid = idm_auth.qs_read.name_to_uuid(usr).map_err(|e| {
                     error!(err = ?e, ?usr, "Error resolving rdn to target");
                     e
