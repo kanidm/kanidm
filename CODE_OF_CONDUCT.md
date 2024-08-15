@@ -23,6 +23,7 @@ Examples of unacceptable behavior by participants include:
 - Public or private harassment
 - Publishing others’ private information, such as a physical or electronic address, without explicit
   permission
+- Refusing to accept decisions or reasonable requests of project maintainers
 - Other conduct which could reasonably be considered inappropriate in a professional setting
 
 ## Our Responsibilities
@@ -34,7 +35,9 @@ behavior.
 Project maintainers have the right and responsibility to remove, edit, or reject comments, commits,
 code, wiki edits, issues, and other contributions that are not aligned to this Code of Conduct, or
 to ban temporarily or permanently any contributor for other behaviors that they deem inappropriate,
-threatening, offensive, or harmful. Scope
+threatening, offensive, or harmful.
+
+## Scope
 
 This Code of Conduct applies both within project spaces and in public spaces when an individual is
 representing the project or its community. Examples of representing a project or community include
@@ -49,6 +52,7 @@ the project team at:
 
 - william at blackhats.net.au
 - charcol at redhat.com
+- james at terminaloutcomes.com
 
 All complaints will be reviewed and investigated and will result in a response that is deemed
 necessary and appropriate to the circumstances. The project team is obligated to maintain
@@ -61,4 +65,4 @@ temporary or permanent repercussions as determined by other members of the proje
 ## Attribution
 
 This Code of Conduct is adapted from the Contributor Covenant, version 1.4, available at
-https://www.contributor-covenant.org/version/1/4/code-of-conduct.html
+<https://www.contributor-covenant.org/version/1/4/code-of-conduct.html>
