@@ -6,22 +6,46 @@ Profile
 
 (% block settings_window %)
 
-    <h3>Account name: (( account_name ))</h3>
-    <h3>Display name: (( display_name ))</h3>
-    <h3>Legal name: (( legal_name ))</h3>
-    (% if let Some(email) = email %)
-        <h3>Email: (( email ))</h3>
-    (% else %)
-        <h3>Email is not set</h3>
-    (% endif %)
+<form>
+    <div class="mb-2 row">
+        <label for="profileUserName" class="col-12 col-md-3 col-lg-2 col-form-label">User name</label>
+        <div class="col-12 col-md-6 col-lg-4">
+            <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( account_name ))">
+        </div>
+    </div>
+    
+    <div class="mb-2 row">
+        <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
+        <div class="col-12 col-md-6 col-lg-4">
+            <input type="text" class="form-control" id="profileDisplayName" value="(( display_name ))">
+        </div>
+    </div>
+
+    <div class="mb-2 row">
+        <label for="profileLegalName" class="col-12 col-md-3 col-lg-2 col-form-label">Legal name</label>
+        <div class="col-12 col-md-6 col-lg-4">
+            <input type="text" class="form-control" id="profileLegalName" value="(( legal_name ))">
+        </div>
+    </div>
+    
+    <div class="mb-2 row">
+        <label for="profileEmail" class="col-12 col-md-3 col-lg-2 col-form-label">Email</label>
+        <div class="col-12 col-md-6 col-lg-4">
+            <input type="email" class="form-control" id="profileEmail" (% if let Some(email) = email %)value="(( email ))"(% endif %)>
+        </div>
+    </div>
 
     <!-- Edit button -->
-    (% if can_rw %)
-        <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile">Edit</button>
-    (% else %)
-        <a href="/ui/profile/unlock" hx-boost="false">
-            <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
-        </a>
-    (% endif %)
+    <div class="pt-4">
+        (% if can_rw %)
+            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile">Edit</button>
+        (% else %)
+            <a href="/ui/profile/unlock" hx-boost="false">
+                <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+            </a>
+        (% endif %)
+    </div>
+</form>
+
 (% endblock %)
 
