@@ -40,7 +40,8 @@ impl Application {
                 ))
             })?;
 
-        let linked_group = value.get_ava_single_refer(Attribute::LinkedGroup)
+        let linked_group = value
+            .get_ava_single_refer(Attribute::LinkedGroup)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState(format!(
                     "Missing attribute: {}",
@@ -89,7 +90,8 @@ impl<'a> LdapApplicationsWriteTransaction<'a> {
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidValueState)?;
 
-                let linked_group = ent.get_ava_single_refer(Attribute::LinkedGroup)
+                let linked_group = ent
+                    .get_ava_single_refer(Attribute::LinkedGroup)
                     .ok_or(OperationError::InvalidValueState)?;
 
                 let app = Application {
@@ -186,10 +188,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         if !is_memberof {
             debug!(
                 "User {:?} not member of application {}:{:?} linked group {:?}",
-                account.uuid,
-                application.name,
-                application.uuid,
-                application.linked_group,
+                account.uuid, application.name, application.uuid, application.linked_group,
             );
             return Ok(None);
         }

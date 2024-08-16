@@ -836,65 +836,65 @@ pub trait IdmServerTransaction<'a> {
             .ok_or(OperationError::InvalidState)
     }
 
-    fn process_uuid_to_identity(
+    fn process_ldap_uuid_to_identity(
         &mut self,
         uuid: &Uuid,
         ct: Duration,
         source: Source,
     ) -> Result<Identity, OperationError> {
-        let anon_entry = self
+        let entry = self
             .get_qs_txn()
-            .internal_search_uuid(UUID_ANONYMOUS)
-            .map_err(|e| {
-                admin_error!("Failed to validate ldap session -> {:?}", e);
-                e
+            .internal_search_uuid(*uuid)
+            .map_err(|err| {
+                error!(?err, ?uuid, "Failed to search user by uuid");
+                err
             })?;
 
-        let entry = if *uuid == UUID_ANONYMOUS {
-            anon_entry.clone()
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        if !account.is_within_valid_time(ct) {
+            info!("Account is expired or not yet valid.");
+            return Err(OperationError::SessionExpired);
+        }
+
+        // Good to go
+        let anon_entry = if *uuid == UUID_ANONYMOUS {
+            // We already have it.
+            entry
         } else {
-            self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
-                admin_error!("Failed to start auth ldap -> {:?}", e);
-                e
-            })?
+            // Pull the anon entry for mapping the identity.
+            self.get_qs_txn()
+                .internal_search_uuid(UUID_ANONYMOUS)
+                .map_err(|err| {
+                    error!(
+                        ?err,
+                        "Unable to search anonymous user for privilege bounding."
+                    );
+                    err
+                })?
         };
 
-        if Account::check_within_valid_time(
-            ct,
-            entry
-                .get_ava_single_datetime(Attribute::AccountValidFrom)
-                .as_ref(),
-            entry
-                .get_ava_single_datetime(Attribute::AccountExpire)
-                .as_ref(),
-        ) {
-            // Good to go
-            let mut limits = Limits::default();
-            let session_id = Uuid::new_v4();
+        let mut limits = Limits::default();
+        let session_id = Uuid::new_v4();
 
-            // Update limits from account policy
-            let (_account, account_policy) =
-                Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
-            if let Some(max_results) = account_policy.limit_search_max_results() {
-                limits.search_max_results = max_results as usize;
-            }
-            if let Some(max_filter) = account_policy.limit_search_max_filter_test() {
-                limits.search_max_filter_test = max_filter as usize;
-            }
-
-            // Users via LDAP are always only granted anonymous rights unless
-            // they auth with an api-token
-            Ok(Identity {
-                origin: IdentType::User(IdentUser { entry: anon_entry }),
-                source,
-                session_id,
-                scope: AccessScope::ReadOnly,
-                limits,
-            })
-        } else {
-            // Nope, expired
-            Err(OperationError::SessionExpired)
+        // Update limits from account policy
+        if let Some(max_results) = account_policy.limit_search_max_results() {
+            limits.search_max_results = max_results as usize;
         }
+        if let Some(max_filter) = account_policy.limit_search_max_filter_test() {
+            limits.search_max_filter_test = max_filter as usize;
+        }
+
+        // Users via LDAP are always only granted anonymous rights unless
+        // they auth with an api-token
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry: anon_entry }),
+            source,
+            session_id,
+            scope: AccessScope::ReadOnly,
+            limits,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -906,7 +906,7 @@ pub trait IdmServerTransaction<'a> {
     ) -> Result<Identity, OperationError> {
         match session {
             LdapSession::UnixBind(uuid) | LdapSession::ApplicationPasswordBind(_, uuid) => {
-                self.process_uuid_to_identity(uuid, ct, source)
+                self.process_ldap_uuid_to_identity(uuid, ct, source)
             }
             LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
             LdapSession::ApiToken(apit) => {

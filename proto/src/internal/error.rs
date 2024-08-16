@@ -147,6 +147,9 @@ pub enum OperationError {
     // Value Errors
     VL0001ValueSshPublicKeyString,
 
+    // LDAP Errors
+    LD0001AnonymousNotAllowed,
+
     // DB low level errors.
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
@@ -307,6 +310,7 @@ impl OperationError {
             Self::VS0004CertificatePublicKeyDigest |
             Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested."),
             Self::VL0001ValueSshPublicKeyString => None,
+            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method."),
             Self::SC0001IncomingSshPublicKey => None,
             Self::MG0001InvalidReMigrationLevel => None,
             Self::MG0002RaiseDomainLevelExceedsMaximum => None,
