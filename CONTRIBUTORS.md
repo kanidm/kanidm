@@ -40,6 +40,7 @@
 - Daniil Egortsev (playhardgopro)
 - Anton Loukianov (antonl)
 - fossdd
+- Wei Jian Gan (weijiangan)
 
 ## Acknowledgements
 
