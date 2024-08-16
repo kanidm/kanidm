@@ -215,6 +215,10 @@ pub enum OperationError {
 
     // Plugins
     PL0001GidOverlapsSystemRange,
+
+    // Web UI
+    UI0001ChallengeSerialisation,
+    UI0002InvalidState,
 }
 
 impl PartialEq for OperationError {
@@ -370,6 +374,8 @@ impl OperationError {
             Self::KP0043KeyObjectJweA128GCMEncryption => None,
             Self::KP0044KeyObjectJwsPublicJwk => None,
             Self::PL0001GidOverlapsSystemRange => None,
+            Self::UI0001ChallengeSerialisation => None,
+            Self::UI0002InvalidState => None,
         }
     }
 }

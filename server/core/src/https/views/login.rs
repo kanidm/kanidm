@@ -207,7 +207,7 @@ pub async fn view_reauth_get(
         .into_response(),
     };
 
-    return Ok(res);
+    Ok(res)
 }
 
 pub async fn view_index_get(

@@ -116,7 +116,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                     let post = v.len();
                     removed |= post < prev;
                     // Is the apppwd set for this application id now empty?
-                    v.is_empty()
+                    !v.is_empty()
                 });
                 removed
             }
