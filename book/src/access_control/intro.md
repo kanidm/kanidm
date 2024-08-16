@@ -77,6 +77,7 @@ groups.
 | `idm_schema_admins`          | add and modify elements of schema                                       |
 | `idm_service_account_admins` | create and modify service accounts                                      |
 | `idm_unix_admins`            | enable posix attributes on accounts and groups                          |
+| `idm_application_admins`     | create and modify ldap applications which use per-user application passwords |
 
 ## Default Roles
 

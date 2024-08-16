@@ -19,11 +19,15 @@ These consist of:
 - username
 - displayname
 - legal name
-- email address In the future:
-- picture
+- email address
+
+Future attributes we intend to add:
+
+- profile picture
 - zoneinfo/timezone
 - locale/preferred language
-- other business related attributes: address, phone number, ...
+- address
+- phone number
 
 #### Displaying attributes
 
@@ -49,7 +53,7 @@ Certain information should not be displayed in the UI without reauthentication:
 
 ### SSH public keys
 
-Ssh public key entries in kanidm consist of a:
+Ssh public key entries in Kanidm consist of a:
 
 - label : practically the ID of the key in kanidm
 - value : the public key
@@ -71,7 +75,7 @@ These collapsed elements must include:
 
 #### Editing keys
 
-When editing keys users must be able to add keys, remove keys and update individual key values Each
+When editing keys users must be able to add keys, remove keys and update individual key values. Each
 action will be committed immediately, thus proper prompts and icons indicating this must be shown
 (like a floppy disk save icon ?)
 
@@ -87,7 +91,7 @@ displayed in tree form.
 
 ### User profile HTML Structure
 
-To keep things oranised each category will be their own page with a subnavigation bar to navigate
+To keep things organised each category will be their own page with a subnavigation bar to navigate
 between them. Since htmx cannot (without extensions) swap new scripts into the <head> on swap during
 boosted navigation, we must do non-boosted navigation to our profile page OR enable some htmx
 extension library.
@@ -126,7 +130,7 @@ function onProfileSshKeysSwapped() {
   // Do implementation things like attaching event listeners
 }
 
-indow.onload = function () {
+window.onload = function () {
   // Event triggered by HTMX because we supply a HxTrigger response header when loading this profile category.
   document.body.addEventListener("profileSshKeysSwapped", () => {
     onProfileSshKeysSwapped();
@@ -144,7 +148,7 @@ struct SshKeysPartialView {
 
 fn view_ssh_keys(...) {
     // ...
-    
+
     let ssh_keys_swapped_trigger = HxResponseTrigger::after_swap([HxEvent::new("profileSshKeysSwapped".to_string())]);
     Ok((
         ssh_keys_swapped_trigger,
