@@ -28,6 +28,7 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
+use super::cors::Cors;
 use super::errors::WebError;
 use super::middleware::caching::{cache_me, dont_cache_me};
 use super::middleware::KOpId;
@@ -3397,6 +3398,7 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/reauth", post(reauth))
         .with_state(state.clone())
         .layer(from_fn(dont_cache_me))
-        .merge(cacheable_routes(state))
+        .merge(cacheable_routes(state.clone()))
         .route("/v1/debug/ipinfo", get(debug_ipinfo))
+        .cors(state.cors_allowed_origins)
 }

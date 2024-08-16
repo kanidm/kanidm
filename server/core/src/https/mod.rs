@@ -1,6 +1,7 @@
 mod apidocs;
 pub(crate) mod errors;
 
+pub(crate) mod cors;
 mod extractors;
 mod generic;
 mod javascript;
@@ -77,6 +78,7 @@ pub struct ServerState {
     pub domain: String,
     // This is set to true by default, and is only false on integration tests.
     pub secure_cookies: bool,
+    pub cors_allowed_origins: Option<Vec<HeaderValue>>,
 }
 
 impl ServerState {
@@ -253,6 +255,13 @@ pub async fn create_https_server(
 
     let trust_x_forward_for = config.trust_x_forward_for;
 
+    let cors_allowed_origins: Option<Vec<HeaderValue>> = config
+        .cors_allowed_origins
+        .as_ref()
+        .map(|os| os.into_iter().map(|o| o.parse().ok()).collect())
+        .flatten()
+        .and_then(|hvs: Vec<HeaderValue>| if hvs.is_empty() { None } else { Some(hvs) });
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -263,6 +272,7 @@ pub async fn create_https_server(
         csp_header,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
+        cors_allowed_origins,
     };
 
     let static_routes = match config.role {
