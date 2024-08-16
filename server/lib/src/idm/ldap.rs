@@ -72,7 +72,7 @@ enum LdapBindTarget {
 impl LdapServer {
     pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+        let mut idms_prox_read = idms.proxy_read().await?;
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -321,7 +321,7 @@ impl LdapServer {
             admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
-            let mut idm_read = idms.proxy_read().await.unwrap();
+            let mut idm_read = idms.proxy_read().await?;
             // Now start the txn - we need it for resolving filter components.
 
             // join the filter, with ext_filter
@@ -428,7 +428,7 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth().await.unwrap();
+        let mut idm_auth = idms.auth().await?;
         let target = self.bind_target_from_bind_dn(&mut idm_auth, dn, pw).await?;
 
         let result = match target {
@@ -504,7 +504,7 @@ impl LdapServer {
         };
 
         let ct = duration_from_epoch_now();
-        let mut idm_read = idms.proxy_read().await.unwrap();
+        let mut idm_read = idms.proxy_read().await?;
         // Now start the txn - we need it for resolving filter components.
 
         // join the filter, with ext_filter

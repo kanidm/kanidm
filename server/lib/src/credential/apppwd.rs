@@ -43,7 +43,7 @@ impl Eq for ApplicationPassword {}
 
 impl PartialOrd for ApplicationPassword {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        self.uuid.partial_cmp(&other.uuid)
+        Some(self.cmp(other))
     }
 }
 

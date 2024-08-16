@@ -170,7 +170,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
 
         let application = self
-            .ldap_applications
+            .applications
             .inner
             .set
             .get(&lae.application)
@@ -193,7 +193,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Ok(None);
         }
 
-        match account.verify_application_password(&application, lae.cleartext.as_str())? {
+        match account.verify_application_password(application, lae.cleartext.as_str())? {
             Some(_) => {
                 let session_id = Uuid::new_v4();
                 security_info!(

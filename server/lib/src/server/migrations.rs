@@ -921,12 +921,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
             // DL4
             // DL5
-            IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
             // DL6
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
-            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone(),
             IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
         ];
 

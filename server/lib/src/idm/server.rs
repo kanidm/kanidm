@@ -81,7 +81,7 @@ pub struct IdmServer {
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
-    ldap_applications: Arc<LdapApplications>,
+    applications: Arc<LdapApplications>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -97,7 +97,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
-    pub(crate) ldap_applications: LdapApplicationsReadTransaction,
+    pub(crate) applications: LdapApplicationsReadTransaction,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -124,7 +124,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
-    pub(crate) ldap_applications: LdapApplicationsWriteTransaction<'a>,
+    pub(crate) applications: LdapApplicationsWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -160,7 +160,7 @@ impl IdmServer {
                 qs_read.get_domain_version(),
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
-                qs_read.get_ldap_applications_set()?,
+                qs_read.get_applications_set()?,
             )
         };
 
@@ -201,7 +201,7 @@ impl IdmServer {
                 e
             })?;
 
-        let ldap_applications = LdapApplications::try_from(application_set).map_err(|e| {
+        let applications = LdapApplications::try_from(application_set).map_err(|e| {
             admin_error!("Failed to load ldap applications - {:?}", e);
             e
         })?;
@@ -218,7 +218,7 @@ impl IdmServer {
                 audit_tx,
                 webauthn,
                 oauth2rs: Arc::new(oauth2rs),
-                ldap_applications: Arc::new(ldap_applications),
+                applications: Arc::new(applications),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
@@ -242,7 +242,7 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
-            ldap_applications: self.ldap_applications.read(),
+            applications: self.applications.read(),
         })
     }
 
@@ -275,7 +275,7 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             oauth2rs: self.oauth2rs.write(),
-            ldap_applications: self.ldap_applications.write(),
+            applications: self.applications.write(),
         })
     }
 
@@ -2098,10 +2098,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn commit(mut self) -> Result<(), OperationError> {
         if self.qs_write.get_changed_app() {
             self.qs_write
-                .get_ldap_applications_set()
-                .and_then(|ldap_application_set| {
-                    self.ldap_applications.reload(ldap_application_set)
-                })?;
+                .get_applications_set()
+                .and_then(|application_set| self.applications.reload(application_set))?;
         }
         if self.qs_write.get_changed_oauth2() {
             let domain_level = self.qs_write.get_domain_version();
@@ -2113,7 +2111,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
 
         // Commit everything.
-        self.ldap_applications.commit();
+        self.applications.commit();
         self.oauth2rs.commit();
         self.cred_update_sessions.commit();
 

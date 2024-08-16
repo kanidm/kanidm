@@ -153,6 +153,7 @@ pub enum OperationError {
     // DB low level errors.
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
+    DB0003FilterResolveCacheBuild,
 
     // SCIM
     SC0001IncomingSshPublicKey,
@@ -317,6 +318,7 @@ impl OperationError {
             Self::MG0003ServerPhaseInvalidForMigration => None,
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
+            Self::DB0003FilterResolveCacheBuild => None,
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present."),

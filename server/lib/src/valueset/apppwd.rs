@@ -34,12 +34,16 @@ impl ValueSetApplicationPassword {
                     application_refer,
                     label,
                     password,
-                } => ApplicationPassword {
-                    uuid: refer,
-                    application: application_refer,
-                    label,
-                    password: Password::try_from(password).expect("Failed to parse"),
-                },
+                } => {
+                    let password = Password::try_from(password)
+                        .map_err(|()| OperationError::InvalidValueState)?;
+                    ApplicationPassword {
+                        uuid: refer,
+                        application: application_refer,
+                        label,
+                        password,
+                    }
+                }
             };
             map.entry(ap.application).or_default().push(ap);
         }
@@ -51,14 +55,14 @@ impl ValueSetApplicationPassword {
     }
 
     pub fn from_repl_v1(data: &[DbValueApplicationPassword]) -> Result<ValueSet, OperationError> {
-        Self::from_dbv_iter(data.into_iter().cloned())
+        Self::from_dbv_iter(data.iter().cloned())
     }
 
     fn to_vec_dbvs(&self) -> Vec<DbValueApplicationPassword> {
         self.map
             .iter()
             .flat_map(|(_, v)| {
-                v.into_iter().map(|ap| DbValueApplicationPassword::V1 {
+                v.iter().map(|ap| DbValueApplicationPassword::V1 {
                     refer: ap.uuid,
                     application_refer: ap.application,
                     label: ap.label.clone(),
@@ -73,19 +77,17 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
             Value::ApplicationPassword(ap) => {
-                if let Some(e) = self
-                    .map
-                    .entry(ap.application)
-                    .or_default()
-                    .into_iter()
-                    .find(|x| **x == ap)
+                let application_entries = self.map.entry(ap.application).or_default();
+
+                if let Some(application_entry) = application_entries
+                    .iter_mut()
+                    .find(|entry_app_password| *entry_app_password == &ap)
                 {
                     // Overwrite on duplicated labels for the same application.
-                    // ApplicationPassword implements PartialEq to compare on
-                    // uuid, label and application uuid.
-                    e.password = ap.password;
+                    application_entry.password = ap.password;
                 } else {
-                    self.map.entry(ap.application).or_default().push(ap);
+                    // Or just add it.
+                    application_entries.push(ap);
                 }
                 Ok(true)
             }
@@ -109,10 +111,12 @@ impl ValueSetT for ValueSetApplicationPassword {
                 let mut removed = false;
                 self.map.retain(|_, v| {
                     let prev = v.len();
+                    // Check the innel vec of passwords related to this application.
                     v.retain(|y| y.uuid != *u);
                     let post = v.len();
                     removed |= post < prev;
-                    v.len() > 0
+                    // Is the apppwd set for this application id now empty?
+                    v.is_empty()
                 });
                 removed
             }
@@ -122,14 +126,11 @@ impl ValueSetT for ValueSetApplicationPassword {
 
     fn contains(&self, pv: &PartialValue) -> bool {
         match pv {
-            PartialValue::Uuid(u) => self
-                .map
-                .values()
-                .any(|v| v.into_iter().any(|ap| ap.uuid == *u)),
+            PartialValue::Uuid(u) => self.map.values().any(|v| v.iter().any(|ap| ap.uuid == *u)),
             PartialValue::Refer(u) => self
                 .map
                 .values()
-                .any(|v| v.into_iter().any(|ap| ap.application == *u)),
+                .any(|v| v.iter().any(|ap| ap.application == *u)),
             _ => false,
         }
     }
@@ -171,7 +172,7 @@ impl ValueSetT for ValueSetApplicationPassword {
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
         self.map.iter().all(|(_, v)| {
-            v.into_iter().all(|ap| {
+            v.iter().all(|ap| {
                 Value::validate_str_escapes(ap.label.as_str())
                     && Value::validate_singleline(ap.label.as_str())
             })
@@ -180,7 +181,7 @@ impl ValueSetT for ValueSetApplicationPassword {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().flat_map(|(_, v)| {
-            v.into_iter()
+            v.iter()
                 .map(|ap| format!("App: {} Label: {}", ap.application, ap.label))
         }))
     }
@@ -199,16 +200,17 @@ impl ValueSetT for ValueSetApplicationPassword {
         Box::new(
             self.map
                 .iter()
-                .flat_map(|(_, v)| v.into_iter().map(|ap| ap.uuid))
+                .flat_map(|(_, v)| v.iter().map(|ap| ap.uuid))
                 .map(PartialValue::Refer),
         )
     }
 
     fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
-        Box::new(self.map.iter().flat_map(|(_, v)| {
-            v.into_iter()
-                .map(|ap| Value::ApplicationPassword(ap.clone()))
-        }))
+        Box::new(
+            self.map
+                .iter()
+                .flat_map(|(_, v)| v.iter().map(|ap| Value::ApplicationPassword(ap.clone()))),
+        )
     }
 
     fn equal(&self, other: &ValueSet) -> bool {

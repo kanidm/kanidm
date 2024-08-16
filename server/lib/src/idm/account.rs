@@ -755,10 +755,12 @@ impl Account {
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         if let Some(v) = self.apps_pwds.get(&application.uuid) {
             for ap in v.iter() {
-                if ap.password.verify(cleartext).map_err(|e| {
+                let password_verified = ap.password.verify(cleartext).map_err(|e| {
                     error!(crypto_err = ?e);
                     e.into()
-                })? {
+                })?;
+
+                if password_verified {
                     let session_id = uuid::Uuid::new_v4();
                     security_info!(
                         "Starting session {} for {} {}",
