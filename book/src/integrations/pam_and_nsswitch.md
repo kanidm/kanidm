@@ -39,9 +39,9 @@ systemctl status kanidm-unixd-tasks
 
 > [!NOTE]
 >
-> The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If
-> disabled, your system will function as usual. It is however strongly recommended due to the
-> features it provides supporting Kanidm's capabilities.
+> The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If disabled,
+> your system will function as usual. It is however strongly recommended due to the features it
+> provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 [client_tools](../client_tools.md#kanidm-configuration).
@@ -54,11 +54,10 @@ You can also configure some unixd-specific options with the file /etc/kanidm/uni
 
 > [!NOTE]
 >
-> All users in Kanidm can change their name (and their spn) at any time. If you change
-> `home_attr` from `uuid` you _must_ have a plan on how to manage these directory renames in your
-> system. We recommend that you have a stable ID (like the UUID), and symlinks from the name to the
-> UUID folder. Automatic support is provided for this via the unixd tasks daemon, as documented
-> here.
+> All users in Kanidm can change their name (and their spn) at any time. If you change `home_attr`
+> from `uuid` you _must_ have a plan on how to manage these directory renames in your system. We
+> recommend that you have a stable ID (like the UUID), and symlinks from the name to the UUID
+> folder. Automatic support is provided for this via the unixd tasks daemon, as documented here.
 >
 > Ubuntu users please see:
 > [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
@@ -122,9 +121,9 @@ testgroup:x:2439676479:testunix
 
 > [!WARNING]
 >
-> Modifications to PAM configuration _may_ leave your system in a state where you are
-> unable to login or authenticate. You should always have a recovery shell open while making changes
-> (for example, root), or have access to single-user mode at the machine's console.
+> Modifications to PAM configuration _may_ leave your system in a state where you are unable to
+> login or authenticate. You should always have a recovery shell open while making changes (for
+> example, root), or have access to single-user mode at the machine's console.
 
 Pluggable Authentication Modules (PAM) is the mechanism a UNIX-like system that authenticates users,
 and to control access to some resources. This is configured through a stack of modules that are

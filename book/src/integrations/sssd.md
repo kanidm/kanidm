@@ -1,12 +1,12 @@
 # SSSD
 
-[SSSD](https://sssd.io/) is an alternative [PAM and nsswitch](./pam_and_nsswitch.md) provider that is
-commonly available on Linux.
+[SSSD](https://sssd.io/) is an alternative [PAM and nsswitch](./pam_and_nsswitch.md) provider that
+is commonly available on Linux.
 
 > [!WARNING]
 >
-> SSSD should be considered a "last resort". If possible, always use the native Kanidm
-> pam and nsswitch tools instead.
+> SSSD should be considered a "last resort". If possible, always use the native Kanidm pam and
+> nsswitch tools instead.
 
 ## Limitations
 

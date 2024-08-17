@@ -37,16 +37,16 @@ kanidm person get demo_user --name anonymous
 
 > [!NOTE]
 >
-> Only members of `idm_people_pii_read` and `idm_people_admins` may read personal
-> information by default.
+> Only members of `idm_people_pii_read` and `idm_people_admins` may read personal information by
+> default.
 
 Also
 
 > [!WARNING]
 >
-> Persons may change their own displayname, name and legal name at any time. You MUST NOT
-> use these values as primary keys in external systems. You MUST use the `uuid` attribute present on
-> all entries as an external primary key.
+> Persons may change their own displayname, name and legal name at any time. You MUST NOT use these
+> values as primary keys in external systems. You MUST use the `uuid` attribute present on all
+> entries as an external primary key.
 
 ## Account Validity
 

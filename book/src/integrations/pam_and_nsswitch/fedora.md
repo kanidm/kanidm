@@ -2,8 +2,8 @@
 
 > [!WARNING]
 >
-> Kanidm currently has no support for SELinux policy - this may mean you need to run
-> the daemon with permissive mode for the `unconfined_service_t` daemon type. To do this run:
+> Kanidm currently has no support for SELinux policy - this may mean you need to run the daemon with
+> permissive mode for the `unconfined_service_t` daemon type. To do this run:
 > `semanage permissive -a unconfined_service_t`. To undo this run
 > `semanage permissive -d unconfined_service_t`.
 >

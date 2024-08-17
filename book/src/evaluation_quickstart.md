@@ -7,7 +7,8 @@ considerations you should be aware of for production deployments.
 
 ## Requirements
 
-The only thing you'll need for this is Docker, Podman, or a compatible containerd environment installed and running.
+The only thing you'll need for this is Docker, Podman, or a compatible containerd environment
+installed and running.
 
 ## Get the software
 
@@ -17,7 +18,8 @@ docker pull docker.io/kanidm/server:latest
 
 ## Create your configuration
 
-Create `server.toml`. The important parts are the `domain` and `origin`. For this example, if you use `localhost` and `https://localhost:8443` this will match later commands.
+Create `server.toml`. The important parts are the `domain` and `origin`. For this example, if you
+use `localhost` and `https://localhost:8443` this will match later commands.
 
 ```toml
 {{#rustdoc_include ../../examples/server_container.toml}}
@@ -105,7 +107,8 @@ Then follow the presented steps.
 
 ## What next?
 
-You'll probably want to set it up properly, so that other computers can access it, so [choose a domain name](choosing_a_domain_name.md) and complete the full server installation.
+You'll probably want to set it up properly, so that other computers can access it, so
+[choose a domain name](choosing_a_domain_name.md) and complete the full server installation.
 
 Alternatively you might like to try configurig one of these:
 

@@ -5,8 +5,8 @@ for a period of time.
 
 > [!WARNING]
 >
-> The recycle bin is a best effort - when recovering in some cases not everything can be
-> "put back" the way it was. Be sure to check your entries are valid once they have been revived.
+> The recycle bin is a best effort - when recovering in some cases not everything can be "put back"
+> the way it was. Be sure to check your entries are valid once they have been revived.
 
 ## Where is the Recycle Bin?
 

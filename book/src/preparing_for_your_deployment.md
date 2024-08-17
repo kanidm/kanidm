@@ -18,11 +18,10 @@ docker pull kanidm/tools:latest
 
 > [!NOTE]
 >
-> Our preferred deployment method is in containers, and this documentation assumes you're
-> running in docker. Kanidm will alternately run as a daemon/service, and server builds are
-> available for multiple platforms if you prefer this option. You may need to adjust the example
-> commands throughout this document to suit your desired server type if you choose not to use
-> containers.
+> Our preferred deployment method is in containers, and this documentation assumes you're running in
+> docker. Kanidm will alternately run as a daemon/service, and server builds are available for
+> multiple platforms if you prefer this option. You may need to adjust the example commands
+> throughout this document to suit your desired server type if you choose not to use containers.
 
 ## Development Version
 
@@ -102,8 +101,8 @@ the series of intermediates, and the final certificate should be the CA root. Fo
 
 > [!NOTE]
 >
-> If you are using Let's Encrypt the provided files "fullchain.pem" and "privkey.pem" are
-> already correctly formatted as required for Kanidm.
+> If you are using Let's Encrypt the provided files "fullchain.pem" and "privkey.pem" are already
+> correctly formatted as required for Kanidm.
 
 You can validate that the leaf certificate matches the key with the command:
 
@@ -136,9 +135,9 @@ openssl verify -untrusted fullchain.pem fullchain.pem
 
 > [!NOTE]
 >
-> Here "-untrusted" flag means a list of further certificates in the chain to build up to
-> the root is provided, but that the system CA root should be consulted. Verification is NOT
-> bypassed or allowed to be invalid.
+> Here "-untrusted" flag means a list of further certificates in the chain to build up to the root
+> is provided, but that the system CA root should be consulted. Verification is NOT bypassed or
+> allowed to be invalid.
 
 If these verifications pass you can now use these certificates with Kanidm. To put the certificates
 in place you can use a shell container that mounts the volume such as:

@@ -185,12 +185,13 @@ moment.
 
 An example:
 
-Alice should only be able to modify a user's password if that user is a member of the students group.
+Alice should only be able to modify a user's password if that user is a member of the students
+group.
 
 > [!NOTE]
 >
-> `modify` does not imply `read` of the attribute. Care should be taken that we don't
-> disclose the current value in any error messages if the operation fails.
+> `modify` does not imply `read` of the attribute. Care should be taken that we don't disclose the
+> current value in any error messages if the operation fails.
 
 ## Targeting Requirements
 
@@ -416,9 +417,9 @@ depending on the entries and if you can/can't see them.
 
 > [!NOTE]
 >
-> You can only `delete`/`modify` within the read scope you have. If you can't read it (based
-> on the read rules of `search`), you can't `delete` it. This is in addition to the filter rules of
-> the `delete` applying as well. So performing a `delete` of `Pres(class)`, will only delete in your
+> You can only `delete`/`modify` within the read scope you have. If you can't read it (based on the
+> read rules of `search`), you can't `delete` it. This is in addition to the filter rules of the
+> `delete` applying as well. So performing a `delete` of `Pres(class)`, will only delete in your
 > `read` scope and will never disclose if you are denied access.
 
 <!-- TODO

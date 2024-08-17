@@ -2,8 +2,8 @@
 
 > [!WARNING]
 >
-> Replication is a newly developed feature. This means it requires manual configuration
-> and careful monitoring. You should take regular backups if you choose to proceed.
+> Replication is a newly developed feature. This means it requires manual configuration and careful
+> monitoring. You should take regular backups if you choose to proceed.
 
 ## Node Setup
 
@@ -32,8 +32,8 @@ Once configured, deploy this config to your servers and restart the nodes.
 
 > [!NOTE]
 >
-> In the future we will develop a replication coordinator so that you don't have to
-> manually configure this. But for now, if you want replication, you have to do it the hard way.
+> In the future we will develop a replication coordinator so that you don't have to manually
+> configure this. But for now, if you want replication, you have to do it the hard way.
 
 Each node has an identify certificate that is internally generated and used to communicate with
 other nodes in the topology. This certificate is also used by other nodes to validate this node.
@@ -95,8 +95,8 @@ docker exec -i -t <container name> \
 
 > [!NOTE]
 >
-> In the future we will develop a replication coordinator so that you don't have to
-> manually configure this. But for now, if you want replication, you have to do it the hard way.
+> In the future we will develop a replication coordinator so that you don't have to manually
+> configure this. But for now, if you want replication, you have to do it the hard way.
 
 This is the same as the manual process, but a single server is defined as the "primary" and the
 partner server is the "secondary". This means that if database issues occur the content of the

@@ -15,8 +15,7 @@ We recommend you have the following before continuing:
 ## Instructions
 
 1. Create a Kanidm account and group:
-   1. Create a Kanidm account. Please see the section
-      [Creating Accounts](../accounts/intro.md).
+   1. Create a Kanidm account. Please see the section [Creating Accounts](../accounts/intro.md).
    2. Give the account a password. Please see the section
       [Resetting Account Credentials](../accounts/authentication_and_credentials.md).
    3. Make the account a person. Please see the section

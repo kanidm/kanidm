@@ -2,8 +2,8 @@
 
 > [!NOTE]
 >
-> This is a work in progress and not all endpoints have perfect schema definitions, but
-> they're all covered!
+> This is a work in progress and not all endpoints have perfect schema definitions, but they're all
+> covered!
 
 We're generating an OpenAPI specification file and Swagger interface using
 [utoipa](https://crates.io/crates/utoipa).

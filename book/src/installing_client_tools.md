@@ -2,9 +2,9 @@
 
 > [!NOTE]
 >
-> Running different release versions will likely present incompatibilities. Ensure you're
-> running matching release versions of client and server binaries. If you have any issues, check
-> that you are running the latest version of Kanidm.
+> Running different release versions will likely present incompatibilities. Ensure you're running
+> matching release versions of client and server binaries. If you have any issues, check that you
+> are running the latest version of Kanidm.
 
 ## From packages
 
@@ -65,9 +65,9 @@ brew install kanidm
 
 > [!NOTE]
 >
-> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS
-> frequently are behind in Rust releases. As a result, they may not always have the latest Kanidm
-> versions available.
+> Kanidm frequently uses new Rust versions and features, however Fedora and CentOS frequently are
+> behind in Rust releases. As a result, they may not always have the latest Kanidm versions
+> available.
 
 Fedora has limited support through the development repository. You need to add the repository
 metadata into the correct directory:
@@ -91,11 +91,13 @@ dnf install kanidm-clients
 
 ### Ubuntu and Debian
 
-See <https://kanidm.github.io/kanidm_ppa/> for nightly-built packages of the current development builds, and how to install them.
+See <https://kanidm.github.io/kanidm_ppa/> for nightly-built packages of the current development
+builds, and how to install them.
 
 ## Alpine Linux
 
-Kanidm is available in the [Alpine Linux testing repository](https://pkgs.alpinelinux.org/packages?name=kanidm%2A).
+Kanidm is available in the
+[Alpine Linux testing repository](https://pkgs.alpinelinux.org/packages?name=kanidm%2A).
 
 To install the Kanidm client use:
 

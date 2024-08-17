@@ -23,7 +23,7 @@ kanidm service-account get demo_service --name idm_admin
 By delegating the administration of this service account to `demo_group` this allows our `demo_user`
 to administer the service account.
 
-## Using API Tokens with Service Accounts
+## Generating API Tokens For Service Accounts
 
 Service accounts can have API tokens generated and associated with them. These tokens can be used
 for identification of the service account, and for granting extended access rights where the service
@@ -66,7 +66,15 @@ kanidm service-account api-token destroy --name ENTRY_MANAGER ACCOUNT_ID TOKEN_I
 kanidm service-account api-token destroy --name demo_user demo_service 4de2a4e9-e06a-4c5e-8a1b-33f4e7dd5dc7
 ```
 
-## API Tokens with LDAP
+### API Tokens with Kanidm HTTPS/REST API
+
+The API token issued for a service account can be used by putting the token into the HTTP request
+`Authorization` header with the format `Bearer <token>`.
+
+For more see the
+[MDN documentation for Authorisation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Authorization)
+
+### API Tokens with LDAP
 
 API tokens can also be used to gain extended search permissions with LDAP. To do this you can bind
 with a dn of `dn=token` and provide the API token as the password.

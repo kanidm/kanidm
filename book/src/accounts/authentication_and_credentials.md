@@ -16,8 +16,8 @@ secure method of authentication in Kanidm.
 
 > [!WARNING]
 >
-> Kanidm's definition of Passkeys may differ from that of other systems. This is because
-> we adopted the term very early, before it has changed and evolved.
+> Kanidm's definition of Passkeys may differ from that of other systems. This is because we adopted
+> the term very early, before it has changed and evolved.
 
 ### Attested Passkeys
 
@@ -101,8 +101,8 @@ update interface. This allows the user to directly manage the credentials of ano
 
 > [!WARNING]
 >
-> Don't use the direct credential reset to lock or invalidate an account. You should
-> expire the account instead.
+> Don't use the direct credential reset to lock or invalidate an account. You should expire the
+> account instead.
 
 ```bash
 kanidm person credential update demo_user --name idm_admin
@@ -155,6 +155,5 @@ kanidm reauth -D william
 
 > [!NOTE]
 >
-> During reauthentication an account must use the same credential that was used to
-> initially authenticate to the session. The reauth flow will not allow any other credentials to be
-> used!
+> During reauthentication an account must use the same credential that was used to initially
+> authenticate to the session. The reauth flow will not allow any other credentials to be used!
