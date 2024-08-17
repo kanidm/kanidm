@@ -81,9 +81,9 @@ domain = "idm.example.com"
 #   origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
 #
-# Allowed CORS origins. This allows deployment of an
-# alternative WebUI for Kanidm. Default is empty
-# cors_allow_origins = ["https://idm.example.com", "https://other-webui.example.com"]
+# Allowed CORS origins. This allows access to the Kanidm
+# endpoints from additional domains. Default is empty
+# cors_allow_origins = ["https://some.example.com", "https://other.example.com"]
 #
 [online_backup]
 #   The path to the output folder for online backups
