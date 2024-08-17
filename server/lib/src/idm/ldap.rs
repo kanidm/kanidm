@@ -1353,6 +1353,61 @@ mod tests {
                         LDAP_ATTR_MAIL_ALTERNATIVE,
                         "testperson1.alternative@example.com"
                     ),
+                    (LDAP_ATTR_EMAIL_PRIMARY, "testperson1@example.com"),
+                    (
+                        LDAP_ATTR_EMAIL_ALTERNATIVE,
+                        "testperson1.alternative@example.com"
+                    )
+                );
+            }
+            _ => assert!(false),
+        };
+
+        // ======= test with a substring search
+
+        let sr = SearchRequest {
+            msgid: 2,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::And(vec![
+                LdapFilter::Equality(Attribute::Class.to_string(), "posixAccount".to_string()),
+                LdapFilter::Substring(
+                    LDAP_ATTR_MAIL.to_string(),
+                    LdapSubstringFilter {
+                        initial: None,
+                        any: vec![],
+                        final_: Some("@example.com".to_string()),
+                    },
+                ),
+            ]),
+            attrs: vec![
+                LDAP_ATTR_NAME,
+                LDAP_ATTR_MAIL,
+                LDAP_ATTR_MAIL_PRIMARY,
+                LDAP_ATTR_MAIL_ALTERNATIVE,
+            ]
+            .into_iter()
+            .map(|s| s.to_string())
+            .collect(),
+        };
+
+        let r1 = ldaps
+            .do_search(idms, &sr, &sa_lbt, Source::Internal)
+            .await
+            .unwrap();
+
+        assert!(r1.len() == 2);
+        match &r1[0].op {
+            LdapOp::SearchResultEntry(lsre) => {
+                assert_entry_contains!(
+                    lsre,
+                    "spn=testperson1@example.com,dc=example,dc=com",
+                    (Attribute::Name.as_ref(), "testperson1"),
+                    (Attribute::Mail.as_ref(), "testperson1@example.com"),
+                    (
+                        Attribute::Mail.as_ref(),
+                        "testperson1.alternative@example.com"
+                    ),
                     (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
                     (
                         LDAP_ATTR_MAIL_ALTERNATIVE,

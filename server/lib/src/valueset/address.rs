@@ -357,16 +357,52 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn substring(&self, _pv: &PartialValue) -> bool {
-        false
+    fn substring(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::EmailAddress(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().contains(&s2_lower))
+            }
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
     }
 
-    fn startswith(&self, _pv: &PartialValue) -> bool {
-        false
+    fn startswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::EmailAddress(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().starts_with(&s2_lower))
+            }
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
     }
 
-    fn endswith(&self, _pv: &PartialValue) -> bool {
-        false
+    fn endswith(&self, pv: &PartialValue) -> bool {
+        match pv {
+            PartialValue::EmailAddress(s2) => {
+                // We lowercase as LDAP and similar expect case insensitive searches here.
+                let s2_lower = s2.to_lowercase();
+                self.set
+                    .iter()
+                    .any(|s1| s1.to_lowercase().ends_with(&s2_lower))
+            }
+            _ => {
+                debug_assert!(false);
+                false
+            }
+        }
     }
 
     fn lessthan(&self, _pv: &PartialValue) -> bool {
