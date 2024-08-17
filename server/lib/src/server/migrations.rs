@@ -140,7 +140,7 @@ impl QueryServer {
             // which in turn can trigger schema reloads etc.
             write_txn.reload()?;
             // Force a reindex here since schema probably changed and we aren't at the
-            // runtime phase where it will trigger on it's own yet.
+            // runtime phase where it will trigger on its own yet.
             write_txn.reindex()?;
         } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
@@ -156,7 +156,7 @@ impl QueryServer {
             write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
             write_txn.reload()?;
             // Force a reindex here since schema probably changed and we aren't at the
-            // runtime phase where it will trigger on it's own yet.
+            // runtime phase where it will trigger on its own yet.
             write_txn.reindex()?;
         }
 
