@@ -23,7 +23,9 @@ use std::time::Duration;
 // This value no longer requires incrementing during releases. It only
 // serves as a "once off" marker so that we know when the initial db
 // index is performed on first-run.
-pub const SYSTEM_INDEX_VERSION: i64 = 31;
+//
+// It's also useful if we need to force a reindex due to a bug though :)
+pub const SYSTEM_INDEX_VERSION: i64 = 32;
 
 /*
  * domain functional levels

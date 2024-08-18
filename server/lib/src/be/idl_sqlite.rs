@@ -1204,6 +1204,7 @@ impl IdlSqliteWriteTransaction {
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
         // to template into the str.
@@ -1215,7 +1216,6 @@ impl IdlSqliteWriteTransaction {
             itype.as_idx_str(),
             attr
         );
-        trace!(idx = %idx_stmt, "creating index");
 
         self.get_conn()?
             .execute(idx_stmt.as_str(), [])

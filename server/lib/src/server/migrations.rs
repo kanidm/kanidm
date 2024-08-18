@@ -140,6 +140,9 @@ impl QueryServer {
             // Reload if anything in migrations requires it - this triggers the domain migrations
             // which in turn can trigger schema reloads etc.
             write_txn.reload()?;
+            // Force a reindex here since schema probably changed and we aren't at the
+            // runtime phase where it will trigger on its own yet.
+            write_txn.reindex()?;
         } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
@@ -153,6 +156,9 @@ impl QueryServer {
             // We did not already need a version migration as above
             write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
             write_txn.reload()?;
+            // Force a reindex here since schema probably changed and we aren't at the
+            // runtime phase where it will trigger on its own yet.
+            write_txn.reindex()?;
         }
 
         if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
