@@ -28,7 +28,6 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 use std::path::PathBuf;
 use std::process::ExitCode;
-use std::str::FromStr;
 
 use clap::{Args, Parser, Subcommand};
 use futures::{SinkExt, StreamExt};
