@@ -153,12 +153,12 @@ impl Oauth2App {
             .expect("Failed to serialise request");
         let req_jsvalue = js_sys::JSON::stringify(&req_jsvalue).expect_throw("failed to stringify");
 
-        let mut opts = RequestInit::new();
-        opts.method("POST");
-        opts.mode(RequestMode::SameOrigin);
-        opts.redirect(RequestRedirect::Manual); // can't replace with do_request because of this
+        let opts = RequestInit::new();
+        opts.set_method("POST");
+        opts.set_mode(RequestMode::SameOrigin);
+        opts.set_redirect(RequestRedirect::Manual); // can't replace with do_request because of this
 
-        opts.body(Some(&req_jsvalue));
+        opts.set_body(&req_jsvalue);
 
         let request = Request::new_with_str_and_init(OAUTH2_AUTHORISE_PERMIT, &opts)?;
 

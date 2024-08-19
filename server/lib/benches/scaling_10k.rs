@@ -44,7 +44,8 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                             let ct = duration_from_epoch_now();
                             let start = Instant::now();
                             for counter in 0..size {
-                                let mut idms_prox_write = idms.proxy_write(ct).await;
+                                let mut idms_prox_write =
+                                    idms.proxy_write(ct).await.expect("Failed to get write txn");
                                 let name = format!("testperson_{counter}");
                                 let e1 = entry_init!(
                                     (Attribute::Class, EntryClass::Object.to_value()),
@@ -111,7 +112,8 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
                             let ct = duration_from_epoch_now();
                             let start = Instant::now();
 
-                            let mut idms_prox_write = idms.proxy_write(ct).await;
+                            let mut idms_prox_write =
+                                idms.proxy_write(ct).await.expect("Failed to get write txn");
                             let cr = idms_prox_write.qs_write.internal_create(data.clone());
                             assert!(cr.is_ok());
 
