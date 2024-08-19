@@ -160,3 +160,9 @@ We enforce a minimum RSA and ECDSA key sizes. If your key is insufficiently larg
 refuse to start and inform you of this.
 
 Currently accepted key sizes are minimum 2048 bit RSA and 224 bit ECDSA.
+
+## Cross-origin requests to REST API
+
+By default, we block [cross-origin resource sharing](https://developer.mozilla.org/en-US/docs/Web/HTTP/CORS) on the REST API. However,
+if you need it for any reason, you can enable it by adding
+`cors_allowed_origins = [ "your.origin.here" ]` to the configuration.
