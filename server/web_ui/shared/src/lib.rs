@@ -33,17 +33,17 @@ pub async fn do_request<JV: AsRef<JsValue>>(
     method: RequestMethod,
     body: Option<JV>,
 ) -> Result<(Option<String>, u16, JsValue, Headers), FetchError> {
-    let mut opts = RequestInit::new();
-    opts.method(method.as_ref());
-    opts.mode(RequestMode::SameOrigin);
-    opts.credentials(web_sys::RequestCredentials::SameOrigin);
+    let opts = RequestInit::new();
+    opts.set_method(method.as_ref());
+    opts.set_mode(RequestMode::SameOrigin);
+    opts.set_credentials(web_sys::RequestCredentials::SameOrigin);
 
     if let Some(body) = body {
         #[cfg(debug_assertions)]
         if method == RequestMethod::GET {
             gloo::console::debug!("This seems odd, you've supplied a body with a GET request?")
         }
-        opts.body(Some(body.as_ref()));
+        opts.set_body(body.as_ref());
     }
 
     let request = Request::new_with_str_and_init(uri, &opts)?;
