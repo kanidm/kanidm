@@ -124,12 +124,12 @@ Once created you can view the details of the client.
 ```bash
 kanidm system oauth2 get nextcloud
 ---
+name: nextcloud
 class: oauth2_resource_server
 class: oauth2_resource_server_basic
 class: object
 displayname: Nextcloud Production
 oauth2_rs_basic_secret: hidden
-oauth2_rs_name: nextcloud
 oauth2_rs_origin_landing: https://nextcloud.example.com
 oauth2_rs_token_key: hidden
 ```
@@ -144,7 +144,7 @@ kanidm system oauth2 show-basic-secret nextcloud
 
 ### Configure the Client/Resource Server
 
-On your client, you should configure the client ID as the `oauth2_rs_name` from Kanidm, and the
+On your client, you should configure the client ID as the `name` from Kanidm, and the
 password to be the value shown in `oauth2_rs_basic_secret`. Ensure that the code
 challenge/verification method is set to S256.
 
