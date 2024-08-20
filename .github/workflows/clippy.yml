@@ -33,7 +33,7 @@ jobs:
             tpm-udev \
             libtss2-dev
       - name: "Run clippy"
-        run: cargo clippy --all-features
+        run: cargo clippy --lib --bins --examples --all-features
   fmt:
     runs-on: ubuntu-latest
     steps:
