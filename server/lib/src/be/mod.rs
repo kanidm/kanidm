@@ -2269,7 +2269,7 @@ mod tests {
         ($be:expr, $ent:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![Attribute::Uuid.into()])
+                .filter_from_attrs(&[Attribute::Uuid.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2850,11 +2850,7 @@ mod tests {
             );
 
             let uuid_p_idl = be
-                .load_test_idl(
-                    &"not_indexed".to_string(),
-                    IndexType::Presence,
-                    &"_".to_string(),
-                )
+                .load_test_idl("not_indexed", IndexType::Presence, "_")
                 .unwrap(); // unwrap the result
             assert_eq!(uuid_p_idl, None);
 

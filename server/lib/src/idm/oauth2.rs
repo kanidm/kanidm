@@ -5193,7 +5193,7 @@ mod tests {
             ..
         } = consent_request
         {
-            assert!(scopes.contains(&"newscope".to_string()));
+            assert!(scopes.contains("newscope"));
             consent_token
         } else {
             unreachable!();

@@ -203,7 +203,7 @@ async fn test_full_identification_flow(rsclient: KanidmClient) {
     // we check that the user A got a WaitForCode
 
     let IdentifyUserResponse::ProvideCode { step: _, totp } = higher_user_req_1 else {
-        return assert!(false);
+        panic!();
         // we check that the user B got the code
     };
     // we now try to submit the wrong code and we check that we get CodeFailure
@@ -230,7 +230,7 @@ async fn test_full_identification_flow(rsclient: KanidmClient) {
         .unwrap();
     // if the totp was correct we must get a ProvideCode
     let IdentifyUserResponse::ProvideCode { step: _, totp } = lower_user_req_2_right else {
-        return assert!(false);
+        panic!();
     };
     // we now try to do the same thing with user B: we first submit the wrong code expecting CodeFailure,
     // and then we submit the right one expecting Success

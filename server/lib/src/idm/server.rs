@@ -3139,7 +3139,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
 
         let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
@@ -3147,7 +3147,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
     }
 
