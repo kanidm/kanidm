@@ -3553,20 +3553,11 @@ mod tests {
 
         e.add_ava(Attribute::UserId, Value::from("william"));
 
-        assert!(e.attribute_equality(
-            Attribute::UserId,
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(!e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("test")));
-        assert!(!e.attribute_equality(
-            Attribute::NonExist,
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(!e.attribute_equality(Attribute::NonExist, &PartialValue::new_utf8s("william")));
         // Also test non-matching attr syntax
-        assert!(!e.attribute_equality(
-            Attribute::UserId,
-            &PartialValue::new_iutf8("william")
-        ));
+        assert!(!e.attribute_equality(Attribute::UserId, &PartialValue::new_iutf8("william")));
     }
 
     #[test]
@@ -3575,10 +3566,7 @@ mod tests {
 
         e.add_ava(Attribute::UserId, Value::from("william"));
 
-        assert!(e.attribute_substring(
-            Attribute::UserId,
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("will")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("liam")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("lli")));
@@ -3652,10 +3640,7 @@ mod tests {
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
         assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("test")));
-        assert!(e.attribute_equality(
-            Attribute::Class,
-            &PartialValue::new_iutf8("multi_test")
-        ));
+        assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("multi_test")));
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
