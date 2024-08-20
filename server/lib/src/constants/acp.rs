@@ -1052,6 +1052,41 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_MAIL_SERVERS_DL8: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_mail_servers",
+        uuid: UUID_IDM_ACP_MAIL_SERVERS,
+        description:
+            "Builtin IDM Control for MAIL servers to read email addresses and other needed attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MAIL_SERVERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Or(vec![
+                match_class_filter!(EntryClass::Account),
+                match_class_filter!(EntryClass::Group),
+            ]),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::Member,
+            Attribute::DynMember,
+            Attribute::MemberOf,
+            Attribute::GidNumber,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
