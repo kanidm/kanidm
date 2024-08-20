@@ -520,14 +520,9 @@ impl fmt::Display for Configuration {
         }?;
         write!(f, "max request size: {}b, ", self.maximum_request)?;
         write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for)?;
-        write!(
-            f,
-            "CORS allowed origins: [{}], ",
-            match &self.cors_allowed_origins {
-                Some(cao) => cao.join(", "),
-                None => "".to_string(),
-            }
-        )?;
+        if let Some(cao) = &self.cors_allowed_origins {
+            write!(f, "CORS allowed origins: [{}], ", cao.join(", "))?;
+        }
         write!(f, "with TLS: {}, ", self.tls_config.is_some())?;
         match &self.online_backup {
             Some(bck) => write!(
