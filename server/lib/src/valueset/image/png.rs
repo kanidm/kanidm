@@ -150,7 +150,7 @@ fn test_png_consume_chunks_until_iend() {
     let mut x = 11;
     while x > 0 {
         let newslice = &testchunks_slice[0..=x];
-        let res = png_consume_chunks_until_iend(&newslice);
+        let res = png_consume_chunks_until_iend(newslice);
         trace!("chunkstatus at size {} {:?}", x, &res);
         assert!(res.is_err());
         x -= 1;

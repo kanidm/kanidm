@@ -1837,7 +1837,7 @@ mod tests {
 
         match audit_rx.try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         // === Now begin a new session, and use a good pw.
@@ -1868,7 +1868,7 @@ mod tests {
 
         match async_rx.blocking_recv() {
             Some(DelayedAction::AuthSessionRecord(_)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         drop(async_tx);
@@ -1938,7 +1938,7 @@ mod tests {
 
         match audit_rx.try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         drop(async_tx);
@@ -2126,7 +2126,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2150,7 +2150,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
         // check send bad totp, should fail immediate
@@ -2171,7 +2171,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2205,7 +2205,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2239,7 +2239,7 @@ mod tests {
 
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2312,7 +2312,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2458,7 +2458,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2486,11 +2486,11 @@ mod tests {
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2519,7 +2519,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2567,7 +2567,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2617,7 +2617,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2639,7 +2639,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2671,7 +2671,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2710,13 +2710,13 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
 
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2756,11 +2756,11 @@ mod tests {
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2821,7 +2821,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2843,7 +2843,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2873,7 +2873,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2912,13 +2912,13 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
 
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2951,7 +2951,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -2984,7 +2984,7 @@ mod tests {
 
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -3024,11 +3024,11 @@ mod tests {
             // Check the async counter update was sent.
             match async_rx.blocking_recv() {
                 Some(DelayedAction::WebauthnCounterIncrement(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -3100,7 +3100,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
         // check send wrong backup code, should fail immediate
@@ -3121,7 +3121,7 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
         // check send good backup code, should continue
@@ -3154,13 +3154,13 @@ mod tests {
 
             match audit_rx.try_recv() {
                 Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
         // Can't process BackupCodeRemoval without the server instance
         match async_rx.blocking_recv() {
             Some(DelayedAction::BackupCodeRemoval(_)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         // check send good backup code, should continue
@@ -3194,13 +3194,13 @@ mod tests {
         // Can't process BackupCodeRemoval without the server instance
         match async_rx.blocking_recv() {
             Some(DelayedAction::BackupCodeRemoval(_)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         // There will be a auth session record too
         match async_rx.blocking_recv() {
             Some(DelayedAction::AuthSessionRecord(_)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         // TOTP should also work:
@@ -3236,7 +3236,7 @@ mod tests {
         // There will be a auth session record too
         match async_rx.blocking_recv() {
             Some(DelayedAction::AuthSessionRecord(_)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         drop(async_tx);
@@ -3313,7 +3313,7 @@ mod tests {
 
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 
@@ -3346,7 +3346,7 @@ mod tests {
 
             match async_rx.blocking_recv() {
                 Some(DelayedAction::AuthSessionRecord(_)) => {}
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             }
         }
 

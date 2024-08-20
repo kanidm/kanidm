@@ -1722,7 +1722,7 @@ mod tests {
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Check that when we request +, we get all attrs and the vattrs
@@ -1764,7 +1764,7 @@ mod tests {
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Check that when we request an attr by name, we get all of them correctly.
@@ -1801,7 +1801,7 @@ mod tests {
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -1927,7 +1927,7 @@ mod tests {
                     (Attribute::Name, "testperson1")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Inspect the token to get its uuid out.
@@ -1984,7 +1984,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // ======= test with a substring search
@@ -2039,7 +2039,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2110,7 +2110,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2167,7 +2167,7 @@ mod tests {
                 );
                 assert!(lsre.attributes.is_empty());
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // If we request 1.1 and another attr, 1.1 is IGNORED.
@@ -2200,7 +2200,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2238,7 +2238,7 @@ mod tests {
                     ("defaultnamingcontext", "dc=example,dc=com")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         drop(ldaps);
@@ -2291,7 +2291,7 @@ mod tests {
                     ("defaultnamingcontext", "o=kanidmproject")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2399,7 +2399,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2441,7 +2441,7 @@ mod tests {
                 LdapOp::CompareResult(lcr) => {
                     assert_eq!(lcr.code, code);
                 }
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             };
         }
 

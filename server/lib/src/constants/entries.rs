@@ -21,7 +21,7 @@ use uuid::Uuid;
 #[test]
 fn test_valueattribute_as_str() {
     assert!(Attribute::Class.as_ref() == "class");
-    assert!(Attribute::Class.to_string() == String::from("class"));
+    assert!(Attribute::Class.to_string() == *"class");
 }
 
 #[test]

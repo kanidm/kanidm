@@ -4215,7 +4215,7 @@ mod tests {
         // meets criteria.
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         //  Update creds

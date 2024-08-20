@@ -2586,16 +2586,13 @@ mod tests {
 
             let result = fs::remove_file(&db_backup_file_name);
 
-            match result {
-                Err(e) => {
-                    // if the error is the file is not found, that's what we want so continue,
-                    // otherwise return the error
-                    match e.kind() {
-                        std::io::ErrorKind::NotFound => {}
-                        _ => (),
-                    }
+            if let Err(e) = result {
+                // if the error is the file is not found, that's what we want so continue,
+                // otherwise return the error
+                match e.kind() {
+                    std::io::ErrorKind::NotFound => {}
+                    _ => (),
                 }
-                _ => (),
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");
@@ -2650,16 +2647,13 @@ mod tests {
 
             let result = fs::remove_file(&db_backup_file_name);
 
-            match result {
-                Err(e) => {
-                    // if the error is the file is not found, that's what we want so continue,
-                    // otherwise return the error
-                    match e.kind() {
-                        std::io::ErrorKind::NotFound => {}
-                        _ => (),
-                    }
+            if let Err(e) = result {
+                // if the error is the file is not found, that's what we want so continue,
+                // otherwise return the error
+                match e.kind() {
+                    std::io::ErrorKind::NotFound => {}
+                    _ => (),
                 }
-                _ => (),
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");

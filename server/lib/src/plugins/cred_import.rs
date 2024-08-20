@@ -342,7 +342,7 @@ mod tests {
                         assert!(webauthn.is_empty());
                         assert!(backup_code.is_none());
                     }
-                    _ => assert!(false),
+                    _ => panic!("Oh no"),
                 };
             }
         );
@@ -406,7 +406,7 @@ mod tests {
                         assert!(totp.get("a") == Some(&totp_a));
                         assert!(totp.get("b") == Some(&totp_b));
                     }
-                    _ => assert!(false),
+                    _ => panic!("Oh no"),
                 };
             }
         );

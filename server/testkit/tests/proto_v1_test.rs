@@ -726,7 +726,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
         .await;
     match r1 {
         Ok(Some(_tok)) => {}
-        _ => assert!(false),
+        _ => panic!("Oh no"),
     };
 
     // attempt to verify (bad, anon-conn)
@@ -735,7 +735,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
         .await;
     match r2 {
         Ok(None) => {}
-        _ => assert!(false),
+        _ => panic!("Oh no"),
     };
 
     // lock? (admin-conn)
@@ -754,7 +754,7 @@ async fn test_server_rest_posix_auth_lifecycle(rsclient: KanidmClient) {
         .await;
     match r3 {
         Ok(None) => {}
-        _ => assert!(false),
+        _ => panic!("Oh no"),
     };
 }
 
