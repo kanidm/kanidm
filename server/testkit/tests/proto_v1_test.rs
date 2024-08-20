@@ -1060,7 +1060,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
         .unwrap();
 
     // Logout, we don't need any auth now.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _status) = rsclient
         .idm_account_credential_update_exchange(intent_token)
@@ -1085,7 +1085,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
         .unwrap();
 
     // Assert it now works.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     let res = rsclient
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
         .await;
@@ -1135,7 +1135,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .unwrap();
 
     // Logout, we don't need any auth now, the intent tokens care for it.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _statu) = rsclient
         .idm_account_credential_update_exchange(intent_token)
@@ -1193,7 +1193,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .expect("Failed to do totp?");
 
     // Assert it now works.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     let res = rsclient
         .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp_chal)
         .await;
@@ -1232,7 +1232,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
         .unwrap();
 
     // Assert it now works.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     let res = rsclient
         .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
         .await;
@@ -1264,7 +1264,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     // Logout, we don't need any auth now.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _status) = rsclient
         .idm_account_credential_update_exchange(intent_token)
@@ -1312,7 +1312,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     // Assert it now works.
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
 
     wa
 }
@@ -1467,7 +1467,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .idm_service_account_add_attr(
             test_service_account_username,
             Attribute::Mail.as_ref(),
-            &vec!["test@example.com"]
+            &["test@example.com"]
         )
         .await
         .is_ok());
@@ -1602,7 +1602,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
             .unwrap();
 
         // Logout, we don't need any auth now.
-        let _ = rsclient.logout();
+        let _ = rsclient.logout().await;
         // Exchange the intent token
         let (session_token, _status) = rsclient
             .idm_account_credential_update_exchange(intent_token)
@@ -1624,7 +1624,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
 
     // Auth as the user.
 
-    let _ = rsclient.logout();
+    let _ = rsclient.logout().await;
     let res = rsclient
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
         .await;
