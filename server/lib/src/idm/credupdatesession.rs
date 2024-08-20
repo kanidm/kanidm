@@ -2978,27 +2978,20 @@ mod tests {
             .credential_primary_set_password(&cust, ct, &radius_secret)
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details == vec!(PasswordFeedback::DontReusePasswords,) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::DontReusePasswords,))
+        );
 
         let err = cutxn
             .credential_primary_set_password(&cust, ct, "testperson2023")
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details
-                    == vec!(
-                        PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess,
-                        PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou,
-                    ) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(
+            PasswordFeedback::NamesAndSurnamesByThemselvesAreEasyToGuess,
+            PasswordFeedback::AvoidDatesAndYearsThatAreAssociatedWithYou,
+                   ))
+        );
 
         let err = cutxn
             .credential_primary_set_password(
@@ -3008,12 +3001,9 @@ mod tests {
             )
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details == vec!(PasswordFeedback::BadListed) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::BadListed))
+        );
 
         assert!(c_status.can_commit);
 
@@ -3066,12 +3056,9 @@ mod tests {
             .credential_primary_set_password(&cust, ct, &pw)
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),))
+        );
 
         // Test pw len of len minus 1
         let pw = password_from_random_len(test_pw_min_length - 1);
@@ -3079,12 +3066,8 @@ mod tests {
             .credential_primary_set_password(&cust, ct, &pw)
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),) =>
-                true,
-            _ => false,
-        });
+        assert!(matches!(err,OperationError::PasswordQuality(details)
+                if details == vec!(PasswordFeedback::TooShort(test_pw_min_length),)));
 
         // Test pw len of exact len
         let pw = password_from_random_len(test_pw_min_length);

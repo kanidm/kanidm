@@ -3670,13 +3670,13 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
         assert!(e.apply_modlist(&remove_mods).is_ok());
-        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
+        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
 
         let remove_empty_mods = remove_mods;
 
         assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
-        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
+        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
     }
 
     #[test]

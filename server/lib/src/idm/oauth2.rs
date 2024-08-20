@@ -3107,12 +3107,9 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -3172,12 +3169,9 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -3447,12 +3441,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         drop(idms_prox_read);
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -3527,12 +3518,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         drop(idms_prox_read);
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -3695,12 +3683,9 @@ mod tests {
         trace!(?consent_request);
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -3820,12 +3805,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -3914,12 +3896,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -4083,12 +4062,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -4206,12 +4182,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         let reject_success = idms_prox_read
             .check_oauth2_authorise_reject(&ident, &consent_token, ct)
@@ -4518,12 +4491,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -4703,12 +4673,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -4791,12 +4758,9 @@ mod tests {
             "openid groups".to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -4952,12 +4916,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -5027,12 +4988,9 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -5062,10 +5020,7 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let _permit_success = if let AuthoriseResponse::Permitted(permit_success) = consent_request
-        {
-            permit_success
-        } else {
+        let AuthoriseResponse::Permitted(_permit_success) = consent_request else {
             unreachable!();
         };
 
@@ -5126,12 +5081,9 @@ mod tests {
             .expect("Oauth2 authorisation failed");
 
         // Should be in the consent phase;
-        let _consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { .. } = consent_request else {
+            unreachable!();
+        };
 
         drop(idms_prox_read);
 
@@ -5224,12 +5176,9 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -5327,12 +5276,9 @@ mod tests {
             .expect("Failed to perform OAuth2 authorisation request.");
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -5419,12 +5365,9 @@ mod tests {
         );
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -6000,12 +5943,9 @@ mod tests {
             OAUTH2_SCOPE_OPENID.to_string()
         );
 
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);
@@ -6189,12 +6129,9 @@ mod tests {
             .expect("OAuth2 authorisation failed");
 
         // Should be in the consent phase;
-        let consent_token =
-            if let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request {
-                consent_token
-            } else {
-                unreachable!();
-            };
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
 
         // == Manually submit the consent token to the permit for the permit_success
         drop(idms_prox_read);

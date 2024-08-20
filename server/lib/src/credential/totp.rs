@@ -302,7 +302,7 @@ mod tests {
         secs: u64,
         step: u64,
         digits: TotpDigits,
-        expect: Result<u32, TotpError>,
+        expect: &Result<u32, TotpError>,
     ) {
         let otp = Totp::new(key.to_vec(), step, algo, digits);
         let d = Duration::from_secs(secs);
@@ -311,7 +311,7 @@ mod tests {
             "key: {:?}, algo: {:?}, time: {:?}, step: {:?}, expect: {:?} == {:?}",
             key, algo, secs, step, expect, r
         );
-        assert!(r == expect);
+        assert_eq!(&r, expect);
     }
 
     #[test]
@@ -322,7 +322,7 @@ mod tests {
             1585368920,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(728926),
+            &Ok(728926),
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
@@ -330,7 +330,7 @@ mod tests {
             1585368920,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
-            Ok(74728926),
+            &Ok(74728926),
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
@@ -338,7 +338,7 @@ mod tests {
             1585369498,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(985074),
+            &Ok(985074),
         );
     }
 
@@ -350,7 +350,7 @@ mod tests {
             1585369682,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(795483),
+            &Ok(795483),
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
@@ -358,7 +358,7 @@ mod tests {
             1585369682,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
-            Ok(11795483),
+            &Ok(11795483),
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
@@ -366,7 +366,7 @@ mod tests {
             1585369689,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(728402),
+            &Ok(728402),
         );
     }
 
@@ -378,7 +378,7 @@ mod tests {
             1585369775,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(587735),
+            &Ok(587735),
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
@@ -386,7 +386,7 @@ mod tests {
             1585369775,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
-            Ok(14587735),
+            &Ok(14587735),
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
@@ -394,7 +394,7 @@ mod tests {
             1585369780,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
-            Ok(952181),
+            &Ok(952181),
         );
     }
 

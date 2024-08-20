@@ -2435,11 +2435,11 @@ mod tests {
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
         #[track_caller]
-        fn assert_compare_result(r: &Vec<LdapMsg>, code: LdapResultCode) {
+        fn assert_compare_result(r: &[LdapMsg], code: &LdapResultCode) {
             assert!(r.len() == 1);
             match &r[0].op {
                 LdapOp::CompareResult(lcr) => {
-                    assert_eq!(lcr.code, code);
+                    assert_eq!(&lcr.code, code);
                 }
                 _ => panic!("Oh no"),
             };
@@ -2457,7 +2457,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareTrue,
+            &LdapResultCode::CompareTrue,
         );
 
         let cr = CompareRequest {
@@ -2472,7 +2472,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareTrue,
+            &LdapResultCode::CompareTrue,
         );
 
         let cr = CompareRequest {
@@ -2486,7 +2486,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareFalse,
+            &LdapResultCode::CompareFalse,
         );
 
         let cr = CompareRequest {
@@ -2500,7 +2500,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::NoSuchObject,
+            &LdapResultCode::NoSuchObject,
         );
 
         let cr = CompareRequest {
