@@ -1,7 +1,7 @@
 ---
-name: Clippy
+name: Linting checks
 
-# Trigger the workflow on push or pull request
+# Trigger the workflow on push
 "on":
   push:
 
@@ -31,6 +31,15 @@ jobs:
             pkg-config \
             tpm-udev \
             libtss2-dev
-
       - name: "Run clippy"
         run: cargo clippy --all-features --all-targets
+  fmt:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.5
+        with:
+          version: "v0.4.2"
+      - name: "Run cargo fmt"
+        run: cargo fmt --check
