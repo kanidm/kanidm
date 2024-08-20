@@ -4,6 +4,7 @@ name: Linting checks
 # Trigger the workflow on push
 "on":
   push:
+  pull_request:
 
 env:
   SCCACHE_GHA_ENABLED: "true"
