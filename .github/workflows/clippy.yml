@@ -4,9 +4,6 @@ name: Clippy
 # Trigger the workflow on push or pull request
 "on":
   push:
-    branches-ignore:
-      - master
-  pull_request:
 
 env:
   SCCACHE_GHA_ENABLED: "true"
@@ -35,6 +32,5 @@ jobs:
             tpm-udev \
             libtss2-dev
 
-      - name: "Run clippy (ignores errors, this is just a check)"
+      - name: "Run clippy"
         run: cargo clippy --all-features --all-targets
-        continue-on-error: true
