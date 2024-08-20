@@ -22,8 +22,8 @@ based authentication and remove the ability to bind with the UNIX password.
 # User experience
 
 The administrator configures two applications on their Kanidm instance. One is "mail" for a generic
-SMTP+IMAP service. The other is HTTP basic auth to a legacy web server. Then the administrator
-configures which users will be able to use application passwords for each application.
+SMTP+IMAP service. The other is HTTP basic auth to a legacy web server. Applications have a linked
+group to determine which users will be able to use application passwords for each application.
 
 The mail services and web services are configured to point to Kanidm's LDAP gateway with a
 customized search base DN.
@@ -79,10 +79,10 @@ A new class for applications will be added. Each application will have a single 
 only members of this group will be able to bind with the application password for the associated
 application.
 
-Creating a new application will not create an associated group automatically. It will be the
-administrator who will configure the association after creating the application and optionally a new
-group. It will be possible to associate `idm_all_persons` to an application. Removing an application
-will not delete the associated group nor its members.
+Creating a new application will not create an associated group automatically, an existing group
+must be provided. It will be possible to associate `idm_all_persons` to an application. Removing
+an application will not delete the associated group nor its members. It will be possible to change
+the linked group after creation.
 
 When users are removed from a group associated to an application all of their application passwords
 for the application will be disabled.
@@ -149,6 +149,9 @@ We do not need temporary locks or holds - users can delete and recreate as neede
 
 Since application passwords are related to applications, on delete of an application all entries
 that have a bound application password should be removed from user accounts.
+
+Trying to delete a group linked to an application will raise an error showing the user that
+something still requires it.
 
 ### Access controls
 

@@ -141,13 +141,11 @@ async fn oauth2_auth_req(
 
             match maybe_jar {
                 Ok(jar) => (jar, Redirect::to("/ui/login")).into_response(),
-                Err(err_code) => {
-                    return HtmlTemplate(UnrecoverableErrorView {
-                        err_code,
-                        operation_id: kopid.eventid,
-                    })
-                    .into_response();
-                }
+                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                    err_code,
+                    operation_id: kopid.eventid,
+                })
+                .into_response(),
             }
         }
         Err(Oauth2Error::AccessDenied) => {

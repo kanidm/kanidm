@@ -9,14 +9,14 @@ use compact_jwt::JwsCompact;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{ApiToken, UserAuthToken};
 use ldap3_proto::simple::*;
-use regex::Regex;
+use regex::{Regex, RegexBuilder};
 use std::net::IpAddr;
 use tracing::trace;
 use uuid::Uuid;
 
 use crate::event::SearchEvent;
-use crate::idm::event::{LdapAuthEvent, LdapTokenAuthEvent};
-use crate::idm::server::{IdmServer, IdmServerTransaction};
+use crate::idm::event::{LdapApplicationAuthEvent, LdapAuthEvent, LdapTokenAuthEvent};
+use crate::idm::server::{IdmServer, IdmServerAuthTransaction, IdmServerTransaction};
 use crate::prelude::*;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
@@ -38,6 +38,7 @@ pub enum LdapSession {
     UnixBind(Uuid),
     UserAuthToken(UserAuthToken),
     ApiToken(ApiToken),
+    ApplicationPasswordBind(Uuid, Uuid),
 }
 
 #[derive(Debug, Clone)]
@@ -65,12 +66,13 @@ pub struct LdapServer {
 enum LdapBindTarget {
     Account(Uuid),
     ApiToken,
+    Application(String, Uuid),
 }
 
 impl LdapServer {
     pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
-        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+        let mut idms_prox_read = idms.proxy_read().await?;
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -87,11 +89,31 @@ impl LdapServer {
             })
             .ok_or(OperationError::InvalidEntryState)?;
 
-        let dnre = Regex::new(format!("^((?P<attr>[^=]+)=(?P<val>[^=]+),)?{basedn}$").as_str())
-            .map_err(|_| OperationError::InvalidEntryState)?;
+        // It is necessary to swap greed to avoid the first group "<attr>=<val>" matching the
+        // next group "app=<app>", son one can use "app=app1,dc=test,dc=net" as search base:
+        // Greedy (app=app1,dc=test,dc=net):
+        //     Match 1      - app=app1,dc=test,dc=net
+        //     Group 1      - app=app1,
+        //     Group <attr> - app
+        //     Group <val>  - app1
+        //     Group 6      - dc=test,dc=net
+        // Ungreedy (app=app1,dc=test,dc=net):
+        //     Match 1      - app=app1,dc=test,dc=net
+        //     Group 4      - app=app1,
+        //     Group <app>  - app1
+        //     Group 6      - dc=test,dc=net
+        let dnre = RegexBuilder::new(
+            format!("^((?P<attr>[^=,]+)=(?P<val>[^=,]+),)?(app=(?P<app>[^=,]+),)?({basedn})$")
+                .as_str(),
+        )
+        .swap_greed(true)
+        .build()
+        .map_err(|_| OperationError::InvalidEntryState)?;
 
-        let binddnre = Regex::new(format!("^(([^=,]+)=)?(?P<val>[^=,]+)(,{basedn})?$").as_str())
-            .map_err(|_| OperationError::InvalidEntryState)?;
+        let binddnre = Regex::new(
+            format!("^((([^=,]+)=)?(?P<val>[^=,]+))(,app=(?P<app>[^=,]+))?(,{basedn})?$").as_str(),
+        )
+        .map_err(|_| OperationError::InvalidEntryState)?;
 
         let rootdse = LdapSearchResultEntry {
             dn: "".to_string(),
@@ -299,7 +321,7 @@ impl LdapServer {
             admin_info!(attr = ?k_attrs, "LDAP Search Request Mapped Attrs");
 
             let ct = duration_from_epoch_now();
-            let mut idm_read = idms.proxy_read().await.unwrap();
+            let mut idm_read = idms.proxy_read().await?;
             // Now start the txn - we need it for resolving filter components.
 
             // join the filter, with ext_filter
@@ -406,41 +428,8 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth().await.unwrap();
-
-        let target: LdapBindTarget = if dn.is_empty() {
-            if pw.is_empty() {
-                LdapBindTarget::Account(UUID_ANONYMOUS)
-            } else {
-                // This is the path to access api-token logins.
-                LdapBindTarget::ApiToken
-            }
-        } else if dn == "dn=token" {
-            // Is the passed dn requesting token auth?
-            // We use dn= here since these are attr=value, and dn is a phantom so it will
-            // never be present or match a real value. We also make it an ava so that clients
-            // that over-zealously validate dn syntax are happy.
-            LdapBindTarget::ApiToken
-        } else {
-            let rdn = self
-                .binddnre
-                .captures(dn)
-                .and_then(|caps| caps.name("val"))
-                .map(|v| v.as_str().to_string())
-                .ok_or(OperationError::NoMatchingEntries)?;
-
-            if rdn.is_empty() {
-                // That's weird ...
-                return Err(OperationError::NoMatchingEntries);
-            }
-
-            let uuid = idm_auth.qs_read.name_to_uuid(rdn.as_str()).map_err(|e| {
-                request_error!(err = ?e, ?rdn, "Error resolving rdn to target");
-                e
-            })?;
-
-            LdapBindTarget::Account(uuid)
-        };
+        let mut idm_auth = idms.auth().await?;
+        let target = self.bind_target_from_bind_dn(&mut idm_auth, dn, pw).await?;
 
         let result = match target {
             LdapBindTarget::Account(uuid) => {
@@ -455,6 +444,11 @@ impl LdapServer {
 
                 let lae = LdapTokenAuthEvent::from_parts(jwsc)?;
                 idm_auth.token_auth_ldap(&lae, ct).await?
+            }
+            LdapBindTarget::Application(ref app_name, usr_uuid) => {
+                let lae =
+                    LdapApplicationAuthEvent::new(app_name.as_str(), usr_uuid, pw.to_string())?;
+                idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
 
@@ -507,7 +501,7 @@ impl LdapServer {
         };
 
         let ct = duration_from_epoch_now();
-        let mut idm_read = idms.proxy_read().await.unwrap();
+        let mut idm_read = idms.proxy_read().await?;
         // Now start the txn - we need it for resolving filter components.
 
         // join the filter, with ext_filter
@@ -698,6 +692,63 @@ impl LdapServer {
             },
         } // end match server op
     }
+
+    async fn bind_target_from_bind_dn<'a>(
+        &self,
+        idm_auth: &mut IdmServerAuthTransaction<'a>,
+        dn: &str,
+        pw: &str,
+    ) -> Result<LdapBindTarget, OperationError> {
+        if dn.is_empty() {
+            if pw.is_empty() {
+                return Ok(LdapBindTarget::Account(UUID_ANONYMOUS));
+            } else {
+                // This is the path to access api-token logins.
+                return Ok(LdapBindTarget::ApiToken);
+            }
+        } else if dn == "dn=token" {
+            // Is the passed dn requesting token auth?
+            // We use dn= here since these are attr=value, and dn is a phantom so it will
+            // never be present or match a real value. We also make it an ava so that clients
+            // that over-zealously validate dn syntax are happy.
+            return Ok(LdapBindTarget::ApiToken);
+        }
+
+        if let Some(captures) = self.binddnre.captures(dn) {
+            if let Some(usr) = captures.name("val") {
+                let usr = usr.as_str();
+
+                if usr.is_empty() {
+                    error!("Failed to parse user name from bind DN, it is empty (capture group is {:#?})", captures.name("val"));
+                    return Err(OperationError::NoMatchingEntries);
+                }
+
+                let usr_uuid = idm_auth.qs_read.name_to_uuid(usr).map_err(|e| {
+                    error!(err = ?e, ?usr, "Error resolving rdn to target");
+                    e
+                })?;
+
+                if let Some(app) = captures.name("app") {
+                    let app = app.as_str();
+
+                    if app.is_empty() {
+                        error!("Failed to parse application name from bind DN, it is empty (capture group is {:#?})", captures.name("app"));
+                        return Err(OperationError::NoMatchingEntries);
+                    }
+
+                    return Ok(LdapBindTarget::Application(app.to_string(), usr_uuid));
+                }
+
+                return Ok(LdapBindTarget::Account(usr_uuid));
+            }
+        }
+
+        error!(
+            "Failed to parse bind DN, no captures. Bind DN was {:?})",
+            dn
+        );
+        Err(OperationError::NoMatchingEntries)
+    }
 }
 
 fn ldap_domain_to_dc(input: &str) -> String {
@@ -800,7 +851,8 @@ mod tests {
     use ldap3_proto::simple::*;
 
     use super::{LdapServer, LdapSession};
-    use crate::idm::event::UnixPasswordChangeEvent;
+    use crate::idm::application::GenerateApplicationPasswordEvent;
+    use crate::idm::event::{LdapApplicationAuthEvent, UnixPasswordChangeEvent};
     use crate::idm::serviceaccount::GenerateApiTokenEvent;
 
     const TEST_PASSWORD: &str = "ntaoeuntnaoeuhraohuercahu😍";
@@ -995,6 +1047,578 @@ mod tests {
             .is_err());
 
         assert!(ldaps.do_bind(idms, "claire", "test").await.is_err());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_dnre(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let testdn = format!("app=app1,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_some());
+        assert!(captures.name("attr").is_none());
+        assert!(captures.name("val").is_none());
+
+        let testdn = format!("uid=foo,app=app1,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_some());
+        assert!(captures.name("attr").is_some());
+        assert!(captures.name("val").is_some());
+
+        let testdn = format!("uid=foo,{0}", ldaps.basedn);
+        let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
+        assert!(captures.name("app").is_none());
+        assert!(captures.name("attr").is_some());
+        assert!(captures.name("val").is_some());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
+        let app_uuid = Uuid::new_v4();
+        let app_name = "testapp1";
+
+        // Setup person, group and application
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup1")),
+                (Attribute::Uuid, Value::Uuid(grp_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app_name)),
+                (Attribute::Uuid, Value::Uuid(app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+
+        // Searches under application base DN must show same content
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("app={app_name},dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["*".to_string()],
+        };
+
+        let r1 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["*".to_string()],
+        };
+
+        let r2 = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .unwrap();
+        assert!(r1.len() > 0);
+        assert!(r1.len() == r2.len());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
+        let app_uuid = Uuid::new_v4();
+
+        // Setup person, group and application
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup1")),
+                (Attribute::Uuid, Value::Uuid(grp_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname("testapp1")),
+                (Attribute::Uuid, Value::Uuid(app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // No session, user not member of linked group
+        let res = ldaps
+            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        {
+            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+            assert!(idms_prox_write
+                .qs_write
+                .internal_modify_uuid(grp_uuid, &ml)
+                .is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // No session, user does not have app password for testapp1
+        let res = ldaps
+            .do_bind(idms, "spn=testperson1,app=testapp1,dc=example,dc=com", "")
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        let pass1: String;
+        let pass2: String;
+        let pass3: String;
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd1".to_string(),
+            );
+            pass1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd2".to_string(),
+            );
+            pass2 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+
+            // Application password overwritten on duplicated label
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app_uuid,
+                "apppwd2".to_string(),
+            );
+            pass3 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, app password overwritten
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Got session, app password overwritten
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                pass3.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, invalid app password
+        let res = ldaps
+            .do_bind(
+                idms,
+                "spn=testperson1,app=testapp1,dc=example,dc=com",
+                "FOO",
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_linked_group(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let usr_name = "testuser1";
+
+        let grp1_uuid = Uuid::new_v4();
+        let grp1_name = "testgroup1";
+        let grp2_uuid = Uuid::new_v4();
+        let grp2_name = "testgroup2";
+
+        let app1_uuid = Uuid::new_v4();
+        let app1_name = "testapp1";
+        let app2_uuid = Uuid::new_v4();
+        let app2_name = "testapp2";
+
+        // Setup person, groups and applications
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(usr_name)),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s(usr_name)),
+                (Attribute::DisplayName, Value::new_utf8s(usr_name))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp1_name)),
+                (Attribute::Uuid, Value::Uuid(grp1_uuid)),
+                (Attribute::Member, Value::Refer(usr_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp2_name)),
+                (Attribute::Uuid, Value::Uuid(grp2_uuid))
+            );
+
+            let e4 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app1_name)),
+                (Attribute::Uuid, Value::Uuid(app1_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
+            );
+
+            let e5 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app2_name)),
+                (Attribute::Uuid, Value::Uuid(app2_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp2_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3, e4, e5])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        let pass_app1: String;
+        let pass_app2: String;
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app1_uuid,
+                "label".to_string(),
+            );
+            pass_app1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            // It is possible to generate an application password even if the
+            // user is not member of the linked group
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app2_uuid,
+                "label".to_string(),
+            );
+            pass_app2 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, not member
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Add user to grp2
+        {
+            let ml = ModifyList::new_append(Attribute::Member, Value::Refer(usr_uuid));
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+            assert!(idms_prox_write
+                .qs_write
+                .internal_modify_uuid(grp2_uuid, &ml)
+                .is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // No session, wrong app
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_none());
+
+        // Bind error, app not exists
+        {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+            let de = DeleteEvent::new_internal_invalid(filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(app2_uuid)
+            )));
+            assert!(idms_prox_write.qs_write.delete(&de).is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app2_name},dc=example,dc=com").as_str(),
+                pass_app2.as_str(),
+            )
+            .await;
+        assert!(res.is_err());
+    }
+
+    // For testing the timeouts
+    // We need times on this scale
+    //    not yet valid <-> valid from time <-> current_time <-> expire time <-> expired
+    const TEST_CURRENT_TIME: u64 = 6000;
+    const TEST_NOT_YET_VALID_TIME: u64 = TEST_CURRENT_TIME - 240;
+    const TEST_VALID_FROM_TIME: u64 = TEST_CURRENT_TIME - 120;
+    const TEST_EXPIRE_TIME: u64 = TEST_CURRENT_TIME + 120;
+    const TEST_AFTER_EXPIRY: u64 = TEST_CURRENT_TIME + 240;
+
+    async fn set_account_valid_time(idms: &IdmServer, acct: Uuid) {
+        let mut idms_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+        let v_valid_from = Value::new_datetime_epoch(Duration::from_secs(TEST_VALID_FROM_TIME));
+        let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_EXPIRE_TIME));
+
+        let me = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(acct))),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::AccountExpire.into(), v_expire),
+                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
+            ]),
+        );
+        assert!(idms_write.qs_write.modify(&me).is_ok());
+        idms_write.commit().expect("Must not fail");
+    }
+
+    #[idm_test]
+    async fn test_ldap_application_valid_from_expire(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let usr_name = "testuser1";
+
+        let grp1_uuid = Uuid::new_v4();
+        let grp1_name = "testgroup1";
+
+        let app1_uuid = Uuid::new_v4();
+        let app1_name = "testapp1";
+
+        let pass_app1: String;
+
+        // Setup person, group, application and app password
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(usr_name)),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s(usr_name)),
+                (Attribute::DisplayName, Value::new_utf8s(usr_name))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname(grp1_name)),
+                (Attribute::Uuid, Value::Uuid(grp1_uuid)),
+                (Attribute::Member, Value::Refer(usr_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app1_name)),
+                (Attribute::Uuid, Value::Uuid(app1_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp1_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+            let ev = GenerateApplicationPasswordEvent::new_internal(
+                usr_uuid,
+                app1_uuid,
+                "label".to_string(),
+            );
+            pass_app1 = idms_prox_write
+                .generate_application_password(&ev)
+                .expect("Failed to generate application password");
+
+            assert!(idms_prox_write.commit().is_ok());
+        }
+
+        // Got session, app password valid
+        let res = ldaps
+            .do_bind(
+                idms,
+                format!("spn={usr_name},app={app1_name},dc=example,dc=com").as_str(),
+                pass_app1.as_str(),
+            )
+            .await;
+        assert!(res.is_ok());
+        assert!(res.unwrap().is_some());
+
+        // Any account that is not yet valid / expired can't auth.
+        // Set the valid bounds high/low
+        // TEST_VALID_FROM_TIME/TEST_EXPIRE_TIME
+        set_account_valid_time(idms, usr_uuid).await;
+
+        let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
+        let time = Duration::from_secs(TEST_CURRENT_TIME);
+        let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
+
+        let mut idms_auth = idms.auth().await.unwrap();
+        let lae = LdapApplicationAuthEvent::new(app1_name, usr_uuid, pass_app1)
+            .expect("Failed to build auth event");
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time_low)
+            .await
+            .expect_err("Authentication succeeded");
+        assert!(r1 == OperationError::SessionExpired);
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time)
+            .await
+            .expect("Failed auth");
+        assert!(r1.is_some());
+
+        let r1 = idms_auth
+            .application_auth_ldap(&lae, time_high)
+            .await
+            .expect_err("Authentication succeeded");
+        assert!(r1 == OperationError::SessionExpired);
     }
 
     macro_rules! assert_entry_contains {

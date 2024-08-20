@@ -1,6 +1,7 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
+use crate::be::dbvalue::DbValueApplicationPassword;
 use crate::be::dbvalue::DbValueCertificate;
 use crate::be::dbvalue::DbValueImage;
 use crate::be::dbvalue::DbValueKeyInternal;
@@ -442,6 +443,9 @@ pub enum ReplAttrV1 {
     },
     Certificate {
         set: Vec<DbValueCertificate>,
+    },
+    ApplicationPassword {
+        set: Vec<DbValueApplicationPassword>,
     },
 }
 

@@ -27,8 +27,9 @@ use kanidm_proto::internal::{
 use crate::https::extractors::VerifiedClientInformation;
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
-use crate::https::views::HtmlTemplate;
 use crate::https::ServerState;
+
+use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
 #[template(path = "credentials_reset_form.html")]
@@ -66,7 +67,7 @@ pub(crate) struct ResetTokenParam {
 }
 
 #[derive(Template)]
-#[template(path = "cred_update/add_password_partial.html")]
+#[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
     check_res: PwdCheckResult,
 }
@@ -97,7 +98,7 @@ pub(crate) struct NewTotp {
 }
 
 #[derive(Template)]
-#[template(path = "cred_update/add_passkey_partial.html")]
+#[template(path = "credential_update_add_passkey_partial.html")]
 struct AddPasskeyPartial {
     // Passkey challenge for adding a new passkey
     challenge: String,
@@ -169,7 +170,7 @@ impl Display for TotpFeedback {
 }
 
 #[derive(Template)]
-#[template(path = "cred_update/add_totp_partial.html")]
+#[template(path = "credential_update_add_totp_partial.html")]
 struct AddTotpPartial {
     check_res: TotpCheckResult,
 }
@@ -367,17 +368,25 @@ pub(crate) async fn view_new_passkey(
 
     let response = match cu_status.mfaregstate {
         CURegState::Passkey(chal) | CURegState::AttestedPasskey(chal) => {
-            HtmlTemplate(AddPasskeyPartial {
-                challenge: serde_json::to_string(&chal).unwrap(),
-                class: init_form.class,
-            })
-            .into_response()
+            if let Ok(challenge) = serde_json::to_string(&chal) {
+                HtmlTemplate(AddPasskeyPartial {
+                    challenge,
+                    class: init_form.class,
+                })
+                .into_response()
+            } else {
+                HtmlTemplate(UnrecoverableErrorView {
+                    err_code: OperationError::UI0001ChallengeSerialisation,
+                    operation_id: kopid.eventid,
+                })
+                .into_response()
+            }
         }
-        _ => (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            HtmxError::new(&kopid, OperationError::Backend).into_response(),
-        )
-            .into_response(),
+        _ => HtmlTemplate(UnrecoverableErrorView {
+            err_code: OperationError::UI0002InvalidState,
+            operation_id: kopid.eventid,
+        })
+        .into_response(),
     };
 
     let passkey_init_trigger =
@@ -657,7 +666,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         ..
     } = cu_status;
 
-    return CredResetPartialView {
+    CredResetPartialView {
         ext_cred_portal,
         warnings,
         attested_passkeys_state,
@@ -666,19 +675,19 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         passkeys,
         primary_state,
         primary,
-    };
+    }
 }
 
 fn get_cu_partial_response(cu_status: CUStatus) -> Response {
     let credentials_update_partial = get_cu_partial(cu_status);
-    return (
+    (
         HxPushUrl(Uri::from_static("/ui/reset")),
         HxRetarget("#credentialUpdateDynamicSection".to_string()),
         HxReselect("#credentialUpdateDynamicSection".to_string()),
         HxReswap(SwapOption::OuterHtml),
         HtmlTemplate(credentials_update_partial),
     )
-        .into_response();
+        .into_response()
 }
 
 fn get_cu_response(domain: String, cu_status: CUStatus) -> Response {
@@ -709,35 +718,4 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
     } else {
         Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
     };
-}
-
-// Any filter defined in the module `filters` is accessible in your template.
-mod filters {
-    pub fn blank_if<T: std::fmt::Display>(
-        implicit_arg: T,
-        condition: bool,
-    ) -> ::askama::Result<String> {
-        blank_iff(implicit_arg, &condition)
-    }
-    pub fn ternary<T: std::fmt::Display, F: std::fmt::Display>(
-        implicit_arg: &bool,
-        true_case: T,
-        false_case: F,
-    ) -> ::askama::Result<String> {
-        if *implicit_arg {
-            Ok(format!("{true_case}"))
-        } else {
-            Ok(format!("{false_case}"))
-        }
-    }
-    pub fn blank_iff<T: std::fmt::Display>(
-        implicit_arg: T,
-        condition: &bool,
-    ) -> ::askama::Result<String> {
-        return if *condition {
-            Ok("".into())
-        } else {
-            Ok(format!("{implicit_arg}"))
-        };
-    }
 }
