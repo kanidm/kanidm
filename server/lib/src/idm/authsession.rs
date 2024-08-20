@@ -1955,7 +1955,7 @@ mod tests {
             account: account.clone(),
             account_policy: ResolvedAccountPolicy::default(),
             issue: AuthIssueSession::Token,
-            webauthn: webauthn,
+            webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
         };
@@ -1995,7 +1995,7 @@ mod tests {
             account: account.clone(),
             account_policy: ResolvedAccountPolicy::default(),
             issue: AuthIssueSession::Token,
-            webauthn: webauthn,
+            webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
         };
@@ -2040,7 +2040,7 @@ mod tests {
             account: account.clone(),
             account_policy: ResolvedAccountPolicy::default(),
             issue: AuthIssueSession::Token,
-            webauthn: webauthn,
+            webauthn,
             ct: duration_from_epoch_now(),
             client_auth_info: Source::Internal.into(),
         };

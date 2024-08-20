@@ -16,4 +16,5 @@ disallowed-types = ["std::collections::HashMap", "std::collections::HashSet"]
 
 allow-expect-in-tests = true
 allow-unwrap-in-tests = true
+allow-panic-in-tests = true
 allow-dbg-in-tests = true
