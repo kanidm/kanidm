@@ -1138,7 +1138,7 @@ mod tests {
 
         let sr = SearchRequest {
             msgid: 1,
-            base: format!("dc=example,dc=com"),
+            base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
