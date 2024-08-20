@@ -2282,7 +2282,7 @@ mod tests {
         ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![Attribute::UserId.into()])
+                .filter_from_attrs(&[Attribute::UserId.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();

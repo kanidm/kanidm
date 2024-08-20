@@ -3640,10 +3640,7 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
 
         // Assert the changes are there
-        assert!(e.attribute_equality(
-            Attribute::UserId.into(),
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
 
         // Assert present for multivalue
