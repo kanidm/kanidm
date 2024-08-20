@@ -14,10 +14,10 @@ pub fn supported() -> bool {
         return false;
     }
     // check if SELinux is actually running
-    match current_mode() {
-        SELinuxMode::Permissive | SELinuxMode::Enforcing => true,
-        _ => false,
-    }
+    matches!(
+        current_mode(),
+        SELinuxMode::Permissive | SELinuxMode::Enforcing
+    )
 }
 
 fn do_setfscreatecon_for_path(path_raw: &Path, labeler: &Labeler<File>) -> Result<(), String> {
@@ -27,9 +27,7 @@ fn do_setfscreatecon_for_path(path_raw: &Path, labeler: &Labeler<File>) -> Resul
         Ok(context) => context
             .set_for_new_file_system_objects(true)
             .map_err(|_| "Failed setting creation context home directory path".to_string()),
-        Err(_) => {
-            return Err("Failed looking up default context for home directory path".to_string());
-        }
+        Err(_) => Err("Failed looking up default context for home directory path".to_string()),
     }
 }
 
@@ -97,7 +95,7 @@ impl SelinuxLabeler {
                 sel_lookup_path_raw,
             } => {
                 let sel_lookup_path = sel_lookup_path_raw.join(path.as_ref());
-                do_setfscreatecon_for_path(&sel_lookup_path, &labeler)
+                do_setfscreatecon_for_path(&sel_lookup_path, labeler)
             }
         }
     }
