@@ -2952,27 +2952,21 @@ mod tests {
             .credential_primary_set_password(&cust, ct, "password")
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details == vec!(PasswordFeedback::TooShort(PW_MIN_LENGTH),) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details == vec!(PasswordFeedback::TooShort(PW_MIN_LENGTH),))
+        );
 
         let err = cutxn
             .credential_primary_set_password(&cust, ct, "password1234")
             .unwrap_err();
         trace!(?err);
-        assert!(match err {
-            OperationError::PasswordQuality(details)
-                if details
-                    == vec!(
-                        PasswordFeedback::AddAnotherWordOrTwo,
-                        PasswordFeedback::ThisIsACommonPassword,
-                    ) =>
-                true,
-            _ => false,
-        });
+        assert!(
+            matches!(err, OperationError::PasswordQuality(details) if details
+            == vec!(
+                PasswordFeedback::AddAnotherWordOrTwo,
+                PasswordFeedback::ThisIsACommonPassword,
+            ))
+        );
 
         let err = cutxn
             .credential_primary_set_password(&cust, ct, &radius_secret)
