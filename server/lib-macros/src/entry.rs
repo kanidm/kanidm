@@ -66,7 +66,6 @@ fn parse_attributes(
         }
     });
 
-    #[allow(clippy::needless_update)]
     let ts = quote!(crate::testkit::TestConfiguration {
         #field_modifications
         ..crate::testkit::TestConfiguration::default()
