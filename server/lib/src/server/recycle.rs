@@ -18,9 +18,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 error!(err = ?e, "Tombstone purge operation failed (backend)");
                 e
             })
-            .map(|res| {
+            .inspect(|_res| {
                 admin_info!("Tombstone purge operation success");
-                res
             })
     }
 
