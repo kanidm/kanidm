@@ -262,6 +262,18 @@ pub async fn create_https_server(
         .flatten()
         .and_then(|hvs: Vec<HeaderValue>| if hvs.is_empty() { None } else { Some(hvs) });
 
+    match (
+        config.cors_allowed_origins.as_ref(),
+        cors_allowed_origins.as_ref(),
+    ) {
+        (Some(cfg), Some(cao)) if cfg.len() == cao.len() => {}
+        (None, None) => {}
+        _ => {
+            error!("CORS allowed origins are invalid");
+            return Err(());
+        }
+    }
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
