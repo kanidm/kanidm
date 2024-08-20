@@ -58,7 +58,7 @@ pub enum TotpAlgo {
 }
 
 impl TotpAlgo {
-    pub(crate) fn digest(&self, key: &[u8], counter: u64) -> Result<Vec<u8>, TotpError> {
+    pub(crate) fn digest(self, key: &[u8], counter: u64) -> Result<Vec<u8>, TotpError> {
         let key = PKey::hmac(key).map_err(|_e| TotpError::OpenSSLError)?;
         let mut signer =
             match self {
@@ -298,13 +298,13 @@ mod tests {
 
     fn do_test(
         key: &[u8],
-        algo: &TotpAlgo,
+        algo: TotpAlgo,
         secs: u64,
         step: u64,
         digits: TotpDigits,
         expect: Result<u32, TotpError>,
     ) {
-        let otp = Totp::new(key.to_vec(), step, algo.clone(), digits);
+        let otp = Totp::new(key.to_vec(), step, algo, digits);
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         debug!(
@@ -318,7 +318,7 @@ mod tests {
     fn totp_sha1_vectors() {
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha1,
+            TotpAlgo::Sha1,
             1585368920,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
@@ -326,7 +326,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha1,
+            TotpAlgo::Sha1,
             1585368920,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
@@ -334,7 +334,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
-            &TotpAlgo::Sha1,
+            TotpAlgo::Sha1,
             1585369498,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
@@ -346,7 +346,7 @@ mod tests {
     fn totp_sha256_vectors() {
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha256,
+            TotpAlgo::Sha256,
             1585369682,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
@@ -354,7 +354,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha256,
+            TotpAlgo::Sha256,
             1585369682,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
@@ -362,7 +362,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
-            &TotpAlgo::Sha256,
+            TotpAlgo::Sha256,
             1585369689,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
@@ -374,7 +374,7 @@ mod tests {
     fn totp_sha512_vectors() {
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha512,
+            TotpAlgo::Sha512,
             1585369775,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
@@ -382,7 +382,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0x00, 0x00, 0x00],
-            &TotpAlgo::Sha512,
+            TotpAlgo::Sha512,
             1585369775,
             TOTP_DEFAULT_STEP,
             TotpDigits::Eight,
@@ -390,7 +390,7 @@ mod tests {
         );
         do_test(
             &[0x00, 0xaa, 0xbb, 0xcc],
-            &TotpAlgo::Sha512,
+            TotpAlgo::Sha512,
             1585369780,
             TOTP_DEFAULT_STEP,
             TotpDigits::Six,
