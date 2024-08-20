@@ -3383,9 +3383,8 @@ where
                     self.purge_ava(Attribute::try_from(attr)?);
                 }
                 Modify::Assert(attr, value) => {
-                    self.assert_ava(attr.to_owned(), value).map_err(|e| {
+                    self.assert_ava(attr.to_owned(), value).inspect_err(|_e| {
                         error!("Modification assertion was not met. {} {:?}", attr, value);
-                        e
                     })?;
                 }
             }

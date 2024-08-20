@@ -310,9 +310,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             // .internal_search(f_all_sync.clone())
             .internal_exists(f_all_sync.clone())
-            .map_err(|e| {
+            .inspect_err(|_e| {
                 error!("Failed to determine existing entries set");
-                e
             })?;
 
         /*
@@ -354,16 +353,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             self.qs_write
                 .internal_modify(&f_all_sync, &mods)
-                .map_err(|e| {
+                .inspect_err(|_e| {
                     error!("Failed to modify sync objects to grant authority to kanidm");
-                    e
                 })?;
         };
 
-        self.qs_write.internal_delete(&delete_filter).map_err(|e| {
-            error!(?e, "Failed to terminate sync account");
-            e
-        })
+        self.qs_write
+            .internal_delete(&delete_filter)
+            .inspect_err(|e| {
+                error!(?e, "Failed to terminate sync account");
+            })
     }
 }
 
@@ -381,9 +380,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let entry = self
             .qs_write
             .internal_search_uuid(ste.target)
-            .map_err(|e| {
+            .inspect_err(|e| {
                 admin_error!(?e, "Failed to search sync account");
-                e
             })?;
 
         let sync_account = SyncAccount::try_from_entry_rw(&entry).map_err(|e| {

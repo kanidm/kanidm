@@ -999,9 +999,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                                                 issued_at: s.issued_at,
                                                 purpose,
                                             })
-                                            .map_err(|e| {
+                                            .inspect_err(|_e| {
                                                 admin_error!("Invalid user auth token {}", u);
-                                                e
                                             })
                                     })
                                     .collect::<Result<Vec<_>, _>>()
