@@ -374,7 +374,7 @@ impl OperationError {
             Self::KP0043KeyObjectJweA128GCMEncryption => None,
             Self::KP0044KeyObjectJwsPublicJwk => None,
             Self::PL0001GidOverlapsSystemRange => None,
-            Self::UI0001ChallengeSerialisation => Some("The webauthn challenge was unable to be serialised."),
+            Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised."),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition."),
         }
     }
