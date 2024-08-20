@@ -3530,8 +3530,8 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         let values = e.get_ava_set(Attribute::UserId).expect("Failed to get ava");
         // Should only be one value!
@@ -3541,7 +3541,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         assert!(e.attribute_pres(Attribute::UserId));
         assert!(!e.attribute_pres(Attribute::Name));
@@ -3551,20 +3551,20 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         assert!(e.attribute_equality(
-            Attribute::UserId.into(),
+            Attribute::UserId,
             &PartialValue::new_utf8s("william")
         ));
         assert!(!e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("test")));
         assert!(!e.attribute_equality(
-            Attribute::NonExist.into(),
+            Attribute::NonExist,
             &PartialValue::new_utf8s("william")
         ));
         // Also test non-matching attr syntax
         assert!(!e.attribute_equality(
-            Attribute::UserId.into(),
+            Attribute::UserId,
             &PartialValue::new_iutf8("william")
         ));
     }
@@ -3573,10 +3573,10 @@ mod tests {
     fn test_entry_substring() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         assert!(e.attribute_substring(
-            Attribute::UserId.into(),
+            Attribute::UserId,
             &PartialValue::new_utf8s("william")
         ));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("will")));
@@ -3630,7 +3630,7 @@ mod tests {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new().into_invalid_new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         let present_single_mods = ModifyList::new_valid_list(vec![Modify::Present(
             Attribute::Attr.into(),
@@ -3653,7 +3653,7 @@ mod tests {
 
         assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("test")));
         assert!(e.attribute_equality(
-            Attribute::Class.into(),
+            Attribute::Class,
             &PartialValue::new_iutf8("multi_test")
         ));
 
@@ -3699,7 +3699,7 @@ mod tests {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava(Attribute::UserId, Value::from("william"));
         let mut e1_mod = e1.clone();
-        e1_mod.add_ava(Attribute::Extra.into(), Value::from("test"));
+        e1_mod.add_ava(Attribute::Extra, Value::from("test"));
 
         let e1 = e1.into_sealed_committed();
         let e1_mod = e1_mod.into_sealed_committed();

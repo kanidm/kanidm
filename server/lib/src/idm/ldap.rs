@@ -910,7 +910,7 @@ mod tests {
             ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
         );
         let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap();
-        assert!(admin_t.is_none() == true);
+        assert!(admin_t.is_none());
 
         // Setting UNIX_PW_BIND flag to true :
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
@@ -1148,7 +1148,7 @@ mod tests {
             .do_search(idms, &sr, &anon_t, Source::Internal)
             .await
             .unwrap();
-        assert!(r1.len() > 0);
+        assert!(!r1.is_empty());
         assert!(r1.len() == r2.len());
     }
 

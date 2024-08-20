@@ -7,11 +7,11 @@ use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
 use reqwest::StatusCode;
 
-static UNIVERSAL_PW: &'static str = "eicieY7ahchaoCh0eeTa";
+static UNIVERSAL_PW: &str = "eicieY7ahchaoCh0eeTa";
 
-static USER_A_NAME: &'static str = "valid_user_a";
+static USER_A_NAME: &str = "valid_user_a";
 
-static USER_B_NAME: &'static str = "valid_user_b";
+static USER_B_NAME: &str = "valid_user_b";
 
 // TEST ON ERROR OUTCOMES
 // These tests check that invalid requests return the expected error

@@ -627,7 +627,7 @@ mod tests {
 
         // Mod again - remove the parent session.
         let modlist = ModifyList::new_remove(
-            Attribute::UserAuthTokenSession.into(),
+            Attribute::UserAuthTokenSession,
             PartialValue::Refer(parent_id),
         );
 
@@ -650,7 +650,7 @@ mod tests {
 
         // The oauth2 session is also removed.
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));
@@ -751,7 +751,7 @@ mod tests {
         let entry = server_txn.internal_search_uuid(tuuid).expect("failed");
 
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::NeverExpires));
@@ -780,7 +780,7 @@ mod tests {
 
         // Note it's a not condition now.
         let session = entry
-            .get_ava_as_oauth2session_map(Attribute::OAuth2Session.into())
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
             .and_then(|sessions| sessions.get(&session_id))
             .expect("No session map found");
         assert!(matches!(session.state, SessionState::RevokedAt(_)));

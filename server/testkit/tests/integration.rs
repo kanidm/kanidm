@@ -215,7 +215,7 @@ async fn test_domain_reset_token_key(rsclient: KanidmClient) {
 
     let key_id = jwt.kid().expect("token does not have a key id");
 
-    assert!(rsclient.idm_domain_revoke_key(&key_id).await.is_ok());
+    assert!(rsclient.idm_domain_revoke_key(key_id).await.is_ok());
 }
 
 #[kanidmd_testkit::test]

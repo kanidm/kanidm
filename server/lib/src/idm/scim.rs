@@ -1678,7 +1678,7 @@ mod tests {
             .internal_modify_uuid(
                 UUID_DOMAIN_INFO,
                 &ModifyList::new_append(
-                    Attribute::KeyActionRevoke.into(),
+                    Attribute::KeyActionRevoke,
                     Value::HexString(revoke_kid.to_string()),
                 ),
             )

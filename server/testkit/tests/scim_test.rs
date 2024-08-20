@@ -53,7 +53,7 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
     let url_a = sync_entry
         .attrs
         .get("sync_credential_portal")
-        .and_then(|x| x.get(0));
+        .and_then(|x| x.first());
 
     assert_eq!(
         url_a.map(|s| s.as_str()),

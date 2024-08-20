@@ -2589,10 +2589,7 @@ mod tests {
             if let Err(e) = result {
                 // if the error is the file is not found, that's what we want so continue,
                 // otherwise return the error
-                match e.kind() {
-                    std::io::ErrorKind::NotFound => {}
-                    _ => (),
-                }
+                if e.kind() == std::io::ErrorKind::NotFound {}
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");
@@ -2650,10 +2647,7 @@ mod tests {
             if let Err(e) = result {
                 // if the error is the file is not found, that's what we want so continue,
                 // otherwise return the error
-                match e.kind() {
-                    std::io::ErrorKind::NotFound => {}
-                    _ => (),
-                }
+                if e.kind() == std::io::ErrorKind::NotFound {}
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");

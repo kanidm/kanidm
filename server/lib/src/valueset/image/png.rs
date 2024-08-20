@@ -133,7 +133,7 @@ fn test_png_consume_chunks_until_iend() {
     testchunks.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
     let expected: [u8; 0] = [];
     let testchunks_slice = testchunks.as_slice();
-    let res = png_consume_chunks_until_iend(&testchunks_slice);
+    let res = png_consume_chunks_until_iend(testchunks_slice);
 
     // simple, valid image works
     match res {

@@ -3628,7 +3628,7 @@ mod tests {
             .get_key_object(UUID_DOMAIN_INFO)
             .and_then(|object| {
                 object
-                    .jws_public_jwk(&token_kid)
+                    .jws_public_jwk(token_kid)
                     .expect("Unable to access uat jwk")
             })
             .expect("No jwk by this kid");
@@ -4059,7 +4059,7 @@ mod tests {
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_append(
-                Attribute::KeyActionRevoke.into(),
+                Attribute::KeyActionRevoke,
                 Value::HexString(revoke_kid.to_string()),
             ),
         );

@@ -3492,11 +3492,7 @@ mod tests {
             .expect("Failed to initiate passkey registration");
 
         assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
-        assert!(matches!(
-            // Should be none.
-            c_status.primary.as_ref(),
-            None
-        ));
+        assert!(c_status.primary.as_ref().is_none());
 
         // Check we have the passkey
         trace!(?c_status);

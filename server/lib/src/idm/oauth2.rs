@@ -4187,10 +4187,10 @@ mod tests {
                     &ResolvedAccountPolicy::test_policy(),
                 )
                 .expect("Unable to create uat");
-            let ident2 = idms_prox_write
+            
+            idms_prox_write
                 .process_uat_to_identity(&uat2, ct, Source::Internal)
-                .expect("Unable to process uat");
-            ident2
+                .expect("Unable to process uat")
         };
 
         let idms_prox_read = idms.proxy_read().await.unwrap();
