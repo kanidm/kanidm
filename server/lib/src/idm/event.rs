@@ -283,11 +283,7 @@ pub struct LdapApplicationAuthEvent {
 }
 
 impl LdapApplicationAuthEvent {
-    pub fn from_parts(
-        app_name: &str,
-        usr_uuid: Uuid,
-        cleartext: String,
-    ) -> Result<Self, OperationError> {
+    pub fn new(app_name: &str, usr_uuid: Uuid, cleartext: String) -> Result<Self, OperationError> {
         Ok(LdapApplicationAuthEvent {
             application: app_name.to_string(),
             target: usr_uuid,

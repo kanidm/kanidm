@@ -446,11 +446,8 @@ impl LdapServer {
                 idm_auth.token_auth_ldap(&lae, ct).await?
             }
             LdapBindTarget::Application(ref app_name, usr_uuid) => {
-                let lae = LdapApplicationAuthEvent::from_parts(
-                    app_name.as_str(),
-                    usr_uuid,
-                    pw.to_string(),
-                )?;
+                let lae =
+                    LdapApplicationAuthEvent::new(app_name.as_str(), usr_uuid, pw.to_string())?;
                 idm_auth.application_auth_ldap(&lae, ct).await?
             }
         };
@@ -1602,7 +1599,7 @@ mod tests {
         let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
         let mut idms_auth = idms.auth().await.unwrap();
-        let lae = LdapApplicationAuthEvent::from_parts(app1_name, usr_uuid, pass_app1)
+        let lae = LdapApplicationAuthEvent::new(app1_name, usr_uuid, pass_app1)
             .expect("Failed to build auth event");
 
         let r1 = idms_auth
