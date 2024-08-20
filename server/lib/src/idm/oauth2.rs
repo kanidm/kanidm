@@ -2629,7 +2629,7 @@ fn extra_claims_for_account(
         extra_claims.insert(claim_name.to_string(), claim_value.to_json_value());
     }
 
-    if scopes.contains(&"groups".to_string()) {
+    if scopes.contains("groups") {
         extra_claims.insert(
             "groups".to_string(),
             account
@@ -4846,11 +4846,11 @@ mod tests {
             .expect("Failed to verify oidc");
 
         // does our id_token contain the expected groups?
-        assert!(oidc.claims.contains_key(&"groups".to_string()));
+        assert!(oidc.claims.contains_key("groups"));
 
         assert!(oidc
             .claims
-            .get(&"groups".to_string())
+            .get("groups")
             .expect("unable to find key")
             .as_array()
             .unwrap()
@@ -4862,9 +4862,7 @@ mod tests {
             .expect("failed to get userinfo");
 
         // does the userinfo endpoint provide the same groups?
-        assert!(
-            oidc.claims.get(&"groups".to_string()) == userinfo.claims.get(&"groups".to_string())
-        );
+        assert!(oidc.claims.get("groups") == userinfo.claims.get("groups"));
     }
 
     //  Check insecure pkce behaviour.

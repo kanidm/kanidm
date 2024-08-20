@@ -301,7 +301,7 @@ mod tests {
         );
         let ce = CreateEvent::new_internal(vec![e1, e2]);
         let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(!cr.is_ok());
+        assert!(cr.is_err());
 
         // Application and Person not allowed together
         let test_grp_name = "testgroup1";
@@ -329,7 +329,7 @@ mod tests {
         );
         let ce = CreateEvent::new_internal(vec![e1, e2]);
         let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(!cr.is_ok());
+        assert!(cr.is_err());
 
         // Supplements not satisfied, Application supplements ServiceAccount
         let test_grp_name = "testgroup1";
@@ -352,7 +352,7 @@ mod tests {
         );
         let ce = CreateEvent::new_internal(vec![e1, e2]);
         let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(!cr.is_ok());
+        assert!(cr.is_err());
 
         // Supplements not satisfied, Application supplements ServiceAccount
         let test_grp_name = "testgroup1";
@@ -374,7 +374,7 @@ mod tests {
         );
         let ce = CreateEvent::new_internal(vec![e1, e2]);
         let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(!cr.is_ok());
+        assert!(cr.is_err());
 
         // Supplements satisfied, Application supplements ServiceAccount
         let test_grp_name = "testgroup1";
@@ -427,7 +427,7 @@ mod tests {
 
         let ce = CreateEvent::new_internal(vec![e1]);
         let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(!cr.is_ok());
+        assert!(cr.is_err());
     }
 
     // Tests creating an applicatin with a real linked group attribute
