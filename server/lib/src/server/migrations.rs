@@ -617,13 +617,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SELF_WRITE_DL8.clone().into(),
             IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
             IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
+            // Add the new types for mail server
+            BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8.clone().try_into()?,
+            BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
+            IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
         ];
 
         idm_data
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
+                error!(?err, "migrate_domain_7_to_8 -> Error");
                 err
             })?;
 
