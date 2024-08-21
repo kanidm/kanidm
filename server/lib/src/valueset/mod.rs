@@ -16,7 +16,6 @@ use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::ScimValue;
 
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -145,7 +144,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>;
+    fn to_scim_value(&self) -> ScimValue;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 

@@ -417,6 +417,27 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        // TODO: This should be a reference to the image URL, not the image itself!
+        // Does this mean we need to pass in the domain / origin so we can render
+        // these URL's correctly?
+        //
+        // TODO: Currently we don't have a generic way to reference images, we need
+        // to add one.
+        //
+        // TODO: Scim supports a "type" field here, but do we care?
+        ScimValue::MultiComplex(
+            self.set
+                .iter()
+                .map(|image| {
+                    let mut complex_attr = ScimComplexAttr::default();
+                    complex_attr.insert("s256".to_string(), image.hash_imagevalue().into());
+                    complex_attr
+                })
+                .collect(),
+        )
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Image(
             self.set
@@ -477,60 +498,93 @@ impl ValueSetT for ValueSetImage {
         }
     }
 
-    // this seems dumb
     fn as_imageset(&self) -> Option<&HashSet<ImageValue>> {
         Some(&self.set)
     }
 }
 
-#[test]
-/// tests that we can load a bunch of test images and it'll throw errors in a way we expect
-fn test_imagevalue_things() {
-    ["gif", "png", "jpg", "webp"]
-        .into_iter()
-        .for_each(|extension| {
-            // test should-be-bad images
-            let filename = format!(
-                "{}/src/valueset/image/test_images/oversize_dimensions.{extension}",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            trace!("testing {}", &filename);
-            let image = ImageValue {
-                filename: format!("oversize_dimensions.{extension}"),
-                filetype: ImageType::try_from(extension).unwrap(),
-                contents: std::fs::read(filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("{:?}", &res);
-            assert!(res.is_err());
+#[cfg(test)]
+mod tests {
+    use super::{ImageType, ImageValue, ImageValueThings, ValueSetImage};
+    use crate::prelude::ScimValue;
+    use crate::valueset::ValueSetT;
 
-            // test should-be-good images
-            let filename = format!(
-                "{}/src/valueset/image/test_images/ok.{extension}",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            trace!("testing {}", &filename);
-            let image = ImageValue {
-                filename: filename.clone(),
-                filetype: ImageType::try_from(extension).unwrap(),
-                contents: std::fs::read(filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("validation result of {}: {:?}", image.filename, &res);
-            assert!(res.is_ok());
+    #[test]
+    /// tests that we can load a bunch of test images and it'll throw errors in a way we expect
+    fn test_imagevalue_loading() {
+        ["gif", "png", "jpg", "webp"]
+            .into_iter()
+            .for_each(|extension| {
+                // test should-be-bad images
+                let filename = format!(
+                    "{}/src/valueset/image/test_images/oversize_dimensions.{extension}",
+                    env!("CARGO_MANIFEST_DIR")
+                );
+                trace!("testing {}", &filename);
+                let image = ImageValue {
+                    filename: format!("oversize_dimensions.{extension}"),
+                    filetype: ImageType::try_from(extension).unwrap(),
+                    contents: std::fs::read(filename).unwrap(),
+                };
+                let res = image.validate_image();
+                trace!("{:?}", &res);
+                assert!(res.is_err());
 
-            let filename = format!(
-                "{}/src/valueset/image/test_images/ok.svg",
-                env!("CARGO_MANIFEST_DIR")
-            );
-            let image = ImageValue {
-                filename: filename.clone(),
-                filetype: ImageType::Svg,
-                contents: std::fs::read(&filename).unwrap(),
-            };
-            let res = image.validate_image();
-            trace!("SVG Validation result of {}: {:?}", filename, &res);
-            assert!(res.is_ok());
-            assert!(!image.hash_imagevalue().is_empty());
-        })
+                let filename = format!(
+                    "{}/src/valueset/image/test_images/ok.svg",
+                    env!("CARGO_MANIFEST_DIR")
+                );
+                let image = ImageValue {
+                    filename: filename.clone(),
+                    filetype: ImageType::Svg,
+                    contents: std::fs::read(&filename).unwrap(),
+                };
+                let res = image.validate_image();
+                trace!("SVG Validation result of {}: {:?}", filename, &res);
+                assert!(res.is_ok());
+                assert!(!image.hash_imagevalue().is_empty());
+            });
+
+        let filename = format!(
+            "{}/src/valueset/image/test_images/ok.svg",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let image = ImageValue {
+            filename: filename.clone(),
+            filetype: ImageType::Svg,
+            contents: std::fs::read(&filename).unwrap(),
+        };
+        let res = image.validate_image();
+        trace!("SVG Validation result of {}: {:?}", filename, &res);
+        assert!(res.is_ok());
+        assert_eq!(image.hash_imagevalue().is_empty(), false);
+    }
+
+    #[test]
+    fn test_scim_imagevalue() {
+        let filename = format!(
+            "{}/src/valueset/image/test_images/ok.svg",
+            env!("CARGO_MANIFEST_DIR")
+        );
+        let image = ImageValue {
+            filename: filename.clone(),
+            filetype: ImageType::Svg,
+            contents: std::fs::read(&filename).unwrap(),
+        };
+
+        let vs = ValueSetImage::new(image);
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str(
+            r#"[
+          {
+            "s256": "4fa31ca0658419cf70439982a5a0ada63d55cf1fff4a2aa60b48b8dc0bd2c56e"
+          }
+        ]"#,
+        )
+        .unwrap();
+
+        assert_eq!(scim_value, expect);
+    }
 }

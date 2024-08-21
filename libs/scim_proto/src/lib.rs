@@ -43,6 +43,18 @@ pub enum ScimAttr {
     Reference(Url),
 }
 
+impl From<String> for ScimAttr {
+    fn from(s: String) -> Self {
+        ScimAttr::String(s)
+    }
+}
+
+impl From<bool> for ScimAttr {
+    fn from(b: bool) -> Self {
+        ScimAttr::Bool(b)
+    }
+}
+
 impl From<ScimAttr> for ScimValue {
     fn from(sa: ScimAttr) -> Self {
         ScimValue::Simple(sa)

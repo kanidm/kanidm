@@ -116,7 +116,7 @@ impl ValueSetT for ValueSetSpn {
         Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 

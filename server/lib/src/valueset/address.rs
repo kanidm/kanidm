@@ -163,8 +163,25 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
-        todo!();
+    fn to_scim_value(&self) -> ScimValue {
+        ScimValue::MultiComplex(
+            self.set
+                .iter()
+                .map(|a| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("formatted".to_string(), a.formatted.clone().into());
+                    complex_attr
+                        .insert("stretAddress".to_string(), a.street_address.clone().into());
+                    complex_attr.insert("locality".to_string(), a.locality.clone().into());
+                    complex_attr.insert("region".to_string(), a.region.clone().into());
+                    complex_attr.insert("postalCode".to_string(), a.postal_code.clone().into());
+                    complex_attr.insert("country".to_string(), a.country.clone().into());
+
+                    complex_attr
+                })
+                .collect(),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -458,8 +475,29 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
-        todo!();
+    fn to_scim_value(&self) -> ScimValue {
+        ScimValue::MultiComplex(
+            std::iter::once({
+                let mut complex_attr = ScimComplexAttr::default();
+
+                complex_attr.insert("value".to_string(), self.primary.clone().into());
+                complex_attr.insert("primary".to_string(), true.into());
+
+                complex_attr
+            })
+            .chain(self.set.iter().filter_map(|mail| {
+                if **mail == self.primary {
+                    None
+                } else {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("value".to_string(), mail.clone().into());
+                    complex_attr.insert("primary".to_string(), false.into());
+                    Some(complex_attr)
+                }
+            }))
+            .collect(),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -533,9 +571,10 @@ pub struct ValueSetPhoneNumber {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetEmailAddress;
+    use super::{ValueSetAddress, ValueSetEmailAddress};
+    use crate::prelude::ScimValue;
     use crate::repl::cid::Cid;
-    use crate::value::{PartialValue, Value};
+    use crate::value::{Address, PartialValue, Value};
     use crate::valueset::{self, ValueSet};
 
     #[test]
@@ -612,5 +651,67 @@ mod tests {
         vs.clear();
         assert_eq!(vs.len(), 0);
         assert!(vs.to_email_address_primary_str().is_none());
+    }
+
+    #[test]
+    fn test_scim_emailaddress() {
+        let mut vs: ValueSet = ValueSetEmailAddress::new("claire@example.com".to_string());
+        // Add another, still not primary.
+        assert!(
+            vs.insert_checked(
+                Value::new_email_address_s("alice@example.com").expect("Invalid Email")
+            ) == Ok(true)
+        );
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str(
+            r#"[
+          {
+            "primary": true,
+            "value": "claire@example.com"
+          },
+          {
+            "primary": false,
+            "value": "alice@example.com"
+          }
+        ]"#,
+        )
+        .unwrap();
+
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_address() {
+        let vs: ValueSet = ValueSetAddress::new(Address {
+            formatted: "1 No Where Lane, Doesn't Exist, Brisbane, 0420, Australia".to_string(),
+            street_address: "1 No Where Lane".to_string(),
+            locality: "Doesn't Exist".to_string(),
+            region: "Brisbane".to_string(),
+            postal_code: "0420".to_string(),
+            country: "Australia".to_string(),
+        });
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str(
+            r#"[
+          {
+            "country": "Australia",
+            "formatted": "1 No Where Lane, Doesn't Exist, Brisbane, 0420, Australia",
+            "locality": "Doesn't Exist",
+            "postalCode": "0420",
+            "region": "Brisbane",
+            "stretAddress": "1 No Where Lane"
+          }
+        ]"#,
+        )
+        .unwrap();
+
+        assert_eq!(scim_value, expect);
+
+        // let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        // eprintln!("{}", strout);
     }
 }

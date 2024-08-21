@@ -144,7 +144,7 @@ impl ValueSetT for ValueSetRestricted {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 

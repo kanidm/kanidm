@@ -149,7 +149,7 @@ impl ValueSetT for ValueSetCredential {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 
@@ -445,6 +445,10 @@ impl ValueSetT for ValueSetIntentToken {
         Box::new(self.map.keys().cloned())
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::IntentToken(
             self.map
@@ -729,6 +733,10 @@ impl ValueSetT for ValueSetPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Passkey(
             self.map
@@ -921,6 +929,10 @@ impl ValueSetT for ValueSetAttestedPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::AttestedPasskey(
             self.map
@@ -1102,6 +1114,10 @@ impl ValueSetT for ValueSetCredentialType {
         Box::new(self.set.iter().map(|ct| ct.to_string()))
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::CredentialType(self.set.iter().map(|s| *s as u16).collect())
     }
@@ -1281,6 +1297,10 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
         DbValueSetV2::WebauthnAttestationCaList {
             ca_list: self.ca_list.clone(),
         }
+    }
+
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
     }
 
     fn to_repl_v1(&self) -> ReplAttrV1 {

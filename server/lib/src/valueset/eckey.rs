@@ -133,7 +133,7 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         Box::new(iter::once(String::from("hidden")))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 

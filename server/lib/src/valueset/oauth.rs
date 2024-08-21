@@ -114,6 +114,10 @@ impl ValueSetT for ValueSetOauthScope {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::OauthScope(self.set.iter().cloned().collect())
     }
@@ -299,6 +303,10 @@ impl ValueSetT for ValueSetOauthScopeMap {
                 .iter()
                 .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
         )
+    }
+
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -665,7 +673,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
         }))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 

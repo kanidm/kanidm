@@ -118,6 +118,8 @@ pub mod prelude {
         ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
     };
 
+    pub(crate) use kanidm_proto::scim_v1::{ScimComplexAttr, ScimValue};
+
     #[cfg(test)]
     pub use kanidmd_lib_macros::*;
 

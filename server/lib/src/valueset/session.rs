@@ -358,7 +358,7 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 
@@ -902,6 +902,10 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Oauth2Session(
             self.map
@@ -1322,6 +1326,10 @@ impl ValueSetT for ValueSetApiToken {
                 .iter()
                 .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
         )
+    }
+
+    fn to_scim_value(&self) -> ScimValue {
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

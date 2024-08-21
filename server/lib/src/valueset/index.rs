@@ -112,7 +112,7 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 

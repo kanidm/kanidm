@@ -130,7 +130,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 
@@ -320,7 +320,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+    fn to_scim_value(&self) -> ScimValue {
         todo!();
     }
 
