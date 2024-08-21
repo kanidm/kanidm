@@ -708,7 +708,7 @@ mod tests {
         // There should be a queued audit event
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         // Start the re-auth - MUST FAIL!

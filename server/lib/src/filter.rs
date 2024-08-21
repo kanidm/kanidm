@@ -14,6 +14,7 @@ use std::fmt;
 use std::hash::Hash;
 use std::iter;
 use std::num::NonZeroU8;
+use std::str::FromStr;
 use std::sync::Arc;
 
 use concread::arcache::{ARCache, ARCacheReadTxn};
@@ -643,18 +644,6 @@ impl Filter<FilterInvalid> {
         }
     }
 
-    /// ⚠️  - Blindly accept a filter from a string, panicking if it fails to parse.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn from_str(fc: &str) -> Self {
-        let f: FC = serde_json::from_str(fc).expect("Failure parsing filter!");
-        Filter {
-            state: FilterInvalid {
-                inner: FilterComp::new(f),
-            },
-        }
-    }
-
     pub fn validate(
         &self,
         schema: &dyn SchemaTransaction,
@@ -712,6 +701,18 @@ impl Filter<FilterInvalid> {
         Ok(Filter {
             state: FilterInvalid {
                 inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
+            },
+        })
+    }
+}
+
+impl FromStr for Filter<FilterInvalid> {
+    type Err = OperationError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let f: FC = serde_json::from_str(s).map_err(|_| OperationError::FilterParseError)?;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::new(f),
             },
         })
     }

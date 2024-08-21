@@ -508,7 +508,7 @@ mod test {
         );
 
         let Ok(IdentifyUserResponse::ProvideCode { totp, .. }) = res_higher_user else {
-            return assert!(false);
+            panic!();
         };
 
         let res_lower_user_wrong = idms_prox_read.handle_identify_user_submit_code(
@@ -532,7 +532,7 @@ mod test {
         // now we need to get the code from the lower_user and submit it to the higher_user
 
         let Ok(IdentifyUserResponse::ProvideCode { totp, .. }) = res_lower_user_correct else {
-            return assert!(false);
+            panic!("Invalid");
         };
 
         let res_higher_user_2_wrong = idms_prox_read.handle_identify_user_submit_code(
@@ -600,7 +600,7 @@ mod test {
             ..
         }) = res_higher_user
         else {
-            return assert!(false);
+            panic!();
         };
 
         // then we get the lower user code
@@ -619,7 +619,7 @@ mod test {
         {
             assert_ne!(higher_user_totp, lower_user_totp);
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
     }
 

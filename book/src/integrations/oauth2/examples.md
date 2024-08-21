@@ -61,7 +61,7 @@ OAUTH2_PROVIDER = "oidc";
 OAUTH2_CLIENT_ID = "miniflux";
 OAUTH2_CLIENT_SECRET = "<oauth2_rs_basic_secret>";
 OAUTH2_REDIRECT_URL = "https://feeds.example.com/oauth2/oidc/callback";
-OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<oauth2_rs_name>";
+OAUTH2_OIDC_DISCOVERY_ENDPOINT = "https://idm.example.com/oauth2/openid/<name>";
 ```
 
 ## Nextcloud
@@ -227,14 +227,14 @@ Vouch Proxy supports multiple OAuth and OIDC login providers. To configure it yo
 oauth:
   auth_url: https://idm.wherekanidmruns.com/ui/oauth2
   callback_url: https://login.wherevouchproxyruns.com/auth
-  client_id: <oauth2_rs_name> # Found in kanidm system oauth2 get XXXX (should be the same as XXXX)
+  client_id: <name> # Found in kanidm system oauth2 get XXXX (should be the same as XXXX)
   client_secret: <oauth2_rs_basic_secret> # Found in kanidm system oauth2 get XXXX
   code_challenge_method: S256
   provider: oidc
   scopes:
     - email # Required due to vouch proxy reliance on mail as a primary identifier
   token_url: https://idm.wherekanidmruns.com/oauth2/token
-  user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/<oauth2_rs_name>/userinfo
+  user_info_url: https://idm.wherekanidmruns.com/oauth2/openid/<name>/userinfo
 ```
 
 The `email` scope needs to be passed and thus the mail attribute needs to exist on the account:

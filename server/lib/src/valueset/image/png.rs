@@ -133,7 +133,7 @@ fn test_png_consume_chunks_until_iend() {
     testchunks.extend([0, 0, 0, 1]); // the 4-byte checksum which we ignore
     let expected: [u8; 0] = [];
     let testchunks_slice = testchunks.as_slice();
-    let res = png_consume_chunks_until_iend(&testchunks_slice);
+    let res = png_consume_chunks_until_iend(testchunks_slice);
 
     // simple, valid image works
     match res {
@@ -150,7 +150,7 @@ fn test_png_consume_chunks_until_iend() {
     let mut x = 11;
     while x > 0 {
         let newslice = &testchunks_slice[0..=x];
-        let res = png_consume_chunks_until_iend(&newslice);
+        let res = png_consume_chunks_until_iend(newslice);
         trace!("chunkstatus at size {} {:?}", x, &res);
         assert!(res.is_err());
         x -= 1;

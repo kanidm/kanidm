@@ -200,10 +200,7 @@ impl CredSoftLock {
 
     #[cfg(test)]
     pub fn is_state_init(&self) -> bool {
-        match self.state {
-            LockState::Init => true,
-            _ => false,
-        }
+        matches!(self.state, LockState::Init)
     }
 
     #[cfg(test)]

@@ -2585,7 +2585,7 @@ mod tests {
         // There should be a queued audit event
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -2774,7 +2774,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         // Check bad password
         let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
@@ -2783,7 +2783,7 @@ mod tests {
             .await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         assert!(idms_auth.commit().is_ok());
 
@@ -2804,7 +2804,7 @@ mod tests {
             .await;
         match a3 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         assert!(idms_auth.commit().is_ok());
     }
@@ -2927,7 +2927,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         idms_auth.commit().expect("Must not fail");
         // The upgrade was queued
@@ -2941,7 +2941,7 @@ mod tests {
             .await;
         match a2 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         idms_auth.commit().expect("Must not fail");
         // No delayed action was queued.
@@ -3076,13 +3076,13 @@ mod tests {
         // badpw?
         match a1 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         let a2 = idms_auth.auth_unix(&uuae_good, time_high).await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         idms_auth.commit().expect("Must not fail");
@@ -3139,7 +3139,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
 
         let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
@@ -3147,7 +3147,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
     }
 
@@ -3201,7 +3201,7 @@ mod tests {
         // There should be a queued audit event
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -3367,7 +3367,7 @@ mod tests {
 
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -3441,7 +3441,7 @@ mod tests {
             .await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Now if we immediately auth again, should fail at same time due to SL
@@ -3450,7 +3450,7 @@ mod tests {
             .await;
         match a1 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // And then later, works because of SL lifting.
@@ -3459,7 +3459,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         assert!(idms_auth.commit().is_ok());
@@ -3493,7 +3493,7 @@ mod tests {
         // In X time it should be INVALID
         match idms_prox_read.validate_client_auth_info_to_ident(token.into(), expiry) {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
     }
 
@@ -3628,7 +3628,7 @@ mod tests {
             .get_key_object(UUID_DOMAIN_INFO)
             .and_then(|object| {
                 object
-                    .jws_public_jwk(&token_kid)
+                    .jws_public_jwk(token_kid)
                     .expect("Unable to access uat jwk")
             })
             .expect("No jwk by this kid");
@@ -3668,7 +3668,7 @@ mod tests {
             .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
         {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
         drop(idms_prox_read);
 
@@ -3699,7 +3699,7 @@ mod tests {
             .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
         {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
     }
 
@@ -4059,7 +4059,7 @@ mod tests {
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_append(
-                Attribute::KeyActionRevoke.into(),
+                Attribute::KeyActionRevoke,
                 Value::HexString(revoke_kid.to_string()),
             ),
         );

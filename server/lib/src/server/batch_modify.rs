@@ -123,9 +123,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             // Return if success
                             .map(|()| ent_mut)
                             // Error log otherwise.
-                            .map_err(|e| {
+                            .inspect_err(|_e| {
                                 error!("Modification failed for {}", u);
-                                e
                             })
                     })
             })

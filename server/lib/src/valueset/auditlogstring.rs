@@ -257,7 +257,10 @@ mod tests {
 
         // Now merge in with a set that has a value that is newer.
 
-        assert!(100 > AUDIT_LOG_STRING_CAPACITY);
+        #[allow(clippy::bool_assert_comparison, clippy::assertions_on_constants)]
+        {
+            assert!(100 > AUDIT_LOG_STRING_CAPACITY);
+        }
 
         let other_vs: ValueSet = ValueSetAuditLogString::new(
             // Notice that 0 here is older than our other set items.
@@ -321,7 +324,10 @@ mod tests {
 
         // Now merge in with a set that has a value that is newer.
 
-        assert!(100 > AUDIT_LOG_STRING_CAPACITY);
+        #[allow(clippy::bool_assert_comparison, clippy::assertions_on_constants)]
+        {
+            assert!(100 > AUDIT_LOG_STRING_CAPACITY);
+        }
 
         let other_vs: ValueSet = ValueSetAuditLogString::new(
             // Notice that 0 here is older than our other set items.

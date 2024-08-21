@@ -106,9 +106,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {
-            er.apply_modlist(&me.modlist).map_err(|e| {
+            er.apply_modlist(&me.modlist).inspect_err(|_e| {
                 error!("Modification failed for {:?}", er.get_uuid());
-                e
             })
         })?;
 

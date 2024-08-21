@@ -531,6 +531,6 @@ fn test_imagevalue_things() {
             let res = image.validate_image();
             trace!("SVG Validation result of {}: {:?}", filename, &res);
             assert!(res.is_ok());
-            assert_eq!(image.hash_imagevalue().is_empty(), false);
+            assert!(!image.hash_imagevalue().is_empty());
         })
 }

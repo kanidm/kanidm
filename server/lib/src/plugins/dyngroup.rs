@@ -471,7 +471,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -520,7 +520,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -569,7 +569,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
@@ -614,7 +614,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -676,7 +676,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -737,7 +737,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
@@ -788,7 +788,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -841,7 +841,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -896,7 +896,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 let members = d_group
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
@@ -948,7 +948,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
@@ -991,7 +991,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 assert!(d_group.get_ava_set(Attribute::DynMember).is_none());
             }
         );
@@ -1038,7 +1038,7 @@ mod tests {
                     )))
                     .expect("Internal search failure");
 
-                let d_group = cands.get(0).expect("Unable to access group.");
+                let d_group = cands.first().expect("Unable to access group.");
                 assert!(d_group.get_ava_set(Attribute::MemberOf).is_none());
             }
         );

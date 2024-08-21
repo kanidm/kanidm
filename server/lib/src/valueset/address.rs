@@ -561,7 +561,7 @@ mod tests {
         let vs2 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
             .expect("Failed to construct vs2 from dbvalue");
 
-        assert!(&vs == &vs2);
+        assert_eq!(&vs, &vs2);
         assert!(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
@@ -575,7 +575,7 @@ mod tests {
         // Restore from dbv1, alice persisted.
         let vs3 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
             .expect("Failed to construct vs2 from dbvalue");
-        assert!(&vs == &vs3);
+        assert_eq!(&vs, &vs3);
         assert!(vs3.len() == 2);
         assert!(vs3
             .as_emailaddress_set()

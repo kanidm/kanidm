@@ -267,7 +267,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     } = consent_req
     {
         // Note the supplemental scope here (admin)
-        assert!(scopes.contains(&"admin".to_string()));
+        assert!(scopes.contains("admin"));
         consent_token
     } else {
         unreachable!();
@@ -655,7 +655,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     } = consent_req
     {
         // Note the supplemental scope here (admin)
-        assert!(scopes.contains(&"admin".to_string()));
+        assert!(scopes.contains("admin"));
         consent_token
     } else {
         unreachable!();

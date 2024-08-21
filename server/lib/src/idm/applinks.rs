@@ -176,7 +176,7 @@ mod tests {
             .list_applinks(&ident)
             .expect("Failed to access related apps");
 
-        let app = apps.get(0).expect("No apps return!");
+        let app = apps.first().expect("No apps return!");
 
         assert!(match app {
             AppLink::Oauth2 {

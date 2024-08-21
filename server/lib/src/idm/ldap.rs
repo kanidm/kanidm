@@ -910,7 +910,7 @@ mod tests {
             ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
         );
         let admin_t = ldaps.do_bind(idms, "admin", TEST_PASSWORD).await.unwrap();
-        assert!(admin_t.is_none() == true);
+        assert!(admin_t.is_none());
 
         // Setting UNIX_PW_BIND flag to true :
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
@@ -1138,7 +1138,7 @@ mod tests {
 
         let sr = SearchRequest {
             msgid: 1,
-            base: format!("dc=example,dc=com"),
+            base: "dc=example,dc=com".to_string(),
             scope: LdapSearchScope::Subtree,
             filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
             attrs: vec!["*".to_string()],
@@ -1148,7 +1148,7 @@ mod tests {
             .do_search(idms, &sr, &anon_t, Source::Internal)
             .await
             .unwrap();
-        assert!(r1.len() > 0);
+        assert!(!r1.is_empty());
         assert!(r1.len() == r2.len());
     }
 
@@ -1722,7 +1722,7 @@ mod tests {
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Check that when we request +, we get all attrs and the vattrs
@@ -1764,7 +1764,7 @@ mod tests {
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Check that when we request an attr by name, we get all of them correctly.
@@ -1801,7 +1801,7 @@ mod tests {
                     (Attribute::LdapKeys, ssh_ed25519)
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -1927,7 +1927,7 @@ mod tests {
                     (Attribute::Name, "testperson1")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Inspect the token to get its uuid out.
@@ -1984,7 +1984,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // ======= test with a substring search
@@ -2039,7 +2039,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2110,7 +2110,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2167,7 +2167,7 @@ mod tests {
                 );
                 assert!(lsre.attributes.is_empty());
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // If we request 1.1 and another attr, 1.1 is IGNORED.
@@ -2200,7 +2200,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2238,7 +2238,7 @@ mod tests {
                     ("defaultnamingcontext", "dc=example,dc=com")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         drop(ldaps);
@@ -2291,7 +2291,7 @@ mod tests {
                     ("defaultnamingcontext", "o=kanidmproject")
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2399,7 +2399,7 @@ mod tests {
                     )
                 );
             }
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
     }
 
@@ -2435,13 +2435,13 @@ mod tests {
         assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
 
         #[track_caller]
-        fn assert_compare_result(r: &Vec<LdapMsg>, code: LdapResultCode) {
+        fn assert_compare_result(r: &[LdapMsg], code: &LdapResultCode) {
             assert!(r.len() == 1);
             match &r[0].op {
                 LdapOp::CompareResult(lcr) => {
-                    assert_eq!(lcr.code, code);
+                    assert_eq!(&lcr.code, code);
                 }
-                _ => assert!(false),
+                _ => panic!("Oh no"),
             };
         }
 
@@ -2457,7 +2457,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareTrue,
+            &LdapResultCode::CompareTrue,
         );
 
         let cr = CompareRequest {
@@ -2472,7 +2472,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareTrue,
+            &LdapResultCode::CompareTrue,
         );
 
         let cr = CompareRequest {
@@ -2486,7 +2486,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::CompareFalse,
+            &LdapResultCode::CompareFalse,
         );
 
         let cr = CompareRequest {
@@ -2500,7 +2500,7 @@ mod tests {
                 .do_compare(idms, &cr, &anon_t, Source::Internal)
                 .await
                 .unwrap(),
-            LdapResultCode::NoSuchObject,
+            &LdapResultCode::NoSuchObject,
         );
 
         let cr = CompareRequest {

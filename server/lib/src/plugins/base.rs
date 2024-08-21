@@ -459,7 +459,7 @@ mod tests {
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality(
-                    Attribute::Uuid.into(),
+                    Attribute::Uuid,
                     &PartialValue::Uuid(uuid!("79724141-3603-4060-b6bb-35c72772611d"))
                 ));
             }
