@@ -1342,3 +1342,90 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
         Some(&self.ca_list)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        ValueSetAttestedPasskey, ValueSetCredential, ValueSetCredentialType, ValueSetIntentToken,
+        ValueSetPasskey, ValueSetWebauthnAttestationCaList,
+    };
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_credential() {
+        let vs: ValueSet = ValueSetCredential::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_intent_token() {
+        let vs: ValueSet = ValueSetIntentToken::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_passkey() {
+        let vs: ValueSet = ValueSetPasskey::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_attested_passkey() {
+        let vs: ValueSet = ValueSetAttestedPasskey::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_credential_type() {
+        let vs: ValueSet = ValueSetCredentialType::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_webauthn_attestation_ca_list() {
+        let vs: ValueSet = ValueSetWebauthnAttestationCaList::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

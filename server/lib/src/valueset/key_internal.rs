@@ -621,4 +621,17 @@ mod tests {
         // Assert the item was trimmed
         assert!(!key_internal_map.contains_key(&kid_2));
     }
+
+    #[test]
+    fn test_scim_key_internal() {
+        let vs: ValueSet = ValueSetKeyInternal::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
 }

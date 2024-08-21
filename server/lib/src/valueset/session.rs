@@ -1444,9 +1444,9 @@ impl ValueSetT for ValueSetApiToken {
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
     use crate::prelude::{IdentityId, SessionScope, Uuid};
+    use crate::prelude::{ScimValue, ValueSet};
     use crate::repl::cid::Cid;
     use crate::value::{AuthType, Oauth2Session, Session, SessionState};
-    use crate::valueset::ValueSet;
     use time::OffsetDateTime;
 
     #[test]
@@ -2049,5 +2049,31 @@ mod tests {
         assert!(!sessions.contains_key(&zero_uuid));
         assert!(!sessions.contains_key(&one_uuid));
         assert!(sessions.contains_key(&two_uuid));
+    }
+
+    #[test]
+    fn test_scim_session() {
+        let vs: ValueSet = ValueSetSession::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_oauth2_session() {
+        let vs: ValueSet = ValueSetOauth2Session::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
     }
 }

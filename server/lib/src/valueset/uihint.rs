@@ -149,3 +149,22 @@ impl ValueSetT for ValueSetUiHint {
         Some(Box::new(self.set.iter().copied()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{UiHint, ValueSetUiHint};
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_uihint() {
+        let mut vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str(r#""Something""#).unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

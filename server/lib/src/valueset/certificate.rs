@@ -252,3 +252,22 @@ impl ValueSetT for ValueSetCertificate {
         Some(&self.map)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetCertificate;
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_certificate() {
+        let vs: ValueSet = ValueSetCertificate::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

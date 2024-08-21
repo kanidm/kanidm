@@ -204,3 +204,22 @@ impl ValueSetT for ValueSetIname {
         Ok(None)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetIname;
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_iname() {
+        let vs: ValueSet = ValueSetIname::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

@@ -206,8 +206,7 @@ impl ValueSetT for ValueSetUtf8 {
 #[cfg(test)]
 mod tests {
     use super::ValueSetUtf8;
-    use crate::prelude::PartialValue;
-    use crate::valueset::ValueSetT;
+    use crate::prelude::{PartialValue, ScimValue, ValueSet, ValueSetT};
 
     #[test]
     fn test_utf8_substring_insensitive() {
@@ -228,5 +227,18 @@ mod tests {
         assert!(!vs.endswith(&pv_xx));
         assert!(!vs.endswith(&pv_test));
         assert!(vs.endswith(&pv_user));
+    }
+
+    #[test]
+    fn test_scim_utf8() {
+        let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str(r#""Test""#).unwrap();
+        assert_eq!(scim_value, expect);
     }
 }

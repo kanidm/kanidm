@@ -16,6 +16,7 @@ use time::OffsetDateTime;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
+use base64urlsafedata::Base64UrlSafeData;
 
 pub mod constants;
 pub mod filter;
@@ -38,9 +39,27 @@ pub enum ScimAttr {
     // These can't be implicitly decoded because we may not know the intent, but we can *encode* them.
     // That's why "String" is above this because it catches anything during deserialization before
     // this point.
+
+    #[serde(with = "time::serde::rfc3339")]
     DateTime(OffsetDateTime),
-    Binary(Vec<u8>),
+
+    Binary(Base64UrlSafeData),
     Reference(Url),
+}
+
+impl ScimAttr {
+    pub fn parse_as_datetime(&self) -> Option<Self> {
+        let s = match self {
+            ScimAttr::String(s) => s,
+            _ => return None,
+        };
+
+        use time::format_description::well_known::Rfc3339;
+
+        OffsetDateTime::parse(s, &Rfc3339)
+            .map(ScimAttr::DateTime)
+            .ok()
+    }
 }
 
 impl From<String> for ScimAttr {
@@ -52,6 +71,18 @@ impl From<String> for ScimAttr {
 impl From<bool> for ScimAttr {
     fn from(b: bool) -> Self {
         ScimAttr::Bool(b)
+    }
+}
+
+impl From<Vec<u8>> for ScimAttr {
+    fn from(data: Vec<u8>) -> Self {
+        ScimAttr::Binary(data.into())
+    }
+}
+
+impl From<OffsetDateTime> for ScimAttr {
+    fn from(odt: OffsetDateTime) -> Self {
+        ScimAttr::DateTime(odt)
     }
 }
 

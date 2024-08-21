@@ -112,7 +112,14 @@ impl ValueSetT for ValueSetBool {
     }
 
     fn to_scim_value(&self) -> ScimValue {
-        todo!();
+        if self.len() == 1 {
+            // Because self.len == 1 we know this has to yield a value.
+            let b = self.set.iter().copied().next().unwrap_or_default();
+
+            ScimAttr::Bool(b).into()
+        } else {
+            ScimValue::MultiSimple(self.set.iter().copied().map(|b| b.into()).collect())
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -161,5 +168,28 @@ impl ValueSetT for ValueSetBool {
 
     fn as_bool_set(&self) -> Option<&SmolSet<[bool; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetBool;
+    use crate::prelude::{ScimValue, Value, ValueSet};
+
+    #[test]
+    fn test_scim_boolean() {
+        let mut vs: ValueSet = ValueSetBool::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+
+        vs.insert_checked(Value::Bool(false)).unwrap();
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str("[true, false]").unwrap();
+        assert_eq!(scim_value, expect);
     }
 }

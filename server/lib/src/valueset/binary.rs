@@ -108,7 +108,8 @@ impl ValueSetT for ValueSetPrivateBinary {
     }
 
     fn to_scim_value(&self) -> ScimValue {
-        todo!();
+        // We want to hide the content of the private binary, we only indicate it exists.
+        ScimAttr::Bool(true).into()
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -271,8 +272,11 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn syntax(&self) -> SyntaxType {
-        unreachable!();
+        // Apparently I never actually implemented this type in ... anything?
+        // We should probably clean up syntax soon .....
+        //
         // SyntaxType::PublicBinary
+        unreachable!()
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -286,7 +290,20 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn to_scim_value(&self) -> ScimValue {
-        todo!();
+        ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(tag, bin)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("tag".to_string(), tag.clone().into());
+
+                    complex_attr.insert("value".to_string(), bin.clone().into());
+
+                    complex_attr
+                })
+                .collect(),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -340,5 +357,22 @@ impl ValueSetT for ValueSetPublicBinary {
 
     fn as_publicbinary_map(&self) -> Option<&BTreeMap<String, Vec<u8>>> {
         Some(&self.map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetPrivateBinary;
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_private_binary() {
+        let vs: ValueSet = ValueSetPrivateBinary::new(vec![0x00]);
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+
+        assert_eq!(scim_value, expect);
     }
 }

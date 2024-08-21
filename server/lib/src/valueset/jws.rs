@@ -389,3 +389,35 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         Some(&self.set)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ValueSetJwsKeyEs256, ValueSetJwsKeyRs256};
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_jws_es256() {
+        let vs: ValueSet = ValueSetJwsKeyEs256::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_jws_rs256() {
+        let vs: ValueSet = ValueSetJwsKeyRs256::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

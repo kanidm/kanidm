@@ -220,3 +220,23 @@ impl ValueSetT for ValueSetSshKey {
         Some(Box::new(self.map.values().map(|pk| pk.to_string())))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetSshKey;
+    use crate::prelude::{ScimValue, Value, ValueSet};
+
+    #[test]
+    fn test_scim_ssh_public_key() {
+        let mut vs: ValueSet = ValueSetSshKey::new(true);
+        vs.insert_checked(Value::Ssh).unwrap();
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

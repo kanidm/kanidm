@@ -200,3 +200,22 @@ impl ValueSetT for ValueSetRestricted {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetRestricted;
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_restricted() {
+        let vs: ValueSet = ValueSetRestricted::new("Test".to_string());
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

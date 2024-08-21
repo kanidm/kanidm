@@ -4,6 +4,7 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
 
 type AuditLogStringType = (Cid, String);
 
@@ -120,7 +121,18 @@ impl ValueSetT for ValueSetAuditLogString {
     }
 
     fn to_scim_value(&self) -> ScimValue {
-        todo!();
+        ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(cid, strdata)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+                    let odt: OffsetDateTime = cid.into();
+                    complex_attr.insert("dateTime".to_string(), odt.into());
+                    complex_attr.insert("value".to_string(), strdata.clone().into());
+                    complex_attr
+                })
+                .collect(),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -199,6 +211,7 @@ impl ValueSetT for ValueSetAuditLogString {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetAuditLogString, AUDIT_LOG_STRING_CAPACITY};
+    use crate::prelude::ScimValue;
     use crate::repl::cid::Cid;
     use crate::value::Value;
     use crate::valueset::ValueSet;
@@ -353,5 +366,79 @@ mod tests {
         println!("{:?}", c);
         assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
+    }
+
+    #[test]
+    fn test_scim_auditlog_string() {
+        let mut vs: ValueSet = ValueSetAuditLogString::new((Cid::new_count(0), "A".to_string()));
+        assert!(vs.len() == 1);
+
+        for i in 1..AUDIT_LOG_STRING_CAPACITY {
+            vs.insert_checked(Value::AuditLogString(
+                Cid::new_count(i as u64),
+                "A".to_string(),
+            ))
+            .unwrap();
+        }
+
+        let scim_value = vs.to_scim_value();
+
+        let mut expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "dateTime": "1970-01-01T00:00:00Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:01Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:02Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:03Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:04Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:05Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:06Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:07Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:08Z",
+    "value": "A"
+  }
+]
+"#,
+        )
+        .unwrap();
+
+        // Because scimAttr can't know the intent of a string, when we parse the json
+        // above we get dateTime as a string instead of a true datetime structure. As
+        // a result, we have to go through it and update to fix it.
+        match &mut expect {
+            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
+                let date_time = complex_attr.get("dateTime").unwrap();
+                let parsed_date_time = date_time.parse_as_datetime().unwrap();
+                complex_attr.insert("dateTime".to_string(), parsed_date_time);
+            }),
+            _ => unreachable!(),
+        };
+
+        assert_eq!(scim_value, expect);
     }
 }

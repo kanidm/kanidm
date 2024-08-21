@@ -754,7 +754,8 @@ impl ValueSetT for ValueSetOauthClaimMap {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetOauthClaimMap;
+    use super::{ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap};
+    use crate::prelude::{ScimValue, ValueSet};
     use crate::valueset::ValueSetT;
     use std::collections::BTreeSet;
 
@@ -771,5 +772,44 @@ mod tests {
             &proto_value,
             "claim: 5a6b8783-3f67-4ebb-b6aa-77fd6e66589f \"\"\"\""
         );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope() {
+        let vs: ValueSet = ValueSetOauthScope::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_map() {
+        let vs: ValueSet = ValueSetOauthScopeMap::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_oauth2_claim_map() {
+        let vs: ValueSet = ValueSetOauthClaimMap::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
     }
 }

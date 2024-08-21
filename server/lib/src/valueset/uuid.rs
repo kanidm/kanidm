@@ -354,3 +354,37 @@ impl ValueSetT for ValueSetRefer {
         Some(Box::new(self.set.iter().copied()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{ValueSetRefer, ValueSetUuid};
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_uuid() {
+        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue =
+            serde_json::from_str(r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#).unwrap();
+        assert_eq!(scim_value, expect);
+    }
+
+    #[test]
+    fn test_scim_refer() {
+        let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue =
+            serde_json::from_str(r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#).unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

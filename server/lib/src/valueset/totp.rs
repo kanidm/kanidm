@@ -197,3 +197,32 @@ impl ValueSetT for ValueSetTotpSecret {
         Some(&self.map)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetTotpSecret;
+    use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_totp() {
+        let mut vs: ValueSet = ValueSetTotpSecret::new(
+            "label".to_string(),
+            Totp::new(
+                // Totes secure, chosen by fair dice roll.
+                vec![0, 1, 2, 3],
+                30,
+                TotpAlgo::Sha256,
+                TotpDigits::Six,
+            ),
+        );
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str(r#""Something""#).unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

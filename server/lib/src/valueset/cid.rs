@@ -187,3 +187,22 @@ impl ValueSetT for ValueSetCid {
     }
     */
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetCid;
+    use crate::prelude::{Cid, ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_cid() {
+        let vs: ValueSet = ValueSetCid::new(Cid::new_zero());
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}

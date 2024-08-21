@@ -166,3 +166,22 @@ impl ValueSetT for ValueSetNsUniqueId {
         Some(&self.set)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetNsUniqueId;
+    use crate::prelude::{ScimValue, ValueSet};
+
+    #[test]
+    fn test_scim_nsuniqueid() {
+        let vs: ValueSet = ValueSetNsUniqueId::new(true);
+
+        let scim_value = vs.to_scim_value();
+
+        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+        eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        assert_eq!(scim_value, expect);
+    }
+}
