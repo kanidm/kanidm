@@ -358,6 +358,10 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Session(self.to_vec_dbvs())
     }

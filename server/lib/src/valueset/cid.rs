@@ -121,6 +121,10 @@ impl ValueSetT for ValueSetCid {
         Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Cid(
             self.set

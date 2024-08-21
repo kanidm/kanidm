@@ -116,6 +116,10 @@ impl ValueSetT for ValueSetSpn {
         Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Spn(self.set.iter().cloned().collect())
     }

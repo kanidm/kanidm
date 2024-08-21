@@ -163,6 +163,10 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Address(
             self.set
@@ -452,6 +456,10 @@ impl ValueSetT for ValueSetEmailAddress {
                 ),
             )
         }
+    }
+
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

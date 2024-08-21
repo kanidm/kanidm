@@ -186,6 +186,10 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         let data = self.to_vec_dbvs();
         DbValueSetV2::ApplicationPassword(data)

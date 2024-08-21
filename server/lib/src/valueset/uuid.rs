@@ -119,6 +119,10 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Uuid(self.set.iter().cloned().collect())
     }
@@ -288,6 +292,10 @@ impl ValueSetT for ValueSetRefer {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
+    }
+
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

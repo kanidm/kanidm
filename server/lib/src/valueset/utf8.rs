@@ -146,6 +146,10 @@ impl ValueSetT for ValueSetUtf8 {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Utf8(self.set.iter().cloned().collect())
     }

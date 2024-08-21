@@ -112,6 +112,10 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::IndexType(self.set.iter().map(|s| *s as u16).collect())
     }

@@ -152,6 +152,10 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::SshKey(
             self.map

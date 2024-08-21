@@ -130,6 +130,10 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::JwsKeyEs256(self.set.iter()
             .map(|k| {
@@ -314,6 +318,10 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
+    }
+
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

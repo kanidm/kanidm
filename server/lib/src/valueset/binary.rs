@@ -107,6 +107,10 @@ impl ValueSetT for ValueSetPrivateBinary {
         Box::new(self.set.iter().map(|_| "private_binary".to_string()))
     }
 
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::PrivateBinary(self.set.iter().cloned().collect())
     }
@@ -279,6 +283,10 @@ impl ValueSetT for ValueSetPublicBinary {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.keys().cloned())
+    }
+
+    fn to_scim_value_iter(&self) -> Box<dyn Iterator<Item = ScimValue> + '_>{
+        todo!();
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
