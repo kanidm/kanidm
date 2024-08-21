@@ -187,7 +187,27 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn to_scim_value(&self) -> ScimValue {
-        todo!();
+        ScimValue::MultiComplex(
+            self.map
+                .values()
+                .flatten()
+                .map(|app_pwd| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert(
+                        "uuid".to_string(),
+                        app_pwd.uuid.hyphenated().to_string().into(),
+                    );
+                    complex_attr.insert(
+                        "applicationUuid".to_string(),
+                        app_pwd.application.hyphenated().to_string().into(),
+                    );
+                    complex_attr.insert("label".to_string(), app_pwd.label.clone().into());
+
+                    complex_attr
+                })
+                .collect(),
+        )
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -319,5 +339,71 @@ mod tests {
 
         let res = vs.as_application_password_map().unwrap();
         assert_eq!(res.keys().len(), 0);
+    }
+
+    #[test]
+    fn test_scim_application_password() {
+        let app1_uuid = uuid::uuid!("7c3cd2b4-dc0d-43f5-999c-4912c2412405");
+        let app2_uuid = uuid::uuid!("82eaeca8-4250-4b63-a94b-75a3764a9327");
+        let ap1_uuid = uuid::uuid!("f36434ba-087a-4774-90ea-ebcda7f8c549");
+        let ap2_uuid = uuid::uuid!("b78506c7-eb7a-45d8-a994-34e868ee1a9e");
+        let ap3_uuid = uuid::uuid!("740a9d06-1188-4c48-9c5c-dbf863712c66");
+
+        let ap1: ApplicationPassword = ApplicationPassword {
+            uuid: ap1_uuid,
+            application: app1_uuid,
+            label: "apppwd1".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd1")
+                .expect("Failed to create password"),
+        };
+
+        let ap2: ApplicationPassword = ApplicationPassword {
+            uuid: ap2_uuid,
+            application: app1_uuid,
+            label: "apppwd2".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd2")
+                .expect("Failed to create password"),
+        };
+
+        let ap3: ApplicationPassword = ApplicationPassword {
+            uuid: ap3_uuid,
+            application: app2_uuid,
+            label: "apppwd3".to_string(),
+            password: Password::new_pbkdf2(&CryptoPolicy::minimum(), "apppwd3")
+                .expect("Failed to create password"),
+        };
+
+        let mut vs: ValueSet = ValueSetApplicationPassword::new(ap1);
+        vs.insert_checked(Value::ApplicationPassword(ap2))
+            .expect("Failed to insert");
+        vs.insert_checked(Value::ApplicationPassword(ap3))
+            .expect("Failed to insert");
+
+        let scim_value = vs.to_scim_value();
+
+        let expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "applicationUuid": "7c3cd2b4-dc0d-43f5-999c-4912c2412405",
+    "label": "apppwd1",
+    "uuid": "f36434ba-087a-4774-90ea-ebcda7f8c549"
+  },
+  {
+    "applicationUuid": "7c3cd2b4-dc0d-43f5-999c-4912c2412405",
+    "label": "apppwd2",
+    "uuid": "b78506c7-eb7a-45d8-a994-34e868ee1a9e"
+  },
+  {
+    "applicationUuid": "82eaeca8-4250-4b63-a94b-75a3764a9327",
+    "label": "apppwd3",
+    "uuid": "740a9d06-1188-4c48-9c5c-dbf863712c66"
+  }
+]
+"#,
+        )
+        .unwrap();
+
+        assert_eq!(scim_value, expect);
     }
 }
