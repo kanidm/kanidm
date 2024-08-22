@@ -112,8 +112,10 @@ impl ValueSetT for ValueSetSyntax {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiSimple(
+            self.set.iter().map(|v| v.to_string().into()).collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -168,18 +170,18 @@ impl ValueSetT for ValueSetSyntax {
 #[cfg(test)]
 mod tests {
     use super::ValueSetSyntax;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::{ScimValue, SyntaxType, ValueSet};
 
     #[test]
     fn test_scim_syntax() {
-        let vs: ValueSet = ValueSetSyntax::new(true);
+        let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
 
-        let scim_value = vs.to_scim_value();
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
+
+        let expect: ScimValue = serde_json::from_str(r#"["UUID"]"#).unwrap();
+        assert_eq!(scim_value, expect);
     }
 }

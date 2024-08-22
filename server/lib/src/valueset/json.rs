@@ -127,7 +127,7 @@ impl ValueSetT for ValueSetJsonFilter {
         }))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -199,14 +199,15 @@ impl ValueSetT for ValueSetJsonFilter {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetJsonFilter;
-    use crate::prelude::{ScimValue, ValueSet};
+    use super::{ProtoFilter, ValueSetJsonFilter};
+    use crate::prelude::{Attribute, ScimValue, ValueSet};
 
     #[test]
     fn test_scim_json_filter() {
-        let vs: ValueSet = ValueSetJsonFilter::new(true);
+        let filter = ProtoFilter::Pres(Attribute::Class.to_string());
+        let vs: ValueSet = ValueSetJsonFilter::new(filter);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

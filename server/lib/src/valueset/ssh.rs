@@ -152,7 +152,7 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -223,15 +223,22 @@ impl ValueSetT for ValueSetSshKey {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetSshKey;
-    use crate::prelude::{ScimValue, Value, ValueSet};
+    use super::{SshPublicKey, ValueSetSshKey};
+    use crate::prelude::{ScimValue, ValueSet};
 
     #[test]
     fn test_scim_ssh_public_key() {
-        let mut vs: ValueSet = ValueSetSshKey::new(true);
-        vs.insert_checked(Value::Ssh).unwrap();
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
+        "methyst");
 
-        let scim_value = vs.to_scim_value();
+        let vs: ValueSet = ValueSetSshKey::new(
+            "label".to_string(),
+            SshPublicKey::from_string(ecdsa).unwrap(),
+        );
+
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

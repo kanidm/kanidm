@@ -102,7 +102,7 @@ impl ValueSetT for ValueSetSecret {
         Box::new(self.set.iter().map(|_| "hidden".to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -162,9 +162,9 @@ mod tests {
 
     #[test]
     fn test_scim_secret() {
-        let vs: ValueSet = ValueSetSecret::new(true);
+        let vs: ValueSet = ValueSetSecret::new("super secret special awesome value".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

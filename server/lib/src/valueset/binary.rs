@@ -107,9 +107,8 @@ impl ValueSetT for ValueSetPrivateBinary {
         Box::new(self.set.iter().map(|_| "private_binary".to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        // We want to hide the content of the private binary, we only indicate it exists.
-        ScimAttr::Bool(true).into()
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -289,8 +288,8 @@ impl ValueSetT for ValueSetPublicBinary {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
             self.map
                 .iter()
                 .map(|(tag, bin)| {
@@ -303,7 +302,7 @@ impl ValueSetT for ValueSetPublicBinary {
                     complex_attr
                 })
                 .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -363,16 +362,12 @@ impl ValueSetT for ValueSetPublicBinary {
 #[cfg(test)]
 mod tests {
     use super::ValueSetPrivateBinary;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_private_binary() {
         let vs: ValueSet = ValueSetPrivateBinary::new(vec![0x00]);
 
-        let scim_value = vs.to_scim_value();
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-
-        assert_eq!(scim_value, expect);
+        assert!(vs.to_scim_value().is_none());
     }
 }

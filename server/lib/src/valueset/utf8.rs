@@ -146,8 +146,15 @@ impl ValueSetT for ValueSetUtf8 {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        if self.len() == 1 {
+            let v = self.set.iter().cloned().next().unwrap_or_default();
+            Some(ScimAttr::String(v).into())
+        } else {
+            Some(ScimValue::MultiSimple(
+                self.set.iter().cloned().map(|v| v.into()).collect(),
+            ))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -233,7 +240,7 @@ mod tests {
     fn test_scim_utf8() {
         let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

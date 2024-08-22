@@ -114,8 +114,17 @@ impl ValueSetT for ValueSetUint32 {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        if self.len() == 1 {
+            // Because self.len == 1 we know this has to yield a value.
+            let b = self.set.iter().copied().next().unwrap_or_default();
+
+            Some(ScimAttr::Integer(b as i64).into())
+        } else {
+            Some(ScimValue::MultiSimple(
+                self.set.iter().copied().map(|b| b.into()).collect(),
+            ))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -184,7 +193,7 @@ mod tests {
     fn test_scim_uint32() {
         let vs: ValueSet = ValueSetUint32::new(69);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

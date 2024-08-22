@@ -101,8 +101,10 @@ impl ValueSetT for ValueSetUiHint {
         Box::new(self.set.iter().map(|u| u.to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiSimple(
+            self.set.iter().map(|u| u.to_string().into()).collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -157,14 +159,14 @@ mod tests {
 
     #[test]
     fn test_scim_uihint() {
-        let mut vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
+        let vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str(r#""Something""#).unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"["PosixAccount"]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

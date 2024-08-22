@@ -48,6 +48,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
+use crate::utils::str_join;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -2651,20 +2652,6 @@ fn extra_claims_for_account(
     trace!(?extra_claims);
 
     extra_claims
-}
-
-fn str_join(set: &BTreeSet<String>) -> String {
-    let alloc_len = set.iter().fold(0, |acc, s| acc + s.len() + 1);
-    let mut buf = String::with_capacity(alloc_len);
-    set.iter().for_each(|s| {
-        buf.push_str(s);
-        buf.push(' ');
-    });
-
-    // Remove the excess trailing space.
-    let _ = buf.pop();
-
-    buf
 }
 
 fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {

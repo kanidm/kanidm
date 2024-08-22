@@ -121,7 +121,7 @@ impl ValueSetT for ValueSetCid {
         Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -197,7 +197,7 @@ mod tests {
     fn test_scim_cid() {
         let vs: ValueSet = ValueSetCid::new(Cid::new_zero());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

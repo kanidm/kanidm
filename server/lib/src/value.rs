@@ -949,6 +949,17 @@ pub enum SessionScope {
     Synchronise,
 }
 
+impl fmt::Display for SessionScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SessionScope::ReadOnly => write!(f, "read_only"),
+            SessionScope::ReadWrite => write!(f, "read_write"),
+            SessionScope::PrivilegeCapable => write!(f, "privilege_capable"),
+            SessionScope::Synchronise => write!(f, "synchronise"),
+        }
+    }
+}
+
 impl TryInto<UatPurposeStatus> for SessionScope {
     type Error = OperationError;
 

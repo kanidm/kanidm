@@ -144,7 +144,7 @@ impl ValueSetT for ValueSetIname {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -212,9 +212,9 @@ mod tests {
 
     #[test]
     fn test_scim_iname() {
-        let vs: ValueSet = ValueSetIname::new(true);
+        let vs: ValueSet = ValueSetIname::new("stevo");
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

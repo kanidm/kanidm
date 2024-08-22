@@ -5,6 +5,7 @@ use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
 use crate::repl::proto::{ReplAttrV1, ReplOauthClaimMapV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
+use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
@@ -114,7 +115,7 @@ impl ValueSetT for ValueSetOauthScope {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -305,8 +306,24 @@ impl ValueSetT for ValueSetOauthScopeMap {
         )
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(uuid, scopes)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("uuid".to_string(), uuid.hyphenated().to_string().into());
+
+                    // Scim doesn't allow nested lists - Should we either
+                    // break spec and allow them? Or do something else? Oauth2
+                    // does define scopes to be space separated?
+                    complex_attr.insert("scopes".to_string(), str_join(scopes).into());
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -673,8 +690,33 @@ impl ValueSetT for ValueSetOauthClaimMap {
         }))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .flat_map(|(claim_name, mappings)| {
+                    mappings.values.iter().map(|(group_uuid, claim_values)| {
+                        let mut complex_attr = ScimComplexAttr::default();
+
+                        complex_attr.insert(
+                            "groupUuid".to_string(),
+                            group_uuid.hyphenated().to_string().into(),
+                        );
+
+                        complex_attr.insert("claim".to_string(), claim_name.to_string().into());
+
+                        complex_attr.insert(
+                            "joinChar".to_string(),
+                            mappings.join.to_str().to_string().into(),
+                        );
+
+                        complex_attr.insert("values".to_string(), str_join(claim_values).into());
+
+                        complex_attr
+                    })
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -776,22 +818,24 @@ mod tests {
 
     #[test]
     fn test_scim_oauth2_scope() {
-        let vs: ValueSet = ValueSetOauthScope::new(true);
+        let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"["fully_sick_scope_m8"]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 
     #[test]
     fn test_scim_oauth2_scope_map() {
-        let vs: ValueSet = ValueSetOauthScopeMap::new(true);
+        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+        let set = ["read".to_string(), "write".to_string()].into();
+        let vs: ValueSet = ValueSetOauthScopeMap::new(u, set);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
@@ -802,9 +846,11 @@ mod tests {
 
     #[test]
     fn test_scim_oauth2_claim_map() {
-        let vs: ValueSet = ValueSetOauthClaimMap::new(true);
+        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+        let set = ["read".to_string(), "write".to_string()].into();
+        let vs: ValueSet = ValueSetOauthClaimMap::new_value("claim".to_string(), u, set);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

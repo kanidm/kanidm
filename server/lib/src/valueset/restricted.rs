@@ -144,7 +144,7 @@ impl ValueSetT for ValueSetRestricted {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -210,7 +210,7 @@ mod tests {
     fn test_scim_restricted() {
         let vs: ValueSet = ValueSetRestricted::new("Test".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

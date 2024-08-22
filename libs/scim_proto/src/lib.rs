@@ -74,6 +74,12 @@ impl From<bool> for ScimAttr {
     }
 }
 
+impl From<u32> for ScimAttr {
+    fn from(i: u32) -> Self {
+        ScimAttr::Integer(i as i64)
+    }
+}
+
 impl From<Vec<u8>> for ScimAttr {
     fn from(data: Vec<u8>) -> Self {
         ScimAttr::Binary(data.into())

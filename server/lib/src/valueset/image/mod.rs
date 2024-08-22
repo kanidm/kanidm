@@ -417,7 +417,7 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         // TODO: This should be a reference to the image URL, not the image itself!
         // Does this mean we need to pass in the domain / origin so we can render
         // these URL's correctly?
@@ -426,7 +426,7 @@ impl ValueSetT for ValueSetImage {
         // to add one.
         //
         // TODO: Scim supports a "type" field here, but do we care?
-        ScimValue::MultiComplex(
+        Some(ScimValue::MultiComplex(
             self.set
                 .iter()
                 .map(|image| {
@@ -435,7 +435,7 @@ impl ValueSetT for ValueSetImage {
                     complex_attr
                 })
                 .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -574,7 +574,7 @@ mod tests {
 
         let vs = ValueSetImage::new(image);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let expect: ScimValue = serde_json::from_str(
             r#"[

@@ -120,8 +120,8 @@ impl ValueSetT for ValueSetAuditLogString {
         Box::new(self.map.iter().map(|(d, s)| format!("{d}-{s}")))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
             self.map
                 .iter()
                 .map(|(cid, strdata)| {
@@ -132,7 +132,7 @@ impl ValueSetT for ValueSetAuditLogString {
                     complex_attr
                 })
                 .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -381,7 +381,7 @@ mod tests {
             .unwrap();
         }
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let mut expect: ScimValue = serde_json::from_str(
             r#"

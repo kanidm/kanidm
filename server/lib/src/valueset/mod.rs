@@ -144,7 +144,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
-    fn to_scim_value(&self) -> ScimValue;
+    fn to_scim_value(&self) -> Option<ScimValue>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 

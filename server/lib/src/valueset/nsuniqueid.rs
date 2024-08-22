@@ -112,7 +112,7 @@ impl ValueSetT for ValueSetNsUniqueId {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -174,9 +174,10 @@ mod tests {
 
     #[test]
     fn test_scim_nsuniqueid() {
-        let vs: ValueSet = ValueSetNsUniqueId::new(true);
+        let vs: ValueSet =
+            ValueSetNsUniqueId::new("3a163ca0-47624620-a18806b7-50c84c86".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

@@ -133,7 +133,7 @@ impl ValueSetT for ValueSetHexString {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -185,9 +185,10 @@ mod tests {
 
     #[test]
     fn test_scim_hexstring() {
-        let vs: ValueSet = ValueSetHexString::new(true);
+        let vs: ValueSet =
+            ValueSetHexString::new("D68475C760A7A0F6A924C28F095573A967F600D6".to_string());
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

@@ -136,8 +136,20 @@ impl ValueSetT for ValueSetDateTime {
         }))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        if self.len() == 1 {
+            let v = self
+                .set
+                .iter()
+                .cloned()
+                .next()
+                .unwrap_or(OffsetDateTime::UNIX_EPOCH);
+            Some(ScimAttr::DateTime(v).into())
+        } else {
+            Some(ScimValue::MultiSimple(
+                self.set.iter().cloned().map(|v| v.into()).collect(),
+            ))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -211,18 +223,22 @@ impl ValueSetT for ValueSetDateTime {
 #[cfg(test)]
 mod tests {
     use super::ValueSetDateTime;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::{ScimAttr, ScimValue, ValueSet};
+    use std::time::Duration;
+    use time::OffsetDateTime;
 
     #[test]
     fn test_scim_datetime() {
-        let vs: ValueSet = ValueSetDateTime::new(true);
+        let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
+        let vs: ValueSet = ValueSetDateTime::new(odt);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect = ScimValue::Simple(ScimAttr::DateTime(odt));
+
         assert_eq!(scim_value, expect);
     }
 }

@@ -284,7 +284,7 @@ impl ValueSetT for ValueSetKeyInternal {
         }))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -624,9 +624,17 @@ mod tests {
 
     #[test]
     fn test_scim_key_internal() {
-        let vs: ValueSet = ValueSetKeyInternal::new(true);
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwsEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let status_cid = Cid::new_zero();
+        let der = Vec::with_capacity(0);
 
-        let scim_value = vs.to_scim_value();
+        let vs: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
+
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

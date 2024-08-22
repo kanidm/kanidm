@@ -186,8 +186,8 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
             self.map
                 .values()
                 .flatten()
@@ -207,7 +207,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                     complex_attr
                 })
                 .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -379,7 +379,7 @@ mod tests {
         vs.insert_checked(Value::ApplicationPassword(ap3))
             .expect("Failed to insert");
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let expect: ScimValue = serde_json::from_str(
             r#"

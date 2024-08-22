@@ -358,8 +358,51 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(session_id, session)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert(
+                        "sessionId".to_string(),
+                        session_id.hyphenated().to_string().into(),
+                    );
+
+                    match &session.state {
+                        SessionState::ExpiresAt(odt) => {
+                            complex_attr.insert("state".to_string(), "valid".to_string().into());
+                            complex_attr.insert("expiresAt".to_string(), (*odt).into());
+                        }
+                        SessionState::NeverExpires => {
+                            complex_attr.insert("state".to_string(), "valid".to_string().into());
+                        }
+                        SessionState::RevokedAt(cid) => {
+                            complex_attr.insert("state".to_string(), "revoked".to_string().into());
+                            let odt: OffsetDateTime = cid.into();
+                            complex_attr.insert("revokedAt".to_string(), odt.into());
+                        }
+                    };
+
+                    complex_attr.insert("issuedAt".to_string(), session.issued_at.into());
+
+                    // complex_attr.insert("issuedBy".to_string(), );
+
+                    complex_attr.insert(
+                        "credentialId".to_string(),
+                        session.cred_id.hyphenated().to_string().into(),
+                    );
+
+                    complex_attr.insert("authType".to_string(), session.type_.to_string().into());
+
+                    complex_attr
+                        .insert("sessionScope".to_string(), session.scope.to_string().into());
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -902,8 +945,51 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(session_id, session)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert(
+                        "sessionId".to_string(),
+                        session_id.hyphenated().to_string().into(),
+                    );
+
+                    if let Some(parent_id) = session.parent {
+                        complex_attr.insert(
+                            "parentSessionId".to_string(),
+                            parent_id.hyphenated().to_string().into(),
+                        );
+                    }
+
+                    complex_attr.insert(
+                        "clientId".to_string(),
+                        session.rs_uuid.hyphenated().to_string().into(),
+                    );
+
+                    complex_attr.insert("issuedAt".to_string(), session.issued_at.into());
+
+                    match &session.state {
+                        SessionState::ExpiresAt(odt) => {
+                            complex_attr.insert("state".to_string(), "valid".to_string().into());
+                            complex_attr.insert("expiresAt".to_string(), (*odt).into());
+                        }
+                        SessionState::NeverExpires => {
+                            complex_attr.insert("state".to_string(), "valid".to_string().into());
+                        }
+                        SessionState::RevokedAt(cid) => {
+                            complex_attr.insert("state".to_string(), "revoked".to_string().into());
+                            let odt: OffsetDateTime = cid.into();
+                            complex_attr.insert("revokedAt".to_string(), odt.into());
+                        }
+                    };
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1328,7 +1414,7 @@ impl ValueSetT for ValueSetApiToken {
         )
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -2053,27 +2139,97 @@ mod tests {
 
     #[test]
     fn test_scim_session() {
-        let vs: ValueSet = ValueSetSession::new(true);
+        let s_uuid = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
 
-        let scim_value = vs.to_scim_value();
+        let vs: ValueSet = ValueSetSession::new(
+            s_uuid,
+            Session {
+                label: "hacks".to_string(),
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::UNIX_EPOCH,
+                issued_by: IdentityId::Internal,
+                cred_id: s_uuid,
+                scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
+            },
+        );
+
+        let scim_value = vs.to_scim_value().unwrap();
+
+        let mut expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "authType": "passkey",
+    "credentialId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "issuedAt": "1970-01-01T00:00:00Z",
+    "sessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "sessionScope": "read_only",
+    "state": "valid"
+  }
+]
+        "#,
+        )
+        .unwrap();
+
+        match &mut expect {
+            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
+                let date_time = complex_attr.get("issuedAt").unwrap();
+                let parsed_date_time = date_time.parse_as_datetime().unwrap();
+                complex_attr.insert("issuedAt".to_string(), parsed_date_time);
+            }),
+            _ => unreachable!(),
+        };
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
         assert_eq!(scim_value, expect);
     }
 
     #[test]
     fn test_scim_oauth2_session() {
-        let vs: ValueSet = ValueSetOauth2Session::new(true);
+        let s_uuid = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
 
-        let scim_value = vs.to_scim_value();
+        let vs: ValueSet = ValueSetOauth2Session::new(
+            s_uuid,
+            Oauth2Session {
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::UNIX_EPOCH,
+                parent: Some(s_uuid),
+                rs_uuid: s_uuid,
+            },
+        );
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
+
+        let mut expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "clientId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "issuedAt": "1970-01-01T00:00:00Z",
+    "parentSessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "sessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "state": "valid"
+  }
+]
+        "#,
+        )
+        .unwrap();
+
+        match &mut expect {
+            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
+                let date_time = complex_attr.get("issuedAt").unwrap();
+                let parsed_date_time = date_time.parse_as_datetime().unwrap();
+                complex_attr.insert("issuedAt".to_string(), parsed_date_time);
+            }),
+            _ => unreachable!(),
+        };
+
+        assert_eq!(scim_value, expect);
     }
 }

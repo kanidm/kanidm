@@ -119,8 +119,14 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        self.set
+            .iter()
+            .next()
+            .copied()
+            .map(uuid_to_proto_string)
+            .map(ScimAttr::String)
+            .map(ScimValue::Simple)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -294,8 +300,15 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiSimple(
+            self.set
+                .iter()
+                .copied()
+                .map(uuid_to_proto_string)
+                .map(ScimAttr::String)
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -364,7 +377,7 @@ mod tests {
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
@@ -378,13 +391,13 @@ mod tests {
     fn test_scim_refer() {
         let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
         let expect: ScimValue =
-            serde_json::from_str(r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#).unwrap();
+            serde_json::from_str(r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

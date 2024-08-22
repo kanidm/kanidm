@@ -112,7 +112,7 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
+    fn to_scim_value(&self) -> Option<ScimValue> {
         todo!();
     }
 
@@ -164,13 +164,13 @@ impl ValueSetT for ValueSetIndex {
 #[cfg(test)]
 mod tests {
     use super::ValueSetIndex;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::{IndexType, ScimValue, ValueSet};
 
     #[test]
     fn test_scim_index() {
-        let vs: ValueSet = ValueSetIndex::new(true);
+        let vs: ValueSet = ValueSetIndex::new(IndexType::Equality);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);

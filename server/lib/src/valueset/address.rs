@@ -163,8 +163,8 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
             self.set
                 .iter()
                 .map(|a| {
@@ -181,7 +181,7 @@ impl ValueSetT for ValueSetAddress {
                     complex_attr
                 })
                 .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -475,8 +475,8 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
             std::iter::once({
                 let mut complex_attr = ScimComplexAttr::default();
 
@@ -497,7 +497,7 @@ impl ValueSetT for ValueSetEmailAddress {
                 }
             }))
             .collect(),
-        )
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -663,7 +663,7 @@ mod tests {
             ) == Ok(true)
         );
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let expect: ScimValue = serde_json::from_str(
             r#"[
@@ -693,7 +693,7 @@ mod tests {
             country: "Australia".to_string(),
         });
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let expect: ScimValue = serde_json::from_str(
             r#"[

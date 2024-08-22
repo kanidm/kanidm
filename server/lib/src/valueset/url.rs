@@ -108,8 +108,20 @@ impl ValueSetT for ValueSetUrl {
         Box::new(self.set.iter().map(|i| i.to_string()))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        if self.len() == 1 {
+            let v = self
+                .set
+                .iter()
+                .next()
+                .map(|url| url.to_string())
+                .unwrap_or_default();
+            Some(ScimAttr::String(v).into())
+        } else {
+            Some(ScimValue::MultiSimple(
+                self.set.iter().map(|url| url.to_string().into()).collect(),
+            ))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -171,12 +183,12 @@ mod tests {
         let u = Url::parse("https://idm.example.com").unwrap();
         let vs: ValueSet = ValueSetUrl::new(u);
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str(r#""https://idm.example.com""#).unwrap();
+        let expect: ScimValue = serde_json::from_str(r#""https://idm.example.com/""#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

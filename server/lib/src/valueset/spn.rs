@@ -116,8 +116,15 @@ impl ValueSetT for ValueSetSpn {
         Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        let mut iter = self.set.iter().map(|(n, d)| format!("{n}@{d}"));
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(ScimAttr::String(v).into())
+        } else {
+            // Something is wrong, we should only have one?
+            Some(ScimValue::MultiSimple(iter.map(|v| v.into()).collect()))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -192,14 +199,14 @@ mod tests {
 
     #[test]
     fn test_scim_spn() {
-        let vs: ValueSet = ValueSetSpn::new(true);
+        let vs: ValueSet = ValueSetSpn::new(("claire".to_string(), "example.com".to_string()));
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#""claire@example.com""#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

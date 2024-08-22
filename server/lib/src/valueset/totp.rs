@@ -130,8 +130,17 @@ impl ValueSetT for ValueSetTotpSecret {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> ScimValue {
-        todo!();
+    fn to_scim_value(&self) -> Option<ScimValue> {
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(label, _totp)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+                    complex_attr.insert("label".to_string(), label.clone().into());
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -206,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_scim_totp() {
-        let mut vs: ValueSet = ValueSetTotpSecret::new(
+        let vs: ValueSet = ValueSetTotpSecret::new(
             "label".to_string(),
             Totp::new(
                 // Totes secure, chosen by fair dice roll.
@@ -217,12 +226,12 @@ mod tests {
             ),
         );
 
-        let scim_value = vs.to_scim_value();
+        let scim_value = vs.to_scim_value().unwrap();
 
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str(r#""Something""#).unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"[{ "label":"label" }]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }
