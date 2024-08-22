@@ -563,12 +563,12 @@ mod tests {
     #[test]
     fn test_scim_imagevalue() {
         let filename = format!(
-            "{}/src/valueset/image/test_images/ok.svg",
+            "{}/src/valueset/image/test_images/ok.jpg",
             env!("CARGO_MANIFEST_DIR")
         );
         let image = ImageValue {
             filename: filename.clone(),
-            filetype: ImageType::Svg,
+            filetype: ImageType::Jpg,
             contents: std::fs::read(&filename).unwrap(),
         };
 
@@ -579,7 +579,7 @@ mod tests {
         let expect: ScimValue = serde_json::from_str(
             r#"[
           {
-            "s256": "4fa31ca0658419cf70439982a5a0ada63d55cf1fff4a2aa60b48b8dc0bd2c56e"
+            "s256": "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
           }
         ]"#,
         )
