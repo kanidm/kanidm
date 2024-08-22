@@ -148,7 +148,7 @@ impl ValueSetT for ValueSetUtf8 {
 
     fn to_scim_value(&self) -> Option<ScimValue> {
         if self.len() == 1 {
-            let v = self.set.iter().cloned().next().unwrap_or_default();
+            let v = self.set.iter().next().cloned().unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
             Some(ScimValue::MultiSimple(

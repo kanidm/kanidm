@@ -121,24 +121,41 @@ impl ValueSetT for ValueSetJsonFilter {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|i| {
-            #[allow(clippy::expect_used)]
-            serde_json::to_string(i).expect("A json filter value was corrupted during run-time")
+        Box::new(self.set.iter().filter_map(|i| {
+            serde_json::to_string(i)
+                .inspect_err(|err| {
+                    error!(?err, "A json filter value was corrupted during run-time")
+                })
+                .ok()
         }))
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::MultiSimple(
+            self.set
+                .iter()
+                .filter_map(|s| {
+                    serde_json::to_string(s)
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
+                })
+                .map(ScimAttr::String)
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::JsonFilter(
             self.set
                 .iter()
-                .map(|s| {
-                    #[allow(clippy::expect_used)]
+                .filter_map(|s| {
                     serde_json::to_string(s)
-                        .expect("A json filter value was corrupted during run-time")
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
                 })
                 .collect(),
         )
@@ -149,10 +166,12 @@ impl ValueSetT for ValueSetJsonFilter {
             set: self
                 .set
                 .iter()
-                .map(|s| {
-                    #[allow(clippy::expect_used)]
+                .filter_map(|s| {
                     serde_json::to_string(s)
-                        .expect("A json filter value was corrupted during run-time")
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
                 })
                 .collect(),
         }
@@ -212,7 +231,14 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  "{\"pres\":\"class\"}"
+]
+        "#,
+        )
+        .unwrap();
         assert_eq!(scim_value, expect);
     }
 }

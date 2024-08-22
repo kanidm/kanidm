@@ -919,6 +919,16 @@ pub enum ApiTokenScope {
     Synchronise,
 }
 
+impl fmt::Display for ApiTokenScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ApiTokenScope::ReadOnly => write!(f, "read_only"),
+            ApiTokenScope::ReadWrite => write!(f, "read_write"),
+            ApiTokenScope::Synchronise => write!(f, "synchronise"),
+        }
+    }
+}
+
 impl TryInto<ApiTokenPurpose> for ApiTokenScope {
     type Error = OperationError;
 

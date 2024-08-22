@@ -387,7 +387,7 @@ impl ValueSetT for ValueSetSession {
 
                     complex_attr.insert("issuedAt".to_string(), session.issued_at.into());
 
-                    // complex_attr.insert("issuedBy".to_string(), );
+                    complex_attr.insert("issuedBy".to_string(), (&session.issued_by).into());
 
                     complex_attr.insert(
                         "credentialId".to_string(),
@@ -1415,7 +1415,32 @@ impl ValueSetT for ValueSetApiToken {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(token_id, token)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert(
+                        "tokenId".to_string(),
+                        token_id.hyphenated().to_string().into(),
+                    );
+
+                    complex_attr.insert("label".to_string(), token.label.clone().into());
+
+                    complex_attr.insert("issuedAt".to_string(), token.issued_at.into());
+                    if let Some(expires_at) = token.expiry {
+                        complex_attr.insert("expiresAt".to_string(), expires_at.into());
+                    }
+
+                    complex_attr.insert("scope".to_string(), token.scope.to_string().into());
+
+                    complex_attr.insert("issuedBy".to_string(), (&token.issued_by).into());
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -2163,6 +2188,7 @@ mod tests {
     "authType": "passkey",
     "credentialId": "3a163ca0-4762-4620-a188-06b750c84c86",
     "issuedAt": "1970-01-01T00:00:00Z",
+    "issuedBy": "00000000-0000-0000-0000-ffffff000000",
     "sessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
     "sessionScope": "read_only",
     "state": "valid"

@@ -10,13 +10,13 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use base64urlsafedata::Base64UrlSafeData;
 
 pub mod constants;
 pub mod filter;
@@ -39,7 +39,6 @@ pub enum ScimAttr {
     // These can't be implicitly decoded because we may not know the intent, but we can *encode* them.
     // That's why "String" is above this because it catches anything during deserialization before
     // this point.
-
     #[serde(with = "time::serde::rfc3339")]
     DateTime(OffsetDateTime),
 

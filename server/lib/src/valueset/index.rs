@@ -113,7 +113,9 @@ impl ValueSetT for ValueSetIndex {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::MultiSimple(
+            self.set.iter().map(|v| v.to_string().into()).collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -175,7 +177,7 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"["EQUALITY"]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

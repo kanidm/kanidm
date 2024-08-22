@@ -1437,7 +1437,17 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "is_mfa": false,
+    "label": "label"
+  }
+]
+        "#,
+        )
+        .unwrap();
         assert_eq!(scim_value, expect);
     }
 
@@ -1456,11 +1466,33 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let mut expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "expires": "1970-01-01T00:05:00Z",
+    "state": "consumed",
+    "token_id": "ca6f29d1-034b-41fb-abc1-4bb9f0548e67"
+  }
+]
+        "#,
+        )
+        .unwrap();
+
+        match &mut expect {
+            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
+                let date_time = complex_attr.get("expires").unwrap();
+                let parsed_date_time = date_time.parse_as_datetime().unwrap();
+                complex_attr.insert("expires".to_string(), parsed_date_time);
+            }),
+            _ => unreachable!(),
+        };
+
         assert_eq!(scim_value, expect);
     }
 
     /*
+    // I can't easily test this without a way to synth a pk.
     #[test]
     fn test_scim_passkey() {
         let vs: ValueSet = ValueSetPasskey::new(true);
@@ -1497,7 +1529,7 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"["mfa"]"#).unwrap();
         assert_eq!(scim_value, expect);
     }
 

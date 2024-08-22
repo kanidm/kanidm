@@ -153,7 +153,19 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(label, pk)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("label".to_string(), label.clone().into());
+                    complex_attr.insert("value".to_string(), pk.to_string().into());
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -243,7 +255,14 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#"
+[
+  {
+    "label": "label",
+    "value": "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3BtOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81lzPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@amethyst"
+  }
+]
+        "#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

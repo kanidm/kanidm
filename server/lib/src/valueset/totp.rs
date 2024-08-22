@@ -133,8 +133,8 @@ impl ValueSetT for ValueSetTotpSecret {
     fn to_scim_value(&self) -> Option<ScimValue> {
         Some(ScimValue::MultiComplex(
             self.map
-                .iter()
-                .map(|(label, _totp)| {
+                .keys()
+                .map(|label| {
                     let mut complex_attr = ScimComplexAttr::default();
                     complex_attr.insert("label".to_string(), label.clone().into());
                     complex_attr

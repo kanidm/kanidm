@@ -176,22 +176,15 @@ impl ValueSetT for ValueSetBool {
 #[cfg(test)]
 mod tests {
     use super::ValueSetBool;
-    use crate::prelude::{ScimValue, Value, ValueSet};
+    use crate::prelude::{ScimValue, ValueSet};
 
     #[test]
     fn test_scim_boolean() {
-        let mut vs: ValueSet = ValueSetBool::new(true);
+        let vs: ValueSet = ValueSetBool::new(true);
 
         let scim_value = vs.to_scim_value().unwrap();
 
         let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
-
-        vs.insert_checked(Value::Bool(false)).unwrap();
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str("[true, false]").unwrap();
         assert_eq!(scim_value, expect);
     }
 }

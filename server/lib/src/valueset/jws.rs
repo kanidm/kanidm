@@ -131,7 +131,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -321,7 +321,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

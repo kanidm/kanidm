@@ -39,9 +39,9 @@ impl fmt::Display for Cid {
     }
 }
 
-impl Into<OffsetDateTime> for &Cid {
-    fn into(self) -> OffsetDateTime {
-        OffsetDateTime::UNIX_EPOCH + self.ts
+impl From<&Cid> for OffsetDateTime {
+    fn from(cid: &Cid) -> Self {
+        OffsetDateTime::UNIX_EPOCH + cid.ts
     }
 }
 

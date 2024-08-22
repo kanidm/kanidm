@@ -145,7 +145,14 @@ impl ValueSetT for ValueSetRestricted {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        if self.len() == 1 {
+            let v = self.set.iter().next().cloned().unwrap_or_default();
+            Some(ScimAttr::String(v).into())
+        } else {
+            Some(ScimValue::MultiSimple(
+                self.set.iter().cloned().map(|v| v.into()).collect(),
+            ))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -215,7 +222,7 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(r#""Test""#).unwrap();
         assert_eq!(scim_value, expect);
     }
 }

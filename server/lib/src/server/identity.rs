@@ -87,6 +87,17 @@ pub enum IdentityId {
     Internal,
 }
 
+impl From<&IdentityId> for ScimAttr {
+    fn from(ident: &IdentityId) -> ScimAttr {
+        match ident {
+            IdentityId::User(uuid) | IdentityId::Synch(uuid) => {
+                uuid.hyphenated().to_string().into()
+            }
+            IdentityId::Internal => UUID_SYSTEM.hyphenated().to_string().into(),
+        }
+    }
+}
+
 impl From<&IdentType> for IdentityId {
     fn from(idt: &IdentType) -> Self {
         match idt {

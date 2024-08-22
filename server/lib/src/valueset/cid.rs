@@ -118,11 +118,17 @@ impl ValueSetT for ValueSetCid {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
+        Box::new(self.set.iter().map(|c| c.to_string()))
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        let mut iter = self.set.iter().map(|cid| cid.to_string());
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(ScimAttr::String(v).into())
+        } else {
+            Some(ScimValue::MultiSimple(iter.map(|v| v.into()).collect()))
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -202,7 +208,10 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(
+            r#""00000000000000000000000000000000-00000000-0000-0000-0000-000000000000""#,
+        )
+        .unwrap();
         assert_eq!(scim_value, expect);
     }
 }

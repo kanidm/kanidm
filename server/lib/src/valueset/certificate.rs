@@ -283,7 +283,7 @@ impl ValueSetT for ValueSetCertificate {
 #[cfg(test)]
 mod tests {
     use super::ValueSetCertificate;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::{ScimAttr, ScimValue, ValueSet};
     use kanidm_lib_crypto::x509_cert::der::DecodePem;
     use kanidm_lib_crypto::x509_cert::Certificate;
 
@@ -291,8 +291,7 @@ mod tests {
     //
     // openssl ecparam -out ec_key.pem -name secp256r1 -genkey
     // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
-    const PEM_DATA: &str = r#"
------BEGIN CERTIFICATE-----
+    const PEM_DATA: &str = r#"-----BEGIN CERTIFICATE-----
 MIIB3zCCAYWgAwIBAgIUdJ6IWvI+8M6nwK7ykUK7/iBq7yQwCgYIKoZIzj0EAwIw
 RTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGElu
 dGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0yNDA4MjEwNjQ2MzBaFw0yNTA4MjEw
@@ -304,8 +303,7 @@ JMKPCVVzqWf2ANYwHwYDVR0jBBgwFoAU1oR1x2CnoPapJMKPCVVzqWf2ANYwDwYD
 VR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiBpy0o2CY97MIxeQ0HgG44Y
 raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 2jS0
------END CERTIFICATE-----
-    "#;
+-----END CERTIFICATE-----"#;
 
     #[test]
     fn test_scim_certificate() {
@@ -315,10 +313,15 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 
         let scim_value = vs.to_scim_value().unwrap();
 
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
+        let multi = match scim_value {
+            ScimValue::MultiComplex(mut map) => map.pop().unwrap(),
+            _ => unreachable!(),
+        };
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        let expect = ScimAttr::String(
+            "8c98a09d0a50db92ccb6d05be846d9b9315015520d19a3e1739aeb8d84ebc28d".to_string(),
+        );
+
+        assert_eq!(multi.get("s256"), Some(&expect));
     }
 }

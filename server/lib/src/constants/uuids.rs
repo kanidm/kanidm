@@ -321,6 +321,7 @@ pub const UUID_SCHEMA_ATTR_APPLICATION_PASSWORD: Uuid =
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
+pub const UUID_SYSTEM: Uuid = uuid!("00000000-0000-0000-0000-ffffff000000");
 pub const UUID_SYSTEM_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000001");
 pub const STR_UUID_DOMAIN_INFO: &str = "00000000-0000-0000-0000-ffffff000025";
 pub const UUID_DOMAIN_INFO: Uuid = uuid!("00000000-0000-0000-0000-ffffff000025");

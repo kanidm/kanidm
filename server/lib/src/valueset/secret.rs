@@ -103,7 +103,7 @@ impl ValueSetT for ValueSetSecret {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -158,18 +158,12 @@ impl ValueSetT for ValueSetSecret {
 #[cfg(test)]
 mod tests {
     use super::ValueSetSecret;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_secret() {
         let vs: ValueSet = ValueSetSecret::new("super secret special awesome value".to_string());
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        assert!(vs.to_scim_value().is_none());
     }
 }

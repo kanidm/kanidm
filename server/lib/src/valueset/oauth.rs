@@ -116,7 +116,7 @@ impl ValueSetT for ValueSetOauthScope {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::Simple(str_join(&self.set).into()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -825,7 +825,7 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str(r#"["fully_sick_scope_m8"]"#).unwrap();
+        let expect: ScimValue = serde_json::from_str(r#""fully_sick_scope_m8""#).unwrap();
         assert_eq!(scim_value, expect);
     }
 
@@ -837,11 +837,21 @@ mod tests {
 
         let scim_value = vs.to_scim_value().unwrap();
 
+        let expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "scopes": "read write",
+    "uuid": "3a163ca0-4762-4620-a188-06b750c84c86"
+  }
+]
+        "#,
+        )
+        .unwrap();
+        assert_eq!(scim_value, expect);
+
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
     }
 
     #[test]
@@ -855,7 +865,19 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "claim": "claim",
+    "groupUuid": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "joinChar": ";",
+    "values": "read write"
+  }
+]
+        "#,
+        )
+        .unwrap();
         assert_eq!(scim_value, expect);
     }
 }

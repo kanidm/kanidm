@@ -9,6 +9,7 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 use std::collections::BTreeMap;
 use std::fmt;
+use time::OffsetDateTime;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
@@ -285,7 +286,25 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn to_scim_value(&self) -> Option<ScimValue> {
-        todo!();
+        Some(ScimValue::MultiComplex(
+            self.map
+                .iter()
+                .map(|(kid, key_object)| {
+                    let mut complex_attr = ScimComplexAttr::default();
+
+                    complex_attr.insert("kid".to_string(), kid.clone().into());
+                    complex_attr.insert("status".to_string(), key_object.status.to_string().into());
+                    complex_attr.insert("usage".to_string(), key_object.usage.to_string().into());
+
+                    let odt: OffsetDateTime =
+                        OffsetDateTime::UNIX_EPOCH + Duration::from_secs(key_object.valid_from);
+
+                    complex_attr.insert("validFrom".to_string(), odt.into());
+
+                    complex_attr
+                })
+                .collect(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -639,7 +658,29 @@ mod tests {
         let strout = serde_json::to_string_pretty(&scim_value).unwrap();
         eprintln!("{}", strout);
 
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
+        let mut expect: ScimValue = serde_json::from_str(
+            r#"
+[
+  {
+    "kid": "test",
+    "status": "valid",
+    "usage": "jws_es256",
+    "validFrom": "1970-01-01T00:00:00Z"
+  }
+]
+        "#,
+        )
+        .unwrap();
+
+        match &mut expect {
+            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
+                let date_time = complex_attr.get("validFrom").unwrap();
+                let parsed_date_time = date_time.parse_as_datetime().unwrap();
+                complex_attr.insert("validFrom".to_string(), parsed_date_time);
+            }),
+            _ => unreachable!(),
+        };
+
         assert_eq!(scim_value, expect);
     }
 }
