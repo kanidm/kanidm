@@ -48,7 +48,7 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
             };
             error!("OperationId: {:?}", opid);
             if status == StatusCode::INTERNAL_SERVER_ERROR {
-                error!("Internal Server Error in response:{}", error_msg);
+                error!("Internal Server Error in response: {}", error_msg);
                 std::process::exit(1);
             } else if status == StatusCode::NOT_FOUND {
                 error!("Item not found: Check all names are correct.");
