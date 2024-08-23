@@ -13,7 +13,10 @@
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use time::OffsetDateTime;
+use time::{
+    format_description::well_known::Rfc3339,
+    OffsetDateTime
+};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -52,8 +55,6 @@ impl ScimAttr {
             ScimAttr::String(s) => s,
             _ => return None,
         };
-
-        use time::format_description::well_known::Rfc3339;
 
         OffsetDateTime::parse(s, &Rfc3339)
             .map(ScimAttr::DateTime)

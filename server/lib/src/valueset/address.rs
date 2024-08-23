@@ -172,7 +172,7 @@ impl ValueSetT for ValueSetAddress {
 
                     complex_attr.insert("formatted".to_string(), a.formatted.clone().into());
                     complex_attr
-                        .insert("stretAddress".to_string(), a.street_address.clone().into());
+                        .insert("streetAddress".to_string(), a.street_address.clone().into());
                     complex_attr.insert("locality".to_string(), a.locality.clone().into());
                     complex_attr.insert("region".to_string(), a.region.clone().into());
                     complex_attr.insert("postalCode".to_string(), a.postal_code.clone().into());
@@ -703,7 +703,7 @@ mod tests {
             "locality": "Doesn't Exist",
             "postalCode": "0420",
             "region": "Brisbane",
-            "stretAddress": "1 No Where Lane"
+            "streetAddress": "1 No Where Lane"
           }
         ]"#,
         )
