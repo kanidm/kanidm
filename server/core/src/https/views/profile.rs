@@ -207,7 +207,8 @@ pub(crate) async fn view_profile_diff_confirm_save_post(
         Extension(kopid),
         HxRequest(hx_request),
         VerifiedClientInformation(client_auth_info),
-    ).await
+    )
+    .await
 }
 
 // #[axum::debug_handler]
