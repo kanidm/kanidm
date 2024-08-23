@@ -63,7 +63,7 @@ and a development instance. This can introduce friction for admins when they nee
 those instances.
 
 The Kanidm cli tool allows you to configure multiple instances and swap between them with an
-environment variable. Instances maintain separate session stores.
+environment variable, or the `--instance` flag. Instances maintain separate session stores.
 
 ```toml
 uri = "https://idm.example.com"
