@@ -41,21 +41,19 @@ mod webauthn;
 /// Throws an error and exits the program when we get an error
 pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMode) {
     match response {
-        ClientError::Http(status, error, message) => {
+        ClientError::Http(status, error, opid) => {
             let error_msg = match error {
                 Some(msg) => format!(" {:?}", msg),
                 None => "".to_string(),
             };
+            error!("OperationId: {:?}", opid);
             if status == StatusCode::INTERNAL_SERVER_ERROR {
-                error!(
-                    "Internal Server Error in response:{:?} {:?}",
-                    error_msg, message
-                );
+                error!("Internal Server Error in response:{}", error_msg);
                 std::process::exit(1);
             } else if status == StatusCode::NOT_FOUND {
-                error!("Item not found:{:?} {:?}", error_msg, message)
+                error!("Item not found: Check all names are correct.");
             } else {
-                error!("HTTP Error: {}{} {:?}", status, error_msg, message);
+                error!("HTTP Error: {}{}", status, error_msg);
             }
         }
         ClientError::Transport(e) => {
