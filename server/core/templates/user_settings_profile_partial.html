@@ -6,38 +6,56 @@ Profile
 
 (% block settings_window %)
 
-<form>
+<form class="needs-validation" hx-post="/ui/api/user_settings/edit_profile" hx-target="#user_settings_container" hx-swap="outerHTML" hx-validate="true" hx-ext="bs-validation" novalidate>
     <div class="mb-2 row">
-        <label for="profileUserName" class="col-12 col-md-3 col-xl-2 col-form-label">User name</label>
+        <label for="profileUserName" class="col-12 col-md-3 col-lg-2 col-form-label">User name</label>
         <div class="col-12 col-md-6 col-lg-5">
             <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( account_name ))">
         </div>
     </div>
-
-    <div class="mb-2 row">
-        <label for="profileDisplayName" class="col-12 col-md-3 col-xl-2 col-form-label">Display name</label>
-        <div class="col-12 col-md-6 col-lg-5">
-            <input type="text" class="form-control-plaintext" id="profileDisplayName" value="(( display_name ))" disabled>
-        </div>
-    </div>
     
     <div class="mb-2 row">
-        <label for="profileEmail" class="col-12 col-md-3 col-xl-2 col-form-label">Email</label>
+        <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
         <div class="col-12 col-md-6 col-lg-5">
-            <input type="email" disabled class="form-control-plaintext" id="profileEmail" value="(( email.clone().unwrap_or("None configured".to_string())))">
+            <input type="text" class="form-control-plaintext" id="profileDisplayName" value="(( display_name ))">
+        </div>
+    </div>
+
+    <div class="mb-2 row">
+        <label for="profileLegalName" class="col-12 col-md-3 col-lg-2 col-form-label">Legal name</label>
+        <div class="col-12 col-md-6 col-lg-5">
+            <input type="text" class="form-control-plaintext" id="profileLegalName" value="(( legal_name ))">
+        </div>
+    </div>
+
+    <div class="mb-2">
+        <label for="profileEmail" class="mb-2">Emails</label>
+        <div>
+            <div class="row">
+                <ul class="col-12 col-md-11 col-lg-8" id="emailList">
+                    (% for email in attrs.emails %)
+                        (% let type = "email" %)
+                        (% let name = "emails[]" %)
+                        (% let value = email %)
+                        (% let invalid_feedback = "Please enter a valid email address." %)
+                        (% include "user_settings/form_modifiable_entry_modifiable_list_partial.html" %)
+                    (% endfor %)
+                </ul>
+            </div>
+            (% if can_rw %)<button type="button" class="btn btn-primary" hx-post="/ui/api/user_settings/add_email" hx-target="#emailList" hx-swap="beforeend">Add Email</button>(% endif %)
         </div>
     </div>
 
     <!-- Edit button -->
-    <!-- <div class="pt-4">
+    <div class="pt-4">
         (% if can_rw %)
-            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile" disabled>Edit (Currently Not Working!)</button>
+            <button class="btn btn-primary" type="submit">Edit</button>
         (% else %)
-            <a href=(Urls::ProfileUnlock) hx-boost="false">
-                <button class="btn btn-primary" type="button">((UiMessage::UnlockEdit))</button>
+            <a href="/ui/profile/unlock" hx-boost="false">
+                <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
             </a>
         (% endif %)
-    </div> -->
+    </div>
 </form>
 
 (% endblock %)

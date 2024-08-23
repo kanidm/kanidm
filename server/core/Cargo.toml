@@ -24,7 +24,7 @@ askama = { workspace = true, features = ["with-axum"] }
 askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
-axum-extra = { workspace = true }
+axum-extra = { workspace = true, features = ["form"] }
 axum-macros = { workspace = true }
 bytes = { workspace = true }
 cidr = { workspace = true, features = ["serde"] }
