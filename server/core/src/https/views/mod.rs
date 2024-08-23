@@ -36,6 +36,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/", get(|| async { Redirect::permanent("/ui/login") }))
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
+        .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
         .route("/logout", get(login::view_logout_get))
