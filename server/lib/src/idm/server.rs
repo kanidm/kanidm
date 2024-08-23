@@ -25,6 +25,10 @@ use super::event::ReadBackupCodeEvent;
 use super::ldap::{LdapBoundToken, LdapSession};
 use crate::credential::{softlock::CredSoftLock, Credential};
 use crate::idm::account::Account;
+use crate::idm::application::{
+    GenerateApplicationPasswordEvent, LdapApplications, LdapApplicationsReadTransaction,
+    LdapApplicationsWriteTransaction,
+};
 use crate::idm::audit::AuditEvent;
 use crate::idm::authsession::{AuthSession, AuthSessionData};
 use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
@@ -77,6 +81,7 @@ pub struct IdmServer {
     /// [Webauthn] verifier/config
     webauthn: Webauthn,
     oauth2rs: Arc<Oauth2ResourceServers>,
+    applications: Arc<LdapApplications>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -92,6 +97,7 @@ pub struct IdmServerAuthTransaction<'a> {
     pub(crate) async_tx: Sender<DelayedAction>,
     pub(crate) audit_tx: Sender<AuditEvent>,
     pub(crate) webauthn: &'a Webauthn,
+    pub(crate) applications: LdapApplicationsReadTransaction,
 }
 
 pub struct IdmServerCredUpdateTransaction<'a> {
@@ -118,6 +124,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn,
     pub(crate) oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
+    pub(crate) applications: LdapApplicationsWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -145,7 +152,7 @@ impl IdmServer {
         let (audit_tx, audit_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, rp_name, domain_level, oauth2rs_set) = {
+        let (rp_id, rp_name, domain_level, oauth2rs_set, application_set) = {
             let mut qs_read = qs.read().await?;
             (
                 qs_read.get_domain_name().to_string(),
@@ -153,6 +160,7 @@ impl IdmServer {
                 qs_read.get_domain_version(),
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
+                qs_read.get_applications_set()?,
             )
         };
 
@@ -193,6 +201,11 @@ impl IdmServer {
                 e
             })?;
 
+        let applications = LdapApplications::try_from(application_set).map_err(|e| {
+            admin_error!("Failed to load ldap applications - {:?}", e);
+            e
+        })?;
+
         Ok((
             IdmServer {
                 session_ticket: Semaphore::new(1),
@@ -205,6 +218,7 @@ impl IdmServer {
                 audit_tx,
                 webauthn,
                 oauth2rs: Arc::new(oauth2rs),
+                applications: Arc::new(applications),
             },
             IdmServerDelayed { async_rx },
             IdmServerAudit { audit_rx },
@@ -228,6 +242,7 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             audit_tx: self.audit_tx.clone(),
             webauthn: &self.webauthn,
+            applications: self.applications.read(),
         })
     }
 
@@ -260,6 +275,7 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             oauth2rs: self.oauth2rs.write(),
+            applications: self.applications.write(),
         })
     }
 
@@ -820,6 +836,67 @@ pub trait IdmServerTransaction<'a> {
             .ok_or(OperationError::InvalidState)
     }
 
+    fn process_ldap_uuid_to_identity(
+        &mut self,
+        uuid: &Uuid,
+        ct: Duration,
+        source: Source,
+    ) -> Result<Identity, OperationError> {
+        let entry = self
+            .get_qs_txn()
+            .internal_search_uuid(*uuid)
+            .map_err(|err| {
+                error!(?err, ?uuid, "Failed to search user by uuid");
+                err
+            })?;
+
+        let (account, account_policy) =
+            Account::try_from_entry_with_policy(entry.as_ref(), self.get_qs_txn())?;
+
+        if !account.is_within_valid_time(ct) {
+            info!("Account is expired or not yet valid.");
+            return Err(OperationError::SessionExpired);
+        }
+
+        // Good to go
+        let anon_entry = if *uuid == UUID_ANONYMOUS {
+            // We already have it.
+            entry
+        } else {
+            // Pull the anon entry for mapping the identity.
+            self.get_qs_txn()
+                .internal_search_uuid(UUID_ANONYMOUS)
+                .map_err(|err| {
+                    error!(
+                        ?err,
+                        "Unable to search anonymous user for privilege bounding."
+                    );
+                    err
+                })?
+        };
+
+        let mut limits = Limits::default();
+        let session_id = Uuid::new_v4();
+
+        // Update limits from account policy
+        if let Some(max_results) = account_policy.limit_search_max_results() {
+            limits.search_max_results = max_results as usize;
+        }
+        if let Some(max_filter) = account_policy.limit_search_max_filter_test() {
+            limits.search_max_filter_test = max_filter as usize;
+        }
+
+        // Users via LDAP are always only granted anonymous rights unless
+        // they auth with an api-token
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry: anon_entry }),
+            source,
+            session_id,
+            scope: AccessScope::ReadOnly,
+            limits,
+        })
+    }
+
     #[instrument(level = "debug", skip_all)]
     fn validate_ldap_session(
         &mut self,
@@ -828,48 +905,8 @@ pub trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<Identity, OperationError> {
         match session {
-            LdapSession::UnixBind(uuid) => {
-                let anon_entry = self
-                    .get_qs_txn()
-                    .internal_search_uuid(UUID_ANONYMOUS)
-                    .map_err(|e| {
-                        admin_error!("Failed to validate ldap session -> {:?}", e);
-                        e
-                    })?;
-
-                let entry = if *uuid == UUID_ANONYMOUS {
-                    anon_entry.clone()
-                } else {
-                    self.get_qs_txn().internal_search_uuid(*uuid).map_err(|e| {
-                        admin_error!("Failed to start auth ldap -> {:?}", e);
-                        e
-                    })?
-                };
-
-                if Account::check_within_valid_time(
-                    ct,
-                    entry
-                        .get_ava_single_datetime(Attribute::AccountValidFrom)
-                        .as_ref(),
-                    entry
-                        .get_ava_single_datetime(Attribute::AccountExpire)
-                        .as_ref(),
-                ) {
-                    // Good to go
-                    let limits = Limits::default();
-                    let session_id = Uuid::new_v4();
-
-                    Ok(Identity {
-                        origin: IdentType::User(IdentUser { entry: anon_entry }),
-                        source,
-                        session_id,
-                        scope: AccessScope::ReadOnly,
-                        limits,
-                    })
-                } else {
-                    // Nope, expired
-                    Err(OperationError::SessionExpired)
-                }
+            LdapSession::UnixBind(uuid) | LdapSession::ApplicationPasswordBind(_, uuid) => {
+                self.process_ldap_uuid_to_identity(uuid, ct, source)
             }
             LdapSession::UserAuthToken(uat) => self.process_uat_to_identity(uat, ct, source),
             LdapSession::ApiToken(apit) => {
@@ -2059,6 +2096,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn commit(mut self) -> Result<(), OperationError> {
+        if self.qs_write.get_changed_app() {
+            self.qs_write
+                .get_applications_set()
+                .and_then(|application_set| self.applications.reload(application_set))?;
+        }
         if self.qs_write.get_changed_oauth2() {
             let domain_level = self.qs_write.get_domain_version();
             self.qs_write
@@ -2069,11 +2111,53 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
 
         // Commit everything.
+        self.applications.commit();
         self.oauth2rs.commit();
         self.cred_update_sessions.commit();
 
         trace!("cred_update_session.commit");
         self.qs_write.commit()
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn generate_application_password(
+        &mut self,
+        ev: &GenerateApplicationPasswordEvent,
+    ) -> Result<String, OperationError> {
+        let account = self.target_to_account(ev.target)?;
+
+        // This is intended to be read/copied by a human
+        let cleartext = readable_password_from_random();
+
+        // Create a modlist from the change
+        let modlist = account
+            .generate_application_password_mod(
+                ev.application,
+                ev.label.as_str(),
+                cleartext.as_str(),
+                self.crypto_policy,
+            )
+            .map_err(|e| {
+                admin_error!("Unable to generate application password mod {:?}", e);
+                e
+            })?;
+        trace!(?modlist, "processing change");
+        // Apply it
+        self.qs_write
+            .impersonate_modify(
+                // Filter as executed
+                &filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(ev.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &ev.ident,
+            )
+            .map_err(|e| {
+                error!(error = ?e);
+                e
+            })
+            .map(|_| cleartext)
     }
 }
 
@@ -2501,7 +2585,7 @@ mod tests {
         // There should be a queued audit event
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -2690,7 +2774,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         // Check bad password
         let uuae_bad = UnixUserAuthEvent::new_internal(UUID_ADMIN, TEST_PASSWORD_INC);
@@ -2699,7 +2783,7 @@ mod tests {
             .await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         assert!(idms_auth.commit().is_ok());
 
@@ -2720,7 +2804,7 @@ mod tests {
             .await;
         match a3 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         assert!(idms_auth.commit().is_ok());
     }
@@ -2843,7 +2927,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         idms_auth.commit().expect("Must not fail");
         // The upgrade was queued
@@ -2857,7 +2941,7 @@ mod tests {
             .await;
         match a2 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
         idms_auth.commit().expect("Must not fail");
         // No delayed action was queued.
@@ -2992,13 +3076,13 @@ mod tests {
         // badpw?
         match a1 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         let a2 = idms_auth.auth_unix(&uuae_good, time_high).await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         idms_auth.commit().expect("Must not fail");
@@ -3055,7 +3139,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
 
         let tok_r = idms_prox_read.get_radiusauthtoken(&rate, time_high);
@@ -3063,7 +3147,7 @@ mod tests {
         if tok_r.is_err() {
             // Ok?
         } else {
-            assert!(false);
+            debug_assert!(false);
         }
     }
 
@@ -3117,7 +3201,7 @@ mod tests {
         // There should be a queued audit event
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -3283,7 +3367,7 @@ mod tests {
 
         match idms_audit.audit_rx().try_recv() {
             Ok(AuditEvent::AuthenticationDenied { .. }) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
 
         idms_auth.commit().expect("Must not fail");
@@ -3357,7 +3441,7 @@ mod tests {
             .await;
         match a2 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // Now if we immediately auth again, should fail at same time due to SL
@@ -3366,7 +3450,7 @@ mod tests {
             .await;
         match a1 {
             Ok(None) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         // And then later, works because of SL lifting.
@@ -3375,7 +3459,7 @@ mod tests {
             .await;
         match a1 {
             Ok(Some(_tok)) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         };
 
         assert!(idms_auth.commit().is_ok());
@@ -3409,7 +3493,7 @@ mod tests {
         // In X time it should be INVALID
         match idms_prox_read.validate_client_auth_info_to_ident(token.into(), expiry) {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
     }
 
@@ -3544,7 +3628,7 @@ mod tests {
             .get_key_object(UUID_DOMAIN_INFO)
             .and_then(|object| {
                 object
-                    .jws_public_jwk(&token_kid)
+                    .jws_public_jwk(token_kid)
                     .expect("Unable to access uat jwk")
             })
             .expect("No jwk by this kid");
@@ -3584,7 +3668,7 @@ mod tests {
             .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
         {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
         drop(idms_prox_read);
 
@@ -3615,7 +3699,7 @@ mod tests {
             .validate_client_auth_info_to_ident(uat_unverified.clone().into(), post_grace)
         {
             Err(OperationError::SessionExpired) => {}
-            _ => assert!(false),
+            _ => panic!("Oh no"),
         }
     }
 
@@ -3975,7 +4059,7 @@ mod tests {
         let me_reset_tokens = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
             ModifyList::new_append(
-                Attribute::KeyActionRevoke.into(),
+                Attribute::KeyActionRevoke,
                 Value::HexString(revoke_kid.to_string()),
             ),
         );

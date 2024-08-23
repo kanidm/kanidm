@@ -131,6 +131,7 @@ bitflags::bitflags! {
         const SYSTEM_CONFIG =  0b0001_0000;
         const SYNC_AGREEMENT = 0b0010_0000;
         const KEY_MATERIAL   = 0b0100_0000;
+        const APPLICATION    = 0b1000_0000;
     }
 }
 
@@ -664,6 +665,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid hex string syntax".to_string())),
                     SyntaxType::Certificate => Value::new_certificate_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid x509 certificate syntax".to_string())),
+                    SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute("ApplicationPassword values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -719,7 +721,8 @@ pub trait QueryServerTransaction<'a> {
                     | SyntaxType::OauthScopeMap
                     | SyntaxType::Session
                     | SyntaxType::ApiToken
-                    | SyntaxType::Oauth2Session => {
+                    | SyntaxType::Oauth2Session
+                    | SyntaxType::ApplicationPassword => {
                         let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                         Ok(PartialValue::Refer(un))
                     }
@@ -975,6 +978,13 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search(filter!(f_eq(
             Attribute::Class,
             EntryClass::OAuth2ResourceServer.into(),
+        )))
+    }
+
+    fn get_applications_set(&mut self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
+        self.internal_search(filter!(f_eq(
+            Attribute::Class,
+            EntryClass::Application.into(),
         )))
     }
 
@@ -1261,9 +1271,7 @@ impl QueryServer {
             let s_uuid = wr.get_db_s_uuid()?;
             let d_uuid = wr.get_db_d_uuid()?;
             let ts_max = wr.get_db_ts_max(curtime)?;
-            #[allow(clippy::expect_used)]
-            wr.commit()
-                .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
+            wr.commit()?;
             (s_uuid, d_uuid, ts_max)
         };
 
@@ -1298,13 +1306,15 @@ impl QueryServer {
 
         let phase = Arc::new(CowCell::new(ServerPhase::Bootstrap));
 
-        #[allow(clippy::expect_used)]
         let resolve_filter_cache = Arc::new(
             ARCacheBuilder::new()
                 .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
                 .set_reader_quiesce(true)
                 .build()
-                .expect("Failed to build resolve_filter_cache"),
+                .ok_or_else(|| {
+                    error!("Failed to build filter resolve cache");
+                    OperationError::DB0003FilterResolveCacheBuild
+                })?,
         );
 
         let key_providers = Arc::new(KeyProviders::default());
@@ -1343,10 +1353,12 @@ impl QueryServer {
         // us from competing with writers on the db tickets. This tilts us to write prioritising
         // on db operations by always making sure a writer can get a db ticket.
         let read_ticket = if cfg!(test) {
-            #[allow(clippy::expect_used)]
             self.read_tickets
                 .try_acquire()
-                .expect("unable to acquire db_ticket for qsr")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire read ticket!");
+                })
+                .ok()?
         } else {
             let fut = tokio::time::timeout(
                 Duration::from_millis(DB_LOCK_ACQUIRE_TIMEOUT_MILLIS),
@@ -1371,16 +1383,20 @@ impl QueryServer {
         // and read ticket holders, OR pool_size == 1, and we are waiting on the writer to now
         // complete.
         let db_ticket = if cfg!(test) {
-            #[allow(clippy::expect_used)]
             self.db_tickets
                 .try_acquire()
-                .expect("unable to acquire db_ticket for qsr")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire database ticket!");
+                })
+                .ok()?
         } else {
-            #[allow(clippy::expect_used)]
             self.db_tickets
                 .acquire()
                 .await
-                .expect("unable to acquire db_ticket for qsr")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire database ticket!");
+                })
+                .ok()?
         };
 
         Some((read_ticket, db_ticket))
@@ -1397,16 +1413,12 @@ impl QueryServer {
         let schema = self.schema.read();
 
         let cid_max = self.cid_max.read();
-        #[allow(clippy::expect_used)]
-        let trim_cid = cid_max
-            .sub_secs(CHANGELOG_MAX_AGE)
-            .expect("unable to generate trim cid");
+        let trim_cid = cid_max.sub_secs(CHANGELOG_MAX_AGE)?;
+
+        let be_txn = self.be.read()?;
 
         Ok(QueryServerReadTransaction {
-            be_txn: self
-                .be
-                .read()
-                .expect("unable to create backend read transaction"),
+            be_txn,
             schema,
             d_info: self.d_info.read(),
             system_config: self.system_config.read(),
@@ -1422,11 +1434,13 @@ impl QueryServer {
     #[instrument(level = "debug", skip_all)]
     async fn write_acquire_ticket(&self) -> Option<(SemaphorePermit<'_>, SemaphorePermit<'_>)> {
         // Guarantee we are the only writer on the thread pool
-        #[allow(clippy::expect_used)]
         let write_ticket = if cfg!(test) {
             self.write_ticket
                 .try_acquire()
-                .expect("unable to acquire writer_ticket for qsw")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire write ticket!");
+                })
+                .ok()?
         } else {
             let fut = tokio::time::timeout(
                 Duration::from_millis(DB_LOCK_ACQUIRE_TIMEOUT_MILLIS),
@@ -1450,16 +1464,20 @@ impl QueryServer {
         // *must* be available because pool_size >= 2 and the only other are readers, or
         // pool_size == 1 and we are waiting on a single reader to now complete
         let db_ticket = if cfg!(test) {
-            #[allow(clippy::expect_used)]
             self.db_tickets
                 .try_acquire()
-                .expect("unable to acquire db_ticket for qsw")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire write db_ticket!");
+                })
+                .ok()?
         } else {
-            #[allow(clippy::expect_used)]
             self.db_tickets
                 .acquire()
                 .await
-                .expect("unable to acquire db_ticket for qsw")
+                .inspect_err(|err| {
+                    error!(?err, "Unable to acquire write db_ticket!");
+                })
+                .ok()?
         };
 
         Some((write_ticket, db_ticket))
@@ -1489,10 +1507,7 @@ impl QueryServer {
         // Update the cid now.
         *cid = Cid::new_lamport(cid.s_uuid, curtime, &cid.ts);
 
-        #[allow(clippy::expect_used)]
-        let trim_cid = cid
-            .sub_secs(CHANGELOG_MAX_AGE)
-            .expect("unable to generate trim cid");
+        let trim_cid = cid.sub_secs(CHANGELOG_MAX_AGE)?;
 
         Ok(QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -2058,6 +2073,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub(crate) fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
         self.be_txn.upgrade_reindex(v)
+    }
+
+    #[inline]
+    pub(crate) fn get_changed_app(&self) -> bool {
+        self.changed_flags.contains(ChangeFlag::APPLICATION)
     }
 
     #[inline]

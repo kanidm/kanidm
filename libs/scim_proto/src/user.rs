@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Name {
+pub struct Name {
     // The full name including all middle names and titles
     formatted: Option<String>,
     family_name: Option<String>,
@@ -32,7 +32,7 @@ enum Language {
 // https://datatracker.ietf.org/doc/html/rfc5646
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-enum Locale {
+pub enum Locale {
     en,
     #[serde(rename = "en-AU")]
     en_AU,
@@ -57,7 +57,7 @@ impl fmt::Display for Locale {
 
 #[allow(non_camel_case_types)]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-enum Timezone {
+pub enum Timezone {
     #[serde(rename = "Australia/Brisbane")]
     australia_brisbane,
     #[serde(rename = "America/Los_Angeles")]
@@ -87,7 +87,7 @@ pub struct MultiValueAttr {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Photo {
+pub struct Photo {
     #[serde(rename = "type")]
     type_: Option<String>,
     primary: Option<bool>,
@@ -98,7 +98,7 @@ struct Photo {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Binary {
+pub struct Binary {
     #[serde(rename = "type")]
     type_: Option<String>,
     primary: Option<bool>,
@@ -110,7 +110,7 @@ struct Binary {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Address {
+pub struct Address {
     #[serde(rename = "type")]
     type_: Option<String>,
     primary: Option<bool>,
@@ -132,7 +132,7 @@ enum Membership {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Group {
+pub struct Group {
     #[serde(rename = "type")]
     type_: Option<String>,
     #[serde(rename = "$ref")]
@@ -143,7 +143,7 @@ struct Group {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct User {
+pub struct User {
     #[serde(flatten)]
     entry: ScimEntry,
     // required, must be unique, string.

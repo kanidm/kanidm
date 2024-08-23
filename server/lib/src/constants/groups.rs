@@ -219,11 +219,31 @@ lazy_static! {
     };
 
     /// Builtin IDM Group for RADIUS server access delegation.
-    pub static ref IDM_RADIUS_SERVERS_V1: BuiltinGroup = BuiltinGroup {
+    pub static ref BUILTIN_IDM_RADIUS_SERVERS_V1: BuiltinGroup = BuiltinGroup {
         name: "idm_radius_servers",
         description: "Builtin IDM Group for RADIUS server access delegation.",
         uuid: UUID_IDM_RADIUS_SERVERS,
         entry_managed_by: Some(UUID_IDM_RADIUS_ADMINS),
+        members: vec![
+        ],
+        ..Default::default()
+    };
+
+    pub static ref BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8: BuiltinGroup = BuiltinGroup {
+        name: "idm_mail_service_admins",
+        description: "Builtin Mail Server Administration Group.",
+        uuid: UUID_IDM_MAIL_ADMINS,
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
+
+    /// Builtin IDM Group for MAIL server Access delegation.
+    pub static ref BUILTIN_IDM_MAIL_SERVERS_DL8: BuiltinGroup = BuiltinGroup {
+        name: "idm_mail_servers",
+        description: "Builtin IDM Group for MAIL server access delegation.",
+        uuid: UUID_IDM_MAIL_SERVERS,
+        entry_managed_by: Some(UUID_IDM_MAIL_ADMINS),
         members: vec![
         ],
         ..Default::default()
@@ -407,6 +427,15 @@ lazy_static! {
         ],
         ..Default::default()
     };
+
+    pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
+        name: "idm_application_admins",
+        uuid: UUID_IDM_APPLICATION_ADMINS,
+        description: "Builtin Application Administration Group.",
+        entry_managed_by: Some(UUID_IDM_ADMINS),
+        members: vec![UUID_IDM_ADMINS],
+        ..Default::default()
+    };
 }
 
 /// Make a list of all the non-admin BuiltinGroup's that are created by default, doing it in a standard-ish way so we can use it around the platform
@@ -426,10 +455,13 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_PEOPLE_PII_READ,
         &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
         &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
+        &BUILTIN_GROUP_APPLICATION_ADMINS,
+        &BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
         &IDM_ALL_ACCOUNTS,
-        &IDM_RADIUS_SERVERS_V1,
+        &BUILTIN_IDM_RADIUS_SERVERS_V1,
+        &BUILTIN_IDM_MAIL_SERVERS_DL8,
         &IDM_PEOPLE_SELF_WRITE_MAIL_V1,
         // Write deps on read, so write must be added first.
         // All members must exist before we write HP

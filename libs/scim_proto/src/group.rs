@@ -4,7 +4,7 @@ use url::Url;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct Member {
+pub struct Member {
     value: Uuid,
     #[serde(rename = "$ref")]
     ref_: Url,
@@ -13,7 +13,7 @@ struct Member {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
-struct Group {
+pub struct Group {
     #[serde(flatten)]
     entry: ScimEntry,
 

@@ -1052,6 +1052,41 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_MAIL_SERVERS_DL8: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        name: "idm_acp_mail_servers",
+        uuid: UUID_IDM_ACP_MAIL_SERVERS,
+        description:
+            "Builtin IDM Control for MAIL servers to read email addresses and other needed attributes.",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_MAIL_SERVERS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Or(vec![
+                match_class_filter!(EntryClass::Account),
+                match_class_filter!(EntryClass::Group),
+            ]),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::Uuid,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::Member,
+            Attribute::DynMember,
+            Attribute::MemberOf,
+            Attribute::GidNumber,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -1076,7 +1111,7 @@ lazy_static! {
 lazy_static! {
     pub static ref IDM_ACP_SELF_READ_V1: BuiltinAcp = BuiltinAcp {
         name: "idm_acp_self_read",
-        uuid: UUID_IDM_ACP_SELF_READ_V1,
+        uuid: UUID_IDM_ACP_SELF_READ,
         description:
             "Builtin IDM Control for self read - required for whoami and many other functions",
         classes: vec![
@@ -1112,6 +1147,45 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_SELF_READ_DL8: BuiltinAcp = BuiltinAcp {
+        name: "idm_acp_self_read",
+        uuid: UUID_IDM_ACP_SELF_READ,
+        description:
+            "Builtin IDM Control for self read - required for whoami and many other functions",
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlSearch,
+        ],
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ALL_ACCOUNTS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Spn,
+            Attribute::DisplayName,
+            Attribute::LegalName,
+            Attribute::Class,
+            Attribute::MemberOf,
+            Attribute::Mail,
+            Attribute::RadiusSecret,
+            Attribute::GidNumber,
+            Attribute::LoginShell,
+            Attribute::Uuid,
+            Attribute::SyncParentUuid,
+            Attribute::AccountExpire,
+            Attribute::AccountValidFrom,
+            Attribute::PrimaryCredential,
+            Attribute::UserAuthTokenSession,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp{
         name: "idm_acp_self_write",
         uuid: UUID_IDM_ACP_SELF_WRITE_V1,
@@ -1133,6 +1207,7 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
         ],
         modify_present_attrs: vec![
             Attribute::DisplayName,
@@ -1143,6 +1218,7 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -1176,6 +1252,42 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_SELF_WRITE_DL8: BuiltinAcp = BuiltinAcp{
+        name: "idm_acp_self_write",
+        uuid: UUID_IDM_ACP_SELF_WRITE_V1,
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            ],
+        description: "Builtin IDM Control for self write - required for people to update their own credentials in line with best practices.",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_ALL_PERSONS] ),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::SelfUuid),
+        modify_removed_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::UserAuthTokenSession,
+            Attribute::ApplicationPassword,
+        ],
+        modify_present_attrs: vec![
+            Attribute::RadiusSecret,
+            Attribute::PrimaryCredential,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
+            Attribute::PassKeys,
+            Attribute::AttestedPasskeys,
+            Attribute::ApplicationPassword,
+            Attribute::ApplicationPassword,
         ],
         ..Default::default()
     };
@@ -2051,6 +2163,132 @@ lazy_static! {
         modify_present_attrs: vec![Attribute::Certificate, Attribute::Refers,],
         create_attrs: vec![Attribute::Class, Attribute::Certificate, Attribute::Refers,],
         create_classes: vec![EntryClass::Object, EntryClass::ClientCertificate,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_MANAGE_DL8: BuiltinAcp = BuiltinAcp{
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlCreate,
+            EntryClass::AccessControlDelete,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+            ],
+        name: "idm_acp_application_manage",
+        uuid: UUID_IDM_ACP_APPLICATION_MANAGE,
+        description: "Builtin IDM Control for creating and deleting applications in the directory",
+        receiver: BuiltinAcpReceiver::Group ( vec![UUID_IDM_APPLICATION_ADMINS] ),
+        // Any application
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        create_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        create_classes: vec![
+            EntryClass::Object,
+            EntryClass::Account,
+            EntryClass::ServiceAccount,
+            EntryClass::Application,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_application_entry_manager",
+        uuid: UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER,
+        description: "Builtin IDM Control for allowing EntryManager to read and modify applications",
+        receiver: BuiltinAcpReceiver::EntryManager,
+        // Applications that belong to the Entry Manager.
+        target: BuiltinAcpTarget::Filter( ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Application),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Uuid,
+            Attribute::Name,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::Description,
+            Attribute::LinkedGroup,
+            Attribute::EntryManagedBy,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::LinkedGroup,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Name,
+            Attribute::Description,
+            Attribute::DisplayName,
+            Attribute::Mail,
+            Attribute::UnixPassword,
+            Attribute::ApiTokenSession,
+            Attribute::UserAuthTokenSession,
+            Attribute::LinkedGroup,
+        ],
         ..Default::default()
     };
 }

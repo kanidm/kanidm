@@ -108,7 +108,7 @@ impl Into<OperationError> for CryptoError {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[allow(non_camel_case_types)]
 pub enum DbPasswordV1 {
     TPM_ARGON2ID {

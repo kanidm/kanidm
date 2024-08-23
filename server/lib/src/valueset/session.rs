@@ -1752,7 +1752,7 @@ mod tests {
                 type_: AuthType::Passkey,
             },
         ))
-        .chain((0..SESSION_MAXIMUM).into_iter().map(|_| {
+        .chain((0..SESSION_MAXIMUM).map(|_| {
             (
                 Uuid::new_v4(),
                 Session {

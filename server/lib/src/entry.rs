@@ -50,6 +50,7 @@ use webauthn_rs::prelude::{
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
+use crate::credential::apppwd::ApplicationPassword;
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::idm::ldap::ldap_vattr_map;
@@ -2933,6 +2934,15 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.as_webauthn_attestation_ca_list())
     }
 
+    pub fn get_ava_application_password(
+        &self,
+        attr: Attribute,
+    ) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
+        self.attrs
+            .get(attr.as_ref())
+            .and_then(|vs| vs.as_application_password_map())
+    }
+
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
@@ -3373,9 +3383,8 @@ where
                     self.purge_ava(Attribute::try_from(attr)?);
                 }
                 Modify::Assert(attr, value) => {
-                    self.assert_ava(attr.to_owned(), value).map_err(|e| {
+                    self.assert_ava(attr.to_owned(), value).inspect_err(|_e| {
                         error!("Modification assertion was not met. {} {:?}", attr, value);
-                        e
                     })?;
                 }
             }
@@ -3520,8 +3529,8 @@ mod tests {
         // are adding ... Or do we validate after the changes are made in
         // total?
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         let values = e.get_ava_set(Attribute::UserId).expect("Failed to get ava");
         // Should only be one value!
@@ -3531,7 +3540,7 @@ mod tests {
     #[test]
     fn test_entry_pres() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         assert!(e.attribute_pres(Attribute::UserId));
         assert!(!e.attribute_pres(Attribute::Name));
@@ -3541,34 +3550,22 @@ mod tests {
     fn test_entry_equality() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
-        assert!(e.attribute_equality(
-            Attribute::UserId.into(),
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(!e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("test")));
-        assert!(!e.attribute_equality(
-            Attribute::NonExist.into(),
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(!e.attribute_equality(Attribute::NonExist, &PartialValue::new_utf8s("william")));
         // Also test non-matching attr syntax
-        assert!(!e.attribute_equality(
-            Attribute::UserId.into(),
-            &PartialValue::new_iutf8("william")
-        ));
+        assert!(!e.attribute_equality(Attribute::UserId, &PartialValue::new_iutf8("william")));
     }
 
     #[test]
     fn test_entry_substring() {
         let mut e: Entry<EntryInit, EntryNew> = Entry::new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
-        assert!(e.attribute_substring(
-            Attribute::UserId.into(),
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("will")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("liam")));
         assert!(e.attribute_substring(Attribute::UserId, &PartialValue::new_utf8s("lli")));
@@ -3620,7 +3617,7 @@ mod tests {
         // Test application of changes to an entry.
         let mut e: Entry<EntryInvalid, EntryNew> = Entry::new().into_invalid_new();
 
-        e.add_ava(Attribute::UserId.into(), Value::from("william"));
+        e.add_ava(Attribute::UserId, Value::from("william"));
 
         let present_single_mods = ModifyList::new_valid_list(vec![Modify::Present(
             Attribute::Attr.into(),
@@ -3630,10 +3627,7 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
 
         // Assert the changes are there
-        assert!(e.attribute_equality(
-            Attribute::UserId.into(),
-            &PartialValue::new_utf8s("william")
-        ));
+        assert!(e.attribute_equality(Attribute::UserId, &PartialValue::new_utf8s("william")));
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
 
         // Assert present for multivalue
@@ -3645,10 +3639,7 @@ mod tests {
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
 
         assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("test")));
-        assert!(e.attribute_equality(
-            Attribute::Class.into(),
-            &PartialValue::new_iutf8("multi_test")
-        ));
+        assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("multi_test")));
 
         // Assert purge on single/multi/empty value
         let purge_single_mods =
@@ -3678,13 +3669,13 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
         assert!(e.apply_modlist(&remove_mods).is_ok());
-        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
+        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
 
         let remove_empty_mods = remove_mods;
 
         assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
-        assert!(e.attrs.get(Attribute::Attr.as_ref()).is_none());
+        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
     }
 
     #[test]
@@ -3692,7 +3683,7 @@ mod tests {
         let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
         e1.add_ava(Attribute::UserId, Value::from("william"));
         let mut e1_mod = e1.clone();
-        e1_mod.add_ava(Attribute::Extra.into(), Value::from("test"));
+        e1_mod.add_ava(Attribute::Extra, Value::from("test"));
 
         let e1 = e1.into_sealed_committed();
         let e1_mod = e1_mod.into_sealed_committed();

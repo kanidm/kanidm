@@ -79,6 +79,7 @@ pub enum OperationError {
     SchemaViolation(SchemaError),
     Plugin(PluginError),
     FilterGeneration,
+    FilterParseError,
     FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
@@ -147,9 +148,13 @@ pub enum OperationError {
     // Value Errors
     VL0001ValueSshPublicKeyString,
 
+    // LDAP Errors
+    LD0001AnonymousNotAllowed,
+
     // DB low level errors.
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
+    DB0003FilterResolveCacheBuild,
 
     // SCIM
     SC0001IncomingSshPublicKey,
@@ -211,6 +216,10 @@ pub enum OperationError {
 
     // Plugins
     PL0001GidOverlapsSystemRange,
+
+    // Web UI
+    UI0001ChallengeSerialisation,
+    UI0002InvalidState,
 }
 
 impl PartialEq for OperationError {
@@ -252,6 +261,7 @@ impl OperationError {
             Self::SchemaViolation(_) => None,
             Self::Plugin(_) => None,
             Self::FilterGeneration => None,
+            Self::FilterParseError => None,
             Self::FilterUuidResolution => None,
             Self::InvalidAttributeName(_) => None,
             Self::InvalidAttribute(_) => None,
@@ -307,12 +317,14 @@ impl OperationError {
             Self::VS0004CertificatePublicKeyDigest |
             Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested."),
             Self::VL0001ValueSshPublicKeyString => None,
+            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method."),
             Self::SC0001IncomingSshPublicKey => None,
             Self::MG0001InvalidReMigrationLevel => None,
             Self::MG0002RaiseDomainLevelExceedsMaximum => None,
             Self::MG0003ServerPhaseInvalidForMigration => None,
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
+            Self::DB0003FilterResolveCacheBuild => None,
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present."),
@@ -364,6 +376,8 @@ impl OperationError {
             Self::KP0043KeyObjectJweA128GCMEncryption => None,
             Self::KP0044KeyObjectJwsPublicJwk => None,
             Self::PL0001GidOverlapsSystemRange => None,
+            Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised."),
+            Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition."),
         }
     }
 }

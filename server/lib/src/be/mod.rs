@@ -2269,7 +2269,7 @@ mod tests {
         ($be:expr, $ent:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![Attribute::Uuid.into()])
+                .filter_from_attrs(&[Attribute::Uuid.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2282,7 +2282,7 @@ mod tests {
         ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = $ent.clone().into_sealed_committed();
             let filt = ei
-                .filter_from_attrs(&vec![Attribute::UserId.into()])
+                .filter_from_attrs(&[Attribute::UserId.into()])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             let lims = Limits::unlimited();
@@ -2586,16 +2586,10 @@ mod tests {
 
             let result = fs::remove_file(&db_backup_file_name);
 
-            match result {
-                Err(e) => {
-                    // if the error is the file is not found, that's what we want so continue,
-                    // otherwise return the error
-                    match e.kind() {
-                        std::io::ErrorKind::NotFound => {}
-                        _ => (),
-                    }
-                }
-                _ => (),
+            if let Err(e) = result {
+                // if the error is the file is not found, that's what we want so continue,
+                // otherwise return the error
+                if e.kind() == std::io::ErrorKind::NotFound {}
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");
@@ -2650,16 +2644,10 @@ mod tests {
 
             let result = fs::remove_file(&db_backup_file_name);
 
-            match result {
-                Err(e) => {
-                    // if the error is the file is not found, that's what we want so continue,
-                    // otherwise return the error
-                    match e.kind() {
-                        std::io::ErrorKind::NotFound => {}
-                        _ => (),
-                    }
-                }
-                _ => (),
+            if let Err(e) = result {
+                // if the error is the file is not found, that's what we want so continue,
+                // otherwise return the error
+                if e.kind() == std::io::ErrorKind::NotFound {}
             }
 
             be.backup(&db_backup_file_name).expect("Backup failed!");
@@ -2856,11 +2844,7 @@ mod tests {
             );
 
             let uuid_p_idl = be
-                .load_test_idl(
-                    &"not_indexed".to_string(),
-                    IndexType::Presence,
-                    &"_".to_string(),
-                )
+                .load_test_idl("not_indexed", IndexType::Presence, "_")
                 .unwrap(); // unwrap the result
             assert_eq!(uuid_p_idl, None);
 

@@ -80,7 +80,7 @@ where
 
     /// The uuidmap is a map of uuids to EntryInitNew objects, which we use to get the name of the objects
     fn as_mermaid(&mut self, uuidmap: &BTreeMap<T, EntryInitNew>) -> String {
-        let mut res = format!("graph RL;\n");
+        let mut res = "graph RL;\n".to_string();
         for (left, right, _weight) in self.all_edges() {
             let left = uuidmap.get(&left).unwrap();
             let right = uuidmap.get(&right).unwrap();
@@ -103,7 +103,7 @@ async fn enumerate_default_groups(/*_client: KanidmClient*/) {
 
     builtin_accounts().into_iter().for_each(|account| {
         // println!("adding builtin {}", account.uuid);
-        uuidmap.insert(account.uuid, account.clone().try_into().unwrap());
+        uuidmap.insert(account.uuid, account.clone().into());
         graph.add_node(account.uuid);
     });
 

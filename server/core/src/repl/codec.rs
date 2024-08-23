@@ -216,7 +216,7 @@ mod tests {
 
         // Clear buffer - setup a request with a length > allowed max.
         buf.clear();
-        let len_bytes = (34 as u64).to_be_bytes();
+        let len_bytes = (34_u64).to_be_bytes();
         buf.extend_from_slice(&len_bytes);
 
         // Even though the buf len is only 8, this will error as the overall
@@ -226,7 +226,7 @@ mod tests {
 
         // Assert that we request more data on a validly sized req
         buf.clear();
-        let len_bytes = (20 as u64).to_be_bytes();
+        let len_bytes = (20_u64).to_be_bytes();
         buf.extend_from_slice(&len_bytes);
         // Pad in some extra bytes.
         buf.extend_from_slice(&zero);

@@ -594,6 +594,44 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // =========== Apply changes ==============
 
+        let idm_schema_classes = [
+            SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
+            SCHEMA_CLASS_PERSON_DL8.clone().into(),
+        ];
+
+        idm_schema_classes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_6_to_7 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        // Update access controls.
+        let idm_data = [
+            BUILTIN_GROUP_APPLICATION_ADMINS.clone().try_into()?,
+            IDM_ACP_SELF_READ_DL8.clone().into(),
+            IDM_ACP_SELF_WRITE_DL8.clone().into(),
+            IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
+            // Add the new types for mail server
+            BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8.clone().try_into()?,
+            BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
+            IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_7_to_8 -> Error");
+                err
+            })?;
+
         Ok(())
     }
 
@@ -888,12 +926,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
             // DL4
             // DL5
-            IDM_ACP_OAUTH2_MANAGE_DL5.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
             // DL6
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone().into(),
-            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
-            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
-            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone(),
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone(),
             IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
         ];
 

@@ -106,9 +106,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .collect();
 
         candidates.iter_mut().try_for_each(|er| {
-            er.apply_modlist(&me.modlist).map_err(|e| {
+            er.apply_modlist(&me.modlist).inspect_err(|_e| {
                 error!("Modification failed for {:?}", er.get_uuid());
-                e
             })
         })?;
 
@@ -212,6 +211,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 })
         {
             self.changed_flags.insert(ChangeFlag::ACP)
+        }
+
+        if !self.changed_flags.contains(ChangeFlag::APPLICATION)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Application.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::APPLICATION)
         }
 
         if !self.changed_flags.contains(ChangeFlag::OAUTH2)
@@ -415,6 +423,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
         {
             self.changed_flags.insert(ChangeFlag::ACP)
         }
+
+        if !self.changed_flags.contains(ChangeFlag::APPLICATION)
+            && norm_cand
+                .iter()
+                .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                .any(|e| e.attribute_equality(Attribute::Class, &EntryClass::Application.into()))
+        {
+            self.changed_flags.insert(ChangeFlag::APPLICATION)
+        }
+
         if !self.changed_flags.contains(ChangeFlag::OAUTH2)
             && norm_cand.iter().any(|e| {
                 e.attribute_equality(Attribute::Class, &EntryClass::OAuth2ResourceServer.into())

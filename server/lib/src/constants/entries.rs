@@ -21,7 +21,7 @@ use uuid::Uuid;
 #[test]
 fn test_valueattribute_as_str() {
     assert!(Attribute::Class.as_ref() == "class");
-    assert!(Attribute::Class.to_string() == String::from("class"));
+    assert!(Attribute::Class.to_string() == *"class");
 }
 
 #[test]
@@ -52,6 +52,7 @@ pub enum Attribute {
     AcpSearchAttr,
     AcpTargetScope,
     ApiTokenSession,
+    ApplicationPassword,
     AttestedPasskeys,
     Attr,
     AttributeName,
@@ -116,6 +117,7 @@ pub enum Attribute {
     LegalName,
     LimitSearchMaxResults,
     LimitSearchMaxFilterTest,
+    LinkedGroup,
     LoginShell,
     Mail,
     May,
@@ -244,6 +246,7 @@ impl<'a> TryFrom<&'a str> for Attribute {
             ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
             ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
             ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
+            ATTR_APPLICATION_PASSWORD => Attribute::ApplicationPassword,
             ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
             ATTR_ATTR => Attribute::Attr,
             ATTR_ATTRIBUTENAME => Attribute::AttributeName,
@@ -305,6 +308,7 @@ impl<'a> TryFrom<&'a str> for Attribute {
             ATTR_LDAP_KEYS => Attribute::LdapKeys,
             ATTR_SSH_PUBLICKEY => Attribute::SshPublicKey,
             ATTR_LEGALNAME => Attribute::LegalName,
+            ATTR_LINKEDGROUP => Attribute::LinkedGroup,
             ATTR_LOGINSHELL => Attribute::LoginShell,
             ATTR_LIMIT_SEARCH_MAX_RESULTS => Attribute::LimitSearchMaxResults,
             ATTR_LIMIT_SEARCH_MAX_FILTER_TEST => Attribute::LimitSearchMaxFilterTest,
@@ -420,6 +424,7 @@ impl From<Attribute> for &'static str {
             Attribute::AcpSearchAttr => ATTR_ACP_SEARCH_ATTR,
             Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
             Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
+            Attribute::ApplicationPassword => ATTR_APPLICATION_PASSWORD,
             Attribute::AttestedPasskeys => ATTR_ATTESTED_PASSKEYS,
             Attribute::Attr => ATTR_ATTR,
             Attribute::AttributeName => ATTR_ATTRIBUTENAME,
@@ -483,6 +488,7 @@ impl From<Attribute> for &'static str {
             Attribute::LegalName => ATTR_LEGALNAME,
             Attribute::LimitSearchMaxResults => ATTR_LIMIT_SEARCH_MAX_RESULTS,
             Attribute::LimitSearchMaxFilterTest => ATTR_LIMIT_SEARCH_MAX_FILTER_TEST,
+            Attribute::LinkedGroup => ATTR_LINKEDGROUP,
             Attribute::LoginShell => ATTR_LOGINSHELL,
             Attribute::Mail => ATTR_MAIL,
             Attribute::May => ATTR_MAY,
@@ -621,6 +627,7 @@ pub enum EntryClass {
     AccessControlTargetScope,
     Account,
     AccountPolicy,
+    Application,
     AttributeType,
     Builtin,
     Class,
@@ -675,6 +682,7 @@ impl From<EntryClass> for &'static str {
             EntryClass::AccessControlTargetScope => "access_control_target_scope",
             EntryClass::Account => "account",
             EntryClass::AccountPolicy => "account_policy",
+            EntryClass::Application => "application",
             EntryClass::AttributeType => "attributetype",
             EntryClass::Builtin => ENTRYCLASS_BUILTIN,
             EntryClass::Class => ATTR_CLASS,

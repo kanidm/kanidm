@@ -13,9 +13,7 @@ pub fn bench_png_lodepng_validate(c: &mut Criterion) {
             env!("CARGO_MANIFEST_DIR")
         ));
         let contents = black_box(std::fs::read(filename).unwrap());
-        b.iter(|| {
-            png::png_lodepng_validate(&contents, black_box(&"oversize_dimensions.png".to_string()))
-        })
+        b.iter(|| png::png_lodepng_validate(&contents, black_box("oversize_dimensions.png")))
     });
     group.bench_function("png_lodepng_validate_ok", |b| {
         let filename = black_box(format!(
@@ -23,9 +21,7 @@ pub fn bench_png_lodepng_validate(c: &mut Criterion) {
             env!("CARGO_MANIFEST_DIR")
         ));
         let contents = black_box(std::fs::read(filename).unwrap());
-        b.iter(|| {
-            png::png_lodepng_validate(&contents, black_box(&"oversize_dimensions.png".to_string()))
-        })
+        b.iter(|| png::png_lodepng_validate(&contents, black_box("oversize_dimensions.png")))
     });
     group.finish();
 }

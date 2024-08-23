@@ -73,9 +73,8 @@ fn apply_gidnumber<T: Clone>(
         let u_ref = e
             .get_uuid()
             .ok_or(OperationError::InvalidEntryState)
-            .map_err(|e| {
+            .inspect_err(|_e| {
                 admin_error!("Invalid Entry State - Missing UUID");
-                e
             })?;
 
         let gid = uuid_to_gid_u32(u_ref);
