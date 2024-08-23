@@ -71,9 +71,9 @@ authentication mechanisms like CTAP2 or PIV.
 Unixd already needs to parse these files to understand and prevent conflicts between local items and
 remote ones. Extending this functionality will allow us to resolve local users from memory.
 
-Not only this, we need to store information *permanently* that goes beyore what /etc/passwd and
-similar can store. It would be damaging to users if their CTAP2 (passkeys) were deleted randomly
-on a cache clear!
+Not only this, we need to store information _permanently_ that goes beyore what /etc/passwd and
+similar can store. It would be damaging to users if their CTAP2 (passkeys) were deleted randomly on
+a cache clear!
 
 #### Local Group Extension
 
@@ -130,43 +130,42 @@ future.
 #### CTAP2 / TPM-PIN
 
 We want to allow local authentication with CTAP2 or a TPM with PIN. Both provide stronger assurances
-of both who the user is, and that they are in posession of a specific cryptographic device. The
-nice part of this is that they both implement hardware bruteforce protections. For soft-tpm we
-can emulate this with a strict bruteforce lockout prevention mechanism.
+of both who the user is, and that they are in posession of a specific cryptographic device. The nice
+part of this is that they both implement hardware bruteforce protections. For soft-tpm we can
+emulate this with a strict bruteforce lockout prevention mechanism.
 
-The weakness is that PIN's which are used on both CTAP2 and TPM, tend to be shorter, ranging from
-4 to 8 characters, generally numeric. This makes them unsuitable for remote auth.
+The weakness is that PIN's which are used on both CTAP2 and TPM, tend to be shorter, ranging from 4
+to 8 characters, generally numeric. This makes them unsuitable for remote auth.
 
-This means for SSH without keys, we *must* use a passphrase or similar instead. We must not allow
+This means for SSH without keys, we _must_ use a passphrase or similar instead. We must not allow
 SSH auth with PIN to a TPM as this can easily become a remote DOS via the bruteforce prevention
 mechanism.
 
-This introduces it's own challenge - we are now juggling multiple potential credentials and need
-to account for their addition and removal, as well as changing.
+This introduces it's own challenge - we are now juggling multiple potential credentials and need to
+account for their addition and removal, as well as changing.
 
 Another significant challenge is that linux is heavily embedded in "passwords as the only factor"
 meaning that many systems are underdeveloped like gnome keyring - this expects stacked pam modules
 to unlock the keyring as it proceeds.
 
-
-*Local Users*
+_Local Users_
 
 Local Users will expect on login equivalent functionality that `/etc/passwd` provides today, meaning
 that local wallets and keyrings are unlocked at login. This necesitates that any CTAP2 or TPM unlock
 need to be able to unlock the keyring.
 
-This also has implications for how users expect to interact with the feature. A user will expect that
-changing their PIN will continue to allow unlock of their system. And a change of the users password
-should not invalidate their existing PIN's or CTAP devices. To achieve this we will need some methods
-to cryptographically protect credentials and allow these updates.
+This also has implications for how users expect to interact with the feature. A user will expect
+that changing their PIN will continue to allow unlock of their system. And a change of the users
+password should not invalidate their existing PIN's or CTAP devices. To achieve this we will need
+some methods to cryptographically protect credentials and allow these updates.
 
-To achieve this, we need to make the compromise that the users password must be stored in a reversible
-form on the system. Without this, the various wallets/keyrings won't work. This trade is acceptable
-since `pam_kanidm` is already a module that handles password material in plaintext, so having a
-mechanism to securely retrieve this *while* the user is entering equivalent security material is
-reasonable.
+To achieve this, we need to make the compromise that the users password must be stored in a
+reversible form on the system. Without this, the various wallets/keyrings won't work. This trade is
+acceptable since `pam_kanidm` is already a module that handles password material in plaintext, so
+having a mechanism to securely retrieve this _while_ the user is entering equivalent security
+material is reasonable.
 
-The primary shift is that rather than storing a *kdf/hash* of the users output, we will be storing
+The primary shift is that rather than storing a _kdf/hash_ of the users output, we will be storing
 an authenticated encrypted object where valid decryption of that object is proof that the password
 matches.
 
@@ -211,7 +210,7 @@ and consider HMAC of the output.
 └──────────────────┘
 ```
 
-*Remote Users (such as Kanidm)*
+_Remote Users (such as Kanidm)_
 
 After a lot of thinking, the conclusion we arrived at is that trying to handle password stacking for
 later pam modules is out of scope at this time.
@@ -224,9 +223,9 @@ We may allow PINs to be set on a per-machine basis, rather than syncing them via
 This would require that a change of the password remotely invalidates set PINs unless we think of
 some way around this.
 
-We also think that in the case of things like password managers such as desktop wallets, these should
-have passwords that are the concern of the user, not the remote auth source so that our IDM has no
-knowledge of the material to unlock these.
+We also think that in the case of things like password managers such as desktop wallets, these
+should have passwords that are the concern of the user, not the remote auth source so that our IDM
+has no knowledge of the material to unlock these.
 
 ### Challenges
 
@@ -409,10 +408,3 @@ be consumed by the User.
 A usecase is that for application passwords a mail server may wish to cache and locally store the
 application password. Only domain joined systems should be capable of this, and need to protect the
 application password appropriately.
-
-
-
-
-
-
-

@@ -79,10 +79,10 @@ A new class for applications will be added. Each application will have a single 
 only members of this group will be able to bind with the application password for the associated
 application.
 
-Creating a new application will not create an associated group automatically, an existing group
-must be provided. It will be possible to associate `idm_all_persons` to an application. Removing
-an application will not delete the associated group nor its members. It will be possible to change
-the linked group after creation.
+Creating a new application will not create an associated group automatically, an existing group must
+be provided. It will be possible to associate `idm_all_persons` to an application. Removing an
+application will not delete the associated group nor its members. It will be possible to change the
+linked group after creation.
 
 When users are removed from a group associated to an application all of their application passwords
 for the application will be disabled.
