@@ -59,26 +59,26 @@ Kanidm ships with default permission groups. You can use these to enable (or dis
 performing certain actions or tasks within Kanidm as required by modifying the memberships of these
 groups.
 
-| group name                   | description                                                             |
-| ---------------------------- | ----------------------------------------------------------------------- |
-| `domain_admins`              | modify the name of this domain                                          |
-| `idm_access_control_admins`  | write access controls                                                   |
-| `idm_account_policy_admins`  | modify account policy requirements for user authentication              |
-| `idm_group_admins`           | create and modify groups                                                |
-| `idm_mail_servers`           | read mail attributes needed to be a mail server                         |
-| `idm_mail_service_admins`    | grant permissions to service accounts to act as mail servers            |
-| `idm_oauth2_admins`          | create and modify OAuth2 integrations                                   |
-| `idm_people_admins`          | create and modify persons                                               |
-| `idm_people_on_boarding`     | create (but not modify) persons. Intended for use with service accounts |
-| `idm_people_pii_read`        | allow read to personally identifying information                        |
-| `idm_people_self_mail_write` | allow self-modification of the mail attribute                           |
-| `idm_people_self_name_write` | allow self-modification of the name related attributes                  |
-| `idm_radius_servers`         | read user radius secrets. Intended for use with service accounts        |
-| `idm_radius_service_admins`  | create and reset user radius secrets, and allow users to access radius  |
-| `idm_recycle_bin_admins`     | modify and restore entries from the recycle bin                         |
-| `idm_schema_admins`          | add and modify elements of schema                                       |
-| `idm_service_account_admins` | create and modify service accounts                                      |
-| `idm_unix_admins`            | enable posix attributes on accounts and groups                          |
+| group name                   | description                                                                  |
+| ---------------------------- | ---------------------------------------------------------------------------- |
+| `domain_admins`              | modify the name of this domain                                               |
+| `idm_access_control_admins`  | write access controls                                                        |
+| `idm_account_policy_admins`  | modify account policy requirements for user authentication                   |
+| `idm_group_admins`           | create and modify groups                                                     |
+| `idm_mail_servers`           | read mail attributes needed to be a mail server                              |
+| `idm_mail_service_admins`    | grant permissions to service accounts to act as mail servers                 |
+| `idm_oauth2_admins`          | create and modify OAuth2 integrations                                        |
+| `idm_people_admins`          | create and modify persons                                                    |
+| `idm_people_on_boarding`     | create (but not modify) persons. Intended for use with service accounts      |
+| `idm_people_pii_read`        | allow read to personally identifying information                             |
+| `idm_people_self_mail_write` | allow self-modification of the mail attribute                                |
+| `idm_people_self_name_write` | allow self-modification of the name related attributes                       |
+| `idm_radius_servers`         | read user radius secrets. Intended for use with service accounts             |
+| `idm_radius_service_admins`  | create and reset user radius secrets, and allow users to access radius       |
+| `idm_recycle_bin_admins`     | modify and restore entries from the recycle bin                              |
+| `idm_schema_admins`          | add and modify elements of schema                                            |
+| `idm_service_account_admins` | create and modify service accounts                                           |
+| `idm_unix_admins`            | enable posix attributes on accounts and groups                               |
 | `idm_application_admins`     | create and modify ldap applications which use per-user application passwords |
 
 ## Default Roles
