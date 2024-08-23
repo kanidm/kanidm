@@ -284,6 +284,16 @@ pub enum GroupOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Rename an existing group
+    #[clap(name = "rename")]
+    Rename {
+        /// The name of the group
+        name: String,
+        /// The new name of the group
+        new_name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
     /// Delete all members of a group.
     #[clap(name = "purge-members")]
     PurgeMembers(Named),
