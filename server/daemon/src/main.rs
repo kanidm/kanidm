@@ -1044,10 +1044,24 @@ async fn kanidm_main(
 
             let healthcheck_url = match &sopt.check_origin {
                 true => format!("{}/status", config.origin),
-                false => format!("https://{}/status", config.address),
+                false => {
+                    if config.address.starts_with("[::]") {
+                        format!(
+                            "https://{}/status",
+                            config.address.replace("[::]", "localhost")
+                        )
+                    } else if config.address.starts_with("[::1]") {
+                        format!(
+                            "https://{}/status",
+                            config.address.replace("[::1]", "localhost")
+                        )
+                    } else {
+                        format!("https://{}/status", config.address)
+                    }
+                }
             };
 
-            debug!("Checking {healthcheck_url}");
+            info!("Checking {healthcheck_url}");
 
             let mut client = reqwest::ClientBuilder::new()
                 .danger_accept_invalid_certs(!sopt.verify_tls)
