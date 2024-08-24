@@ -2280,7 +2280,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
             (Attribute::ClassName, EntryClass::TestClass.to_value()),
             (Attribute::Uuid, Value::Uuid(s_uuid)),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Attribute::Name.to_value())
+            (Attribute::May, Value::from(Attribute::Name))
         )])
         .is_ok());
     // Schema doesn't take effect til after a commit.

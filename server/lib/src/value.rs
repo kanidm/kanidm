@@ -447,6 +447,20 @@ impl From<CredentialType> for PartialValue {
     }
 }
 
+impl From<Attribute> for Value {
+    fn from(attr: Attribute) -> Value {
+        let s: &str = attr.into();
+        Value::new_iutf8(s)
+    }
+}
+
+impl From<Attribute> for PartialValue {
+    fn from(attr: Attribute) -> PartialValue {
+        let s: &str = attr.into();
+        PartialValue::new_iutf8(s)
+    }
+}
+
 /// A partial value is a key or key subset that can be used to match for equality or substring
 /// against a complete Value within a set in an Entry.
 ///

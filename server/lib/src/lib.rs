@@ -67,6 +67,7 @@ pub mod testkit;
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 pub mod prelude {
+    pub use kanidm_proto::attribute::{AttrString, Attribute};
     pub use kanidm_proto::constants::*;
     pub use kanidm_proto::internal::{ConsistencyError, OperationError, PluginError, SchemaError};
     pub use sketching::{
@@ -75,7 +76,6 @@ pub mod prelude {
         security_access, security_critical, security_debug, security_error, security_info,
         tagged_event, EventTag,
     };
-    pub use smartstring::alias::String as AttrString;
     pub use std::time::Duration;
     pub use url::Url;
     pub use uuid::{uuid, Uuid};

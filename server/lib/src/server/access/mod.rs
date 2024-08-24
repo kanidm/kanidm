@@ -1316,7 +1316,7 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
+                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
                 (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
             ),
             AccessControlSearch
@@ -1395,8 +1395,14 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpModifyRemovedAttr, Attribute::Name.to_value()),
-                (Attribute::AcpModifyPresentAttr, Attribute::Name.to_value()),
+                (
+                    Attribute::AcpModifyRemovedAttr,
+                    Value::from(Attribute::Name)
+                ),
+                (
+                    Attribute::AcpModifyPresentAttr,
+                    Value::from(Attribute::Name)
+                ),
                 (Attribute::AcpModifyClass, EntryClass::Object.to_value())
             ),
             AccessControlModify
@@ -1474,7 +1480,7 @@ mod tests {
                     Attribute::AcpTargetScope,
                     Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
                 ),
-                (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+                (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
                 (Attribute::AcpCreateClass, EntryClass::Object.to_value())
             ),
             AccessControlCreate
@@ -1512,11 +1518,17 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
             (Attribute::AcpCreateClass, EntryClass::Class.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Name.to_value()),
-            (Attribute::AcpModifyPresentAttr, Attribute::Name.to_value()),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Name)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Name)
+            ),
             (Attribute::AcpModifyClass, EntryClass::Object.to_value())
         );
 

@@ -2447,7 +2447,7 @@ mod tests {
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Attribute::Name.to_value())
+            (Attribute::May, Value::from(Attribute::Name))
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new class.
@@ -2518,7 +2518,7 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            (Attribute::AttributeName, Attribute::TestAttr.to_value()),
+            (Attribute::AttributeName, Value::from(Attribute::TestAttr)),
             (Attribute::Description, Value::new_utf8s("Test Attribute")),
             (Attribute::MultiValue, Value::new_bool(false)),
             (Attribute::Unique, Value::new_bool(false)),
@@ -2554,7 +2554,7 @@ mod tests {
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::AttributeName,
-            Attribute::TestAttr.to_partialvalue()
+            PartialValue::from(Attribute::TestAttr)
         )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit

@@ -21,11 +21,13 @@ wasm = ["webauthn-rs-proto/wasm"]
 [dependencies]
 base32 = { workspace = true }
 base64urlsafedata = { workspace = true }
+enum-iterator = { workspace = true }
 num_enum = { workspace = true }
 scim_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
+smartstring = { workspace = true, features = ["serde"] }
 time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }
 url = { workspace = true, features = ["serde"] }
