@@ -16,7 +16,7 @@ impl GroupOpt {
             GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
-            GroupOpt::SetMail { copt, .. } => copt.debug,
+            GroupOpt::Rename { copt, .. } | GroupOpt::SetMail { copt, .. } => copt.debug,
             GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
@@ -176,6 +176,20 @@ impl GroupOpt {
                 match result {
                     Err(e) => handle_client_error(e, copt.output_mode),
                     Ok(_) => println!("Successfully set mail for group {}", name.as_str()),
+                }
+            }
+            GroupOpt::Rename {
+                copt,
+                name,
+                new_name,
+            } => {
+                let client = copt.to_client(OpType::Write).await;
+
+                let result = client.group_rename(name.as_str(), new_name.as_str()).await;
+
+                match result {
+                    Err(e) => handle_client_error(e, copt.output_mode),
+                    Ok(_) => println!("Successfully renamed group {} to {}", name, new_name),
                 }
             }
             GroupOpt::SetEntryManagedBy {

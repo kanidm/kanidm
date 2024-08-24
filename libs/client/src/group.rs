@@ -20,6 +20,11 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_rename(&self, name: &str, new_name: &str) -> Result<(), ClientError> {
+        self.perform_put_request(&format!("/v1/group/{}/_attr/name", name), vec![new_name])
+            .await
+    }
+
     pub async fn group_account_policy_authsession_expiry_set(
         &self,
         id: &str,

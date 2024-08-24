@@ -6,9 +6,9 @@ or other needs which may prompt this needing to be changed.
 
 > [!WARNING]
 >
-> This WILL break ALL PassKeys (WebAuthn tokens) that have been enrolled, which MAY cause accounts to be
-> locked out and unrecoverable until further action is taken. DO NOT CHANGE the domain name unless
-> REQUIRED and have a plan on how to manage these issues.
+> This WILL break ALL PassKeys (WebAuthn tokens) that have been enrolled, which MAY cause accounts
+> to be locked out and unrecoverable until further action is taken. DO NOT CHANGE the domain name
+> unless REQUIRED and have a plan on how to manage these issues.
 
 &nbsp;
 

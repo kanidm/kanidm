@@ -55,3 +55,30 @@ To log out of a session:
 kanidm logout --name USERNAME
 kanidm logout --name admin
 ```
+
+## Multiple Instances
+
+In some cases you may have multiple Kanidm instances. For example you may have a production instance
+and a development instance. This can introduce friction for admins when they need to change between
+those instances.
+
+The Kanidm cli tool allows you to configure multiple instances and swap between them with an
+environment variable, or the `--instance` flag. Instances maintain separate session stores.
+
+```toml
+uri = "https://idm.example.com"
+ca_path = "/path/to/ca.pem"
+
+["development"]
+uri = "https://idm.dev.example.com"
+ca_path = "/path/to/dev-ca.pem"
+```
+
+The instance can then be selected with:
+
+```
+export KANIDM_INSTANCE=development
+kanidm login -D username@idm.dev.example.com
+```
+
+To return to the default instance you `unset` the `KANIDM_INSTANCE` variable.

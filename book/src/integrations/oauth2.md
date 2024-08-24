@@ -144,9 +144,9 @@ kanidm system oauth2 show-basic-secret nextcloud
 
 ### Configure the Client/Resource Server
 
-On your client, you should configure the client ID as the `name` from Kanidm, and the
-password to be the value shown in `oauth2_rs_basic_secret`. Ensure that the code
-challenge/verification method is set to S256.
+On your client, you should configure the client ID as the `name` from Kanidm, and the password to be
+the value shown in `oauth2_rs_basic_secret`. Ensure that the code challenge/verification method is
+set to S256.
 
 You should now be able to test authorisation to the client.
 

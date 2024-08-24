@@ -21,7 +21,7 @@ use uuid::Uuid;
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CURequest, CUSessionToken,
     CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo,
-    COOKIE_CU_SESSION_TOKEN,
+    UserAuthToken, COOKIE_CU_SESSION_TOKEN,
 };
 
 use crate::https::extractors::VerifiedClientInformation;
@@ -565,6 +565,65 @@ pub(crate) async fn view_new_pwd(
         .into_response())
 }
 
+// Allows authenticated users to get a (cred update) or (reauth into cred update) page, depending on whether they have read write access or not respectively.
+pub(crate) async fn view_self_reset_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    mut jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let uat: UserAuthToken = state
+        .qe_r_ref
+        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
+    let can_rw = uat.purpose_readwrite_active(time);
+
+    if can_rw {
+        let (cu_session_token, cu_status) = state
+            .qe_w_ref
+            .handle_idmcredentialupdate(client_auth_info, uat.uuid.to_string(), kopid.eventid)
+            .map_err(|op_err| HtmxError::new(&kopid, op_err))
+            .await?;
+
+        let domain_display_name = state
+            .qe_r_ref
+            .get_domain_display_name(kopid.eventid)
+            .await
+            .unwrap_or_default();
+
+        let cu_resp = get_cu_response(domain_display_name, cu_status);
+
+        jar = add_cu_cookie(jar, &state, cu_session_token);
+        Ok((jar, cu_resp).into_response())
+    } else {
+        super::login::view_reauth_get(
+            state,
+            client_auth_info,
+            kopid,
+            jar,
+            "/ui/update_credentials",
+        )
+        .await
+    }
+}
+
+// Adds the COOKIE_CU_SESSION_TOKEN to the jar and returns the result
+fn add_cu_cookie(
+    jar: CookieJar,
+    state: &ServerState,
+    cu_session_token: CUSessionToken,
+) -> CookieJar {
+    let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
+    token_cookie.set_secure(state.secure_cookies);
+    token_cookie.set_same_site(SameSite::Strict);
+    token_cookie.set_http_only(true);
+    jar.add(token_cookie)
+}
+
 pub(crate) async fn view_reset_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -622,12 +681,7 @@ pub(crate) async fn view_reset_get(
             Ok((cu_session_token, cu_status)) => {
                 let cu_resp = get_cu_response(domain_display_name, cu_status);
 
-                let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
-                token_cookie.set_secure(state.secure_cookies);
-                token_cookie.set_same_site(SameSite::Strict);
-                token_cookie.set_http_only(true);
-                jar = jar.add(token_cookie);
-
+                jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
             }
             Err(OperationError::SessionExpired) | Err(OperationError::Wait(_)) => {
@@ -709,7 +763,7 @@ fn get_cu_response(domain: String, cu_status: CUStatus) -> Response {
 
 async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
-    return if let Some(cookie) = cookie {
+    if let Some(cookie) = cookie {
         let cu_session_token = cookie.value();
         let cu_session_token = CUSessionToken {
             token: cu_session_token.into(),
@@ -717,5 +771,5 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
         Ok(cu_session_token)
     } else {
         Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
-    };
+    }
 }
