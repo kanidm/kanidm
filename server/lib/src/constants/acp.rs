@@ -150,7 +150,7 @@ impl From<BuiltinAcp> for EntryInitNew {
             value
                 .search_attrs
                 .into_iter()
-                .map(|sa| Value::from(sa))
+                .map(Value::from)
                 .collect::<Vec<Value>>(),
         );
         value.modify_present_attrs.into_iter().for_each(|attr| {

@@ -1,4 +1,5 @@
 use enum_iterator::Sequence;
+use serde::{Deserialize, Serialize};
 
 use crate::constants::*;
 use crate::internal::OperationError;
@@ -7,8 +8,10 @@ use tracing::trace;
 
 pub use smartstring::alias::String as AttrString;
 
-#[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Sequence, Hash)]
-// #[serde(rename_all = "lowercase", from = "&str", into = "String")]
+#[derive(
+    Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Sequence, Hash,
+)]
+#[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
 pub enum Attribute {
     Account,
     AccountExpire,
@@ -563,16 +566,6 @@ impl fmt::Display for Attribute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s: &'static str = (*self).into();
         write!(f, "{}", s)
-    }
-}
-
-impl<'a> serde::Deserialize<'a> for Attribute {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Attribute::try_from(s.as_str()).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
     }
 }
 
