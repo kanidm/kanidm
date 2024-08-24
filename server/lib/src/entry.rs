@@ -2410,7 +2410,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_generic(&self) -> Result<ScimEntryGeneric, OperationError> {
+    pub fn to_scim_generic(&self) -> Result<ScimEntry, OperationError> {
         let attrs = self
             .attrs
             .iter()
@@ -2426,9 +2426,10 @@ impl Entry<EntryReduced, EntryCommitted> {
         // to achieve this.
         let schemas = Vec::with_capacity(0);
 
-        Ok(ScimEntryGeneric {
+        Ok(ScimEntry {
             schemas,
             id,
+            // TODO: Should be spn / name or uuid.
             external_id: None,
             // TODO - this one will be useful in future, but we need to change
             // entry to store some extra metadata.

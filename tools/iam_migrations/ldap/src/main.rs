@@ -46,8 +46,8 @@ use tracing_subscriber::{fmt, EnvFilter};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntryGeneric, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
-    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState,
+    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState,
 };
 
 #[cfg(target_family = "unix")]
@@ -447,7 +447,7 @@ async fn run_sync(
 async fn process_ldap_sync_result(
     ldap_entries: Vec<LdapSyncReplEntry>,
     sync_config: &Config,
-) -> Result<Vec<ScimEntryGeneric>, ()> {
+) -> Result<Vec<ScimEntry>, ()> {
     // Future - make this par-map
     ldap_entries
         .into_iter()
@@ -471,7 +471,7 @@ fn ldap_to_scim_entry(
     sync_entry: LdapSyncReplEntry,
     entry_config: &EntryConfig,
     sync_config: &Config,
-) -> Result<Option<ScimEntryGeneric>, ()> {
+) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
@@ -632,10 +632,9 @@ fn ldap_to_scim_entry(
             .set_external_id(external_id)
             .build();
 
-        let scim_entry_generic: ScimEntryGeneric =
-            scim_sync_person.try_into().map_err(|json_err| {
-                error!(?json_err, "Unable to convert group to scim_sync_group");
-            })?;
+        let scim_entry_generic: ScimEntry = scim_sync_person.try_into().map_err(|json_err| {
+            error!(?json_err, "Unable to convert group to scim_sync_group");
+        })?;
 
         Ok(Some(scim_entry_generic))
     } else if oc.contains(&sync_config.group_objectclass) {
@@ -688,10 +687,9 @@ fn ldap_to_scim_entry(
             .set_external_id(external_id)
             .build();
 
-        let scim_entry_generic: ScimEntryGeneric =
-            scim_sync_group.try_into().map_err(|json_err| {
-                error!(?json_err, "Unable to convert group to scim_sync_group");
-            })?;
+        let scim_entry_generic: ScimEntry = scim_sync_group.try_into().map_err(|json_err| {
+            error!(?json_err, "Unable to convert group to scim_sync_group");
+        })?;
 
         Ok(Some(scim_entry_generic))
     } else {

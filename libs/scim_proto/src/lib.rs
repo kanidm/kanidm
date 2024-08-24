@@ -14,10 +14,7 @@
 use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use time::{
-    format_description::well_known::Rfc3339,
-    OffsetDateTime
-};
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -30,7 +27,7 @@ pub mod user;
 pub mod prelude {
     pub use crate::constants::*;
     pub use crate::user::MultiValueAttr;
-    pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryGeneric, ScimMeta, ScimValue};
+    pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader, ScimMeta, ScimValue};
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
@@ -155,7 +152,7 @@ pub struct ScimMeta {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimEntry {
+pub struct ScimEntryHeader {
     pub schemas: Vec<String>,
     pub id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -166,7 +163,7 @@ pub struct ScimEntry {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimEntryGeneric {
+pub struct ScimEntry {
     pub schemas: Vec<String>,
     pub id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -186,7 +183,7 @@ mod tests {
     fn parse_scim_entry() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let u: ScimEntryGeneric =
+        let u: ScimEntry =
             serde_json::from_str(RFC7643_USER).expect("Failed to parse RFC7643_USER");
 
         tracing::trace!(?u);
@@ -195,8 +192,6 @@ mod tests {
         eprintln!("{}", s);
     }
 
-
-
     // =========================================================
     // william horrible idea zone
 
@@ -204,8 +199,8 @@ mod tests {
     // because we need to hand-match on everything. But it allows us to capture unknown variants
     // and still serialise them nicely etc.
 
+    use serde::de::{self, Deserialize, Deserializer, Visitor};
     use serde::ser::{Serialize, Serializer};
-    use serde::de::{self, Visitor, Deserialize, Deserializer};
     use std::fmt;
     use uuid::Uuid;
 
@@ -245,7 +240,7 @@ mod tests {
             Ok(match v {
                 "A" => Test::A,
                 "B" => Test::B,
-                _ => Test::Unknown(v.to_string())
+                _ => Test::Unknown(v.to_string()),
             })
         }
     }
@@ -319,7 +314,6 @@ mod tests {
         where
             E: de::Error,
         {
-
             Ok(if let Ok(u) = Uuid::parse_str(v) {
                 TestB::MaybeUuid(u, v.to_string())
             } else {

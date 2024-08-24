@@ -1,4 +1,4 @@
-use crate::ScimEntry;
+use crate::ScimEntryHeader;
 use base64urlsafedata::Base64UrlSafeData;
 use std::fmt;
 use url::Url;
@@ -145,7 +145,7 @@ pub struct Group {
 #[serde(rename_all = "camelCase")]
 pub struct User {
     #[serde(flatten)]
-    entry: ScimEntry,
+    entry: ScimEntryHeader,
     // required, must be unique, string.
     user_name: String,
     // Components of the users name.

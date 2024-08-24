@@ -546,15 +546,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
         changes: &'b ScimSyncRequest,
-    ) -> Result<
-        (
-            Uuid,
-            BTreeSet<String>,
-            BTreeMap<Uuid, &'b ScimEntryGeneric>,
-            bool,
-        ),
-        OperationError,
-    > {
+    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>, bool), OperationError> {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -622,7 +614,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
-        let change_entries: BTreeMap<Uuid, &ScimEntryGeneric> = changes
+        let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
             .entries
             .iter()
             .map(|scim_entry| (scim_entry.id, scim_entry))
@@ -634,7 +626,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_2(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         if change_entries.is_empty() {
@@ -757,7 +749,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_refresh_cleanup(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         // If this is a refresh, then the providing server is sending a full state of entries
@@ -1124,7 +1116,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn scim_entry_to_mod(
         &mut self,
-        scim_ent: &ScimEntryGeneric,
+        scim_ent: &ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,
         sync_allow_attr_set: &BTreeSet<String>,
@@ -1254,7 +1246,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_3(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
         sync_authority_set: &BTreeSet<String>,
     ) -> Result<(), OperationError> {
@@ -1803,7 +1795,7 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
@@ -1871,7 +1863,7 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
@@ -1899,7 +1891,7 @@ mod tests {
 
     async fn apply_phase_3_test(
         idms: &IdmServer,
-        entries: Vec<ScimEntryGeneric>,
+        entries: Vec<ScimEntry>,
     ) -> Result<(), OperationError> {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -1937,7 +1929,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -1978,7 +1970,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2011,7 +2003,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2044,7 +2036,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2076,7 +2068,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![format!("{SCIM_SCHEMA_SYNC_1}system")],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2114,7 +2106,7 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2298,7 +2290,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2308,7 +2300,7 @@ mod tests {
                         ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
@@ -2382,7 +2374,7 @@ mod tests {
                 cookie: vec![1, 2, 3, 4].into(),
             },
             entries: vec![
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2392,7 +2384,7 @@ mod tests {
                         ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
@@ -2479,7 +2471,7 @@ mod tests {
             to_state: ScimSyncState::Active {
                 cookie: vec![1, 2, 3, 4].into(),
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: sync_uuid_a,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),

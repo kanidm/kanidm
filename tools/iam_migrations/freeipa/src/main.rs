@@ -52,8 +52,8 @@ use uuid::Uuid;
 
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::scim_v1::{
-    MultiValueAttr, ScimEntryGeneric, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson,
-    ScimSyncRequest, ScimSyncRetentionMode, ScimSyncState, ScimTotp,
+    MultiValueAttr, ScimEntry, ScimSshPubKey, ScimSyncGroup, ScimSyncPerson, ScimSyncRequest,
+    ScimSyncRetentionMode, ScimSyncState, ScimTotp,
 };
 
 use kanidm_lib_file_permissions::readonly as file_permissions_readonly;
@@ -524,7 +524,7 @@ async fn process_ipa_sync_result(
     entry_config_map: &BTreeMap<Uuid, EntryConfig>,
     is_initialise: bool,
     sync_password_as_unix_password: bool,
-) -> Result<Vec<ScimEntryGeneric>, ()> {
+) -> Result<Vec<ScimEntry>, ()> {
     // Because of how TOTP works with freeipa it's a soft referral from
     // the totp toward the user. This means if a TOTP is added or removed
     // we see those as unique entries in the syncrepl but we are missing
@@ -775,7 +775,7 @@ fn ipa_to_scim_entry(
     entry_config: &EntryConfig,
     totp: &[LdapSyncReplEntry],
     sync_password_as_unix_password: bool,
-) -> Result<Option<ScimEntryGeneric>, ()> {
+) -> Result<Option<ScimEntry>, ()> {
     debug!("{:#?}", sync_entry);
 
     // check the sync_entry state?
@@ -941,10 +941,9 @@ fn ipa_to_scim_entry(
             .set_external_id(external_id)
             .build();
 
-        let scim_entry_generic: ScimEntryGeneric =
-            scim_sync_person.try_into().map_err(|json_err| {
-                error!(?json_err, "Unable to convert group to scim_sync_group");
-            })?;
+        let scim_entry_generic: ScimEntry = scim_sync_person.try_into().map_err(|json_err| {
+            error!(?json_err, "Unable to convert group to scim_sync_group");
+        })?;
 
         Ok(Some(scim_entry_generic))
     } else if oc.contains(LDAP_CLASS_GROUPOFNAMES) {
@@ -993,10 +992,9 @@ fn ipa_to_scim_entry(
             .set_external_id(external_id)
             .build();
 
-        let scim_entry_generic: ScimEntryGeneric =
-            scim_sync_group.try_into().map_err(|json_err| {
-                error!(?json_err, "Unable to convert group to scim_sync_group");
-            })?;
+        let scim_entry_generic: ScimEntry = scim_sync_group.try_into().map_err(|json_err| {
+            error!(?json_err, "Unable to convert group to scim_sync_group");
+        })?;
 
         Ok(Some(scim_entry_generic))
     } else if oc.contains("ipatokentotp") {
