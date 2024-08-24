@@ -1153,7 +1153,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // Oauth2TokenType::Access { .. } |
             Oauth2TokenType::ClientAccess { .. } => {
                 admin_error!("attempt to refresh with an access token");
-                Err(Oauth2Error::InvalidToken)
+                Err(Oauth2Error::InvalidRequest)
             }
             Oauth2TokenType::Refresh {
                 scopes,
@@ -1167,7 +1167,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             } => {
                 if exp <= ct.as_secs() as i64 {
                     security_info!(?uuid, "refresh token has expired, ");
-                    return Err(Oauth2Error::InvalidToken);
+                    return Err(Oauth2Error::InvalidGrant);
                 }
 
                 // Check the session is still valid. This call checks the parent session
@@ -1187,7 +1187,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                         ?uuid,
                         "access token has no account not valid, returning inactive"
                     );
-                    return Err(Oauth2Error::InvalidToken);
+                    return Err(Oauth2Error::InvalidGrant);
                 };
 
                 // Check the not issued before of the session relative to this refresh iat
@@ -1199,7 +1199,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                             ?session_id,
                             "No OAuth2 session found, unable to proceed with refresh"
                         );
-                        Oauth2Error::InvalidToken
+                        Oauth2Error::InvalidGrant
                     })?;
 
                 // If the refresh token was issued previous to the time listed in our oauth2_session
@@ -1231,16 +1231,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     return Err(Oauth2Error::InvalidGrant);
                 }
 
-                // Check the scopes are identical, or None.
-                if let Some(req_scopes) = req_scopes {
-                    if &scopes != req_scopes {
+                // Check the scopes are equal or subset, OR none.
+                let update_scopes = if let Some(req_scopes) = req_scopes {
+                    if req_scopes.is_subset(&scopes) {
+                        debug!("oauth2 scopes requested, checked as valid.");
+                        // We have to return the requested set since it
+                        // may be constrained.
+                        req_scopes.clone()
+                    } else {
                         warn!("oauth2 scopes requested, invalid.");
                         return Err(Oauth2Error::InvalidScope);
-                    } else {
-                        debug!("oauth2 scopes requested, checked as valid.");
                     }
                 } else {
                     debug!("No OAuth2 scopes requested, this is valid.");
+                    // Return the initial set of scopes.
+                    scopes
                 };
 
                 // ----------
@@ -1251,7 +1256,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 self.generate_access_token_response(
                     o2rs,
                     ct,
-                    scopes,
+                    update_scopes,
                     account_uuid,
                     parent_session_id,
                     session_id,
@@ -5525,6 +5530,29 @@ mod tests {
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .expect("Unable to exchange for OAuth2 token");
 
+        // Get the user entry to check the session life was extended.
+
+        let entry = idms_prox_write
+            .qs_write
+            .internal_search_uuid(UUID_TESTPERSON_1)
+            .expect("failed");
+        let session = entry
+            .get_ava_as_oauth2session_map(Attribute::OAuth2Session)
+            .and_then(|sessions| sessions.first_key_value())
+            // If there is no map, then something is wrong.
+            .unwrap();
+
+        trace!(?session);
+        // The Oauth2 Session must be updated with a newer session time.
+        assert_eq!(
+            SessionState::ExpiresAt(
+                time::OffsetDateTime::UNIX_EPOCH
+                    + ct
+                    + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY)
+            ),
+            session.1.state
+        );
+
         assert!(idms_prox_write.commit().is_ok());
 
         trace!(?access_token_response_3);
@@ -5559,7 +5587,7 @@ mod tests {
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert!(access_token_response_4 == Oauth2Error::InvalidToken);
+        assert!(access_token_response_4 == Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5609,7 +5637,7 @@ mod tests {
             // Should be unable to exchange.
             .unwrap_err();
 
-        assert!(access_token_response_2 == Oauth2Error::InvalidToken);
+        assert!(access_token_response_2 == Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5830,6 +5858,154 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Success!
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_refresh_token_scope_constraints(
+        idms: &IdmServer,
+        idms_delayed: &mut IdmServerDelayed,
+    ) {
+        // First, setup to get a token.
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (access_token_response_1, client_authz) =
+            setup_refresh_token(idms, idms_delayed, ct).await;
+
+        // https://www.rfc-editor.org/rfc/rfc6749#section-1.5
+        // Refresh tokens are issued to the client by the authorization
+        // server and are used to obtain a new access token when the
+        // current access token becomes invalid or expires, or to obtain
+        // additional access tokens with identical or narrower scope
+        // (access tokens may have a shorter lifetime and fewer
+        // permissions than authorized by the resource owner).
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME + 10);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let refresh_token = access_token_response_1
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        // Get the initial scopes.
+        let jws_verifier = JwsDangerReleaseWithoutVerify::default();
+
+        let access_token_unverified = JwsCompact::from_str(&access_token_response_1.access_token)
+            .expect("Invalid Access Token");
+
+        let reflected_token = jws_verifier
+            .verify(&access_token_unverified)
+            .unwrap()
+            .from_json::<OAuth2RFC9068Token<OAuth2RFC9068TokenExtensions>>()
+            .expect("Failed to access internals of the refresh token");
+
+        trace!(?reflected_token);
+        let initial_scopes = reflected_token.extensions.scope;
+        trace!(?initial_scopes);
+
+        // Should be the same scopes as initial.
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let access_token_response_2 = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Unable to exchange for OAuth2 token");
+
+        let access_token_unverified = JwsCompact::from_str(&access_token_response_2.access_token)
+            .expect("Invalid Access Token");
+
+        let reflected_token = jws_verifier
+            .verify(&access_token_unverified)
+            .unwrap()
+            .from_json::<OAuth2RFC9068Token<OAuth2RFC9068TokenExtensions>>()
+            .expect("Failed to access internals of the refresh token");
+
+        assert_eq!(initial_scopes, reflected_token.extensions.scope);
+
+        let refresh_token = access_token_response_2
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        // Now the scopes can be constrained.
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: Some(["openid".to_string()].into()),
+        }
+        .into();
+
+        let access_token_response_3 = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Unable to exchange for OAuth2 token");
+
+        let access_token_unverified = JwsCompact::from_str(&access_token_response_3.access_token)
+            .expect("Invalid Access Token");
+
+        let reflected_token = jws_verifier
+            .verify(&access_token_unverified)
+            .unwrap()
+            .from_json::<OAuth2RFC9068Token<OAuth2RFC9068TokenExtensions>>()
+            .expect("Failed to access internals of the refresh token");
+
+        assert_ne!(initial_scopes, reflected_token.extensions.scope);
+
+        // Keep the constrained scopes.
+        let constrained_scopes = reflected_token.extensions.scope;
+
+        let refresh_token = access_token_response_3
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        // No scope request still issues the constrained values.
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: None,
+        }
+        .into();
+
+        let access_token_response_4 = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Unable to exchange for OAuth2 token");
+
+        let access_token_unverified = JwsCompact::from_str(&access_token_response_4.access_token)
+            .expect("Invalid Access Token");
+
+        let reflected_token = jws_verifier
+            .verify(&access_token_unverified)
+            .unwrap()
+            .from_json::<OAuth2RFC9068Token<OAuth2RFC9068TokenExtensions>>()
+            .expect("Failed to access internals of the refresh token");
+
+        assert_ne!(initial_scopes, reflected_token.extensions.scope);
+        assert_eq!(constrained_scopes, reflected_token.extensions.scope);
+
+        let refresh_token = access_token_response_4
+            .refresh_token
+            .as_ref()
+            .expect("no refresh token was issued")
+            .clone();
+
+        // We can't now extend back to the initial scopes.
+        let token_req: AccessTokenRequest = GrantTypeReq::RefreshToken {
+            refresh_token,
+            scope: Some(initial_scopes),
+        }
+        .into();
+
+        let access_token_response_5_err = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .unwrap_err();
+
+        assert_eq!(access_token_response_5_err, Oauth2Error::InvalidScope);
+
+        assert!(idms_prox_write.commit().is_ok());
     }
 
     #[test]

@@ -391,7 +391,7 @@ impl ValueSetT for ValueSetSession {
             // session.state value and what it currently is set to.
             for (k_other, v_other) in b.iter() {
                 if let Some(v_self) = self.map.get_mut(k_other) {
-                    // We only update if lower. This is where RevokedAt
+                    // We only update if greater. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
                     if v_other.state > v_self.state {
@@ -1030,7 +1030,7 @@ impl ValueSetT for ValueSetOauth2Session {
             let mut rs_filter = self.rs_filter;
             for (k_other, v_other) in b.iter() {
                 if let Some(v_self) = map.get_mut(k_other) {
-                    // We only update if lower. This is where RevokedAt
+                    // We only update if greater. This is where RevokedAt
                     // always proceeds other states, and lower revoked
                     // cids will always take effect.
                     if v_other.state > v_self.state {

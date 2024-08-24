@@ -2409,4 +2409,20 @@ mod tests {
         assert!(KeyStatus::Valid < KeyStatus::Retained);
         assert!(KeyStatus::Retained < KeyStatus::Revoked);
     }
+
+    #[test]
+    fn test_value_session_state_order() {
+        assert!(
+            SessionState::RevokedAt(Cid::new_zero()) > SessionState::RevokedAt(Cid::new_count(1))
+        );
+        assert!(
+            SessionState::RevokedAt(Cid::new_zero())
+                > SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH)
+        );
+        assert!(
+            SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH + Duration::from_secs(1))
+                > SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH)
+        );
+        assert!(SessionState::ExpiresAt(OffsetDateTime::UNIX_EPOCH) > SessionState::NeverExpires);
+    }
 }

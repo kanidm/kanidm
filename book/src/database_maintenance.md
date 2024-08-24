@@ -25,7 +25,7 @@ definitions.
 ```bash
 docker stop <container name>
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd reindex -c /data/server.toml
+    kanidm/server:latest /sbin/kanidmd database reindex -c /data/server.toml
 docker start <container name>
 ```
 
@@ -41,7 +41,7 @@ affects pagesize) in server.toml, you must run a vacuum for this to take effect:
 ```bash
 docker stop <container name>
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd vacuum -c /data/server.toml
+    kanidm/server:latest /sbin/kanidmd database vacuum -c /data/server.toml
 docker start <container name>
 ```
 
@@ -59,7 +59,7 @@ You can run a verification with:
 ```bash
 docker stop <container name>
 docker run --rm -i -t -v kanidmd:/data \
-    kanidm/server:latest /sbin/kanidmd verify -c /data/server.toml
+    kanidm/server:latest /sbin/kanidmd database verify -c /data/server.toml
 docker start <container name>
 ```
 
