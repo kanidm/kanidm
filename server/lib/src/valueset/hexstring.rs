@@ -133,12 +133,12 @@ impl ValueSetT for ValueSetHexString {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             let v = self.set.iter().next().cloned().unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().cloned().map(|v| v.into()).collect(),
             ))
         }
@@ -188,20 +188,12 @@ impl ValueSetT for ValueSetHexString {
 #[cfg(test)]
 mod tests {
     use super::ValueSetHexString;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_hexstring() {
         let vs: ValueSet =
             ValueSetHexString::new("D68475C760A7A0F6A924C28F095573A967F600D6".to_string());
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue =
-            serde_json::from_str(r#""D68475C760A7A0F6A924C28F095573A967F600D6""#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""D68475C760A7A0F6A924C28F095573A967F600D6""#);
     }
 }

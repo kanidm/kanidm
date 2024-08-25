@@ -144,12 +144,12 @@ impl ValueSetT for ValueSetIname {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             let v = self.set.iter().next().cloned().unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().cloned().map(|v| v.into()).collect(),
             ))
         }
@@ -215,18 +215,11 @@ impl ValueSetT for ValueSetIname {
 #[cfg(test)]
 mod tests {
     use super::ValueSetIname;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_iname() {
         let vs: ValueSet = ValueSetIname::new("stevo");
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#""stevo""#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""stevo""#);
     }
 }

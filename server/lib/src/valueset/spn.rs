@@ -116,14 +116,16 @@ impl ValueSetT for ValueSetSpn {
         Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         let mut iter = self.set.iter().map(|(n, d)| format!("{n}@{d}"));
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
             // Something is wrong, we should only have one?
-            Some(ScimValue::MultiSimple(iter.map(|v| v.into()).collect()))
+            Some(ScimValueKanidm::MultiSimple(
+                iter.map(|v| v.into()).collect(),
+            ))
         }
     }
 
@@ -195,18 +197,11 @@ impl ValueSetT for ValueSetSpn {
 #[cfg(test)]
 mod tests {
     use super::ValueSetSpn;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_spn() {
         let vs: ValueSet = ValueSetSpn::new(("claire".to_string(), "example.com".to_string()));
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#""claire@example.com""#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""claire@example.com""#);
     }
 }

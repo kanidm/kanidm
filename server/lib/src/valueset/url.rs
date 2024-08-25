@@ -108,7 +108,7 @@ impl ValueSetT for ValueSetUrl {
         Box::new(self.set.iter().map(|i| i.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             let v = self
                 .set
@@ -118,7 +118,7 @@ impl ValueSetT for ValueSetUrl {
                 .unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().map(|url| url.to_string().into()).collect(),
             ))
         }
@@ -176,19 +176,12 @@ impl ValueSetT for ValueSetUrl {
 #[cfg(test)]
 mod tests {
     use super::ValueSetUrl;
-    use crate::prelude::{ScimValue, Url, ValueSet};
+    use crate::prelude::{Url, ValueSet};
 
     #[test]
     fn test_scim_url() {
         let u = Url::parse("https://idm.example.com").unwrap();
         let vs: ValueSet = ValueSetUrl::new(u);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#""https://idm.example.com/""#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""https://idm.example.com/""#);
     }
 }

@@ -112,8 +112,8 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set.iter().map(|v| v.to_string().into()).collect(),
         ))
     }
@@ -166,18 +166,11 @@ impl ValueSetT for ValueSetIndex {
 #[cfg(test)]
 mod tests {
     use super::ValueSetIndex;
-    use crate::prelude::{IndexType, ScimValue, ValueSet};
+    use crate::prelude::{IndexType, ValueSet};
 
     #[test]
     fn test_scim_index() {
         let vs: ValueSet = ValueSetIndex::new(IndexType::Equality);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"["EQUALITY"]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#"["EQUALITY"]"#);
     }
 }

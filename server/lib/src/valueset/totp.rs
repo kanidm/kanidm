@@ -130,8 +130,8 @@ impl ValueSetT for ValueSetTotpSecret {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .keys()
                 .map(|label| {
@@ -211,7 +211,7 @@ impl ValueSetT for ValueSetTotpSecret {
 mod tests {
     use super::ValueSetTotpSecret;
     use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_totp() {
@@ -226,12 +226,6 @@ mod tests {
             ),
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"[{ "label":"label" }]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#"[{ "label":"label" }]"#);
     }
 }

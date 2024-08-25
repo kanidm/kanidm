@@ -101,8 +101,8 @@ impl ValueSetT for ValueSetUiHint {
         Box::new(self.set.iter().map(|u| u.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set.iter().map(|u| u.to_string().into()).collect(),
         ))
     }
@@ -155,18 +155,11 @@ impl ValueSetT for ValueSetUiHint {
 #[cfg(test)]
 mod tests {
     use super::{UiHint, ValueSetUiHint};
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_uihint() {
         let vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"["PosixAccount"]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#"["PosixAccount"]"#);
     }
 }

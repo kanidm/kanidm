@@ -417,7 +417,7 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         // TODO: This should be a reference to the image URL, not the image itself!
         // Does this mean we need to pass in the domain / origin so we can render
         // these URL's correctly?
@@ -426,7 +426,7 @@ impl ValueSetT for ValueSetImage {
         // to add one.
         //
         // TODO: Scim supports a "type" field here, but do we care?
-        Some(ScimValue::MultiComplex(
+        Some(ScimValueKanidm::MultiComplex(
             self.set
                 .iter()
                 .map(|image| {
@@ -506,8 +506,6 @@ impl ValueSetT for ValueSetImage {
 #[cfg(test)]
 mod tests {
     use super::{ImageType, ImageValue, ImageValueThings, ValueSetImage};
-    use crate::prelude::ScimValue;
-    use crate::valueset::ValueSetT;
 
     #[test]
     /// tests that we can load a bunch of test images and it'll throw errors in a way we expect
@@ -574,17 +572,12 @@ mod tests {
 
         let vs = ValueSetImage::new(image);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"[
+        let data = r#"[
           {
             "s256": "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
           }
-        ]"#,
-        )
-        .unwrap();
+        ]"#;
 
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

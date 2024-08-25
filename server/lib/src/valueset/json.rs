@@ -130,8 +130,8 @@ impl ValueSetT for ValueSetJsonFilter {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set
                 .iter()
                 .filter_map(|s| {
@@ -219,26 +219,18 @@ impl ValueSetT for ValueSetJsonFilter {
 #[cfg(test)]
 mod tests {
     use super::{ProtoFilter, ValueSetJsonFilter};
-    use crate::prelude::{Attribute, ScimValue, ValueSet};
+    use crate::prelude::{Attribute, ValueSet};
 
     #[test]
     fn test_scim_json_filter() {
         let filter = ProtoFilter::Pres(Attribute::Class.to_string());
         let vs: ValueSet = ValueSetJsonFilter::new(filter);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   "{\"pres\":\"class\"}"
 ]
-        "#,
-        )
-        .unwrap();
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

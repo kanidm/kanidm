@@ -130,7 +130,7 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         None
     }
 
@@ -320,7 +320,7 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         None
     }
 

@@ -17,7 +17,7 @@
 //! how it should recieve them.
 
 mod client;
-mod server;
+pub mod server;
 mod synch;
 
 pub use scim_proto::prelude::*;
@@ -27,4 +27,22 @@ pub use self::synch::*;
 //
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_scim_rfc_to_generic() {
+        // Assert that we can transition from the rfc generic entries to the
+        // kanidm types.
+    }
+
+    #[test]
+    fn test_scim_kani_to_generic() {
+        // Assert that a kanidm strong entry can convert to generic.
+    }
+
+    #[test]
+    fn test_scim_kani_to_rfc() {
+        // Assert that a kanidm strong entry can convert to rfc.
+    }
+}

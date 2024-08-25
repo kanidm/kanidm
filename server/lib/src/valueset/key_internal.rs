@@ -285,8 +285,8 @@ impl ValueSetT for ValueSetKeyInternal {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(kid, key_object)| {
@@ -653,13 +653,7 @@ mod tests {
         let vs: ValueSet =
             ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let mut expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "kid": "test",
@@ -668,19 +662,7 @@ mod tests {
     "validFrom": "1970-01-01T00:00:00Z"
   }
 ]
-        "#,
-        )
-        .unwrap();
-
-        match &mut expect {
-            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
-                let date_time = complex_attr.get("validFrom").unwrap();
-                let parsed_date_time = date_time.parse_as_datetime().unwrap();
-                complex_attr.insert("validFrom".to_string(), parsed_date_time);
-            }),
-            _ => unreachable!(),
-        };
-
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

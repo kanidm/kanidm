@@ -111,14 +111,14 @@ impl ValueSetT for ValueSetBool {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
 
             Some(ScimAttr::Bool(b).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().copied().map(|b| b.into()).collect(),
             ))
         }
@@ -176,15 +176,11 @@ impl ValueSetT for ValueSetBool {
 #[cfg(test)]
 mod tests {
     use super::ValueSetBool;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_boolean() {
         let vs: ValueSet = ValueSetBool::new(true);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, "true");
     }
 }

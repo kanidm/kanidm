@@ -150,8 +150,8 @@ impl ValueSetT for ValueSetCredential {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(tag, data)| {
@@ -458,8 +458,8 @@ impl ValueSetT for ValueSetIntentToken {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(token_id, intent_token_state)| {
@@ -767,8 +767,8 @@ impl ValueSetT for ValueSetPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(uuid, (tag, _))| {
@@ -976,8 +976,8 @@ impl ValueSetT for ValueSetAttestedPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(uuid, (tag, _))| {
@@ -1174,8 +1174,8 @@ impl ValueSetT for ValueSetCredentialType {
         Box::new(self.set.iter().map(|ct| ct.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set.iter().map(|ct| ct.to_string().into()).collect(),
         ))
     }
@@ -1361,8 +1361,8 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
         }
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.ca_list
                 .cas()
                 .values()
@@ -1423,7 +1423,7 @@ mod tests {
         ValueSetIntentToken,
     };
     use crate::credential::Credential;
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
     use kanidm_lib_crypto::CryptoPolicy;
     use std::time::Duration;
 
@@ -1432,23 +1432,15 @@ mod tests {
         let cred = Credential::new_password_only(&CryptoPolicy::minimum(), "Multi Pass!").unwrap();
         let vs: ValueSet = ValueSetCredential::new("label".to_string(), cred);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "is_mfa": false,
     "label": "label"
   }
 ]
-        "#,
-        )
-        .unwrap();
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -1461,13 +1453,7 @@ mod tests {
             },
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let mut expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "expires": "1970-01-01T00:05:00Z",
@@ -1475,20 +1461,8 @@ mod tests {
     "token_id": "ca6f29d1-034b-41fb-abc1-4bb9f0548e67"
   }
 ]
-        "#,
-        )
-        .unwrap();
-
-        match &mut expect {
-            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
-                let date_time = complex_attr.get("expires").unwrap();
-                let parsed_date_time = date_time.parse_as_datetime().unwrap();
-                complex_attr.insert("expires".to_string(), parsed_date_time);
-            }),
-            _ => unreachable!(),
-        };
-
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     /*
@@ -1496,55 +1470,27 @@ mod tests {
     #[test]
     fn test_scim_passkey() {
         let vs: ValueSet = ValueSetPasskey::new(true);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""#);
     }
 
     #[test]
     fn test_scim_attested_passkey() {
         let vs: ValueSet = ValueSetAttestedPasskey::new(true);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""#);
     }
     */
 
     #[test]
     fn test_scim_credential_type() {
         let vs: ValueSet = ValueSetCredentialType::new(CredentialType::Mfa);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"["mfa"]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#"["mfa"]"#);
     }
 
     /*
     #[test]
     fn test_scim_webauthn_attestation_ca_list() {
         let vs: ValueSet = ValueSetWebauthnAttestationCaList::new(true);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("true").unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""#);
     }
     */
 }

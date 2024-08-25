@@ -358,8 +358,8 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -945,8 +945,8 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -1414,8 +1414,8 @@ impl ValueSetT for ValueSetApiToken {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(token_id, token)| {
@@ -1554,8 +1554,8 @@ impl ValueSetT for ValueSetApiToken {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
+    use crate::prelude::ValueSet;
     use crate::prelude::{IdentityId, SessionScope, Uuid};
-    use crate::prelude::{ScimValue, ValueSet};
     use crate::repl::cid::Cid;
     use crate::value::{AuthType, Oauth2Session, Session, SessionState};
     use time::OffsetDateTime;
@@ -2179,10 +2179,7 @@ mod tests {
             },
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let mut expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "authType": "passkey",
@@ -2194,23 +2191,8 @@ mod tests {
     "state": "valid"
   }
 ]
-        "#,
-        )
-        .unwrap();
-
-        match &mut expect {
-            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
-                let date_time = complex_attr.get("issuedAt").unwrap();
-                let parsed_date_time = date_time.parse_as_datetime().unwrap();
-                complex_attr.insert("issuedAt".to_string(), parsed_date_time);
-            }),
-            _ => unreachable!(),
-        };
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -2227,13 +2209,7 @@ mod tests {
             },
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let mut expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "clientId": "3a163ca0-4762-4620-a188-06b750c84c86",
@@ -2243,19 +2219,8 @@ mod tests {
     "state": "valid"
   }
 ]
-        "#,
-        )
-        .unwrap();
+        "#;
 
-        match &mut expect {
-            ScimValue::MultiComplex(ref mut value) => value.iter_mut().for_each(|complex_attr| {
-                let date_time = complex_attr.get("issuedAt").unwrap();
-                let parsed_date_time = date_time.parse_as_datetime().unwrap();
-                complex_attr.insert("issuedAt".to_string(), parsed_date_time);
-            }),
-            _ => unreachable!(),
-        };
-
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

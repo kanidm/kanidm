@@ -121,13 +121,15 @@ impl ValueSetT for ValueSetCid {
         Box::new(self.set.iter().map(|c| c.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         let mut iter = self.set.iter().map(|cid| cid.to_string());
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
             Some(ScimAttr::String(v).into())
         } else {
-            Some(ScimValue::MultiSimple(iter.map(|v| v.into()).collect()))
+            Some(ScimValueKanidm::MultiSimple(
+                iter.map(|v| v.into()).collect(),
+            ))
         }
     }
 
@@ -197,21 +199,13 @@ impl ValueSetT for ValueSetCid {
 #[cfg(test)]
 mod tests {
     use super::ValueSetCid;
-    use crate::prelude::{Cid, ScimValue, ValueSet};
+    use crate::prelude::{Cid, ValueSet};
 
     #[test]
     fn test_scim_cid() {
         let vs: ValueSet = ValueSetCid::new(Cid::new_zero());
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(
-            r#""00000000000000000000000000000000-00000000-0000-0000-0000-000000000000""#,
-        )
-        .unwrap();
-        assert_eq!(scim_value, expect);
+        let data = r#""00000000000000000000000000000000-00000000-0000-0000-0000-000000000000""#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

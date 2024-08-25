@@ -133,7 +133,7 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         Box::new(iter::once(String::from("hidden")))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         None
     }
 

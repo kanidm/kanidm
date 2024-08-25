@@ -114,14 +114,14 @@ impl ValueSetT for ValueSetUint32 {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
 
             Some(ScimAttr::Integer(b as i64).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().copied().map(|b| b.into()).collect(),
             ))
         }
@@ -192,13 +192,6 @@ mod tests {
     #[test]
     fn test_scim_uint32() {
         let vs: ValueSet = ValueSetUint32::new(69);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str("69").unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, "69");
     }
 }

@@ -119,14 +119,14 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         self.set
             .iter()
             .next()
             .copied()
             .map(uuid_to_proto_string)
             .map(ScimAttr::String)
-            .map(ScimValue::Simple)
+            .map(ScimValueKanidm::Simple)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -300,8 +300,8 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set
                 .iter()
                 .copied()
@@ -371,33 +371,23 @@ impl ValueSetT for ValueSetRefer {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetRefer, ValueSetUuid};
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let scim_value = vs.to_scim_value().unwrap();
+        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
 
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue =
-            serde_json::from_str(r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
     fn test_scim_refer() {
         let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let scim_value = vs.to_scim_value().unwrap();
+        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
 
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue =
-            serde_json::from_str(r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

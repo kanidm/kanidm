@@ -136,7 +136,7 @@ impl ValueSetT for ValueSetDateTime {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         if self.len() == 1 {
             let v = self
                 .set
@@ -146,7 +146,7 @@ impl ValueSetT for ValueSetDateTime {
                 .unwrap_or(OffsetDateTime::UNIX_EPOCH);
             Some(ScimAttr::DateTime(v).into())
         } else {
-            Some(ScimValue::MultiSimple(
+            Some(ScimValueKanidm::MultiSimple(
                 self.set.iter().cloned().map(|v| v.into()).collect(),
             ))
         }
@@ -223,7 +223,7 @@ impl ValueSetT for ValueSetDateTime {
 #[cfg(test)]
 mod tests {
     use super::ValueSetDateTime;
-    use crate::prelude::{ScimAttr, ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
     use std::time::Duration;
     use time::OffsetDateTime;
 
@@ -232,13 +232,6 @@ mod tests {
         let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
         let vs: ValueSet = ValueSetDateTime::new(odt);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect = ScimValue::Simple(ScimAttr::DateTime(odt));
-
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#""stevo""#);
     }
 }

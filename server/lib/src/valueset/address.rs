@@ -163,8 +163,8 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.set
                 .iter()
                 .map(|a| {
@@ -475,8 +475,8 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             std::iter::once({
                 let mut complex_attr = ScimComplexAttr::default();
 
@@ -572,7 +572,6 @@ pub struct ValueSetPhoneNumber {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetAddress, ValueSetEmailAddress};
-    use crate::prelude::ScimValue;
     use crate::repl::cid::Cid;
     use crate::value::{Address, PartialValue, Value};
     use crate::valueset::{self, ValueSet};
@@ -663,10 +662,7 @@ mod tests {
             ) == Ok(true)
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"[
+        let data = r#"[
           {
             "primary": true,
             "value": "claire@example.com"
@@ -675,11 +671,8 @@ mod tests {
             "primary": false,
             "value": "alice@example.com"
           }
-        ]"#,
-        )
-        .unwrap();
-
-        assert_eq!(scim_value, expect);
+        ]"#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -693,10 +686,7 @@ mod tests {
             country: "Australia".to_string(),
         });
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"[
+        let data = r#"[
           {
             "country": "Australia",
             "formatted": "1 No Where Lane, Doesn't Exist, Brisbane, 0420, Australia",
@@ -705,13 +695,8 @@ mod tests {
             "region": "Brisbane",
             "streetAddress": "1 No Where Lane"
           }
-        ]"#,
-        )
-        .unwrap();
+        ]"#;
 
-        assert_eq!(scim_value, expect);
-
-        // let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        // eprintln!("{}", strout);
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

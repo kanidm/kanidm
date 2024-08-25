@@ -195,7 +195,7 @@ impl ValueSetT for ValueSetCertificate {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         let vals: Vec<ScimComplexAttr> = self
             .map
             .iter()
@@ -222,7 +222,7 @@ impl ValueSetT for ValueSetCertificate {
         if vals.is_empty() {
             None
         } else {
-            Some(ScimValue::MultiComplex(vals))
+            Some(ScimValueKanidm::MultiComplex(vals))
         }
     }
 
@@ -283,7 +283,7 @@ impl ValueSetT for ValueSetCertificate {
 #[cfg(test)]
 mod tests {
     use super::ValueSetCertificate;
-    use crate::prelude::{ScimAttr, ScimValue, ValueSet};
+    use crate::prelude::{ScimAttr, ScimValueKanidm, ValueSet};
     use kanidm_lib_crypto::x509_cert::der::DecodePem;
     use kanidm_lib_crypto::x509_cert::Certificate;
 
@@ -314,7 +314,7 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
         let scim_value = vs.to_scim_value().unwrap();
 
         let multi = match scim_value {
-            ScimValue::MultiComplex(mut map) => map.pop().unwrap(),
+            ScimValueKanidm::MultiComplex(mut map) => map.pop().unwrap(),
             _ => unreachable!(),
         };
 

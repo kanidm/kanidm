@@ -112,8 +112,8 @@ impl ValueSetT for ValueSetSyntax {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiSimple(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiSimple(
             self.set.iter().map(|v| v.to_string().into()).collect(),
         ))
     }
@@ -170,18 +170,11 @@ impl ValueSetT for ValueSetSyntax {
 #[cfg(test)]
 mod tests {
     use super::ValueSetSyntax;
-    use crate::prelude::{ScimValue, SyntaxType, ValueSet};
+    use crate::prelude::{SyntaxType, ValueSet};
 
     #[test]
     fn test_scim_syntax() {
         let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"["UUID"]"#).unwrap();
-        assert_eq!(scim_value, expect);
+        crate::valueset::scim_json_reflexive(vs, r#"["UUID"]"#);
     }
 }

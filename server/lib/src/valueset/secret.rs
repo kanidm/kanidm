@@ -102,7 +102,7 @@ impl ValueSetT for ValueSetSecret {
         Box::new(self.set.iter().map(|_| "hidden".to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
         None
     }
 

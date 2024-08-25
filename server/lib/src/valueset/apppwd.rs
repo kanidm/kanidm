@@ -186,8 +186,8 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .values()
                 .flatten()
@@ -379,10 +379,7 @@ mod tests {
         vs.insert_checked(Value::ApplicationPassword(ap3))
             .expect("Failed to insert");
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "applicationUuid": "7c3cd2b4-dc0d-43f5-999c-4912c2412405",
@@ -400,10 +397,7 @@ mod tests {
     "uuid": "740a9d06-1188-4c48-9c5c-dbf863712c66"
   }
 ]
-"#,
-        )
-        .unwrap();
-
-        assert_eq!(scim_value, expect);
+"#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

@@ -2410,15 +2410,18 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_generic(&self) -> Result<ScimEntry, OperationError> {
+    pub fn to_scim_kanidm(&self) -> Result<ScimEntryKanidm, OperationError> {
+        let attrs = Default::default();
+        /*
         let attrs = self
             .attrs
             .iter()
             .filter_map(|(k, vs)| {
                 vs.to_scim_value()
-                    .map(|scim_value| (k.to_string(), scim_value))
+                    .map(|scim_value| (k, scim_value))
             })
             .collect();
+        */
 
         let id = self.get_uuid();
 
@@ -2426,14 +2429,16 @@ impl Entry<EntryReduced, EntryCommitted> {
         // to achieve this.
         let schemas = Vec::with_capacity(0);
 
-        Ok(ScimEntry {
-            schemas,
-            id,
-            // TODO: Should be spn / name or uuid.
-            external_id: None,
-            // TODO - this one will be useful in future, but we need to change
-            // entry to store some extra metadata.
-            meta: None,
+        Ok(ScimEntryKanidm {
+            header: ScimEntryHeader {
+                schemas,
+                id,
+                // TODO: Should be spn / name or uuid.
+                external_id: None,
+                // TODO - this one will be useful in future, but we need to change
+                // entry to store some extra metadata.
+                meta: None,
+            },
             attrs,
         })
     }

@@ -152,8 +152,8 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(label, pk)| {
@@ -236,7 +236,7 @@ impl ValueSetT for ValueSetSshKey {
 #[cfg(test)]
 mod tests {
     use super::{SshPublicKey, ValueSetSshKey};
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
 
     #[test]
     fn test_scim_ssh_public_key() {
@@ -250,19 +250,14 @@ mod tests {
             SshPublicKey::from_string(ecdsa).unwrap(),
         );
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#"
+        let data = r#"
 [
   {
     "label": "label",
     "value": "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3BtOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81lzPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@amethyst"
   }
 ]
-        "#).unwrap();
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

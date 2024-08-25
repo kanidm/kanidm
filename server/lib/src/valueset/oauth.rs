@@ -115,8 +115,8 @@ impl ValueSetT for ValueSetOauthScope {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::Simple(str_join(&self.set).into()))
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::Simple(str_join(&self.set).into()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -306,8 +306,8 @@ impl ValueSetT for ValueSetOauthScopeMap {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .map(|(uuid, scopes)| {
@@ -690,8 +690,8 @@ impl ValueSetT for ValueSetOauthClaimMap {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValue> {
-        Some(ScimValue::MultiComplex(
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::MultiComplex(
             self.map
                 .iter()
                 .flat_map(|(claim_name, mappings)| {
@@ -797,7 +797,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap};
-    use crate::prelude::{ScimValue, ValueSet};
+    use crate::prelude::ValueSet;
     use crate::valueset::ValueSetT;
     use std::collections::BTreeSet;
 
@@ -819,14 +819,8 @@ mod tests {
     #[test]
     fn test_scim_oauth2_scope() {
         let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
-
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(r#""fully_sick_scope_m8""#).unwrap();
-        assert_eq!(scim_value, expect);
+        let data = r#""fully_sick_scope_m8""#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -835,23 +829,15 @@ mod tests {
         let set = ["read".to_string(), "write".to_string()].into();
         let vs: ValueSet = ValueSetOauthScopeMap::new(u, set);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "scopes": "read write",
     "uuid": "3a163ca0-4762-4620-a188-06b750c84c86"
   }
 ]
-        "#,
-        )
-        .unwrap();
-        assert_eq!(scim_value, expect);
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -860,13 +846,7 @@ mod tests {
         let set = ["read".to_string(), "write".to_string()].into();
         let vs: ValueSet = ValueSetOauthClaimMap::new_value("claim".to_string(), u, set);
 
-        let scim_value = vs.to_scim_value().unwrap();
-
-        let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-        eprintln!("{}", strout);
-
-        let expect: ScimValue = serde_json::from_str(
-            r#"
+        let data = r#"
 [
   {
     "claim": "claim",
@@ -875,9 +855,7 @@ mod tests {
     "values": "read write"
   }
 ]
-        "#,
-        )
-        .unwrap();
-        assert_eq!(scim_value, expect);
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }
