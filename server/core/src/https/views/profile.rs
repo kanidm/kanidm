@@ -4,7 +4,7 @@ use crate::https::views::errors::HtmxError;
 use crate::https::views::HtmlTemplate;
 use crate::https::ServerState;
 use askama::Template;
-use axum::extract::State;
+use axum::extract::{OriginalUri, State};
 use axum::http::Uri;
 use axum::response::{IntoResponse, Response};
 use axum::Extension;
@@ -22,6 +22,7 @@ struct ProfileView {
 #[derive(Template, Clone)]
 #[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
+    uri: Uri,
     can_rw: bool,
     account_name: String,
     display_name: String,
@@ -35,6 +36,7 @@ pub(crate) async fn view_profile_get(
     Extension(kopid): Extension<KOpId>,
     HxRequest(hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    OriginalUri(uri): OriginalUri,
 ) -> axum::response::Result<Response> {
     let uat: UserAuthToken = state
         .qe_r_ref
@@ -47,6 +49,7 @@ pub(crate) async fn view_profile_get(
     let can_rw = uat.purpose_readwrite_active(time);
 
     let profile_partial_view = ProfilePartialView {
+        uri,
         can_rw,
         account_name: uat.name().to_string(),
         display_name: uat.displayname.clone(),
