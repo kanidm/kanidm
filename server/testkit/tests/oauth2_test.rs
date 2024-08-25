@@ -9,7 +9,8 @@ use kanidm_proto::constants::*;
 use kanidm_proto::internal::Oauth2ClaimMapJoin;
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationResponse, GrantTypeReq, OidcDiscoveryResponse,
+    AccessTokenResponse, AccessTokenType, AuthorisationResponse, GrantTypeReq,
+    OidcDiscoveryResponse,
 };
 use kanidmd_lib::prelude::{Attribute, IDM_ALL_ACCOUNTS};
 use oauth2_ext::PkceCodeChallenge;
@@ -375,14 +376,14 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     assert!(tir.active);
     assert!(tir.scope.is_some());
-    assert!(tir.client_id.as_deref() == Some("test_integration"));
-    assert!(tir.username.as_deref() == Some("oauth_test@localhost"));
-    assert!(tir.token_type.as_deref() == Some("access_token"));
+    assert_eq!(tir.client_id.as_deref(), Some("test_integration"));
+    assert_eq!(tir.username.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
     assert!(tir.exp.is_some());
     assert!(tir.iat.is_some());
     assert!(tir.nbf.is_some());
     assert!(tir.sub.is_some());
-    assert!(tir.aud.as_deref() == Some("test_integration"));
+    assert_eq!(tir.aud.as_deref(), Some("test_integration"));
     assert!(tir.iss.is_none());
     assert!(tir.jti.is_none());
 
@@ -475,7 +476,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     assert!(tir.scope.is_some());
     assert!(tir.client_id.as_deref() == Some("test_integration"));
     assert!(tir.username.as_deref() == Some("test_integration@localhost"));
-    assert!(tir.token_type.as_deref() == Some("access_token"));
+    assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
 
     // auth back with admin so we can test deleting things
     let res = rsclient

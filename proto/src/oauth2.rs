@@ -173,7 +173,7 @@ pub struct OAuth2RFC9068TokenExtensions {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
     pub access_token: String,
-    pub token_type: String,
+    pub token_type: AccessTokenType,
     /// Expiration relative to `now` in seconds.
     pub expires_in: u32,
     pub refresh_token: Option<String>,
@@ -182,6 +182,14 @@ pub struct AccessTokenResponse {
     pub scope: Option<String>,
     /// If the `openid` scope was requested, an `id_token` may be present in the response.
     pub id_token: Option<String>,
+}
+
+/// Access token types, per [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-7.1)
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AccessTokenType {
+    Bearer,
+    Mac,
 }
 
 /// Request revocation of an Access or Refresh token. On success the response is OK 200
@@ -214,7 +222,7 @@ pub struct AccessTokenIntrospectResponse {
     pub scope: Option<String>,
     pub client_id: Option<String>,
     pub username: Option<String>,
-    pub token_type: Option<String>,
+    pub token_type: Option<AccessTokenType>,
     pub exp: Option<i64>,
     pub iat: Option<i64>,
     pub nbf: Option<i64>,

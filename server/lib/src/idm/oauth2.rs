@@ -34,8 +34,8 @@ pub use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
-    ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
-    TokenEndpointAuthMethod,
+    AccessTokenType, ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode,
+    ResponseType, SubjectType, TokenEndpointAuthMethod,
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
@@ -1364,7 +1364,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         Ok(AccessTokenResponse {
             access_token,
-            token_type: "Bearer".to_string(),
+            token_type: AccessTokenType::Bearer,
             expires_in,
             refresh_token: None,
             scope,
@@ -1572,7 +1572,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         Ok(AccessTokenResponse {
             access_token: access_token.to_string(),
-            token_type: "Bearer".to_string(),
+            token_type: AccessTokenType::Bearer,
             expires_in,
             refresh_token: Some(refresh_token),
             scope,
@@ -2135,7 +2135,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Some(account.spn.clone())
             };
 
-            let token_type = Some("access_token".to_string());
+            let token_type = Some(AccessTokenType::Bearer);
             Ok(AccessTokenIntrospectResponse {
                 active: true,
                 scope,
@@ -2199,7 +2199,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                         Some(str_join(&scopes))
                     };
 
-                    let token_type = Some("access_token".to_string());
+                    let token_type = Some(AccessTokenType::Bearer);
 
                     let username = if prefer_short_username {
                         entry
@@ -3145,7 +3145,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -3207,7 +3207,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -3721,7 +3721,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -3785,7 +3785,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
     }
 
     #[idm_test]
@@ -3850,7 +3850,7 @@ mod tests {
         assert!(intr_response.scope.as_deref() == Some("openid supplement"));
         assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
         assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
-        assert!(intr_response.token_type.as_deref() == Some("access_token"));
+        assert!(intr_response.token_type == Some(AccessTokenType::Bearer));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));
 
@@ -4522,7 +4522,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         let id_token = token_response.id_token.expect("No id_token in response!");
 
@@ -4950,7 +4950,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
         let id_token = token_response.id_token.expect("No id_token in response!");
 
         let jws_validator =
@@ -6145,7 +6145,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token =
@@ -6247,7 +6247,7 @@ mod tests {
         assert!(intr_response.scope.as_deref() == Some("openid supplement"));
         assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
         assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
-        assert!(intr_response.token_type.as_deref() == Some("access_token"));
+        assert!(intr_response.token_type == Some(AccessTokenType::Bearer));
         assert!(intr_response.iat == Some(ct.as_secs() as i64));
         assert!(intr_response.nbf == Some(ct.as_secs() as i64));
         // Introspect doesn't have custom claims.
@@ -6337,7 +6337,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == "Bearer");
+        assert!(token_response.token_type == AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -6368,7 +6368,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(oauth2_token.token_type == "Bearer");
+        assert_eq!(oauth2_token.token_type, AccessTokenType::Bearer);
 
         // Check Oauth2 Token Introspection
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
@@ -6392,7 +6392,7 @@ mod tests {
             intr_response.username.as_deref(),
             Some("test_resource_server@example.com")
         );
-        assert_eq!(intr_response.token_type.as_deref(), Some("access_token"));
+        assert_eq!(intr_response.token_type, Some(AccessTokenType::Bearer));
         assert_eq!(intr_response.iat, Some(ct.as_secs() as i64));
         assert_eq!(intr_response.nbf, Some(ct.as_secs() as i64));
 
