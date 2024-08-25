@@ -476,7 +476,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }
@@ -525,7 +525,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }
@@ -619,7 +619,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
                 assert!(d_group.get_ava_set(Attribute::Member).is_none());
             }
         );
@@ -681,7 +681,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }
@@ -794,7 +794,7 @@ mod tests {
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have "removed" uuid_admin being added
                 // at all.
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }
@@ -846,7 +846,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
                 // We assert to refer single here because we should have re-added the members
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }
@@ -901,7 +901,7 @@ mod tests {
                     .get_ava_set(Attribute::DynMember)
                     .expect("No members on dyn group");
 
-                assert!(members.to_refer_single() == Some(UUID_TEST_GROUP));
+                assert_eq!(members.to_refer_single(), Some(UUID_TEST_GROUP));
             }
         );
     }

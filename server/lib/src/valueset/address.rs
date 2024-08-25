@@ -536,8 +536,11 @@ mod tests {
         //
         let mut vs: ValueSet = ValueSetEmailAddress::new("claire@example.com".to_string());
 
-        assert!(vs.len() == 1);
-        assert!(vs.to_email_address_primary_str() == Some("claire@example.com"));
+        assert_eq!(vs.len(), 1);
+        assert_eq!(
+            vs.to_email_address_primary_str(),
+            Some("claire@example.com")
+        );
 
         // Add another, still not primary.
         assert!(
@@ -546,8 +549,11 @@ mod tests {
             ) == Ok(true)
         );
 
-        assert!(vs.len() == 2);
-        assert!(vs.to_email_address_primary_str() == Some("claire@example.com"));
+        assert_eq!(vs.len(), 2);
+        assert_eq!(
+            vs.to_email_address_primary_str(),
+            Some("claire@example.com")
+        );
 
         // Update primary
         assert!(
@@ -555,28 +561,34 @@ mod tests {
                 Value::new_email_address_primary_s("primary@example.com").expect("Invalid Email")
             ) == Ok(true)
         );
-        assert!(vs.to_email_address_primary_str() == Some("primary@example.com"));
+        assert_eq!(
+            vs.to_email_address_primary_str(),
+            Some("primary@example.com")
+        );
 
         // Restore from dbv1, ensure correct primary
         let vs2 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
             .expect("Failed to construct vs2 from dbvalue");
 
         assert_eq!(&vs, &vs2);
-        assert!(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
+        assert_eq!(
+            vs.to_email_address_primary_str(),
+            vs2.to_email_address_primary_str()
+        );
 
         // Remove primary, assert it's gone and that the "first" address is assigned.
         assert!(vs.remove(
             &PartialValue::new_email_address_s("primary@example.com"),
             &Cid::new_zero()
         ));
-        assert!(vs.len() == 2);
-        assert!(vs.to_email_address_primary_str() == Some("alice@example.com"));
+        assert_eq!(vs.len(), 2);
+        assert_eq!(vs.to_email_address_primary_str(), Some("alice@example.com"));
 
         // Restore from dbv1, alice persisted.
         let vs3 = valueset::from_db_valueset_v2(vs.to_db_valueset_v2())
             .expect("Failed to construct vs2 from dbvalue");
         assert_eq!(&vs, &vs3);
-        assert!(vs3.len() == 2);
+        assert_eq!(vs3.len(), 2);
         assert!(vs3
             .as_emailaddress_set()
             .map(|(_p, s)| s)
@@ -590,7 +602,7 @@ mod tests {
 
         // If we clear, no primary.
         vs.clear();
-        assert!(vs.len() == 0);
+        assert_eq!(vs.len(), 0);
         assert!(vs.to_email_address_primary_str().is_none());
     }
 }

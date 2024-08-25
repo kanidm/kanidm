@@ -283,37 +283,37 @@ mod tests {
         };
 
         let mut vs: ValueSet = ValueSetApplicationPassword::new(ap1);
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         let res = vs
             .insert_checked(Value::ApplicationPassword(ap2))
             .expect("Failed to insert");
         assert!(res);
-        assert!(vs.len() == 2);
+        assert_eq!(vs.len(), 2);
 
         let res = vs
             .insert_checked(Value::ApplicationPassword(ap3))
             .expect("Failed to insert");
         assert!(res);
-        assert!(vs.len() == 3);
+        assert_eq!(vs.len(), 3);
 
         let res = vs.remove(&PartialValue::Uuid(Uuid::new_v4()), &Cid::new_zero());
         assert!(!res);
-        assert!(vs.len() == 3);
+        assert_eq!(vs.len(), 3);
 
         let res = vs.remove(&PartialValue::Uuid(ap1_uuid), &Cid::new_zero());
         assert!(res);
-        assert!(vs.len() == 2);
+        assert_eq!(vs.len(), 2);
 
         let res = vs.remove(&PartialValue::Uuid(ap3_uuid), &Cid::new_zero());
         assert!(res);
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         let res = vs.remove(&PartialValue::Uuid(ap2_uuid), &Cid::new_zero());
         assert!(res);
-        assert!(vs.len() == 0);
+        assert_eq!(vs.len(), 0);
 
         let res = vs.as_application_password_map().unwrap();
-        assert!(res.keys().len() == 0);
+        assert_eq!(res.keys().len(), 0);
     }
 }

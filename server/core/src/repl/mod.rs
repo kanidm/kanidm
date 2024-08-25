@@ -731,7 +731,7 @@ async fn repl_acceptor(
                     ));
 
                     task_handles.push_back(handle);
-                    debug_assert!(task_handles.len() == task_tx.receiver_count());
+                    debug_assert_eq!(task_handles.len(), task_tx.receiver_count());
                 }
                 RepNodeConfig::AllowPull { consumer_cert: _ } => {}
             };

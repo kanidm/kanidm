@@ -111,7 +111,7 @@ impl ValueSetT for ValueSetDateTime {
         self.set
             .iter()
             .map(|odt| {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
                 odt.format(&Rfc3339)
                     .expect("Failed to format timestamp into RFC3339")
@@ -129,7 +129,7 @@ impl ValueSetT for ValueSetDateTime {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|odt| {
-            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+            debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
             #[allow(clippy::expect_used)]
             odt.format(&Rfc3339)
                 .expect("Failed to format timestamp into RFC3339")
@@ -141,7 +141,7 @@ impl ValueSetT for ValueSetDateTime {
             self.set
                 .iter()
                 .map(|odt| {
-                    debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                    debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                     #[allow(clippy::expect_used)]
                     odt.format(&Rfc3339)
                         .expect("Failed to format timestamp into RFC3339")
@@ -156,7 +156,7 @@ impl ValueSetT for ValueSetDateTime {
                 .set
                 .iter()
                 .map(|odt| {
-                    debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                    debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                     #[allow(clippy::expect_used)]
                     odt.format(&Rfc3339)
                         .expect("Failed to format timestamp into RFC3339")

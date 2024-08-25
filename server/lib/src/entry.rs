@@ -718,7 +718,7 @@ impl Entry<EntryIncremental, EntryNew> {
 
     pub(crate) fn is_add_conflict(&self, db_entry: &EntrySealedCommitted) -> bool {
         use crate::repl::entry::State;
-        debug_assert!(self.valid.uuid == db_entry.valid.uuid);
+        debug_assert_eq!(self.valid.uuid, db_entry.valid.uuid);
         // This is a conflict if the state 'at' is not identical
         let self_cs = &self.valid.ecstate;
         let db_cs = db_entry.get_changestate();
@@ -739,7 +739,7 @@ impl Entry<EntryIncremental, EntryNew> {
         db_ent: &EntrySealedCommitted,
     ) -> (Option<EntrySealedNew>, EntryIncrementalCommitted) {
         use crate::repl::entry::State;
-        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+        debug_assert_eq!(self.valid.uuid, db_ent.valid.uuid);
         let self_cs = &self.valid.ecstate;
         let db_cs = db_ent.get_changestate();
 
@@ -867,7 +867,7 @@ impl Entry<EntryIncremental, EntryNew> {
         use crate::repl::entry::State;
 
         // Paranoid check.
-        debug_assert!(self.valid.uuid == db_ent.valid.uuid);
+        debug_assert_eq!(self.valid.uuid, db_ent.valid.uuid);
 
         // First, determine if either side is a tombstone. This is needed so that only
         // when both sides are live
@@ -885,7 +885,7 @@ impl Entry<EntryIncremental, EntryNew> {
                     changes: changes_right,
                 },
             ) => {
-                debug_assert!(at_left == at_right);
+                debug_assert_eq!(at_left, at_right);
                 // Given the current db entry, compare and merge our attributes to
                 // form a resultant entry attr and ecstate
                 //
@@ -1702,7 +1702,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     .collect()
             }
             (Some(pre_e), Some(post_e)) => {
-                assert!(pre_e.state.id == post_e.state.id);
+                assert_eq!(pre_e.state.id, post_e.state.id);
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
@@ -3718,7 +3718,7 @@ mod tests {
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);
         eprintln!("{r1:?}");
-        assert!(r1 == Vec::with_capacity(0));
+        assert_eq!(r1, Vec::with_capacity(0));
 
         // Check generating a delete diff
         let mut del_r = Entry::idx_diff(&idxmeta, Some(&e1), None);
@@ -3836,7 +3836,7 @@ mod tests {
     fn test_entry_idx_name2uuid_diff() {
         // none, none,
         let r = Entry::idx_name2uuid_diff(None, None);
-        assert!(r == (None, None));
+        assert_eq!(r, (None, None));
 
         // none, some - test adding an entry gives back add sets
         {

@@ -352,7 +352,7 @@ mod tests {
             .internal_search_uuid(uuid_b)
             .expect("Failed to get entry.");
 
-        assert!(ent_a.get_ava_single_utf8(Attribute::Description) == Some("a"));
-        assert!(ent_b.get_ava_single_utf8(Attribute::Description) == Some("b"));
+        assert_eq!(ent_a.get_ava_single_utf8(Attribute::Description), Some("a"));
+        assert_eq!(ent_b.get_ava_single_utf8(Attribute::Description), Some("b"));
     }
 }

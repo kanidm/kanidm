@@ -1544,7 +1544,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
     }
 
@@ -1576,7 +1576,7 @@ mod tests {
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);
             // should be ok, and same as expect.
-            assert!(reduced == expect_set);
+            assert_eq!(reduced, expect_set);
         }};
     }
 
@@ -1825,7 +1825,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
         (
             $me:expr,
@@ -1852,7 +1852,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
     }
 
@@ -2073,7 +2073,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
     }
 
@@ -2227,7 +2227,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
     }
 
@@ -2334,7 +2334,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert!(res == $expect);
+            assert_eq!(res, $expect);
         }};
     }
 

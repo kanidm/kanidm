@@ -226,7 +226,7 @@ mod tests {
 
         let r2 = server_txn.search(&se1).expect("search failure");
         debug!("--> {:?}", r2);
-        assert!(r2.len() == 1);
+        assert_eq!(r2.len(), 1);
 
         // We apply some member-of in the server now, so we add these before we seal.
         e.add_ava(Attribute::Class, EntryClass::MemberOf.into());

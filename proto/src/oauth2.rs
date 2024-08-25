@@ -173,7 +173,7 @@ pub struct OAuth2RFC9068TokenExtensions {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
     pub access_token: String,
-    pub token_type: String,
+    pub token_type: AccessTokenType,
     /// Expiration relative to `now` in seconds.
     pub expires_in: u32,
     pub refresh_token: Option<String>,
@@ -182,6 +182,31 @@ pub struct AccessTokenResponse {
     pub scope: Option<String>,
     /// If the `openid` scope was requested, an `id_token` may be present in the response.
     pub id_token: Option<String>,
+}
+
+/// Access token types, per [IANA Registry - OAuth Access Token Types](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#token-types)
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
+#[serde(try_from = "&str")]
+pub enum AccessTokenType {
+    Bearer,
+    PoP,
+    #[serde(rename = "N_A")]
+    NA,
+    DPoP,
+}
+
+impl TryFrom<&str> for AccessTokenType {
+    type Error = String;
+
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s.to_lowercase().as_str() {
+            "bearer" => Ok(AccessTokenType::Bearer),
+            "pop" => Ok(AccessTokenType::PoP),
+            "n_a" => Ok(AccessTokenType::NA),
+            "dpop" => Ok(AccessTokenType::DPoP),
+            _ => Err(format!("Unknown AccessTokenType: {}", s)),
+        }
+    }
 }
 
 /// Request revocation of an Access or Refresh token. On success the response is OK 200
@@ -214,7 +239,7 @@ pub struct AccessTokenIntrospectResponse {
     pub scope: Option<String>,
     pub client_id: Option<String>,
     pub username: Option<String>,
-    pub token_type: Option<String>,
+    pub token_type: Option<AccessTokenType>,
     pub exp: Option<i64>,
     pub iat: Option<i64>,
     pub nbf: Option<i64>,
@@ -478,5 +503,25 @@ mod tests {
         .into();
 
         println!("{:?}", serde_json::to_string(&atr).expect("JSON failure"));
+    }
+
+    #[test]
+    fn test_oauth2_access_token_type_serde() {
+        for testcase in ["bearer", "Bearer", "BeArEr"] {
+            let at: super::AccessTokenType =
+                serde_json::from_str(&format!("\"{}\"", testcase)).expect("Failed to parse");
+            assert_eq!(at, super::AccessTokenType::Bearer);
+        }
+
+        for testcase in ["dpop", "dPoP", "DPOP", "DPoP"] {
+            let at: super::AccessTokenType =
+                serde_json::from_str(&format!("\"{}\"", testcase)).expect("Failed to parse");
+            assert_eq!(at, super::AccessTokenType::DPoP);
+        }
+
+        for testcase in ["cheese"] {
+            let at = serde_json::from_str::<super::AccessTokenType>(&format!("\"{}\"", testcase));
+            assert!(at.is_err())
+        }
     }
 }

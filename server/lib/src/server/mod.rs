@@ -2262,16 +2262,16 @@ mod tests {
         assert!(r2.is_err());
         // Name does exist
         let r3 = server_txn.name_to_uuid("testperson1");
-        assert!(r3 == Ok(t_uuid));
+        assert_eq!(r3, Ok(t_uuid));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.name_to_uuid("tEsTpErSoN1");
-        assert!(r4 == Ok(t_uuid));
+        assert_eq!(r4, Ok(t_uuid));
         // Name is an rdn
         let r5 = server_txn.name_to_uuid("name=testperson1");
-        assert!(r5 == Ok(t_uuid));
+        assert_eq!(r5, Ok(t_uuid));
         // Name is a dn
         let r6 = server_txn.name_to_uuid("name=testperson1,o=example");
-        assert!(r6 == Ok(t_uuid));
+        assert_eq!(r6, Ok(t_uuid));
     }
 
     #[qs_test]
@@ -2293,16 +2293,16 @@ mod tests {
 
         // Name doesn't exist
         let r1 = server_txn.sync_external_id_to_uuid("tobias");
-        assert!(r1 == Ok(None));
+        assert_eq!(r1, Ok(None));
         // Name doesn't exist (not syntax normalised)
         let r2 = server_txn.sync_external_id_to_uuid("tObIAs");
-        assert!(r2 == Ok(None));
+        assert_eq!(r2, Ok(None));
         // Name does exist
         let r3 = server_txn.sync_external_id_to_uuid("uid=testperson");
-        assert!(r3 == Ok(Some(t_uuid)));
+        assert_eq!(r3, Ok(Some(t_uuid)));
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.sync_external_id_to_uuid("uId=TeStPeRsOn");
-        assert!(r4 == Ok(Some(t_uuid)));
+        assert_eq!(r4, Ok(Some(t_uuid)));
     }
 
     #[qs_test]
@@ -2328,14 +2328,20 @@ mod tests {
         // Name doesn't exist
         let r1 = server_txn.uuid_to_spn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
-        assert!(r1 == Ok(None));
+        assert_eq!(r1, Ok(None));
         // Name does exist
         let r3 = server_txn.uuid_to_spn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{r3:?}");
-        assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
+        assert_eq!(
+            r3.unwrap().unwrap(),
+            Value::new_spn_str("testperson1", "example.com")
+        );
         // Name is not syntax normalised (but exists)
         let r4 = server_txn.uuid_to_spn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
-        assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
+        assert_eq!(
+            r4.unwrap().unwrap(),
+            Value::new_spn_str("testperson1", "example.com")
+        );
     }
 
     #[qs_test]
@@ -2361,14 +2367,14 @@ mod tests {
         // Name doesn't exist
         let r1 = server_txn.uuid_to_rdn(uuid!("bae3f507-e6c3-44ba-ad01-f8ff1083534a"));
         // There is nothing.
-        assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
+        assert_eq!(r1.unwrap(), "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
         // Name does exist
         let r3 = server_txn.uuid_to_rdn(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"));
         println!("{r3:?}");
-        assert!(r3.unwrap() == "spn=testperson1@example.com");
+        assert_eq!(r3.unwrap(), "spn=testperson1@example.com");
         // Uuid is not syntax normalised (but exists)
         let r4 = server_txn.uuid_to_rdn(uuid!("CC8E95B4-C24F-4D68-BA54-8BED76F63930"));
-        assert!(r4.unwrap() == "spn=testperson1@example.com");
+        assert_eq!(r4.unwrap(), "spn=testperson1@example.com");
     }
 
     #[qs_test]
@@ -2404,13 +2410,19 @@ mod tests {
         // test attr reference
         let r3 = server_txn.clone_value("member", "testperson1");
 
-        assert!(r3 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
+        assert_eq!(
+            r3,
+            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+        );
 
         // test attr reference already resolved.
         let r4 = server_txn.clone_value("member", "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         debug!("{:?}", r4);
-        assert!(r4 == Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))));
+        assert_eq!(
+            r4,
+            Ok(Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")))
+        );
     }
 
     #[qs_test]

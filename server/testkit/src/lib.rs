@@ -323,7 +323,7 @@ pub async fn test_read_attrs(
             _ => e.attrs.contains_key(attr.as_ref()),
         };
         trace!("is_ok: {}, is_readable: {}", is_ok, is_readable);
-        assert!(is_ok == is_readable)
+        assert_eq!(is_ok, is_readable)
     }
 }
 
@@ -338,7 +338,7 @@ pub async fn test_write_attrs(
         println!("Writing to {} - ex {}", attr, is_writeable);
         #[allow(clippy::unwrap_used)]
         let is_ok = is_attr_writable(rsclient, id, *attr).await.unwrap();
-        assert!(is_ok == is_writeable)
+        assert_eq!(is_ok, is_writeable)
     }
 }
 
@@ -354,7 +354,7 @@ pub async fn test_modify_group(
             #[allow(clippy::unwrap_used)]
             let is_writable = is_attr_writable(rsclient, group, attr).await.unwrap();
             dbg!(group, attr, is_writable, can_be_modified);
-            assert!(is_writable == can_be_modified)
+            assert_eq!(is_writable, can_be_modified)
         }
         assert!(
             rsclient

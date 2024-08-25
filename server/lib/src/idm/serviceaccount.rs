@@ -475,7 +475,7 @@ mod tests {
             .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
             .expect("Unable to verify api token.");
 
-        assert!(ident.get_uuid() == Some(testaccount_uuid));
+        assert_eq!(ident.get_uuid(), Some(testaccount_uuid));
 
         // Woohoo! Okay lets test the other edge cases.
 
@@ -499,7 +499,7 @@ mod tests {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(api_token.clone().into(), ct)
             .expect("Unable to verify api token.");
-        assert!(ident.get_uuid() == Some(testaccount_uuid));
+        assert_eq!(ident.get_uuid(), Some(testaccount_uuid));
 
         // Past gracewindow?
         assert!(

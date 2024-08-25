@@ -20,8 +20,8 @@ use uuid::Uuid;
 
 #[test]
 fn test_valueattribute_as_str() {
-    assert!(Attribute::Class.as_ref() == "class");
-    assert!(Attribute::Class.to_string() == *"class");
+    assert_eq!(Attribute::Class.as_ref(), "class");
+    assert_eq!(Attribute::Class.to_string(), *"class");
 }
 
 #[test]
@@ -32,7 +32,7 @@ fn test_valueattribute_round_trip() {
     for attr in the_list {
         let s: &'static str = attr.into();
         let attr2 = Attribute::try_from(s).unwrap();
-        assert!(attr == attr2);
+        assert_eq!(attr, attr2);
     }
 }
 

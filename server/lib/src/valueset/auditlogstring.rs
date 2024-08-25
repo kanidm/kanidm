@@ -203,7 +203,7 @@ mod tests {
     #[test]
     fn test_valueset_auditlogstring_merge() {
         let mut vs: ValueSet = ValueSetAuditLogString::new((Cid::new_count(0), "A".to_string()));
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         for i in 1..AUDIT_LOG_STRING_CAPACITY {
             vs.insert_checked(Value::AuditLogString(
@@ -213,7 +213,7 @@ mod tests {
             .unwrap();
         }
 
-        assert!(vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(vs.len(), AUDIT_LOG_STRING_CAPACITY);
 
         // Add one extra
         vs.insert_checked(Value::AuditLogString(
@@ -222,14 +222,14 @@ mod tests {
         ))
         .unwrap();
 
-        assert!(vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(vs.len(), AUDIT_LOG_STRING_CAPACITY);
 
         let mut v_iter = vs.to_value_iter();
         let Some(Value::AuditLogString(c, _s)) = v_iter.next() else {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
-        assert!(c.ts == Duration::from_secs(1));
+        assert_eq!(c.ts, Duration::from_secs(1));
         println!("{:?}", c);
         drop(v_iter);
 
@@ -238,20 +238,20 @@ mod tests {
             // Notice that 0 here is older than our other set items.
             (Cid::new_count(0), "A".to_string()),
         );
-        assert!(other_vs.len() == 1);
+        assert_eq!(other_vs.len(), 1);
 
         // Merge. The content of other_vs should be dropped.
         vs.merge(&other_vs)
             .expect("Failed to merge, incorrect types");
 
         // No change in the state of the set.
-        assert!(vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(vs.len(), AUDIT_LOG_STRING_CAPACITY);
         let mut v_iter = vs.to_value_iter();
         let Some(Value::AuditLogString(c, _s)) = v_iter.next() else {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
-        assert!(c.ts == Duration::from_secs(1));
+        assert_eq!(c.ts, Duration::from_secs(1));
         println!("{:?}", c);
         drop(v_iter);
 
@@ -266,20 +266,20 @@ mod tests {
             // Notice that 0 here is older than our other set items.
             (Cid::new_count(100), "A".to_string()),
         );
-        assert!(other_vs.len() == 1);
+        assert_eq!(other_vs.len(), 1);
 
         vs.merge(&other_vs)
             .expect("Failed to merge, incorrect types");
 
         // New value has pushed out the next oldest.
-        assert!(vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(vs.len(), AUDIT_LOG_STRING_CAPACITY);
         let mut v_iter = vs.to_value_iter();
         let Some(Value::AuditLogString(c, _s)) = v_iter.next() else {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
         println!("{:?}", c);
-        assert!(c.ts == Duration::from_secs(2));
+        assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
     }
 
@@ -287,7 +287,7 @@ mod tests {
     fn test_valueset_auditlogstring_repl_merge() {
         let zero_cid = Cid::new_zero();
         let mut vs: ValueSet = ValueSetAuditLogString::new((Cid::new_count(1), "A".to_string()));
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         for i in 2..(AUDIT_LOG_STRING_CAPACITY + 1) {
             vs.insert_checked(Value::AuditLogString(
@@ -297,14 +297,14 @@ mod tests {
             .unwrap();
         }
 
-        assert!(vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(vs.len(), AUDIT_LOG_STRING_CAPACITY);
 
         // Make a second set.
         let other_vs: ValueSet = ValueSetAuditLogString::new(
             // Notice that 0 here is older than our other set items.
             (Cid::new_count(0), "A".to_string()),
         );
-        assert!(other_vs.len() == 1);
+        assert_eq!(other_vs.len(), 1);
 
         // Merge. The content of other_vs should be dropped.
         let r_vs = vs
@@ -312,13 +312,13 @@ mod tests {
             .expect("merge did not occur");
 
         // No change in the state of the set.
-        assert!(r_vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(r_vs.len(), AUDIT_LOG_STRING_CAPACITY);
         let mut v_iter = r_vs.to_value_iter();
         let Some(Value::AuditLogString(c, _s)) = v_iter.next() else {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
-        assert!(c.ts == Duration::from_secs(1));
+        assert_eq!(c.ts, Duration::from_secs(1));
         println!("{:?}", c);
         drop(v_iter);
 
@@ -333,21 +333,21 @@ mod tests {
             // Notice that 0 here is older than our other set items.
             (Cid::new_count(100), "A".to_string()),
         );
-        assert!(other_vs.len() == 1);
+        assert_eq!(other_vs.len(), 1);
 
         let r_vs = vs
             .repl_merge_valueset(&other_vs, &zero_cid)
             .expect("merge did not occur");
 
         // New value has pushed out the next oldest.
-        assert!(r_vs.len() == AUDIT_LOG_STRING_CAPACITY);
+        assert_eq!(r_vs.len(), AUDIT_LOG_STRING_CAPACITY);
         let mut v_iter = r_vs.to_value_iter();
         let Some(Value::AuditLogString(c, _s)) = v_iter.next() else {
             unreachable!();
         };
         // Should always be '1' since the set merge would have pushed '0' (ring-buffer);
         println!("{:?}", c);
-        assert!(c.ts == Duration::from_secs(2));
+        assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
     }
 }

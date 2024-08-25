@@ -152,7 +152,7 @@ pub(crate) fn qs_test(args: TokenStream, item: TokenStream) -> TokenStream {
                 // Make sure there are no errors.
                 let verifications = test_server.verify().await;
                 trace!("Verification result: {:?}", verifications);
-                assert!(verifications.len() == 0);
+                assert_eq!(verifications.len(),0);
             };
             #[allow(clippy::expect_used, clippy::diverging_sub_expression)]
             {
@@ -351,7 +351,7 @@ pub(crate) fn idm_test(args: &TokenStream, item: TokenStream) -> TokenStream {
                 let mut idm_read_txn = test_server.proxy_read().await.unwrap();
                 let verifications = idm_read_txn.qs_read.verify();
                 trace!("Verification result: {:?}", verifications);
-                assert!(verifications.len() == 0);
+                assert_eq!(verifications.len(),0);
 
                 idms_delayed.check_is_empty_or_panic();
                 idms_audit.check_is_empty_or_panic();

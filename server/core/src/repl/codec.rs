@@ -211,7 +211,7 @@ mod tests {
         // Length header reports a zero size request.
         let zero = [0, 0, 0, 0];
         buf.extend_from_slice(&zero);
-        assert!(buf.len() == 8);
+        assert_eq!(buf.len(), 8);
         assert!(consumer_codec.decode(&mut buf).is_err());
 
         // Clear buffer - setup a request with a length > allowed max.
@@ -221,7 +221,7 @@ mod tests {
 
         // Even though the buf len is only 8, this will error as the overall
         // request will be too large.
-        assert!(buf.len() == 8);
+        assert_eq!(buf.len(), 8);
         assert!(consumer_codec.decode(&mut buf).is_err());
 
         // Assert that we request more data on a validly sized req
@@ -230,7 +230,7 @@ mod tests {
         buf.extend_from_slice(&len_bytes);
         // Pad in some extra bytes.
         buf.extend_from_slice(&zero);
-        assert!(buf.len() == 12);
+        assert_eq!(buf.len(), 12);
         assert!(matches!(consumer_codec.decode(&mut buf), Ok(None)));
 
         // Make a request that is correctly sized.

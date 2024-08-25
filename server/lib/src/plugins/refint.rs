@@ -1263,7 +1263,7 @@ mod tests {
         let dyn_member = dyna
             .get_ava_refer(Attribute::DynMember)
             .expect("Failed to get dyn member attribute");
-        assert!(dyn_member.len() == 1);
+        assert_eq!(dyn_member.len(), 1);
         assert!(dyn_member.contains(&tgroup_uuid));
 
         let group = server_txn
@@ -1273,7 +1273,7 @@ mod tests {
         let grp_member = group
             .get_ava_refer(Attribute::MemberOf)
             .expect("Failed to get memberof attribute");
-        assert!(grp_member.len() == 1);
+        assert_eq!(grp_member.len(), 1);
         assert!(grp_member.contains(&dyn_uuid));
 
         assert!(server_txn.commit().is_ok());

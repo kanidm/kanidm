@@ -41,7 +41,7 @@ fn repl_initialise(
 
     trace!(?a_ruv_range);
     trace!(?b_ruv_range);
-    assert!(a_ruv_range == b_ruv_range);
+    assert_eq!(a_ruv_range, b_ruv_range);
 
     Ok(())
 }
@@ -238,7 +238,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
 
     trace!(?a_ruv_range);
     trace!(?b_ruv_range);
-    assert!(a_ruv_range == b_ruv_range);
+    assert_eq!(a_ruv_range, b_ruv_range);
 
     server_a_txn.commit().expect("Failed to commit");
 
@@ -321,7 +321,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
 
     trace!(?a_ruv_range);
     trace!(?b_ruv_range);
-    assert!(a_ruv_range == b_ruv_range);
+    assert_eq!(a_ruv_range, b_ruv_range);
 
     // Assert the entry is now present, and the same on both sides
     let e1 = server_a_txn
@@ -331,7 +331,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
         .internal_search_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -387,7 +387,7 @@ async fn test_repl_increment_basic_entry_recycle(server_a: &QueryServer, server_
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -455,7 +455,7 @@ async fn test_repl_increment_basic_entry_tombstone(server_a: &QueryServer, serve
 
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -617,7 +617,7 @@ async fn test_repl_increment_basic_bidirectional_write(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     // Now perform a write on A
     assert!(server_a_txn
@@ -642,7 +642,7 @@ async fn test_repl_increment_basic_bidirectional_write(
         .expect("Unable to access entry.");
 
     // They are consistent again.
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.get_ava_set(Attribute::Description).is_none());
 
     server_b_txn.commit().expect("Failed to commit");
@@ -703,11 +703,11 @@ async fn test_repl_increment_basic_deleted_attr(server_a: &QueryServer, server_b
 
     // They are consistent again.
     assert!(e1.get_ava_set(Attribute::Description).is_none());
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
     assert!(e1_cs.get_attr_cid(Attribute::Description).is_some());
 
     server_b_txn.commit().expect("Failed to commit");
@@ -766,7 +766,7 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     // Now perform a write on A
     assert!(server_a_txn
@@ -817,9 +817,15 @@ async fn test_repl_increment_simultaneous_bidirectional_write(
         .expect("Unable to access entry.");
 
     // They are consistent again.
-    assert!(e1 == e2);
-    assert!(e1.get_ava_single_utf8(Attribute::Description) == Some("repl_test"));
-    assert!(e1.get_ava_single_utf8(Attribute::DisplayName) == Some("repl_test"));
+    assert_eq!(e1, e2);
+    assert_eq!(
+        e1.get_ava_single_utf8(Attribute::Description),
+        Some("repl_test")
+    );
+    assert_eq!(
+        e1.get_ava_single_utf8(Attribute::DisplayName),
+        Some("repl_test")
+    );
 }
 
 // Create entry on A -> B
@@ -878,7 +884,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -902,7 +908,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
         .expect("Unable to access entry.");
 
     // They are consistent again.
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Recycled.into()));
 
     server_b_txn.commit().expect("Failed to commit");
@@ -959,7 +965,7 @@ async fn test_repl_increment_basic_bidirectional_lifecycle(
 
     // Ts on both.
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1015,7 +1021,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1049,7 +1055,7 @@ async fn test_repl_increment_basic_bidirectional_recycle(
 
     // They are equal, but their CL states are not. e2 should have been
     // retained due to being the latest!
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Recycled.into()));
 
     // Remember entry comparison doesn't compare last_mod_cid.
@@ -1092,11 +1098,11 @@ async fn test_repl_increment_basic_bidirectional_recycle(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1143,7 +1149,7 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1196,7 +1202,7 @@ async fn test_repl_increment_basic_bidirectional_tombstone(
 
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
     assert!(e2.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
-    assert!(e1.get_last_changed() == e2.get_last_changed());
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -1314,7 +1320,7 @@ async fn test_repl_increment_creation_uuid_conflict(
     trace!(?e1_acc);
     trace!(?e2_acc);
 
-    assert!(e1.get_last_changed() == e2.get_last_changed());
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
 
     let cnf_a = server_a_txn
         .internal_search_conflict_uuid(t_uuid)
@@ -1322,7 +1328,10 @@ async fn test_repl_increment_creation_uuid_conflict(
         // Should be a vec.
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("testperson1"));
+    assert_eq!(
+        cnf_a.get_ava_single_iname(Attribute::Name),
+        Some("testperson1")
+    );
 
     let cnf_b = server_b_txn
         .internal_search_conflict_uuid(t_uuid)
@@ -1364,7 +1373,7 @@ async fn test_repl_increment_creation_uuid_conflict(
     trace!(?cnf_a);
     trace!(?cnf_b);
 
-    assert!(cnf_a.get_last_changed() == cnf_b.get_last_changed());
+    assert_eq!(cnf_a.get_last_changed(), cnf_b.get_last_changed());
 
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
@@ -1477,7 +1486,7 @@ async fn test_repl_increment_create_tombstone_uuid_conflict(
     let e2 = server_b_txn
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_b_txn.commit().expect("Failed to commit");
@@ -1575,7 +1584,7 @@ async fn test_repl_increment_create_tombstone_conflict(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.attribute_equality(Attribute::Class, &EntryClass::Tombstone.into()));
 
     server_a_txn.commit().expect("Failed to commit");
@@ -1624,7 +1633,7 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1747,7 +1756,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -1874,7 +1883,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -2009,7 +2018,7 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -2149,11 +2158,11 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
         .internal_search_all_uuid(UUID_DOMAIN_INFO)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
     // Check that an existing user was updated properly.
     let e1 = server_a_txn
@@ -2165,11 +2174,11 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     let vx1 = e1.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex1 = Value::new_spn_str("admin", "new.example.com");
-    assert!(vx1 == ex1);
+    assert_eq!(vx1, ex1);
 
     trace!(?e1);
     trace!(?e2);
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     // Due to the domain rename, the spn regens on everything. This only occurs
     // once per-replica, and is not unlimited.
@@ -2192,7 +2201,7 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     let vx2 = e2.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex2 = Value::new_spn_str("testperson1", "new.example.com");
-    assert!(vx2 == ex2);
+    assert_eq!(vx2, ex2);
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -2220,12 +2229,12 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     let vx1 = e1.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex1 = Value::new_spn_str("admin", "new.example.com");
-    assert!(vx1 == ex1);
-    assert!(e1 == e2);
+    assert_eq!(vx1, ex1);
+    assert_eq!(e1, e2);
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
     // Check the test person is back over and now in sync.
     let e1 = server_a_txn
@@ -2237,12 +2246,12 @@ async fn test_repl_increment_domain_rename(server_a: &QueryServer, server_b: &Qu
 
     let vx2 = e2.get_ava_single(Attribute::Spn).expect("spn not present");
     let ex2 = Value::new_spn_str("testperson1", "new.example.com");
-    assert!(vx2 == ex2);
-    assert!(e1 == e2);
+    assert_eq!(vx2, ex2);
+    assert_eq!(e1, e2);
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -2306,7 +2315,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
         .internal_search_all_uuid(s_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
@@ -2315,7 +2324,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -2379,7 +2388,7 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
         .internal_search_all_uuid(g_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1 = server_a_txn
         .internal_search_all_uuid(t_uuid)
@@ -2388,7 +2397,7 @@ async fn test_repl_increment_memberof_basic(server_a: &QueryServer, server_b: &Q
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(e1.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_uuid)));
     // We should also check dyngroups too here :)
     assert!(e1.attribute_equality(
@@ -2496,7 +2505,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
         .internal_search_all_uuid(g_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
     assert!(e1.attribute_equality(
         Attribute::Name,
@@ -2510,7 +2519,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(!e1.attribute_equality(Attribute::MemberOf, &PartialValue::Refer(g_uuid)));
 
     server_a_txn.commit().expect("Failed to commit");
@@ -2622,9 +2631,9 @@ async fn test_repl_increment_refint_tombstone(server_a: &QueryServer, server_b: 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
 
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
 
     server_a_txn.commit().expect("Failed to commit");
@@ -2723,9 +2732,9 @@ async fn test_repl_increment_refint_conflict(server_a: &QueryServer, server_b: &
 
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
 
     server_a_txn.commit().expect("Failed to commit");
@@ -2839,8 +2848,8 @@ async fn test_repl_increment_refint_delete_to_member_holder(
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
 
-    assert!(e1_cs == e2_cs);
-    assert!(e1 == e2);
+    assert_eq!(e1_cs, e2_cs);
+    assert_eq!(e1, e2);
     assert!(!e1.attribute_equality(Attribute::Member, &PartialValue::Refer(t_uuid)));
 
     server_b_txn.commit().expect("Failed to commit");
@@ -2933,7 +2942,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .internal_search_all_uuid(g_a_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     let e1 = server_a_txn
         .internal_search_all_uuid(g_b_uuid)
@@ -2942,7 +2951,7 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .internal_search_all_uuid(g_b_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
@@ -2986,14 +2995,20 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .expect("Unable to search conflict entries.")
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+    assert_eq!(
+        cnf_a.get_ava_single_iname(Attribute::Name),
+        Some("name_conflict")
+    );
 
     let cnf_b = server_a_txn
         .internal_search_conflict_uuid(g_b_uuid)
         .expect("Unable to search conflict entries.")
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_b.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+    assert_eq!(
+        cnf_b.get_ava_single_iname(Attribute::Name),
+        Some("name_conflict")
+    );
 
     // Check the person has MO A/B removed.
     let e = server_a_txn
@@ -3025,14 +3040,20 @@ async fn test_repl_increment_attrunique_conflict_basic(
         .expect("Unable to search conflict entries.")
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+    assert_eq!(
+        cnf_a.get_ava_single_iname(Attribute::Name),
+        Some("name_conflict")
+    );
 
     let cnf_b = server_b_txn
         .internal_search_conflict_uuid(g_b_uuid)
         .expect("Unable to search conflict entries.")
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_b.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+    assert_eq!(
+        cnf_b.get_ava_single_iname(Attribute::Name),
+        Some("name_conflict")
+    );
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -3151,7 +3172,10 @@ async fn test_repl_increment_attrunique_conflict_complex(
         .expect("Unable to search conflict entries.")
         .pop()
         .expect("No conflict entries present");
-    assert!(cnf_a.get_ava_single_iname(Attribute::Name) == Some("name_conflict"));
+    assert_eq!(
+        cnf_a.get_ava_single_iname(Attribute::Name),
+        Some("name_conflict")
+    );
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -3342,7 +3366,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
         .get_ava_as_session_map(Attribute::UserAuthTokenSession)
         .unwrap();
 
-    assert!(sessions_a.len() == 1);
+    assert_eq!(sessions_a.len(), 1);
     assert!(sessions_a.get(&session_id_a).is_some());
     assert!(sessions_a.get(&session_id_b).is_none());
 
@@ -3350,7 +3374,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
         .get_ava_as_session_map(Attribute::UserAuthTokenSession)
         .unwrap();
 
-    assert!(sessions_b.len() == 2);
+    assert_eq!(sessions_b.len(), 2);
     assert!(sessions_b.get(&session_id_a).is_some());
     assert!(sessions_b.get(&session_id_b).is_some());
 
@@ -3374,10 +3398,10 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
     let e1_cs = e1.get_changestate();
     let e2_cs = e2.get_changestate();
 
-    assert!(e1_cs == e2_cs);
+    assert_eq!(e1_cs, e2_cs);
     trace!(?e1);
     trace!(?e2);
-    assert!(e1 == e2);
+    assert_eq!(e1, e2);
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -3460,7 +3484,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.get_last_changed() == e2.get_last_changed());
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
@@ -3603,7 +3627,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.get_last_changed() == e2.get_last_changed());
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
 
     server_a_txn.commit().expect("Failed to commit");
     drop(server_b_txn);
@@ -3620,7 +3644,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
         .internal_search_all_uuid(t_uuid)
         .expect("Unable to access entry.");
 
-    assert!(e1.get_last_changed() == e2.get_last_changed());
+    assert_eq!(e1.get_last_changed(), e2.get_last_changed());
 
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
