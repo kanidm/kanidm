@@ -184,12 +184,14 @@ pub struct AccessTokenResponse {
     pub id_token: Option<String>,
 }
 
-/// Access token types, per [RFC 6749](https://datatracker.ietf.org/doc/html/rfc6749#section-7.1)
+/// Access token types, per [IANA Registry - OAuth Access Token Types](https://www.iana.org/assignments/oauth-parameters/oauth-parameters.xhtml#token-types)
 #[derive(Serialize, Deserialize, Debug, Eq, PartialEq)]
-#[serde(rename_all = "lowercase")]
 pub enum AccessTokenType {
     Bearer,
-    Mac,
+    PoP,
+    #[serde(rename = "N_A")]
+    NA,
+    DPoP,
 }
 
 /// Request revocation of an Access or Refresh token. On success the response is OK 200
