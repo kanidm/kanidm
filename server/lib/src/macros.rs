@@ -98,7 +98,7 @@ macro_rules! run_create_test {
                 .unwrap();
             let r = qs_write.create(&ce);
             trace!("test result: {:?}", r);
-            assert!(r == $expect);
+            assert_eq!(r, $expect);
             $check(&mut qs_write);
             match r {
                 Ok(_) => {
@@ -117,7 +117,7 @@ macro_rules! run_create_test {
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
-        assert!(ver.len() == 0);
+        assert_eq!(ver.len(), 0);
     }};
 }
 
@@ -172,7 +172,7 @@ macro_rules! run_modify_test {
             let r = qs_write.modify(&me);
             $check(&mut qs_write);
             trace!("test result: {:?}", r);
-            assert!(r == $expect);
+            assert_eq!(r, $expect);
             match r {
                 Ok(_) => {
                     qs_write.commit().expect("commit failure!");
@@ -190,7 +190,7 @@ macro_rules! run_modify_test {
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
-        assert!(ver.len() == 0);
+        assert_eq!(ver.len(), 0);
     }};
 }
 
@@ -226,7 +226,7 @@ macro_rules! run_delete_test {
             let r = qs_write.delete(&de);
             trace!("test result: {:?}", r);
             $check(&mut qs_write);
-            assert!(r == $expect);
+            assert_eq!(r, $expect);
             match r {
                 Ok(_) => {
                     qs_write.commit().expect("commit failure!");
@@ -244,7 +244,7 @@ macro_rules! run_delete_test {
             .unwrap()
             .block_on(qs.verify());
         trace!("verification -> {:?}", ver);
-        assert!(ver.len() == 0);
+        assert_eq!(ver.len(), 0);
     }};
 }
 

@@ -884,13 +884,13 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, "admin@example.com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         // Setting UNIX_PW_BIND flag to false:
         // Hence all of the below authentication will fail (asserts are still satisfied)
@@ -905,7 +905,10 @@ mod tests {
             .is_ok());
         assert!(idms_prox_write.commit().is_ok());
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
         assert!(
             ldaps.do_bind(idms, "", "test").await.unwrap_err() == OperationError::NotAuthenticated
         );
@@ -927,25 +930,25 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, "admin@example.com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, STR_UUID_ADMIN, TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, "name=admin,dc=example,dc=com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(
                 idms,
@@ -955,7 +958,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(
                 idms,
@@ -965,20 +968,20 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         let admin_t = ldaps
             .do_bind(idms, "name=admin", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, "spn=admin@example.com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(
                 idms,
@@ -988,20 +991,20 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         let admin_t = ldaps
             .do_bind(idms, "admin,dc=example,dc=com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(idms, "admin@example.com,dc=example,dc=com", TEST_PASSWORD)
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
         let admin_t = ldaps
             .do_bind(
                 idms,
@@ -1011,7 +1014,7 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(admin_t.effective_session == LdapSession::UnixBind(UUID_ADMIN));
+        assert_eq!(admin_t.effective_session, LdapSession::UnixBind(UUID_ADMIN));
 
         // Bad password, check last to prevent softlocking of the admin account.
         assert!(ldaps
@@ -1120,7 +1123,10 @@ mod tests {
 
         // Setup the anonymous login
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         // Searches under application base DN must show same content
         let sr = SearchRequest {
@@ -1149,7 +1155,7 @@ mod tests {
             .await
             .unwrap();
         assert!(!r1.is_empty());
-        assert!(r1.len() == r2.len());
+        assert_eq!(r1.len(), r2.len());
     }
 
     #[idm_test]
@@ -1606,7 +1612,7 @@ mod tests {
             .application_auth_ldap(&lae, time_low)
             .await
             .expect_err("Authentication succeeded");
-        assert!(r1 == OperationError::SessionExpired);
+        assert_eq!(r1, OperationError::SessionExpired);
 
         let r1 = idms_auth
             .application_auth_ldap(&lae, time)
@@ -1618,7 +1624,7 @@ mod tests {
             .application_auth_ldap(&lae, time_high)
             .await
             .expect_err("Authentication succeeded");
-        assert!(r1 == OperationError::SessionExpired);
+        assert_eq!(r1, OperationError::SessionExpired);
     }
 
     macro_rules! assert_entry_contains {
@@ -1688,7 +1694,10 @@ mod tests {
 
         // Setup the anonymous login.
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         // Check that when we request *, we get default list.
         let sr = SearchRequest {
@@ -1704,7 +1713,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -1739,7 +1748,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -1786,7 +1795,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -1912,13 +1921,16 @@ mod tests {
 
         // Bind with anonymous, search and show mail attr isn't accessible.
         let anon_lbt = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_lbt.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_lbt.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         let r1 = ldaps
             .do_search(idms, &sr, &anon_lbt, Source::Internal)
             .await
             .unwrap();
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -1945,7 +1957,10 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner.clone()));
+        assert_eq!(
+            sa_lbt.effective_session,
+            LdapSession::ApiToken(apitoken_inner.clone())
+        );
 
         // Bind using the token as a pw
         let sa_lbt = ldaps
@@ -1953,14 +1968,17 @@ mod tests {
             .await
             .unwrap()
             .unwrap();
-        assert!(sa_lbt.effective_session == LdapSession::ApiToken(apitoken_inner));
+        assert_eq!(
+            sa_lbt.effective_session,
+            LdapSession::ApiToken(apitoken_inner)
+        );
 
         // Search and retrieve mail that's now accessible.
         let r1 = ldaps
             .do_search(idms, &sr, &sa_lbt, Source::Internal)
             .await
             .unwrap();
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2020,7 +2038,7 @@ mod tests {
             .await
             .unwrap();
 
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2073,7 +2091,10 @@ mod tests {
 
         // Setup the anonymous login.
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         // Check that when we request a virtual attr by name *and* all_attrs we get all the requested values.
         let sr = SearchRequest {
@@ -2095,7 +2116,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2142,7 +2163,10 @@ mod tests {
 
         // Setup the anonymous login.
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         // If we request only 1.1, we get no attributes.
         let sr = SearchRequest {
@@ -2158,7 +2182,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_eq!(
@@ -2188,7 +2212,7 @@ mod tests {
             .unwrap();
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2209,7 +2233,10 @@ mod tests {
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         let sr = SearchRequest {
             msgid: 1,
@@ -2226,7 +2253,7 @@ mod tests {
         trace!(?r1);
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2262,7 +2289,10 @@ mod tests {
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         let sr = SearchRequest {
             msgid: 1,
@@ -2279,7 +2309,7 @@ mod tests {
         trace!(?r1);
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2324,7 +2354,10 @@ mod tests {
 
         // Setup the anonymous login.
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         // SSSD tries to just search for silly attrs all the time. We ignore them.
         let sr = SearchRequest {
@@ -2356,7 +2389,7 @@ mod tests {
             .unwrap();
 
         // Empty results and ldap proto success msg.
-        assert!(r1.len() == 1);
+        assert_eq!(r1.len(), 1);
 
         // Second search
 
@@ -2382,7 +2415,7 @@ mod tests {
         trace!(?r1);
 
         // The result, and the ldap proto success msg.
-        assert!(r1.len() == 2);
+        assert_eq!(r1.len(), 2);
         match &r1[0].op {
             LdapOp::SearchResultEntry(lsre) => {
                 assert_entry_contains!(
@@ -2432,11 +2465,14 @@ mod tests {
 
         // Setup the anonymous login.
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
-        assert!(anon_t.effective_session == LdapSession::UnixBind(UUID_ANONYMOUS));
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
 
         #[track_caller]
         fn assert_compare_result(r: &[LdapMsg], code: &LdapResultCode) {
-            assert!(r.len() == 1);
+            assert_eq!(r.len(), 1);
             match &r[0].op {
                 LdapOp::CompareResult(lcr) => {
                     assert_eq!(&lcr.code, code);

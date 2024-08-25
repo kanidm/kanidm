@@ -338,7 +338,7 @@ mod tests {
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
-                        assert!(totp.len() == 1);
+                        assert_eq!(totp.len(), 1);
                         assert!(webauthn.is_empty());
                         assert!(backup_code.is_none());
                     }
@@ -399,12 +399,12 @@ mod tests {
                     .expect("failed to get primary cred.");
                 match &c.type_ {
                     CredentialType::PasswordMfa(_pw, totp, webauthn, backup_code) => {
-                        assert!(totp.len() == 2);
+                        assert_eq!(totp.len(), 2);
                         assert!(webauthn.is_empty());
                         assert!(backup_code.is_none());
 
-                        assert!(totp.get("a") == Some(&totp_a));
-                        assert!(totp.get("b") == Some(&totp_b));
+                        assert_eq!(totp.get("a"), Some(&totp_a));
+                        assert_eq!(totp.get("b"), Some(&totp_b));
                     }
                     _ => panic!("Oh no"),
                 };

@@ -1138,8 +1138,8 @@ mod tests {
         let m2 = dbtxn
             .get_group_members(uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"))
             .unwrap();
-        assert!(m1[0].name == "testuser");
-        assert!(m2[0].name == "testuser");
+        assert_eq!(m1[0].name, "testuser");
+        assert_eq!(m2[0].name, "testuser");
 
         // Now alter testuser, remove gt2, update.
         ut1.groups = vec![gt1];
@@ -1152,7 +1152,7 @@ mod tests {
         let m2 = dbtxn
             .get_group_members(uuid::uuid!("b500be97-8552-42a5-aca0-668bc5625705"))
             .unwrap();
-        assert!(m1[0].name == "testuser");
+        assert_eq!(m1[0].name, "testuser");
         assert!(m2.is_empty());
 
         assert!(dbtxn.commit().is_ok());
@@ -1193,7 +1193,10 @@ mod tests {
         // test adding a group
         dbtxn.update_group(&gt1, 0).unwrap();
         let r0 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r0.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
+        assert_eq!(
+            r0.unwrap().0.uuid,
+            uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16")
+        );
 
         // Do the "rename" of gt1 which is what would allow gt2 to be valid.
         gt1.name = "testgroup2".to_string();
@@ -1201,7 +1204,10 @@ mod tests {
         // Now, add gt2 which dups on gt1 name/spn.
         dbtxn.update_group(&gt2, 0).unwrap();
         let r2 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r2.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
+        assert_eq!(
+            r2.unwrap().0.uuid,
+            uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b")
+        );
         let r3 = dbtxn.get_group(&id_name2).unwrap();
         assert!(r3.is_none());
 
@@ -1210,9 +1216,15 @@ mod tests {
 
         // Both now coexist
         let r4 = dbtxn.get_group(&id_name).unwrap();
-        assert!(r4.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
+        assert_eq!(
+            r4.unwrap().0.uuid,
+            uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b")
+        );
         let r5 = dbtxn.get_group(&id_name2).unwrap();
-        assert!(r5.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
+        assert_eq!(
+            r5.unwrap().0.uuid,
+            uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16")
+        );
 
         assert!(dbtxn.commit().is_ok());
     }
@@ -1262,7 +1274,10 @@ mod tests {
         // test adding an account
         dbtxn.update_account(&ut1, 0).unwrap();
         let r0 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r0.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
+        assert_eq!(
+            r0.unwrap().0.uuid,
+            uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16")
+        );
 
         // Do the "rename" of gt1 which is what would allow gt2 to be valid.
         ut1.name = "testuser2".to_string();
@@ -1270,7 +1285,10 @@ mod tests {
         // Now, add gt2 which dups on gt1 name/spn.
         dbtxn.update_account(&ut2, 0).unwrap();
         let r2 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r2.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
+        assert_eq!(
+            r2.unwrap().0.uuid,
+            uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b")
+        );
         let r3 = dbtxn.get_account(&id_name2).unwrap();
         assert!(r3.is_none());
 
@@ -1279,9 +1297,15 @@ mod tests {
 
         // Both now coexist
         let r4 = dbtxn.get_account(&id_name).unwrap();
-        assert!(r4.unwrap().0.uuid == uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b"));
+        assert_eq!(
+            r4.unwrap().0.uuid,
+            uuid::uuid!("799123b2-3802-4b19-b0b8-1ffae2aa9a4b")
+        );
         let r5 = dbtxn.get_account(&id_name2).unwrap();
-        assert!(r5.unwrap().0.uuid == uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16"));
+        assert_eq!(
+            r5.unwrap().0.uuid,
+            uuid::uuid!("0302b99c-f0f6-41ab-9492-852692b0fd16")
+        );
 
         assert!(dbtxn.commit().is_ok());
     }

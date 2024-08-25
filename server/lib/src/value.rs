@@ -871,7 +871,7 @@ impl PartialValue {
             PartialValue::Spn(name, realm) => format!("{name}@{realm}"),
             PartialValue::Uint32(u) => u.to_string(),
             PartialValue::DateTime(odt) => {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                 #[allow(clippy::expect_used)]
                 odt.format(&Rfc3339)
                     .expect("Failed to format timestamp into RFC3339")
@@ -1642,7 +1642,7 @@ impl Value {
     pub fn to_datetime(&self) -> Option<OffsetDateTime> {
         match &self {
             Value::DateTime(odt) => {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                 Some(*odt)
             }
             _ => None,
@@ -2244,12 +2244,12 @@ mod tests {
         // check it's indexing output
         let vidx_key = spnv.generate_idx_eq_keys().pop().unwrap();
         let idx_key = spnp.get_idx_eq_key();
-        assert!(idx_key == vidx_key);
+        assert_eq!(idx_key,vidx_key);
         // check it can parse from name@realm
         let spn_parse = PartialValue::new_spn_s("claire@example.net.au").unwrap();
-        assert!(spn_parse == spnp);
+        assert_eq!(spn_parse,spnp);
         // check it can produce name@realm as str from the pv.
-        assert!("claire@example.net.au" == spnv.to_proto_string_clone());
+        assert_eq!("claire@example.net.au",spnv.to_proto_string_clone());
     }
     */
 
@@ -2265,7 +2265,7 @@ mod tests {
         let idx_key = u32pv.get_idx_eq_key();
         let vidx_key = u32v.generate_idx_eq_keys().pop().unwrap();
 
-        assert!(idx_key == vidx_key);
+        assert_eq!(idx_key,vidx_key);
     }
     */
 

@@ -2217,10 +2217,10 @@ mod tests {
                 match state {
                     AuthState::Choose(mut conts) => {
                         // Should only be one auth mech
-                        assert!(conts.len() == 1);
+                        assert_eq!(conts.len(), 1);
                         // And it should be anonymous
                         let m = conts.pop().expect("Should not fail");
-                        assert!(m == AuthMech::Anonymous);
+                        assert_eq!(m, AuthMech::Anonymous);
                     }
                     _ => {
                         error!("A critical error has occurred! We have a non-continue result!");
@@ -2263,8 +2263,8 @@ mod tests {
                 match state {
                     AuthState::Continue(allowed) => {
                         // Check the uat.
-                        assert!(allowed.len() == 1);
-                        assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
+                        assert_eq!(allowed.len(), 1);
+                        assert_eq!(allowed.first(), Some(&AuthAllowed::Anonymous));
                     }
                     _ => {
                         error!("A critical error has occurred! We have a non-continue result!");
@@ -2662,7 +2662,7 @@ mod tests {
             .expect("Failed to generate radius auth token");
 
         // view the token?
-        assert!(r1 == tok_r.secret);
+        assert_eq!(r1, tok_r.secret);
     }
 
     #[idm_test]
@@ -2716,19 +2716,19 @@ mod tests {
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
 
-        assert!(tok_g.name == "testgroup");
-        assert!(tok_g.spn == "testgroup@example.com");
+        assert_eq!(tok_g.name, "testgroup");
+        assert_eq!(tok_g.spn, "testgroup@example.com");
 
         let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN);
         let tok_r = idms_prox_read
             .get_unixusertoken(&uute, duration_from_epoch_now())
             .expect("Failed to generate unix user token");
 
-        assert!(tok_r.name == "admin");
-        assert!(tok_r.spn == "admin@example.com");
-        assert!(tok_r.groups.len() == 2);
-        assert!(tok_r.groups[0].name == "admin");
-        assert!(tok_r.groups[1].name == "testgroup");
+        assert_eq!(tok_r.name, "admin");
+        assert_eq!(tok_r.spn, "admin@example.com");
+        assert_eq!(tok_r.groups.len(), 2);
+        assert_eq!(tok_r.groups[0].name, "admin");
+        assert_eq!(tok_r.groups[1].name, "testgroup");
         assert!(tok_r.valid);
 
         // Show we can get the admin as a unix group token too
@@ -2740,8 +2740,8 @@ mod tests {
             .get_unixgrouptoken(&ugte)
             .expect("Failed to generate unix group token");
 
-        assert!(tok_g.name == "admin");
-        assert!(tok_g.spn == "admin@example.com");
+        assert_eq!(tok_g.name, "admin");
+        assert_eq!(tok_g.spn, "admin@example.com");
     }
 
     #[idm_test]
@@ -2871,7 +2871,7 @@ mod tests {
         // The second is the auth session record
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
-        assert!(Ok(true) == r);
+        assert_eq!(Ok(true), r);
 
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let person_entry = idms_prox_read
@@ -3094,14 +3094,14 @@ mod tests {
             .get_unixusertoken(&uute, time_low)
             .expect("Failed to generate unix user token");
 
-        assert!(tok_r.name == "testperson1");
+        assert_eq!(tok_r.name, "testperson1");
         assert!(!tok_r.valid);
 
         let tok_r = idms_prox_read
             .get_unixusertoken(&uute, time_high)
             .expect("Failed to generate unix user token");
 
-        assert!(tok_r.name == "testperson1");
+        assert_eq!(tok_r.name, "testperson1");
         assert!(!tok_r.valid);
     }
 
@@ -3241,7 +3241,7 @@ mod tests {
 
         match state {
             AuthState::Denied(reason) => {
-                assert!(reason == "Account is temporarily locked");
+                assert_eq!(reason, "Account is temporarily locked");
             }
             _ => {
                 error!("Sessions was not denied (softlock)");
@@ -3393,7 +3393,7 @@ mod tests {
                 } = ar;
                 match state {
                     AuthState::Denied(reason) => {
-                        assert!(reason == "Account is temporarily locked");
+                        assert_eq!(reason, "Account is temporarily locked");
                     }
                     _ => {
                         error!("A critical error has occurred! We have a non-denied result!");
@@ -3480,7 +3480,7 @@ mod tests {
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         // Persist it.
         let r = idms.delayed_action(ct, da).await;
-        assert!(Ok(true) == r);
+        assert_eq!(Ok(true), r);
         idms_delayed.check_is_empty_or_panic();
 
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
@@ -3537,7 +3537,7 @@ mod tests {
         });
         // Persist it.
         let r = idms.delayed_action(ct, da).await;
-        assert!(Ok(true) == r);
+        assert_eq!(Ok(true), r);
 
         // Check it was written, and check
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
@@ -3548,7 +3548,7 @@ mod tests {
         let sessions = admin
             .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
-        assert!(sessions.len() == 1);
+        assert_eq!(sessions.len(), 1);
         let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
         assert!(matches!(session_data_a.state, SessionState::ExpiresAt(_)));
 
@@ -3569,7 +3569,7 @@ mod tests {
         });
         // Persist it.
         let r = idms.delayed_action(expiry_a, da).await;
-        assert!(Ok(true) == r);
+        assert_eq!(Ok(true), r);
 
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
         let admin = idms_prox_read
@@ -3580,7 +3580,7 @@ mod tests {
             .get_ava_as_session_map(Attribute::UserAuthTokenSession)
             .expect("Sessions must be present!");
         trace!(?sessions);
-        assert!(sessions.len() == 2);
+        assert_eq!(sessions.len(), 2);
 
         let session_data_a = sessions.get(&session_a).expect("Session A is missing!");
         assert!(matches!(session_data_a.state, SessionState::RevokedAt(_)));
@@ -3616,7 +3616,7 @@ mod tests {
         let da = idms_delayed.try_recv().expect("invalid");
         assert!(matches!(da, DelayedAction::AuthSessionRecord(_)));
         let r = idms.delayed_action(ct, da).await;
-        assert!(Ok(true) == r);
+        assert_eq!(Ok(true), r);
 
         let mut idms_prox_read = idms.proxy_read().await.unwrap();
 
@@ -3742,10 +3742,10 @@ mod tests {
                 match state {
                     AuthState::Choose(mut conts) => {
                         // Should only be one auth mech
-                        assert!(conts.len() == 1);
+                        assert_eq!(conts.len(), 1);
                         // And it should be anonymous
                         let m = conts.pop().expect("Should not fail");
-                        assert!(m == AuthMech::Anonymous);
+                        assert_eq!(m, AuthMech::Anonymous);
                     }
                     _ => {
                         error!("A critical error has occurred! We have a non-continue result!");
@@ -3781,8 +3781,8 @@ mod tests {
                 match state {
                     AuthState::Continue(allowed) => {
                         // Check the uat.
-                        assert!(allowed.len() == 1);
-                        assert!(allowed.first() == Some(&AuthAllowed::Anonymous));
+                        assert_eq!(allowed.len(), 1);
+                        assert_eq!(allowed.first(), Some(&AuthAllowed::Anonymous));
                     }
                     _ => {
                         error!("A critical error has occurred! We have a non-continue result!");

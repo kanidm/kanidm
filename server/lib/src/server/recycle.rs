@@ -339,14 +339,14 @@ mod tests {
 
         // Can in be seen by special search? (external recycle search)
         let r2 = server_txn.search(&sre_rc).expect("search failed");
-        assert!(r2.len() == 2);
+        assert_eq!(r2.len(), 2);
 
         // Can it be seen (internal search)
         // Internal search should see it.
         let r2 = server_txn
             .internal_search(filt_i_rc.clone())
             .expect("internal search failed");
-        assert!(r2.len() == 2);
+        assert_eq!(r2.len(), 2);
 
         // There are now two paths forward
         //  revival or purge!
@@ -357,7 +357,7 @@ mod tests {
         let r3 = server_txn
             .internal_search(filt_i_rc.clone())
             .expect("internal search failed");
-        assert!(r3.len() == 1);
+        assert_eq!(r3.len(), 1);
 
         // Commit
         assert!(server_txn.commit().is_ok());
@@ -378,13 +378,13 @@ mod tests {
         let r5 = server_txn
             .internal_search(filt_i_ts.clone())
             .expect("internal search failed");
-        assert!(r5.len() == 1);
+        assert_eq!(r5.len(), 1);
 
         // There should be one entry
         let r6 = server_txn
             .internal_search(filt_i_per.clone())
             .expect("internal search failed");
-        assert!(r6.len() == 1);
+        assert_eq!(r6.len(), 1);
 
         assert!(server_txn.commit().is_ok());
     }
@@ -422,7 +422,7 @@ mod tests {
         let filt_rc = filter_all!(f_eq(Attribute::Class, EntryClass::Recycled.into()));
         let sre_rc = SearchEvent::new_rec_impersonate_entry(admin, filt_rc);
         let r2 = server_txn.search(&sre_rc).expect("search failed");
-        assert!(r2.len() == 1);
+        assert_eq!(r2.len(), 1);
 
         // Create dup uuid (rej)
         // After a delete -> recycle, create duplicate name etc.
@@ -455,14 +455,17 @@ mod tests {
         let cr = server_txn.create(&ce);
         assert!(cr.is_ok());
 
-        assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
+        assert_eq!(
+            server_txn.uuid_to_rdn(tuuid),
+            Ok("spn=testperson1@example.com".to_string())
+        );
 
         assert!(
             server_txn.uuid_to_spn(tuuid)
                 == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
         );
 
-        assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
+        assert_eq!(server_txn.name_to_uuid("testperson1"), Ok(tuuid));
 
         // delete
         let de_sin = DeleteEvent::new_internal_invalid(filter!(f_eq(
@@ -477,7 +480,7 @@ mod tests {
                 == Ok("uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string())
         );
 
-        assert!(server_txn.uuid_to_spn(tuuid) == Ok(None));
+        assert_eq!(server_txn.uuid_to_spn(tuuid), Ok(None));
 
         assert!(server_txn.name_to_uuid("testperson1").is_err());
 
@@ -494,14 +497,17 @@ mod tests {
 
         // all checks pass
 
-        assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
+        assert_eq!(
+            server_txn.uuid_to_rdn(tuuid),
+            Ok("spn=testperson1@example.com".to_string())
+        );
 
         assert!(
             server_txn.uuid_to_spn(tuuid)
                 == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
         );
 
-        assert!(server_txn.name_to_uuid("testperson1") == Ok(tuuid));
+        assert_eq!(server_txn.name_to_uuid("testperson1"), Ok(tuuid));
     }
 
     #[qs_test]
@@ -581,7 +587,7 @@ mod tests {
         let r2 = server_txn
             .internal_search(filt_i_ts.clone())
             .expect("internal search failed");
-        assert!(r2.len() == 1);
+        assert_eq!(r2.len(), 1);
 
         // If we purge now, nothing happens, we aren't past the time window.
         assert!(server_txn.purge_tombstones().is_ok());
@@ -589,7 +595,7 @@ mod tests {
         let r3 = server_txn
             .internal_search(filt_i_ts.clone())
             .expect("internal search failed");
-        assert!(r3.len() == 1);
+        assert_eq!(r3.len(), 1);
 
         // Commit
         assert!(server_txn.commit().is_ok());

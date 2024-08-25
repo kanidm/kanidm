@@ -26,13 +26,13 @@ async fn test_ldap_to_scim() {
         serde_json::to_string_pretty(&scim_sync_request).unwrap()
     );
 
-    assert!(scim_sync_request.from_state == expect_scim_request.from_state);
+    assert_eq!(scim_sync_request.from_state,expect_scim_request.from_state);
 
-    assert!(scim_sync_request.to_state == expect_scim_request.to_state);
+    assert_eq!(scim_sync_request.to_state,expect_scim_request.to_state);
 
-    assert!(scim_sync_request.entries == expect_scim_request.entries);
+    assert_eq!(scim_sync_request.entries,expect_scim_request.entries);
 
-    assert!(scim_sync_request.delete_uuids == expect_scim_request.delete_uuids);
+    assert_eq!(scim_sync_request.delete_uuids,expect_scim_request.delete_uuids);
 }
 
 const TEST_LDAP_SYNC_REPL_1: &str = r#"

@@ -1164,7 +1164,7 @@ impl<'a> BackendWriteTransaction<'a> {
             return Err(OperationError::EmptyRequest);
         }
 
-        assert!(post_entries.len() == pre_entries.len());
+        assert_eq!(post_entries.len(), pre_entries.len());
 
         let post_entries_iter = post_entries.iter().filter(|e| {
             trace!(?cid);
@@ -1464,7 +1464,7 @@ impl<'a> BackendWriteTransaction<'a> {
             }
             (Some(pre), Some(post)) => {
                 trace!("Attempting to modify entry indexes");
-                assert!(pre.get_id() == post.get_id());
+                assert_eq!(pre.get_id(), post.get_id());
                 (
                     post.get_uuid(),
                     post.get_id(),
@@ -2689,11 +2689,11 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             let sid1 = be.get_db_s_uuid().unwrap();
             let sid2 = be.get_db_s_uuid().unwrap();
-            assert!(sid1 == sid2);
+            assert_eq!(sid1, sid2);
             let sid3 = be.reset_db_s_uuid().unwrap();
             assert!(sid1 != sid3);
             let sid4 = be.get_db_s_uuid().unwrap();
-            assert!(sid3 == sid4);
+            assert_eq!(sid3, sid4);
         });
     }
 
@@ -2702,7 +2702,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
             let missing = be.missing_idxs().unwrap();
-            assert!(missing.len() == 7);
+            assert_eq!(missing.len(), 7);
             assert!(be.reindex().is_ok());
             let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
@@ -2736,7 +2736,7 @@ mod tests {
             be.danger_purge_idxs().unwrap();
             // Check they are gone
             let missing = be.missing_idxs().unwrap();
-            assert!(missing.len() == 7);
+            assert_eq!(missing.len(), 7);
             assert!(be.reindex().is_ok());
             let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
@@ -2852,15 +2852,30 @@ mod tests {
             let claire_uuid = uuid!("bd651620-00dd-426b-aaa0-4494f7b7906f");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
 
-            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
-            assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
-            assert!(be.name2uuid("db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
+            assert_eq!(be.name2uuid("claire"), Ok(Some(claire_uuid)));
+            assert_eq!(be.name2uuid("william"), Ok(Some(william_uuid)));
+            assert_eq!(
+                be.name2uuid("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+                Ok(None)
+            );
             // check uuid2spn
-            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::new_iname("william"))));
+            assert_eq!(
+                be.uuid2spn(claire_uuid),
+                Ok(Some(Value::new_iname("claire")))
+            );
+            assert_eq!(
+                be.uuid2spn(william_uuid),
+                Ok(Some(Value::new_iname("william")))
+            );
             // check uuid2rdn
-            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
-            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
+            assert_eq!(
+                be.uuid2rdn(claire_uuid),
+                Ok(Some("name=claire".to_string()))
+            );
+            assert_eq!(
+                be.uuid2rdn(william_uuid),
+                Ok(Some("name=william".to_string()))
+            );
         });
     }
 
@@ -2916,9 +2931,12 @@ mod tests {
             );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
-            assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("william"))));
-            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
+            assert_eq!(be.name2uuid("william"), Ok(Some(william_uuid)));
+            assert_eq!(be.uuid2spn(william_uuid), Ok(Some(Value::from("william"))));
+            assert_eq!(
+                be.uuid2rdn(william_uuid),
+                Ok(Some("name=william".to_string()))
+            );
 
             // == Now we reap_tombstones, and assert we removed the items.
             let e1_ts = e1.to_tombstone(CID_ONE.clone()).into_sealed_committed();
@@ -2957,9 +2975,9 @@ mod tests {
                 Some(Vec::with_capacity(0))
             );
 
-            assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.uuid2spn(william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(william_uuid) == Ok(None));
+            assert_eq!(be.name2uuid("william"), Ok(None));
+            assert_eq!(be.uuid2spn(william_uuid), Ok(None));
+            assert_eq!(be.uuid2rdn(william_uuid), Ok(None));
         })
     }
 
@@ -3043,19 +3061,25 @@ mod tests {
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
             let lucy_uuid = uuid!("7b23c99d-c06b-4a9a-a958-3afa56383e1d");
 
-            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
+            assert_eq!(be.name2uuid("claire"), Ok(Some(claire_uuid)));
             let x = be.uuid2spn(claire_uuid);
             trace!(?x);
-            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert_eq!(
+                be.uuid2spn(claire_uuid),
+                Ok(Some(Value::new_iname("claire")))
+            );
+            assert_eq!(
+                be.uuid2rdn(claire_uuid),
+                Ok(Some("name=claire".to_string()))
+            );
 
-            assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.uuid2spn(william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(william_uuid) == Ok(None));
+            assert_eq!(be.name2uuid("william"), Ok(None));
+            assert_eq!(be.uuid2spn(william_uuid), Ok(None));
+            assert_eq!(be.uuid2rdn(william_uuid), Ok(None));
 
-            assert!(be.name2uuid("lucy") == Ok(None));
-            assert!(be.uuid2spn(lucy_uuid) == Ok(None));
-            assert!(be.uuid2rdn(lucy_uuid) == Ok(None));
+            assert_eq!(be.name2uuid("lucy"), Ok(None));
+            assert_eq!(be.uuid2spn(lucy_uuid), Ok(None));
+            assert_eq!(be.uuid2rdn(lucy_uuid), Ok(None));
         })
     }
 
@@ -3125,10 +3149,16 @@ mod tests {
             );
 
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
-            assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.name2uuid("claire") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=claire".to_string())));
+            assert_eq!(be.name2uuid("william"), Ok(None));
+            assert_eq!(be.name2uuid("claire"), Ok(Some(william_uuid)));
+            assert_eq!(
+                be.uuid2spn(william_uuid),
+                Ok(Some(Value::new_iname("claire")))
+            );
+            assert_eq!(
+                be.uuid2rdn(william_uuid),
+                Ok(Some("name=claire".to_string()))
+            );
         })
     }
 
@@ -3210,12 +3240,18 @@ mod tests {
 
             let claire_uuid = uuid!("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8");
             let william_uuid = uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1");
-            assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
-            assert!(be.uuid2spn(william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(william_uuid) == Ok(None));
-            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert_eq!(be.name2uuid("william"), Ok(None));
+            assert_eq!(be.name2uuid("claire"), Ok(Some(claire_uuid)));
+            assert_eq!(be.uuid2spn(william_uuid), Ok(None));
+            assert_eq!(be.uuid2rdn(william_uuid), Ok(None));
+            assert_eq!(
+                be.uuid2spn(claire_uuid),
+                Ok(Some(Value::new_iname("claire")))
+            );
+            assert_eq!(
+                be.uuid2rdn(claire_uuid),
+                Ok(Some("name=claire".to_string()))
+            );
         })
     }
 
@@ -3262,7 +3298,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => {
                     panic!("");
@@ -3282,7 +3318,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_in_and.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => {
                     panic!("");
@@ -3303,7 +3339,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
             match r {
                 IdList::Partial(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => unreachable!(),
             }
@@ -3311,7 +3347,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_p2.to_inner(), 0).unwrap();
             match r {
                 IdList::Partial(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => unreachable!(),
             }
@@ -3323,7 +3359,7 @@ mod tests {
             trace!(?r, ?plan);
             match r {
                 IdList::Partial(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => unreachable!(),
             }
@@ -3351,7 +3387,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => {
                     panic!("");
@@ -3380,7 +3416,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
+                    assert_eq!(idl, IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3396,7 +3432,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
+                    assert_eq!(idl, IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3411,7 +3447,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(Vec::with_capacity(0)));
+                    assert_eq!(idl, IDLBitRange::from_iter(Vec::with_capacity(0)));
                 }
                 _ => {
                     panic!("");
@@ -3428,7 +3464,7 @@ mod tests {
             match r {
                 IdList::Indexed(idl) => {
                     debug!("{:?}", idl);
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => {
                     panic!("");
@@ -3443,7 +3479,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![1]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![1]));
                 }
                 _ => {
                     panic!("");
@@ -3482,7 +3518,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_e_or.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![]));
                 }
                 _ => {
                     panic!("");
@@ -3494,7 +3530,7 @@ mod tests {
             let (r, _plan) = be.filter2idl(f_e_and.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
-                    assert!(idl == IDLBitRange::from_iter(vec![]));
+                    assert_eq!(idl, IDLBitRange::from_iter(vec![]));
                 }
                 _ => {
                     panic!("");
@@ -3658,9 +3694,9 @@ mod tests {
 
             // check deny on allids
             let res = be.search(&lim_deny_allids, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
             let res = be.exists(&lim_deny_allids, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
         })
     }
 
@@ -3698,7 +3734,7 @@ mod tests {
 
             // check deny on entry max
             let res = be.search(&lim_deny, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
             let res = be.exists(&lim_deny, &filt);
             assert!(res.is_ok());
@@ -3706,7 +3742,7 @@ mod tests {
             // --> This will shortcut due to indexing.
             assert!(be.reindex().is_ok());
             let res = be.search(&lim_deny, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
             let res = be.exists(&lim_deny, &filt);
             assert!(res.is_ok());
@@ -3775,10 +3811,10 @@ mod tests {
 
             // check deny on entry max
             let res = be.search(&lim_deny, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
             let res = be.exists(&lim_deny, &filt);
-            assert!(res == Err(OperationError::ResourceLimit));
+            assert_eq!(res, Err(OperationError::ResourceLimit));
         })
     }
 

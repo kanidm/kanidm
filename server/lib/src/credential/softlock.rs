@@ -277,7 +277,10 @@ mod tests {
         let ct4 = ct2 + Duration::from_secs(2);
         slock2.apply_time_step(ct4);
         eprintln!("{:?}", slock2.peek_state());
-        assert!(slock2.peek_state() == &LockState::Unlocked(2, Duration::from_secs(ONEDAY)));
+        assert_eq!(
+            slock2.peek_state(),
+            &LockState::Unlocked(2, Duration::from_secs(ONEDAY))
+        );
         slock2.apply_time_step(ct3);
         assert!(slock2.is_state_init());
         assert!(slock2.is_valid());

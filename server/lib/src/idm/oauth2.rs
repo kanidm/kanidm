@@ -3125,7 +3125,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert!(permit_success.state == "123");
+        assert_eq!(permit_success.state, "123");
 
         // == Submit the token exchange code.
 
@@ -3145,7 +3145,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -3187,7 +3187,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert!(permit_success.state == "123");
+        assert_eq!(permit_success.state, "123");
 
         // == Submit the token exchange code.
 
@@ -3207,7 +3207,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -3701,7 +3701,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert!(permit_success.state == "123");
+        assert_eq!(permit_success.state, "123");
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -3721,7 +3721,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
 
@@ -3762,7 +3762,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         // Check we are reflecting the CSRF properly.
-        assert!(permit_success.state == "123");
+        assert_eq!(permit_success.state, "123");
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -3785,7 +3785,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
     }
 
     #[idm_test]
@@ -3847,12 +3847,18 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert!(intr_response.scope.as_deref() == Some("openid supplement"));
-        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
-        assert!(intr_response.token_type == Some(AccessTokenType::Bearer));
-        assert!(intr_response.iat == Some(ct.as_secs() as i64));
-        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
+        assert_eq!(
+            intr_response.client_id.as_deref(),
+            Some("test_resource_server")
+        );
+        assert_eq!(
+            intr_response.username.as_deref(),
+            Some("testperson1@example.com")
+        );
+        assert_eq!(intr_response.token_type, Some(AccessTokenType::Bearer));
+        assert_eq!(intr_response.iat, Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.nbf, Some(ct.as_secs() as i64));
 
         drop(idms_prox_read);
         // start a write,
@@ -4195,7 +4201,7 @@ mod tests {
             .check_oauth2_authorise_reject(&ident, &consent_token, ct)
             .expect("Failed to perform OAuth2 reject");
 
-        assert!(reject_success == redirect_uri);
+        assert_eq!(reject_success, redirect_uri);
 
         // Too much time past to reject
         let past_ct = Duration::from_secs(TEST_CURRENT_TIME + 301);
@@ -4282,9 +4288,15 @@ mod tests {
                 ])
         );
 
-        assert!(discovery.response_types_supported == vec![ResponseType::Code]);
-        assert!(discovery.response_modes_supported == vec![ResponseMode::Query]);
-        assert!(discovery.grant_types_supported == vec![GrantType::AuthorisationCode]);
+        assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
+        assert_eq!(
+            discovery.response_modes_supported,
+            vec![ResponseMode::Query]
+        );
+        assert_eq!(
+            discovery.grant_types_supported,
+            vec![GrantType::AuthorisationCode]
+        );
         assert!(
             discovery.token_endpoint_auth_methods_supported
                 == vec![
@@ -4376,7 +4388,7 @@ mod tests {
                     (JwaAlg::ES256, IdTokenSignAlg::ES256) => {}
                     _ => panic!(),
                 };
-                assert!(use_.unwrap() == JwkUse::Sig);
+                assert_eq!(use_.unwrap(), JwkUse::Sig);
                 assert!(kid.is_some())
             }
             _ => panic!(),
@@ -4424,11 +4436,20 @@ mod tests {
                 ])
         );
 
-        assert!(discovery.response_types_supported == vec![ResponseType::Code]);
-        assert!(discovery.response_modes_supported == vec![ResponseMode::Query]);
-        assert!(discovery.grant_types_supported == vec![GrantType::AuthorisationCode]);
-        assert!(discovery.subject_types_supported == vec![SubjectType::Public]);
-        assert!(discovery.id_token_signing_alg_values_supported == vec![IdTokenSignAlg::ES256]);
+        assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
+        assert_eq!(
+            discovery.response_modes_supported,
+            vec![ResponseMode::Query]
+        );
+        assert_eq!(
+            discovery.grant_types_supported,
+            vec![GrantType::AuthorisationCode]
+        );
+        assert_eq!(discovery.subject_types_supported, vec![SubjectType::Public]);
+        assert_eq!(
+            discovery.id_token_signing_alg_values_supported,
+            vec![IdTokenSignAlg::ES256]
+        );
         assert!(discovery.userinfo_signing_alg_values_supported.is_none());
         assert!(
             discovery.token_endpoint_auth_methods_supported
@@ -4437,8 +4458,11 @@ mod tests {
                     TokenEndpointAuthMethod::ClientSecretPost
                 ]
         );
-        assert!(discovery.display_values_supported == Some(vec![DisplayValue::Page]));
-        assert!(discovery.claim_types_supported == vec![ClaimType::Normal]);
+        assert_eq!(
+            discovery.display_values_supported,
+            Some(vec![DisplayValue::Page])
+        );
+        assert_eq!(discovery.claim_types_supported, vec![ClaimType::Normal]);
         assert!(discovery.claims_supported.is_none());
         assert!(discovery.service_documentation.is_some());
 
@@ -4522,7 +4546,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         let id_token = token_response.id_token.expect("No id_token in response!");
 
@@ -4566,22 +4590,25 @@ mod tests {
                 == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
                     .unwrap()
         );
-        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
-        assert!(oidc.aud == "test_resource_server");
-        assert!(oidc.iat == iat);
-        assert!(oidc.nbf == Some(iat));
+        assert_eq!(oidc.sub, OidcSubject::U(UUID_TESTPERSON_1));
+        assert_eq!(oidc.aud, "test_resource_server");
+        assert_eq!(oidc.iat, iat);
+        assert_eq!(oidc.nbf, Some(iat));
         // Previously this was the auth session but it's now inline with the access token expiry.
-        assert!(oidc.exp == iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
+        assert_eq!(oidc.exp, iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
         assert!(oidc.auth_time.is_none());
         // Is nonce correctly passed through?
-        assert!(oidc.nonce == Some("abcdef".to_string()));
+        assert_eq!(oidc.nonce, Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
-        assert!(oidc.azp == Some("test_resource_server".to_string()));
+        assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
-        assert!(oidc.s_claims.name == Some("Test Person 1".to_string()));
-        assert!(oidc.s_claims.preferred_username == Some("testperson1@example.com".to_string()));
+        assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
+        assert_eq!(
+            oidc.s_claims.preferred_username,
+            Some("testperson1@example.com".to_string())
+        );
         assert!(
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
@@ -4592,20 +4619,20 @@ mod tests {
             .oauth2_openid_userinfo("test_resource_server", access_token, ct)
             .expect("failed to get userinfo");
 
-        assert!(oidc.iss == userinfo.iss);
-        assert!(oidc.sub == userinfo.sub);
-        assert!(oidc.aud == userinfo.aud);
-        assert!(oidc.iat == userinfo.iat);
-        assert!(oidc.nbf == userinfo.nbf);
-        assert!(oidc.exp == userinfo.exp);
+        assert_eq!(oidc.iss, userinfo.iss);
+        assert_eq!(oidc.sub, userinfo.sub);
+        assert_eq!(oidc.aud, userinfo.aud);
+        assert_eq!(oidc.iat, userinfo.iat);
+        assert_eq!(oidc.nbf, userinfo.nbf);
+        assert_eq!(oidc.exp, userinfo.exp);
         assert!(userinfo.auth_time.is_none());
-        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
-        assert!(oidc.amr == userinfo.amr);
-        assert!(oidc.azp == userinfo.azp);
+        assert_eq!(oidc.amr, userinfo.amr);
+        assert_eq!(oidc.azp, userinfo.azp);
         assert!(userinfo.jti.is_none());
-        assert!(oidc.s_claims == userinfo.s_claims);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
 
         drop(idms_prox_read);
@@ -4637,20 +4664,20 @@ mod tests {
             .oauth2_openid_userinfo("test_resource_server", access_token, ct)
             .expect("failed to get userinfo");
 
-        assert!(oidc.iss == userinfo.iss);
-        assert!(oidc.sub == userinfo.sub);
-        assert!(oidc.aud == userinfo.aud);
-        assert!(oidc.iat == userinfo.iat);
-        assert!(oidc.nbf == userinfo.nbf);
-        assert!(oidc.exp == userinfo.exp);
+        assert_eq!(oidc.iss, userinfo.iss);
+        assert_eq!(oidc.sub, userinfo.sub);
+        assert_eq!(oidc.aud, userinfo.aud);
+        assert_eq!(oidc.iat, userinfo.iat);
+        assert_eq!(oidc.nbf, userinfo.nbf);
+        assert_eq!(oidc.exp, userinfo.exp);
         assert!(userinfo.auth_time.is_none());
-        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
-        assert!(oidc.amr == userinfo.amr);
-        assert!(oidc.azp == userinfo.azp);
+        assert_eq!(oidc.amr, userinfo.amr);
+        assert_eq!(oidc.azp, userinfo.azp);
         assert!(userinfo.jti.is_none());
-        assert!(oidc.s_claims == userinfo.s_claims);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert!(userinfo.claims.is_empty());
     }
 
@@ -4730,13 +4757,16 @@ mod tests {
             .expect("Failed to verify oidc");
 
         // Do we have the short username in the token claims?
-        assert!(oidc.s_claims.preferred_username == Some("testperson1".to_string()));
+        assert_eq!(
+            oidc.s_claims.preferred_username,
+            Some("testperson1".to_string())
+        );
         // Do the id_token details line up to the userinfo?
         let userinfo = idms_prox_read
             .oauth2_openid_userinfo("test_resource_server", access_token, ct)
             .expect("failed to get userinfo");
 
-        assert!(oidc.s_claims == userinfo.s_claims);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
     }
 
     #[idm_test]
@@ -4831,7 +4861,7 @@ mod tests {
             .expect("failed to get userinfo");
 
         // does the userinfo endpoint provide the same groups?
-        assert!(oidc.claims.get("groups") == userinfo.claims.get("groups"));
+        assert_eq!(oidc.claims.get("groups"), userinfo.claims.get("groups"));
     }
 
     //  Check insecure pkce behaviour.
@@ -4904,7 +4934,7 @@ mod tests {
                     (JwaAlg::RS256, IdTokenSignAlg::RS256) => {}
                     _ => panic!(),
                 };
-                assert!(use_.unwrap() == JwkUse::Sig);
+                assert_eq!(use_.unwrap(), JwkUse::Sig);
                 assert!(kid.is_some());
             }
             _ => panic!(),
@@ -4950,7 +4980,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
         let id_token = token_response.id_token.expect("No id_token in response!");
 
         let jws_validator =
@@ -4967,7 +4997,7 @@ mod tests {
             .verify_exp(iat)
             .expect("Failed to verify oidc");
 
-        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
+        assert_eq!(oidc.sub, OidcSubject::U(UUID_TESTPERSON_1));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5587,7 +5617,7 @@ mod tests {
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert!(access_token_response_4 == Oauth2Error::InvalidGrant);
+        assert_eq!(access_token_response_4, Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5637,7 +5667,7 @@ mod tests {
             // Should be unable to exchange.
             .unwrap_err();
 
-        assert!(access_token_response_2 == Oauth2Error::InvalidGrant);
+        assert_eq!(access_token_response_2, Oauth2Error::InvalidGrant);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5676,7 +5706,7 @@ mod tests {
             .check_oauth2_token_exchange(&bad_client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert!(access_token_response_2 == Oauth2Error::AuthenticationRequired);
+        assert_eq!(access_token_response_2, Oauth2Error::AuthenticationRequired);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5713,7 +5743,7 @@ mod tests {
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert!(access_token_response_2 == Oauth2Error::InvalidScope);
+        assert_eq!(access_token_response_2, Oauth2Error::InvalidScope);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -5775,7 +5805,7 @@ mod tests {
             .check_oauth2_token_exchange(&client_authz, &token_req, ct)
             .unwrap_err();
 
-        assert!(access_token_response_3 == Oauth2Error::InvalidGrant);
+        assert_eq!(access_token_response_3, Oauth2Error::InvalidGrant);
 
         let entry = idms_prox_write
             .qs_write
@@ -6145,7 +6175,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token!
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         let id_token = token_response.id_token.expect("No id_token in response!");
         let access_token =
@@ -6182,22 +6212,25 @@ mod tests {
                 == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
                     .unwrap()
         );
-        assert!(oidc.sub == OidcSubject::U(UUID_TESTPERSON_1));
-        assert!(oidc.aud == "test_resource_server");
-        assert!(oidc.iat == iat);
-        assert!(oidc.nbf == Some(iat));
+        assert_eq!(oidc.sub, OidcSubject::U(UUID_TESTPERSON_1));
+        assert_eq!(oidc.aud, "test_resource_server");
+        assert_eq!(oidc.iat, iat);
+        assert_eq!(oidc.nbf, Some(iat));
         // Previously this was the auth session but it's now inline with the access token expiry.
-        assert!(oidc.exp == iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
+        assert_eq!(oidc.exp, iat + (OAUTH2_ACCESS_TOKEN_EXPIRY as i64));
         assert!(oidc.auth_time.is_none());
         // Is nonce correctly passed through?
-        assert!(oidc.nonce == Some("abcdef".to_string()));
+        assert_eq!(oidc.nonce, Some("abcdef".to_string()));
         assert!(oidc.at_hash.is_none());
         assert!(oidc.acr.is_none());
         assert!(oidc.amr.is_none());
-        assert!(oidc.azp == Some("test_resource_server".to_string()));
+        assert_eq!(oidc.azp, Some("test_resource_server".to_string()));
         assert!(oidc.jti.is_none());
-        assert!(oidc.s_claims.name == Some("Test Person 1".to_string()));
-        assert!(oidc.s_claims.preferred_username == Some("testperson1@example.com".to_string()));
+        assert_eq!(oidc.s_claims.name, Some("Test Person 1".to_string()));
+        assert_eq!(
+            oidc.s_claims.preferred_username,
+            Some("testperson1@example.com".to_string())
+        );
         assert!(
             oidc.s_claims.scopes == vec![OAUTH2_SCOPE_OPENID.to_string(), "supplement".to_string()]
         );
@@ -6217,20 +6250,20 @@ mod tests {
             .oauth2_openid_userinfo("test_resource_server", access_token, ct)
             .expect("failed to get userinfo");
 
-        assert!(oidc.iss == userinfo.iss);
-        assert!(oidc.sub == userinfo.sub);
-        assert!(oidc.aud == userinfo.aud);
-        assert!(oidc.iat == userinfo.iat);
-        assert!(oidc.nbf == userinfo.nbf);
-        assert!(oidc.exp == userinfo.exp);
+        assert_eq!(oidc.iss, userinfo.iss);
+        assert_eq!(oidc.sub, userinfo.sub);
+        assert_eq!(oidc.aud, userinfo.aud);
+        assert_eq!(oidc.iat, userinfo.iat);
+        assert_eq!(oidc.nbf, userinfo.nbf);
+        assert_eq!(oidc.exp, userinfo.exp);
         assert!(userinfo.auth_time.is_none());
-        assert!(userinfo.nonce == Some("abcdef".to_string()));
+        assert_eq!(userinfo.nonce, Some("abcdef".to_string()));
         assert!(userinfo.at_hash.is_none());
         assert!(userinfo.acr.is_none());
-        assert!(oidc.amr == userinfo.amr);
-        assert!(oidc.azp == userinfo.azp);
+        assert_eq!(oidc.amr, userinfo.amr);
+        assert_eq!(oidc.azp, userinfo.azp);
         assert!(userinfo.jti.is_none());
-        assert!(oidc.s_claims == userinfo.s_claims);
+        assert_eq!(oidc.s_claims, userinfo.s_claims);
         assert_eq!(oidc.claims, userinfo.claims);
 
         // Check the oauth2 introspect bits.
@@ -6244,12 +6277,18 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert!(intr_response.scope.as_deref() == Some("openid supplement"));
-        assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-        assert!(intr_response.username.as_deref() == Some("testperson1@example.com"));
-        assert!(intr_response.token_type == Some(AccessTokenType::Bearer));
-        assert!(intr_response.iat == Some(ct.as_secs() as i64));
-        assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
+        assert_eq!(
+            intr_response.client_id.as_deref(),
+            Some("test_resource_server")
+        );
+        assert_eq!(
+            intr_response.username.as_deref(),
+            Some("testperson1@example.com")
+        );
+        assert_eq!(intr_response.token_type, Some(AccessTokenType::Bearer));
+        assert_eq!(intr_response.iat, Some(ct.as_secs() as i64));
+        assert_eq!(intr_response.nbf, Some(ct.as_secs() as i64));
         // Introspect doesn't have custom claims.
 
         drop(idms_prox_read);
@@ -6318,7 +6357,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert!(permit_success.state == "123");
+        assert_eq!(permit_success.state, "123");
 
         // == Submit the token exchange code.
         let token_req = AccessTokenRequest {
@@ -6337,7 +6376,7 @@ mod tests {
             .expect("Failed to perform OAuth2 token exchange");
 
         // 🎉 We got a token! In the future we can then check introspection from this point.
-        assert!(token_response.token_type == AccessTokenType::Bearer);
+        assert_eq!(token_response.token_type, AccessTokenType::Bearer);
 
         assert!(idms_prox_write.commit().is_ok());
     }

@@ -2976,7 +2976,7 @@ mod tests {
 
         assert!(schema.update_classes(vec![class]).is_ok());
 
-        assert!(schema.validate().len() == 1);
+        assert_eq!(schema.validate().len(), 1);
     }
 
     #[test]

@@ -3473,7 +3473,7 @@ mod tests {
 
         // Check we have the passkey
         trace!(?c_status);
-        assert!(c_status.passkeys.len() == 1);
+        assert_eq!(c_status.passkeys.len(), 1);
 
         c_status
     }
@@ -3514,7 +3514,7 @@ mod tests {
 
         trace!(?c_status);
         assert!(c_status.primary.is_none());
-        assert!(c_status.passkeys.len() == 1);
+        assert_eq!(c_status.passkeys.len(), 1);
 
         let c_status = cutxn
             .credential_passkey_remove(&cust, ct, pk_uuid)
@@ -3809,7 +3809,7 @@ mod tests {
 
         assert!(c_status.can_commit);
         assert!(c_status.warnings.is_empty());
-        assert!(c_status.passkeys.len() == 1);
+        assert_eq!(c_status.passkeys.len(), 1);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -3867,7 +3867,7 @@ mod tests {
 
         assert!(c_status.can_commit);
         assert!(c_status.warnings.is_empty());
-        assert!(c_status.passkeys.len() == 1);
+        assert_eq!(c_status.passkeys.len(), 1);
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
@@ -4047,7 +4047,7 @@ mod tests {
         trace!(?c_status);
         assert!(c_status.primary.is_none());
         assert!(c_status.passkeys.is_empty());
-        assert!(c_status.attested_passkeys.len() == 1);
+        assert_eq!(c_status.attested_passkeys.len(), 1);
 
         let c_status = cutxn
             .credential_attested_passkey_remove(&cust, ct, pk_uuid)

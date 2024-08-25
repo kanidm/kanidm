@@ -1741,7 +1741,7 @@ impl IdlSqliteWriteTransaction {
 impl IdlSqlite {
     pub fn new(cfg: &BackendConfig, vacuum: bool) -> Result<Self, OperationError> {
         if cfg.path.is_empty() {
-            debug_assert!(cfg.pool_size == 1);
+            debug_assert_eq!(cfg.pool_size, 1);
         }
         // If provided, set the page size to match the tuning we want. By default we use 4096. The VACUUM
         // immediately after is so that on db create the page size takes effect.

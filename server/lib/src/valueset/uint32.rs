@@ -171,8 +171,8 @@ mod tests {
     #[test]
     fn test_valueset_basic() {
         let mut vs = ValueSetUint32::new(0);
-        assert!(vs.insert_checked(Value::new_uint32(0)) == Ok(false));
-        assert!(vs.insert_checked(Value::new_uint32(1)) == Ok(true));
-        assert!(vs.insert_checked(Value::new_uint32(1)) == Ok(false));
+        assert_eq!(vs.insert_checked(Value::new_uint32(0)), Ok(false));
+        assert_eq!(vs.insert_checked(Value::new_uint32(1)), Ok(true));
+        assert_eq!(vs.insert_checked(Value::new_uint32(1)), Ok(false));
     }
 }

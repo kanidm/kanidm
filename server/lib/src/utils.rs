@@ -171,15 +171,15 @@ mod tests {
     fn test_utils_uuid_to_gid_u32() {
         let u1 = uuid!("00000000-0000-0001-0000-000000000000");
         let r1 = uuid_to_gid_u32(u1);
-        assert!(r1 == 0);
+        assert_eq!(r1, 0);
 
         let u2 = uuid!("00000000-0000-0001-0000-0000ffffffff");
         let r2 = uuid_to_gid_u32(u2);
-        assert!(r2 == 0xffffffff);
+        assert_eq!(r2, 0xffffffff);
 
         let u3 = uuid!("00000000-0000-0001-0000-ffff12345678");
         let r3 = uuid_to_gid_u32(u3);
-        assert!(r3 == 0x12345678);
+        assert_eq!(r3, 0x12345678);
     }
 
     #[test]

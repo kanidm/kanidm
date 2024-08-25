@@ -405,7 +405,7 @@ mod tests {
         // Simulate session revocation.
         vs_a.purge(&one_cid);
 
-        assert!(vs_a.len() == 1);
+        assert_eq!(vs_a.len(), 1);
 
         let key_internal = vs_a
             .as_key_internal_map()
@@ -448,7 +448,7 @@ mod tests {
 
         vs_a.merge(&vs_b).expect("Failed to merge");
 
-        assert!(vs_a.len() == 1);
+        assert_eq!(vs_a.len(), 1);
         let key_internal = vs_a
             .as_key_internal_map()
             .and_then(|map| map.get(&kid))
@@ -482,7 +482,7 @@ mod tests {
 
         vs_b.merge(&vs_a).expect("Failed to merge");
 
-        assert!(vs_b.len() == 1);
+        assert_eq!(vs_b.len(), 1);
 
         let key_internal = vs_b
             .as_key_internal_map()
@@ -545,7 +545,7 @@ mod tests {
 
         eprintln!("{:?}", key_internal_map);
 
-        assert!(vs_r.len() == 1);
+        assert_eq!(vs_r.len(), 1);
 
         let key_internal = key_internal_map.get(&kid).expect("Unable to access key");
 
@@ -608,7 +608,7 @@ mod tests {
 
         eprintln!("{:?}", key_internal_map);
 
-        assert!(vs_r.len() == 1);
+        assert_eq!(vs_r.len(), 1);
 
         let key_internal = key_internal_map.get(&kid).expect("Unable to access key");
 

@@ -100,9 +100,9 @@ mod tests {
             Duration::new(15, 0),
         );
 
-        assert!(cid_a.cmp(&cid_a) == Ordering::Equal);
-        assert!(cid_a.cmp(&cid_b) == Ordering::Less);
-        assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
+        assert_eq!(cid_a.cmp(&cid_a), Ordering::Equal);
+        assert_eq!(cid_a.cmp(&cid_b), Ordering::Less);
+        assert_eq!(cid_b.cmp(&cid_a), Ordering::Greater);
 
         // check same ts, d_uuid, diff s_uuid
         let cid_e = Cid::new(
@@ -114,9 +114,9 @@ mod tests {
             Duration::new(5, 0),
         );
 
-        assert!(cid_e.cmp(&cid_e) == Ordering::Equal);
-        assert!(cid_e.cmp(&cid_f) == Ordering::Less);
-        assert!(cid_f.cmp(&cid_e) == Ordering::Greater);
+        assert_eq!(cid_e.cmp(&cid_e), Ordering::Equal);
+        assert_eq!(cid_e.cmp(&cid_f), Ordering::Less);
+        assert_eq!(cid_f.cmp(&cid_e), Ordering::Greater);
     }
 
     #[test]
@@ -130,11 +130,11 @@ mod tests {
         let cid_z = Cid::new_zero();
 
         let cid_a = Cid::new_lamport(s_uuid, ts5, &ts5);
-        assert!(cid_a.cmp(&cid_z) == Ordering::Greater);
+        assert_eq!(cid_a.cmp(&cid_z), Ordering::Greater);
         let cid_b = Cid::new_lamport(s_uuid, ts15, &ts10);
-        assert!(cid_b.cmp(&cid_a) == Ordering::Greater);
+        assert_eq!(cid_b.cmp(&cid_a), Ordering::Greater);
         // Even with an older ts, we should still step forward.
         let cid_c = Cid::new_lamport(s_uuid, ts10, &ts15);
-        assert!(cid_c.cmp(&cid_b) == Ordering::Greater);
+        assert_eq!(cid_c.cmp(&cid_b), Ordering::Greater);
     }
 }

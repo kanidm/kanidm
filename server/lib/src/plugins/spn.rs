@@ -341,7 +341,7 @@ mod tests {
             .expect("must not fail");
 
         let e_pre_spn = e_pre.get_ava_single(Attribute::Spn).expect("must not fail");
-        assert!(e_pre_spn == ex1);
+        assert_eq!(e_pre_spn, ex1);
 
         // trigger the domain_name change (this will be a cli option to the server
         // in the final version), but it will still call the same qs function to perform the
@@ -360,7 +360,7 @@ mod tests {
             .expect("must not fail");
         debug!("{:?}", e_post_spn);
         debug!("{:?}", ex2);
-        assert!(e_post_spn == ex2);
+        assert_eq!(e_post_spn, ex2);
 
         server_txn.commit().expect("Must not fail");
     }

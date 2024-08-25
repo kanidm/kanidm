@@ -1066,7 +1066,7 @@ mod tests {
             .expect("Unable to create uat");
 
         // Check the ui hints are as expected.
-        assert!(uat.ui_hints.len() == 1);
+        assert_eq!(uat.ui_hints.len(), 1);
         assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
         // Modify the user to be a posix account, ensure they get the hint.
@@ -1096,7 +1096,7 @@ mod tests {
             )
             .expect("Unable to create uat");
 
-        assert!(uat.ui_hints.len() == 2);
+        assert_eq!(uat.ui_hints.len(), 2);
         assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
         assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));
 
@@ -1129,7 +1129,7 @@ mod tests {
             )
             .expect("Unable to create uat");
 
-        assert!(uat.ui_hints.len() == 3);
+        assert_eq!(uat.ui_hints.len(), 3);
         assert!(uat.ui_hints.contains(&UiHint::PosixAccount));
         assert!(uat.ui_hints.contains(&UiHint::ExperimentalFeatures));
         assert!(uat.ui_hints.contains(&UiHint::CredentialUpdate));

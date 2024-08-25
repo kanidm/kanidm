@@ -71,7 +71,10 @@ async fn test_server_whoami_anonymous(rsclient: KanidmClient) {
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);
-    assert!(e.attrs.get("spn") == Some(&vec!["anonymous@localhost".to_string()]));
+    assert_eq!(
+        e.attrs.get("spn"),
+        Some(&vec!["anonymous@localhost".to_string()])
+    );
 
     // Do a check of the auth/valid endpoint, tells us if our token
     // is okay.
@@ -98,7 +101,10 @@ async fn test_server_whoami_admin_simple_password(rsclient: KanidmClient) {
         .expect("Unable to call whoami")
         .expect("No entry matching self returned");
     debug!(?e);
-    assert!(e.attrs.get("spn") == Some(&vec!["admin@localhost".to_string()]));
+    assert_eq!(
+        e.attrs.get("spn"),
+        Some(&vec!["admin@localhost".to_string()])
+    );
 }
 
 #[kanidmd_testkit::test]
@@ -123,7 +129,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     // Check it's admin.
     println!("{:?}", e);
     let name = e.attrs.get(Attribute::Name.as_ref()).unwrap();
-    assert!(name == &vec!["admin".to_string()]);
+    assert_eq!(name, &vec!["admin".to_string()]);
 }
 
 // test the rest group endpoint.
@@ -175,7 +181,7 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
-    assert!(members == Some(vec!["admin@localhost".to_string()]));
+    assert_eq!(members, Some(vec!["admin@localhost".to_string()]));
 
     // Set the list of members
     rsclient
@@ -197,7 +203,7 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
     let members = rsclient.idm_group_get_members("demo_group").await.unwrap();
-    assert!(members == Some(vec!["admin@localhost".to_string()]));
+    assert_eq!(members, Some(vec!["admin@localhost".to_string()]));
 
     // purge members
     rsclient
@@ -236,7 +242,7 @@ async fn test_server_rest_group_lifecycle(rsclient: KanidmClient) {
     // Delete the group
     rsclient.idm_group_delete("demo_group").await.unwrap();
     let g_list_3 = rsclient.idm_group_list().await.unwrap();
-    assert!(g_list_3.len() == g_list.len());
+    assert_eq!(g_list_3.len(), g_list.len());
 
     // Check we can get an exact group
     let g = rsclient
@@ -348,15 +354,15 @@ async fn test_server_radius_credential_lifecycle(rsclient: KanidmClient) {
         .idm_account_radius_credential_get("demo_account")
         .await
         .unwrap();
-    assert!(sec1 == r_sec.unwrap());
+    assert_eq!(sec1, r_sec.unwrap());
 
     // test getting the token - we can do this as self or the radius server
     let r_tok = rsclient
         .idm_account_radius_token_get("demo_account")
         .await
         .unwrap();
-    assert!(sec1 == r_tok.secret);
-    assert!(r_tok.name == "demo_account");
+    assert_eq!(sec1, r_tok.secret);
+    assert_eq!(r_tok.name, "demo_account");
 
     // Reset it
     let sec2 = rsclient
@@ -428,7 +434,7 @@ async fn test_server_rest_person_account_lifecycle(rsclient: KanidmClient) {
         .await
         .unwrap();
 
-    assert!(r == Some(vec!["demo@idm.example.com".to_string()]));
+    assert_eq!(r, Some(vec!["demo@idm.example.com".to_string()]));
 
     // Delete the account
     rsclient
@@ -467,7 +473,7 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
 
     // Get, should have the key
     let sk2 = rsclient.idm_account_get_ssh_pubkeys("admin").await.unwrap();
-    assert!(sk2.len() == 1);
+    assert_eq!(sk2.len(), 1);
 
     // Post a valid key
     let r3 = rsclient
@@ -476,7 +482,7 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
 
     // Get, should have both keys.
     let sk3 = rsclient.idm_account_get_ssh_pubkeys("admin").await.unwrap();
-    assert!(sk3.len() == 2);
+    assert_eq!(sk3.len(), 2);
 
     // Delete a key (by tag)
     let r4 = rsclient
@@ -486,12 +492,12 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
 
     // Get, should have remaining key.
     let sk4 = rsclient.idm_account_get_ssh_pubkeys("admin").await.unwrap();
-    assert!(sk4.len() == 1);
+    assert_eq!(sk4.len(), 1);
 
     // get by tag
     let skn = rsclient.idm_account_get_ssh_pubkey("admin", "k2").await;
     assert!(skn.is_ok());
-    assert!(skn.unwrap() == Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
+    assert_eq!(skn.unwrap(),Some("ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBx4TpJYQjd0YI5lQIHqblIsCIK5NKVFURYS/eM3o6/Z william@amethyst".to_string()));
 
     // Add a key and delete with a space in the name.
     let r5 = rsclient
@@ -504,7 +510,7 @@ async fn test_server_rest_sshkey_lifecycle(rsclient: KanidmClient) {
     assert!(r6.is_ok());
 
     let sk5 = rsclient.idm_account_get_ssh_pubkeys("admin").await.unwrap();
-    assert!(sk5.len() == 1);
+    assert_eq!(sk5.len(), 1);
 }
 
 #[kanidmd_testkit::test]
@@ -520,7 +526,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     rsclient.idm_domain_set_ssid("new_ssid").await.unwrap();
     // check get and get the ssid and domain info
     let nssid = rsclient.idm_domain_get_ssid().await.unwrap();
-    assert!(nssid == "new_ssid");
+    assert_eq!(nssid, "new_ssid");
 
     // Change the domain display name
     rsclient
@@ -625,10 +631,10 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
 
     println!("{:?}", r);
-    assert!(r.name == "posix_account");
-    assert!(r1.name == "posix_account");
-    assert!(r2.name == "posix_account");
-    assert!(r3.name == "posix_account");
+    assert_eq!(r.name, "posix_account");
+    assert_eq!(r1.name, "posix_account");
+    assert_eq!(r2.name, "posix_account");
+    assert_eq!(r3.name, "posix_account");
 
     // get the group by name
     let r = rsclient
@@ -652,10 +658,10 @@ async fn test_server_rest_posix_lifecycle(rsclient: KanidmClient) {
         .unwrap();
 
     println!("{:?}", r);
-    assert!(r.name == "posix_group");
-    assert!(r1.name == "posix_group");
-    assert!(r2.name == "posix_group");
-    assert!(r3.name == "posix_group");
+    assert_eq!(r.name, "posix_group");
+    assert_eq!(r1.name, "posix_group");
+    assert_eq!(r2.name, "posix_group");
+    assert_eq!(r3.name, "posix_group");
 }
 
 #[kanidmd_testkit::test]
@@ -793,7 +799,7 @@ async fn test_server_rest_recycle_lifecycle(rsclient: KanidmClient) {
     // list the recycle bin
     let r_list = rsclient.recycle_bin_list().await.unwrap();
 
-    assert!(r_list.len() == 1);
+    assert_eq!(r_list.len(), 1);
     // get the user in recycle bin
     let r_user = rsclient.recycle_bin_get("recycle_account").await.unwrap();
     assert!(r_user.is_some());
@@ -848,7 +854,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to retrieve oauth2 configs");
 
-    assert!(initial_configs.len() == 1);
+    assert_eq!(initial_configs.len(), 1);
 
     // Get the value. Assert we have oauth2_rs_basic_secret,
     // but can NOT see the token_secret.
@@ -1017,7 +1023,7 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     eprintln!("{:?}", oauth2_config_updated);
     eprintln!("{:?}", oauth2_config_updated4);
 
-    assert!(oauth2_config_updated == oauth2_config_updated4);
+    assert_eq!(oauth2_config_updated, oauth2_config_updated4);
 
     // Delete the config
     rsclient
@@ -1303,7 +1309,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
         .unwrap();
 
     assert!(status.can_commit);
-    assert!(status.passkeys.len() == 1);
+    assert_eq!(status.passkeys.len(), 1);
 
     // Commit it
     rsclient
@@ -1449,7 +1455,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to list service account api tokens");
 
-    assert!(tokens == vec![token.clone()]);
+    assert_eq!(tokens, vec![token.clone()]);
 
     rsclient
         .idm_service_account_destroy_api_token(&token.account_id.to_string(), token.token_id)
@@ -1491,7 +1497,7 @@ async fn test_server_api_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to get displayname")
         .expect("Failed to unwrap displayname");
-    assert!(new_displayname == displayname);
+    assert_eq!(new_displayname, displayname);
 
     rsclient
         .idm_service_account_purge_attr(test_service_account_username, Attribute::Mail.as_ref())
@@ -1654,7 +1660,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         .await
         .expect("Failed to list user auth tokens");
 
-    assert!(sessions[0].session_id == token.session_id);
+    assert_eq!(sessions[0].session_id, token.session_id);
 
     // idm_account_destroy_user_auth_token
     rsclient

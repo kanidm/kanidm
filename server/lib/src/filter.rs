@@ -1650,7 +1650,7 @@ mod tests {
             debug!("init   --> {:?}", f_init_r);
             debug!("opt    --> {:?}", f_init_o);
             debug!("expect --> {:?}", f_init_e);
-            assert!(f_init_o == f_init_e);
+            assert_eq!(f_init_o, f_init_e);
         }};
     }
 
@@ -1767,14 +1767,14 @@ mod tests {
         let f_t1b = filter!(f_pres(Attribute::UserId));
         let f_t1c = filter!(f_pres(Attribute::NonExist));
 
-        assert!(f_t1a == f_t1b);
+        assert_eq!(f_t1a, f_t1b);
         assert!(f_t1a != f_t1c);
         assert!(f_t1b != f_t1c);
 
         let f_t2a = filter!(f_and!([f_pres(Attribute::UserId)]));
         let f_t2b = filter!(f_and!([f_pres(Attribute::UserId)]));
         let f_t2c = filter!(f_and!([f_pres(Attribute::NonExist)]));
-        assert!(f_t2a == f_t2b);
+        assert_eq!(f_t2a, f_t2b);
         assert!(f_t2a != f_t2c);
         assert!(f_t2b != f_t2c);
 
@@ -1821,14 +1821,14 @@ mod tests {
         let f_t1b = f_t1a.clone();
         let f_t1c = filter_resolved!(f_pres(Attribute::NonExist));
 
-        assert!(f_t1a == f_t1b);
+        assert_eq!(f_t1a, f_t1b);
         assert!(f_t1a != f_t1c);
 
         let f_t2a = filter_resolved!(f_and!([f_pres(Attribute::UserId)]));
         let f_t2b = f_t2a.clone();
         let f_t2c = filter_resolved!(f_and!([f_pres(Attribute::NonExist)]));
 
-        assert!(f_t2a == f_t2b);
+        assert_eq!(f_t2a, f_t2b);
         assert!(f_t2a != f_t2c);
     }
 
@@ -2021,7 +2021,7 @@ mod tests {
             f_eq(Attribute::Class, PartialValue::new_iutf8("1001")),
         ]));
 
-        assert!(f_t1a.get_attr_set() == f_expect);
+        assert_eq!(f_t1a.get_attr_set(), f_expect);
 
         let f_t2a = filter_valid!(f_and!([
             f_eq(Attribute::UserId, PartialValue::new_iutf8("alice")),
@@ -2029,7 +2029,7 @@ mod tests {
             f_eq(Attribute::UserId, PartialValue::new_iutf8("claire")),
         ]));
 
-        assert!(f_t2a.get_attr_set() == f_expect);
+        assert_eq!(f_t2a.get_attr_set(), f_expect);
     }
 
     #[qs_test]
@@ -2106,31 +2106,37 @@ mod tests {
         // Resolving most times should yield expected results
         let t1 = vs_utf8!["teststring".to_string()] as _;
         let r1 = server_txn.resolve_valueset(&t1);
-        assert!(r1 == Ok(vec!["teststring".to_string()]));
+        assert_eq!(r1, Ok(vec!["teststring".to_string()]));
 
         // Resolve UUID with matching spn
         let t_uuid = vs_refer![uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930")] as _;
         let r_uuid = server_txn.resolve_valueset(&t_uuid);
         debug!("{:?}", r_uuid);
-        assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
+        assert_eq!(r_uuid, Ok(vec!["testperson1@example.com".to_string()]));
 
         // Resolve UUID with matching name
         let t_uuid = vs_refer![uuid!("a67c0c71-0b35-4218-a6b0-22d23d131d27")] as _;
         let r_uuid = server_txn.resolve_valueset(&t_uuid);
         debug!("{:?}", r_uuid);
-        assert!(r_uuid == Ok(vec!["testperson2@example.com".to_string()]));
+        assert_eq!(r_uuid, Ok(vec!["testperson2@example.com".to_string()]));
 
         // Resolve UUID non-exist
         let t_uuid_non = vs_refer![uuid!("b83e98f0-3d2e-41d2-9796-d8d993289c86")] as _;
         let r_uuid_non = server_txn.resolve_valueset(&t_uuid_non);
         debug!("{:?}", r_uuid_non);
-        assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
+        assert_eq!(
+            r_uuid_non,
+            Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()])
+        );
 
         // Resolve UUID to tombstone/recycled (same an non-exst)
         let t_uuid_ts = vs_refer![uuid!("9557f49c-97a5-4277-a9a5-097d17eb8317")] as _;
         let r_uuid_ts = server_txn.resolve_valueset(&t_uuid_ts);
         debug!("{:?}", r_uuid_ts);
-        assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));
+        assert_eq!(
+            r_uuid_ts,
+            Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()])
+        );
     }
 
     #[qs_test]
@@ -2151,11 +2157,11 @@ mod tests {
 
         // Test proto + read
         let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
 
         // ldap
         let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
@@ -2163,7 +2169,7 @@ mod tests {
         // proto + write
         let mut wr_txn = server.write(duration_from_epoch_now()).await.expect("txn");
         let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
     }
 
     #[qs_test]
@@ -2188,11 +2194,11 @@ mod tests {
 
         // Test proto + read
         let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
 
         // ldap
         let res = Filter::from_ldap_ro(&ev, &inv_ldap, &mut r_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
 
         // Can only have one db conn at a time.
         std::mem::drop(r_txn);
@@ -2200,6 +2206,6 @@ mod tests {
         // proto + write
         let mut wr_txn = server.write(duration_from_epoch_now()).await.expect("txn");
         let res = Filter::from_rw(&ev, &inv_proto, &mut wr_txn);
-        assert!(res == Err(OperationError::ResourceLimit));
+        assert_eq!(res, Err(OperationError::ResourceLimit));
     }
 }

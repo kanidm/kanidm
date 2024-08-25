@@ -44,7 +44,7 @@ impl ValueSetSession {
 
                 state: match &m.state {
                     SessionState::ExpiresAt(odt) => {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&Rfc3339)
                             .map(DbValueSessionStateV1::ExpiresAt)
@@ -58,7 +58,7 @@ impl ValueSetSession {
                 },
 
                 issued_at: {
-                    debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                    debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
                     #[allow(clippy::expect_used)]
                     m.issued_at
                         .format(&Rfc3339)
@@ -907,7 +907,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     state: match &m.state {
                         SessionState::ExpiresAt(odt) => {
-                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                             #[allow(clippy::expect_used)]
                             odt.format(&Rfc3339)
                                 .map(DbValueSessionStateV1::ExpiresAt)
@@ -920,7 +920,7 @@ impl ValueSetT for ValueSetOauth2Session {
                         }),
                     },
                     issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&Rfc3339)
@@ -942,7 +942,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     parent: m.parent,
                     state: match &m.state {
                         SessionState::ExpiresAt(odt) => {
-                            debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                            debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                             #[allow(clippy::expect_used)]
                             odt.format(&Rfc3339)
                                 .map(ReplSessionStateV1::ExpiresAt)
@@ -952,7 +952,7 @@ impl ValueSetT for ValueSetOauth2Session {
                         SessionState::RevokedAt(c) => ReplSessionStateV1::RevokedAt(c.into()),
                     },
                     issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&Rfc3339)
@@ -1328,13 +1328,13 @@ impl ValueSetT for ValueSetApiToken {
                     refer: *u,
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&Rfc3339)
                             .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         m.issued_at
                             .format(&Rfc3339)
@@ -1364,13 +1364,13 @@ impl ValueSetT for ValueSetApiToken {
                     refer: *u,
                     label: m.label.clone(),
                     expiry: m.expiry.map(|odt| {
-                        debug_assert!(odt.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&Rfc3339)
                             .expect("Failed to format timestamp into RFC3339")
                     }),
                     issued_at: {
-                        debug_assert!(m.issued_at.offset() == time::UtcOffset::UTC);
+                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
 
                         #[allow(clippy::expect_used)]
                         m.issued_at
@@ -1459,7 +1459,7 @@ mod tests {
         // Simulate session revocation.
         vs.purge(&zero_cid);
 
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         let session = vs
             .as_session_map()
@@ -1773,7 +1773,7 @@ mod tests {
 
         vs_a.trim(&zero_cid);
 
-        assert!(vs_a.len() == SESSION_MAXIMUM);
+        assert_eq!(vs_a.len(), SESSION_MAXIMUM);
 
         let sessions = vs_a.as_session_map().expect("Unable to access sessions");
 
@@ -1798,7 +1798,7 @@ mod tests {
         // Simulate session revocation.
         vs.purge(&zero_cid);
 
-        assert!(vs.len() == 1);
+        assert_eq!(vs.len(), 1);
 
         let session = vs
             .as_oauth2session_map()

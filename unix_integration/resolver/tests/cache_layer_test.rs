@@ -250,7 +250,7 @@ async fn test_cache_sshkey() {
         .get_sshkeys("testaccount1")
         .await
         .expect("Failed to get from cache.");
-    assert!(sk.len() == 1);
+    assert_eq!(sk.len(), 1);
 
     // Go offline, and get from cache.
     cachelayer.mark_offline().await;
@@ -258,7 +258,7 @@ async fn test_cache_sshkey() {
         .get_sshkeys("testaccount1")
         .await
         .expect("Failed to get from cache.");
-    assert!(sk.len() == 1);
+    assert_eq!(sk.len(), 1);
 }
 
 #[tokio::test]
@@ -285,7 +285,7 @@ async fn test_cache_account() {
     assert!(ut.is_some());
 
     // #392: Check that a `shell=None` is set to `default_shell`.
-    assert!(ut.unwrap().shell == *DEFAULT_SHELL);
+    assert_eq!(ut.unwrap().shell, *DEFAULT_SHELL);
 
     // go offline
     cachelayer.mark_offline().await;
@@ -302,7 +302,7 @@ async fn test_cache_account() {
         .get_nssaccounts()
         .await
         .expect("failed to list all accounts");
-    assert!(us.len() == 1);
+    assert_eq!(us.len(), 1);
 }
 
 #[tokio::test]
@@ -359,14 +359,14 @@ async fn test_cache_group() {
         .expect("Failed to get from cache");
     assert!(gt.is_some());
     // And check we have members in the group, since we came from a userlook up
-    assert!(gt.unwrap().members.len() == 1);
+    assert_eq!(gt.unwrap().members.len(), 1);
 
     // Finally, check we have "all groups" in the list.
     let gs = cachelayer
         .get_nssgroups()
         .await
         .expect("failed to list all groups");
-    assert!(gs.len() == 2);
+    assert_eq!(gs.len(), 2);
 }
 
 #[tokio::test]
@@ -453,7 +453,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
         .await
         .expect("failed to authenticate");
-    assert!(a1 == Some(false));
+    assert_eq!(a1, Some(false));
 
     // We have to wait due to softlocking.
     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -463,7 +463,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a2 == Some(true));
+    assert_eq!(a2, Some(true));
 
     // change pw
     adminclient
@@ -480,7 +480,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a3 == Some(false));
+    assert_eq!(a3, Some(false));
 
     // We have to wait due to softlocking.
     tokio::time::sleep(Duration::from_secs(1)).await;
@@ -490,7 +490,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a4 == Some(true));
+    assert_eq!(a4, Some(true));
 
     // Go offline.
     cachelayer.mark_offline().await;
@@ -500,7 +500,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a5 == Some(true));
+    assert_eq!(a5, Some(true));
 
     // No softlock during offline.
 
@@ -509,7 +509,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
         .await
         .expect("failed to authenticate");
-    assert!(a6 == Some(false));
+    assert_eq!(a6, Some(false));
 
     // clear cache
     cachelayer
@@ -533,7 +533,7 @@ async fn test_cache_account_password() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
-    assert!(a8 == Some(true));
+    assert_eq!(a8, Some(true));
 }
 
 #[tokio::test]
@@ -546,7 +546,7 @@ async fn test_cache_account_pam_allowed() {
         .pam_account_allowed("testaccount1")
         .await
         .expect("failed to authenticate");
-    assert!(a1 == Some(false));
+    assert_eq!(a1, Some(false));
 
     adminclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -565,7 +565,7 @@ async fn test_cache_account_pam_allowed() {
         .pam_account_allowed("testaccount1")
         .await
         .expect("failed to authenticate");
-    assert!(a2 == Some(true));
+    assert_eq!(a2, Some(true));
 }
 
 #[tokio::test]
@@ -611,7 +611,7 @@ async fn test_cache_account_expiry() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a1 == Some(true));
+    assert_eq!(a1, Some(true));
     // Invalidate to make sure we go online next checks.
     assert!(cachelayer.invalidate().await.is_ok());
 
@@ -629,7 +629,7 @@ async fn test_cache_account_expiry() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a2 == Some(false));
+    assert_eq!(a2, Some(false));
 
     // ssh keys should be empty
     let sk = cachelayer
@@ -643,7 +643,7 @@ async fn test_cache_account_expiry() {
         .pam_account_allowed("testaccount1")
         .await
         .expect("failed to authenticate");
-    assert!(a3 == Some(false));
+    assert_eq!(a3, Some(false));
 
     // go offline
     cachelayer.mark_offline().await;
@@ -654,7 +654,7 @@ async fn test_cache_account_expiry() {
         .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
-    assert!(a4 == Some(true));
+    assert_eq!(a4, Some(true));
 
     // ssh keys should be empty
     let sk = cachelayer
@@ -668,7 +668,7 @@ async fn test_cache_account_expiry() {
         .pam_account_allowed("testaccount1")
         .await
         .expect("failed to authenticate");
-    assert!(a5 == Some(false));
+    assert_eq!(a5, Some(false));
 }
 
 #[tokio::test]
@@ -916,7 +916,7 @@ async fn test_cache_group_fk_deferred() {
         .await
         .expect("Failed to get from cache");
     assert!(gt.is_some());
-    assert!(gt.unwrap().members.len() == 1);
+    assert_eq!(gt.unwrap().members.len(), 1);
 
     // Invalidate all items.
     cachelayer.mark_offline().await;
@@ -931,5 +931,5 @@ async fn test_cache_group_fk_deferred() {
         .expect("Failed to get from cache");
     assert!(gt.is_some());
     // And check we have members in the group, since we came from a userlook up
-    assert!(gt.unwrap().members.len() == 1);
+    assert_eq!(gt.unwrap().members.len(), 1);
 }

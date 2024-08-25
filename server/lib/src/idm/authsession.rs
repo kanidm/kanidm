@@ -1932,7 +1932,7 @@ mod tests {
             &webauthn,
             &pw_badlist_cache,
         ) {
-            Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
+            Ok(AuthState::Denied(msg)) => assert_eq!(msg, PW_BADLIST_MSG),
             _ => panic!(),
         };
 
@@ -2120,7 +2120,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2144,7 +2144,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2165,7 +2165,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_TOTP_MSG),
                 _ => panic!(),
             };
 
@@ -2188,7 +2188,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2199,7 +2199,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
 
@@ -2222,7 +2222,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2295,7 +2295,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2306,7 +2306,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == PW_BADLIST_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, PW_BADLIST_MSG),
                 _ => panic!(),
             };
 
@@ -2351,7 +2351,7 @@ mod tests {
                 .expect("Failed to select Passkey mech.");
 
             let wan_chal = if let AuthState::Continue(auth_mechs) = state {
-                assert!(auth_mechs.len() == 1);
+                assert_eq!(auth_mechs.len(), 1);
                 auth_mechs
                     .into_iter()
                     .fold(None, |_acc, x| match x {
@@ -2452,7 +2452,7 @@ mod tests {
                 &webauthn,
                 &Default::default(),
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2513,7 +2513,7 @@ mod tests {
                 &webauthn,
                 &Default::default(),
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
 
@@ -2561,7 +2561,7 @@ mod tests {
                 &webauthn,
                 &Default::default(),
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
 
@@ -2611,7 +2611,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2633,7 +2633,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2665,7 +2665,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
 
@@ -2693,7 +2693,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2704,7 +2704,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
 
@@ -2738,7 +2738,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2815,7 +2815,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -2837,7 +2837,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_TOTP_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_TOTP_MSG),
                 _ => panic!(),
             };
 
@@ -2867,7 +2867,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_WEBAUTHN_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_WEBAUTHN_MSG),
                 _ => panic!(),
             };
 
@@ -2895,7 +2895,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2906,7 +2906,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
 
@@ -2934,7 +2934,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -2945,7 +2945,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
 
@@ -2967,7 +2967,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3006,7 +3006,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3094,7 +3094,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_AUTH_TYPE_MSG),
                 _ => panic!(),
             };
 
@@ -3115,7 +3115,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_BACKUPCODE_MSG),
                 _ => panic!(),
             };
 
@@ -3137,7 +3137,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3148,7 +3148,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                Ok(AuthState::Denied(msg)) => assert_eq!(msg, BAD_PASSWORD_MSG),
                 _ => panic!(),
             };
 
@@ -3176,7 +3176,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3217,7 +3217,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3296,7 +3296,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(
@@ -3329,7 +3329,7 @@ mod tests {
                 &webauthn,
                 &pw_badlist_cache,
             ) {
-                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                Ok(AuthState::Continue(cont)) => assert_eq!(cont, vec![AuthAllowed::Password]),
                 _ => panic!(),
             };
             match session.validate_creds(

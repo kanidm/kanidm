@@ -1583,7 +1583,7 @@ mod tests {
             .validate_sync_client_auth_info_to_ident(sync_token.into(), ct)
             .expect("Failed to validate sync token");
 
-        assert!(Some(sync_uuid) == ident.get_uuid());
+        assert_eq!(Some(sync_uuid), ident.get_uuid());
 
         let sync_state = idms_prox_read
             .scim_sync_get_state(&ident)
@@ -1638,7 +1638,7 @@ mod tests {
         let ident = idms_prox_read
             .validate_sync_client_auth_info_to_ident(sync_token.clone().into(), ct)
             .expect("Failed to validate sync token");
-        assert!(Some(sync_uuid) == ident.get_uuid());
+        assert_eq!(Some(sync_uuid), ident.get_uuid());
         drop(idms_prox_read);
 
         // -- Revoke the session
@@ -1833,7 +1833,7 @@ mod tests {
             synced_entry.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("dn=william,ou=people,dc=test")
         );
-        assert!(synced_entry.get_uuid() == user_sync_uuid);
+        assert_eq!(synced_entry.get_uuid(), user_sync_uuid);
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -1959,7 +1959,7 @@ mod tests {
             .internal_search_uuid(user_sync_uuid)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
+        assert_eq!(ent.get_ava_single_iname(Attribute::Name), Some("testgroup"));
         assert!(
             ent.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testgroup,ou=people,dc=test")
@@ -2156,7 +2156,7 @@ mod tests {
             )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
-                assert!(entries.len() == 1);
+                assert_eq!(entries.len(), 1);
                 let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
@@ -2351,7 +2351,7 @@ mod tests {
             )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
-                assert!(entries.len() == 1);
+                assert_eq!(entries.len(), 1);
                 let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
@@ -2435,7 +2435,7 @@ mod tests {
             )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
-                assert!(entries.len() == 1);
+                assert_eq!(entries.len(), 1);
                 let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
@@ -2450,7 +2450,7 @@ mod tests {
             )))
             // Should be none as the entry was masked by being recycled.
             .map(|entries| {
-                assert!(entries.len() == 1);
+                assert_eq!(entries.len(), 1);
                 let ent = entries.first().unwrap();
                 ent.mask_recycled_ts().is_none()
             })
@@ -2518,7 +2518,7 @@ mod tests {
             .internal_search_uuid(sync_uuid_a)
             .expect("Unable to access entry");
 
-        assert!(ent.get_ava_single_iname(Attribute::Name) == Some("testgroup"));
+        assert_eq!(ent.get_ava_single_iname(Attribute::Name), Some("testgroup"));
 
         assert!(idms_prox_write.commit().is_ok());
     }
@@ -2627,7 +2627,10 @@ mod tests {
             testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
+        assert_eq!(
+            testposix.get_ava_single_uint32(Attribute::GidNumber),
+            Some(1234567)
+        );
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
@@ -2643,9 +2646,18 @@ mod tests {
             testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
-        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
+        assert_eq!(
+            testuser.get_ava_single_uint32(Attribute::GidNumber),
+            Some(12345)
+        );
+        assert_eq!(
+            testuser.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test User")
+        );
+        assert_eq!(
+            testuser.get_ava_single_iutf8(Attribute::LoginShell),
+            Some("/bin/sh")
+        );
 
         let mut ssh_keyiter = testuser
             .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
@@ -2700,7 +2712,10 @@ mod tests {
             testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
+        assert_eq!(
+            testposix.get_ava_single_uint32(Attribute::GidNumber),
+            Some(1234567)
+        );
 
         let testexternal = get_single_entry("testexternal2", &mut idms_prox_write);
         info!("{:?}", testexternal);
@@ -2768,7 +2783,10 @@ mod tests {
             testposix.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("cn=testposix,cn=groups,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testposix.get_ava_single_uint32(Attribute::GidNumber) == Some(1234567));
+        assert_eq!(
+            testposix.get_ava_single_uint32(Attribute::GidNumber),
+            Some(1234567)
+        );
 
         let testexternal = get_single_entry("testexternal", &mut idms_prox_write);
         assert!(
@@ -2784,9 +2802,18 @@ mod tests {
             testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
-        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
+        assert_eq!(
+            testuser.get_ava_single_uint32(Attribute::GidNumber),
+            Some(12345)
+        );
+        assert_eq!(
+            testuser.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test User")
+        );
+        assert_eq!(
+            testuser.get_ava_single_iutf8(Attribute::LoginShell),
+            Some("/bin/sh")
+        );
 
         // Check memberof works.
         let testgroup_mb = testgroup
@@ -2844,9 +2871,18 @@ mod tests {
             testuser.get_ava_single_iutf8(Attribute::SyncExternalId)
                 == Some("uid=testuser,cn=users,cn=accounts,dc=dev,dc=blackhats,dc=net,dc=au")
         );
-        assert!(testuser.get_ava_single_uint32(Attribute::GidNumber) == Some(12345));
-        assert!(testuser.get_ava_single_utf8(Attribute::DisplayName) == Some("Test User"));
-        assert!(testuser.get_ava_single_iutf8(Attribute::LoginShell) == Some("/bin/sh"));
+        assert_eq!(
+            testuser.get_ava_single_uint32(Attribute::GidNumber),
+            Some(12345)
+        );
+        assert_eq!(
+            testuser.get_ava_single_utf8(Attribute::DisplayName),
+            Some("Test User")
+        );
+        assert_eq!(
+            testuser.get_ava_single_iutf8(Attribute::LoginShell),
+            Some("/bin/sh")
+        );
 
         // Check memberof works.
         let testgroup_mb = testgroup

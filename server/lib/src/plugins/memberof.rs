@@ -809,7 +809,7 @@ mod tests {
             ]));
             let cands = $qs.internal_search(filt).expect("Internal search failure");
             debug!("assert_mo_cands {:?}", cands);
-            assert!(cands.len() == $cand);
+            assert_eq!(cands.len(), $cand);
         }};
     }
 

@@ -419,7 +419,7 @@ mod tests {
             digits: 6,
         };
         let s = totp.to_uri();
-        assert!(s == "otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
+        assert_eq!(s,"otpauth://totp/blackhats:william?secret=VK54ZXI&issuer=blackhats&algorithm=SHA256&digits=6&period=30");
 
         // check that invalid issuer/accounts are cleaned up.
         let totp = TotpSecret {
@@ -432,6 +432,6 @@ mod tests {
         };
         let s = totp.to_uri();
         println!("{}", s);
-        assert!(s == "otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
+        assert_eq!(s,"otpauth://totp/blackhats%20australia:william%3A%253A?secret=VK54ZXI&issuer=blackhats%20australia&algorithm=SHA256&digits=6&period=30");
     }
 }

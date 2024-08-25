@@ -289,11 +289,11 @@ mod tests {
     #[test]
     fn hotp_basic() {
         let otp_sha1 = Totp::new(vec![0], 30, TotpAlgo::Sha1, TotpDigits::Six);
-        assert!(otp_sha1.digest(0) == Ok(328482));
+        assert_eq!(otp_sha1.digest(0), Ok(328482));
         let otp_sha256 = Totp::new(vec![0], 30, TotpAlgo::Sha256, TotpDigits::Six);
-        assert!(otp_sha256.digest(0) == Ok(356306));
+        assert_eq!(otp_sha256.digest(0), Ok(356306));
         let otp_sha512 = Totp::new(vec![0], 30, TotpAlgo::Sha512, TotpDigits::Six);
-        assert!(otp_sha512.digest(0) == Ok(674061));
+        assert_eq!(otp_sha512.digest(0), Ok(674061));
     }
 
     fn do_test(

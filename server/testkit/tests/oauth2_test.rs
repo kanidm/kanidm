@@ -157,7 +157,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send discovery preflight request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
 
     let cors_header: &str = response
         .headers()
@@ -173,7 +173,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
 
     // Assert CORS on the GET too.
     let cors_header: &str = response
@@ -195,11 +195,17 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // Most values are checked in idm/oauth2.rs, but we want to sanity check
     // the urls here as an extended function smoke test.
-    assert!(discovery.issuer == rsclient.make_url("/oauth2/openid/test_integration"));
+    assert_eq!(
+        discovery.issuer,
+        rsclient.make_url("/oauth2/openid/test_integration")
+    );
 
-    assert!(discovery.authorization_endpoint == rsclient.make_url("/ui/oauth2"));
+    assert_eq!(
+        discovery.authorization_endpoint,
+        rsclient.make_url("/ui/oauth2")
+    );
 
-    assert!(discovery.token_endpoint == rsclient.make_url("/oauth2/token"));
+    assert_eq!(discovery.token_endpoint, rsclient.make_url("/oauth2/token"));
 
     assert!(
         discovery.userinfo_endpoint
@@ -217,7 +223,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
     let mut jwk_set: JwkKeySet = response
@@ -253,7 +259,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
     let consent_req: AuthorisationResponse = response
@@ -286,7 +292,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to send request.");
 
     // This should yield a 302 redirect with some query params.
-    assert!(response.status() == reqwest::StatusCode::FOUND);
+    assert_eq!(response.status(), reqwest::StatusCode::FOUND);
     assert_no_cache!(response);
 
     // And we should have a URL in the location header.
@@ -306,7 +312,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let state = pairs.get("state").expect("state not found!");
 
-    assert!(state == "YWJjZGVm");
+    assert_eq!(state, "YWJjZGVm");
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
     // the authorisation server to request a token.
@@ -326,7 +332,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send code exchange request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
 
     let cors_header: &str = response
         .headers()
@@ -362,7 +368,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token introspect request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     tracing::trace!("{:?}", response.headers());
     assert!(
         response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
@@ -399,10 +405,13 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
-    assert!(oidc.iss == rsclient.make_url("/oauth2/openid/test_integration"));
+    assert_eq!(
+        oidc.iss,
+        rsclient.make_url("/oauth2/openid/test_integration")
+    );
     eprintln!("{:?}", oidc.s_claims.email);
-    assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
-    assert!(oidc.s_claims.email_verified == Some(true));
+    assert_eq!(oidc.s_claims.email.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(oidc.s_claims.email_verified, Some(true));
 
     let response = client
         .get(rsclient.make_url("/oauth2/openid/test_integration/userinfo"))
@@ -423,7 +432,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     eprintln!("userinfo {userinfo:?}");
     eprintln!("oidc {oidc:?}");
 
-    assert!(userinfo == oidc);
+    assert_eq!(userinfo, oidc);
 
     // Step 6 - Show that our client can perform a client credentials grant
 
@@ -444,7 +453,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send client credentials request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
 
     let atr = response
         .json::<AccessTokenResponse>()
@@ -465,7 +474,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token introspect request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
 
     let tir = response
         .json::<AccessTokenIntrospectResponse>()
@@ -474,8 +483,8 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     assert!(tir.active);
     assert!(tir.scope.is_some());
-    assert!(tir.client_id.as_deref() == Some("test_integration"));
-    assert!(tir.username.as_deref() == Some("test_integration@localhost"));
+    assert_eq!(tir.client_id.as_deref(), Some("test_integration"));
+    assert_eq!(tir.username.as_deref(), Some("test_integration@localhost"));
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
 
     // auth back with admin so we can test deleting things
@@ -606,7 +615,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
     let mut jwk_set: JwkKeySet = response
@@ -641,7 +650,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
     let consent_req: AuthorisationResponse = response
@@ -673,7 +682,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .expect("Failed to send request.");
 
     // This should yield a 302 redirect with some query params.
-    assert!(response.status() == reqwest::StatusCode::FOUND);
+    assert_eq!(response.status(), reqwest::StatusCode::FOUND);
     assert_no_cache!(response);
 
     // And we should have a URL in the location header.
@@ -693,7 +702,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     let state = pairs.get("state").expect("state not found!");
 
-    assert!(state == "YWJjZGVm");
+    assert_eq!(state, "YWJjZGVm");
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
     // the authorisation server to request a token.
@@ -715,7 +724,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send code exchange request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
     // The body is a json AccessTokenResponse
@@ -736,10 +745,13 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
     // token and the userinfo endpoints.
-    assert!(oidc.iss == rsclient.make_url("/oauth2/openid/test_integration"));
+    assert_eq!(
+        oidc.iss,
+        rsclient.make_url("/oauth2/openid/test_integration")
+    );
     eprintln!("{:?}", oidc.s_claims.email);
-    assert!(oidc.s_claims.email.as_deref() == Some("oauth_test@localhost"));
-    assert!(oidc.s_claims.email_verified == Some(true));
+    assert_eq!(oidc.s_claims.email.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(oidc.s_claims.email_verified, Some(true));
 
     eprintln!("{:?}", oidc.claims);
     assert_eq!(
@@ -757,7 +769,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .await
         .expect("Failed to send userinfo preflight request.");
 
-    assert!(response.status() == reqwest::StatusCode::OK);
+    assert_eq!(response.status(), reqwest::StatusCode::OK);
     let cors_header: &str = response
         .headers()
         .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
@@ -781,7 +793,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     eprintln!("userinfo {userinfo:?}");
     eprintln!("oidc {oidc:?}");
 
-    assert!(userinfo == oidc);
+    assert_eq!(userinfo, oidc);
 
     // auth back with admin so we can test deleting things
     let res = rsclient
@@ -816,7 +828,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-auth request
     let response = client
@@ -826,7 +838,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token introspection request.");
     println!("{:?}", response);
-    assert!(response.status() == StatusCode::UNAUTHORIZED);
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
 }
 
 #[kanidmd_testkit::test]
@@ -851,7 +863,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a invalid format request on token
     let response = client
@@ -863,7 +875,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .expect("Failed to send token request.");
     println!("{:?}", response);
 
-    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 
     // test for a bad-body request on token
     let response = client
@@ -874,7 +886,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(response.status(), StatusCode::UNPROCESSABLE_ENTITY);
 
     // test for a bad-body request on token
     let response = client
@@ -885,5 +897,5 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
         .await
         .expect("Failed to send token request.");
     println!("{:?}", response);
-    assert!(response.status() == StatusCode::UNSUPPORTED_MEDIA_TYPE);
+    assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
 }

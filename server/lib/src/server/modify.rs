@@ -610,7 +610,10 @@ mod tests {
             filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![]),
         );
-        assert!(server_txn.modify(&me_emp) == Err(OperationError::EmptyRequest));
+        assert_eq!(
+            server_txn.modify(&me_emp),
+            Err(OperationError::EmptyRequest)
+        );
 
         // Mod changes no objects
         let me_nochg = ModifyEvent::new_impersonate_entry_ser(
@@ -624,7 +627,10 @@ mod tests {
                 Value::from("anusaosu"),
             )]),
         );
-        assert!(server_txn.modify(&me_nochg) == Err(OperationError::NoMatchingEntries));
+        assert_eq!(
+            server_txn.modify(&me_nochg),
+            Err(OperationError::NoMatchingEntries)
+        );
 
         // TODO: can we can this, since the filter's defined as an enum now
         // Filter is invalid to schema - to check this due to changes in the way events are
