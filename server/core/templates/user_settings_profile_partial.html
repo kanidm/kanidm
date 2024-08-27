@@ -32,18 +32,16 @@ Profile
         <label for="profileEmail" class="mb-2">Emails</label>
         <div>
             <div class="row">
-                <ul class="col-12 col-md-11 col-lg-8">
+                <ul class="col-12 col-md-11 col-lg-8" id="emailList">
                     (% for email in attrs.emails %)
-                        <li>
-                            <div class="input-group">
-                                <input type="email" class="form-control" id="profileEmail" name="email[]" value="(( email ))">
-                                (% if can_rw %)<button class="btn btn-secondary kanidm-remove-list-entry">Remove</button>(% endif %)
-                            </div>
-                        </li>
+                        (% let type = "email" %)
+                        (% let name = "emails[]" %)
+                        (% let value = email %)
+                        (% include "user_settings/form_modifiable_entry_modifiable_list_partial.html" %)
                     (% endfor %)
                 </ul>
             </div>
-            (% if can_rw %)<button class="btn btn-primary">Add Email</button>(% endif %)
+            (% if can_rw %)<button class="btn btn-primary" hx-post="/ui/api/user_settings/add_email" hx-target="#emailList" hx-swap="beforeend">Add Email</button>(% endif %)
         </div>
     </div>
 

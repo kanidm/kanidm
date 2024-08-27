@@ -93,6 +93,10 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/cu_cancel", post(reset::cancel))
         .route("/api/cu_commit", post(reset::commit))
         .route(
+            "/api/user_settings/add_email",
+            post(profile::view_new_email_entry_partial),
+        )
+        .route(
             "/api/user_settings/edit_profile",
             post(profile::view_profile_diff_start_save_post),
         )
