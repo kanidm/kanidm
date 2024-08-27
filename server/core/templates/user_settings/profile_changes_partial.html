@@ -12,7 +12,10 @@ Profile Difference
     <input type="hidden" name="account_name" value="(( new_attrs.account_name ))"/>
     <input type="hidden" name="display_name" value="(( new_attrs.display_name ))"/>
     <input type="hidden" name="legal_name" value="(( new_attrs.legal_name ))"/>
-    <input type="hidden" name="email" value="(% if let Some(email) = new_attrs.email %)(( email ))(% endif %)"/>
+    (% for email in new_attrs.emails %)
+        <input type="hidden" name="emails[]" value="(( email ))"/>
+    (% endfor %)
+
     <table class="table table-bordered table-responsive">
         <thead>
             <tr>
@@ -45,20 +48,25 @@ Profile Difference
         </tr>
     (% endif %)
 
-    (% if attrs.email != new_attrs.email && !(attrs.email.is_none() && new_attrs.email == Some("".to_string())) %)
+    (% if attrs.emails != new_attrs.emails %)
 
-        (% let state %)
-        (% if attrs.email.is_none() && new_attrs.email.is_some() %)
-            (% let state = "added" %)
-        (% else if attrs.email.is_some() && new_attrs.email.is_some() %)
-            (% let state = "changed" %)
-        (% else %)
-            (% let state = "removed" %)
-        (% endif %)
+        <!-- TODO: List new items with +, same items with . -->
         <tr>
-            <th scope="row">Email</th>
-            <td class="text-break">(% if let Some(email) = attrs.email %)(( email ))(% endif %)</td>
-            <td class="text-break">(% if let Some(email) = new_attrs.email %)(( email ))(% endif %)</td>
+            <th scope="row">Emails</th>
+            <td class="text-break">
+                <ul>
+                (% for email in attrs.emails %)
+                    <li>(( email ))</li>
+                (% endfor %)
+                </ul>
+            </td>
+            <td class="text-break">
+                <ul>
+                (% for email in new_attrs.emails %)
+                    <li>(( email ))</li>
+                (% endfor %)
+                </ul>
+            </td>
         </tr>
     (% endif %)
     </table>

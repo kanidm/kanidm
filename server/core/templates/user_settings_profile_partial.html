@@ -9,29 +9,41 @@ Profile
 <form>
     <div class="mb-2 row">
         <label for="profileUserName" class="col-12 col-md-3 col-lg-2 col-form-label">User name</label>
-        <div class="col-12 col-md-6 col-lg-4">
+        <div class="col-12 col-md-8 col-lg-6">
             <input type="text" readonly class="form-control-plaintext" id="profileUserName" name="account_name" value="(( attrs.account_name ))">
         </div>
     </div>
 
     <div class="mb-2 row">
         <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
-        <div class="col-12 col-md-6 col-lg-4">
+        <div class="col-12 col-md-8 col-lg-6">
             <input type="text" class="form-control" id="profileDisplayName" name="display_name" value="(( attrs.display_name ))">
         </div>
     </div>
 
     <div class="mb-2 row">
         <label for="profileLegalName" class="col-12 col-md-3 col-lg-2 col-form-label">Legal name</label>
-        <div class="col-12 col-md-6 col-lg-4">
+        <div class="col-12 col-md-8 col-lg-6">
             <input type="text" class="form-control" id="profileLegalName" name="legal_name" value="(( attrs.legal_name ))">
         </div>
     </div>
-    
-    <div class="mb-2 row">
-        <label for="profileEmail" class="col-12 col-md-3 col-lg-2 col-form-label">Email</label>
-        <div class="col-12 col-md-6 col-lg-4">
-            <input type="email" class="form-control" id="profileEmail" name="email" (% if let Some(email) = attrs.email %)value="(( email ))"(% endif %)>
+
+    <div class="mb-2">
+        <label for="profileEmail" class="mb-2">Emails</label>
+        <div>
+            <div class="row">
+                <ul class="col-12 col-md-11 col-lg-8">
+                    (% for email in attrs.emails %)
+                        <li>
+                            <div class="input-group">
+                                <input type="email" class="form-control" id="profileEmail" name="email[]" value="(( email ))">
+                                (% if can_rw %)<button class="btn btn-secondary kanidm-remove-list-entry">Remove</button>(% endif %)
+                            </div>
+                        </li>
+                    (% endfor %)
+                </ul>
+            </div>
+            (% if can_rw %)<button class="btn btn-primary">Add Email</button>(% endif %)
         </div>
     </div>
 

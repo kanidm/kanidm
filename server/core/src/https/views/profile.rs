@@ -11,11 +11,15 @@ use axum::{Extension, Form};
 use axum_extra::extract::cookie::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_LEGALNAME};
+use kanidm_proto::constants::{
+    ATTR_DISPLAYNAME, ATTR_LEGALNAME,
+};
 use kanidm_proto::internal::UserAuthToken;
-use kanidmd_lib::filter::{f_and, f_id};
-use kanidmd_lib::prelude::Filter;
+use kanidm_proto::v1::Entry;
+use kanidmd_lib::filter::{f_and, f_eq, f_id};
 use kanidmd_lib::prelude::FC;
+use kanidmd_lib::prelude::{Attribute, Filter};
+use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::fmt::{Display, Formatter};
@@ -39,7 +43,8 @@ pub(crate) struct ProfileAttributes {
     account_name: String,
     display_name: String,
     legal_name: String,
-    email: Option<String>,
+    emails: Vec<String>,
+    primary_email: Option<String>
 }
 
 #[derive(Template, Clone)]
@@ -65,9 +70,26 @@ pub(crate) async fn view_profile_get(
 ) -> axum::response::Result<Response> {
     let uat: UserAuthToken = state
         .qe_r_ref
-        .handle_whoami_uat(client_auth_info, kopid.eventid)
+        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
+
+    let filter = filter_all!(f_and!([f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid))]));
+    let base: Vec<Entry> = state
+        .qe_r_ref
+        .handle_internalsearch(
+            client_auth_info.clone(),
+            filter,
+            None,
+            kopid.eventid,
+        )
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    let self_entry = base.first().expect("Self no longer exists");
+    let empty = vec![];
+    let emails = self_entry.attrs.get("mail").unwrap_or(&empty).clone();
+    let primary_email = emails.first().cloned();
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
@@ -79,7 +101,8 @@ pub(crate) async fn view_profile_get(
             account_name: uat.name().to_string(),
             display_name: uat.displayname.clone(),
             legal_name: "hardcoded".to_string(),
-            email: uat.mail_primary.clone(),
+            emails,
+            primary_email,
         },
         posix_enabled: false,
     };
@@ -106,12 +129,29 @@ pub(crate) async fn view_profile_diff_start_save_post(
 ) -> axum::response::Result<Response> {
     let uat: UserAuthToken = state
         .qe_r_ref
-        .handle_whoami_uat(client_auth_info, kopid.eventid)
+        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
+
+    let filter = filter_all!(f_and!([f_eq(Attribute::Uuid, PartialValue::Uuid(uat.uuid))]));
+    let base: Vec<Entry> = state
+        .qe_r_ref
+        .handle_internalsearch(
+            client_auth_info.clone(),
+            filter,
+            None,
+            kopid.eventid,
+        )
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    let self_entry = base.first().expect("Self no longer exists");
+    let empty = vec![];
+    let emails = self_entry.attrs.get("mail").unwrap_or(&empty).clone();
+    let primary_email = emails.first().cloned();
 
     let profile_view = ProfileChangesPartialView {
         can_rw,
@@ -119,7 +159,8 @@ pub(crate) async fn view_profile_diff_start_save_post(
             account_name: uat.name().to_string(),
             display_name: uat.displayname.clone(),
             legal_name: "hardcoded".to_string(),
-            email: uat.mail_primary.clone(),
+            emails,
+            primary_email,
         },
         new_attrs,
         posix_enabled: true,
