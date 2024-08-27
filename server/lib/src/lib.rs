@@ -123,7 +123,7 @@ pub mod prelude {
         ScimAttr, ScimComplexAttr, ScimEntryHeader,
     };
 
-    pub(crate) use serde_json::Value as JsonValue;
+    // pub(crate) use serde_json::Value as JsonValue;
 
     #[cfg(test)]
     pub use kanidmd_lib_macros::*;

@@ -211,18 +211,16 @@ impl ValueSetT for ValueSetCertificate {
                     .ok()
                     .map(|der| (s256, der))
             })
-            .map(|(s256, cert_der)| {
-                let mut complex_attr = ScimComplexAttr::default();
-                complex_attr.insert("s256".to_string(), hex::encode(s256).into());
-                complex_attr.insert("der".to_string(), cert_der.into());
-                complex_attr
+            .map(|(s256, cert_der)| ScimCertificate {
+                s256: s256.clone(),
+                der: cert_der,
             })
-            .collect();
+            .collect::<Vec<_>>();
 
         if vals.is_empty() {
             None
         } else {
-            Some(ScimValueKanidm::MultiComplex(vals))
+            Some(ScimValueKanidm::from(vals))
         }
     }
 
@@ -314,7 +312,7 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
         let scim_value = vs.to_scim_value().unwrap();
 
         let multi = match scim_value {
-            ScimValueKanidm::MultiComplex(mut map) => map.pop().unwrap(),
+            ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),
             _ => unreachable!(),
         };
 

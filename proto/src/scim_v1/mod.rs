@@ -28,7 +28,7 @@ pub use self::synch::*;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // use super::*;
 
     #[test]
     fn test_scim_rfc_to_generic() {

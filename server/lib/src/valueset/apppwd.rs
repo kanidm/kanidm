@@ -5,6 +5,8 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use std::collections::BTreeMap;
 
+use kanidm_proto::scim_v1::server::ScimApplicationPassword;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetApplicationPassword {
     // The map key is application's UUID
@@ -187,26 +189,16 @@ impl ValueSetT for ValueSetApplicationPassword {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .values()
                 .flatten()
-                .map(|app_pwd| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert(
-                        "uuid".to_string(),
-                        app_pwd.uuid.hyphenated().to_string().into(),
-                    );
-                    complex_attr.insert(
-                        "applicationUuid".to_string(),
-                        app_pwd.application.hyphenated().to_string().into(),
-                    );
-                    complex_attr.insert("label".to_string(), app_pwd.label.clone().into());
-
-                    complex_attr
+                .map(|app_pwd| ScimApplicationPassword {
+                    uuid: app_pwd.uuid,
+                    application_uuid: app_pwd.application,
+                    label: app_pwd.label.clone(),
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

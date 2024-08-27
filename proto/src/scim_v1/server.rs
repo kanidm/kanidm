@@ -1,14 +1,14 @@
 use serde::{Deserialize, Serialize};
+use serde_with::{base64, formats, serde_as};
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
-use serde_with::{serde_as, base64, formats};
 
 use scim_proto::ScimEntryHeader;
 
 use crate::attribute::Attribute;
 use serde_json::Value as JsonValue;
-use time::OffsetDateTime;
 use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use url::Url;
 use uuid::Uuid;
 
@@ -33,7 +33,6 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimAddress {
     pub formatted: String,
@@ -47,6 +46,43 @@ pub struct ScimAddress {
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimMail {
     pub primary: bool,
+    pub value: String,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimApplicationPassword {
+    pub uuid: Uuid,
+    pub application_uuid: Uuid,
+    pub label: String,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimBinary {
+    pub label: String,
+    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    pub value: Vec<u8>,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimCertificate {
+    #[serde_as(as = "Hex")]
+    pub s256: Vec<u8>,
+    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    pub der: Vec<u8>,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimAuditString {
+    #[serde_as(as = "Rfc3339")]
+    pub date_time: OffsetDateTime,
+    pub value: String,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimSshPublicKey {
+    pub label: String,
     pub value: String,
 }
 
@@ -65,37 +101,37 @@ pub enum ScimValueKanidm {
 
     Decimal(f64),
     String(String),
-    DateTime(
-        #[serde_as(as = "Rfc3339")]
-        OffsetDateTime
+    DateTime(#[serde_as(as = "Rfc3339")] OffsetDateTime),
 
-    ),
-
+    /*
     Binary(
         #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
         Vec<u8>
     ),
+    */
     Reference(Url),
 
     Uuid(Uuid),
     // Other strong outbound types.
+    ArrayString(Vec<String>),
 
-    ArrayString(
-        Vec<String>,
-    ),
-
-    ArrayDateTime(
-        #[serde_as(as = "Vec<Rfc3339>")]
-        Vec<
-            OffsetDateTime
-        >
-    ),
+    ArrayDateTime(#[serde_as(as = "Vec<Rfc3339>")] Vec<OffsetDateTime>),
 
     ArrayUuid(Vec<Uuid>),
 
     ArrayAddress(Vec<ScimAddress>),
 
     ArrayMail(Vec<ScimMail>),
+
+    ArrayApplicationPassword(Vec<ScimApplicationPassword>),
+
+    ArrayAuditString(Vec<ScimAuditString>),
+
+    ArrayBinary(Vec<ScimBinary>),
+
+    ArrayCertificate(Vec<ScimCertificate>),
+
+    ArraySshPublicKey(Vec<ScimSshPublicKey>),
 }
 
 impl From<bool> for ScimValueKanidm {
@@ -155,5 +191,17 @@ impl From<Vec<ScimAddress>> for ScimValueKanidm {
 impl From<Vec<ScimMail>> for ScimValueKanidm {
     fn from(set: Vec<ScimMail>) -> Self {
         Self::ArrayMail(set)
+    }
+}
+
+impl From<Vec<ScimApplicationPassword>> for ScimValueKanidm {
+    fn from(set: Vec<ScimApplicationPassword>) -> Self {
+        Self::ArrayApplicationPassword(set)
+    }
+}
+
+impl From<Vec<ScimAuditString>> for ScimValueKanidm {
+    fn from(set: Vec<ScimAuditString>) -> Self {
+        Self::ArrayAuditString(set)
     }
 }

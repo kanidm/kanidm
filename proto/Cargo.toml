@@ -25,7 +25,7 @@ num_enum = { workspace = true }
 scim_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
-serde_with = { workspace = true, features = ["time_0_3", "base64"] }
+serde_with = { workspace = true, features = ["time_0_3", "base64", "hex"] }
 smartstring = { workspace = true, features = ["serde"] }
 time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }

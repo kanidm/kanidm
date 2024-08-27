@@ -3,6 +3,7 @@ use crate::repl::cid::Cid;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimAuditString;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
@@ -121,17 +122,17 @@ impl ValueSetT for ValueSetAuditLogString {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(cid, strdata)| {
-                    let mut complex_attr = ScimComplexAttr::default();
                     let odt: OffsetDateTime = cid.into();
-                    complex_attr.insert("dateTime".to_string(), odt.into());
-                    complex_attr.insert("value".to_string(), strdata.clone().into());
-                    complex_attr
+                    ScimAuditString {
+                        date_time: odt,
+                        value: strdata.clone(),
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

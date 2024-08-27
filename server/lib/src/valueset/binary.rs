@@ -289,19 +289,14 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
-                .map(|(tag, bin)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("tag".to_string(), tag.clone().into());
-
-                    complex_attr.insert("value".to_string(), bin.clone().into());
-
-                    complex_attr
+                .map(|(tag, bin)| ScimBinary {
+                    label: tag.clone(),
+                    bin: bin.clone(),
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

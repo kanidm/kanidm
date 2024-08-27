@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
+use serde_with::{base64, formats, serde_as};
 use utoipa::ToSchema;
 use uuid::Uuid;
-use serde_with::{serde_as, base64, formats};
 
 use scim_proto::user::MultiValueAttr;
 use scim_proto::{ScimEntry, ScimEntryHeader};
@@ -12,7 +12,7 @@ pub enum ScimSyncState {
     Refresh,
     Active {
         #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
-        cookie: Vec<u8>
+        cookie: Vec<u8>,
     },
 }
 

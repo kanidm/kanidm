@@ -153,18 +153,14 @@ impl ValueSetT for ValueSetSshKey {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
-                .map(|(label, pk)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("label".to_string(), label.clone().into());
-                    complex_attr.insert("value".to_string(), pk.to_string().into());
-
-                    complex_attr
+                .map(|(label, pk)| ScimSshPublicKey {
+                    label: label.clone(),
+                    value: pk.to_string(),
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
