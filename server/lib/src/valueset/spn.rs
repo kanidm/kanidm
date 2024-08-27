@@ -120,12 +120,10 @@ impl ValueSetT for ValueSetSpn {
         let mut iter = self.set.iter().map(|(n, d)| format!("{n}@{d}"));
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
-            Some(ScimAttr::String(v).into())
+            Some(v.into())
         } else {
-            // Something is wrong, we should only have one?
-            Some(ScimValueKanidm::MultiSimple(
-                iter.map(|v| v.into()).collect(),
-            ))
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
         }
     }
 

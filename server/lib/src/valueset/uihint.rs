@@ -102,8 +102,8 @@ impl ValueSetT for ValueSetUiHint {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiSimple(
-            self.set.iter().map(|u| u.to_string().into()).collect(),
+        Some(ScimValueKanidm::from(
+            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
         ))
     }
 

@@ -116,7 +116,7 @@ impl ValueSetT for ValueSetOauthScope {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::Simple(str_join(&self.set).into()))
+        Some(str_join(&self.set).into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

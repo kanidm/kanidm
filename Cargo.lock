@@ -3293,7 +3293,6 @@ name = "kanidm_proto"
 version = "1.4.0-dev"
 dependencies = [
  "base32",
- "base64urlsafedata 0.5.0",
  "enum-iterator",
  "num_enum",
  "scim_proto",

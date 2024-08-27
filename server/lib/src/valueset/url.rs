@@ -109,18 +109,13 @@ impl ValueSetT for ValueSetUrl {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().map(|url| url.to_string());
         if self.len() == 1 {
-            let v = self
-                .set
-                .iter()
-                .next()
-                .map(|url| url.to_string())
-                .unwrap_or_default();
-            Some(ScimAttr::String(v).into())
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
         } else {
-            Some(ScimValueKanidm::MultiSimple(
-                self.set.iter().map(|url| url.to_string().into()).collect(),
-            ))
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
         }
     }
 

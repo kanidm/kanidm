@@ -10,6 +10,8 @@ use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
+
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {
     set: SmolSet<[Address; 1]>,
@@ -164,23 +166,18 @@ impl ValueSetT for ValueSetAddress {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.set
                 .iter()
-                .map(|a| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("formatted".to_string(), a.formatted.clone().into());
-                    complex_attr
-                        .insert("streetAddress".to_string(), a.street_address.clone().into());
-                    complex_attr.insert("locality".to_string(), a.locality.clone().into());
-                    complex_attr.insert("region".to_string(), a.region.clone().into());
-                    complex_attr.insert("postalCode".to_string(), a.postal_code.clone().into());
-                    complex_attr.insert("country".to_string(), a.country.clone().into());
-
-                    complex_attr
+                .map(|a| ScimAddress {
+                    formatted: a.formatted.clone(),
+                    street_address: a.street_address.clone(),
+                    locality: a.locality.clone(),
+                    region: a.region.clone(),
+                    postal_code: a.postal_code.clone(),
+                    country: a.country.clone(),
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -476,27 +473,17 @@ impl ValueSetT for ValueSetEmailAddress {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
-            std::iter::once({
-                let mut complex_attr = ScimComplexAttr::default();
-
-                complex_attr.insert("value".to_string(), self.primary.clone().into());
-                complex_attr.insert("primary".to_string(), true.into());
-
-                complex_attr
-            })
-            .chain(self.set.iter().filter_map(|mail| {
-                if **mail == self.primary {
-                    None
-                } else {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("value".to_string(), mail.clone().into());
-                    complex_attr.insert("primary".to_string(), false.into());
-                    Some(complex_attr)
-                }
-            }))
-            .collect(),
+        Some(ScimValueKanidm::from(
+            self.set
+                .iter()
+                .map(|mail| {
+                    let primary = **mail == self.primary;
+                    ScimMail {
+                        primary,
+                        value: mail.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
         ))
     }
 

@@ -1,15 +1,19 @@
-use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
+use serde_with::{serde_as, base64, formats};
 
 use scim_proto::user::MultiValueAttr;
 use scim_proto::{ScimEntry, ScimEntryHeader};
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncState {
     Refresh,
-    Active { cookie: Base64UrlSafeData },
+    Active {
+        #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+        cookie: Vec<u8>
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]

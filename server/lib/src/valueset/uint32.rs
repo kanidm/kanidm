@@ -118,12 +118,10 @@ impl ValueSetT for ValueSetUint32 {
         if self.len() == 1 {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
-
-            Some(ScimAttr::Integer(b as i64).into())
+            Some(b.into())
         } else {
-            Some(ScimValueKanidm::MultiSimple(
-                self.set.iter().copied().map(|b| b.into()).collect(),
-            ))
+            // Nothing is MV for this today
+            None
         }
     }
 

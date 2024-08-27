@@ -147,13 +147,13 @@ impl ValueSetT for ValueSetUtf8 {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
         if self.len() == 1 {
-            let v = self.set.iter().next().cloned().unwrap_or_default();
-            Some(ScimAttr::String(v).into())
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
         } else {
-            Some(ScimValueKanidm::MultiSimple(
-                self.set.iter().cloned().map(|v| v.into()).collect(),
-            ))
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
         }
     }
 

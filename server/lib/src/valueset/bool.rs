@@ -116,11 +116,10 @@ impl ValueSetT for ValueSetBool {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
 
-            Some(ScimAttr::Bool(b).into())
+            Some(b.into())
         } else {
-            Some(ScimValueKanidm::MultiSimple(
-                self.set.iter().copied().map(|b| b.into()).collect(),
-            ))
+            // Makes no sense for more than 1 value.
+            None
         }
     }
 

@@ -1175,8 +1175,8 @@ impl ValueSetT for ValueSetCredentialType {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiSimple(
-            self.set.iter().map(|ct| ct.to_string().into()).collect(),
+        Some(ScimValueKanidm::from(
+            self.set.iter().map(|ct| ct.to_string()).collect::<Vec<_>>(),
         ))
     }
 
@@ -1362,13 +1362,13 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiSimple(
+        Some(ScimValueKanidm::from(
             self.ca_list
                 .cas()
                 .values()
                 .flat_map(|att_ca| att_ca.aaguids().values())
-                .map(|device| device.description_en().to_string().into())
-                .collect(),
+                .map(|device| device.description_en().to_string())
+                .collect::<Vec<_>>(),
         ))
     }
 

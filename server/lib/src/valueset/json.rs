@@ -131,7 +131,7 @@ impl ValueSetT for ValueSetJsonFilter {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiSimple(
+        Some(ScimValueKanidm::from(
             self.set
                 .iter()
                 .filter_map(|s| {
@@ -141,8 +141,7 @@ impl ValueSetT for ValueSetJsonFilter {
                         })
                         .ok()
                 })
-                .map(ScimAttr::String)
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

@@ -125,11 +125,10 @@ impl ValueSetT for ValueSetCid {
         let mut iter = self.set.iter().map(|cid| cid.to_string());
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
-            Some(ScimAttr::String(v).into())
+            Some(v.into())
         } else {
-            Some(ScimValueKanidm::MultiSimple(
-                iter.map(|v| v.into()).collect(),
-            ))
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
         }
     }
 

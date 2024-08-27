@@ -120,13 +120,7 @@ impl ValueSetT for ValueSetUuid {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        self.set
-            .iter()
-            .next()
-            .copied()
-            .map(uuid_to_proto_string)
-            .map(ScimAttr::String)
-            .map(ScimValueKanidm::Simple)
+        self.set.iter().next().copied().map(ScimValueKanidm::Uuid)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -301,14 +295,7 @@ impl ValueSetT for ValueSetRefer {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiSimple(
-            self.set
-                .iter()
-                .copied()
-                .map(uuid_to_proto_string)
-                .map(ScimAttr::String)
-                .collect(),
-        ))
+        Some(self.set.iter().copied().collect::<Vec<_>>().into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

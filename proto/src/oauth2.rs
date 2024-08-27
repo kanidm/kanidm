@@ -2,10 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{serde_as, base64, formats, skip_serializing_none, StringWithSeparator};
 use url::Url;
 use uuid::Uuid;
 
@@ -17,9 +16,11 @@ pub enum CodeChallengeMethod {
     S256,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkceRequest {
-    pub code_challenge: Base64UrlSafeData,
+    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    pub code_challenge: Vec<u8>,
     pub code_challenge_method: CodeChallengeMethod,
 }
 
