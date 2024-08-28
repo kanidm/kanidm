@@ -263,7 +263,22 @@ body {
   height: fit-content;
 }
 
+#cred-update-commit-bar {
+  position: fixed;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
 
+  max-width: 630px;
+  width: 90vw;
 
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
 
-
+  padding: 10px;
+  background: seashell;
+  box-shadow: 0 0 1px 0 #0000001f;
+  border-radius: 0.375rem;
+}
