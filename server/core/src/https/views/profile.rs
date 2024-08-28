@@ -12,7 +12,7 @@ use axum_extra::extract::cookie::CookieJar;
 use axum_extra::extract::Form;
 use axum_htmx::{HxEvent, HxPushUrl, HxRequest, HxResponseTrigger};
 use futures_util::TryFutureExt;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_EMAIL, ATTR_LEGALNAME, ATTR_MAIL};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_LEGALNAME, ATTR_MAIL};
 use kanidm_proto::internal::UserAuthToken;
 use kanidm_proto::v1::Entry;
 use kanidmd_lib::filter::{f_and, f_eq, f_id};
@@ -64,6 +64,7 @@ pub(crate) struct FormModEntryModListPartial {
     r#type: String,
     name: String,
     value: String,
+    invalid_feedback: String,
 }
 
 impl Display for ProfileAttributes {
@@ -286,6 +287,7 @@ pub(crate) async fn view_new_email_entry_partial(
             r#type: "email".to_string(),
             name: "emails[]".to_string(),
             value: "".to_string(),
+            invalid_feedback: "Please enter a valid email address.".to_string(),
         })
         .into_response(),
     )

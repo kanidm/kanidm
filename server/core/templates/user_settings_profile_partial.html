@@ -6,7 +6,7 @@ Profile
 
 (% block settings_window %)
 
-<form>
+<form class="needs-validation" hx-post="/ui/api/user_settings/edit_profile" hx-target="#user_settings_container" hx-swap="outerHTML" hx-validate="true" hx-ext="bs-validation" novalidate>
     <div class="mb-2 row">
         <label for="profileUserName" class="col-12 col-md-3 col-lg-2 col-form-label">User name</label>
         <div class="col-12 col-md-8 col-lg-6">
@@ -37,18 +37,19 @@ Profile
                         (% let type = "email" %)
                         (% let name = "emails[]" %)
                         (% let value = email %)
+                        (% let invalid_feedback = "Please enter a valid email address." %)
                         (% include "user_settings/form_modifiable_entry_modifiable_list_partial.html" %)
                     (% endfor %)
                 </ul>
             </div>
-            (% if can_rw %)<button class="btn btn-primary" hx-post="/ui/api/user_settings/add_email" hx-target="#emailList" hx-swap="beforeend">Add Email</button>(% endif %)
+            (% if can_rw %)<button type="button" class="btn btn-primary" hx-post="/ui/api/user_settings/add_email" hx-target="#emailList" hx-swap="beforeend">Add Email</button>(% endif %)
         </div>
     </div>
 
     <!-- Edit button -->
     <div class="pt-4">
         (% if can_rw %)
-            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile" hx-target="#user_settings_container" hx-swap="outerHTML">Edit</button>
+            <button class="btn btn-primary" type="submit">Edit</button>
         (% else %)
             <a href="/ui/profile/unlock" hx-boost="false">
                 <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
