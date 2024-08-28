@@ -1044,10 +1044,16 @@ async fn kanidm_main(
 
             let healthcheck_url = match &sopt.check_origin {
                 true => format!("{}/status", config.origin),
-                false => format!("https://{}/status", config.address),
+                false => {
+                    // the replace covers when you specify an ipv6-capable "all" address
+                    format!(
+                        "https://{}/status",
+                        config.address.replace("[::]", "localhost")
+                    )
+                }
             };
 
-            debug!("Checking {healthcheck_url}");
+            info!("Checking {healthcheck_url}");
 
             let mut client = reqwest::ClientBuilder::new()
                 .danger_accept_invalid_certs(!sopt.verify_tls)
