@@ -8,7 +8,11 @@
 (% block body %)
 	<main id="main" class="flex-shrink-0 form-signin">
 		<center>
+			(% if domain_custom_image %)
+			<img src="/ui/images/domain" alt="Kanidm" class="kanidm_logo"/>
+			(% else %)
 			<img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+			(% endif %)
 			<h3>Kanidm</h3>
 		</center>
 		<div id="login-form-container" class="container">

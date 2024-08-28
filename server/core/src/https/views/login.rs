@@ -43,6 +43,7 @@ struct SessionContext {
 #[derive(Template)]
 #[template(path = "login.html")]
 struct LoginView {
+    domain_custom_image: bool,
     username: String,
     remember_me: bool,
 }
@@ -55,6 +56,7 @@ pub struct Mech<'a> {
 #[derive(Template)]
 #[template(path = "login_mech_choose.html")]
 struct LoginMechView<'a> {
+    domain_custom_image: bool,
     mechs: Vec<Mech<'a>>,
 }
 
@@ -68,6 +70,7 @@ enum LoginTotpError {
 #[derive(Template, Default)]
 #[template(path = "login_totp.html")]
 struct LoginTotpView {
+    domain_custom_image: bool,
     totp: String,
     errors: LoginTotpError,
 }
@@ -75,16 +78,20 @@ struct LoginTotpView {
 #[derive(Template)]
 #[template(path = "login_password.html")]
 struct LoginPasswordView {
+    domain_custom_image: bool,
     password: String,
 }
 
 #[derive(Template)]
 #[template(path = "login_backupcode.html")]
-struct LoginBackupCodeView {}
+struct LoginBackupCodeView {
+    domain_custom_image: bool,
+}
 
 #[derive(Template)]
 #[template(path = "login_webauthn.html")]
 struct LoginWebauthnView {
+    domain_custom_image: bool,
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,

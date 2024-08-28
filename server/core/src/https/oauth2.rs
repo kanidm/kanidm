@@ -107,20 +107,22 @@ pub(crate) async fn oauth2_image_get(
         .await;
 
     match res {
-        Ok(image) => (
+        Ok(Some(image)) => (
             StatusCode::OK,
             [(CONTENT_TYPE, image.filetype.as_content_type_str())],
             image.contents,
         )
             .into_response(),
+        Ok(None) => {
+            warn!(?rs_name, "No image set for oauth2 client");
+            (StatusCode::NOT_FOUND, "").into_response()
+        }
         Err(err) => {
-            admin_debug!(
-                "Unable to get image for oauth2 resource server {}: {:?}",
-                rs_name,
-                err
+            error!(?err,
+                "Unable to get image for oauth2 client"
             );
             // TODO: a 404 probably isn't perfect but it's not the worst
-            (StatusCode::NOT_FOUND, "").into_response()
+            (StatusCode::INTERNAL_SERVER_ERROR, "").into_response()
         }
     }
 }

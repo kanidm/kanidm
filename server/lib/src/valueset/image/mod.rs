@@ -20,8 +20,7 @@ pub struct ValueSetImage {
 
 pub(crate) const MAX_IMAGE_HEIGHT: u32 = 1024;
 pub(crate) const MAX_IMAGE_WIDTH: u32 = 1024;
-/// 128kb should be enough for anyone... right? :D
-pub(crate) const MAX_FILE_SIZE: u32 = 1024 * 128;
+pub(crate) const MAX_FILE_SIZE: u32 = 1024 * 256;
 
 const WEBP_MAGIC: &[u8; 4] = b"RIFF";
 
