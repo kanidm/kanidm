@@ -772,6 +772,7 @@ fn get_cu_response(
             domain_info,
             names,
             credentials_update_partial,
+            // TODO: fill in posix enabled
             posix_enabled: false,
         };
         let profile_view = ProfileView {
