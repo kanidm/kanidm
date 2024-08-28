@@ -20,6 +20,8 @@ use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
+
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
     map: BTreeMap<String, Credential>,
@@ -151,19 +153,9 @@ impl ValueSetT for ValueSetCredential {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
-            self.map
-                .iter()
-                .map(|(tag, data)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("label".to_string(), tag.clone().into());
-                    complex_attr.insert("is_mfa".to_string(), data.is_mfa().into());
-
-                    complex_attr
-                })
-                .collect(),
-        ))
+        // Currently I think we don't need to yield cred info as that's part of the
+        // cred update session instead.
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -459,27 +451,31 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(token_id, intent_token_state)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("token_id".to_string(), token_id.clone().into());
                     let (state, max_ttl) = match intent_token_state {
-                        IntentTokenState::Valid { max_ttl, .. } => ("valid", *max_ttl),
-                        IntentTokenState::InProgress { max_ttl, .. } => ("in_progress", *max_ttl),
-                        IntentTokenState::Consumed { max_ttl } => ("consumed", *max_ttl),
+                        IntentTokenState::Valid { max_ttl, .. } => {
+                            (ScimIntentTokenState::Valid, *max_ttl)
+                        }
+                        IntentTokenState::InProgress { max_ttl, .. } => {
+                            (ScimIntentTokenState::InProgress, *max_ttl)
+                        }
+                        IntentTokenState::Consumed { max_ttl } => {
+                            (ScimIntentTokenState::Consumed, *max_ttl)
+                        }
                     };
 
-                    complex_attr.insert("state".to_string(), state.to_string().into());
-
                     let odt: OffsetDateTime = OffsetDateTime::UNIX_EPOCH + max_ttl;
-                    complex_attr.insert("expires".to_string(), odt.into());
 
-                    complex_attr
+                    ScimIntentToken {
+                        token_id: token_id.clone(),
+                        state,
+                        expires: odt,
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -768,20 +764,7 @@ impl ValueSetT for ValueSetPasskey {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
-            self.map
-                .iter()
-                .map(|(uuid, (tag, _))| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("uuid".to_string(), uuid.hyphenated().to_string().into());
-
-                    complex_attr.insert("label".to_string(), tag.clone().into());
-
-                    complex_attr
-                })
-                .collect(),
-        ))
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -977,20 +960,7 @@ impl ValueSetT for ValueSetAttestedPasskey {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
-            self.map
-                .iter()
-                .map(|(uuid, (tag, _))| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("uuid".to_string(), uuid.hyphenated().to_string().into());
-
-                    complex_attr.insert("label".to_string(), tag.clone().into());
-
-                    complex_attr
-                })
-                .collect(),
-        ))
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1414,34 +1384,9 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        CredentialType,
-        IntentTokenState,
-        // ValueSetPasskey, ValueSetWebauthnAttestationCaList, ValueSetAttestedPasskey,
-        ValueSetCredential,
-        ValueSetCredentialType,
-        ValueSetIntentToken,
-    };
-    use crate::credential::Credential;
+    use super::{CredentialType, IntentTokenState, ValueSetCredentialType, ValueSetIntentToken};
     use crate::prelude::ValueSet;
-    use kanidm_lib_crypto::CryptoPolicy;
     use std::time::Duration;
-
-    #[test]
-    fn test_scim_credential() {
-        let cred = Credential::new_password_only(&CryptoPolicy::minimum(), "Multi Pass!").unwrap();
-        let vs: ValueSet = ValueSetCredential::new("label".to_string(), cred);
-
-        let data = r#"
-[
-  {
-    "is_mfa": false,
-    "label": "label"
-  }
-]
-        "#;
-        crate::valueset::scim_json_reflexive(vs, data);
-    }
 
     #[test]
     fn test_scim_intent_token() {
@@ -1465,32 +1410,9 @@ mod tests {
         crate::valueset::scim_json_reflexive(vs, data);
     }
 
-    /*
-    // I can't easily test this without a way to synth a pk.
-    #[test]
-    fn test_scim_passkey() {
-        let vs: ValueSet = ValueSetPasskey::new(true);
-        crate::valueset::scim_json_reflexive(vs, r#""#);
-    }
-
-    #[test]
-    fn test_scim_attested_passkey() {
-        let vs: ValueSet = ValueSetAttestedPasskey::new(true);
-        crate::valueset::scim_json_reflexive(vs, r#""#);
-    }
-    */
-
     #[test]
     fn test_scim_credential_type() {
         let vs: ValueSet = ValueSetCredentialType::new(CredentialType::Mfa);
         crate::valueset::scim_json_reflexive(vs, r#"["mfa"]"#);
     }
-
-    /*
-    #[test]
-    fn test_scim_webauthn_attestation_ca_list() {
-        let vs: ValueSet = ValueSetWebauthnAttestationCaList::new(true);
-        crate::valueset::scim_json_reflexive(vs, r#""#);
-    }
-    */
 }

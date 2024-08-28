@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serde_with::{base64, formats, serde_as};
-use std::collections::BTreeMap;
+use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
+use std::collections::{BTreeMap, BTreeSet};
 use utoipa::ToSchema;
 
 use scim_proto::ScimEntryHeader;
@@ -56,6 +56,7 @@ pub struct ScimApplicationPassword {
     pub label: String,
 }
 
+#[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimBinary {
     pub label: String,
@@ -63,6 +64,7 @@ pub struct ScimBinary {
     pub value: Vec<u8>,
 }
 
+#[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimCertificate {
     #[serde_as(as = "Hex")]
@@ -79,11 +81,103 @@ pub struct ScimAuditString {
     pub value: String,
 }
 
-#[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimSshPublicKey {
     pub label: String,
     pub value: String,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum ScimIntentTokenState {
+    Valid,
+    InProgress,
+    Consumed,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimIntentToken {
+    pub token_id: String,
+    pub state: ScimIntentTokenState,
+    #[serde_as(as = "Rfc3339")]
+    pub expires: OffsetDateTime,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimKeyInternal {
+    pub key_id: String,
+    pub status: String,
+    pub usage: String,
+    #[serde_as(as = "Rfc3339")]
+    pub valid_from: OffsetDateTime,
+}
+
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimAuthSession {
+    pub id: Uuid,
+
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub expires: Option<OffsetDateTime>,
+
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub revoked: Option<OffsetDateTime>,
+
+    #[serde_as(as = "Rfc3339")]
+    pub issued_at: OffsetDateTime,
+
+    pub issued_by: Uuid,
+    pub credential_id: Uuid,
+    pub auth_type: String,
+    pub session_scope: String,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimOAuth2Session {
+    pub id: Uuid,
+    pub parent_id: Option<Uuid>,
+    pub client_id: Uuid,
+    #[serde_as(as = "Rfc3339")]
+    pub issued_at: OffsetDateTime,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub expires: Option<OffsetDateTime>,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub revoked: Option<OffsetDateTime>,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimApiToken {
+    pub id: Uuid,
+    pub label: String,
+    #[serde_as(as = "Option<Rfc3339>")]
+    pub expires: Option<OffsetDateTime>,
+    #[serde_as(as = "Rfc3339")]
+    pub issued_at: OffsetDateTime,
+    pub issued_by: Uuid,
+    pub scope: String,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimOAuth2ScopeMap {
+    pub uuid: Uuid,
+    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
+    pub scopes: BTreeSet<String>,
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimOAuth2ClaimMap {
+    pub group: Uuid,
+    pub claim: String,
+    pub join_char: String,
+    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
+    pub values: BTreeSet<String>,
 }
 
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only
@@ -131,7 +225,16 @@ pub enum ScimValueKanidm {
 
     ArrayCertificate(Vec<ScimCertificate>),
 
-    ArraySshPublicKey(Vec<ScimSshPublicKey>),
+    SshPublicKey(Vec<ScimSshPublicKey>),
+
+    AuthSession(Vec<ScimAuthSession>),
+    OAuth2Session(Vec<ScimOAuth2Session>),
+    ApiToken(Vec<ScimApiToken>),
+    IntentToken(Vec<ScimIntentToken>),
+    OAuth2ScopeMap(Vec<ScimOAuth2ScopeMap>),
+    OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
+
+    KeyInternal(Vec<ScimKeyInternal>),
 }
 
 impl From<bool> for ScimValueKanidm {
@@ -203,5 +306,65 @@ impl From<Vec<ScimApplicationPassword>> for ScimValueKanidm {
 impl From<Vec<ScimAuditString>> for ScimValueKanidm {
     fn from(set: Vec<ScimAuditString>) -> Self {
         Self::ArrayAuditString(set)
+    }
+}
+
+impl From<Vec<ScimBinary>> for ScimValueKanidm {
+    fn from(set: Vec<ScimBinary>) -> Self {
+        Self::ArrayBinary(set)
+    }
+}
+
+impl From<Vec<ScimCertificate>> for ScimValueKanidm {
+    fn from(set: Vec<ScimCertificate>) -> Self {
+        Self::ArrayCertificate(set)
+    }
+}
+
+impl From<Vec<ScimSshPublicKey>> for ScimValueKanidm {
+    fn from(set: Vec<ScimSshPublicKey>) -> Self {
+        Self::SshPublicKey(set)
+    }
+}
+
+impl From<Vec<ScimAuthSession>> for ScimValueKanidm {
+    fn from(set: Vec<ScimAuthSession>) -> Self {
+        Self::AuthSession(set)
+    }
+}
+
+impl From<Vec<ScimOAuth2Session>> for ScimValueKanidm {
+    fn from(set: Vec<ScimOAuth2Session>) -> Self {
+        Self::OAuth2Session(set)
+    }
+}
+
+impl From<Vec<ScimApiToken>> for ScimValueKanidm {
+    fn from(set: Vec<ScimApiToken>) -> Self {
+        Self::ApiToken(set)
+    }
+}
+
+impl From<Vec<ScimIntentToken>> for ScimValueKanidm {
+    fn from(set: Vec<ScimIntentToken>) -> Self {
+        Self::IntentToken(set)
+    }
+}
+
+impl From<Vec<ScimOAuth2ScopeMap>> for ScimValueKanidm {
+    fn from(set: Vec<ScimOAuth2ScopeMap>) -> Self {
+        Self::OAuth2ScopeMap(set)
+    }
+}
+
+impl From<Vec<ScimOAuth2ClaimMap>> for ScimValueKanidm {
+    fn from(set: Vec<ScimOAuth2ClaimMap>) -> Self {
+        Self::OAuth2ClaimMap(set)
+    }
+}
+
+impl From<Vec<ScimKeyInternal>> for ScimValueKanidm {
+    fn from(set: Vec<ScimKeyInternal>) -> Self {
+        Self::KeyInternal(set)
     }
 }

@@ -9,6 +9,9 @@ use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
+use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {
     set: BTreeSet<String>,
@@ -307,22 +310,17 @@ impl ValueSetT for ValueSetOauthScopeMap {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(uuid, scopes)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("uuid".to_string(), uuid.hyphenated().to_string().into());
-
-                    // Scim doesn't allow nested lists - Should we either
-                    // break spec and allow them? Or do something else? Oauth2
-                    // does define scopes to be space separated?
-                    complex_attr.insert("scopes".to_string(), str_join(scopes).into());
-
-                    complex_attr
+                    ScimOAuth2ScopeMap {
+                        uuid: *uuid,
+                        // Flattened to a space separated list.
+                        scopes: scopes.clone(),
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -691,31 +689,21 @@ impl ValueSetT for ValueSetOauthClaimMap {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .flat_map(|(claim_name, mappings)| {
-                    mappings.values.iter().map(|(group_uuid, claim_values)| {
-                        let mut complex_attr = ScimComplexAttr::default();
-
-                        complex_attr.insert(
-                            "groupUuid".to_string(),
-                            group_uuid.hyphenated().to_string().into(),
-                        );
-
-                        complex_attr.insert("claim".to_string(), claim_name.to_string().into());
-
-                        complex_attr.insert(
-                            "joinChar".to_string(),
-                            mappings.join.to_str().to_string().into(),
-                        );
-
-                        complex_attr.insert("values".to_string(), str_join(claim_values).into());
-
-                        complex_attr
-                    })
+                    mappings
+                        .values
+                        .iter()
+                        .map(|(group_uuid, claim_values)| ScimOAuth2ClaimMap {
+                            group: *group_uuid,
+                            claim: claim_name.to_string(),
+                            join_char: mappings.join.to_str().to_string(),
+                            values: claim_values.clone(),
+                        })
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

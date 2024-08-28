@@ -120,7 +120,7 @@ pub mod prelude {
 
     pub(crate) use kanidm_proto::scim_v1::{
         server::{ScimEntryKanidm, ScimValueKanidm},
-        ScimAttr, ScimComplexAttr, ScimEntryHeader,
+        ScimEntryHeader,
     };
 
     // pub(crate) use serde_json::Value as JsonValue;

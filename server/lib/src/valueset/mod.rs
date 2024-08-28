@@ -938,9 +938,9 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
     eprintln!("{}", strout);
 
-    let json_value: JsonValue = serde_json::to_value(&scim_value).unwrap();
+    let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
 
-    let expect: JsonValue = serde_json::from_str(data).unwrap();
+    let expect: serde_json::Value = serde_json::from_str(data).unwrap();
 
     assert_eq!(json_value, expect);
 }

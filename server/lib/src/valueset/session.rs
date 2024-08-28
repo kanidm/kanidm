@@ -19,6 +19,10 @@ use crate::value::{
 };
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::ScimApiToken;
+use kanidm_proto::scim_v1::server::ScimAuthSession;
+use kanidm_proto::scim_v1::server::ScimOAuth2Session;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetSession {
     map: BTreeMap<Uuid, Session>,
@@ -359,49 +363,32 @@ impl ValueSetT for ValueSetSession {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert(
-                        "sessionId".to_string(),
-                        session_id.hyphenated().to_string().into(),
-                    );
-
-                    match &session.state {
-                        SessionState::ExpiresAt(odt) => {
-                            complex_attr.insert("state".to_string(), "valid".to_string().into());
-                            complex_attr.insert("expiresAt".to_string(), (*odt).into());
-                        }
-                        SessionState::NeverExpires => {
-                            complex_attr.insert("state".to_string(), "valid".to_string().into());
-                        }
+                    let (expires, revoked) = match &session.state {
+                        SessionState::ExpiresAt(odt) => (Some(*odt), None),
+                        SessionState::NeverExpires => (None, None),
                         SessionState::RevokedAt(cid) => {
-                            complex_attr.insert("state".to_string(), "revoked".to_string().into());
                             let odt: OffsetDateTime = cid.into();
-                            complex_attr.insert("revokedAt".to_string(), odt.into());
+                            (None, Some(odt))
                         }
                     };
 
-                    complex_attr.insert("issuedAt".to_string(), session.issued_at.into());
+                    ScimAuthSession {
+                        id: *session_id,
+                        expires,
+                        revoked,
 
-                    complex_attr.insert("issuedBy".to_string(), (&session.issued_by).into());
-
-                    complex_attr.insert(
-                        "credentialId".to_string(),
-                        session.cred_id.hyphenated().to_string().into(),
-                    );
-
-                    complex_attr.insert("authType".to_string(), session.type_.to_string().into());
-
-                    complex_attr
-                        .insert("sessionScope".to_string(), session.scope.to_string().into());
-
-                    complex_attr
+                        issued_at: session.issued_at,
+                        issued_by: Uuid::from(&session.issued_by),
+                        credential_id: session.cred_id,
+                        auth_type: session.type_.to_string(),
+                        session_scope: session.scope.to_string(),
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -946,49 +933,29 @@ impl ValueSetT for ValueSetOauth2Session {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert(
-                        "sessionId".to_string(),
-                        session_id.hyphenated().to_string().into(),
-                    );
-
-                    if let Some(parent_id) = session.parent {
-                        complex_attr.insert(
-                            "parentSessionId".to_string(),
-                            parent_id.hyphenated().to_string().into(),
-                        );
-                    }
-
-                    complex_attr.insert(
-                        "clientId".to_string(),
-                        session.rs_uuid.hyphenated().to_string().into(),
-                    );
-
-                    complex_attr.insert("issuedAt".to_string(), session.issued_at.into());
-
-                    match &session.state {
-                        SessionState::ExpiresAt(odt) => {
-                            complex_attr.insert("state".to_string(), "valid".to_string().into());
-                            complex_attr.insert("expiresAt".to_string(), (*odt).into());
-                        }
-                        SessionState::NeverExpires => {
-                            complex_attr.insert("state".to_string(), "valid".to_string().into());
-                        }
+                    let (expires, revoked) = match &session.state {
+                        SessionState::ExpiresAt(odt) => (Some(*odt), None),
+                        SessionState::NeverExpires => (None, None),
                         SessionState::RevokedAt(cid) => {
-                            complex_attr.insert("state".to_string(), "revoked".to_string().into());
                             let odt: OffsetDateTime = cid.into();
-                            complex_attr.insert("revokedAt".to_string(), odt.into());
+                            (None, Some(odt))
                         }
                     };
 
-                    complex_attr
+                    ScimOAuth2Session {
+                        id: *session_id,
+                        parent_id: session.parent,
+                        client_id: session.rs_uuid,
+                        issued_at: session.issued_at,
+                        expires,
+                        revoked,
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -1415,31 +1382,18 @@ impl ValueSetT for ValueSetApiToken {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
-                .map(|(token_id, token)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert(
-                        "tokenId".to_string(),
-                        token_id.hyphenated().to_string().into(),
-                    );
-
-                    complex_attr.insert("label".to_string(), token.label.clone().into());
-
-                    complex_attr.insert("issuedAt".to_string(), token.issued_at.into());
-                    if let Some(expires_at) = token.expiry {
-                        complex_attr.insert("expiresAt".to_string(), expires_at.into());
-                    }
-
-                    complex_attr.insert("scope".to_string(), token.scope.to_string().into());
-
-                    complex_attr.insert("issuedBy".to_string(), (&token.issued_by).into());
-
-                    complex_attr
+                .map(|(token_id, token)| ScimApiToken {
+                    id: *token_id,
+                    label: token.label.clone(),
+                    issued_by: Uuid::from(&token.issued_by),
+                    issued_at: token.issued_at,
+                    expires: token.expiry,
+                    scope: token.scope.to_string(),
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 

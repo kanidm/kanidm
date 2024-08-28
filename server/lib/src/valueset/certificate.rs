@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimCertificate;
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
@@ -196,7 +197,7 @@ impl ValueSetT for ValueSetCertificate {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        let vals: Vec<ScimComplexAttr> = self
+        let vals: Vec<ScimCertificate> = self
             .map
             .iter()
             .filter_map(|(s256, cert)| {
@@ -212,7 +213,7 @@ impl ValueSetT for ValueSetCertificate {
                     .map(|der| (s256, der))
             })
             .map(|(s256, cert_der)| ScimCertificate {
-                s256: s256.clone(),
+                s256: s256.to_vec(),
                 der: cert_der,
             })
             .collect::<Vec<_>>();
@@ -281,7 +282,7 @@ impl ValueSetT for ValueSetCertificate {
 #[cfg(test)]
 mod tests {
     use super::ValueSetCertificate;
-    use crate::prelude::{ScimAttr, ScimValueKanidm, ValueSet};
+    use crate::prelude::{ScimValueKanidm, ValueSet};
     use kanidm_lib_crypto::x509_cert::der::DecodePem;
     use kanidm_lib_crypto::x509_cert::Certificate;
 
@@ -311,15 +312,15 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 
         let scim_value = vs.to_scim_value().unwrap();
 
-        let multi = match scim_value {
+        let cert = match scim_value {
             ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),
             _ => unreachable!(),
         };
 
-        let expect = ScimAttr::String(
-            "8c98a09d0a50db92ccb6d05be846d9b9315015520d19a3e1739aeb8d84ebc28d".to_string(),
-        );
+        let expect_s256 =
+            hex::decode("8c98a09d0a50db92ccb6d05be846d9b9315015520d19a3e1739aeb8d84ebc28d")
+                .unwrap();
 
-        assert_eq!(multi.get("s256"), Some(&expect));
+        assert_eq!(cert.s256, expect_s256);
     }
 }

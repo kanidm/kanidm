@@ -131,16 +131,7 @@ impl ValueSetT for ValueSetTotpSecret {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
-            self.map
-                .keys()
-                .map(|label| {
-                    let mut complex_attr = ScimComplexAttr::default();
-                    complex_attr.insert("label".to_string(), label.clone().into());
-                    complex_attr
-                })
-                .collect(),
-        ))
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -204,28 +195,5 @@ impl ValueSetT for ValueSetTotpSecret {
 
     fn as_totp_map(&self) -> Option<&BTreeMap<String, Totp>> {
         Some(&self.map)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::ValueSetTotpSecret;
-    use crate::credential::totp::{Totp, TotpAlgo, TotpDigits};
-    use crate::prelude::ValueSet;
-
-    #[test]
-    fn test_scim_totp() {
-        let vs: ValueSet = ValueSetTotpSecret::new(
-            "label".to_string(),
-            Totp::new(
-                // Totes secure, chosen by fair dice roll.
-                vec![0, 1, 2, 3],
-                30,
-                TotpAlgo::Sha256,
-                TotpDigits::Six,
-            ),
-        );
-
-        crate::valueset::scim_json_reflexive(vs, r#"[{ "label":"label" }]"#);
     }
 }

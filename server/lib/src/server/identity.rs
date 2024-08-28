@@ -87,13 +87,11 @@ pub enum IdentityId {
     Internal,
 }
 
-impl From<&IdentityId> for ScimAttr {
-    fn from(ident: &IdentityId) -> ScimAttr {
+impl From<&IdentityId> for Uuid {
+    fn from(ident: &IdentityId) -> Uuid {
         match ident {
-            IdentityId::User(uuid) | IdentityId::Synch(uuid) => {
-                uuid.hyphenated().to_string().into()
-            }
-            IdentityId::Internal => UUID_SYSTEM.hyphenated().to_string().into(),
+            IdentityId::User(uuid) | IdentityId::Synch(uuid) => *uuid,
+            IdentityId::Internal => UUID_SYSTEM,
         }
     }
 }

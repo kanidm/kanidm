@@ -426,15 +426,12 @@ impl ValueSetT for ValueSetImage {
         // to add one.
         //
         // TODO: Scim supports a "type" field here, but do we care?
-        Some(ScimValueKanidm::MultiComplex(
+
+        Some(ScimValueKanidm::from(
             self.set
                 .iter()
-                .map(|image| {
-                    let mut complex_attr = ScimComplexAttr::default();
-                    complex_attr.insert("s256".to_string(), image.hash_imagevalue().into());
-                    complex_attr
-                })
-                .collect(),
+                .map(|image| image.hash_imagevalue())
+                .collect::<Vec<_>>(),
         ))
     }
 
@@ -573,9 +570,7 @@ mod tests {
         let vs = ValueSetImage::new(image);
 
         let data = r#"[
-          {
-            "s256": "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
-          }
+            "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
         ]"#;
 
         crate::valueset::scim_json_reflexive(vs, data);

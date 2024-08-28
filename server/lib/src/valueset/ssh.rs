@@ -10,6 +10,8 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
+use kanidm_proto::scim_v1::server::ScimSshPublicKey;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
     map: BTreeMap<String, SshPublicKey>,

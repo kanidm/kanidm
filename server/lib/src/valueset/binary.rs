@@ -9,6 +9,7 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimBinary;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetPrivateBinary {
@@ -294,7 +295,7 @@ impl ValueSetT for ValueSetPublicBinary {
                 .iter()
                 .map(|(tag, bin)| ScimBinary {
                     label: tag.clone(),
-                    bin: bin.clone(),
+                    value: bin.clone(),
                 })
                 .collect::<Vec<_>>(),
         ))

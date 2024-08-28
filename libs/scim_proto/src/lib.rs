@@ -1,5 +1,4 @@
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]
@@ -193,78 +192,11 @@ mod tests {
     }
 
     // =========================================================
-    // william horrible idea zone
-
-    // -> I think this is how we should handle Attribute. It's a huge pain to maintain in a way
-    // because we need to hand-match on everything. But it allows us to capture unknown variants
-    // and still serialise them nicely etc.
+    // asymmetric serde tests
 
     use serde::de::{self, Deserialize, Deserializer, Visitor};
-    use serde::ser::{Serialize, Serializer};
     use std::fmt;
     use uuid::Uuid;
-
-    #[derive(Debug)]
-    enum Test {
-        A,
-        B,
-        Unknown(String),
-    }
-
-    impl Serialize for Test {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            match self {
-                Test::Unknown(value) => serializer.serialize_str(value),
-                Test::A => serializer.serialize_str("A"),
-                Test::B => serializer.serialize_str("B"),
-            }
-        }
-    }
-
-    struct TestVisitor;
-
-    impl<'de> Visitor<'de> for TestVisitor {
-        type Value = Test;
-
-        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-            formatter.write_str("cheese")
-        }
-
-        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-        where
-            E: de::Error,
-        {
-            Ok(match v {
-                "A" => Test::A,
-                "B" => Test::B,
-                _ => Test::Unknown(v.to_string()),
-            })
-        }
-    }
-
-    impl<'de> Deserialize<'de> for Test {
-        fn deserialize<D>(deserializer: D) -> Result<Test, D::Error>
-        where
-            D: Deserializer<'de>,
-        {
-            deserializer.deserialize_str(TestVisitor)
-        }
-    }
-
-    #[test]
-    fn parse_enum_a() {
-        let x = serde_json::to_string(&Test::A).unwrap();
-        eprintln!("{:?}", x);
-
-        let x = serde_json::to_string(&Test::B).unwrap();
-        eprintln!("{:?}", x);
-
-        let x = serde_json::to_string(&Test::Unknown("X".to_string())).unwrap();
-        eprintln!("{:?}", x);
-    }
 
     // -> For values, we need to be able to capture and handle "what if it's X" type? But
     // we can't know the "intent" until we hit schema, so we have to preserve the string
@@ -273,6 +205,7 @@ mod tests {
     // instead.
 
     #[derive(Debug)]
+    #[allow(dead_code)]
     enum TestB {
         Integer(i64),
         Decimal(f64),
@@ -349,8 +282,6 @@ mod tests {
     // In reverse when we serialise, we can simply use untagged on an enum.
     // Potentially this lets us have more "scim" types for dedicated serialisations
     // over the generic ones.
-
-    // Test James' idea
 
     #[derive(Serialize, Debug, Deserialize, Clone)]
     #[serde(rename_all = "lowercase", from = "&str", into = "String")]

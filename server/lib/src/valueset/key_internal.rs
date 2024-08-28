@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 use std::fmt;
 use time::OffsetDateTime;
 
+use kanidm_proto::scim_v1::server::ScimKeyInternal;
+
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
     pub usage: KeyUsage,
@@ -286,24 +288,21 @@ impl ValueSetT for ValueSetKeyInternal {
     }
 
     fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::MultiComplex(
+        Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(kid, key_object)| {
-                    let mut complex_attr = ScimComplexAttr::default();
-
-                    complex_attr.insert("kid".to_string(), kid.clone().into());
-                    complex_attr.insert("status".to_string(), key_object.status.to_string().into());
-                    complex_attr.insert("usage".to_string(), key_object.usage.to_string().into());
-
                     let odt: OffsetDateTime =
                         OffsetDateTime::UNIX_EPOCH + Duration::from_secs(key_object.valid_from);
 
-                    complex_attr.insert("validFrom".to_string(), odt.into());
-
-                    complex_attr
+                    ScimKeyInternal {
+                        key_id: kid.clone(),
+                        status: key_object.status.to_string(),
+                        usage: key_object.usage.to_string(),
+                        valid_from: odt,
+                    }
                 })
-                .collect(),
+                .collect::<Vec<_>>(),
         ))
     }
 
