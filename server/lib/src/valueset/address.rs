@@ -651,12 +651,12 @@ mod tests {
 
         let data = r#"[
           {
-            "primary": true,
-            "value": "claire@example.com"
-          },
-          {
             "primary": false,
             "value": "alice@example.com"
+          },
+          {
+            "primary": true,
+            "value": "claire@example.com"
           }
         ]"#;
         crate::valueset::scim_json_reflexive(vs, data);

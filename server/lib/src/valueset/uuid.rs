@@ -364,7 +364,7 @@ mod tests {
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
+        let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
 
         crate::valueset::scim_json_reflexive(vs, data);
     }

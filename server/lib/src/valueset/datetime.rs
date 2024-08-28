@@ -227,6 +227,6 @@ mod tests {
         let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
         let vs: ValueSet = ValueSetDateTime::new(odt);
 
-        crate::valueset::scim_json_reflexive(vs, r#""stevo""#);
+        crate::valueset::scim_json_reflexive(vs, r#""1970-01-01T19:17:00Z""#);
     }
 }

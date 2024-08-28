@@ -2140,9 +2140,8 @@ mod tests {
     "credentialId": "3a163ca0-4762-4620-a188-06b750c84c86",
     "issuedAt": "1970-01-01T00:00:00Z",
     "issuedBy": "00000000-0000-0000-0000-ffffff000000",
-    "sessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
-    "sessionScope": "read_only",
-    "state": "valid"
+    "id": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "sessionScope": "read_only"
   }
 ]
         "#;
@@ -2168,9 +2167,8 @@ mod tests {
   {
     "clientId": "3a163ca0-4762-4620-a188-06b750c84c86",
     "issuedAt": "1970-01-01T00:00:00Z",
-    "parentSessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
-    "sessionId": "3a163ca0-4762-4620-a188-06b750c84c86",
-    "state": "valid"
+    "parentId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "id": "3a163ca0-4762-4620-a188-06b750c84c86"
   }
 ]
         "#;

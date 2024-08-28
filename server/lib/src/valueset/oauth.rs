@@ -838,7 +838,7 @@ mod tests {
 [
   {
     "claim": "claim",
-    "groupUuid": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "group": "3a163ca0-4762-4620-a188-06b750c84c86",
     "joinChar": ";",
     "values": "read write"
   }

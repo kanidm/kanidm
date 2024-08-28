@@ -34,6 +34,7 @@ pub struct ScimEntryKanidm {
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimAddress {
     pub formatted: String,
     pub street_address: String,
@@ -44,12 +45,14 @@ pub struct ScimAddress {
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimMail {
     pub primary: bool,
     pub value: String,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimApplicationPassword {
     pub uuid: Uuid,
     pub application_uuid: Uuid,
@@ -58,6 +61,7 @@ pub struct ScimApplicationPassword {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimBinary {
     pub label: String,
     #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
@@ -66,6 +70,7 @@ pub struct ScimBinary {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimCertificate {
     #[serde_as(as = "Hex")]
     pub s256: Vec<u8>,
@@ -75,6 +80,7 @@ pub struct ScimCertificate {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimAuditString {
     #[serde_as(as = "Rfc3339")]
     pub date_time: OffsetDateTime,
@@ -82,13 +88,14 @@ pub struct ScimAuditString {
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimSshPublicKey {
     pub label: String,
     pub value: String,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
-#[serde(rename_all = "snake_case")]
+#[serde(rename_all = "camelCase")]
 pub enum ScimIntentTokenState {
     Valid,
     InProgress,
@@ -97,6 +104,7 @@ pub enum ScimIntentTokenState {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimIntentToken {
     pub token_id: String,
     pub state: ScimIntentTokenState,
@@ -106,6 +114,7 @@ pub struct ScimIntentToken {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimKeyInternal {
     pub key_id: String,
     pub status: String,
@@ -117,6 +126,7 @@ pub struct ScimKeyInternal {
 #[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimAuthSession {
     pub id: Uuid,
 
@@ -136,7 +146,9 @@ pub struct ScimAuthSession {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2Session {
     pub id: Uuid,
     pub parent_id: Option<Uuid>,
@@ -150,7 +162,9 @@ pub struct ScimOAuth2Session {
 }
 
 #[serde_as]
+#[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimApiToken {
     pub id: Uuid,
     pub label: String,
@@ -164,6 +178,7 @@ pub struct ScimApiToken {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ScopeMap {
     pub uuid: Uuid,
     #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
@@ -172,6 +187,7 @@ pub struct ScimOAuth2ScopeMap {
 
 #[serde_as]
 #[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ClaimMap {
     pub group: Uuid,
     pub claim: String,

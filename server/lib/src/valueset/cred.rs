@@ -1403,7 +1403,7 @@ mod tests {
   {
     "expires": "1970-01-01T00:05:00Z",
     "state": "consumed",
-    "token_id": "ca6f29d1-034b-41fb-abc1-4bb9f0548e67"
+    "tokenId": "ca6f29d1-034b-41fb-abc1-4bb9f0548e67"
   }
 ]
         "#;

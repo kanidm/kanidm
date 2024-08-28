@@ -655,7 +655,7 @@ mod tests {
         let data = r#"
 [
   {
-    "kid": "test",
+    "keyId": "test",
     "status": "valid",
     "usage": "jws_es256",
     "validFrom": "1970-01-01T00:00:00Z"
