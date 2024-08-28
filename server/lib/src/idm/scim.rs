@@ -1498,9 +1498,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         Ok(
             match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
-                Some(b) => ScimSyncState::Active {
-                    cookie: b.to_vec(),
-                },
+                Some(b) => ScimSyncState::Active { cookie: b.to_vec() },
                 None => ScimSyncState::Refresh,
             },
         )

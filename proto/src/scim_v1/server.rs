@@ -1,15 +1,13 @@
+use crate::attribute::Attribute;
+use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
 use std::collections::{BTreeMap, BTreeSet};
-use utoipa::ToSchema;
-
-use scim_proto::ScimEntryHeader;
-
-use crate::attribute::Attribute;
-use serde_json::Value as JsonValue;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 /// A generic ScimEntry that we receive from a client. This retains attribute
@@ -129,16 +127,12 @@ pub struct ScimKeyInternal {
 #[serde(rename_all = "camelCase")]
 pub struct ScimAuthSession {
     pub id: Uuid,
-
     #[serde_as(as = "Option<Rfc3339>")]
     pub expires: Option<OffsetDateTime>,
-
     #[serde_as(as = "Option<Rfc3339>")]
     pub revoked: Option<OffsetDateTime>,
-
     #[serde_as(as = "Rfc3339")]
     pub issued_at: OffsetDateTime,
-
     pub issued_by: Uuid,
     pub credential_id: Uuid,
     pub auth_type: String,
@@ -205,51 +199,31 @@ pub struct ScimOAuth2ClaimMap {
 #[serde(untagged)]
 pub enum ScimValueKanidm {
     Bool(bool),
-
     Uint32(u32),
     Integer(i64),
-
     Decimal(f64),
     String(String),
     DateTime(#[serde_as(as = "Rfc3339")] OffsetDateTime),
-
-    /*
-    Binary(
-        #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
-        Vec<u8>
-    ),
-    */
     Reference(Url),
-
     Uuid(Uuid),
     // Other strong outbound types.
     ArrayString(Vec<String>),
-
     ArrayDateTime(#[serde_as(as = "Vec<Rfc3339>")] Vec<OffsetDateTime>),
-
     ArrayUuid(Vec<Uuid>),
-
-    ArrayAddress(Vec<ScimAddress>),
-
-    ArrayMail(Vec<ScimMail>),
-
-    ArrayApplicationPassword(Vec<ScimApplicationPassword>),
-
-    ArrayAuditString(Vec<ScimAuditString>),
-
     ArrayBinary(Vec<ScimBinary>),
-
     ArrayCertificate(Vec<ScimCertificate>),
 
+    Address(Vec<ScimAddress>),
+    Mail(Vec<ScimMail>),
+    ApplicationPassword(Vec<ScimApplicationPassword>),
+    AuditString(Vec<ScimAuditString>),
     SshPublicKey(Vec<ScimSshPublicKey>),
-
     AuthSession(Vec<ScimAuthSession>),
     OAuth2Session(Vec<ScimOAuth2Session>),
     ApiToken(Vec<ScimApiToken>),
     IntentToken(Vec<ScimIntentToken>),
     OAuth2ScopeMap(Vec<ScimOAuth2ScopeMap>),
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
-
     KeyInternal(Vec<ScimKeyInternal>),
 }
 
@@ -303,25 +277,25 @@ impl From<u32> for ScimValueKanidm {
 
 impl From<Vec<ScimAddress>> for ScimValueKanidm {
     fn from(set: Vec<ScimAddress>) -> Self {
-        Self::ArrayAddress(set)
+        Self::Address(set)
     }
 }
 
 impl From<Vec<ScimMail>> for ScimValueKanidm {
     fn from(set: Vec<ScimMail>) -> Self {
-        Self::ArrayMail(set)
+        Self::Mail(set)
     }
 }
 
 impl From<Vec<ScimApplicationPassword>> for ScimValueKanidm {
     fn from(set: Vec<ScimApplicationPassword>) -> Self {
-        Self::ArrayApplicationPassword(set)
+        Self::ApplicationPassword(set)
     }
 }
 
 impl From<Vec<ScimAuditString>> for ScimValueKanidm {
     fn from(set: Vec<ScimAuditString>) -> Self {
-        Self::ArrayAuditString(set)
+        Self::AuditString(set)
     }
 }
 
