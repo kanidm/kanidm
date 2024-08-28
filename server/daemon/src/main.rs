@@ -1045,19 +1045,11 @@ async fn kanidm_main(
             let healthcheck_url = match &sopt.check_origin {
                 true => format!("{}/status", config.origin),
                 false => {
-                    if config.address.starts_with("[::]") {
-                        format!(
-                            "https://{}/status",
-                            config.address.replace("[::]", "localhost")
-                        )
-                    } else if config.address.starts_with("[::1]") {
-                        format!(
-                            "https://{}/status",
-                            config.address.replace("[::1]", "localhost")
-                        )
-                    } else {
-                        format!("https://{}/status", config.address)
-                    }
+                    // the replace covers when you specify an ipv6-capable "all" address
+                    format!(
+                        "https://{}/status",
+                        config.address.replace("[::]", "localhost")
+                    )
                 }
             };
 
