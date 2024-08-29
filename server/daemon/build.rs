@@ -31,18 +31,13 @@ fn main() {
         std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
 
-    generate_to(
-        Shell::Bash,
-        &mut KanidmdParser::command(),
-        "kanidmd",
-        comp_dir.clone(),
-    )
-    .ok();
-    generate_to(
-        Shell::Zsh,
-        &mut KanidmdParser::command(),
-        "kanidmd",
-        comp_dir,
-    )
-    .ok();
+    for shell in [Shell::Bash, Shell::Fish, Shell::Zsh] {
+        generate_to(
+            shell,
+            &mut KanidmdParser::command(),
+            "kanidmd",
+            comp_dir.clone(),
+        )
+        .ok();
+    }
 }
