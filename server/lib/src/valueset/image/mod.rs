@@ -502,7 +502,7 @@ impl ValueSetT for ValueSetImage {
 
 #[cfg(test)]
 mod tests {
-    use super::{ImageType, ImageValue, ImageValueThings, ValueSetImage};
+    use super::{ImageType, ImageValue, ImageValueThings};
 
     #[test]
     /// tests that we can load a bunch of test images and it'll throw errors in a way we expect
