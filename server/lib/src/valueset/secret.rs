@@ -102,6 +102,10 @@ impl ValueSetT for ValueSetSecret {
         Box::new(self.set.iter().map(|_| "hidden".to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::SecretValue(self.set.iter().cloned().collect())
     }
@@ -148,5 +152,18 @@ impl ValueSetT for ValueSetSecret {
 
     fn as_secret_set(&self) -> Option<&SmolSet<[String; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetSecret;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_secret() {
+        let vs: ValueSet = ValueSetSecret::new("super secret special awesome value".to_string());
+
+        assert!(vs.to_scim_value().is_none());
     }
 }

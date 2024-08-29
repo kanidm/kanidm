@@ -9,6 +9,7 @@ use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimBinary;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetPrivateBinary {
@@ -105,6 +106,10 @@ impl ValueSetT for ValueSetPrivateBinary {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|_| "private_binary".to_string()))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -267,8 +272,11 @@ impl ValueSetT for ValueSetPublicBinary {
     }
 
     fn syntax(&self) -> SyntaxType {
-        unreachable!();
+        // Apparently I never actually implemented this type in ... anything?
+        // We should probably clean up syntax soon .....
+        //
         // SyntaxType::PublicBinary
+        unreachable!()
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
@@ -279,6 +287,18 @@ impl ValueSetT for ValueSetPublicBinary {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.keys().cloned())
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(tag, bin)| ScimBinary {
+                    label: tag.clone(),
+                    value: bin.clone(),
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -332,5 +352,18 @@ impl ValueSetT for ValueSetPublicBinary {
 
     fn as_publicbinary_map(&self) -> Option<&BTreeMap<String, Vec<u8>>> {
         Some(&self.map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetPrivateBinary;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_private_binary() {
+        let vs: ValueSet = ValueSetPrivateBinary::new(vec![0x00]);
+
+        assert!(vs.to_scim_value().is_none());
     }
 }

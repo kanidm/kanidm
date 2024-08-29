@@ -3,7 +3,9 @@ use crate::repl::cid::Cid;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimAuditString;
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
 
 type AuditLogStringType = (Cid, String);
 
@@ -117,6 +119,21 @@ impl ValueSetT for ValueSetAuditLogString {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.iter().map(|(d, s)| format!("{d}-{s}")))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(cid, strdata)| {
+                    let odt: OffsetDateTime = cid.into();
+                    ScimAuditString {
+                        date_time: odt,
+                        value: strdata.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -349,5 +366,61 @@ mod tests {
         println!("{:?}", c);
         assert_eq!(c.ts, Duration::from_secs(2));
         drop(v_iter);
+    }
+
+    #[test]
+    fn test_scim_auditlog_string() {
+        let mut vs: ValueSet = ValueSetAuditLogString::new((Cid::new_count(0), "A".to_string()));
+        assert!(vs.len() == 1);
+
+        for i in 1..AUDIT_LOG_STRING_CAPACITY {
+            vs.insert_checked(Value::AuditLogString(
+                Cid::new_count(i as u64),
+                "A".to_string(),
+            ))
+            .unwrap();
+        }
+
+        let data = r#"
+[
+  {
+    "dateTime": "1970-01-01T00:00:00Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:01Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:02Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:03Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:04Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:05Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:06Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:07Z",
+    "value": "A"
+  },
+  {
+    "dateTime": "1970-01-01T00:00:08Z",
+    "value": "A"
+  }
+]
+"#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

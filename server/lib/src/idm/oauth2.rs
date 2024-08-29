@@ -14,9 +14,8 @@ use std::time::Duration;
 
 use hashbrown::HashSet;
 
-use base64::{engine::general_purpose, Engine as _};
+use ::base64::{engine::general_purpose, Engine as _};
 
-use base64urlsafedata::Base64UrlSafeData;
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
     crypto::JwsRs256Signer, jws::JwsBuilder, JwsCompact, JwsEs256Signer, JwsSigner,
@@ -39,6 +38,7 @@ use kanidm_proto::oauth2::{
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
+use serde_with::{base64, formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
 use url::{Origin, Url};
@@ -48,6 +48,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
+use crate::utils::str_join;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -96,6 +97,7 @@ impl std::fmt::Display for Oauth2Error {
 
 // == internal state formats that we encrypt and send.
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ConsentToken {
     pub client_id: String,
@@ -106,7 +108,8 @@ struct ConsentToken {
     // CSRF
     pub state: String,
     // The S256 code challenge.
-    pub code_challenge: Option<Base64UrlSafeData>,
+    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    pub code_challenge: Option<Vec<u8>>,
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
     // The scopes being granted
@@ -115,6 +118,7 @@ struct ConsentToken {
     pub nonce: Option<String>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 struct TokenExchangeCode {
     // We don't need the client_id here, because it's signed with an RS specific
@@ -124,7 +128,8 @@ struct TokenExchangeCode {
     pub session_id: Uuid,
 
     // The S256 code challenge.
-    pub code_challenge: Option<Base64UrlSafeData>,
+    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    pub code_challenge: Option<Vec<u8>>,
     // The original redirect uri
     pub redirect_uri: Url,
     // The scopes being granted
@@ -2651,20 +2656,6 @@ fn extra_claims_for_account(
     trace!(?extra_claims);
 
     extra_claims
-}
-
-fn str_join(set: &BTreeSet<String>) -> String {
-    let alloc_len = set.iter().fold(0, |acc, s| acc + s.len() + 1);
-    let mut buf = String::with_capacity(alloc_len);
-    set.iter().for_each(|s| {
-        buf.push_str(s);
-        buf.push(' ');
-    });
-
-    // Remove the excess trailing space.
-    let _ = buf.pop();
-
-    buf
 }
 
 fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {

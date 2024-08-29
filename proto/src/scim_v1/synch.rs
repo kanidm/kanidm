@@ -1,15 +1,19 @@
-use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
+use serde_with::{base64, formats, serde_as};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use scim_proto::user::MultiValueAttr;
-use scim_proto::{ScimEntry, ScimEntryGeneric};
+use scim_proto::{ScimEntry, ScimEntryHeader};
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 pub enum ScimSyncState {
     Refresh,
-    Active { cookie: Base64UrlSafeData },
+    Active {
+        #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+        cookie: Vec<u8>,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -32,7 +36,7 @@ pub struct ScimSyncRequest {
 
     // These entries are created with serde_json::to_value(ScimSyncGroup) for
     // example. This is how we can mix/match the different types.
-    pub entries: Vec<ScimEntryGeneric>,
+    pub entries: Vec<ScimEntry>,
 
     pub retain: ScimSyncRetentionMode,
 }
@@ -82,7 +86,7 @@ pub struct ScimSshPubKey {
 #[serde(rename_all = "camelCase")]
 pub struct ScimSyncPerson {
     #[serde(flatten)]
-    pub entry: ScimEntry,
+    pub entry: ScimEntryHeader,
 
     pub user_name: String,
     pub display_name: String,
@@ -97,10 +101,10 @@ pub struct ScimSyncPerson {
     pub account_expire: Option<String>,
 }
 
-impl TryInto<ScimEntryGeneric> for ScimSyncPerson {
+impl TryInto<ScimEntry> for ScimSyncPerson {
     type Error = serde_json::Error;
 
-    fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
+    fn try_into(self) -> Result<ScimEntry, Self::Error> {
         serde_json::to_value(self).and_then(serde_json::from_value)
     }
 }
@@ -113,7 +117,7 @@ impl ScimSyncPerson {
     pub fn builder(id: Uuid, user_name: String, display_name: String) -> ScimSyncPersonBuilder {
         ScimSyncPersonBuilder {
             inner: ScimSyncPerson {
-                entry: ScimEntry {
+                entry: ScimEntryHeader {
                     schemas: vec![
                         SCIM_SCHEMA_SYNC_ACCOUNT.to_string(),
                         SCIM_SCHEMA_SYNC_PERSON.to_string(),
@@ -215,7 +219,7 @@ pub struct ScimExternalMember {
 #[serde(rename_all = "camelCase")]
 pub struct ScimSyncGroup {
     #[serde(flatten)]
-    pub entry: ScimEntry,
+    pub entry: ScimEntryHeader,
 
     pub name: String,
     pub description: Option<String>,
@@ -223,10 +227,10 @@ pub struct ScimSyncGroup {
     pub members: Vec<ScimExternalMember>,
 }
 
-impl TryInto<ScimEntryGeneric> for ScimSyncGroup {
+impl TryInto<ScimEntry> for ScimSyncGroup {
     type Error = serde_json::Error;
 
-    fn try_into(self) -> Result<ScimEntryGeneric, Self::Error> {
+    fn try_into(self) -> Result<ScimEntry, Self::Error> {
         serde_json::to_value(self).and_then(serde_json::from_value)
     }
 }
@@ -241,7 +245,7 @@ impl ScimSyncGroup {
     pub fn builder(name: String, id: Uuid) -> ScimSyncGroupBuilder {
         ScimSyncGroupBuilder {
             inner: ScimSyncGroup {
-                entry: ScimEntry {
+                entry: ScimEntryHeader {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id,
                     external_id: None,

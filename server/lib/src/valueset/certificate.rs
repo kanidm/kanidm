@@ -3,6 +3,7 @@ use crate::prelude::*;
 use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimCertificate;
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
@@ -195,6 +196,35 @@ impl ValueSetT for ValueSetCertificate {
         }))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let vals: Vec<ScimCertificate> = self
+            .map
+            .iter()
+            .filter_map(|(s256, cert)| {
+                cert.to_der()
+                    .map_err(|der_err| {
+                        error!(
+                            ?s256,
+                            ?der_err,
+                            "Failed to serialise certificate to der. This value will be dropped!"
+                        );
+                    })
+                    .ok()
+                    .map(|der| (s256, der))
+            })
+            .map(|(s256, cert_der)| ScimCertificate {
+                s256: s256.to_vec(),
+                der: cert_der,
+            })
+            .collect::<Vec<_>>();
+
+        if vals.is_empty() {
+            None
+        } else {
+            Some(ScimValueKanidm::from(vals))
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         let data = self.to_vec_dbvs();
         DbValueSetV2::Certificate(data)
@@ -246,5 +276,51 @@ impl ValueSetT for ValueSetCertificate {
 
     fn as_certificate_set(&self) -> Option<&BTreeMap<Sha256Digest, Box<Certificate>>> {
         Some(&self.map)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetCertificate;
+    use crate::prelude::{ScimValueKanidm, ValueSet};
+    use kanidm_lib_crypto::x509_cert::der::DecodePem;
+    use kanidm_lib_crypto::x509_cert::Certificate;
+
+    // Generated with:
+    //
+    // openssl ecparam -out ec_key.pem -name secp256r1 -genkey
+    // openssl req -new -key ec_key.pem -x509 -nodes -days 365 -out cert.pem
+    const PEM_DATA: &str = r#"-----BEGIN CERTIFICATE-----
+MIIB3zCCAYWgAwIBAgIUdJ6IWvI+8M6nwK7ykUK7/iBq7yQwCgYIKoZIzj0EAwIw
+RTELMAkGA1UEBhMCQVUxEzARBgNVBAgMClNvbWUtU3RhdGUxITAfBgNVBAoMGElu
+dGVybmV0IFdpZGdpdHMgUHR5IEx0ZDAeFw0yNDA4MjEwNjQ2MzBaFw0yNTA4MjEw
+NjQ2MzBaMEUxCzAJBgNVBAYTAkFVMRMwEQYDVQQIDApTb21lLVN0YXRlMSEwHwYD
+VQQKDBhJbnRlcm5ldCBXaWRnaXRzIFB0eSBMdGQwWTATBgcqhkjOPQIBBggqhkjO
+PQMBBwNCAAS2Szn4NPmgxawC1+MRC41jqobemNkXkRZ9AgozK0zRDFc6k1IHUZ++
+wN0USpXDQYDnJfATqvlpKPebnHxTytt6o1MwUTAdBgNVHQ4EFgQU1oR1x2CnoPap
+JMKPCVVzqWf2ANYwHwYDVR0jBBgwFoAU1oR1x2CnoPapJMKPCVVzqWf2ANYwDwYD
+VR0TAQH/BAUwAwEB/zAKBggqhkjOPQQDAgNIADBFAiBpy0o2CY97MIxeQ0HgG44Y
+raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
+2jS0
+-----END CERTIFICATE-----"#;
+
+    #[test]
+    fn test_scim_certificate() {
+        let cert = Certificate::from_pem(PEM_DATA).unwrap();
+
+        let vs: ValueSet = ValueSetCertificate::new(Box::new(cert)).unwrap();
+
+        let scim_value = vs.to_scim_value().unwrap();
+
+        let cert = match scim_value {
+            ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),
+            _ => unreachable!(),
+        };
+
+        let expect_s256 =
+            hex::decode("8c98a09d0a50db92ccb6d05be846d9b9315015520d19a3e1739aeb8d84ebc28d")
+                .unwrap();
+
+        assert_eq!(cert.s256, expect_s256);
     }
 }

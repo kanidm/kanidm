@@ -144,6 +144,8 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm>;
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 
     fn to_repl_v1(&self) -> ReplAttrV1;
@@ -927,4 +929,18 @@ pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
         ReplAttrV1::Certificate { set } => ValueSetCertificate::from_repl_v1(set),
         ReplAttrV1::ApplicationPassword { set } => ValueSetApplicationPassword::from_repl_v1(set),
     }
+}
+
+#[cfg(test)]
+pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
+    let scim_value = vs.to_scim_value().unwrap();
+
+    let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+    eprintln!("{}", strout);
+
+    let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
+
+    let expect: serde_json::Value = serde_json::from_str(data).unwrap();
+
+    assert_eq!(json_value, expect);
 }

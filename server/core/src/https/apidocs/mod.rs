@@ -206,7 +206,7 @@ impl Modify for SecurityAddon {
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
-            scim_v1::ScimEntryGeneric,
+            scim_v1::ScimEntry,
             scim_v1::ScimValue,
             scim_v1::ScimMeta,
             scim_v1::ScimAttr,

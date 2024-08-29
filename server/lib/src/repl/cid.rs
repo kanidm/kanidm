@@ -1,5 +1,6 @@
 use std::fmt;
 use std::time::Duration;
+use time::OffsetDateTime;
 
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
@@ -35,6 +36,12 @@ impl fmt::Debug for Cid {
 impl fmt::Display for Cid {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:032}-{}", self.ts.as_nanos(), self.s_uuid)
+    }
+}
+
+impl From<&Cid> for OffsetDateTime {
+    fn from(cid: &Cid) -> Self {
+        OffsetDateTime::UNIX_EPOCH + cid.ts
     }
 }
 

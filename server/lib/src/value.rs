@@ -447,6 +447,20 @@ impl From<CredentialType> for PartialValue {
     }
 }
 
+impl From<Attribute> for Value {
+    fn from(attr: Attribute) -> Value {
+        let s: &str = attr.into();
+        Value::new_iutf8(s)
+    }
+}
+
+impl From<Attribute> for PartialValue {
+    fn from(attr: Attribute) -> PartialValue {
+        let s: &str = attr.into();
+        PartialValue::new_iutf8(s)
+    }
+}
+
 /// A partial value is a key or key subset that can be used to match for equality or substring
 /// against a complete Value within a set in an Entry.
 ///
@@ -919,6 +933,16 @@ pub enum ApiTokenScope {
     Synchronise,
 }
 
+impl fmt::Display for ApiTokenScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ApiTokenScope::ReadOnly => write!(f, "read_only"),
+            ApiTokenScope::ReadWrite => write!(f, "read_write"),
+            ApiTokenScope::Synchronise => write!(f, "synchronise"),
+        }
+    }
+}
+
 impl TryInto<ApiTokenPurpose> for ApiTokenScope {
     type Error = OperationError;
 
@@ -947,6 +971,17 @@ pub enum SessionScope {
     PrivilegeCapable,
     // For migration! To be removed in future!
     Synchronise,
+}
+
+impl fmt::Display for SessionScope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SessionScope::ReadOnly => write!(f, "read_only"),
+            SessionScope::ReadWrite => write!(f, "read_write"),
+            SessionScope::PrivilegeCapable => write!(f, "privilege_capable"),
+            SessionScope::Synchronise => write!(f, "synchronise"),
+        }
+    }
 }
 
 impl TryInto<UatPurposeStatus> for SessionScope {

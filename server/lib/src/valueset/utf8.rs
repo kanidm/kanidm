@@ -146,6 +146,17 @@ impl ValueSetT for ValueSetUtf8 {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Utf8(self.set.iter().cloned().collect())
     }
@@ -202,8 +213,7 @@ impl ValueSetT for ValueSetUtf8 {
 #[cfg(test)]
 mod tests {
     use super::ValueSetUtf8;
-    use crate::prelude::PartialValue;
-    use crate::valueset::ValueSetT;
+    use crate::prelude::{PartialValue, ValueSet, ValueSetT};
 
     #[test]
     fn test_utf8_substring_insensitive() {
@@ -224,5 +234,11 @@ mod tests {
         assert!(!vs.endswith(&pv_xx));
         assert!(!vs.endswith(&pv_test));
         assert!(vs.endswith(&pv_user));
+    }
+
+    #[test]
+    fn test_scim_utf8() {
+        let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
+        crate::valueset::scim_json_reflexive(vs, r#""Test""#);
     }
 }

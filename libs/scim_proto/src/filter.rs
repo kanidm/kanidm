@@ -26,6 +26,26 @@ pub enum ScimFilter {
     Less(AttrPath, Value),
     GreaterOrEqual(AttrPath, Value),
     LessOrEqual(AttrPath, Value),
+
+    Complex(String, Box<ScimComplexFilter>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ScimComplexFilter {
+    Or(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
+    And(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
+    Not(Box<ScimComplexFilter>),
+
+    Present(String),
+    Equal(String, Value),
+    NotEqual(String, Value),
+    Contains(String, Value),
+    StartsWith(String, Value),
+    EndsWith(String, Value),
+    Greater(String, Value),
+    Less(String, Value),
+    GreaterOrEqual(String, Value),
+    LessOrEqual(String, Value),
 }
 
 // separator()* "(" e:term() ")" separator()* { e }
@@ -52,9 +72,38 @@ peg::parser! {
                 ScimFilter::Not(Box::new(e))
             }
             --
-            // separator()* e:parse() separator()* { e }
-            "(" e:parse() ")" { e }
+            a:attrname()"[" e:parse_complex() "]" {
+                ScimFilter::Complex(
+                    a,
+                    Box::new(e)
+                )
+            }
+            --
             a:attrexp() { a }
+            "(" e:parse() ")" { e }
+        }
+
+        pub rule parse_complex() -> ScimComplexFilter = precedence!{
+            a:(@) separator()+ "or" separator()+ b:@ {
+                ScimComplexFilter::Or(
+                    Box::new(a),
+                    Box::new(b)
+                )
+            }
+            --
+            a:(@) separator()+ "and" separator()+ b:@ {
+                ScimComplexFilter::And(
+                    Box::new(a),
+                    Box::new(b)
+                )
+            }
+            --
+            "not" separator()+ "(" e:parse_complex() ")" {
+                ScimComplexFilter::Not(Box::new(e))
+            }
+            --
+            a:complex_attrexp() { a }
+            "(" e:parse_complex() ")" { e }
         }
 
         pub(crate) rule attrexp() -> ScimFilter =
@@ -99,17 +148,59 @@ peg::parser! {
         pub(crate) rule le() -> ScimFilter =
             a:attrpath() separator()+ "le" separator()+ v:value() { ScimFilter::LessOrEqual(a, v) }
 
+        pub(crate) rule complex_attrexp() -> ScimComplexFilter =
+            c_pres()
+            / c_eq()
+            / c_ne()
+            / c_co()
+            / c_sw()
+            / c_ew()
+            / c_gt()
+            / c_lt()
+            / c_ge()
+            / c_le()
+
+        pub(crate) rule c_pres() -> ScimComplexFilter =
+            a:attrname() separator()+ "pr" { ScimComplexFilter::Present(a) }
+
+        pub(crate) rule c_eq() -> ScimComplexFilter =
+            a:attrname() separator()+ "eq" separator()+ v:value() { ScimComplexFilter::Equal(a, v) }
+
+        pub(crate) rule c_ne() -> ScimComplexFilter =
+            a:attrname() separator()+ "ne" separator()+ v:value() { ScimComplexFilter::NotEqual(a, v) }
+
+        pub(crate) rule c_co() -> ScimComplexFilter =
+            a:attrname() separator()+ "co" separator()+ v:value() { ScimComplexFilter::Contains(a, v) }
+
+        pub(crate) rule c_sw() -> ScimComplexFilter =
+            a:attrname() separator()+ "sw" separator()+ v:value() { ScimComplexFilter::StartsWith(a, v) }
+
+        pub(crate) rule c_ew() -> ScimComplexFilter =
+            a:attrname() separator()+ "ew" separator()+ v:value() { ScimComplexFilter::EndsWith(a, v) }
+
+        pub(crate) rule c_gt() -> ScimComplexFilter =
+            a:attrname() separator()+ "gt" separator()+ v:value() { ScimComplexFilter::Greater(a, v) }
+
+        pub(crate) rule c_lt() -> ScimComplexFilter =
+            a:attrname() separator()+ "lt" separator()+ v:value() { ScimComplexFilter::Less(a, v) }
+
+        pub(crate) rule c_ge() -> ScimComplexFilter =
+            a:attrname() separator()+ "ge" separator()+ v:value() { ScimComplexFilter::GreaterOrEqual(a, v) }
+
+        pub(crate) rule c_le() -> ScimComplexFilter =
+            a:attrname() separator()+ "le" separator()+ v:value() { ScimComplexFilter::LessOrEqual(a, v) }
+
         rule separator() =
             ['\n' | ' ' | '\t' ]
 
         rule operator() =
-            ['\n' | ' ' | '\t' | '(' | ')' ]
+            ['\n' | ' ' | '\t' | '(' | ')' | '[' | ']' ]
 
         rule value() -> Value =
             barevalue()
 
         rule barevalue() -> Value =
-            s:$((!operator()[_])*) {? serde_json::from_str(s).map_err(|_| "invalid json value" ) }
+            s:$((!operator()[_])*) {? eprintln!("--> {}", s); serde_json::from_str(s).map_err(|_| "invalid json value" ) }
 
         pub(crate) rule attrpath() -> AttrPath =
             a:attrname() s:subattr()? { AttrPath { a, s } }
@@ -376,6 +467,48 @@ mod test {
                         s: None
                     },
                     Value::String("1234".to_string())
+                ))
+            ))
+        );
+    }
+
+    #[test]
+    fn test_scimfilter_complex() {
+        let f = scimfilter::parse("emails[type eq \"work\"]");
+        eprintln!("-- {:?}", f);
+        assert!(f.is_ok());
+
+        let f = scimfilter::parse("emails[type eq \"work\" and value co \"@example.com\"] or ims[type eq \"xmpp\" and value co \"@foo.com\"]");
+        eprintln!("{:?}", f);
+
+        assert_eq!(
+            f,
+            Ok(ScimFilter::Or(
+                Box::new(ScimFilter::Complex(
+                    "emails".to_string(),
+                    Box::new(ScimComplexFilter::And(
+                        Box::new(ScimComplexFilter::Equal(
+                            "type".to_string(),
+                            Value::String("work".to_string())
+                        )),
+                        Box::new(ScimComplexFilter::Contains(
+                            "value".to_string(),
+                            Value::String("@example.com".to_string())
+                        ))
+                    ))
+                )),
+                Box::new(ScimFilter::Complex(
+                    "ims".to_string(),
+                    Box::new(ScimComplexFilter::And(
+                        Box::new(ScimComplexFilter::Equal(
+                            "type".to_string(),
+                            Value::String("xmpp".to_string())
+                        )),
+                        Box::new(ScimComplexFilter::Contains(
+                            "value".to_string(),
+                            Value::String("@foo.com".to_string())
+                        ))
+                    ))
                 ))
             ))
         );

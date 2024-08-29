@@ -136,6 +136,17 @@ impl ValueSetT for ValueSetDateTime {
         }))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().copied();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or(OffsetDateTime::UNIX_EPOCH);
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::DateTime(
             self.set
@@ -201,5 +212,21 @@ impl ValueSetT for ValueSetDateTime {
 
     fn as_datetime_set(&self) -> Option<&SmolSet<[OffsetDateTime; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetDateTime;
+    use crate::prelude::ValueSet;
+    use std::time::Duration;
+    use time::OffsetDateTime;
+
+    #[test]
+    fn test_scim_datetime() {
+        let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
+        let vs: ValueSet = ValueSetDateTime::new(odt);
+
+        crate::valueset::scim_json_reflexive(vs, r#""1970-01-01T19:17:00Z""#);
     }
 }

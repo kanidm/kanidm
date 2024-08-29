@@ -108,6 +108,17 @@ impl ValueSetT for ValueSetUrl {
         Box::new(self.set.iter().map(|i| i.to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().map(|url| url.to_string());
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Url(self.set.iter().cloned().collect())
     }
@@ -154,5 +165,18 @@ impl ValueSetT for ValueSetUrl {
 
     fn as_url_set(&self) -> Option<&SmolSet<[Url; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetUrl;
+    use crate::prelude::{Url, ValueSet};
+
+    #[test]
+    fn test_scim_url() {
+        let u = Url::parse("https://idm.example.com").unwrap();
+        let vs: ValueSet = ValueSetUrl::new(u);
+        crate::valueset::scim_json_reflexive(vs, r#""https://idm.example.com/""#);
     }
 }

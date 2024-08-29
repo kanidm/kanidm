@@ -118,7 +118,18 @@ impl ValueSetT for ValueSetCid {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|c| format!("{:?}_{}", c.ts, c.s_uuid)))
+        Box::new(self.set.iter().map(|c| c.to_string()))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().map(|cid| cid.to_string());
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -182,4 +193,18 @@ impl ValueSetT for ValueSetCid {
         Some(Box::new(self.set.iter().copied()))
     }
     */
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetCid;
+    use crate::prelude::{Cid, ValueSet};
+
+    #[test]
+    fn test_scim_cid() {
+        let vs: ValueSet = ValueSetCid::new(Cid::new_zero());
+
+        let data = r#""00000000000000000000000000000000-00000000-0000-0000-0000-000000000000""#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
 }

@@ -133,6 +133,10 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         Box::new(iter::once(String::from("hidden")))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         #[allow(clippy::expect_used)]
         let key_der = self

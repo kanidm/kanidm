@@ -133,6 +133,17 @@ impl ValueSetT for ValueSetHexString {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::HexString(self.set.iter().cloned().collect())
     }
@@ -171,5 +182,18 @@ impl ValueSetT for ValueSetHexString {
 
     fn as_hexstring_set(&self) -> Option<&BTreeSet<String>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetHexString;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_hexstring() {
+        let vs: ValueSet =
+            ValueSetHexString::new("D68475C760A7A0F6A924C28F095573A967F600D6".to_string());
+        crate::valueset::scim_json_reflexive(vs, r#""D68475C760A7A0F6A924C28F095573A967F600D6""#);
     }
 }

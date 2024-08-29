@@ -116,6 +116,17 @@ impl ValueSetT for ValueSetSpn {
         Box::new(self.set.iter().map(|(n, d)| format!("{n}@{d}")))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().map(|(n, d)| format!("{n}@{d}"));
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Spn(self.set.iter().cloned().collect())
     }
@@ -179,4 +190,16 @@ impl ValueSetT for ValueSetSpn {
         Some(Box::new(self.set.iter().copied()))
     }
     */
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetSpn;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_spn() {
+        let vs: ValueSet = ValueSetSpn::new(("claire".to_string(), "example.com".to_string()));
+        crate::valueset::scim_json_reflexive(vs, r#""claire@example.com""#);
+    }
 }

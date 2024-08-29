@@ -144,6 +144,17 @@ impl ValueSetT for ValueSetRestricted {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::RestrictedString(self.set.iter().cloned().collect())
     }
@@ -194,5 +205,17 @@ impl ValueSetT for ValueSetRestricted {
 
     fn as_restricted_string_iter(&self) -> Option<Box<dyn Iterator<Item = &str> + '_>> {
         Some(Box::new(self.set.iter().map(|s| s.as_str())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetRestricted;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_restricted() {
+        let vs: ValueSet = ValueSetRestricted::new("Test".to_string());
+        crate::valueset::scim_json_reflexive(vs, r#""Test""#);
     }
 }

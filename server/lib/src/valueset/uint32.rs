@@ -114,6 +114,17 @@ impl ValueSetT for ValueSetUint32 {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        if self.len() == 1 {
+            // Because self.len == 1 we know this has to yield a value.
+            let b = self.set.iter().copied().next().unwrap_or_default();
+            Some(b.into())
+        } else {
+            // Nothing is MV for this today
+            None
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Uint32(self.set.iter().cloned().collect())
     }
@@ -174,5 +185,11 @@ mod tests {
         assert_eq!(vs.insert_checked(Value::new_uint32(0)), Ok(false));
         assert_eq!(vs.insert_checked(Value::new_uint32(1)), Ok(true));
         assert_eq!(vs.insert_checked(Value::new_uint32(1)), Ok(false));
+    }
+
+    #[test]
+    fn test_scim_uint32() {
+        let vs: ValueSet = ValueSetUint32::new(69);
+        crate::valueset::scim_json_reflexive(vs, "69");
     }
 }

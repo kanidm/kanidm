@@ -294,32 +294,50 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Class.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Uuid.to_value()),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
             (Attribute::AcpModifyClass, EntryClass::System.to_value()),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Class.to_value()),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DisplayName.to_value()
+                Value::from(Attribute::Class)
             ),
-            (Attribute::AcpModifyRemovedAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Must.to_value()),
-            (Attribute::AcpModifyPresentAttr, Attribute::Class.to_value()),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Must)
+            ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DisplayName.to_value()
+                Value::from(Attribute::Class)
             ),
-            (Attribute::AcpModifyPresentAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Must)
+            ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
             (Attribute::AcpCreateClass, EntryClass::System.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Class.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Description.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::DisplayName.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Uuid.to_value())
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Class)),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::Description)
+            ),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];

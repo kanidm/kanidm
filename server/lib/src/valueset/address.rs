@@ -10,6 +10,8 @@ use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
+
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {
     set: SmolSet<[Address; 1]>,
@@ -161,6 +163,22 @@ impl ValueSetT for ValueSetAddress {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set
+                .iter()
+                .map(|a| ScimAddress {
+                    formatted: a.formatted.clone(),
+                    street_address: a.street_address.clone(),
+                    locality: a.locality.clone(),
+                    region: a.region.clone(),
+                    postal_code: a.postal_code.clone(),
+                    country: a.country.clone(),
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -454,6 +472,21 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set
+                .iter()
+                .map(|mail| {
+                    let primary = **mail == self.primary;
+                    ScimMail {
+                        primary,
+                        value: mail.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::EmailAddress(self.primary.clone(), self.set.iter().cloned().collect())
     }
@@ -525,9 +558,9 @@ pub struct ValueSetPhoneNumber {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetEmailAddress;
+    use super::{ValueSetAddress, ValueSetEmailAddress};
     use crate::repl::cid::Cid;
-    use crate::value::{PartialValue, Value};
+    use crate::value::{Address, PartialValue, Value};
     use crate::valueset::{self, ValueSet};
 
     #[test]
@@ -604,5 +637,53 @@ mod tests {
         vs.clear();
         assert_eq!(vs.len(), 0);
         assert!(vs.to_email_address_primary_str().is_none());
+    }
+
+    #[test]
+    fn test_scim_emailaddress() {
+        let mut vs: ValueSet = ValueSetEmailAddress::new("claire@example.com".to_string());
+        // Add another, still not primary.
+        assert!(
+            vs.insert_checked(
+                Value::new_email_address_s("alice@example.com").expect("Invalid Email")
+            ) == Ok(true)
+        );
+
+        let data = r#"[
+          {
+            "primary": false,
+            "value": "alice@example.com"
+          },
+          {
+            "primary": true,
+            "value": "claire@example.com"
+          }
+        ]"#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_address() {
+        let vs: ValueSet = ValueSetAddress::new(Address {
+            formatted: "1 No Where Lane, Doesn't Exist, Brisbane, 0420, Australia".to_string(),
+            street_address: "1 No Where Lane".to_string(),
+            locality: "Doesn't Exist".to_string(),
+            region: "Brisbane".to_string(),
+            postal_code: "0420".to_string(),
+            country: "Australia".to_string(),
+        });
+
+        let data = r#"[
+          {
+            "country": "Australia",
+            "formatted": "1 No Where Lane, Doesn't Exist, Brisbane, 0420, Australia",
+            "locality": "Doesn't Exist",
+            "postalCode": "0420",
+            "region": "Brisbane",
+            "streetAddress": "1 No Where Lane"
+          }
+        ]"#;
+
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

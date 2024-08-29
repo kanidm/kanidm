@@ -112,6 +112,12 @@ impl ValueSetT for ValueSetSyntax {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::SyntaxType(self.set.iter().map(|s| *s as u16).collect())
     }
@@ -158,5 +164,17 @@ impl ValueSetT for ValueSetSyntax {
 
     fn as_syntax_set(&self) -> Option<&SmolSet<[SyntaxType; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetSyntax;
+    use crate::prelude::{SyntaxType, ValueSet};
+
+    #[test]
+    fn test_scim_syntax() {
+        let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
+        crate::valueset::scim_json_reflexive(vs, r#"["UUID"]"#);
     }
 }

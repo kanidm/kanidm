@@ -324,9 +324,9 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Class.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Uuid.to_value()),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
             (Attribute::AcpSearchAttr, Value::new_iutf8("classname")),
             (
                 Attribute::AcpSearchAttr,
@@ -334,106 +334,124 @@ mod tests {
             ),
             (Attribute::AcpModifyClass, EntryClass::System.to_value()),
             (Attribute::AcpModifyClass, Value::new_iutf8("domain_info")),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Class.to_value()),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DisplayName.to_value()
-            ),
-            (Attribute::AcpModifyRemovedAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Must.to_value()),
-            (
-                Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainName.to_value()
+                Value::from(Attribute::Class)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainDisplayName.to_value()
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Must)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainUuid.to_value()
+                Value::from(Attribute::DomainName)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainSsid.to_value()
+                Value::from(Attribute::DomainDisplayName)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::DomainUuid)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DomainSsid)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::FernetPrivateKeyStr)
             ),
-            (Attribute::AcpModifyPresentAttr, Attribute::Class.to_value()),
             (
-                Attribute::AcpModifyPresentAttr,
-                Attribute::DisplayName.to_value()
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Es256PrivateKeyDer)
             ),
-            (Attribute::AcpModifyPresentAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
             (
-                Attribute::AcpModifyPresentAttr,
-                Attribute::DomainName.to_value()
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::PrivateCookieKey)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainDisplayName.to_value()
+                Value::from(Attribute::Class)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainUuid.to_value()
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Must)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainSsid.to_value()
+                Value::from(Attribute::DomainName)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::DomainDisplayName)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DomainUuid)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::DomainSsid)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::FernetPrivateKeyStr)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Es256PrivateKeyDer)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::PrivateCookieKey)
             ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Account.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
             (Attribute::AcpCreateClass, EntryClass::System.to_value()),
             (Attribute::AcpCreateClass, EntryClass::DomainInfo.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
             (Attribute::AcpCreateAttr, EntryClass::Class.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::Description.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::DisplayName.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::DomainName.to_value(),),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::DomainDisplayName.to_value()
-            ),
-            (Attribute::AcpCreateAttr, Attribute::DomainUuid.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::DomainSsid.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Uuid.to_value()),
-            (
-                Attribute::AcpCreateAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::Description),
             ),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DisplayName),
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainName),),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::DomainDisplayName)
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainUuid)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainSsid)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::FernetPrivateKeyStr)
             ),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::Es256PrivateKeyDer)
             ),
-            (Attribute::AcpCreateAttr, Attribute::Version.to_value())
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::PrivateCookieKey)
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Version))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -520,8 +538,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
             modlist!([
-                m_pres(Attribute::May, &Attribute::Name.to_value()),
-                m_pres(Attribute::Must, &Attribute::Name.to_value()),
+                m_pres(Attribute::May, &Value::from(Attribute::Name)),
+                m_pres(Attribute::Must, &Value::from(Attribute::Name)),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},

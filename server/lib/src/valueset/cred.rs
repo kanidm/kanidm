@@ -1,6 +1,7 @@
 use smolset::SmolSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
+use time::OffsetDateTime;
 
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
@@ -18,6 +19,8 @@ use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 use crate::valueset::{DbValueSetV2, ValueSet};
+
+use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
@@ -147,6 +150,12 @@ impl ValueSetT for ValueSetCredential {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.map.keys().cloned())
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        // Currently I think we don't need to yield cred info as that's part of the
+        // cred update session instead.
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -441,6 +450,35 @@ impl ValueSetT for ValueSetIntentToken {
         Box::new(self.map.keys().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(token_id, intent_token_state)| {
+                    let (state, max_ttl) = match intent_token_state {
+                        IntentTokenState::Valid { max_ttl, .. } => {
+                            (ScimIntentTokenState::Valid, *max_ttl)
+                        }
+                        IntentTokenState::InProgress { max_ttl, .. } => {
+                            (ScimIntentTokenState::InProgress, *max_ttl)
+                        }
+                        IntentTokenState::Consumed { max_ttl } => {
+                            (ScimIntentTokenState::Consumed, *max_ttl)
+                        }
+                    };
+
+                    let odt: OffsetDateTime = OffsetDateTime::UNIX_EPOCH + max_ttl;
+
+                    ScimIntentToken {
+                        token_id: token_id.clone(),
+                        state,
+                        expires: odt,
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::IntentToken(
             self.map
@@ -725,6 +763,10 @@ impl ValueSetT for ValueSetPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Passkey(
             self.map
@@ -917,6 +959,10 @@ impl ValueSetT for ValueSetAttestedPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::AttestedPasskey(
             self.map
@@ -1096,6 +1142,12 @@ impl ValueSetT for ValueSetCredentialType {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().map(|ct| ct.to_string()))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set.iter().map(|ct| ct.to_string()).collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1279,6 +1331,17 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
         }
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.ca_list
+                .cas()
+                .values()
+                .flat_map(|att_ca| att_ca.aaguids().values())
+                .map(|device| device.description_en().to_string())
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_repl_v1(&self) -> ReplAttrV1 {
         ReplAttrV1::WebauthnAttestationCaList {
             ca_list: self.ca_list.clone(),
@@ -1316,5 +1379,40 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
 
     fn as_webauthn_attestation_ca_list(&self) -> Option<&AttestationCaList> {
         Some(&self.ca_list)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{CredentialType, IntentTokenState, ValueSetCredentialType, ValueSetIntentToken};
+    use crate::prelude::ValueSet;
+    use std::time::Duration;
+
+    #[test]
+    fn test_scim_intent_token() {
+        // I seem to recall this shouldn't have a value returned?
+        let vs: ValueSet = ValueSetIntentToken::new(
+            "ca6f29d1-034b-41fb-abc1-4bb9f0548e67".to_string(),
+            IntentTokenState::Consumed {
+                max_ttl: Duration::from_secs(300),
+            },
+        );
+
+        let data = r#"
+[
+  {
+    "expires": "1970-01-01T00:05:00Z",
+    "state": "consumed",
+    "tokenId": "ca6f29d1-034b-41fb-abc1-4bb9f0548e67"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_credential_type() {
+        let vs: ValueSet = ValueSetCredentialType::new(CredentialType::Mfa);
+        crate::valueset::scim_json_reflexive(vs, r#"["mfa"]"#);
     }
 }

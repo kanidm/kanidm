@@ -1,4 +1,4 @@
-use crate::ScimEntry;
+use crate::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use url::Url;
 use uuid::Uuid;
@@ -15,7 +15,7 @@ pub struct Member {
 #[serde(rename_all = "camelCase")]
 pub struct Group {
     #[serde(flatten)]
-    entry: ScimEntry,
+    entry: ScimEntryHeader,
 
     display_name: String,
     members: Vec<Member>,

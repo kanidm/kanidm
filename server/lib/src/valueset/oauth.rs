@@ -5,8 +5,12 @@ use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
 use crate::repl::proto::{ReplAttrV1, ReplOauthClaimMapV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
+use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
+
+use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
+use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {
@@ -112,6 +116,10 @@ impl ValueSetT for ValueSetOauthScope {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().cloned())
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(str_join(&self.set).into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -299,6 +307,21 @@ impl ValueSetT for ValueSetOauthScopeMap {
                 .iter()
                 .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
         )
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(uuid, scopes)| {
+                    ScimOAuth2ScopeMap {
+                        uuid: *uuid,
+                        // Flattened to a space separated list.
+                        scopes: scopes.clone(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -665,6 +688,25 @@ impl ValueSetT for ValueSetOauthClaimMap {
         }))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .flat_map(|(claim_name, mappings)| {
+                    mappings
+                        .values
+                        .iter()
+                        .map(|(group_uuid, claim_values)| ScimOAuth2ClaimMap {
+                            group: *group_uuid,
+                            claim: claim_name.to_string(),
+                            join_char: mappings.join.to_str().to_string(),
+                            values: claim_values.clone(),
+                        })
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::OauthClaimMap(
             self.map
@@ -742,7 +784,8 @@ impl ValueSetT for ValueSetOauthClaimMap {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetOauthClaimMap;
+    use super::{ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap};
+    use crate::prelude::ValueSet;
     use crate::valueset::ValueSetT;
     use std::collections::BTreeSet;
 
@@ -759,5 +802,48 @@ mod tests {
             &proto_value,
             "claim: 5a6b8783-3f67-4ebb-b6aa-77fd6e66589f \"\"\"\""
         );
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope() {
+        let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
+        let data = r#""fully_sick_scope_m8""#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_oauth2_scope_map() {
+        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+        let set = ["read".to_string(), "write".to_string()].into();
+        let vs: ValueSet = ValueSetOauthScopeMap::new(u, set);
+
+        let data = r#"
+[
+  {
+    "scopes": "read write",
+    "uuid": "3a163ca0-4762-4620-a188-06b750c84c86"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_oauth2_claim_map() {
+        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+        let set = ["read".to_string(), "write".to_string()].into();
+        let vs: ValueSet = ValueSetOauthClaimMap::new_value("claim".to_string(), u, set);
+
+        let data = r#"
+[
+  {
+    "claim": "claim",
+    "group": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "joinChar": ";",
+    "values": "read write"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

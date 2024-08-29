@@ -2410,6 +2410,39 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
+    pub fn to_scim_kanidm(&self) -> Result<ScimEntryKanidm, OperationError> {
+        let attrs = Default::default();
+        /*
+        let attrs = self
+            .attrs
+            .iter()
+            .filter_map(|(k, vs)| {
+                vs.to_scim_value()
+                    .map(|scim_value| (k, scim_value))
+            })
+            .collect();
+        */
+
+        let id = self.get_uuid();
+
+        // Not sure how I want to handle this yet, I think we need some schema changes
+        // to achieve this.
+        let schemas = Vec::with_capacity(0);
+
+        Ok(ScimEntryKanidm {
+            header: ScimEntryHeader {
+                schemas,
+                id,
+                // TODO: Should be spn / name or uuid.
+                external_id: None,
+                // TODO - this one will be useful in future, but we need to change
+                // entry to store some extra metadata.
+                meta: None,
+            },
+            attrs,
+        })
+    }
+
     /// Transform this reduced entry into an LDAP form that can be sent to clients.
     pub fn to_ldap(
         &self,

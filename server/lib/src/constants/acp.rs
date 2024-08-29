@@ -150,23 +150,23 @@ impl From<BuiltinAcp> for EntryInitNew {
             value
                 .search_attrs
                 .into_iter()
-                .map(|sa| sa.to_value())
+                .map(Value::from)
                 .collect::<Vec<Value>>(),
         );
         value.modify_present_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyPresentAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpModifyPresentAttr, Value::from(attr));
         });
         value.modify_removed_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyRemovedAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpModifyRemovedAttr, Value::from(attr));
         });
         value.modify_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpModifyClass, class.to_value());
+            entry.add_ava(Attribute::AcpModifyClass, Value::from(class));
         });
         value.create_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpCreateClass, class.to_value());
+            entry.add_ava(Attribute::AcpCreateClass, Value::from(class));
         });
         value.create_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpCreateAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpCreateAttr, Value::from(attr));
         });
         entry
     }
