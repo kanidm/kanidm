@@ -1182,64 +1182,36 @@ impl QueryServerWriteV1 {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub async fn handle_oauth2_rs_image_delete(
+    pub async fn handle_image_update(
         &self,
         client_auth_info: ClientAuthInfo,
-        rs: Filter<FilterInvalid>,
+        request_filter: Filter<FilterInvalid>,
+        image: Option<ImageValue>,
     ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await?;
         let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write(ct).await?;
 
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_delete");
-                e
-            })?;
-        let ml = ModifyList::new_purge(Attribute::Image);
-        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
-        {
-            Ok(m) => m,
-            Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_delete");
-                return Err(e);
-            }
-        };
-        idms_prox_write
-            .qs_write
-            .modify(&mdf)
-            .and_then(|_| idms_prox_write.commit().map(|_| ()))
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    pub async fn handle_oauth2_rs_image_update(
-        &self,
-        client_auth_info: ClientAuthInfo,
-        rs: Filter<FilterInvalid>,
-        image: ImageValue,
-    ) -> Result<(), OperationError> {
-        let mut idms_prox_write = self.idms.proxy_write(duration_from_epoch_now()).await?;
-        let ct = duration_from_epoch_now();
-
-        let ident = idms_prox_write
-            .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_update");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity in handle_image_update");
             })?;
 
-        let ml = ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image));
-
-        let mdf = match ModifyEvent::from_internal_parts(ident, &ml, &rs, &idms_prox_write.qs_write)
-        {
-            Ok(m) => m,
-            Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify during handle_oauth2_rs_image_update");
-                return Err(e);
-            }
+        let modlist = if let Some(image) = image {
+            ModifyList::new_purge_and_set(Attribute::Image, Value::Image(image))
+        } else {
+            ModifyList::new_purge(Attribute::Image)
         };
 
-        trace!(?mdf, "Begin modify event");
+        let mdf = ModifyEvent::from_internal_parts(
+            ident,
+            &modlist,
+            &request_filter,
+            &idms_prox_write.qs_write,
+        )
+        .inspect_err(|err| {
+            error!(?err, "Failed to begin modify during handle_image_update");
+        })?;
 
         idms_prox_write
             .qs_write

@@ -7,11 +7,11 @@ mod javascript;
 mod manifest;
 pub(crate) mod middleware;
 mod oauth2;
-mod domain;
 mod tests;
 pub(crate) mod trace;
 mod ui;
 mod v1;
+mod v1_domain;
 mod v1_oauth2;
 mod v1_scim;
 mod views;
@@ -274,7 +274,7 @@ pub async fn create_https_server(
                     .layer(middleware::compression::new())
                     .layer(from_fn(middleware::caching::cache_me_short))
                     .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
-                    .route("/ui/images/domain", get(domain::image_get));
+                    .route("/ui/images/domain", get(v1_domain::image_get));
 
                 Router::new()
                     .route("/", get(|| async { Redirect::to("/ui") }))

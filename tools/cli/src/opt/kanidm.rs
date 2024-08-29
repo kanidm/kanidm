@@ -1274,6 +1274,22 @@ pub enum DomainOpt {
         copt: CommonOpt,
         key_id: String,
     },
+    /// The image presented as the instance logo
+    #[clap(name="set-image")]
+    SetImage {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "file-path")]
+        path: PathBuf,
+        #[clap(name = "image-type")]
+        image_type: Option<String>,
+    },
+    /// The remove the current instance logo, reverting to the default.
+    #[clap(name="remove-image")]
+    RemoveImage {
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Subcommand)]

@@ -118,9 +118,7 @@ pub(crate) async fn oauth2_image_get(
             (StatusCode::NOT_FOUND, "").into_response()
         }
         Err(err) => {
-            error!(?err,
-                "Unable to get image for oauth2 client"
-            );
+            error!(?err, "Unable to get image for oauth2 client");
             // TODO: a 404 probably isn't perfect but it's not the worst
             (StatusCode::INTERNAL_SERVER_ERROR, "").into_response()
         }

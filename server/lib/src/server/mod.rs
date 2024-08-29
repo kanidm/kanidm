@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, UiHint, ImageValue};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
@@ -66,6 +66,8 @@ pub(crate) enum ServerPhase {
     Running,
 }
 
+/// Domain Information. This should not contain sensitive information, the data within
+/// this structure may be used for public presentation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DomainInfo {
     pub(crate) d_uuid: Uuid,
@@ -75,8 +77,26 @@ pub struct DomainInfo {
     pub(crate) d_patch_level: u32,
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
-    // In future this should be image reference.
+    // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
+}
+
+impl DomainInfo {
+    pub fn name(&self) -> &str {
+        self.d_name.as_str()
+    }
+
+    pub fn display_name(&self) -> &str {
+        self.d_display.as_str()
+    }
+
+    pub fn devel_taint(&self) -> bool {
+        self.d_devel_taint
+    }
+
+    pub fn image(&self) -> Option<&ImageValue> {
+        self.d_image.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -1978,21 +1998,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
         let domain_entry = self.get_db_domain()?;
 
-        let domain_name = domain_entry.get_ava_single_iname(Attribute::DomainName)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)?;
+        let domain_name = domain_entry
+            .get_ava_single_iname(Attribute::DomainName)
+            .map(str::to_string)
+            .ok_or(OperationError::InvalidEntryState)?;
 
-        let display_name = 
-                domain_entry.get_ava_single_utf8(Attribute::DomainDisplayName)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)?;
+        let display_name = domain_entry
+            .get_ava_single_utf8(Attribute::DomainDisplayName)
+            .map(str::to_string)
+            .ok_or(OperationError::InvalidEntryState)?;
 
         let domain_ldap_allow_unix_pw_bind = domain_entry
-                .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
-                .unwrap_or(true);
+            .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
+            .unwrap_or(true);
 
-        let domain_image = domain_entry
-            .get_ava_single_image(Attribute::Image);
+        let domain_image = domain_entry.get_ava_single_image(Attribute::Image);
 
         let domain_uuid = self.be_txn.get_db_d_uuid()?;
 

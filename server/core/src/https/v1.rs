@@ -3348,6 +3348,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         // domain-things
         .route("/v1/domain", get(domain_get))
         .route(
+            "/v1/domain/_image",
+            post(super::v1_domain::image_post).delete(super::v1_domain::image_delete),
+        )
+        .route(
             "/v1/domain/_attr/:attr",
             get(domain_attr_get)
                 .put(domain_attr_put)

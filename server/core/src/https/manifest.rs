@@ -1,16 +1,11 @@
 //! Builds a Progressive Web App Manifest page.
-
-use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
 use axum::http::HeaderValue;
 use axum::response::{IntoResponse, Response};
-use axum::Extension;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 
-use super::middleware::KOpId;
-// Thanks to the webmanifest crate for a lot of this code
-use super::ServerState;
+use crate::https::extractors::DomainInfo;
 
 /// The MIME type for `.webmanifest` files.
 const MIME_TYPE_MANIFEST: &str = "application/manifest+json;charset=utf-8";
@@ -150,15 +145,8 @@ pub fn manifest_data(host_req: Option<&str>, domain_display_name: String) -> Man
 }
 
 /// Generates a manifest.json file for progressive web app usage
-pub(crate) async fn manifest(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-) -> impl IntoResponse {
-    let domain_display_name = state
-        .qe_r_ref
-        .get_domain_display_name(kopid.eventid)
-        .await
-        .unwrap_or_default();
+pub(crate) async fn manifest(DomainInfo(domain_info): DomainInfo) -> impl IntoResponse {
+    let domain_display_name = domain_info.display_name().to_string();
     // TODO: fix the None here to make it the request host
     let manifest_string =
         match serde_json::to_string_pretty(&manifest_data(None, domain_display_name)) {

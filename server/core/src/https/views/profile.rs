@@ -1,4 +1,4 @@
-use crate::https::extractors::VerifiedClientInformation;
+use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::HtmlTemplate;
@@ -73,8 +73,17 @@ pub(crate) async fn view_profile_get(
 pub(crate) async fn view_profile_unlock_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    super::login::view_reauth_get(state, client_auth_info, kopid, jar, "/ui/profile").await
+    super::login::view_reauth_get(
+        state,
+        client_auth_info,
+        kopid,
+        jar,
+        "/ui/profile",
+        domain_info,
+    )
+    .await
 }

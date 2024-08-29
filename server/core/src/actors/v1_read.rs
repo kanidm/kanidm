@@ -40,7 +40,7 @@ use kanidmd_lib::{
         AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
-    idm::server::IdmServerTransaction,
+    idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
     idm::ClientAuthInfo,
 };
@@ -409,18 +409,9 @@ impl QueryServerReadV1 {
         )?;
 
         let entries = idms_prox_read.qs_read.search(&search)?;
-        Ok(entries.first()
+        Ok(entries
+            .first()
             .and_then(|entry| entry.get_ava_single_image(Attribute::Image)))
-    }
-
-    #[instrument(level = "debug", skip_all)]
-    /// retrieve the optionally set domain image.
-    pub async fn handle_domain_get_image(
-        &self,
-        // client_auth_info: ClientAuthInfo,
-    ) -> Result<Option<ImageValue>, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await?;
-        Ok(idms_prox_read.qs_read.get_domain_image_value())
     }
 
     #[instrument(
@@ -1560,16 +1551,6 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn get_domain_display_name(&self, eventid: Uuid) -> Result<String, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await?;
-        Ok(idms_prox_read.qs_read.get_domain_display_name().to_string())
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
     pub async fn handle_auth_valid(
         &self,
         client_auth_info: ClientAuthInfo,
@@ -1633,5 +1614,9 @@ impl QueryServerReadV1 {
             )),
         };
         Some(res)
+    }
+
+    pub fn domain_info_read(&self) -> DomainInfoRead {
+        self.idms.domain_read()
     }
 }
