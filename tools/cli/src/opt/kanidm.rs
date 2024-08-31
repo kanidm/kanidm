@@ -1,4 +1,4 @@
-use clap::{Args, Subcommand, ValueEnum, builder::PossibleValue};
+use clap::{builder::PossibleValue, Args, Subcommand, ValueEnum};
 use std::fmt;
 
 #[derive(Debug, Args)]
@@ -58,13 +58,20 @@ pub struct CommonOpt {
     #[clap(short, long, env = "KANIDM_DEBUG")]
     pub debug: bool,
     /// Select the instance name you wish to connect to
-    #[clap(short='I', long="instance", env = "KANIDM_INSTANCE")]
+    #[clap(short = 'I', long = "instance", env = "KANIDM_INSTANCE",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     pub instance: Option<String>,
     /// The URL of the kanidm instance
-    #[clap(short = 'H', long = "url", env = "KANIDM_URL")]
+    #[clap(short = 'H', long = "url", env = "KANIDM_URL",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     pub addr: Option<String>,
     /// User which will initiate requests
-    #[clap(short = 'D', long = "name", env = "KANIDM_NAME")]
+    #[clap(
+        short = 'D',
+        long = "name",
+        env = "KANIDM_NAME",
+        value_parser = clap::builder::NonEmptyStringValueParser::new()
+    )]
     pub username: Option<String>,
     /// Path to a CA certificate file
     #[clap(value_parser, short = 'C', long = "ca", env = "KANIDM_CA_PATH")]
@@ -80,7 +87,8 @@ pub struct CommonOpt {
     )]
     skip_hostname_verification: bool,
     /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
-    #[clap(short, long, env = "KANIDM_TOKEN_CACHE_PATH", hide = true, default_value = None)]
+    #[clap(short, long, env = "KANIDM_TOKEN_CACHE_PATH", hide = true, default_value = None,
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     token_cache_path: Option<String>,
 }
 
@@ -250,6 +258,7 @@ pub enum GroupOpt {
         /// The name of the group
         name: String,
         /// Optional name/spn of a group that have entry manager rights over this group.
+        #[clap(value_parser = clap::builder::NonEmptyStringValueParser::new())]
         entry_managed_by: Option<String>,
         #[clap(flatten)]
         copt: CommonOpt,
@@ -321,7 +330,7 @@ pub enum GroupOpt {
 pub enum GraphType {
     Graphviz,
     Mermaid,
-    MermaidElk
+    MermaidElk,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, ValueEnum)]
@@ -329,7 +338,7 @@ pub enum ObjectType {
     Group,
     BuiltinGroup,
     ServiceAccount,
-    Person
+    Person,
 }
 
 #[derive(Debug, Args)]
@@ -468,7 +477,8 @@ pub struct AccountPosixOpt {
     aopts: AccountCommonOpt,
     #[clap(long)]
     gidnumber: Option<u32>,
-    #[clap(long)]
+    #[clap(long, value_parser = clap::builder::NonEmptyStringValueParser::new())]
+    /// Set the user's login shell
     shell: Option<String>,
     #[clap(flatten)]
     copt: CommonOpt,
@@ -510,11 +520,14 @@ pub enum ServiceAccountPosix {
 pub struct PersonUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help = "Set the legal name for the person.")]
+    #[clap(long, short, help = "Set the legal name for the person.",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     legalname: Option<String>,
-    #[clap(long, short, help = "Set the account name for the person.")]
+    #[clap(long, short, help = "Set the account name for the person.",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     newname: Option<String>,
-    #[clap(long, short = 'i', help = "Set the display name for the person.")]
+    #[clap(long, short = 'i', help = "Set the display name for the person.",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     displayname: Option<String>,
     #[clap(
         long,
@@ -564,7 +577,6 @@ pub enum AccountCertificate {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-
 }
 
 #[derive(Debug, Subcommand)]
@@ -650,7 +662,7 @@ pub enum PersonOpt {
     Certificate {
         #[clap(subcommand)]
         commands: AccountCertificate,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -683,6 +695,7 @@ pub enum ServiceAccountApiToken {
         #[clap(name = "expiry")]
         /// An optional rfc3339 time of the format "YYYY-MM-DDTHH:MM:SS+TZ", "2020-09-25T11:22:02+10:00".
         /// After this time the api token will no longer be valid.
+        #[clap(value_parser = clap::builder::NonEmptyStringValueParser::new())]
         expiry: Option<String>,
         #[clap(long = "rw")]
         read_write: bool,
@@ -705,18 +718,21 @@ pub enum ServiceAccountApiToken {
 pub struct ServiceAccountUpdateOpt {
     #[clap(flatten)]
     aopts: AccountCommonOpt,
-    #[clap(long, short, help = "Set the account name for the service account.")]
+    #[clap(long, short, help = "Set the account name for the service account.",
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     newname: Option<String>,
     #[clap(
         long,
         short = 'i',
-        help = "Set the display name for the service account."
+        help = "Set the display name for the service account.",
+        value_parser = clap::builder::NonEmptyStringValueParser::new()
     )]
     displayname: Option<String>,
     #[clap(
         long,
         short = 'e',
-        help = "Set the entry manager for the service account."
+        help = "Set the entry manager for the service account.",
+        value_parser = clap::builder::NonEmptyStringValueParser::new()
     )]
     entry_managed_by: Option<String>,
     #[clap(
@@ -815,7 +831,8 @@ pub enum RecycleOpt {
 pub struct LoginOpt {
     #[clap(flatten)]
     copt: CommonOpt,
-    #[clap(short, long, env = "KANIDM_PASSWORD", hide = true)]
+    #[clap(short, long, env = "KANIDM_PASSWORD", hide = true,
+    value_parser = clap::builder::NonEmptyStringValueParser::new())]
     /// Supply a password to the login option
     password: Option<String>,
 }
@@ -957,7 +974,6 @@ impl ValueEnum for Oauth2ClaimMapJoin {
     }
 }
 
-
 #[derive(Debug, Subcommand)]
 pub enum Oauth2Opt {
     #[clap(name = "list")]
@@ -1074,17 +1090,18 @@ pub enum Oauth2Opt {
         url: Url,
     },
     /// The image presented on the Kanidm Apps Listing page for an oauth2 resource server.
-    #[clap(name="set-image")]
+    #[clap(name = "set-image")]
     SetImage {
         #[clap(flatten)]
         nopt: Named,
         #[clap(name = "file-path")]
         path: PathBuf,
-        #[clap(name = "image-type")]
+        #[clap(name = "image-type",
+        value_parser = clap::builder::NonEmptyStringValueParser::new())]
         image_type: Option<String>,
     },
     /// Removes the custom image previously set.
-    #[clap(name="remove-image")]
+    #[clap(name = "remove-image")]
     RemoveImage(Named),
 
     /// Add a supplemental URL as a redirection target. For example a phone app
@@ -1256,7 +1273,7 @@ pub enum DomainOpt {
         #[clap(flatten)]
         copt: CommonOpt,
         key_id: String,
-    }
+    },
 }
 
 #[derive(Debug, Subcommand)]
@@ -1285,7 +1302,8 @@ pub enum SynchOpt {
         account_id: String,
         #[clap(flatten)]
         copt: CommonOpt,
-        #[clap(name = "description")]
+        #[clap(name = "description",
+        value_parser = clap::builder::NonEmptyStringValueParser::new())]
         description: Option<String>,
     },
     /// Generate a bearer token for an IDM sync account
@@ -1509,4 +1527,3 @@ pub struct KanidmClientParser {
     #[clap(subcommand)]
     pub commands: KanidmClientOpt,
 }
-
