@@ -1,0 +1,48 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block selected_admin_page %)
+Group Creation
+(% endblock %)
+
+(% block admin_page %)
+(% if can_rw %)
+
+(% endif %)
+<form>
+    <div class="mb-3">
+        <label for="nameInput" class="form-label">Name</label>
+        <input type="text" class="form-control" id="nameInput" name="name" required>
+        <div class="invalid-feedback">
+            Please choose a group name.
+        </div>
+    </div>
+
+    <fieldset class="mb-4">
+        <legend>Optional Attributes</legend>
+        <div class="mb-3">
+            <label for="guidInput" class="form-label">Posix guid
+                <a target="_blank" href="https://kanidm.github.io/kanidm/stable/accounts/posix_accounts_and_groups.html#posix-accounts-and-groups">help</a>
+            </label>
+            <input type="number" class="form-control" id="guidInput" name="guid">
+            <div class="invalid-feedback">
+                Please choose a valid posix group uid.
+            </div>
+        </div>
+
+        <div>
+            <label for="managerSelect" class="form-label">Managed By
+                <a target="_blank" href="https://kanidm.github.io/kanidm/stable/accounts/groups.html#delegated-administration">help</a>
+            </label>
+            <select id="managerSelect" class="form-select" aria-label="Select optional group manager" name="managed_by">
+                <option selected>none</option>
+                (% for group in groups %)
+                <option value="(( group.uuid ))">(( group.name ))</option>
+                (% endfor %)
+            </select>
+        </div>
+    </fieldset>
+    <button hx-post="/ui/admin/group/create" type="submit" class="btn btn-success">Create</button>
+</form>
+
+(% endblock %)
+

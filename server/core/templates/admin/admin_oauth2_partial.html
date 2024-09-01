@@ -1,0 +1,14 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block selected_admin_page %)
+OAuth2 Resource Server Management
+(% endblock %)
+
+(% block admin_page %)
+    <ul>
+    (% for rs in resource_servers %)
+        <li>(( rs.name ))</li>
+    (% endfor %)
+    </ul>
+(% endblock %)
+
