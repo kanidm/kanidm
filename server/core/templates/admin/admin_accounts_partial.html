@@ -1,0 +1,14 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block selected_admin_page %)
+Account Management
+(% endblock %)
+
+(% block admin_page %)
+    <ul>
+    (% for account in accounts %)
+        <li>(( account.name ))</li>
+    (% endfor %)
+    </ul>
+(% endblock %)
+

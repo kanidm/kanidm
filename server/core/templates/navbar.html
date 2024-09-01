@@ -15,6 +15,11 @@
                 <li class="mb-1">
                     <a class="nav-link" href="/ui/profile" hx-target="main" hx-select="main" hx-swap="outerHTML"><span data-feather="file"></span>Profile</a>
                 </li>
+                (% if access_info.has_any_admin_access %)
+                <li class="mb-1">
+                    <a class="nav-link" href="/ui/admin" hx-target="main" hx-select="main" hx-swap="outerHTML"><span data-feather="file"></span>Admin</a>
+                </li>
+                (% endif %)
                 <li class="mb-1">
                     <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#signoutModal">Sign out</a>
                 </li>

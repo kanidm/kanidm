@@ -1,0 +1,37 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block selected_admin_page %)
+Groups Management
+(% endblock %)
+
+(% block admin_page %)
+    <div class="mb-2">
+    (% if can_rw %)
+        <button hx-target="#main" hx-get="/ui/admin/group/create" type="button" class="btn btn-primary">Create Group</button>
+    (% else %)
+        <a hx-boost="false" href="/ui/admin/groups/unlock">
+            <button type="button" class="btn btn-secondary">Unlock Edit 🔒</button>
+        </a>
+    (% endif %)
+    </div>
+    <ul class="list-group">
+    (% for group in groups %)
+        <li class="list-group-item d-flex flex-row justify-content-between">
+            <div class="d-flex align-items-center">
+            (( group.name )) <span class="text-secondary d-none d-lg-inline-block mx-4">(( group.uuid))</span>
+            </div>
+            <div class="buttons float-end">
+                (% if can_rw %)
+                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/view" type="button" class="btn btn-secondary">View</button>
+                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/edit" type="button" class="btn btn-secondary">Edit</button>
+                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/delete" type="button" class="btn btn-danger">Delete</button>
+                (% else %)
+                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/view" type="button" class="btn btn-secondary">View</button>
+                (% endif %)
+            </div>
+        </li>
+    (% endfor %)
+    </ul>
+
+(% endblock %)
+
