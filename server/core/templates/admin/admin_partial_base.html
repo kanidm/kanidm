@@ -1,0 +1,19 @@
+<main class="container-xxl pb-5">
+    <div class="d-flex flex-sm-row flex-column">
+        <div class="list-group side-menu">
+            <a href="/ui/admin/persons" hx-target="#main" class="list-group-item list-group-item-action (% block persons_item_extra_classes%)(%endblock%)">
+                <img src="/pkg/img/icon-accounts.svg" alt="Persons" width="20" height="20">
+                Persons</a>
+            <a href="/ui/admin/groups" hx-target="#main" class="list-group-item list-group-item-action (% block groups_item_extra_classes%)(%endblock%)">
+                <img src="/pkg/img/icon-groups.svg" alt="Groups" width="20" height="20">
+                Groups (placeholder)</a>
+            <a href="/ui/admin/oauth2" hx-target="#main" class="list-group-item list-group-item-action (% block oauth2_item_extra_classes%)(%endblock%)">
+                <img src="/pkg/img/icon-oauth2.svg" alt="Oauth2" width="20" height="20">
+                Oauth2 (placeholder)</a>
+        </div>
+        <div id="settings-window" class="flex-grow-1 ps-sm-4 pt-sm-0 pt-4">
+            (% block admin_page %)
+            (% endblock %)
+        </div>
+    </div>
+</main>

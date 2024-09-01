@@ -4,11 +4,12 @@ use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
 use scim_proto::ScimEntryHeader;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use tracing::debug;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -28,7 +29,7 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
@@ -49,7 +50,7 @@ impl ScimAttributeEffectiveAccess {
     }
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
@@ -209,7 +210,7 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
@@ -255,6 +256,92 @@ pub enum ScimValueKanidm {
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
     KeyInternal(Vec<ScimKeyInternal>),
     UiHints(Vec<UiHint>),
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct ScimPerson {
+    pub uuid: Uuid,
+    pub name: String,
+    pub displayname: Option<String>,
+    pub spn: String,
+    pub description: Option<String>,
+    pub mails: Vec<ScimMail>,
+    pub managed_by: Option<ScimReference>,
+    pub groups: Vec<ScimReference>,
+}
+
+impl TryFrom<ScimEntryKanidm> for ScimPerson {
+    type Error = ();
+
+    fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
+        let attr_str = |attr: &Attribute| -> Option<&str> {
+            match scim_entry.attrs.get(attr) {
+                Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
+                Some(sv) => {
+                    debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
+                    None
+                }
+                None => None,
+            }
+        };
+
+        let attr_mails = || -> Option<&Vec<ScimMail>> {
+            match scim_entry.attrs.get(&Attribute::Mail) {
+                Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
+                Some(sv) => {
+                    debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
+                    None
+                }
+                None => None,
+            }
+        };
+
+        let attr_reference = |attr: &Attribute| -> Option<&ScimReference> {
+            match scim_entry.attrs.get(attr) {
+                Some(ScimValueKanidm::EntryReference(refer)) => Some(refer),
+                Some(sv) => {
+                    debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::ScimReference type, actual: {:?}", attr, sv);
+                    None
+                }
+                None => None,
+            }
+        };
+
+        let attr_references = |attr: &Attribute| -> Option<&Vec<ScimReference>> {
+            match scim_entry.attrs.get(attr) {
+                Some(ScimValueKanidm::EntryReferences(refs)) => Some(refs),
+                Some(sv) => {
+                    debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
+                    None
+                }
+                None => None,
+            }
+        };
+
+        let uuid = scim_entry.header.id;
+        let name = attr_str(&Attribute::Name).ok_or(())?.to_string();
+        let displayname = attr_str(&Attribute::DisplayName).map(|s| s.to_string());
+        let spn = attr_str(&Attribute::Spn).ok_or(())?.to_string();
+        let description = attr_str(&Attribute::Description).map(|t| t.to_string());
+        let mails = attr_mails().cloned().unwrap_or_default();
+        let groups = attr_references(&Attribute::DirectMemberOf)
+            .cloned()
+            .unwrap_or(vec![]);
+
+        let managed_by = attr_reference(&Attribute::EntryManagedBy).cloned();
+
+        Ok(ScimPerson {
+            uuid,
+            name,
+            displayname,
+            spn,
+            description,
+            mails,
+            managed_by,
+            groups,
+        })
+    }
 }
 
 impl From<bool> for ScimValueKanidm {
