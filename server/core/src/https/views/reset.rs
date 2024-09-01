@@ -649,6 +649,12 @@ pub(crate) async fn view_reset_get(
 ) -> axum::response::Result<Response> {
     let push_url = HxPushUrl(Uri::from_static("/ui/reset"));
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
+    let is_logged_in = state
+        .qe_r_ref
+        .handle_auth_valid(_client_auth_info.clone(), kopid.eventid)
+        .await
+        .is_ok();
+
     if let Some(cookie) = cookie {
         // We already have a session
         let cu_session_token = cookie.value();
@@ -679,7 +685,7 @@ pub(crate) async fn view_reset_get(
         };
 
         // CU Session cookie is okay
-        let cu_resp = get_cu_response(domain_info, cu_status, uri, false);
+        let cu_resp = get_cu_response(domain_info, cu_status, uri, is_logged_in);
         Ok(cu_resp)
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
@@ -689,7 +695,7 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(domain_info, cu_status, uri, false);
+                let cu_resp = get_cu_response(domain_info, cu_status, uri, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
@@ -780,7 +786,7 @@ fn get_cu_response(
         };
 
         (
-            HxPushUrl(Uri::from_static("/ui/reset")),
+            HxPushUrl(Uri::from_static("/ui/update_credentials")),
             HtmlTemplate(profile_view),
         )
             .into_response()
