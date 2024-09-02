@@ -10,11 +10,11 @@ use super::ServerState;
 use crate::https::extractors::{DomainInfo, DomainInfoRead};
 
 // when you want to put big text at the top of the page
-pub const CSS_PAGE_HEADER: &str = "d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-0 pb-0 mb-3 border-bottom";
+pub const CSS_PAGE_HEADER: &str = "";
 
 pub const CSS_NAVBAR_NAV: &str = "navbar navbar-expand-md navbar-dark bg-dark mb-4";
-pub const CSS_NAVBAR_BRAND: &str = "navbar-brand navbar-dark";
-pub const CSS_NAVBAR_LINKS_UL: &str = "navbar-nav me-auto mb-2 mb-md-0";
+pub const CSS_NAVBAR_BRAND: &str = "navbar-brand d-flex align-items-center";
+pub const CSS_NAVBAR_LINKS_UL: &str = "navbar-nav";
 
 pub(crate) fn spa_router_user_ui() -> Router<ServerState> {
     Router::new()

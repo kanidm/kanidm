@@ -6,24 +6,21 @@
 (% endblock %)
 
 (% block body %)
-<main id="main" class="flex-shrink-0 form-signin">
-	<center>
-		(% if display_ctx.domain_info.image().is_some() %)
-		<img src="/ui/images/domain"
-			alt="Kanidm" class="kanidm_logo" />
-		(% else %)
-		<img
-			src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
-			alt="Kanidm" class="kanidm_logo" />
-		(% endif %)
-		<h3>Kanidm</h3>
-		(% if let Some(reauth) = display_ctx.reauth %)
-		<h5>Reauthenticating as (( reauth.username )) to access (( reauth.purpose
-			))</h5>
-		(% endif %)
-	</center>
-
-	<div id="login-form-container" class="container">
+<main id="main" class="form-signin m-auto align-items-center d-flex flex-column">
+	(% if display_ctx.domain_info.image().is_some() %)
+	<img src="/ui/images/domain"
+		alt="Kanidm" class="kanidm_logo" />
+	(% else %)
+	<img
+		src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+		alt="Kanidm" class="kanidm_logo" />
+	(% endif %)
+	<h3>Kanidm</h3>
+	(% if let Some(reauth) = display_ctx.reauth %)
+	<h5>Reauthenticating as (( reauth.username )) to access (( reauth.purpose
+		))</h5>
+	(% endif %)
+	<div>
 		(% block logincontainer %)
 		(% endblock %)
 	</div>

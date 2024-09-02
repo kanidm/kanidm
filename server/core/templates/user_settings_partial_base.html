@@ -1,29 +1,31 @@
 (% macro side_menu_item(label, href, menu_item, icon_name) %)
-<a hx-select="main" hx-target="main" hx-swap="outerHTML show:false"
-    href="(( href ))"
-    class="list-group-item list-group-item-action d-flex (% if menu_active_item == menu_item %) active(% endif %)">
-    <img class="me-3"
-        src="/pkg/img/icons/(( icon_name )).svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
-        alt>(( label ))
-</a>
+<li>
+    <a hx-select="main" hx-target="main" hx-swap="outerHTML show:false"
+        href="(( href ))"
+        class="side-menu-item d-flex rounded link-dark(% if menu_active_item == menu_item %) active(% endif %)">
+        <div class="icon-container align-items-center justify-content-center d-flex me-2">
+            <img class="text-body-secondary"
+                src="/pkg/img/icons/(( icon_name )).svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+                alt>
+        </div>
+        <div>(( label ))</div>
+    </a>
+</li>
 (% endmacro %)
 
-<main id="main" class="container-xxl pb-5">
+<main id="main" class="container-lg pb-5">
     <div class="d-flex flex-sm-row flex-column">
-        <div class="list-group side-menu flex-shrink-0">
+        <ul class="side-menu list-unstyled flex-shrink-0 row-gap-1 d-flex flex-column">
             (% call side_menu_item("Profile", (Urls::Profile),
             ProfileMenuItems::UserProfile, "person") %)
-            (% if posix_enabled %)
-            (% call side_menu_item("UNIX Password", (Urls::UpdateCredentials),
-            ProfileMenuItems::UnixPassword, "building-lock") %)
-            (% endif %)
             (% call side_menu_item("Credentials", (Urls::UpdateCredentials),
             ProfileMenuItems::Credentials, "shield-lock") %)
-        </div>
-        <div id="settings-window" class="flex-grow-1 ps-sm-4 pt-sm-0 pt-4">
+        </ul>
+        <div id="settings-window" class="flex-grow-1 ps-sm-4 ps-md-5 pt-sm-0 pt-4">
             <div class="(( crate::https::ui::CSS_PAGE_HEADER ))">
                 <h2>(% block selected_setting_group %)(% endblock %)</h2>
             </div>
+            <hr />
 
             (% block settings_window %)
             (% endblock %)

@@ -27,7 +27,6 @@ struct ProfilePartialView {
     account_name: String,
     display_name: String,
     email: Option<String>,
-    posix_enabled: bool,
 }
 
 pub(crate) async fn view_profile_get(
@@ -51,7 +50,6 @@ pub(crate) async fn view_profile_get(
             account_name: uat.name().to_string(),
             display_name: uat.displayname.clone(),
             email: uat.mail_primary.clone(),
-            posix_enabled: false,
         },
     })
 }

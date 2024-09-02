@@ -62,7 +62,6 @@ struct CredStatusView {
     menu_active_item: ProfileMenuItems,
     names: String,
     credentials_update_partial: CredResetPartialView,
-    posix_enabled: bool,
 }
 
 #[derive(Template)]
@@ -802,8 +801,6 @@ fn get_cu_response(
             domain_info,
             names,
             credentials_update_partial,
-            // TODO: fill in posix enabled
-            posix_enabled: false,
         };
 
         (
