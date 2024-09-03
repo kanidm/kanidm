@@ -30,7 +30,7 @@ fn main() {
         std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
 
-    for shell in [Shell::Bash, Shell::Fish, Shell::Zsh] {
+    for shell in [Shell::Bash, Shell::Elvish, Shell::Fish, Shell::Zsh] {
         generate_to(
             shell,
             &mut SshAuthorizedOpt::command(),
