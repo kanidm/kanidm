@@ -5,7 +5,7 @@ Groups Management
 (% endblock %)
 
 (% block admin_page %)
-<h3>Editing group (( group.name ))</h3>
+<h3>Viewing group (( group.name ))</h3>
 <div class="mb-2 row">
     <label for="groupUUID" class="col-12 col-md-3 col-lg-2 col-form-label">UUID</label>
     <div class="col-12 col-md-6 col-lg-4">
@@ -27,7 +27,6 @@ Groups Management
     </div>
 </div>
 
-
 <label>Emails</label>
 (% if group.mails.size == 0 %)
 <p>none</p>
@@ -38,28 +37,25 @@ Groups Management
     (% endfor %)
 </ol>
 (% endif %)
-<div class="input-group mb-3">
-    <input type="text" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
-    <button id="groupAddEmailBtn" class="btn btn-success"
-            hx-post="/ui/api/group/((group.uuid))/add_email"
-            hx-include="#groupAddEmailInput"
-            type="button">
-        Add Email
-    </button>
-</div>
+
+<label>Account Policy (ACP)</label>
+(% if group.acp.enabled %)
+
+(% else %)
+Currently disabled.
+<button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Currently no known way to disable again, ok to continue.">Enable</button>
+(% endif %)
 
 
 <label>Members</label>
 (% if group.members.size == 0 %)
-<p>none</p>
+    <p>none</p>
 (% else %)
-<ul class="list-group list-group-flush">
-    (% for member in group.members %)
-    <li class="list-group-item">(( member.spn ))</li>
-    (% endfor %)
-</ul>
+    <ul class="list-group list-group-flush">
+        (% for member in group.members %)
+            <li class="list-group-item">(( member.spn ))</li>
+        (% endfor %)
+    </ul>
 (% endif %)
-
-
 
 (% endblock %)
