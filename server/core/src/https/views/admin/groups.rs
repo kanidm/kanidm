@@ -1,13 +1,14 @@
 use crate::https::extractors::{AccessInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
-use crate::https::views::HtmlTemplate;
+use crate::https::views::{login, HtmlTemplate};
 use crate::https::ServerState;
 use askama::Template;
-use axum::extract::State;
+use axum::extract::{Path, State};
 use axum::http::Uri;
 use axum::response::{ErrorResponse, IntoResponse, Response};
-use axum::Extension;
+use axum::{Extension, Form};
+use axum_extra::extract::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
@@ -17,6 +18,7 @@ use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 use kanidmd_lib::idm::ClientAuthInfo;
 
 #[derive(Template)]
@@ -55,6 +57,13 @@ struct GroupCreatePartialView {
     groups: Vec<GroupInfo>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub(crate) struct GroupCreateFormData {
+    name: String,
+    guid: Option<String>,
+    managed_by: Option<String>
+}
+
 pub(crate) async fn view_group_create_get(
     State(state): State<ServerState>,
     HxRequest(is_htmx): HxRequest,
@@ -79,6 +88,49 @@ pub(crate) async fn view_group_create_get(
         ).into_response()
     })
 }
+
+pub(crate) async fn view_group_delete_post(
+    State(state): State<ServerState>,
+    HxRequest(is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    Path(group_uuid): Path<Uuid>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> axum::response::Result<Response> {
+    dbg!(group_uuid);
+    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+}
+
+pub(crate) async fn view_group_create_post(
+    State(state): State<ServerState>,
+    HxRequest(is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Form(data): Form<GroupCreateFormData>
+) -> axum::response::Result<Response> {
+    dbg!(data);
+    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+}
+
+
+pub(crate) async fn view_group_edit_get(
+    State(state): State<ServerState>,
+    HxRequest(is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> axum::response::Result<Response> {
+    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+}
+
+
+pub(crate) async fn view_group_view_get(
+    State(state): State<ServerState>,
+    HxRequest(is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> axum::response::Result<Response> {
+    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+}
+
 pub(crate) async fn view_groups_get(
     State(state): State<ServerState>,
     HxRequest(is_htmx): HxRequest,
@@ -102,6 +154,15 @@ pub(crate) async fn view_groups_get(
             }),
         ).into_response()
     })
+}
+
+pub(crate) async fn view_groups_unlock_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    login::view_reauth_get(state, client_auth_info, kopid, jar, "/ui/admin/groups").await
 }
 
 async fn get_can_rw(state: &ServerState, kopid: &KOpId, client_auth_info: &ClientAuthInfo) -> Result<bool, ErrorResponse> {

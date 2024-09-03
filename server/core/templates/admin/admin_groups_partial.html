@@ -18,15 +18,12 @@ Groups Management
     (% for group in groups %)
         <li class="list-group-item d-flex flex-row justify-content-between">
             <div class="d-flex align-items-center">
-            (( group.name )) <span class="text-secondary d-none d-lg-inline-block mx-4">(( group.uuid))</span>
+                <a href="/ui/admin/group/(( group.uuid ))/view" hx-target="#main">(( group.name ))</a> <span class="text-secondary d-none d-lg-inline-block mx-4">(( group.uuid ))</span>
             </div>
             <div class="buttons float-end">
                 (% if can_rw %)
-                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/view" type="button" class="btn btn-secondary">View</button>
-                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/edit" type="button" class="btn btn-secondary">Edit</button>
-                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/delete" type="button" class="btn btn-danger">Delete</button>
-                (% else %)
-                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/view" type="button" class="btn btn-secondary">View</button>
+                    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/edit" type="button" class="btn btn-outline-secondary">Edit</button>
+                    <button hx-target="#main" hx-post="/ui/admin/group/(( group.uuid ))/delete" hx-confirm="Are you sure you want to delete group (( group.name )) ?" type="button" class="btn btn-danger">Delete</button>
                 (% endif %)
             </div>
         </li>
