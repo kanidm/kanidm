@@ -41,6 +41,7 @@
 - Anton Loukianov (antonl)
 - fossdd
 - Wei Jian Gan (weijiangan)
+- adamcstephens
 
 ## Acknowledgements
 
