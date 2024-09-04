@@ -35,7 +35,7 @@ impl AccessControlSearch {
             )));
         }
 
-        let attrs = value
+        let mut attrs: BTreeSet<_> = value
             .get_ava_iter_iutf8(Attribute::AcpSearchAttr)
             .ok_or_else(|| {
                 admin_error!("Missing {}", Attribute::AcpSearchAttr);
@@ -43,6 +43,11 @@ impl AccessControlSearch {
             })?
             .map(AttrString::from)
             .collect();
+
+        // Ability to search memberof, implies the ability to read directmemberof
+        if attrs.contains(Attribute::MemberOf.as_ref()) {
+            attrs.insert(Attribute::DirectMemberOf.into());
+        }
 
         let acp = AccessControlProfile::try_from(qs, value)?;
 
@@ -59,6 +64,13 @@ impl AccessControlSearch {
         targetscope: Filter<FilterValid>,
         attrs: &str,
     ) -> Self {
+        let mut attrs: BTreeSet<_> = attrs.split_whitespace().map(AttrString::from).collect();
+
+        // Ability to search memberof, implies the ability to read directmemberof
+        if attrs.contains(Attribute::MemberOf.as_ref()) {
+            attrs.insert(Attribute::DirectMemberOf.into());
+        }
+
         AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
@@ -66,7 +78,7 @@ impl AccessControlSearch {
                 receiver: AccessControlReceiver::Group(btreeset!(receiver)),
                 target: AccessControlTarget::Scope(targetscope),
             },
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+            attrs,
         }
     }
 
