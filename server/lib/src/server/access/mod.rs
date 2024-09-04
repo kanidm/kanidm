@@ -3134,4 +3134,51 @@ mod tests {
         // Test reject delete, can not delete due to system protection
         test_acp_delete!(&de_account, vec![acp], &r_set, false);
     }
+
+    #[test]
+    fn test_access_sync_memberof_implies_directmemberof() {
+        sketching::test_init();
+
+        let ev1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Name, Value::new_iname("test_account_1")),
+            (Attribute::Uuid, Value::Uuid(UUID_TEST_ACCOUNT_1)),
+            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+            (Attribute::DirectMemberOf, Value::Refer(UUID_TEST_GROUP_1))
+        )
+        .into_sealed_committed();
+        let r_set = vec![Arc::new(ev1)];
+
+        let exv1 = entry_init!(
+            (Attribute::Name, Value::new_iname("test_account_1")),
+            (Attribute::MemberOf, Value::Refer(UUID_TEST_GROUP_1)),
+            (Attribute::DirectMemberOf, Value::Refer(UUID_TEST_GROUP_1))
+        )
+        .into_sealed_committed();
+
+        let ex_anon_some = vec![exv1];
+
+        let se_anon_ro = SearchEvent::new_impersonate_identity(
+            Identity::from_impersonate_entry_readonly(E_TEST_ACCOUNT_1.clone()),
+            filter_all!(f_pres(Attribute::Name)),
+        );
+
+        let acp = AccessControlSearch::from_raw(
+            "test_acp",
+            Uuid::new_v4(),
+            // apply to all accounts.
+            UUID_TEST_GROUP_1,
+            // Allow anonymous to read only testperson1
+            filter_valid!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(UUID_TEST_ACCOUNT_1)
+            )),
+            // May query on name, and see memberof. MemberOf implies direct
+            // memberof.
+            format!("{} {}", Attribute::Name, Attribute::MemberOf).as_str(),
+        );
+
+        // Finally test it!
+        test_acp_search_reduce!(&se_anon_ro, vec![acp], r_set, ex_anon_some);
+    }
 }
