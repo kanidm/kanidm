@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use crate::https::extractors::{AccessInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
@@ -12,14 +13,14 @@ use axum_extra::extract::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_NAME, ATTR_UUID};
-use kanidm_proto::internal::UserAuthToken;
+use kanidm_proto::constants::{ATTR_ENTRY_MANAGED_BY, ATTR_NAME, ATTR_UUID};
+use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
+use kanidmd_lib::filter::{f_and, f_eq, f_id, Filter, FC};
+use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use kanidmd_lib::idm::ClientAuthInfo;
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -40,6 +41,23 @@ struct GroupsPartialView {
 struct GroupInfo {
     uuid: String,
     name: String,
+    spn: String,
+    entry_manager: Option<String>,
+    acp: GroupACP,
+    mails: Vec<String>,
+    members: Vec<MemberInfo>
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct GroupACP{
+    enabled: bool
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct MemberInfo {
+    uuid: String,
+    name: String,
+    spn: String,
     displayname: String,
 }
 
@@ -121,14 +139,44 @@ pub(crate) async fn view_group_edit_get(
     view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
 }
 
+#[derive(Template)]
+#[template(path = "admin/admin_overview.html")]
+struct GroupView {
+    access_info: AccessInfo,
+    partial: GroupViewPartial
+}
+
+
+#[derive(Template)]
+#[template(path = "admin/admin_group_view_partial.html")]
+struct GroupViewPartial {
+    group: GroupInfo,
+}
 
 pub(crate) async fn view_group_view_get(
     State(state): State<ServerState>,
     HxRequest(is_htmx): HxRequest,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(uuid): Path<Uuid>
 ) -> axum::response::Result<Response> {
-    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+    let group = get_group_info(uuid, state, &kopid, client_auth_info).await?;
+    let groups_partial = GroupViewPartial { group };
+
+    let path_string = format!("/ui/admin/group/{uuid}/view").clone();
+    let src = path_string.clone();
+    let push_url = HxPushUrl(Uri::from_str(src.as_str()).expect("T"));
+    Ok(if is_htmx {
+        (push_url, HtmlTemplate(groups_partial)).into_response()
+    } else {
+        (
+            push_url,
+            HtmlTemplate(GroupView {
+                access_info: AccessInfo::new(),
+                partial: groups_partial,
+            }),
+        ).into_response()
+    })
 }
 
 pub(crate) async fn view_groups_get(
@@ -178,6 +226,17 @@ async fn get_can_rw(state: &ServerState, kopid: &KOpId, client_auth_info: &Clien
     Ok(can_rw)
 }
 
+async fn get_group_info(uuid: Uuid, state: ServerState, kopid: &KOpId, client_auth_info: ClientAuthInfo) -> Result<GroupInfo, ErrorResponse> {
+    let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Group.into()), f_id(uuid.to_string().as_str())]));
+    let base: Vec<Entry> = state
+        .qe_r_ref
+        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    let first = base.first().ok_or(HtmxError::OperationError(kopid.eventid, OperationError::NoMatchingEntries))?;
+    Ok(entry_into_groupinfo(first))
+}
 async fn get_groups_info(state: ServerState, kopid: &KOpId, client_auth_info: ClientAuthInfo) -> Result<Vec<GroupInfo>, ErrorResponse> {
     let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Group.into())]));
     let base: Vec<Entry> = state
@@ -187,37 +246,55 @@ async fn get_groups_info(state: ServerState, kopid: &KOpId, client_auth_info: Cl
         .await?;
 
     let mut groups: Vec<_> = base
-        .into_iter()
-        .map(|entry: Entry| {
-            let uuid = entry
-                .attrs
-                .get(ATTR_UUID)
-                .unwrap_or(&vec![])
-                .first()
-                .unwrap_or(&"".to_string())
-                .clone();
-            let name = entry
-                .attrs
-                .get(ATTR_NAME)
-                .unwrap_or(&vec![])
-                .first()
-                .unwrap_or(&"".to_string())
-                .clone();
-            let displayname = entry
-                .attrs
-                .get(ATTR_DISPLAYNAME)
-                .unwrap_or(&vec![])
-                .first()
-                .unwrap_or(&"".to_string())
-                .clone();
-            GroupInfo {
-                uuid,
-                name,
-                displayname,
-            }
+        .iter()
+        .map(|entry: &Entry| {
+            entry_into_groupinfo(entry)
         })
         .collect();
     groups.sort_by_key(|gi| gi.uuid.clone());
     groups.reverse();
     Ok(groups)
+}
+
+fn entry_into_groupinfo(entry: &Entry) -> GroupInfo {
+    let uuid = entry
+        .attrs
+        .get(ATTR_UUID)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+    let name = entry
+        .attrs
+        .get(ATTR_NAME)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+    let entry_manager = entry
+        .attrs
+        .get(ATTR_ENTRY_MANAGED_BY)
+        .unwrap_or(&vec![])
+        .first()
+        .cloned();
+
+    GroupInfo {
+        uuid,
+        name: name.clone(),
+        spn: format!("{name}@localhost").to_string(),
+        entry_manager,
+        acp: GroupACP { enabled: false },
+        mails: vec![format!("{name}@melijn.com")],
+        members: vec![MemberInfo {
+            uuid: "793e3694-9766-433f-b898-6da5052334d1".to_string(),
+            name: "merlijn".to_string(),
+            spn: "merlijn@localhost".to_string(),
+            displayname: "PixelHamster".to_string(),
+        }, MemberInfo {
+            uuid: "4af67f60-8f80-4750-87a4-7151eb305831".to_string(),
+            name: "alt".to_string(),
+            spn: "alt@localhost".to_string(),
+            displayname: "ToxicMushroom".to_string(),
+        }],
+    }
 }
