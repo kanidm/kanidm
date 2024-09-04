@@ -270,16 +270,15 @@ pub async fn create_https_server(
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
             // Create a spa router that captures everything at ui without key extraction.
             if cfg!(feature = "ui_htmx") {
-                let static_compressed_router = Router::new()
+                Router::new()
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                    .route("/ui/images/domain", get(v1_domain::image_get))
+                    // Layers only apply to routes that are *already* added, not the ones
+                    // added after.
                     .layer(middleware::compression::new())
                     .layer(from_fn(middleware::caching::cache_me_short))
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
-                    .route("/ui/images/domain", get(v1_domain::image_get));
-
-                Router::new()
                     .route("/", get(|| async { Redirect::to("/ui") }))
                     .nest("/ui", views::view_router())
-                    .merge(static_compressed_router)
             } else {
                 Router::new()
                     .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))

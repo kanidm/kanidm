@@ -65,8 +65,6 @@ pub(crate) async fn ui_handler_generic(
     wasmloader: &str,
     domain_info: DomainInfoRead,
 ) -> Response<String> {
-    let domain_display_name = domain_info.display_name();
-
     // let's get the tags we want to load the javascript files
     let mut jsfiles: Vec<String> = state
         .js_files
@@ -80,7 +78,11 @@ pub(crate) async fn ui_handler_generic(
 
     let jstags = jsfiles.join("\n");
 
-    let body = format!(include_str!("ui_html.html"), domain_display_name, jstags,);
+    let body = format!(
+        include_str!("ui_html.html"),
+        domain_info.display_name(),
+        jstags,
+    );
 
     let mut res = Response::new(body);
     res.headers_mut().insert(
