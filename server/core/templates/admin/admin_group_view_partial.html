@@ -1,5 +1,7 @@
 (% extends "admin/admin_partial_base.html" %)
 
+(% block groups_item_extra_classes %)active(% endblock %)
+
 (% block selected_admin_page %)
 Groups Management
 (% endblock %)
@@ -9,26 +11,26 @@ Groups Management
 <div class="mb-2 row">
     <label for="groupUUID" class="col-12 col-md-3 col-lg-2 col-form-label">UUID</label>
     <div class="col-12 col-md-6 col-lg-4">
-        <input readonly id="groupUUID" value="(( group.uuid ))">
+        <input disabled readonly id="groupUUID" value="(( group.uuid ))">
     </div>
 </div>
 
 <div class="mb-2 row">
     <label for="groupSPN" class="col-12 col-md-3 col-lg-2 col-form-label">spn</label>
     <div class="col-12 col-md-6 col-lg-4">
-        <input readonly id="groupSPN" value="(( group.spn ))">
+        <input disabled readonly id="groupSPN" value="(( group.spn ))">
     </div>
 </div>
 
 <div class="mb-2 row">
     <label for="groupEntryManager" class="col-12 col-md-3 col-lg-2 col-form-label">entry manager</label>
     <div class="col-12 col-md-6 col-lg-4">
-        <input readonly id="groupEntryManager" value="(% if let Some(entry_manager) = group.entry_manager %)(( entry_manager ))(% else %)none(% endif %)">
+        <input disabled readonly id="groupEntryManager" value="(% if let Some(entry_manager) = group.entry_manager %)(( entry_manager ))(% else %)none(% endif %)">
     </div>
 </div>
 
 <label>Emails</label>
-(% if group.mails.size == 0 %)
+(% if group.mails.len() == 0 %)
 <p>none</p>
 (% else %)
 <ol class="list-group list-group-flush">
@@ -43,12 +45,12 @@ Groups Management
 
 (% else %)
 Currently disabled.
-<button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Currently no known way to disable again, ok to continue.">Enable</button>
+<button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Currently no known way to disable again, ok to continue." class="btn btn-primary">Enable</button>
 (% endif %)
 
 
 <label>Members</label>
-(% if group.members.size == 0 %)
+(% if group.members.len() == 0 %)
     <p>none</p>
 (% else %)
     <ul class="list-group list-group-flush">
