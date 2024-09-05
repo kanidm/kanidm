@@ -6,6 +6,7 @@ use kanidm_lib_crypto::CryptoPolicy;
 
 use compact_jwt::{Jwk, JwsCompact};
 use concread::bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn};
+use concread::cowcell::CowCellReadTxn;
 use concread::hashmap::HashMap;
 use kanidm_proto::internal::{
     ApiToken, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken, ScimSyncToken,
@@ -56,11 +57,14 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
+use crate::server::DomainInfo;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 use crate::value::{Session, SessionState};
 
 pub(crate) type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 pub(crate) type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
+
+pub type DomainInfoRead = CowCellReadTxn<DomainInfo>;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -244,6 +248,14 @@ impl IdmServer {
             webauthn: &self.webauthn,
             applications: self.applications.read(),
         })
+    }
+
+    /// Begin a fast (low cost) read of the servers domain info. It is important to note
+    /// this does not conflict with any other type of transaction type and may safely
+    /// beheld over other transaction boundaries.
+    #[instrument(level = "debug", skip_all)]
+    pub fn domain_read(&self) -> DomainInfoRead {
+        self.qs.d_info.read()
     }
 
     /// Read from the database, in a transaction.

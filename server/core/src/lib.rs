@@ -556,7 +556,7 @@ pub async fn domain_rename_core(config: &Configuration) {
     let new_domain_name = config.domain.as_str();
 
     // make sure we're actually changing the domain name...
-    match qs.read().await.and_then(|mut qs| qs.get_db_domain_name()) {
+    match qs.read().await.map(|qs| qs.get_domain_name().to_string()) {
         Ok(old_domain_name) => {
             admin_info!(?old_domain_name, ?new_domain_name);
             if old_domain_name == new_domain_name {

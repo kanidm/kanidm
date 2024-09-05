@@ -20,7 +20,7 @@ pub async fn dont_cache_me(request: Request<Body>, next: Next) -> Response {
 }
 
 /// Adds a cache control header of 300 seconds to the response headers.
-pub async fn cache_me(request: Request<Body>, next: Next) -> Response {
+pub async fn cache_me_short(request: Request<Body>, next: Next) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CACHE_CONTROL,

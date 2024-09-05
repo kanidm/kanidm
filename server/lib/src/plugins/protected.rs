@@ -34,6 +34,7 @@ lazy_static! {
         Attribute::BadlistPassword,
         Attribute::DeniedName,
         Attribute::DomainDisplayName,
+        Attribute::Image,
         // modification of account policy values for dyngroup.
         Attribute::AuthSessionExpiry,
         Attribute::PrivilegeExpiry,

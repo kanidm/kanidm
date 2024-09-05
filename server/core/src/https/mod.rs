@@ -11,6 +11,7 @@ mod tests;
 pub(crate) mod trace;
 mod ui;
 mod v1;
+mod v1_domain;
 mod v1_oauth2;
 mod v1_scim;
 mod views;
@@ -270,12 +271,18 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
             if cfg!(feature = "ui_htmx") {
                 Router::new()
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                    .route("/ui/images/domain", get(v1_domain::image_get))
+                    // Layers only apply to routes that are *already* added, not the ones
+                    // added after.
+                    .layer(middleware::compression::new())
+                    .layer(from_fn(middleware::caching::cache_me_short))
                     .route("/", get(|| async { Redirect::to("/ui") }))
                     .nest("/ui", views::view_router())
-                    .layer(middleware::compression::new())
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
             } else {
                 Router::new()
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                    .layer(middleware::compression::new())
                     // Direct users to the base app page. If a login is required,
                     // then views will take care of redirection.
                     .route("/", get(|| async { Redirect::temporary("/ui") }))
@@ -288,8 +295,6 @@ pub async fn create_https_server(
                     .nest("/ui/oauth2", ui::spa_router_login_flows())
                     // admin app
                     .nest("/ui/admin", ui::spa_router_admin())
-                    .layer(middleware::compression::new())
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
                 // skip_route_check
             }
         }
@@ -329,7 +334,7 @@ pub async fn create_https_server(
                     .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
                     .layer(middleware::compression::new())
             }
-            .layer(from_fn(middleware::caching::cache_me));
+            .layer(from_fn(middleware::caching::cache_me_short));
 
             app.merge(pkg_router)
         }

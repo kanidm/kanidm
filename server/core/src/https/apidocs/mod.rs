@@ -163,6 +163,9 @@ impl Modify for SecurityAddon {
         super::v1::domain_attr_get,
         super::v1::domain_attr_put,
         super::v1::domain_attr_delete,
+        super::v1_domain::image_post,
+        super::v1_domain::image_delete,
+
         super::v1::group_id_unix_token_get,
         super::v1::group_id_unix_post,
         super::v1::group_get,

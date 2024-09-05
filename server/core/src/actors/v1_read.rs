@@ -40,7 +40,7 @@ use kanidmd_lib::{
         AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
-    idm::server::IdmServerTransaction,
+    idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
     idm::ClientAuthInfo,
 };
@@ -389,7 +389,7 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
-    ) -> Result<ImageValue, OperationError> {
+    ) -> Result<Option<ImageValue>, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ct = duration_from_epoch_now();
 
@@ -409,17 +409,9 @@ impl QueryServerReadV1 {
         )?;
 
         let entries = idms_prox_read.qs_read.search(&search)?;
-        if entries.is_empty() {
-            return Err(OperationError::NoMatchingEntries);
-        }
-        let entry = match entries.first() {
-            Some(entry) => entry,
-            None => return Err(OperationError::NoMatchingEntries),
-        };
-        match entry.get_ava_single_image(Attribute::Image) {
-            Some(image) => Ok(image),
-            None => Err(OperationError::NoMatchingEntries),
-        }
+        Ok(entries
+            .first()
+            .and_then(|entry| entry.get_ava_single_image(Attribute::Image)))
     }
 
     #[instrument(
@@ -1559,16 +1551,6 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn get_domain_display_name(&self, eventid: Uuid) -> Result<String, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await?;
-        Ok(idms_prox_read.qs_read.get_domain_display_name().to_string())
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
     pub async fn handle_auth_valid(
         &self,
         client_auth_info: ClientAuthInfo,
@@ -1632,5 +1614,9 @@ impl QueryServerReadV1 {
             )),
         };
         Some(res)
+    }
+
+    pub fn domain_info_read(&self) -> DomainInfoRead {
+        self.idms.domain_read()
     }
 }

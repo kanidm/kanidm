@@ -14,6 +14,8 @@ use axum_extra::extract::cookie::CookieJar;
 use kanidm_proto::constants::X_FORWARDED_FOR;
 use kanidm_proto::internal::COOKIE_BEARER_TOKEN;
 use kanidmd_lib::prelude::{ClientAuthInfo, ClientCertInfo, Source};
+// Re-export
+pub use kanidmd_lib::idm::server::DomainInfoRead;
 
 use compact_jwt::JwsCompact;
 use std::str::FromStr;
@@ -178,6 +180,22 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
             basic_authz,
             client_cert,
         }))
+    }
+}
+
+pub struct DomainInfo(pub DomainInfoRead);
+
+#[async_trait]
+impl FromRequestParts<ServerState> for DomainInfo {
+    type Rejection = (StatusCode, &'static str);
+
+    // Need to skip all to prevent leaking tokens to logs.
+    #[instrument(level = "debug", skip_all)]
+    async fn from_request_parts(
+        _parts: &mut Parts,
+        state: &ServerState,
+    ) -> Result<Self, Self::Rejection> {
+        Ok(DomainInfo(state.qe_r_ref.domain_info_read()))
     }
 }
 
