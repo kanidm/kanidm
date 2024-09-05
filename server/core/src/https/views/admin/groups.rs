@@ -6,7 +6,7 @@ use crate::https::views::{login, HtmlTemplate};
 use crate::https::ServerState;
 use askama::Template;
 use axum::extract::{Path, State};
-use axum::http::Uri;
+use axum::http::{header, HeaderMap, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::CookieJar;
@@ -135,8 +135,26 @@ pub(crate) async fn view_group_edit_get(
     HxRequest(is_htmx): HxRequest,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(uuid): Path<Uuid>
 ) -> axum::response::Result<Response> {
-    view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
+    let can_rw = get_can_rw(&state, &kopid, &client_auth_info).await?;
+    let group = get_group_info(uuid, state, &kopid, client_auth_info).await?;
+    let groups_partial = GroupViewPartial { can_rw, can_edit: true, group };
+
+    let path_string = format!("/ui/admin/group/{uuid}/edit").clone();
+    let src = path_string.clone();
+    let push_url = HxPushUrl(Uri::from_str(src.as_str()).expect("T"));
+    Ok(if is_htmx {
+        (push_url, HtmlTemplate(groups_partial)).into_response()
+    } else {
+        (
+            push_url,
+            HtmlTemplate(GroupView {
+                access_info: AccessInfo::new(),
+                partial: groups_partial,
+            }),
+        ).into_response()
+    })
 }
 
 #[derive(Template)]
@@ -150,6 +168,8 @@ struct GroupView {
 #[derive(Template)]
 #[template(path = "admin/admin_group_view_partial.html")]
 struct GroupViewPartial {
+    can_rw: bool,
+    can_edit: bool,
     group: GroupInfo,
 }
 
@@ -160,8 +180,9 @@ pub(crate) async fn view_group_view_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(uuid): Path<Uuid>
 ) -> axum::response::Result<Response> {
+    let can_rw = get_can_rw(&state, &kopid, &client_auth_info).await?;
     let group = get_group_info(uuid, state, &kopid, client_auth_info).await?;
-    let groups_partial = GroupViewPartial { group };
+    let groups_partial = GroupViewPartial { can_rw, can_edit: false, group };
 
     let path_string = format!("/ui/admin/group/{uuid}/view").clone();
     let src = path_string.clone();
@@ -207,10 +228,20 @@ pub(crate) async fn view_groups_get(
 pub(crate) async fn view_groups_unlock_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
+    headers: HeaderMap,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    login::view_reauth_get(state, client_auth_info, kopid, jar, "/ui/admin/groups").await
+    let referrer = match headers.get(header::REFERER) {
+        Some(header_value) => header_value
+            .to_str()
+            .map_err(|x| {
+                warn!("referer header couldn't be converted to string: {x}");
+                HtmxError::OperationError(kopid.eventid, OperationError::InvalidRequestState)
+            })?,
+        None => "/ui/admin/groups",
+    };
+    login::view_reauth_get(state, client_auth_info, kopid, jar, referrer).await
 }
 
 async fn get_can_rw(state: &ServerState, kopid: &KOpId, client_auth_info: &ClientAuthInfo) -> Result<bool, ErrorResponse> {
