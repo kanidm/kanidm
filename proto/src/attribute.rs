@@ -1,16 +1,14 @@
-use enum_iterator::Sequence;
 use serde::{Deserialize, Serialize};
 
 use crate::constants::*;
 use crate::internal::OperationError;
+use std::borrow::Borrow;
 use std::fmt;
-use tracing::trace;
 
 pub use smartstring::alias::String as AttrString;
 
-#[derive(
-    Serialize, Deserialize, Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Sequence, Hash,
-)]
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[cfg_attr(test, derive(enum_iterator::Sequence))]
 #[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
 pub enum Attribute {
     Account,
@@ -181,7 +179,21 @@ pub enum Attribute {
     Extra,
     #[cfg(any(debug_assertions, test))]
     TestNotAllowed,
-    // Custom(AttrString),
+
+    #[cfg(not(test))]
+    Custom(AttrString),
+}
+
+impl Attribute {
+    pub fn as_str(&self) -> &str {
+        self.into()
+    }
+}
+
+impl Borrow<str> for Attribute {
+    fn borrow(&self) -> &str {
+        self.into()
+    }
 }
 
 impl AsRef<str> for Attribute {
@@ -190,24 +202,17 @@ impl AsRef<str> for Attribute {
     }
 }
 
-impl From<&Attribute> for &'static str {
-    fn from(value: &Attribute) -> Self {
-        (*value).into()
-    }
-}
-
 impl TryFrom<&AttrString> for Attribute {
     type Error = OperationError;
 
     fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.as_str())
+        Ok(Attribute::from(value.as_str()))
     }
 }
 
-impl<'a> TryFrom<&'a str> for Attribute {
-    type Error = OperationError;
-    fn try_from(val: &'a str) -> Result<Self, OperationError> {
-        let res = match val {
+impl From<&str> for Attribute {
+    fn from(value: &str) -> Self {
+        match value {
             ATTR_ACCOUNT => Attribute::Account,
             ATTR_ACCOUNT_EXPIRE => Attribute::AccountExpire,
             ATTR_ACCOUNT_VALID_FROM => Attribute::AccountValidFrom,
@@ -374,17 +379,17 @@ impl<'a> TryFrom<&'a str> for Attribute {
             TEST_ATTR_NUMBER => Attribute::TestNumber,
             #[cfg(any(debug_assertions, test))]
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
-            _ => {
-                trace!("Failed to convert {} to Attribute", val);
-                return Err(OperationError::InvalidAttributeName(val.to_string()));
-            }
-        };
-        Ok(res)
+
+            #[cfg(not(test))]
+            _ => Attribute::Custom(AttrString::from(value)),
+            #[cfg(test)]
+            _ => unreachable!(),
+        }
     }
 }
 
-impl From<Attribute> for &'static str {
-    fn from(val: Attribute) -> Self {
+impl<'a> From<&'a Attribute> for &'a str {
+    fn from(val: &'a Attribute) -> Self {
         match val {
             Attribute::Account => ATTR_ACCOUNT,
             Attribute::AccountExpire => ATTR_ACCOUNT_EXPIRE,
@@ -552,20 +557,22 @@ impl From<Attribute> for &'static str {
             Attribute::TestNumber => TEST_ATTR_NUMBER,
             #[cfg(any(debug_assertions, test))]
             Attribute::TestNotAllowed => TEST_ATTR_NOTALLOWED,
+
+            #[cfg(not(test))]
+            Attribute::Custom(value) => value.as_str(),
         }
     }
 }
 
 impl From<Attribute> for AttrString {
     fn from(val: Attribute) -> Self {
-        AttrString::from(val.to_string())
+        AttrString::from(val.as_str())
     }
 }
 
 impl fmt::Display for Attribute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s: &'static str = (*self).into();
-        write!(f, "{}", s)
+        write!(f, "{}", self.as_str())
     }
 }
 
@@ -585,8 +592,7 @@ mod test {
         use enum_iterator::all;
         let the_list = all::<Attribute>().collect::<Vec<_>>();
         for attr in the_list {
-            let s: &'static str = attr.into();
-            let attr2 = Attribute::try_from(s).unwrap();
+            let attr2 = Attribute::try_from(attr.as_str()).unwrap();
             assert!(attr == attr2);
         }
     }

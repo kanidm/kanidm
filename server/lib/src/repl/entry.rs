@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 pub enum State {
     Live {
         at: Cid,
-        changes: BTreeMap<AttrString, Cid>,
+        changes: BTreeMap<Attribute, Cid>,
     },
     Tombstone {
         at: Cid,
@@ -40,7 +40,7 @@ impl EntryChangeState {
     }
 
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
-        let class = attrs.get(Attribute::Class.as_ref());
+        let class = attrs.get(Attribute::Class);
         let st = if class
             .as_ref()
             .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))

@@ -1075,8 +1075,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
                 changes: changes_right,
             },
         ) => match (
-            changes_left.get(Attribute::Class.into()),
-            changes_right.get(Attribute::Class.into()),
+            changes_left.get(Attribute::Class),
+            changes_right.get(Attribute::Class),
         ) {
             (Some(cid_left), Some(cid_right)) => cid_left < cid_right,
             _ => false,

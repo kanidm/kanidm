@@ -165,19 +165,19 @@ pub struct EntryReduced {
 }
 
 // One day this is going to be Map<Attribute, ValueSet> - @yaleman
-// pub type Eattrs = Map<Attribute, ValueSet>;
-pub type Eattrs = Map<AttrString, ValueSet>;
+// Today is that day - @firstyear
+pub type Eattrs = Map<Attribute, ValueSet>;
 
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
         .keys()
-        .filter(|k| k != &Attribute::LastModifiedCid.as_ref())
+        .filter(|k| k != &Attribute::LastModifiedCid)
         .chain(
             right
                 .keys()
-                .filter(|k| k != &Attribute::LastModifiedCid.as_ref()),
+                .filter(|k| k != &Attribute::LastModifiedCid),
         )
         .map(|s| s.as_ref())
         .collect();
@@ -308,7 +308,9 @@ impl Entry<EntryInit, EntryNew> {
             .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
-                let nk = qs.get_schema().normalise_attr_name(k);
+                let nk = qs.get_schema()
+                    .normalise_attr_name(k);
+                let nk = Attribute::from(&nk);
                 let nv =
                     valueset::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&nk, vr)));
                 trace!(?nv, "new valueset transform");
@@ -366,155 +368,154 @@ impl Entry<EntryInit, EntryNew> {
                 if vs.is_empty() {
                     None
                 } else {
-                    // TODO: this should be an "Attribute::from(k)"
-                let attr = AttrString::from(k.to_lowercase());
-                let vv: ValueSet = match attr.as_str() {
-                    kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_iutf8(&v))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_NAME | kanidm_proto::constants::ATTR_DOMAIN_NAME => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_iname(&v))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_USERID | kanidm_proto::constants::ATTR_UIDNUMBER  => {
-                        warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_iutf8(&v))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_CLASS | kanidm_proto::constants::ATTR_ACP_CREATE_CLASS | kanidm_proto::constants::ATTR_ACP_MODIFY_CLASS  => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_class(v.as_str()))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_ACP_CREATE_ATTR |
-                    kanidm_proto::constants::ATTR_ACP_SEARCH_ATTR |
-                    kanidm_proto::constants::ATTR_ACP_MODIFY_REMOVEDATTR |
-                    kanidm_proto::constants::ATTR_ACP_MODIFY_PRESENTATTR |
-                    kanidm_proto::constants::ATTR_SYSTEMMAY |
-                    kanidm_proto::constants::ATTR_SYSTEMMUST |
-                    kanidm_proto::constants::ATTR_MAY |
-                    kanidm_proto::constants::ATTR_MUST
-                    => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_attr(v.as_str()))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_UUID |
-                    kanidm_proto::constants::ATTR_DOMAIN_UUID => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
+                    let attr = Attribute::from(k.to_lowercase());
+                    let vv: ValueSet = match attr.as_str() {
+                        kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_iutf8(&v))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_NAME | kanidm_proto::constants::ATTR_DOMAIN_NAME => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_iname(&v))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_USERID | kanidm_proto::constants::ATTR_UIDNUMBER  => {
+                            warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_iutf8(&v))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_CLASS | kanidm_proto::constants::ATTR_ACP_CREATE_CLASS | kanidm_proto::constants::ATTR_ACP_MODIFY_CLASS  => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_class(v.as_str()))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_ACP_CREATE_ATTR |
+                        kanidm_proto::constants::ATTR_ACP_SEARCH_ATTR |
+                        kanidm_proto::constants::ATTR_ACP_MODIFY_REMOVEDATTR |
+                        kanidm_proto::constants::ATTR_ACP_MODIFY_PRESENTATTR |
+                        kanidm_proto::constants::ATTR_SYSTEMMAY |
+                        kanidm_proto::constants::ATTR_SYSTEMMUST |
+                        kanidm_proto::constants::ATTR_MAY |
+                        kanidm_proto::constants::ATTR_MUST
+                        => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_attr(v.as_str()))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_UUID |
+                        kanidm_proto::constants::ATTR_DOMAIN_UUID => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
+                                    .unwrap_or_else(|| {
+                                        warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                        Value::new_utf8(v)
+                                    })
+                                )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_MEMBER |
+                        kanidm_proto::constants::ATTR_MEMBEROF |
+                        kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
+                        kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_ACP_ENABLE |
+                        kanidm_proto::constants::ATTR_MULTIVALUE |
+                        kanidm_proto::constants::ATTR_UNIQUE => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_bools(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
+                                )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_SYNTAX => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
                                 .unwrap_or_else(|| {
                                     warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                     Value::new_utf8(v)
                                 })
                             )
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_MEMBER |
-                    kanidm_proto::constants::ATTR_MEMBEROF |
-                    kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
-                    kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_ACP_ENABLE |
-                    kanidm_proto::constants::ATTR_MULTIVALUE |
-                    kanidm_proto::constants::ATTR_UNIQUE => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_bools(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_INDEX => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_indexes(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
+                            )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_ACP_TARGET_SCOPE |
+                        kanidm_proto::constants::ATTR_ACP_RECEIVER
+                         => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
+                            )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_DISPLAYNAME | kanidm_proto::constants::ATTR_DESCRIPTION | kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(Value::new_utf8)
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_SPN => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| {
+                                Value::new_spn_parse(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
                             })
                             )
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_SYNTAX => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
+                        }
+                        kanidm_proto::constants::ATTR_GIDNUMBER |
+                        kanidm_proto::constants::ATTR_VERSION => {
+                            valueset::from_value_iter(
+                            vs.into_iter().map(|v| {
+                                Value::new_uint32_str(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
                             })
-                        )
-                        )
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_DOMAIN_TOKEN_KEY |
+                        kanidm_proto::constants::ATTR_FERNET_PRIVATE_KEY_STR => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_secret_str(&v))
+                            )
+                        }
+                        kanidm_proto::constants::ATTR_ES256_PRIVATE_KEY_DER |
+                        kanidm_proto::constants::ATTR_PRIVATE_COOKIE_KEY => {
+                            valueset::from_value_iter(
+                                vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
+                            )
+                        }
+                        ia => {
+                            error!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
+                            valueset::from_value_iter(
+                                vs.into_iter().map(Value::new_utf8)
+                            )
+                        }
                     }
-                    kanidm_proto::constants::ATTR_INDEX => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_indexes(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
-                            })
-                        )
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_ACP_TARGET_SCOPE |
-                    kanidm_proto::constants::ATTR_ACP_RECEIVER
-                     => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
-                            })
-                        )
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_DISPLAYNAME | kanidm_proto::constants::ATTR_DESCRIPTION | kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(Value::new_utf8)
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_SPN => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| {
-                            Value::new_spn_parse(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
-                            })
-                        })
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_GIDNUMBER |
-                    kanidm_proto::constants::ATTR_VERSION => {
-                        valueset::from_value_iter(
-                        vs.into_iter().map(|v| {
-                            Value::new_uint32_str(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
-                            })
-                        })
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_DOMAIN_TOKEN_KEY |
-                    kanidm_proto::constants::ATTR_FERNET_PRIVATE_KEY_STR => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_secret_str(&v))
-                        )
-                    }
-                    kanidm_proto::constants::ATTR_ES256_PRIVATE_KEY_DER |
-                    kanidm_proto::constants::ATTR_PRIVATE_COOKIE_KEY => {
-                        valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
-                        )
-                    }
-                    ia => {
-                        error!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
-                        valueset::from_value_iter(
-                            vs.into_iter().map(Value::new_utf8)
-                        )
-                    }
-                }
-                .expect("Failed to convert value from string");
-                Some((attr, vv))
+                    .expect("Failed to convert value from string");
+                    Some((attr, vv))
                 }
             })
             .collect();
@@ -2411,8 +2412,6 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     pub fn to_scim_kanidm(&self) -> Result<ScimEntryKanidm, OperationError> {
-        let attrs = Default::default();
-        /*
         let attrs = self
             .attrs
             .iter()
@@ -2421,7 +2420,6 @@ impl Entry<EntryReduced, EntryCommitted> {
                     .map(|scim_value| (k, scim_value))
             })
             .collect();
-        */
 
         let id = self.get_uuid();
 
@@ -2618,7 +2616,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    pub fn get_ava_iter(&self) -> impl Iterator<Item = (&AttrString, &ValueSet)> {
+    pub fn get_ava_iter(&self) -> impl Iterator<Item = (&Attribute, &ValueSet)> {
         self.attrs.iter()
     }
 
@@ -3119,7 +3117,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Given this entry, generate a filter containing the requested attributes strings as
     /// equality components.
-    pub fn filter_from_attrs(&self, attrs: &[AttrString]) -> Option<Filter<FilterInvalid>> {
+    pub fn filter_from_attrs(&self, attrs: &[Attribute]) -> Option<Filter<FilterInvalid>> {
         // Because we are a valid entry, a filter we create still may not
         // be valid because the internal server entry templates are still
         // created by humans! Plus double checking something already valid
@@ -3461,21 +3459,21 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
-        let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(Attribute::AttributeName.into(), name_v);
-        attrs.insert(Attribute::Description.into(), desc_v);
-        attrs.insert(Attribute::Uuid.into(), uuid_v);
-        attrs.insert(Attribute::MultiValue.into(), multivalue_v);
-        attrs.insert(Attribute::Phantom.into(), phantom_v);
-        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
-        attrs.insert(Attribute::Replicated.into(), replicated_v);
-        attrs.insert(Attribute::Unique.into(), unique_v);
+        let mut attrs: Map<Attribute, ValueSet> = Map::new();
+        attrs.insert(Attribute::AttributeName, name_v);
+        attrs.insert(Attribute::Description, desc_v);
+        attrs.insert(Attribute::Uuid, uuid_v);
+        attrs.insert(Attribute::MultiValue, multivalue_v);
+        attrs.insert(Attribute::Phantom, phantom_v);
+        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
+        attrs.insert(Attribute::Replicated, replicated_v);
+        attrs.insert(Attribute::Unique, unique_v);
         if let Some(vs) = index_v {
-            attrs.insert(Attribute::Index.into(), vs);
+            attrs.insert(Attribute::Index, vs);
         }
-        attrs.insert(Attribute::Syntax.into(), syntax_v);
+        attrs.insert(Attribute::Syntax, syntax_v);
         attrs.insert(
-            Attribute::Class.into(),
+            Attribute::Class,
             vs_iutf8![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
@@ -3500,14 +3498,13 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
         let desc_v = vs_utf8![s.description.to_owned()];
         let sync_allowed_v = vs_bool![s.sync_allowed];
 
-        // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
-        let mut attrs: Map<AttrString, ValueSet> = Map::new();
-        attrs.insert(Attribute::ClassName.into(), name_v);
-        attrs.insert(Attribute::Description.into(), desc_v);
-        attrs.insert(Attribute::SyncAllowed.into(), sync_allowed_v);
-        attrs.insert(Attribute::Uuid.into(), uuid_v);
+        let mut attrs: Map<Attribute, ValueSet> = Map::new();
+        attrs.insert(Attribute::ClassName, name_v);
+        attrs.insert(Attribute::Description, desc_v);
+        attrs.insert(Attribute::SyncAllowed, sync_allowed_v);
+        attrs.insert(Attribute::Uuid, uuid_v);
         attrs.insert(
-            Attribute::Class.into(),
+            Attribute::Class,
             vs_iutf8![
                 EntryClass::Object.into(),
                 EntryClass::System.into(),
@@ -3517,13 +3514,13 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
         let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmay {
-            attrs.insert(Attribute::SystemMay.into(), vs);
+            attrs.insert(Attribute::SystemMay, vs);
         }
 
         let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
 
         if let Some(vs) = vs_systemmust {
-            attrs.insert(Attribute::SystemMust.into(), vs);
+            attrs.insert(Attribute::SystemMust, vs);
         }
 
         Entry {
