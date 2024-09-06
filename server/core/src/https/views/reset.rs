@@ -617,7 +617,7 @@ pub(crate) async fn view_self_reset_get(
             client_auth_info,
             kopid,
             jar,
-            "/ui/update-credentials",
+            "/ui/update_credentials",
             domain_info,
         )
         .await
@@ -784,7 +784,7 @@ fn get_cu_response(
         };
 
         (
-            HxPushUrl(Uri::from_static("/ui/update-credentials")),
+            HxPushUrl(Uri::from_static("/ui/update_credentials")),
             HtmlTemplate(profile_view),
         )
             .into_response()
