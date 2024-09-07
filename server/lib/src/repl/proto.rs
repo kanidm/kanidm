@@ -489,7 +489,7 @@ impl ReplEntryV1 {
                     .iter()
                     .filter_map(|(attr_name, cid)| {
                         if schema.is_replicated(attr_name) {
-                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let live_attr = live_attrs.get(attr_name);
 
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe|

@@ -454,7 +454,7 @@ impl SchemaClass {
                 OperationError::InvalidSchemaState(format!("missing {}", Attribute::ClassName))
             })?;
 
-        if name  == "key_provider" {
+        if name == "key_provider" {
             trace!(?value);
         }
 
@@ -475,30 +475,22 @@ impl SchemaClass {
         let systemmay = value
             .get_ava_iter_iutf8(Attribute::SystemMay)
             .into_iter()
-            .flat_map(|iter|
-                iter.map(Attribute::from)
-            )
+            .flat_map(|iter| iter.map(Attribute::from))
             .collect();
         let systemmust = value
             .get_ava_iter_iutf8(Attribute::SystemMust)
             .into_iter()
-            .flat_map(|iter|
-                iter.map(Attribute::from)
-            )
+            .flat_map(|iter| iter.map(Attribute::from))
             .collect();
         let may = value
             .get_ava_iter_iutf8(Attribute::May)
             .into_iter()
-            .flat_map(|iter|
-                iter.map(Attribute::from)
-            )
+            .flat_map(|iter| iter.map(Attribute::from))
             .collect();
         let must = value
             .get_ava_iter_iutf8(Attribute::Must)
             .into_iter()
-            .flat_map(|iter|
-                iter.map(Attribute::from)
-            )
+            .flat_map(|iter| iter.map(Attribute::from))
             .collect();
 
         let systemsupplements = value

@@ -170,21 +170,22 @@ pub type Eattrs = Map<Attribute, ValueSet>;
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
-    let allkeys: Set<&str> = left
+    let allkeys: Set<&Attribute> = left
         .keys()
+        .chain(right.keys())
         .filter(|k| *k != &Attribute::LastModifiedCid)
-        .chain(right.keys().filter(|k| *k != &Attribute::LastModifiedCid))
-        .map(|s| s.as_ref())
         .collect();
 
     allkeys.into_iter().all(|k| {
         // Both must be Some, and both must have the same interiors.
-        let r = match (left.get(k), right.get(k)) {
+        let left_vs = left.get(k);
+        let right_vs = right.get(k);
+        let r = match (left_vs, right_vs) {
             (Some(l), Some(r)) => l.eq(r),
             _ => false,
         };
         if !r {
-            trace!(?k, "compare_attrs_allkeys");
+            trace!(?k, ?left_vs, ?right_vs, "compare_attrs_allkeys");
         }
         r
     })
