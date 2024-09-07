@@ -13,6 +13,8 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::internal::UserAuthToken;
 
+use super::constants::ProfileMenuItems;
+
 #[derive(Template)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
@@ -22,6 +24,7 @@ struct ProfileView {
 #[derive(Template, Clone)]
 #[template(path = "user_settings_profile_partial.html")]
 struct ProfilePartialView {
+    menu_active_item: ProfileMenuItems,
     can_rw: bool,
     account_name: String,
     display_name: String,
@@ -47,6 +50,7 @@ pub(crate) async fn view_profile_get(
     let can_rw = uat.purpose_readwrite_active(time);
 
     let profile_partial_view = ProfilePartialView {
+        menu_active_item: ProfileMenuItems::UserProfile,
         can_rw,
         account_name: uat.name().to_string(),
         display_name: uat.displayname.clone(),

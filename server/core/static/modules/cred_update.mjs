@@ -1,3 +1,5 @@
+console.debug('credupdate: loaded');
+
 // Makes the password form interactive (e.g. shows when passwords don't match)
 function setupInteractivePwdFormListeners() {
     const new_pwd = document.getElementById("new-password");
@@ -41,7 +43,7 @@ function setupInteractivePwdFormListeners() {
     });
 }
 
-function stillSwapFailureResponse(event) {
+window.stillSwapFailureResponse = function(event) {
     if (event.detail.xhr.status === 422 || event.detail.xhr.status === 500) {
         console.log("Still swapping failure response")
         event.detail.shouldSwap = true;
@@ -117,11 +119,12 @@ function updateSubmitButtonVisibility(event) {
     submitButton.disabled = event.value === "";
 }
 
-window.onload = function () {
+(function() {
+    console.debug('credupdate: init');
     document.body.addEventListener("addPasswordSwapped", () => { setupInteractivePwdFormListeners() });
     document.body.addEventListener("addPasskeySwapped", () => {
         setupPasskeyNamingSafariButton();
         startPasskeyEnrollment();
         setupSubmitBtnVisibility();
     });
-}
+})()

@@ -14,6 +14,11 @@ body {
   margin: auto;
 }
 
+#settings-window:has(.form-cred-reset-body) .form-cred-reset-body {
+  max-width: unset;
+  padding: unset;
+}
+
 .form-signin-body {
   display: flex;
   align-items: center;
