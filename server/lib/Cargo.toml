@@ -109,7 +109,11 @@ compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_r
 criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
+# This is needed so that we can use a test feature across the crate boundary to proto
+# so we can enable certain hidden test only attributes.
+kanidm_proto = { workspace = true, features = ["test"] }
 webauthn-authenticator-rs = { workspace = true }
+
 
 [target.'cfg(not(target_os = "illumos"))'.dev-dependencies]
 mimalloc = { workspace = true }

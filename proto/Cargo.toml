@@ -17,6 +17,7 @@ doctest = true
 
 [features]
 wasm = ["webauthn-rs-proto/wasm"]
+test = []
 
 [dependencies]
 base32 = { workspace = true }

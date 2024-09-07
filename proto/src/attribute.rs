@@ -169,15 +169,15 @@ pub enum Attribute {
     Version,
     WebauthnAttestationCaList,
 
-    #[cfg(any(debug_assertions, test))]
+    #[cfg(any(debug_assertions, test, feature = "test"))]
     NonExist,
-    #[cfg(any(debug_assertions, test))]
+    #[cfg(any(debug_assertions, test, feature = "test"))]
     TestAttr,
-    #[cfg(any(debug_assertions, test))]
+    #[cfg(any(debug_assertions, test, feature = "test"))]
     TestNumber,
-    #[cfg(any(debug_assertions, test))]
+    #[cfg(any(debug_assertions, test, feature = "test"))]
     Extra,
-    #[cfg(any(debug_assertions, test))]
+    #[cfg(any(debug_assertions, test, feature = "test"))]
     TestNotAllowed,
 
     #[cfg(not(test))]
@@ -381,15 +381,15 @@ impl Attribute {
             Attribute::Version => ATTR_VERSION,
             Attribute::WebauthnAttestationCaList => ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
 
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::Extra => TEST_ATTR_EXTRA,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::TestNumber => TEST_ATTR_NUMBER,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::TestNotAllowed => TEST_ATTR_NOTALLOWED,
 
             #[cfg(not(test))]
@@ -559,15 +559,15 @@ impl Attribute {
             ATTR_VERSION => Attribute::Version,
             ATTR_WEBAUTHN_ATTESTATION_CA_LIST => Attribute::WebauthnAttestationCaList,
 
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_NON_EXIST => Attribute::NonExist,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_TEST_ATTR => Attribute::TestAttr,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_EXTRA => Attribute::Extra,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_NUMBER => Attribute::TestNumber,
-            #[cfg(any(debug_assertions, test))]
+            #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
 
             #[cfg(not(test))]
