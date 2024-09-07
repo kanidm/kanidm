@@ -277,7 +277,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else if results.len() == 1 {
             // For each ignored attr, we remove it from entry.
             for attr in attrs.iter() {
-                e.remove_ava(*attr);
+                e.remove_ava(attr);
             }
 
             // If the thing is subset, pass

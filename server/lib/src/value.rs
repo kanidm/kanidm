@@ -449,14 +449,14 @@ impl From<CredentialType> for PartialValue {
 
 impl From<Attribute> for Value {
     fn from(attr: Attribute) -> Value {
-        let s: &str = attr.into();
+        let s: &str = attr.as_str();
         Value::new_iutf8(s)
     }
 }
 
 impl From<Attribute> for PartialValue {
     fn from(attr: Attribute) -> PartialValue {
-        let s: &str = attr.into();
+        let s: &str = attr.as_str();
         PartialValue::new_iutf8(s)
     }
 }

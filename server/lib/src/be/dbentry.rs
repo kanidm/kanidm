@@ -3,7 +3,6 @@ use std::time::Duration;
 
 use nonempty::NonEmpty;
 use serde::{Deserialize, Serialize};
-use smartstring::alias::String as AttrString;
 use uuid::Uuid;
 
 use super::dbrepl::{DbEntryChangeState, DbReplMeta};
@@ -14,12 +13,12 @@ use crate::prelude::OperationError;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbEntryV1 {
-    pub attrs: BTreeMap<AttrString, NonEmpty<DbValueV1>>,
+    pub attrs: BTreeMap<Attribute, NonEmpty<DbValueV1>>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbEntryV2 {
-    pub attrs: BTreeMap<AttrString, DbValueSetV2>,
+    pub attrs: BTreeMap<Attribute, DbValueSetV2>,
 }
 
 // REMEMBER: If you add a new version here, you MUST
@@ -31,7 +30,7 @@ pub enum DbEntryVers {
     V2(DbEntryV2),
     V3 {
         changestate: DbEntryChangeState,
-        attrs: BTreeMap<AttrString, DbValueSetV2>,
+        attrs: BTreeMap<Attribute, DbValueSetV2>,
     },
 }
 
@@ -491,7 +490,7 @@ impl std::fmt::Display for DbEntry {
         match &self.ent {
             DbEntryVers::V1(dbe_v1) => {
                 write!(f, "v1 - {{ ")?;
-                match dbe_v1.attrs.get(Attribute::Uuid.as_ref()) {
+                match dbe_v1.attrs.get(&Attribute::Uuid) {
                     Some(uuids) => {
                         for uuid in uuids {
                             write!(f, "{uuid:?}, ")?;
@@ -499,17 +498,17 @@ impl std::fmt::Display for DbEntry {
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
-                if let Some(names) = dbe_v1.attrs.get(Attribute::Name.as_ref()) {
+                if let Some(names) = dbe_v1.attrs.get(&Attribute::Name) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }
                 }
-                if let Some(names) = dbe_v1.attrs.get(Attribute::AttributeName.as_ref()) {
+                if let Some(names) = dbe_v1.attrs.get(&Attribute::AttributeName) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }
                 }
-                if let Some(names) = dbe_v1.attrs.get(Attribute::ClassName.as_ref()) {
+                if let Some(names) = dbe_v1.attrs.get(&Attribute::ClassName) {
                     for name in names {
                         write!(f, "{name:?}, ")?;
                     }
@@ -518,26 +517,26 @@ impl std::fmt::Display for DbEntry {
             }
             DbEntryVers::V2(dbe_v2) => {
                 write!(f, "v2 - {{ ")?;
-                match dbe_v2.attrs.get(Attribute::Uuid.as_ref()) {
+                match dbe_v2.attrs.get(&Attribute::Uuid) {
                     Some(uuids) => {
                         write!(f, "{uuids:?}, ")?;
                     }
                     None => write!(f, "Uuid(INVALID), ")?,
                 };
-                if let Some(names) = dbe_v2.attrs.get(Attribute::Name.as_ref()) {
+                if let Some(names) = dbe_v2.attrs.get(&Attribute::Name) {
                     write!(f, "{names:?}, ")?;
                 }
-                if let Some(names) = dbe_v2.attrs.get(Attribute::AttributeName.as_ref()) {
+                if let Some(names) = dbe_v2.attrs.get(&Attribute::AttributeName) {
                     write!(f, "{names:?}, ")?;
                 }
-                if let Some(names) = dbe_v2.attrs.get(Attribute::ClassName.as_ref()) {
+                if let Some(names) = dbe_v2.attrs.get(&Attribute::ClassName) {
                     write!(f, "{names:?}, ")?;
                 }
                 write!(f, "}}")
             }
             DbEntryVers::V3 { changestate, attrs } => {
                 write!(f, "v3 - {{ ")?;
-                match attrs.get(Attribute::Uuid.as_ref()) {
+                match attrs.get(&Attribute::Uuid) {
                     Some(uuids) => {
                         write!(f, "{uuids:?}, ")?;
                     }
@@ -547,13 +546,13 @@ impl std::fmt::Display for DbEntry {
                 match changestate {
                     DbEntryChangeState::V1Live { at, changes: _ } => {
                         write!(f, "created: {at}, ")?;
-                        if let Some(names) = attrs.get(Attribute::Name.as_ref()) {
+                        if let Some(names) = attrs.get(&Attribute::Name) {
                             write!(f, "{names:?}, ")?;
                         }
-                        if let Some(names) = attrs.get(Attribute::AttributeName.as_ref()) {
+                        if let Some(names) = attrs.get(&Attribute::AttributeName) {
                             write!(f, "{names:?}, ")?;
                         }
-                        if let Some(names) = attrs.get(Attribute::ClassName.as_ref()) {
+                        if let Some(names) = attrs.get(&Attribute::ClassName) {
                             write!(f, "{names:?}, ")?;
                         }
                     }

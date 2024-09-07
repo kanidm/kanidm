@@ -805,7 +805,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn scim_attr_to_values(
         &mut self,
-        scim_attr_name: &str,
+        scim_attr_name: &Attribute,
         scim_attr: &ScimValue,
     ) -> Result<Vec<Value>, OperationError> {
         let schema = self.qs_write.get_schema();
@@ -1220,9 +1220,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 return Err(OperationError::InvalidEntryState);
             }
 
+            // Make it a native attribute name.
+            let scim_attr_name = Attribute::from(scim_attr_name.as_str());
+
             // Convert each scim_attr to a set of values.
             let values = self
-                .scim_attr_to_values(scim_attr_name, scim_attr)
+                .scim_attr_to_values(&scim_attr_name, scim_attr)
                 .map_err(|e| {
                     error!(
                         "Failed to convert {} for entry {}",
@@ -1234,7 +1237,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             mods.extend(
                 values
                     .into_iter()
-                    .map(|val| Modify::Present(scim_attr_name.into(), val)),
+                    .map(|val| Modify::Present(scim_attr_name, val)),
             );
         }
 

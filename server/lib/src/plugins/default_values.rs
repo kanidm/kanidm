@@ -68,7 +68,7 @@ impl DefaultValues {
                 e.add_ava(Attribute::Class, EntryClass::AccountPolicy.to_value());
 
                 if !e.attribute_pres(Attribute::AuthSessionExpiry) {
-                    e.set_ava(Attribute::AuthSessionExpiry, once(
+                    e.set_ava(&Attribute::AuthSessionExpiry, once(
                         Value::Uint32(DEFAULT_AUTH_SESSION_EXPIRY),
                     ));
                     debug!("default_values: idm_all_accounts - restore default auth_session_expiry");
@@ -76,7 +76,7 @@ impl DefaultValues {
 
                 // Setup the minimum functional level if one is not set already.
                 if !e.attribute_pres(Attribute::PrivilegeExpiry) {
-                    e.set_ava(Attribute::PrivilegeExpiry, once(
+                    e.set_ava(&Attribute::PrivilegeExpiry, once(
                         Value::Uint32(DEFAULT_AUTH_PRIVILEGE_EXPIRY),
                     ));
                     debug!("default_values: idm_all_accounts - restore default privilege_session_expiry");

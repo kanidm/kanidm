@@ -65,7 +65,7 @@ fn do_group_memberof(
     // Add all the direct mo's and mos.
     if let Some(dmo) = dmo {
         // We need to clone this else type checker gets real sad.
-        tgte.set_ava_set(Attribute::DirectMemberOf, dmo.clone());
+        tgte.set_ava_set(&Attribute::DirectMemberOf, dmo.clone());
 
         if let Some(mo) = &mut mo {
             let dmo = dmo as ValueSet;
@@ -78,7 +78,7 @@ fn do_group_memberof(
     };
 
     if let Some(mo) = mo {
-        tgte.set_ava_set(Attribute::MemberOf, mo);
+        tgte.set_ava_set(&Attribute::MemberOf, mo);
     }
 
     trace!(
@@ -205,7 +205,7 @@ fn do_leaf_memberof(
                     dmo_set.insert(group_uuid);
                 } else {
                     let dmo = ValueSetRefer::new(group_uuid);
-                    tgte.set_ava_set(Attribute::DirectMemberOf, dmo);
+                    tgte.set_ava_set(&Attribute::DirectMemberOf, dmo);
                 }
 
                 // We're also in member of this group.
@@ -213,7 +213,7 @@ fn do_leaf_memberof(
                     mo_set.insert(group_uuid);
                 } else {
                     let mo = ValueSetRefer::new(group_uuid);
-                    tgte.set_ava_set(Attribute::MemberOf, mo);
+                    tgte.set_ava_set(&Attribute::MemberOf, mo);
                 }
 
                 // If the group has memberOf attributes, we propogate these to
@@ -510,7 +510,7 @@ impl Plugin for MemberOf {
 
         for entry in cand.iter_mut() {
             if let Some(direct_mo_vs) = entry.pop_ava(Attribute::DirectMemberOf) {
-                entry.set_ava_set(Attribute::RecycledDirectMemberOf, direct_mo_vs);
+                entry.set_ava_set(&Attribute::RecycledDirectMemberOf, direct_mo_vs);
             } else {
                 // Ensure it's empty
                 entry.purge_ava(Attribute::RecycledDirectMemberOf);

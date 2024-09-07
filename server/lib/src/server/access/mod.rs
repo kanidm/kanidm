@@ -54,7 +54,7 @@ mod search;
 pub enum Access {
     Grant,
     Denied,
-    Allow(BTreeSet<AttrString>),
+    Allow(BTreeSet<Attribute>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,20 +66,35 @@ pub struct AccessEffectivePermission {
     pub search: Access,
     pub modify_pres: Access,
     pub modify_rem: Access,
-    pub modify_class: Access,
+    pub modify_class: AttrString,
 }
 
-pub enum AccessResult<'a> {
+pub enum AccessResult {
     // Deny this operation unconditionally.
     Denied,
     // Unbounded allow, provided no denied exists.
     Grant,
     // This module makes no decisions about this entry.
     Ignore,
-    // Limit the allowed attr set to this.
-    Constrain(BTreeSet<&'a str>),
+    // Limit the allowed attr set to this - this doesn't
+    // allow anything, it constrains what might be allowed.
+    Constrain(BTreeSet<Attribute>),
     // Allow these attributes within constraints.
-    Allow(BTreeSet<&'a str>),
+    Allow(BTreeSet<Attribute>),
+}
+
+pub enum AccessResultClass {
+    // Deny this operation unconditionally.
+    Denied,
+    // Unbounded allow, provided no denied exists.
+    Grant,
+    // This module makes no decisions about this entry.
+    Ignore,
+    // Limit the allowed attr set to this - this doesn't
+    // allow anything, it constrains what might be allowed.
+    Constrain(BTreeSet<AttrString>),
+    // Allow these attributes within constraints.
+    Allow(BTreeSet<AttrString>),
 }
 
 // =========================================================================
@@ -149,7 +164,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>>;
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a>;
@@ -238,7 +253,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
-        let requested_attrs: BTreeSet<&str> = filter_orig.get_attr_set();
+        let requested_attrs: BTreeSet<Attribute> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
         let related_acp = self.search_related_acp(ident);
@@ -299,10 +314,14 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
-        let requested_attrs: Option<BTreeSet<_>> = se
+
+        /*
+        // TODO: I think this isn't needed?
+        let requested_attrs: Option<BTreeSet<Attribute>> = se
             .attrs
             .as_ref()
-            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
+            .map(|vs| vs.iter().cloned().collect());
+        */
 
         // Get the relevant acps for this receiver.
         let related_acp = self.search_related_acp(&se.ident);
@@ -331,13 +350,13 @@ pub trait AccessControlsTransaction<'a> {
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
                         debug!(
-                            requested = ?requested_attrs,
+                            requested = ?se.attrs,
                             allowed = ?allowed_attrs,
                             "reduction",
                         );
 
                         // Reduce requested by allowed.
-                        let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
+                        let reduced_attrs = if let Some(requested) = se.attrs.as_ref() {
                             requested & &allowed_attrs
                         } else {
                             allowed_attrs
@@ -423,21 +442,21 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<_> = self.modify_related_acp(&me.ident);
 
         // build two sets of "requested pres" and "requested rem"
-        let requested_pres: BTreeSet<&str> = me
+        let requested_pres: BTreeSet<Attribute> = me
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Present(a, _) => Some(a.as_str()),
+                Modify::Present(a, _) => Some(a.clone()),
                 _ => None,
             })
             .collect();
 
-        let requested_rem: BTreeSet<&str> = me
+        let requested_rem: BTreeSet<Attribute> = me
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Removed(a, _) => Some(a.as_str()),
-                Modify::Purged(a) => Some(a.as_str()),
+                Modify::Removed(a, _) => Some(a.clone()),
+                Modify::Purged(a) => Some(a.clone()),
                 _ => None,
             })
             .collect();
@@ -756,7 +775,7 @@ pub trait AccessControlsTransaction<'a> {
     fn effective_permission_check(
         &self,
         ident: &Identity,
-        attrs: Option<BTreeSet<AttrString>>,
+        attrs: Option<BTreeSet<Attribute>>,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
         // I think we need a structure like " CheckResult, which is in the order of the
@@ -935,7 +954,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
         &self.inner.acps_delete
     }
 
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>> {
         &self.inner.sync_agreements
     }
 
@@ -978,7 +997,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.acps_delete
     }
 
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>> {
         &self.inner.sync_agreements
     }
 
@@ -2660,7 +2679,7 @@ mod tests {
             &me_pres,
             vec![acp_allow.clone()],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );
@@ -2669,7 +2688,7 @@ mod tests {
             &me_rem,
             vec![acp_allow.clone()],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );
@@ -2678,7 +2697,7 @@ mod tests {
             &me_purge,
             vec![acp_allow],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );

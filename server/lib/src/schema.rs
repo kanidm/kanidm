@@ -45,9 +45,9 @@ use crate::valueset::ValueSet;
 /// [`Classes`]: struct.SchemaClass.html
 pub struct Schema {
     classes: CowCell<HashMap<AttrString, SchemaClass>>,
-    attributes: CowCell<HashMap<AttrString, SchemaAttribute>>,
-    unique_cache: CowCell<Vec<AttrString>>,
-    ref_cache: CowCell<HashMap<AttrString, SchemaAttribute>>,
+    attributes: CowCell<HashMap<Attribute, SchemaAttribute>>,
+    unique_cache: CowCell<Vec<Attribute>>,
+    ref_cache: CowCell<HashMap<Attribute, SchemaAttribute>>,
 }
 
 /// A writable transaction of the working schema set. You should not change this directly,
@@ -55,19 +55,19 @@ pub struct Schema {
 /// you make will be lost when the server re-reads the schema from disk.
 pub struct SchemaWriteTransaction<'a> {
     classes: CowCellWriteTxn<'a, HashMap<AttrString, SchemaClass>>,
-    attributes: CowCellWriteTxn<'a, HashMap<AttrString, SchemaAttribute>>,
+    attributes: CowCellWriteTxn<'a, HashMap<Attribute, SchemaAttribute>>,
 
-    unique_cache: CowCellWriteTxn<'a, Vec<AttrString>>,
-    ref_cache: CowCellWriteTxn<'a, HashMap<AttrString, SchemaAttribute>>,
+    unique_cache: CowCellWriteTxn<'a, Vec<Attribute>>,
+    ref_cache: CowCellWriteTxn<'a, HashMap<Attribute, SchemaAttribute>>,
 }
 
 /// A readonly transaction of the working schema set.
 pub struct SchemaReadTransaction {
     classes: CowCellReadTxn<HashMap<AttrString, SchemaClass>>,
-    attributes: CowCellReadTxn<HashMap<AttrString, SchemaAttribute>>,
+    attributes: CowCellReadTxn<HashMap<Attribute, SchemaAttribute>>,
 
-    unique_cache: CowCellReadTxn<Vec<AttrString>>,
-    ref_cache: CowCellReadTxn<HashMap<AttrString, SchemaAttribute>>,
+    unique_cache: CowCellReadTxn<Vec<Attribute>>,
+    ref_cache: CowCellReadTxn<HashMap<Attribute, SchemaAttribute>>,
 }
 
 /// An item representing an attribute and the rules that enforce it. These rules enforce if an
@@ -79,7 +79,7 @@ pub struct SchemaReadTransaction {
 /// [`syntax`]: ../value/enum.SyntaxType.html
 #[derive(Debug, Clone, Default)]
 pub struct SchemaAttribute {
-    pub name: AttrString,
+    pub name: Attribute,
     pub uuid: Uuid,
     // Perhaps later add aliases?
     pub description: String,
@@ -117,7 +117,7 @@ impl SchemaAttribute {
             .get_ava_single_iutf8(Attribute::AttributeName)
             .map(|s| s.into())
             .ok_or_else(|| {
-                admin_error!("missing {} - {:?}", Attribute::AttributeName.as_ref(), uuid);
+                admin_error!("missing {} - {:?}", Attribute::AttributeName, uuid);
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
@@ -189,7 +189,7 @@ impl SchemaAttribute {
     // There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
-    pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {
+    pub fn validate_partialvalue(&self, a: &Attribute, v: &PartialValue) -> Result<(), SchemaError> {
         let r = match self.syntax {
             SyntaxType::Boolean => matches!(v, PartialValue::Bool(_)),
             SyntaxType::SyntaxId => matches!(v, PartialValue::Syntax(_)),
@@ -259,7 +259,7 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn validate_value(&self, a: &str, v: &Value) -> Result<(), SchemaError> {
+    pub fn validate_value(&self, a: &Attribute, v: &Value) -> Result<(), SchemaError> {
         let r = v.validate()
             && match self.syntax {
                 SyntaxType::Boolean => matches!(v, Value::Bool(_)),
@@ -323,7 +323,7 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn validate_ava(&self, a: &str, ava: &ValueSet) -> Result<(), SchemaError> {
+    pub fn validate_ava(&self, a: &Attribute, ava: &ValueSet) -> Result<(), SchemaError> {
         trace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
@@ -351,7 +351,7 @@ impl From<SchemaAttribute> for EntryInitNew {
 
         entry.set_ava(
             Attribute::AttributeName,
-            vec![Value::new_iutf8(&value.name)],
+            vec![Value::new_iutf8(value.name.as_str())],
         );
         entry.add_ava(Attribute::MultiValue, Value::Bool(value.multivalue));
         // syntax
@@ -409,17 +409,15 @@ impl From<SchemaAttribute> for EntryInitNew {
 /// [`access`]: ../access/index.html
 #[derive(Debug, Clone, Default)]
 pub struct SchemaClass {
-    // Is this used?
-    // class: Vec<String>,
     pub name: AttrString,
     pub uuid: Uuid,
     pub description: String,
     pub sync_allowed: bool,
     /// This allows modification of system types to be extended in custom ways
-    pub systemmay: Vec<AttrString>,
-    pub may: Vec<AttrString>,
-    pub systemmust: Vec<AttrString>,
-    pub must: Vec<AttrString>,
+    pub systemmay: Vec<Attribute>,
+    pub may: Vec<Attribute>,
+    pub systemmust: Vec<Attribute>,
+    pub must: Vec<Attribute>,
     /// A list of classes that this extends. These are an "or", as at least one
     /// of the supplementing classes must also be present. Think of this as
     /// "inherits toward" or "provides". This is just as "strict" as requires but
@@ -518,7 +516,7 @@ impl SchemaClass {
 
     /// An iterator over the full set of attrs that may or must exist
     /// on this class.
-    pub fn may_iter(&self) -> impl Iterator<Item = &AttrString> {
+    pub fn may_iter(&self) -> impl Iterator<Item = &Attribute> {
         self.systemmay
             .iter()
             .chain(self.may.iter())
@@ -562,7 +560,7 @@ impl From<SchemaClass> for EntryInitNew {
         if !value.systemmay.is_empty() {
             entry.set_ava(
                 Attribute::SystemMay,
-                value.systemmay.iter().map(|s| Value::new_iutf8(s)),
+                value.systemmay.iter().map(|s| Value::new_iutf8(s.as_str())),
             );
         }
         // systemexcludes
@@ -576,7 +574,7 @@ impl From<SchemaClass> for EntryInitNew {
         if !value.systemmust.is_empty() {
             entry.set_ava(
                 Attribute::SystemMust,
-                value.systemmust.iter().map(|s| Value::new_iutf8(s)),
+                value.systemmust.iter().map(|s| Value::new_iutf8(s.as_str())),
             );
         }
         // systemsupplements
@@ -593,10 +591,10 @@ impl From<SchemaClass> for EntryInitNew {
 
 pub trait SchemaTransaction {
     fn get_classes(&self) -> &HashMap<AttrString, SchemaClass>;
-    fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute>;
+    fn get_attributes(&self) -> &HashMap<Attribute, SchemaAttribute>;
 
-    fn get_attributes_unique(&self) -> &Vec<AttrString>;
-    fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute>;
+    fn get_attributes_unique(&self) -> &Vec<Attribute>;
+    fn get_reference_types(&self) -> &HashMap<Attribute, SchemaAttribute>;
 
     fn validate(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::with_capacity(0);
@@ -652,7 +650,7 @@ pub trait SchemaTransaction {
         res
     }
 
-    fn is_replicated(&self, attr: &str) -> bool {
+    fn is_replicated(&self, attr: &Attribute) -> bool {
         match self.get_attributes().get(attr) {
             Some(a_schema) => {
                 // We'll likely add more conditions here later.
@@ -669,7 +667,7 @@ pub trait SchemaTransaction {
         }
     }
 
-    fn is_multivalue(&self, attr: &str) -> Result<bool, SchemaError> {
+    fn is_multivalue(&self, attr: &Attribute) -> Result<bool, SchemaError> {
         match self.get_attributes().get(attr) {
             Some(a_schema) => Ok(a_schema.multivalue),
             None => {
@@ -849,9 +847,9 @@ impl<'a> SchemaWriteTransaction<'a> {
         // Bootstrap in definitions of our own schema types
         // First, add all the needed core attributes for schema parsing
         self.attributes.insert(
-            EntryClass::Class.into(),
+            Attribute::Class,
             SchemaAttribute {
-                name: Attribute::Class.into(),
+                name: Attribute::Class,
                 uuid: UUID_SCHEMA_ATTR_CLASS,
                 description: String::from("The set of classes defining an object"),
                 multivalue: true,
@@ -864,9 +862,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            Attribute::Uuid.into(),
+            Attribute::Uuid,
             SchemaAttribute {
-                name: Attribute::Uuid.into(),
+                name: Attribute::Uuid,
                 uuid: UUID_SCHEMA_ATTR_UUID,
                 description: String::from("The universal unique id of the object"),
                 multivalue: false,
@@ -881,9 +879,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
-            Attribute::SourceUuid.into(),
+            Attribute::SourceUuid,
             SchemaAttribute {
-                name: Attribute::SourceUuid.into(),
+                name: Attribute::SourceUuid,
                 uuid: UUID_SCHEMA_ATTR_SOURCE_UUID,
                 description: String::from(
                     "The universal unique id of the source object(s) which conflicted with this entry",
@@ -2199,11 +2197,11 @@ impl<'a> SchemaWriteTransaction<'a> {
 }
 
 impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
-    fn get_attributes_unique(&self) -> &Vec<AttrString> {
+    fn get_attributes_unique(&self) -> &Vec<Attribute> {
         &self.unique_cache
     }
 
-    fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
+    fn get_reference_types(&self) -> &HashMap<Attribute, SchemaAttribute> {
         &self.ref_cache
     }
 
@@ -2211,17 +2209,17 @@ impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
         &self.classes
     }
 
-    fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
+    fn get_attributes(&self) -> &HashMap<Attribute, SchemaAttribute> {
         &self.attributes
     }
 }
 
 impl SchemaTransaction for SchemaReadTransaction {
-    fn get_attributes_unique(&self) -> &Vec<AttrString> {
+    fn get_attributes_unique(&self) -> &Vec<Attribute> {
         &self.unique_cache
     }
 
-    fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute> {
+    fn get_reference_types(&self) -> &HashMap<Attribute, SchemaAttribute> {
         &self.ref_cache
     }
 
@@ -2229,7 +2227,7 @@ impl SchemaTransaction for SchemaReadTransaction {
         &self.classes
     }
 
-    fn get_attributes(&self) -> &HashMap<AttrString, SchemaAttribute> {
+    fn get_attributes(&self) -> &HashMap<Attribute, SchemaAttribute> {
         &self.attributes
     }
 }
@@ -2549,7 +2547,7 @@ mod tests {
 
         // Test single value string
         let single_value_string = SchemaAttribute {
-            name: AttrString::from("single_value"),
+            name: Attribute::from("single_value"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
             index: vec![IndexType::Equality],
@@ -2557,11 +2555,11 @@ mod tests {
             ..Default::default()
         };
 
-        let r1 = single_value_string.validate_ava("single_value", &(vs_iutf8!["test"] as _));
+        let r1 = single_value_string.validate_ava(&Attribute::from("single_value"), &(vs_iutf8!["test"] as _));
         assert_eq!(r1, Ok(()));
 
         let rvs = vs_iutf8!["test1", "test2"] as _;
-        let r2 = single_value_string.validate_ava("single_value", &rvs);
+        let r2 = single_value_string.validate_ava(&Attribute::from("single_value"), &rvs);
         assert_eq!(
             r2,
             Err(SchemaError::InvalidAttributeSyntax(
@@ -2572,7 +2570,7 @@ mod tests {
         // test multivalue string, boolean
 
         let multi_value_string = SchemaAttribute {
-            name: AttrString::from("mv_string"),
+            name: Attribute::from("mv_string"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
@@ -2582,11 +2580,11 @@ mod tests {
         };
 
         let rvs = vs_utf8!["test1".to_string(), "test2".to_string()] as _;
-        let r5 = multi_value_string.validate_ava("mv_string", &rvs);
+        let r5 = multi_value_string.validate_ava(&Attribute::from("mv_string"), &rvs);
         assert_eq!(r5, Ok(()));
 
         let multi_value_boolean = SchemaAttribute {
-            name: AttrString::from("mv_bool"),
+            name: Attribute::from("mv_bool"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
             multivalue: true,
@@ -2612,12 +2610,12 @@ mod tests {
         */
 
         let rvs = vs_bool![true, false];
-        let r4 = multi_value_boolean.validate_ava("mv_bool", &(rvs as _));
+        let r4 = multi_value_boolean.validate_ava(&Attribute::from("mv_bool"), &(rvs as _));
         assert_eq!(r4, Ok(()));
 
         // syntax_id and index_type values
         let single_value_syntax = SchemaAttribute {
-            name: AttrString::from("sv_syntax"),
+            name: Attribute::from("sv_syntax"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
             index: vec![IndexType::Equality],
@@ -2626,18 +2624,18 @@ mod tests {
         };
 
         let rvs = vs_syntax![SyntaxType::try_from("UTF8STRING").unwrap()] as _;
-        let r6 = single_value_syntax.validate_ava("sv_syntax", &rvs);
+        let r6 = single_value_syntax.validate_ava(&Attribute::from("sv_syntax"), &rvs);
         assert_eq!(r6, Ok(()));
 
         let rvs = vs_utf8!["thaeountaheu".to_string()] as _;
-        let r7 = single_value_syntax.validate_ava("sv_syntax", &rvs);
+        let r7 = single_value_syntax.validate_ava(&Attribute::from("sv_syntax"), &rvs);
         assert_eq!(
             r7,
             Err(SchemaError::InvalidAttributeSyntax("sv_syntax".to_string()))
         );
 
         let single_value_index = SchemaAttribute {
-            name: AttrString::from("sv_index"),
+            name: Attribute::from("sv_index"),
             uuid: Uuid::new_v4(),
             description: String::from(""),
             index: vec![IndexType::Equality],
@@ -2646,11 +2644,11 @@ mod tests {
         };
         //
         let rvs = vs_index![IndexType::try_from("EQUALITY").unwrap()] as _;
-        let r8 = single_value_index.validate_ava("sv_index", &rvs);
+        let r8 = single_value_index.validate_ava(&Attribute::from("sv_index"), &rvs);
         assert_eq!(r8, Ok(()));
 
         let rvs = vs_utf8!["thaeountaheu".to_string()] as _;
-        let r9 = single_value_index.validate_ava("sv_index", &rvs);
+        let r9 = single_value_index.validate_ava(&Attribute::from("sv_index"), &rvs);
         assert_eq!(
             r9,
             Err(SchemaError::InvalidAttributeSyntax("sv_index".to_string()))

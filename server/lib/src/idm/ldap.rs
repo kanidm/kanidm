@@ -311,7 +311,7 @@ impl LdapServer {
                 // NOTE: All req_attrs are lowercase at this point.
                 let mapped_attrs: BTreeSet<_> = req_attrs
                     .iter()
-                    .map(|a| AttrString::from(ldap_vattr_map(a).unwrap_or(a)))
+                    .map(|a| Attribute::from(ldap_vattr_map(a).unwrap_or(a)))
                     .collect();
 
                 (Some(mapped_attrs), req_attrs)
@@ -833,9 +833,9 @@ pub(crate) fn ldap_vattr_map(input: &str) -> Option<&str> {
 }
 
 #[inline]
-pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
+pub(crate) fn ldap_attr_filter_map(input: &str) -> Attribute {
     let a_lower = input.to_lowercase();
-    AttrString::from(ldap_vattr_map(&a_lower).unwrap_or(a_lower.as_str()))
+    Attribute::from(ldap_vattr_map(&a_lower).unwrap_or(a_lower.as_str()))
 }
 
 #[cfg(test)]
@@ -1984,10 +1984,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    (Attribute::Mail.as_ref(), "testperson1@example.com"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::Mail, "testperson1@example.com"),
                     (
-                        Attribute::Mail.as_ref(),
+                        Attribute::Mail,
                         "testperson1.alternative@example.com"
                     ),
                     (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
@@ -2044,10 +2044,10 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (Attribute::Name.as_ref(), "testperson1"),
-                    (Attribute::Mail.as_ref(), "testperson1@example.com"),
+                    (Attribute::Name, "testperson1"),
+                    (Attribute::Mail, "testperson1@example.com"),
                     (
-                        Attribute::Mail.as_ref(),
+                        Attribute::Mail,
                         "testperson1.alternative@example.com"
                     ),
                     (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
@@ -2126,7 +2126,7 @@ mod tests {
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                     (
-                        Attribute::EntryUuid.as_ref(),
+                        Attribute::EntryUuid,
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     )
                 );
@@ -2219,7 +2219,7 @@ mod tests {
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
                     (
-                        Attribute::EntryUuid.as_ref(),
+                        Attribute::EntryUuid,
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     )
                 );
@@ -2427,7 +2427,7 @@ mod tests {
                     (Attribute::UidNumber, "12345"),
                     (Attribute::GidNumber, "12345"),
                     (
-                        Attribute::EntryUuid.as_ref(),
+                        Attribute::EntryUuid,
                         "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
                     )
                 );

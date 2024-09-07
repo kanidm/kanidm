@@ -626,7 +626,7 @@ mod tests {
                 Attribute::Uuid,
                 #[allow(clippy::panic)]
                 Value::new_uuid_s(uuid)
-                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid.as_ref().to_string()) })
+                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid) })
             ),
             (Attribute::Description, Value::new_utf8s("testperson-entry")),
             (Attribute::DisplayName, Value::new_utf8s(name))
@@ -642,7 +642,7 @@ mod tests {
             (
                 Attribute::Uuid,
                 Value::new_uuid_s(uuid)
-                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid.as_ref().to_string()) })
+                    .unwrap_or_else(|| { panic!("{}", Attribute::Uuid) })
             ),
             (Attribute::Description, Value::new_utf8s("testgroup-entry"))
         );

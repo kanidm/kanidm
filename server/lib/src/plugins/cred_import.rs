@@ -83,7 +83,7 @@ impl CredImport {
                     Some(c) => {
                         let c = c.update_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential,
+                            &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -91,7 +91,7 @@ impl CredImport {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential,
+                            &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -113,7 +113,7 @@ impl CredImport {
                         acc.append_totp(label.clone(), totp.clone())
                     });
                     e.set_ava(
-                        Attribute::PrimaryCredential,
+                        &Attribute::PrimaryCredential,
                         once(Value::new_credential("primary", c)),
                     );
                 } else {
@@ -153,7 +153,7 @@ impl CredImport {
                 // Unix pw's aren't like primary, we can just splat them here.
                 let c = Credential::new_from_password(pw);
                 e.set_ava(
-                    Attribute::UnixPassword,
+                    &Attribute::UnixPassword,
                     once(Value::new_credential("primary", c)),
                 );
             };

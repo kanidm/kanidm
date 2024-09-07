@@ -608,7 +608,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
-    fn clone_value(&mut self, attr: &str, value: &str) -> Result<Value, OperationError> {
+    fn clone_value(&mut self, attr: &Attribute, value: &str) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
         // Should this actually be a fn of Value - no - I think that introduces issues with the
@@ -702,7 +702,7 @@ pub trait QueryServerTransaction<'a> {
 
     fn clone_partialvalue(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         value: &str,
     ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
@@ -2416,18 +2416,18 @@ mod tests {
         assert!(cr.is_ok());
 
         // test attr not exist
-        let r1 = server_txn.clone_value("tausau", "naoeutnhaou");
+        let r1 = server_txn.clone_value(&Attribute::from("tausau"), "naoeutnhaou");
 
         assert!(r1.is_err());
 
         // test attr not-normalised (error)
         // test attr not-reference
-        let r2 = server_txn.clone_value("NaMe", "NaMe");
+        let r2 = server_txn.clone_value(&Attribute::from("NaMe"), "NaMe");
 
         assert!(r2.is_err());
 
         // test attr reference
-        let r3 = server_txn.clone_value("member", "testperson1");
+        let r3 = server_txn.clone_value(&Attribute::from("member"), "testperson1");
 
         assert_eq!(
             r3,
@@ -2435,7 +2435,7 @@ mod tests {
         );
 
         // test attr reference already resolved.
-        let r4 = server_txn.clone_value("member", "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let r4 = server_txn.clone_value(&Attribute::from("member"), "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
         debug!("{:?}", r4);
         assert_eq!(

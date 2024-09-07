@@ -91,20 +91,20 @@ impl Domain {
 
                 // We always set this, because the DB uuid is authoritative.
                 let u = Value::Uuid(qs.get_domain_uuid());
-                e.set_ava(Attribute::DomainUuid, once(u));
+                e.set_ava(&Attribute::DomainUuid, once(u));
                 trace!("plugin_domain: Applying uuid transform");
 
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres(Attribute::DomainName) {
                     let n = Value::new_iname(qs.get_domain_name());
-                    e.set_ava(Attribute::DomainName, once(n));
+                    e.set_ava(&Attribute::DomainName, once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
 
                 // Setup the minimum functional level if one is not set already.
                 if !e.attribute_pres(Attribute::Version) {
                     let n = Value::Uint32(DOMAIN_LEVEL_0);
-                    e.set_ava(Attribute::Version, once(n));
+                    e.set_ava(&Attribute::Version, once(n));
                     warn!("plugin_domain: Applying domain version transform");
                 } else {
                     debug!("plugin_domain: NOT Applying domain version transform");
@@ -115,7 +115,7 @@ impl Domain {
                     let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
 
-                    e.set_ava(Attribute::DomainDisplayName, once(domain_display_name));
+                    e.set_ava(&Attribute::DomainDisplayName, once(domain_display_name));
                 }
 
                 if qs.get_domain_version() < DOMAIN_LEVEL_6 && !e.attribute_pres(Attribute::FernetPrivateKeyStr) {

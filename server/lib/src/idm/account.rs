@@ -881,9 +881,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let prev_classes: BTreeSet<_> = account_entry
             .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
-                admin_error!(
+                error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
-                    Attribute::Class.as_ref()
+                    Attribute::Class
                 );
                 OperationError::InvalidAccountState(format!(
                     "Missing attribute: {}",

@@ -103,7 +103,7 @@ impl DynGroup {
 
             if let Some(members) = members {
                 // Only set something if there is actually something to do!
-                nd_group.set_ava_set(Attribute::DynMember, members);
+                nd_group.set_ava_set(&Attribute::DynMember, members);
                 // push the entries to pre/cand
             } else {
                 nd_group.purge_ava(Attribute::DynMember);

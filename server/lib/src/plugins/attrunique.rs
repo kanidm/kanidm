@@ -20,12 +20,12 @@ pub struct AttrUnique;
 fn get_cand_attr_set<'a, VALID: 'a, STATE: 'a, T>(
     // cand: &[Entry<VALID, STATE>],
     cand: T,
-    uniqueattrs: &[AttrString],
-) -> Result<BTreeMap<(AttrString, PartialValue), Vec<Uuid>>, OperationError>
+    uniqueattrs: &[Attribute],
+) -> Result<BTreeMap<(Attribute, PartialValue), Vec<Uuid>>, OperationError>
 where
     T: IntoIterator<Item = &'a Entry<VALID, STATE>>,
 {
-    let mut cand_attr: BTreeMap<(AttrString, PartialValue), Vec<Uuid>> = BTreeMap::new();
+    let mut cand_attr: BTreeMap<(Attribute, PartialValue), Vec<Uuid>> = BTreeMap::new();
 
     cand.into_iter()
         // We don't need to consider recycled or tombstoned entries
@@ -39,16 +39,16 @@ where
                 })?;
 
             // Faster to iterate over the attr vec inside this loop.
-            for attrstr in uniqueattrs.iter() {
-                if let Some(vs) = e.get_ava_set(attrstr.try_into()?) {
+            for attr in uniqueattrs.iter() {
+                if let Some(vs) = e.get_ava_set(attr) {
                 for pv in vs.to_partialvalue_iter() {
-                    let key = (attrstr.clone(), pv);
+                    let key = (attr.clone(), pv);
                     cand_attr.entry(key)
                         // Must have conflicted, lets append.
                         .and_modify(|v| {
                             warn!(
                                 "ava already exists -> {:?} on entry {:?} has conflicts within change set",
-                                attrstr,
+                                attr,
                                 e.get_display_id()
                             );
                             v.push(uuid)
@@ -120,8 +120,8 @@ fn enforce_unique<VALID, STATE>(
         // and[ attr eq k, andnot [ uuid eq v ]]
         // Basically this says where name but also not self.
         cand_filters.push(f_and(vec![
-            FC::Eq(attr, v.clone()),
-            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
+            FC::Eq(attr.clone(), v.clone()),
+            f_andnot(FC::Eq(Attribute::Uuid, PartialValue::Uuid(*uuid))),
         ]));
     }
 
@@ -308,8 +308,8 @@ impl Plugin for AttrUnique {
                     // and[ attr eq k, andnot [ uuid eq v ]]
                     // Basically this says where name but also not self.
                     f_and(vec![
-                        FC::Eq(attr, v.clone()),
-                        f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(*uuid))),
+                        FC::Eq(attr.clone(), v.clone()),
+                        f_andnot(FC::Eq(Attribute::Uuid, PartialValue::Uuid(*uuid))),
                     ])
                 })
             })
@@ -364,8 +364,8 @@ impl Plugin for AttrUnique {
                     .iter()
                     .map(|(attr, pv)| {
                         f_and(vec![
-                            FC::Eq(attr, pv.clone()),
-                            f_andnot(FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(uuid))),
+                            FC::Eq(attr.clone(), pv.clone()),
+                            f_andnot(FC::Eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
                         ])
                     })
                     .collect();

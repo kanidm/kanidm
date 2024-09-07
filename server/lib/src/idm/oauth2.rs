@@ -588,7 +588,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     BTreeMap::default()
                 };
 
-                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable);
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
                     trace!("{}", Attribute::Rs256PrivateKeyDer);
                     ent
@@ -5061,7 +5061,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(Attribute::OAuth2RsScopeMap.as_ref()),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![

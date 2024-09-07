@@ -39,7 +39,6 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
-use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
@@ -173,11 +172,11 @@ pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
         .keys()
-        .filter(|k| k != &Attribute::LastModifiedCid)
+        .filter(|k| *k != &Attribute::LastModifiedCid)
         .chain(
             right
                 .keys()
-                .filter(|k| k != &Attribute::LastModifiedCid),
+                .filter(|k| *k != &Attribute::LastModifiedCid),
         )
         .map(|s| s.as_ref())
         .collect();
@@ -267,7 +266,7 @@ where
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
-            .get(Attribute::Uuid.as_ref())
+            .get(&Attribute::Uuid)
             .and_then(|vs| vs.to_uuid_single())
     }
 }
@@ -310,12 +309,12 @@ impl Entry<EntryInit, EntryNew> {
                 trace!(?k, ?v, "attribute");
                 let nk = qs.get_schema()
                     .normalise_attr_name(k);
-                let nk = Attribute::from(&nk);
+                let attr_nk = Attribute::from(nk.as_str());
                 let nv =
-                    valueset::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&nk, vr)));
+                    valueset::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&attr_nk, vr)));
                 trace!(?nv, "new valueset transform");
                 match nv {
-                    Ok(nvi) => Ok((nk, nvi)),
+                    Ok(nvi) => Ok((attr_nk, nvi)),
                     Err(e) => Err(e),
                 }
             })
@@ -368,7 +367,7 @@ impl Entry<EntryInit, EntryNew> {
                 if vs.is_empty() {
                     None
                 } else {
-                    let attr = Attribute::from(k.to_lowercase());
+                    let attr = Attribute::from(k.to_lowercase().as_str());
                     let vv: ValueSet = match attr.as_str() {
                         kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
                             valueset::from_value_iter(
@@ -637,8 +636,8 @@ impl Entry<EntryInit, EntryNew> {
         self.add_ava_int(attr, value);
     }
 
-    pub fn remove_ava(&mut self, attr: Attribute) {
-        self.attrs.remove(attr.as_ref());
+    pub fn remove_ava(&mut self, attr: &Attribute) {
+        self.attrs.remove(attr);
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
@@ -649,7 +648,7 @@ impl Entry<EntryInit, EntryNew> {
         self.set_ava_iter_int(attr, iter);
     }
 
-    pub fn get_ava_mut(&mut self, attr: Attribute) -> Option<&mut ValueSet> {
+    pub fn get_ava_mut<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<&mut ValueSet> {
         self.attrs.get_mut(attr.as_ref())
     }
 }
@@ -674,7 +673,7 @@ impl<STATE> Entry<EntryRefresh, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get(Attribute::Uuid.as_ref())
+            .get(&Attribute::Uuid)
             .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
             .and_then(|vs| {
                 vs.to_uuid_single().ok_or_else(|| {
@@ -1108,7 +1107,7 @@ impl Entry<EntryIncremental, EntryCommitted> {
 impl<STATE> Entry<EntryInvalid, STATE> {
     pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
-            .get(Attribute::Uuid.as_ref())
+            .get(&Attribute::Uuid)
             .and_then(|vs| vs.to_uuid_single())
     }
 
@@ -1120,7 +1119,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     ) -> Result<Entry<EntryValid, STATE>, SchemaError> {
         let uuid: Uuid = self
             .attrs
-            .get(Attribute::Uuid.as_ref())
+            .get(&Attribute::Uuid)
             .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
             .and_then(|vs| {
                 vs.to_uuid_single().ok_or_else(|| {
@@ -1144,7 +1143,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     /// Access a reference set in a directly mutable form. This is "safe" because
     /// referential integrity will check the values added are valid, and because
     /// this is strongly typed it can't violate syntax.
-    pub(crate) fn get_ava_refer_mut(&mut self, attr: Attribute) -> Option<&mut BTreeSet<Uuid>> {
+    pub(crate) fn get_ava_refer_mut<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<&mut BTreeSet<Uuid>> {
         self.attrs
             .get_mut(attr.as_ref())
             .and_then(|vs| vs.as_refer_set_mut())
@@ -1328,7 +1327,7 @@ impl Entry<EntrySealed, EntryNew> {
 }
 
 type IdxDiff<'a> =
-    Vec<Result<(&'a AttrString, IndexType, String), (&'a AttrString, IndexType, String)>>;
+    Vec<Result<(&'a Attribute, IndexType, String), (&'a Attribute, IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
     /// If this entry has ever been committed to disk, retrieve its database id number.
@@ -1415,9 +1414,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         let cands = [Attribute::Spn, Attribute::Name, Attribute::GidNumber];
         cands
             .iter()
-            .filter_map(|c| {
+            .filter_map(|cand| {
                 self.attrs
-                    .get((*c).as_ref())
+                    .get(cand)
                     .map(|vs| vs.to_proto_string_clone_iter())
             })
             .flatten()
@@ -1429,7 +1428,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// entry for sync purposes. These strings are then indexed.
     fn get_externalid2uuid(&self) -> Option<String> {
         self.attrs
-            .get(Attribute::SyncExternalId.as_ref())
+            .get(&Attribute::SyncExternalId)
             .and_then(|vs| vs.to_proto_string_single())
     }
 
@@ -1442,7 +1441,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|vs| vs.to_value_single())
             .or_else(|| {
                 self.attrs
-                    .get(Attribute::Name.as_ref())
+                    .get(&Attribute::Name)
                     .and_then(|vs| vs.to_value_single())
             })
             .unwrap_or_else(|| Value::Uuid(self.get_uuid()))
@@ -1458,7 +1457,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs
-                    .get(Attribute::Name.as_ref())
+                    .get(&Attribute::Name)
                     .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={v}")))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
@@ -1623,18 +1622,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        let attr: Attribute = match Attribute::try_from(ikey.attr.as_str()) {
-                            Ok(val) => val,
-                            Err(err) => {
-                                admin_error!(
-                                    "Failed to convert '{}' to attribute: {:?}",
-                                    ikey.attr,
-                                    err
-                                );
-                                return Vec::with_capacity(0);
-                            }
-                        };
-                        match pre_e.get_ava_set(attr) {
+                        match pre_e.get_ava_set(&ikey.attr) {
                             None => Vec::with_capacity(0),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
@@ -1665,18 +1653,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        let attr: Attribute = match Attribute::try_from(ikey.attr.as_str()) {
-                            Ok(val) => val,
-                            Err(err) => {
-                                admin_error!(
-                                    "Failed to convert '{}' to attribute: {:?}",
-                                    ikey.attr,
-                                    err
-                                );
-                                return Vec::with_capacity(0);
-                            }
-                        };
-                        match post_e.get_ava_set(attr) {
+                        match post_e.get_ava_set(&ikey.attr) {
                             None => Vec::with_capacity(0),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
@@ -1707,18 +1684,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        let attr: Attribute = match Attribute::try_from(ikey.attr.as_str()) {
-                            Ok(val) => val,
-                            Err(err) => {
-                                admin_error!(
-                                    "Failed to convert '{}' to attribute: {:?}",
-                                    ikey.attr,
-                                    err
-                                );
-                                return Vec::with_capacity(0);
-                            }
-                        };
-                        match (pre_e.get_ava_set(attr), post_e.get_ava_set(attr)) {
+                        match (pre_e.get_ava_set(&ikey.attr), post_e.get_ava_set(&ikey.attr)) {
                             (None, None) => {
                                 // Neither have it, do nothing.
                                 Vec::with_capacity(0)
@@ -1901,7 +1867,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                  * This should only be done *once* on entry load.
                  */
                 let cid = r_attrs
-                    .get(Attribute::LastModifiedCid.as_ref())
+                    .get(&Attribute::LastModifiedCid)
                     .and_then(|vs| vs.as_cid_set())
                     .and_then(|set| set.iter().next().cloned())
                     .or_else(|| {
@@ -1936,7 +1902,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         };
 
         let uuid = attrs
-            .get(Attribute::Uuid.as_ref())
+            .get(&Attribute::Uuid)
             .and_then(|vs| vs.to_uuid_single())?;
 
         Some(Entry {
@@ -1968,14 +1934,14 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// all other values that are NOT allowed in this query.
     pub fn reduce_attributes(
         &self,
-        allowed_attrs: &BTreeSet<&str>,
+        allowed_attrs: &BTreeSet<Attribute>,
     ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
         let f_attrs: Map<_, _> = self
             .attrs
             .iter()
             .filter_map(|(k, v)| {
-                if allowed_attrs.contains(k.as_str()) {
+                if allowed_attrs.contains(k) {
                     Some((k.clone(), v.clone()))
                 } else {
                     None
@@ -2221,7 +2187,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                                 );
                                 Err(SchemaError::PhantomAttribute(attr_name.to_string()))
                             } else {
-                                a_schema.validate_ava(attr_name.as_str(), avas)
+                                a_schema.validate_ava(attr_name, avas)
                                 // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);)
                             }
                         }
@@ -2244,7 +2210,7 @@ impl<STATE> Entry<EntryValid, STATE> {
             // The set of "may" is a combination of may and must, since we have already
             // asserted that all must requirements are fulfilled. This allows us to
             // perform extended attribute checking in a single pass.
-            let may: Result<Map<&AttrString, &SchemaAttribute>, _> = classes
+            let may: Result<Map<&Attribute, &SchemaAttribute>, _> = classes
                 .iter()
                 // Join our class systemmmust + must + systemmay + may into one.
                 .flat_map(|cls| {
@@ -2276,14 +2242,14 @@ impl<STATE> Entry<EntryValid, STATE> {
                         Some(a_schema) => {
                             // Now, for each type we do a *full* check of the syntax
                             // and validity of the ava.
-                            a_schema.validate_ava(attr_name.as_str(), avas)
+                            a_schema.validate_ava(attr_name, avas)
                             // .map_err(|e| lrequest_error!("Failed to validate: {}", attr_name);
                         }
                         None => {
                             admin_error!(
                                 "{} {} - not found in the list of valid attributes for this set of classes {:?} - valid attributes are {:?}",
 
-                                attr_name.to_string(),
+                                attr_name.as_str(),
                                 self.get_display_id(),
                                 entry_classes.iter().collect::<Vec<_>>(),
                                 may.keys().collect::<Vec<_>>()
@@ -2368,9 +2334,9 @@ where
             State::Live { at: _, changes } => {
                 changes.iter().any(|(change_attr, change_id)| {
                     change_id >= cid &&
-                    change_attr != attr.as_ref() &&
+                    *change_attr != attr &&
                     // This always changes, and could throw off other detections.
-                    change_attr != Attribute::LastModifiedCid.as_ref()
+                    *change_attr != Attribute::LastModifiedCid
                 })
             }
             State::Tombstone { at } => at == cid,
@@ -2417,7 +2383,7 @@ impl Entry<EntryReduced, EntryCommitted> {
             .iter()
             .filter_map(|(k, vs)| {
                 vs.to_scim_value()
-                    .map(|scim_value| (k, scim_value))
+                    .map(|scim_value| (k.clone(), scim_value))
             })
             .collect();
 
@@ -2542,7 +2508,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// you can think of this boolean as "if a write occurred to the structure", true indicating that
     /// a change occurred.
     fn add_ava_int(&mut self, attr: Attribute, value: Value) -> bool {
-        if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
+        if let Some(vs) = self.attrs.get_mut(&attr) {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
             // Default to the value not being present if wrong typed.
@@ -2568,12 +2534,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             return;
         };
 
-        if let Some(existing_vs) = self.attrs.get_mut(attr.as_ref()) {
+        if let Some(existing_vs) = self.attrs.get_mut(&attr) {
             // This is the suboptimal path. This can only exist in rare cases.
             let _ = existing_vs.merge(&vs);
         } else {
             // Normally this is what's taken.
-            self.attrs.insert(AttrString::from(attr), vs);
+            self.attrs.insert(attr, vs);
         }
     }
 
@@ -2586,173 +2552,142 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub(crate) fn get_display_id(&self) -> String {
         self.attrs
-            .get(Attribute::Spn.as_ref())
+            .get(&Attribute::Spn)
             .and_then(|vs| vs.to_value_single())
             .or_else(|| {
                 self.attrs
-                    .get(Attribute::Name.as_ref())
+                    .get(&Attribute::Name)
                     .and_then(|vs| vs.to_value_single())
             })
             .or_else(|| {
                 self.attrs
-                    .get(Attribute::Uuid.as_ref())
+                    .get(&Attribute::Uuid)
                     .and_then(|vs| vs.to_value_single())
             })
             .map(|value| value.to_proto_string_clone())
             .unwrap_or_else(|| "no entry id available".to_string())
     }
 
-    #[inline(always)]
     /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
         // Get the set of all attribute names in the entry
         self.attrs.keys().map(|a| a.as_str())
     }
 
-    #[inline(always)]
     /// Get an iterator over the current set of values for an attribute name.
     pub fn get_ava(&self) -> &Eattrs {
         &self.attrs
     }
 
-    #[inline(always)]
     pub fn get_ava_iter(&self) -> impl Iterator<Item = (&Attribute, &ValueSet)> {
         self.attrs.iter()
     }
 
-    #[inline(always)]
     /// Return a reference to the current set of values that are associated to this attribute.
-    pub fn get_ava_set(&self, attr: Attribute) -> Option<&ValueSet> {
+    pub fn get_ava_set<A: AsRef<Attribute>>(&self, attr: A) -> Option<&ValueSet> {
         self.attrs.get(attr.as_ref())
     }
 
-    pub fn get_ava_refer(&self, attr: Attribute) -> Option<&BTreeSet<Uuid>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_refer<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<Uuid>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_refer_set())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_iutf8_iter(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_as_iutf8_iter<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_iutf8_iter())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_iutf8(&self, attr: Attribute) -> Option<&BTreeSet<String>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_as_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<String>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_iutf8_set())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_image(&self, attr: Attribute) -> Option<&HashSet<ImageValue>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_as_image<A: AsRef<Attribute>>(&self, attr: A) -> Option<&HashSet<ImageValue>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_imageset())
     }
 
-    #[inline(always)]
-    pub fn get_ava_single_image(&self, attr: Attribute) -> Option<ImageValue> {
-        let images = self
-            .attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_image<A: AsRef<Attribute>>(&self, attr: A) -> Option<ImageValue> {
+        let images =
+            self.get_ava_set(attr)
             .and_then(|vs| vs.as_imageset())?;
         images.iter().next().cloned()
     }
 
-    #[inline(always)]
-    pub fn get_ava_single_credential_type(&self, attr: Attribute) -> Option<CredentialType> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_credential_type<A: AsRef<Attribute>>(&self, attr: A) -> Option<CredentialType> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_credentialtype_single())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_oauthscopes(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_as_oauthscopes<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauthscope_iter())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_oauthscopemaps(
+    pub fn get_ava_as_oauthscopemaps<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, std::collections::BTreeSet<String>>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauthscopemap())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_intenttokens(
+    pub fn get_ava_as_intenttokens<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&std::collections::BTreeMap<String, IntentTokenState>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_intenttoken_map())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_session_map(
+    pub fn get_ava_as_session_map<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, Session>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_session_map())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_apitoken_map(
+    pub fn get_ava_as_apitoken_map<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, ApiToken>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_apitoken_map())
     }
 
-    #[inline(always)]
-    pub fn get_ava_as_oauth2session_map(
+    pub fn get_ava_as_oauth2session_map<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, Oauth2Session>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauth2session_map())
     }
 
-    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
-    pub fn get_ava_iter_iname(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_iname<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_iname_iter())
     }
 
-    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
-    pub fn get_ava_iter_iutf8(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_iutf8_iter())
     }
 
-    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `Uuid`.
-    pub fn get_ava_as_refuuid(
+    pub fn get_ava_as_refuuid<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // If any value is NOT a reference, it's filtered out.
         self.get_ava_set(attr).and_then(|vs| vs.as_ref_uuid_iter())
     }
 
-    #[inline(always)]
     /// If possible, return an iterator over the set of ssh key values transformed into a `&str`.
-    pub fn get_ava_iter_sshpubkeys(
+    pub fn get_ava_iter_sshpubkeys<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<impl Iterator<Item = String> + '_> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_sshpubkey_string_iter())
@@ -2767,8 +2702,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     ///
     /// However, the conversion to IndexType is fallible, so in case of a failure
     /// to convert, an empty vec is returned
-    #[inline(always)]
-    pub(crate) fn get_ava_opt_index(&self, attr: Attribute) -> Option<Vec<IndexType>> {
+    pub(crate) fn get_ava_opt_index<A: AsRef<Attribute>>(&self, attr: A) -> Option<Vec<IndexType>> {
         if let Some(vs) = self.get_ava_set(attr) {
             vs.as_indextype_iter().map(|i| i.collect())
         } else {
@@ -2779,218 +2713,175 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Return a single value of this attributes name, or `None` if it is NOT present, or
     /// there are multiple values present (ambiguous).
-    #[inline(always)]
-    pub fn get_ava_single(&self, attr: Attribute) -> Option<Value> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Value> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_value_single())
     }
 
-    pub fn get_ava_single_proto_string(&self, attr: Attribute) -> Option<String> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_proto_string<A: AsRef<Attribute>>(&self, attr: A) -> Option<String> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_proto_string_single())
     }
 
-    #[inline(always)]
     /// Return a single bool, if valid to transform this value into a boolean.
-    pub fn get_ava_single_bool(&self, attr: Attribute) -> Option<bool> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_bool<A: AsRef<Attribute>>(&self, attr: A) -> Option<bool> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_bool_single())
     }
 
-    #[inline(always)]
     /// Return a single uint32, if valid to transform this value.
-    pub fn get_ava_single_uint32(&self, attr: Attribute) -> Option<u32> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_uint32<A: AsRef<Attribute>>(&self, attr: A) -> Option<u32> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_uint32_single())
     }
 
-    #[inline(always)]
     /// Return a single syntax type, if valid to transform this value.
-    pub fn get_ava_single_syntax(&self, attr: Attribute) -> Option<SyntaxType> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_syntax<A: AsRef<Attribute>>(&self, attr: A) -> Option<SyntaxType> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_syntaxtype_single())
     }
 
-    #[inline(always)]
     /// Return a single credential, if valid to transform this value.
-    pub fn get_ava_single_credential(&self, attr: Attribute) -> Option<&Credential> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_credential<A: AsRef<Attribute>>(&self, attr: A) -> Option<&Credential> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_credential_single())
     }
 
-    #[inline(always)]
     /// Get the set of passkeys on this account, if any are present.
-    pub fn get_ava_passkeys(
+    pub fn get_ava_passkeys<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&BTreeMap<Uuid, (String, PasskeyV4)>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_passkey_map())
     }
 
-    #[inline(always)]
     /// Get the set of devicekeys on this account, if any are present.
-    pub fn get_ava_attestedpasskeys(
+    pub fn get_ava_attestedpasskeys<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A
     ) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_attestedpasskey_map())
     }
 
-    #[inline(always)]
     /// Get the set of uihints on this account, if any are present.
-    pub fn get_ava_uihint(&self, attr: Attribute) -> Option<&BTreeSet<UiHint>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_uihint<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<UiHint>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_uihint_set())
     }
 
-    #[inline(always)]
     /// Return a single secret value, if valid to transform this value.
-    pub fn get_ava_single_secret(&self, attr: Attribute) -> Option<&str> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_secret<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_secret_single())
     }
 
-    #[inline(always)]
     /// Return a single datetime, if valid to transform this value.
-    pub fn get_ava_single_datetime(&self, attr: Attribute) -> Option<OffsetDateTime> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_datetime<A: AsRef<Attribute>>(&self, attr: A) -> Option<OffsetDateTime> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_datetime_single())
     }
 
-    #[inline(always)]
     /// Return a single `&str`, if valid to transform this value.
-    pub(crate) fn get_ava_single_utf8(&self, attr: Attribute) -> Option<&str> {
-        self.attrs
-            .get(attr.as_ref())
+    pub(crate) fn get_ava_single_utf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_utf8_single())
     }
 
-    #[inline(always)]
     /// Return a single `&str`, if valid to transform this value.
-    pub(crate) fn get_ava_single_iutf8(&self, attr: Attribute) -> Option<&str> {
-        self.attrs
-            .get(attr.as_ref())
+    pub(crate) fn get_ava_single_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_iutf8_single())
     }
 
-    #[inline(always)]
     /// Return a single `&str`, if valid to transform this value.
-    pub(crate) fn get_ava_single_iname(&self, attr: Attribute) -> Option<&str> {
-        self.attrs
-            .get(attr.as_ref())
+    pub(crate) fn get_ava_single_iname<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_iname_single())
     }
 
-    #[inline(always)]
     /// Return a single `&Url`, if valid to transform this value.
-    pub fn get_ava_single_url(&self, attr: Attribute) -> Option<&Url> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_url<A: AsRef<Attribute>>(&self, attr: A) -> Option<&Url> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_url_single())
     }
 
-    pub fn get_ava_single_uuid(&self, attr: Attribute) -> Option<Uuid> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_uuid<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_uuid_single())
     }
 
-    pub fn get_ava_single_refer(&self, attr: Attribute) -> Option<Uuid> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_refer<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_refer_single())
     }
 
-    pub fn get_ava_mail_primary(&self, attr: Attribute) -> Option<&str> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_mail_primary<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_email_address_primary_str())
     }
 
-    pub fn get_ava_iter_mail(&self, attr: Attribute) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_mail<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_email_str_iter())
     }
 
-    #[inline(always)]
     /// Return a single protocol filter, if valid to transform this value.
-    pub fn get_ava_single_protofilter(&self, attr: Attribute) -> Option<&ProtoFilter> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_protofilter<A: AsRef<Attribute>>(&self, attr: A) -> Option<&ProtoFilter> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_json_filter_single())
     }
 
-    pub fn get_ava_single_private_binary(&self, attr: Attribute) -> Option<&[u8]> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_private_binary<A: AsRef<Attribute>>(&self, attr: A) -> Option<&[u8]> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_private_binary_single())
     }
 
-    pub fn get_ava_single_jws_key_es256(&self, attr: Attribute) -> Option<&JwsEs256Signer> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_jws_key_es256<A: AsRef<Attribute>>(&self, attr: A) -> Option<&JwsEs256Signer> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_jws_key_es256_single())
     }
 
-    pub fn get_ava_single_eckey_private(&self, attr: Attribute) -> Option<&EcKey<Private>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_eckey_private<A: AsRef<Attribute>>(&self, attr: A) -> Option<&EcKey<Private>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_eckey_private_single())
     }
 
-    pub fn get_ava_single_eckey_public(&self, attr: Attribute) -> Option<&EcKey<Public>> {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn get_ava_single_eckey_public<A: AsRef<Attribute>>(&self, attr: A) -> Option<&EcKey<Public>> {
+        self.get_ava_set(attr)
             .and_then(|vs| vs.to_eckey_public_single())
     }
 
-    pub fn get_ava_webauthn_attestation_ca_list(
+    pub fn get_ava_webauthn_attestation_ca_list<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A
     ) -> Option<&AttestationCaList> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_webauthn_attestation_ca_list())
     }
 
-    pub fn get_ava_application_password(
+    pub fn get_ava_application_password<A: AsRef<Attribute>>(
         &self,
-        attr: Attribute,
+        attr: A,
     ) -> Option<&BTreeMap<Uuid, Vec<ApplicationPassword>>> {
-        self.attrs
-            .get(attr.as_ref())
+        self.get_ava_set(attr)
             .and_then(|vs| vs.as_application_password_map())
     }
 
-    #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
         self.get_ava_single_iname(Attribute::Name)
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present on this entry.
-    pub fn attribute_pres(&self, attr: Attribute) -> bool {
+    pub fn attribute_pres<A: AsRef<Attribute>>(&self, attr: A) -> bool {
         self.attrs.contains_key(attr.as_ref())
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present, and one of its values contains
     /// an exact match of this partial value.
-    pub fn attribute_equality(&self, attr: Attribute, value: &PartialValue) -> bool {
+    pub fn attribute_equality<A: AsRef<Attribute>>(&self, attr: A, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
         // We also normalise filters, to ensure that their values are
@@ -3001,42 +2892,34 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present, and one of it's values contains
     /// the following substring, if possible to perform the substring comparison.
-    pub fn attribute_substring(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn attribute_substring<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+        self.get_ava_set(attr)
             .map(|vset| vset.substring(subvalue))
             .unwrap_or(false)
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present, and one of its values startswith
     /// the following string, if possible to perform the comparison.
-    pub fn attribute_startswith(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn attribute_startswith<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+        self.get_ava_set(attr)
             .map(|vset| vset.startswith(subvalue))
             .unwrap_or(false)
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present, and one of its values startswith
     /// the following string, if possible to perform the comparison.
-    pub fn attribute_endswith(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn attribute_endswith<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+        self.get_ava_set(attr)
             .map(|vset| vset.endswith(subvalue))
             .unwrap_or(false)
     }
 
-    #[inline(always)]
     /// Assert if an attribute of this name is present, and one of its values is less than
     /// the following partial value
-    pub fn attribute_lessthan(&self, attr: Attribute, subvalue: &PartialValue) -> bool {
-        self.attrs
-            .get(attr.as_ref())
+    pub fn attribute_lessthan<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+        self.get_ava_set(attr)
             .map(|vset| vset.lessthan(subvalue))
             .unwrap_or(false)
     }
@@ -3059,48 +2942,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Go through the filter components and check them in the entry.
         // This is recursive!!!!
         match filter {
-            FilterResolved::Eq(attr, value, _) => match attr.try_into() {
-                Ok(a) => self.attribute_equality(a, value),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
-            FilterResolved::Cnt(attr, subvalue, _) => match attr.try_into() {
-                Ok(a) => self.attribute_substring(a, subvalue),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
-            FilterResolved::Stw(attr, subvalue, _) => match attr.try_into() {
-                Ok(a) => self.attribute_startswith(a, subvalue),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
-            FilterResolved::Enw(attr, subvalue, _) => match attr.try_into() {
-                Ok(a) => self.attribute_endswith(a, subvalue),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
-            FilterResolved::Pres(attr, _) => match attr.try_into() {
-                Ok(a) => self.attribute_pres(a),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
-            FilterResolved::LessThan(attr, subvalue, _) => match attr.try_into() {
-                Ok(a) => self.attribute_lessthan(a, subvalue),
-                Err(_) => {
-                    admin_error!("Failed to convert {} to attribute!", attr);
-                    false
-                }
-            },
+            FilterResolved::Eq(attr, value, _) => self.attribute_equality(attr, value),
+            FilterResolved::Cnt(attr, subvalue, _) => self.attribute_substring(attr, subvalue),
+            FilterResolved::Stw(attr, subvalue, _) => self.attribute_startswith(attr, subvalue),
+            FilterResolved::Enw(attr, subvalue, _) => self.attribute_endswith(attr, subvalue),
+            FilterResolved::Pres(attr, _) => self.attribute_pres(attr),
+            FilterResolved::LessThan(attr, subvalue, _) => self.attribute_lessthan(attr, subvalue),
             // Check with ftweedal about or filter zero len correctness.
             FilterResolved::Or(l, _) => l.iter().any(|f| self.entry_match_no_index_inner(f)),
             // Check with ftweedal about and filter zero len correctness.
@@ -3129,18 +2976,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(&str, PartialValue)> = Vec::with_capacity(0);
+        let mut pairs: Vec<(Attribute, PartialValue)> = Vec::with_capacity(0);
 
         for attr in attrs {
             match self.attrs.get(attr) {
                 Some(values) => values
                     .to_partialvalue_iter()
-                    .for_each(|pv| pairs.push((attr, pv))),
+                    .for_each(|pv| pairs.push((attr.clone(), pv))),
                 None => return None,
             }
         }
 
-        let res: Vec<FC<'_>> = pairs
+        let res: Vec<FC> = pairs
             .into_iter()
             .map(|(attr, pv)| FC::Eq(attr, pv))
             .collect();
@@ -3174,17 +3021,17 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             // conversion - so what do? If we remove it here, we could have CSN issue with
             // repl on uuid conflict, but it probably shouldn't be an ava either ...
             // as a result, I think we need to keep this continue line to not cause issues.
-            if k == Attribute::Uuid.as_ref() {
+            if *k == Attribute::Uuid {
                 continue;
             }
             // Get the schema attribute type out.
             match schema.is_multivalue(k) {
                 Ok(r) => {
-                    if !r || k == "systemmust" || k == "systemmay" {
-                        // As this is single value, purge then present to maintain this
-                        // invariant. The other situation we purge is within schema with
-                        // the system types where we need to be able to express REMOVAL
-                        // of attributes, thus we need the purge.
+                    // As this is single value, purge then present to maintain this
+                    // invariant. The other situation we purge is within schema with
+                    // the system types where we need to be able to express REMOVAL
+                    // of attributes, thus we need the purge.
+                    if !r || *k == Attribute::SystemMust || *k == Attribute::SystemMay {
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
@@ -3203,7 +3050,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that should not be considered as "alive".
     pub fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else always Some(self).
-        match self.attrs.get(Attribute::Class.as_ref()) {
+        match self.attrs.get(&Attribute::Class) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Tombstone.to_partialvalue())
                     || cls.contains(&EntryClass::Recycled.to_partialvalue())
@@ -3221,7 +3068,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are recycled in some cases.
     pub fn mask_recycled(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get(Attribute::Class.as_ref()) {
+        match self.attrs.get(&Attribute::Class) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Recycled.to_partialvalue()) {
                     None
@@ -3237,7 +3084,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// filter_map to effectively remove entries that are tombstones in some cases.
     pub fn mask_tombstone(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
-        match self.attrs.get(Attribute::Class.as_ref()) {
+        match self.attrs.get(&Attribute::Class) {
             Some(cls) => {
                 if cls.contains(&EntryClass::Tombstone.to_partialvalue()) {
                     None
@@ -3257,9 +3104,9 @@ where
     fn trigger_last_changed(&mut self) {
         self.valid
             .ecstate
-            .change_ava(&self.valid.cid, Attribute::LastModifiedCid);
+            .change_ava(&self.valid.cid, &Attribute::LastModifiedCid);
         let cv = vs_cid![self.valid.cid.clone()];
-        let _ = self.attrs.insert(Attribute::LastModifiedCid.into(), cv);
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
     }
 
     // This should always work? It's only on validate that we'll build
@@ -3267,20 +3114,20 @@ where
     // If this already exists, we silently drop the event. This is because
     // we need this to be *state* based where we assert presence.
     pub fn add_ava(&mut self, attr: Attribute, value: Value) {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+        self.valid.ecstate.change_ava(&self.valid.cid, &attr);
         self.add_ava_int(attr, value);
     }
 
     pub fn add_ava_if_not_exist(&mut self, attr: Attribute, value: Value) {
         // This returns true if the value WAS changed! See add_ava_int.
-        if self.add_ava_int(attr, value) {
+        if self.add_ava_int(attr.clone(), value) {
             // In this case, we ONLY update the changestate if the value was already present!
-            self.valid.ecstate.change_ava(&self.valid.cid, attr);
+            self.valid.ecstate.change_ava(&self.valid.cid, &attr);
         }
     }
 
-    fn assert_ava(&mut self, attr: Attribute, value: &PartialValue) -> Result<(), OperationError> {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    fn assert_ava<A: AsRef<Attribute>>(&mut self, attr: A, value: &PartialValue) -> Result<(), OperationError> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr.as_ref());
 
         if self.attribute_equality(attr, value) {
             Ok(())
@@ -3291,24 +3138,26 @@ where
 
     /// Remove an attribute-value pair from this entry. If the ava doesn't exist, we
     /// don't do anything else since we are asserting the absence of a value.
-    pub(crate) fn remove_ava(&mut self, attr: Attribute, value: &PartialValue) {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    pub(crate) fn remove_ava<A: AsRef<Attribute>>(&mut self, attr: A, value: &PartialValue) {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
-        let rm = if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
+        let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
             vs.remove(value, &self.valid.cid);
             vs.is_empty()
         } else {
             false
         };
         if rm {
-            self.attrs.remove(attr.as_ref());
+            self.attrs.remove(attr_ref);
         };
     }
 
-    pub(crate) fn remove_avas(&mut self, attr: Attribute, values: &BTreeSet<PartialValue>) {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    pub(crate) fn remove_avas<A: AsRef<Attribute>>(&mut self, attr: A, values: &BTreeSet<PartialValue>) {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
-        let rm = if let Some(vs) = self.attrs.get_mut(attr.as_ref()) {
+        let rm = if let Some(vs) = self.attrs.get_mut(attr_ref) {
             values.iter().for_each(|k| {
                 vs.remove(k, &self.valid.cid);
             });
@@ -3317,39 +3166,41 @@ where
             false
         };
         if rm {
-            self.attrs.remove(attr.as_ref());
+            self.attrs.remove(attr_ref);
         };
     }
 
     /// Remove all values of this attribute from the entry. If it doesn't exist, this
     /// asserts that no content of that attribute exist.
-    pub(crate) fn purge_ava(&mut self, attr: Attribute) {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    pub(crate) fn purge_ava<A: AsRef<Attribute>>(&mut self, attr: A) {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
         // self.valid.eclog.purge_ava(&self.valid.cid, attr);
 
         let can_remove = self
             .attrs
-            .get_mut(attr.as_ref())
+            .get_mut(attr_ref)
             .map(|vs| vs.purge(&self.valid.cid))
             // Default to false since a missing attr can't be removed!
             .unwrap_or_default();
         if can_remove {
-            self.attrs.remove(attr.as_ref());
+            self.attrs.remove(attr_ref);
         }
     }
 
     /// Remove this value set from the entry, returning the value set at the time of removal.
-    pub fn pop_ava(&mut self, attr: Attribute) -> Option<ValueSet> {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    pub fn pop_ava<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<ValueSet> {
+        let attr_ref = attr.as_ref();
+        self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
-        let mut vs = self.attrs.remove(attr.as_ref())?;
+        let mut vs = self.attrs.remove(attr_ref)?;
         if vs.purge(&self.valid.cid) {
             // Can return as is.
             Some(vs)
         } else {
             // This type may need special handling. Clone and reinsert.
             let r_vs = vs.clone();
-            self.attrs.insert(attr.into(), vs);
+            self.attrs.insert(attr_ref.clone(), vs);
             Some(r_vs)
         }
     }
@@ -3359,40 +3210,40 @@ where
     /// useful for things like "session" to test the grace window by removing the revoked
     /// sessions from the value set that you otherwise, could not.
     #[cfg(test)]
-    pub(crate) fn force_trim_ava(&mut self, attr: Attribute) -> Option<ValueSet> {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr);
+    pub(crate) fn force_trim_ava<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<ValueSet> {
+        self.valid.ecstate.change_ava(&self.valid.cid, attr.as_ref());
         self.attrs.remove(attr.as_ref())
     }
 
     /// Replace the content of this attribute with the values from this
     /// iterator. If the iterator is empty, the attribute is purged.
-    pub fn set_ava<T>(&mut self, attr: Attribute, iter: T)
+    pub fn set_ava<T>(&mut self, attr: &Attribute, iter: T)
     where
         T: Clone + IntoIterator<Item = Value>,
     {
         self.purge_ava(attr);
-        self.set_ava_iter_int(attr, iter)
+        self.set_ava_iter_int(attr.clone(), iter)
     }
 
     /// Replace the content of this attribute with a new value set. Effectively this is
     /// a a "purge and set".
-    pub fn set_ava_set(&mut self, attr: Attribute, vs: ValueSet) {
+    pub fn set_ava_set(&mut self, attr: &Attribute, vs: ValueSet) {
         self.purge_ava(attr);
-        if let Some(existing_vs) = self.attrs.get_mut(attr.as_ref()) {
+        if let Some(existing_vs) = self.attrs.get_mut(attr) {
             let _ = existing_vs.merge(&vs);
         } else {
-            self.attrs.insert(attr.into(), vs);
+            self.attrs.insert(attr.clone(), vs);
         }
     }
 
     /// Merge the content from the new ValueSet into the existing ValueSet. If no existing
     /// ValueSet is present, then these data are inserted.
-    pub fn merge_ava_set(&mut self, attr: Attribute, vs: ValueSet) -> Result<(), OperationError> {
+    pub fn merge_ava_set(&mut self, attr: &Attribute, vs: ValueSet) -> Result<(), OperationError> {
         self.valid.ecstate.change_ava(&self.valid.cid, attr);
-        if let Some(existing_vs) = self.attrs.get_mut(attr.as_ref()) {
+        if let Some(existing_vs) = self.attrs.get_mut(attr) {
             existing_vs.merge(&vs)
         } else {
-            self.attrs.insert(attr.into(), vs);
+            self.attrs.insert(attr.clone(), vs);
             Ok(())
         }
     }
@@ -3405,16 +3256,16 @@ where
         for modify in modlist {
             match modify {
                 Modify::Present(attr, value) => {
-                    self.add_ava(Attribute::try_from(attr)?, value.clone());
+                    self.add_ava(attr.clone(), value.clone());
                 }
                 Modify::Removed(attr, value) => {
-                    self.remove_ava(Attribute::try_from(attr)?, value);
+                    self.remove_ava(attr, value);
                 }
                 Modify::Purged(attr) => {
-                    self.purge_ava(Attribute::try_from(attr)?);
+                    self.purge_ava(attr);
                 }
                 Modify::Assert(attr, value) => {
-                    self.assert_ava(attr.to_owned(), value).inspect_err(|_e| {
+                    self.assert_ava(attr, value).inspect_err(|_e| {
                         error!("Modification assertion was not met. {} {:?}", attr, value);
                     })?;
                 }
@@ -3699,13 +3550,13 @@ mod tests {
         assert!(e.apply_modlist(&present_single_mods).is_ok());
         assert!(e.attribute_equality(Attribute::Attr, &PartialValue::new_iutf8("value")));
         assert!(e.apply_modlist(&remove_mods).is_ok());
-        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
+        assert!(!e.attrs.contains_key(&Attribute::Attr));
 
         let remove_empty_mods = remove_mods;
 
         assert!(e.apply_modlist(&remove_empty_mods).is_ok());
 
-        assert!(!e.attrs.contains_key(Attribute::Attr.as_ref()));
+        assert!(!e.attrs.contains_key(&Attribute::Attr));
     }
 
     #[test]

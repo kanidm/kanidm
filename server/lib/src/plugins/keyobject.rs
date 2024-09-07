@@ -220,7 +220,7 @@ impl KeyObjectManagement {
                     .as_valuesets()?
                     .into_iter()
                     .try_for_each(|(attribute, valueset)| {
-                        entry.merge_ava_set(attribute, valueset)
+                        entry.merge_ava_set(&attribute, valueset)
                     })?;
 
                 Ok(())
