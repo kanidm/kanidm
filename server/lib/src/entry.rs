@@ -2216,6 +2216,7 @@ impl<STATE> Entry<EntryValid, STATE> {
                 .iter()
                 // Join our class systemmmust + must + systemmay + may into one.
                 .flat_map(|cls| {
+                    trace!(?cls);
                     cls.systemmust
                         .iter()
                         .chain(cls.must.iter())

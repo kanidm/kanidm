@@ -435,12 +435,11 @@ pub struct SchemaClass {
 
 impl SchemaClass {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
-        trace!("Converting {}", value);
         // uuid
         let uuid = value.get_uuid();
         // Convert entry to a schema class.
         if !value.attribute_equality(Attribute::Class, &EntryClass::ClassType.into()) {
-            admin_error!("class classtype not present - {:?}", uuid);
+            error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
             ));
@@ -451,15 +450,20 @@ impl SchemaClass {
             .get_ava_single_iutf8(Attribute::ClassName)
             .map(AttrString::from)
             .ok_or_else(|| {
-                admin_error!("missing {} - {:?}", Attribute::ClassName, uuid);
+                error!("missing {} - {:?}", Attribute::ClassName, uuid);
                 OperationError::InvalidSchemaState(format!("missing {}", Attribute::ClassName))
             })?;
+
+        if name  == "key_provider" {
+            trace!(?value);
+        }
+
         // description
         let description = value
             .get_ava_single_utf8(Attribute::Description)
             .map(String::from)
             .ok_or_else(|| {
-                admin_error!("missing {} - {}", Attribute::Description, name);
+                error!("missing {} - {}", Attribute::Description, name);
                 OperationError::InvalidSchemaState(format!("missing {}", Attribute::Description))
             })?;
 
@@ -470,20 +474,32 @@ impl SchemaClass {
         // These are all "optional" lists of strings.
         let systemmay = value
             .get_ava_iter_iutf8(Attribute::SystemMay)
-            .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_default();
+            .into_iter()
+            .flat_map(|iter|
+                iter.map(Attribute::from)
+            )
+            .collect();
         let systemmust = value
             .get_ava_iter_iutf8(Attribute::SystemMust)
-            .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_default();
+            .into_iter()
+            .flat_map(|iter|
+                iter.map(Attribute::from)
+            )
+            .collect();
         let may = value
             .get_ava_iter_iutf8(Attribute::May)
-            .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_default();
+            .into_iter()
+            .flat_map(|iter|
+                iter.map(Attribute::from)
+            )
+            .collect();
         let must = value
             .get_ava_iter_iutf8(Attribute::Must)
-            .map(|i| i.map(|v| v.into()).collect())
-            .unwrap_or_default();
+            .into_iter()
+            .flat_map(|iter|
+                iter.map(Attribute::from)
+            )
+            .collect();
 
         let systemsupplements = value
             .get_ava_iter_iutf8(Attribute::SystemSupplements)

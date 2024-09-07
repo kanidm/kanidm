@@ -1652,6 +1652,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // load them.
         let attributetypes: Result<Vec<_>, _> =
             res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
+
         let attributetypes = attributetypes.map_err(|e| {
             admin_error!("reload schema attributetypes {:?}", e);
             e
