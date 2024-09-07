@@ -397,6 +397,8 @@ impl Attribute {
         }
     }
 
+    // We allow this because the standard lib from_str is fallible, and we want an infallible version.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(value: &str) -> Self {
         // Could this be something like heapless to save allocations? Also gives a way
         // to limit length of str?
