@@ -941,8 +941,8 @@ impl QueryServerReadV1 {
         let target = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .inspect_err(|e| {
-                error!("Error resolving id to target");
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         let lte = ListUserAuthTokenEvent { ident, target };
