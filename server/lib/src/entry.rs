@@ -2316,14 +2316,20 @@ where
     /// Determine if any attribute of this entry changed excluding the attribute named.
     /// This allows for detection of entry changes unless the change was to a specific
     /// attribute.
-    pub(crate) fn entry_changed_excluding_attribute(&self, attr: Attribute, cid: &Cid) -> bool {
+    pub(crate) fn entry_changed_excluding_attribute<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+        cid: &Cid,
+    ) -> bool {
+        let attr_ref = attr.as_ref();
+
         use crate::repl::entry::State;
 
         match self.get_changestate().current() {
             State::Live { at: _, changes } => {
                 changes.iter().any(|(change_attr, change_id)| {
                     change_id >= cid &&
-                    *change_attr != attr &&
+                    *change_attr != *attr_ref &&
                     // This always changes, and could throw off other detections.
                     *change_attr != Attribute::LastModifiedCid
                 })
