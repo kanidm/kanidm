@@ -2,7 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::constants::*;
 use crate::internal::OperationError;
-use std::borrow::Borrow;
 use std::fmt;
 
 pub use smartstring::alias::String as AttrString;
@@ -185,12 +184,6 @@ pub enum Attribute {
     Custom(AttrString),
 }
 
-impl Borrow<str> for Attribute {
-    fn borrow(&self) -> &str {
-        self.as_str()
-    }
-}
-
 impl AsRef<str> for Attribute {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -228,7 +221,6 @@ impl From<Attribute> for AttrString {
         AttrString::from(val.as_str())
     }
 }
-
 
 impl Attribute {
     pub fn as_str(&self) -> &str {
@@ -406,7 +398,9 @@ impl Attribute {
     }
 
     pub fn from_str(value: &str) -> Self {
-        match value {
+        // Could this be something like heapless to save allocations? Also gives a way
+        // to limit length of str?
+        match value.to_lowercase().as_str() {
             ATTR_ACCOUNT => Attribute::Account,
             ATTR_ACCOUNT_EXPIRE => Attribute::AccountExpire,
             ATTR_ACCOUNT_VALID_FROM => Attribute::AccountValidFrom,
@@ -594,7 +588,7 @@ mod test {
 
     #[test]
     fn test_valueattribute_as_str() {
-        assert!(Attribute::Class.as_ref() == "class");
+        assert!(Attribute::Class.as_str() == "class");
         assert!(Attribute::Class.to_string() == *"class");
     }
 

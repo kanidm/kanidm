@@ -468,7 +468,7 @@ impl std::fmt::Debug for DbEntry {
                         writeln!(f, "\nlive {at:>32}")?;
                         for (attr, cid) in changes {
                             write!(f, "\n{attr:>32} - {cid} ")?;
-                            if let Some(vs) = attrs.get(attr.as_str()) {
+                            if let Some(vs) = attrs.get(attr) {
                                 write!(f, "{vs:?}")?;
                             } else {
                                 write!(f, "-")?;

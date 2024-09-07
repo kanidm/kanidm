@@ -631,7 +631,7 @@ impl ReplIncrementalEntryV1 {
 
                         // Then setup to supply it.
                         if within {
-                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let live_attr = live_attrs.get(attr_name);
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe| {
                                 if maybe.len() > 0 {

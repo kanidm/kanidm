@@ -2426,7 +2426,7 @@ mod tests {
 
         // test attr not-normalised (error)
         // test attr not-reference
-        let r2 = server_txn.clone_value(&Attribute::from("NaMe"), "NaMe");
+        let r2 = server_txn.clone_value(&Attribute::Custom("NaMe".into()), "NaMe");
 
         assert!(r2.is_err());
 

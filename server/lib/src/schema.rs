@@ -692,14 +692,10 @@ pub trait SchemaTransaction {
         }
     }
 
-    fn normalise_attr_name(&self, an: &str) -> AttrString {
-        // Will duplicate.
-        AttrString::from(an.to_lowercase())
-    }
-
-    fn normalise_attr_if_exists(&self, an: &str) -> Option<AttrString> {
-        if self.get_attributes().contains_key(an) {
-            Some(self.normalise_attr_name(an))
+    fn normalise_attr_if_exists(&self, an: &str) -> Option<Attribute> {
+        let attr = Attribute::from(an);
+        if self.get_attributes().contains_key(&attr) {
+            Some(attr)
         } else {
             None
         }

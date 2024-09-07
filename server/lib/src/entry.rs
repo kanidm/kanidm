@@ -304,8 +304,7 @@ impl Entry<EntryInit, EntryNew> {
             .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
-                let nk = qs.get_schema().normalise_attr_name(k);
-                let attr_nk = Attribute::from(nk.as_str());
+                let attr_nk = Attribute::from(k.as_str());
                 let nv = valueset::from_result_value_iter(
                     v.iter().map(|vr| qs.clone_value(&attr_nk, vr)),
                 );
@@ -1437,7 +1436,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// extract its name, and if that's not present, extract its uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
-            .get("spn")
+            .get(&Attribute::Spn)
             .and_then(|vs| vs.to_value_single())
             .or_else(|| {
                 self.attrs
@@ -1453,7 +1452,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// See also - `get_display_id`
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
-            .get("spn")
+            .get(&Attribute::Spn)
             .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={v}")))
             .or_else(|| {
                 self.attrs

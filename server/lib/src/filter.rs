@@ -917,17 +917,17 @@ impl FilterComp {
         let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Cnt(a, v) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 FilterComp::Pres(nk)
             }
             ProtoFilter::Or(l) => {
@@ -969,17 +969,17 @@ impl FilterComp {
         let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Cnt(a, v) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
-                let nk = Attribute::from(qs.get_schema().normalise_attr_name(a).as_str());
+                let nk = Attribute::from(a.as_str());
                 FilterComp::Pres(nk)
             }
             ProtoFilter::Or(l) => {
