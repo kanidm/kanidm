@@ -518,11 +518,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .effective_permission_check(
                 ident,
                 Some(btreeset![
-                    Attribute::PrimaryCredential.into(),
-                    Attribute::PassKeys.into(),
-                    Attribute::AttestedPasskeys.into(),
-                    Attribute::UnixPassword.into(),
-                    Attribute::SshPublicKey.into()
+                    Attribute::PrimaryCredential,
+                    Attribute::PassKeys,
+                    Attribute::AttestedPasskeys,
+                    Attribute::UnixPassword,
+                    Attribute::SshPublicKey
                 ]),
                 &[entry],
             )?;
@@ -658,7 +658,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .get_accesscontrols()
                 .effective_permission_check(
                     ident,
-                    Some(btreeset![Attribute::SyncCredentialPortal.into()]),
+                    Some(btreeset![Attribute::SyncCredentialPortal]),
                     &[entry],
                 )?;
 
@@ -940,7 +940,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                 if ct >= max_ttl {
                     modlist.push_mod(Modify::Removed(
-                        Attribute::CredentialUpdateIntentToken.into(),
+                        Attribute::CredentialUpdateIntentToken,
                         PartialValue::IntentToken(existing_intent_id.clone()),
                     ));
                 }
@@ -1113,11 +1113,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut modlist = ModifyList::new();
 
         modlist.push_mod(Modify::Removed(
-            Attribute::CredentialUpdateIntentToken.into(),
+            Attribute::CredentialUpdateIntentToken,
             PartialValue::IntentToken(intent_id.clone()),
         ));
         modlist.push_mod(Modify::Present(
-            Attribute::CredentialUpdateIntentToken.into(),
+            Attribute::CredentialUpdateIntentToken,
             Value::IntentToken(
                 intent_id.clone(),
                 IntentTokenState::InProgress {
@@ -1309,11 +1309,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                Attribute::CredentialUpdateIntentToken.into(),
+                Attribute::CredentialUpdateIntentToken,
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                Attribute::CredentialUpdateIntentToken.into(),
+                Attribute::CredentialUpdateIntentToken,
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Consumed { max_ttl },
@@ -1323,37 +1323,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         match session.primary_state {
             CredentialState::Modifiable => {
-                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential));
                 if let Some(ncred) = &session.primary {
                     let vcred = Value::new_credential("primary", ncred.clone());
-                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
+                    modlist.push_mod(Modify::Present(Attribute::PrimaryCredential, vcred));
                 };
             }
             CredentialState::DeleteOnly | CredentialState::PolicyDeny => {
-                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential.into()));
+                modlist.push_mod(Modify::Purged(Attribute::PrimaryCredential));
             }
             CredentialState::AccessDeny => {}
         };
 
         match session.passkeys_state {
             CredentialState::DeleteOnly | CredentialState::Modifiable => {
-                modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
+                modlist.push_mod(Modify::Purged(Attribute::PassKeys));
                 // Add all the passkeys. If none, nothing will be added! This handles
                 // the delete case quite cleanly :)
                 session.passkeys.iter().for_each(|(uuid, (tag, pk))| {
                     let v_pk = Value::Passkey(*uuid, tag.clone(), pk.clone());
-                    modlist.push_mod(Modify::Present(Attribute::PassKeys.into(), v_pk));
+                    modlist.push_mod(Modify::Present(Attribute::PassKeys, v_pk));
                 });
             }
             CredentialState::PolicyDeny => {
-                modlist.push_mod(Modify::Purged(Attribute::PassKeys.into()));
+                modlist.push_mod(Modify::Purged(Attribute::PassKeys));
             }
             CredentialState::AccessDeny => {}
         };
 
         match session.attested_passkeys_state {
             CredentialState::DeleteOnly | CredentialState::Modifiable => {
-                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys.into()));
+                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys));
                 // Add all the passkeys. If none, nothing will be added! This handles
                 // the delete case quite cleanly :)
                 session
@@ -1361,29 +1361,29 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .iter()
                     .for_each(|(uuid, (tag, pk))| {
                         let v_pk = Value::AttestedPasskey(*uuid, tag.clone(), pk.clone());
-                        modlist.push_mod(Modify::Present(Attribute::AttestedPasskeys.into(), v_pk));
+                        modlist.push_mod(Modify::Present(Attribute::AttestedPasskeys, v_pk));
                     });
             }
             CredentialState::PolicyDeny => {
-                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys.into()));
+                modlist.push_mod(Modify::Purged(Attribute::AttestedPasskeys));
             }
             // CredentialState::Disabled |
             CredentialState::AccessDeny => {}
         };
 
         if session.unixcred_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::UnixPassword.into()));
+            modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
             if let Some(ncred) = &session.unixcred {
                 let vcred = Value::new_credential("unix", ncred.clone());
-                modlist.push_mod(Modify::Present(Attribute::UnixPassword.into(), vcred));
+                modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
             }
         }
 
         if session.sshpubkey_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey.into()));
+            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
             for (tag, pk) in &session.sshkeys {
                 let v_sk = Value::SshKey(tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(Attribute::SshPublicKey.into(), v_sk));
+                modlist.push_mod(Modify::Present(Attribute::SshPublicKey, v_sk));
             }
         }
 
@@ -1452,11 +1452,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             };
 
             modlist.push_mod(Modify::Removed(
-                Attribute::CredentialUpdateIntentToken.into(),
+                Attribute::CredentialUpdateIntentToken,
                 PartialValue::IntentToken(intent_token_id.clone()),
             ));
             modlist.push_mod(Modify::Present(
-                Attribute::CredentialUpdateIntentToken.into(),
+                Attribute::CredentialUpdateIntentToken,
                 Value::IntentToken(
                     intent_token_id.clone(),
                     IntentTokenState::Valid { max_ttl, perms },

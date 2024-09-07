@@ -572,8 +572,12 @@ impl Attribute {
 
             #[cfg(not(test))]
             _ => Attribute::Custom(AttrString::from(value)),
+            // Allowed only in tests
+            #[allow(clippy::unreachable)]
             #[cfg(test)]
-            _ => unreachable!(),
+            _ => {
+                unreachable!()
+            }
         }
     }
 }
@@ -600,7 +604,7 @@ mod test {
         use enum_iterator::all;
         let the_list = all::<Attribute>().collect::<Vec<_>>();
         for attr in the_list {
-            let attr2 = Attribute::try_from(attr.as_str()).unwrap();
+            let attr2 = Attribute::from(attr.as_str());
             assert!(attr == attr2);
         }
     }

@@ -866,8 +866,8 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -1507,8 +1507,8 @@ mod tests {
         let me = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(acct))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::AccountExpire.into(), v_expire),
-                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
+                Modify::Present(Attribute::AccountExpire, v_expire),
+                Modify::Present(Attribute::AccountValidFrom, v_valid_from),
             ]),
         );
         assert!(idms_write.qs_write.modify(&me).is_ok());
@@ -1896,7 +1896,7 @@ mod tests {
                     PartialValue::new_iname(BUILTIN_GROUP_PEOPLE_PII_READ.name)
                 )),
                 ModifyList::new_list(vec![Modify::Present(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     Value::Refer(sa_uuid),
                 )]),
             );

@@ -110,7 +110,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Check access against a "fake" modify.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::Class.into(),
+            Attribute::Class,
             EntryClass::Recycled.into(),
         )]);
 
@@ -152,11 +152,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     dm_mods
                         .entry(g_uuid)
                         .and_modify(|mlist| {
-                            let m = Modify::Present(Attribute::Member.into(), Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
                             mlist.push_mod(m);
                         })
                         .or_insert({
-                            let m = Modify::Present(Attribute::Member.into(), Value::Refer(u));
+                            let m = Modify::Present(Attribute::Member, Value::Refer(u));
                             ModifyList::new_list(vec![m])
                         });
                 }
@@ -268,7 +268,7 @@ mod tests {
             admin.clone(),
             filt_i_rc.clone(),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Class.into(),
+                Attribute::Class,
                 EntryClass::Recycled.into(),
             )]),
         );
@@ -529,7 +529,7 @@ mod tests {
             admin.clone(),
             filt_i_ts.clone(),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Class.into(),
+                Attribute::Class,
                 EntryClass::Tombstone.into(),
             )]),
         );

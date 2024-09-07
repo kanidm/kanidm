@@ -1074,7 +1074,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1113,7 +1113,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1170,7 +1170,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -1230,7 +1230,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1297,7 +1297,7 @@ mod tests {
                 f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1369,7 +1369,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1411,7 +1411,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1472,7 +1472,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -1543,7 +1543,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1633,11 +1633,11 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Removed(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     PartialValue::new_refer_s(UUID_A).unwrap()
                 ),
                 Modify::Removed(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     PartialValue::new_refer_s(UUID_D).unwrap()
                 ),
             ]),

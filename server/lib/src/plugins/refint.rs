@@ -587,7 +587,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -621,7 +621,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -668,10 +668,10 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
                 ),
-                Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
+                Modify::Present(Attribute::Member, Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
             None,
             |_| {},
@@ -713,7 +713,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::Member.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Member)]),
             None,
             |_| {},
             |_| {}
@@ -744,7 +744,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -789,7 +789,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -891,7 +891,7 @@ mod tests {
 
         run_delete_test!(
             Err(OperationError::SchemaViolation(
-                SchemaError::MissingMustAttribute(vec!["acp_receiver_group".to_string()])
+                SchemaError::MissingMustAttribute(vec![Attribute::AcpReceiverGroup])
             )),
             preload,
             filter!(f_eq(
@@ -1107,7 +1107,7 @@ mod tests {
         // Mod the user
         let modlist = modlist!([
             Modify::Present(
-                Attribute::OAuth2Session.into(),
+                Attribute::OAuth2Session,
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
@@ -1120,7 +1120,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                Attribute::UserAuthTokenSession.into(),
+                Attribute::UserAuthTokenSession,
                 Value::Session(
                     parent_id,
                     Session {

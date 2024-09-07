@@ -843,7 +843,7 @@ pub trait AccessControlsTransaction<'a> {
                         SearchResult::Grant => Access::Grant,
                         SearchResult::Allow(allowed_attrs) => {
                             // Bound by requested attrs?
-                            Access::Allow(allowed_attrs.into_iter().map(|s| s.into()).collect())
+                            Access::Allow(allowed_attrs.into_iter().collect())
                         }
                     };
 
@@ -1827,7 +1827,7 @@ mod tests {
             )),
         );
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset![Attribute::Name.into()]);
+        se_anon.attrs = Some(btreeset![Attribute::Name]);
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -2411,7 +2411,7 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: Access::Allow(btreeset![Attribute::Name.into()]),
+                search: Access::Allow(btreeset![Attribute::Name]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
                 modify_class: AccessClass::Allow(BTreeSet::new()),

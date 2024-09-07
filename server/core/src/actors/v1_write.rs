@@ -50,7 +50,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -58,7 +58,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name)
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -71,7 +71,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err=?e, "Failed to begin modify during modify_from_parts");
+                error!(err=?e, "Failed to begin modify during modify_from_parts");
                 return Err(e);
             }
         };
@@ -98,16 +98,15 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
         let target_uuid = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name)
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         let f_uuid = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(target_uuid)));
@@ -122,7 +121,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify during modify_from_internal_parts");
+                error!(err = ?e, "Failed to begin modify during modify_from_internal_parts");
                 return Err(e);
             }
         };
@@ -152,7 +151,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -188,14 +187,14 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
         let mdf = match ModifyEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify during handle_modify");
+                error!(err = ?e, "Failed to begin modify during handle_modify");
                 return Err(e);
             }
         };
@@ -224,13 +223,13 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let del = match DeleteEvent::from_message(ident, &req, &mut idms_prox_write.qs_write) {
             Ok(d) => d,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin delete");
+                error!(err = ?e, "Failed to begin delete");
                 return Err(e);
             }
         };
@@ -261,21 +260,21 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
         // Transform the ProtoEntry to a Modlist
         let modlist =
             ModifyList::from_patch(&update, &mut idms_prox_write.qs_write).map_err(|e| {
-                admin_error!(err = ?e, "Invalid Patch Request");
+                error!(err = ?e, "Invalid Patch Request");
                 e
             })?;
 
         let mdf =
             ModifyEvent::from_internal_parts(ident, &modlist, &filter, &idms_prox_write.qs_write)
                 .map_err(|e| {
-                admin_error!(err = ?e, "Failed to begin modify during handle_internalpatch");
+                error!(err = ?e, "Failed to begin modify during handle_internalpatch");
                 e
             })?;
 
@@ -303,13 +302,13 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let del = match DeleteEvent::from_parts(ident, &filter, &mut idms_prox_write.qs_write) {
             Ok(d) => d,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin delete");
+                error!(err = ?e, "Failed to begin delete");
                 return Err(e);
             }
         };
@@ -338,13 +337,13 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let rev = match ReviveRecycledEvent::from_parts(ident, &filter, &idms_prox_write.qs_write) {
             Ok(r) => r,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin revive");
+                error!(err = ?e, "Failed to begin revive");
                 return Err(e);
             }
         };
@@ -373,7 +372,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -386,12 +385,12 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
         let gpe = GeneratePasswordEvent::from_parts(ident, target_uuid).map_err(|e| {
-            admin_error!(
+            error!(
                 err = ?e,
                 "Failed to begin handle_service_account_credential_generate",
             );
@@ -421,7 +420,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -429,7 +428,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -464,7 +463,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -472,7 +471,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -504,7 +503,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -512,7 +511,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -550,7 +549,7 @@ impl QueryServerWriteV1 {
                 return Ok(())
             }
             Err(err) => {
-                admin_error!(?err, "Invalid identity");
+                error!(?err, "Invalid identity");
                 return Err(err);
             }
         };
@@ -561,7 +560,7 @@ impl QueryServerWriteV1 {
         };
 
         let target = ident.get_uuid().ok_or_else(|| {
-            admin_error!("Invalid identity - no uuid present");
+            error!("Invalid identity - no uuid present");
             OperationError::InvalidState
         })?;
 
@@ -594,7 +593,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -602,7 +601,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -610,7 +609,7 @@ impl QueryServerWriteV1 {
             .init_credential_update(&InitCredentialUpdateEvent::new(ident, target_uuid), ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin init_credential_update",
                 );
@@ -643,7 +642,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -651,7 +650,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -662,7 +661,7 @@ impl QueryServerWriteV1 {
             )
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin init_credential_update_intent",
                 );
@@ -693,7 +692,7 @@ impl QueryServerWriteV1 {
             .exchange_intent_credential_update(intent_token, ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin exchange_intent_credential_update",
                 );
@@ -733,7 +732,7 @@ impl QueryServerWriteV1 {
             .commit_credential_update(&session_token, ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin commit_credential_update",
                 );
@@ -765,7 +764,7 @@ impl QueryServerWriteV1 {
             .cancel_credential_update(&session_token, ct)
             .and_then(|tok| idms_prox_write.commit().map(|_| tok))
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin commit_credential_cancel",
                 );
@@ -789,14 +788,14 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let target_uuid = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -821,7 +820,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -829,7 +828,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -839,7 +838,7 @@ impl QueryServerWriteV1 {
             target_uuid,
         )
         .map_err(|e| {
-            admin_error!(
+            error!(
                 err = ?e,
                 "Failed to begin idm_account_regenerate_radius",
             );
@@ -869,14 +868,14 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let target_uuid = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -890,7 +889,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify during purge attribute");
+                error!(err = ?e, "Failed to begin modify during purge attribute");
                 return Err(e);
             }
         };
@@ -922,14 +921,14 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let target_uuid = idms_prox_write
             .qs_write
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -949,7 +948,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1061,24 +1060,24 @@ impl QueryServerWriteV1 {
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            Attribute::Class.into(),
+            Attribute::Class,
             EntryClass::PosixAccount.into(),
         )))
         .chain(iter::once(
             gidnumber
                 .as_ref()
-                .map(|_| Modify::Purged(Attribute::GidNumber.into())),
+                .map(|_| Modify::Purged(Attribute::GidNumber)),
         ))
         .chain(iter::once(gidnumber.map(|n| {
-            Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(n))
+            Modify::Present(Attribute::GidNumber, Value::new_uint32(n))
         })))
         .chain(iter::once(
             shell
                 .as_ref()
-                .map(|_| Modify::Purged(Attribute::LoginShell.into())),
+                .map(|_| Modify::Purged(Attribute::LoginShell)),
         ))
         .chain(iter::once(shell.map(|s| {
-            Modify::Present(Attribute::LoginShell.into(), Value::new_iutf8(s.as_str()))
+            Modify::Present(Attribute::LoginShell, Value::new_iutf8(s.as_str()))
         })))
         .flatten()
         .collect();
@@ -1109,9 +1108,9 @@ impl QueryServerWriteV1 {
 
         let gidnumber_mods = if let Some(gid) = gx.gidnumber {
             [
-                Some(Modify::Purged(Attribute::GidNumber.into())),
+                Some(Modify::Purged(Attribute::GidNumber)),
                 Some(Modify::Present(
-                    Attribute::GidNumber.into(),
+                    Attribute::GidNumber,
                     Value::new_uint32(gid),
                 )),
             ]
@@ -1119,7 +1118,7 @@ impl QueryServerWriteV1 {
             [None, None]
         };
         let mods: Vec<_> = iter::once(Some(Modify::Present(
-            Attribute::Class.into(),
+            Attribute::Class,
             EntryClass::PosixGroup.into(),
         )))
         .chain(gidnumber_mods)
@@ -1151,7 +1150,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1159,9 +1158,8 @@ impl QueryServerWriteV1 {
             idms_prox_write
                 .qs_write
                 .name_to_uuid(uuid_or_name.as_str())
-                .map_err(|e| {
-                    admin_info!("Error resolving as gidnumber continuing ...");
-                    e
+                .inspect_err(|err| {
+                    info!(?err, "Error resolving as gidnumber continuing ...");
                 })
         })?;
 
@@ -1172,7 +1170,7 @@ impl QueryServerWriteV1 {
             cred,
         )
         .map_err(|e| {
-            admin_error!(err = ?e, "Failed to begin UnixPasswordChangeEvent");
+            error!(err = ?e, "Failed to begin UnixPasswordChangeEvent");
             e
         })?;
         idms_prox_write
@@ -1240,7 +1238,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1248,7 +1246,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1267,7 +1265,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1298,7 +1296,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1306,7 +1304,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1321,7 +1319,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1356,7 +1354,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1364,7 +1362,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1384,7 +1382,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1418,7 +1416,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1441,7 +1439,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1473,7 +1471,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1481,7 +1479,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1498,7 +1496,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1532,7 +1530,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1540,7 +1538,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1559,7 +1557,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1590,7 +1588,7 @@ impl QueryServerWriteV1 {
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1598,7 +1596,7 @@ impl QueryServerWriteV1 {
             .qs_write
             .name_to_uuid(group.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving group name to target");
+                error!(err = ?e, "Error resolving group name to target");
                 e
             })?;
 
@@ -1615,7 +1613,7 @@ impl QueryServerWriteV1 {
         ) {
             Ok(m) => m,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin modify");
+                error!(err = ?e, "Failed to begin modify");
                 return Err(e);
             }
         };
@@ -1644,9 +1642,8 @@ impl QueryServerWriteV1 {
 
         let ident = idms_prox_write
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity");
             })?;
 
         idms_prox_write

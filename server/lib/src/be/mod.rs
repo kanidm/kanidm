@@ -3680,7 +3680,7 @@ mod tests {
 
             assert!(single_result.is_ok());
             let filt = e
-                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .filter_from_attrs(&[Attribute::NonExist])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             // check allow on allids
@@ -3718,7 +3718,7 @@ mod tests {
             assert!(single_result.is_ok());
 
             let filt = e
-                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .filter_from_attrs(&[Attribute::NonExist])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
 
@@ -3821,7 +3821,7 @@ mod tests {
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
-            attr: Attribute::Uuid.into(),
+            attr: Attribute::Uuid,
             itype: IndexType::Equality,
         }];
 

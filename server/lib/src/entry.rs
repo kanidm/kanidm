@@ -670,11 +670,10 @@ impl<STATE> Entry<EntryRefresh, STATE> {
         let uuid: Uuid = self
             .attrs
             .get(&Attribute::Uuid)
-            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid]))
             .and_then(|vs| {
-                vs.to_uuid_single().ok_or_else(|| {
-                    SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()])
-                })
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid]))
             })?;
 
         // Build the new valid entry ...
@@ -1007,9 +1006,9 @@ impl Entry<EntryIncremental, EntryNew> {
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![left_at.clone()];
 
-                attrs_new.insert(Attribute::Uuid.into(), vs_uuid![self.valid.uuid]);
-                attrs_new.insert(Attribute::Class.into(), class_ava);
-                attrs_new.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
+                attrs_new.insert(Attribute::Uuid, vs_uuid![self.valid.uuid]);
+                attrs_new.insert(Attribute::Class, class_ava);
+                attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1056,9 +1055,9 @@ impl Entry<EntryIncremental, EntryNew> {
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                attrs_new.insert(Attribute::Uuid.into(), vs_uuid![db_ent.valid.uuid]);
-                attrs_new.insert(Attribute::Class.into(), class_ava);
-                attrs_new.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
+                attrs_new.insert(Attribute::Uuid, vs_uuid![db_ent.valid.uuid]);
+                attrs_new.insert(Attribute::Class, class_ava);
+                attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1116,11 +1115,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let uuid: Uuid = self
             .attrs
             .get(&Attribute::Uuid)
-            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()]))
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid]))
             .and_then(|vs| {
-                vs.to_uuid_single().ok_or_else(|| {
-                    SchemaError::MissingMustAttribute(vec![Attribute::Uuid.to_string()])
-                })
+                vs.to_uuid_single()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec![Attribute::Uuid]))
             })?;
 
         // Build the new valid entry ...
@@ -1972,9 +1970,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
         let last_mod_ava = vs_cid![cid.clone()];
 
-        attrs_new.insert(Attribute::Uuid.into(), vs_uuid![self.get_uuid()]);
-        attrs_new.insert(Attribute::Class.into(), class_ava);
-        attrs_new.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
+        attrs_new.insert(Attribute::Uuid, vs_uuid![self.get_uuid()]);
+        attrs_new.insert(Attribute::Class, class_ava);
+        attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
 
         // ⚠️  No return from this point!
         ecstate.tombstone(&cid);
@@ -2143,21 +2141,9 @@ impl<STATE> Entry<EntryValid, STATE> {
         //   for each attr in must, check it's present on our ent
         let mut missing_must = Vec::with_capacity(0);
         for attr in must.iter() {
-            let attribute: Attribute = match Attribute::try_from(attr.name.as_str()) {
-                Ok(val) => val,
-                Err(err) => {
-                    admin_error!(
-                        "Failed to convert missing_must '{}' to attribute: {:?}",
-                        attr.name,
-                        err
-                    );
-                    return Err(SchemaError::InvalidAttribute(attr.name.to_string()));
-                }
-            };
-
-            let avas = self.get_ava_set(attribute);
+            let avas = self.get_ava_set(&attr.name);
             if avas.is_none() {
-                missing_must.push(attr.name.to_string());
+                missing_must.push(attr.name.clone());
             }
         }
 
@@ -2517,7 +2503,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             #[allow(clippy::expect_used)]
             let vs = valueset::from_value_iter(std::iter::once(value))
                 .expect("Unable to fail - non-zero iter, and single value type!");
-            self.attrs.insert(attr.into(), vs);
+            self.attrs.insert(attr, vs);
             // The attribute did not exist before.
             true
         }
@@ -2547,7 +2533,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[cfg(test)]
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = vs_cid![cid];
-        let _ = self.attrs.insert(Attribute::LastModifiedCid.into(), cv);
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
     }
 
     pub(crate) fn get_display_id(&self) -> String {
@@ -3140,11 +3126,12 @@ where
         self.add_ava_int(attr, value);
     }
 
-    pub fn add_ava_if_not_exist(&mut self, attr: Attribute, value: Value) {
+    pub fn add_ava_if_not_exist<A: AsRef<Attribute>>(&mut self, attr: A, value: Value) {
+        let attr_ref = attr.as_ref();
         // This returns true if the value WAS changed! See add_ava_int.
-        if self.add_ava_int(attr.clone(), value) {
+        if self.add_ava_int(attr_ref.clone(), value) {
             // In this case, we ONLY update the changestate if the value was already present!
-            self.valid.ecstate.change_ava(&self.valid.cid, &attr);
+            self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
         }
     }
 
@@ -3535,7 +3522,7 @@ mod tests {
         e.add_ava(Attribute::UserId, Value::from("william"));
 
         let present_single_mods = ModifyList::new_valid_list(vec![Modify::Present(
-            Attribute::Attr.into(),
+            Attribute::Attr,
             Value::new_iutf8("value"),
         )]);
 
@@ -3547,8 +3534,8 @@ mod tests {
 
         // Assert present for multivalue
         let present_multivalue_mods = ModifyList::new_valid_list(vec![
-            Modify::Present(Attribute::Class.into(), Value::new_iutf8("test")),
-            Modify::Present(Attribute::Class.into(), Value::new_iutf8("multi_test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8("test")),
+            Modify::Present(Attribute::Class, Value::new_iutf8("multi_test")),
         ]);
 
         assert!(e.apply_modlist(&present_multivalue_mods).is_ok());
@@ -3557,15 +3544,13 @@ mod tests {
         assert!(e.attribute_equality(Attribute::Class, &PartialValue::new_iutf8("multi_test")));
 
         // Assert purge on single/multi/empty value
-        let purge_single_mods =
-            ModifyList::new_valid_list(vec![Modify::Purged(Attribute::Attr.into())]);
+        let purge_single_mods = ModifyList::new_valid_list(vec![Modify::Purged(Attribute::Attr)]);
 
         assert!(e.apply_modlist(&purge_single_mods).is_ok());
 
         assert!(!e.attribute_pres(Attribute::Attr));
 
-        let purge_multi_mods =
-            ModifyList::new_valid_list(vec![Modify::Purged(Attribute::Class.into())]);
+        let purge_multi_mods = ModifyList::new_valid_list(vec![Modify::Purged(Attribute::Class)]);
 
         assert!(e.apply_modlist(&purge_multi_mods).is_ok());
 
@@ -3577,7 +3562,7 @@ mod tests {
 
         // Assert removed on value that exists and doesn't exist
         let remove_mods = ModifyList::new_valid_list(vec![Modify::Removed(
-            Attribute::Attr.into(),
+            Attribute::Attr,
             PartialValue::new_iutf8("value"),
         )]);
 
@@ -3610,21 +3595,21 @@ mod tests {
         let mut idxmeta = HashMap::with_capacity(8);
         idxmeta.insert(
             IdxKey {
-                attr: Attribute::UserId.into(),
+                attr: Attribute::UserId,
                 itype: IndexType::Equality,
             },
             IdxSlope::MAX,
         );
         idxmeta.insert(
             IdxKey {
-                attr: Attribute::UserId.into(),
+                attr: Attribute::UserId,
                 itype: IndexType::Presence,
             },
             IdxSlope::MAX,
         );
         idxmeta.insert(
             IdxKey {
-                attr: Attribute::Extra.into(),
+                attr: Attribute::Extra,
                 itype: IndexType::Equality,
             },
             IdxSlope::MAX,
@@ -3642,19 +3627,12 @@ mod tests {
         assert!(
             del_r[0]
                 == Err((
-                    &Attribute::UserId.into(),
+                    &Attribute::UserId,
                     IndexType::Equality,
                     "william".to_string()
                 ))
         );
-        assert!(
-            del_r[1]
-                == Err((
-                    &Attribute::UserId.into(),
-                    IndexType::Presence,
-                    "_".to_string()
-                ))
-        );
+        assert!(del_r[1] == Err((&Attribute::UserId, IndexType::Presence, "_".to_string())));
 
         // Check generating an add diff
         let mut add_r = Entry::idx_diff(&idxmeta, None, Some(&e1));
@@ -3663,19 +3641,12 @@ mod tests {
         assert!(
             add_r[0]
                 == Ok((
-                    &Attribute::UserId.into(),
+                    &Attribute::UserId,
                     IndexType::Equality,
                     "william".to_string()
                 ))
         );
-        assert!(
-            add_r[1]
-                == Ok((
-                    &Attribute::UserId.into(),
-                    IndexType::Presence,
-                    "_".to_string()
-                ))
-        );
+        assert!(add_r[1] == Ok((&Attribute::UserId, IndexType::Presence, "_".to_string())));
 
         // Check the mod cases now
 
@@ -3685,25 +3656,11 @@ mod tests {
 
         // Check "adding" an attribute.
         let add_a_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e1_mod));
-        assert!(
-            add_a_r[0]
-                == Ok((
-                    &Attribute::Extra.into(),
-                    IndexType::Equality,
-                    "test".to_string()
-                ))
-        );
+        assert!(add_a_r[0] == Ok((&Attribute::Extra, IndexType::Equality, "test".to_string())));
 
         // Check "removing" an attribute.
         let del_a_r = Entry::idx_diff(&idxmeta, Some(&e1_mod), Some(&e1));
-        assert!(
-            del_a_r[0]
-                == Err((
-                    &Attribute::Extra.into(),
-                    IndexType::Equality,
-                    "test".to_string()
-                ))
-        );
+        assert!(del_a_r[0] == Err((&Attribute::Extra, IndexType::Equality, "test".to_string())));
 
         // Change an attribute.
         let mut chg_r = Entry::idx_diff(&idxmeta, Some(&e1), Some(&e2));
@@ -3712,7 +3669,7 @@ mod tests {
         assert!(
             chg_r[1]
                 == Err((
-                    &Attribute::UserId.into(),
+                    &Attribute::UserId,
                     IndexType::Equality,
                     "william".to_string()
                 ))
@@ -3721,7 +3678,7 @@ mod tests {
         assert!(
             chg_r[0]
                 == Ok((
-                    &Attribute::UserId.into(),
+                    &Attribute::UserId,
                     IndexType::Equality,
                     "claire".to_string()
                 ))

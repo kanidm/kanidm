@@ -117,8 +117,8 @@ mod tests {
             .internal_modify_uuid(
                 UUID_IDM_ALL_ACCOUNTS,
                 &ModifyList::new_list(vec![
-                    Modify::Purged(Attribute::AuthSessionExpiry.into()),
-                    Modify::Purged(Attribute::PrivilegeExpiry.into()),
+                    Modify::Purged(Attribute::AuthSessionExpiry),
+                    Modify::Purged(Attribute::PrivilegeExpiry),
                 ]),
             )
             .expect("failed to modify account");

@@ -616,7 +616,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Uuid.into(),
+                Attribute::Uuid,
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
@@ -649,7 +649,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Uuid.into(),
+                Attribute::Uuid,
                 PartialValue::Uuid(uuid!("f15a7219-1d15-44e3-a7b4-bec899c07788"))
             )]),
             None,
@@ -681,7 +681,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_a")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::Uuid.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Uuid)]),
             None,
             |_| {},
             |_| {}

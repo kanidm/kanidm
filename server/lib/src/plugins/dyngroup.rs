@@ -659,7 +659,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    Attribute::DynGroupFilter.into(),
+                    Attribute::DynGroupFilter,
                     Value::JsonFilt(ProtoFilter::Eq(
                         Attribute::Name.to_string(),
                         "testgroup".to_string()
@@ -720,7 +720,7 @@ mod tests {
             ModifyList::new_list(vec![
                 Modify::Purged("dyngroup_filter".into()),
                 Modify::Present(
-                    Attribute::DynGroupFilter.into(),
+                    Attribute::DynGroupFilter,
                     Value::JsonFilt(ProtoFilter::Eq(
                         Attribute::Name.to_string(),
                         "no_such_entry_exists".to_string()
@@ -775,7 +775,7 @@ mod tests {
                 PartialValue::new_iname("test_dyngroup")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::DynMember.into(),
+                Attribute::DynMember,
                 Value::Refer(UUID_ADMIN)
             )]),
             None,
@@ -830,7 +830,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_dyngroup")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::DynMember.into(),)]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::DynMember,)]),
             None,
             |_| {},
             |qs: &mut QueryServerWriteTransaction| {
@@ -883,8 +883,8 @@ mod tests {
                 PartialValue::new_iname("not_testgroup")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::Name.into(),),
-                Modify::Present(Attribute::Name.into(), Value::new_iname("testgroup"))
+                Modify::Purged(Attribute::Name,),
+                Modify::Present(Attribute::Name, Value::new_iname("testgroup"))
             ]),
             None,
             |_| {},
@@ -935,8 +935,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("testgroup"))),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::Name.into(),),
-                Modify::Present(Attribute::Name.into(), Value::new_iname("not_testgroup"))
+                Modify::Purged(Attribute::Name,),
+                Modify::Present(Attribute::Name, Value::new_iname("not_testgroup"))
             ]),
             None,
             |_| {},

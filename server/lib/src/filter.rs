@@ -603,19 +603,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (Attribute::Uuid.into(), IndexType::Equality),
-            (Attribute::Uuid.into(), IndexType::Presence),
-            (Attribute::Name.into(), IndexType::Equality),
-            (Attribute::Name.into(), IndexType::SubString),
-            (Attribute::Name.into(), IndexType::Presence),
-            (Attribute::Class.into(), IndexType::Equality),
-            (Attribute::Class.into(), IndexType::Presence),
-            (Attribute::Member.into(), IndexType::Equality),
-            (Attribute::Member.into(), IndexType::Presence),
-            (Attribute::MemberOf.into(), IndexType::Equality),
-            (Attribute::MemberOf.into(), IndexType::Presence),
-            (Attribute::DirectMemberOf.into(), IndexType::Equality),
-            (Attribute::DirectMemberOf.into(), IndexType::Presence),
+            (Attribute::Uuid, IndexType::Equality),
+            (Attribute::Uuid, IndexType::Presence),
+            (Attribute::Name, IndexType::Equality),
+            (Attribute::Name, IndexType::SubString),
+            (Attribute::Name, IndexType::Presence),
+            (Attribute::Class, IndexType::Equality),
+            (Attribute::Class, IndexType::Presence),
+            (Attribute::Member, IndexType::Equality),
+            (Attribute::Member, IndexType::Presence),
+            (Attribute::MemberOf, IndexType::Equality),
+            (Attribute::MemberOf, IndexType::Presence),
+            (Attribute::DirectMemberOf, IndexType::Equality),
+            (Attribute::DirectMemberOf, IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -721,10 +721,10 @@ impl FromStr for Filter<FilterInvalid> {
 impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
-            FC::Eq(a, v) => FilterComp::Eq(Attribute::from(a), v),
-            FC::Cnt(a, v) => FilterComp::Cnt(Attribute::from(a), v),
-            FC::Pres(a) => FilterComp::Pres(Attribute::from(a)),
-            FC::LessThan(a, v) => FilterComp::LessThan(Attribute::from(a), v),
+            FC::Eq(a, v) => FilterComp::Eq(a, v),
+            FC::Cnt(a, v) => FilterComp::Cnt(a, v),
+            FC::Pres(a) => FilterComp::Pres(a),
+            FC::LessThan(a, v) => FilterComp::LessThan(a, v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
@@ -736,8 +736,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq(Attribute::Class.into(), EntryClass::Tombstone.into()),
-                FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
+                FilterComp::Eq(Attribute::Class, EntryClass::Tombstone.into()),
+                FilterComp::Eq(Attribute::Class, EntryClass::Recycled.into()),
             ]))),
             fc,
         ])
@@ -745,12 +745,12 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
+            FilterComp::Eq(Attribute::Class, EntryClass::Recycled.into()),
             fc,
         ])
     }
 
-    fn get_attr_set<'a>(&'a self, r_set: &mut BTreeSet<Attribute>) {
+    fn get_attr_set(&self, r_set: &mut BTreeSet<Attribute>) {
         match self {
             FilterComp::Eq(attr, _)
             | FilterComp::Cnt(attr, _)
@@ -1317,7 +1317,7 @@ impl FilterResolved {
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(Attribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
+                FilterResolved::Eq(Attribute::Uuid, PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Cnt(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1406,7 +1406,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
-                    Attribute::Uuid.into(),
+                    Attribute::Uuid,
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )

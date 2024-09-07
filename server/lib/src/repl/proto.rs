@@ -538,9 +538,8 @@ impl ReplEntryV1 {
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
-                            error!("Unable to restore valueset for {}", attr_name);
-                            e
+                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                            error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
                         if eattrs.insert(attr_name.clone(), v).is_some() {
                             error!(
@@ -575,9 +574,9 @@ impl ReplEntryV1 {
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                eattrs.insert(Attribute::Uuid.into(), vs_uuid![self.uuid]);
-                eattrs.insert(Attribute::Class.into(), class_ava);
-                eattrs.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
+                eattrs.insert(Attribute::Uuid, vs_uuid![self.uuid]);
+                eattrs.insert(Attribute::Class, class_ava);
+                eattrs.insert(Attribute::LastModifiedCid, last_mod_ava);
 
                 let ecstate = EntryChangeState {
                     st: State::Tombstone { at },
@@ -671,9 +670,8 @@ impl ReplIncrementalEntryV1 {
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
-                            error!("Unable to restore valueset for {}", attr_name);
-                            e
+                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                            error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
                         if eattrs.insert(attr_name.clone(), v).is_some() {
                             error!(
