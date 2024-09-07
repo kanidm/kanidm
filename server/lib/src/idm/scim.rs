@@ -1237,7 +1237,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             mods.extend(
                 values
                     .into_iter()
-                    .map(|val| Modify::Present(scim_attr_name, val)),
+                    .map(|val| Modify::Present(scim_attr_name.clone(), val)),
             );
         }
 

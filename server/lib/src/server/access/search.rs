@@ -164,10 +164,7 @@ fn search_filter_entry(
     AccessResult::Allow(allowed_attrs)
 }
 
-fn search_oauth2_filter_entry(
-    ident: &Identity,
-    entry: &Arc<EntrySealedCommitted>,
-) -> AccessResult {
+fn search_oauth2_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -> AccessResult {
     match &ident.origin {
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {

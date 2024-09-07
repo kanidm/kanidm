@@ -1208,11 +1208,9 @@ impl<'a> BackendWriteTransaction<'a> {
             let ctx_ent_uuid = ctx_ent.get_uuid();
             let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
-            let idl = self.get_idlayer().get_idl(
-                &Attribute::Uuid,
-                IndexType::Equality,
-                &idx_key,
-            )?;
+            let idl =
+                self.get_idlayer()
+                    .get_idl(&Attribute::Uuid, IndexType::Equality, &idx_key)?;
 
             let entry = match idl {
                 Some(idl) if idl.is_empty() => {
@@ -1676,9 +1674,10 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
-            self.idlayer.create_idx(&ikey.attr, ikey.itype)
-        })
+        self.idxmeta_wr
+            .idxkeys
+            .keys()
+            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {

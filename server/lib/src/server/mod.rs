@@ -1736,12 +1736,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        let sync_agreement_map: HashMap<Uuid, BTreeSet<String>> = res
+        let sync_agreement_map: HashMap<Uuid, BTreeSet<Attribute>> = res
             .iter()
             .filter_map(|e| {
                 e.get_ava_as_iutf8(Attribute::SyncYieldAuthority)
-                    .cloned()
-                    .map(|set| (e.get_uuid(), set))
+                    .map(|set| {
+                        let set: BTreeSet<_> =
+                            set.iter().map(|s| Attribute::from(s.as_str())).collect();
+                        (e.get_uuid(), set)
+                    })
             })
             .collect();
 
@@ -2435,7 +2438,10 @@ mod tests {
         );
 
         // test attr reference already resolved.
-        let r4 = server_txn.clone_value(&Attribute::from("member"), "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let r4 = server_txn.clone_value(
+            &Attribute::from("member"),
+            "cc8e95b4-c24f-4d68-ba54-8bed76f63930",
+        );
 
         debug!("{:?}", r4);
         assert_eq!(

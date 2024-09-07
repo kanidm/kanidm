@@ -179,22 +179,18 @@ impl ModifyList<ModifyInvalid> {
             .mods
             .iter()
             .map(|m| match m {
-                Modify::Present(attr, value) => {
-                    match schema_attributes.get(attr) {
-                        Some(schema_a) => schema_a
-                            .validate_value(attr, value)
-                            .map(|_| Modify::Present(attr.clone(), value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr.to_string())),
-                    }
-                }
-                Modify::Removed(attr, value) => {
-                    match schema_attributes.get(attr) {
-                        Some(schema_a) => schema_a
-                            .validate_partialvalue(attr, value)
-                            .map(|_| Modify::Removed(attr.clone(), value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr.to_string())),
-                    }
-                }
+                Modify::Present(attr, value) => match schema_attributes.get(attr) {
+                    Some(schema_a) => schema_a
+                        .validate_value(attr, value)
+                        .map(|_| Modify::Present(attr.clone(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
+                Modify::Removed(attr, value) => match schema_attributes.get(attr) {
+                    Some(schema_a) => schema_a
+                        .validate_partialvalue(attr, value)
+                        .map(|_| Modify::Removed(attr.clone(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
                 Modify::Assert(attr, value) => match schema_attributes.get(attr) {
                     // TODO: given attr is an enum... you can't get this wrong anymore?
                     Some(schema_a) => schema_a
@@ -202,12 +198,10 @@ impl ModifyList<ModifyInvalid> {
                         .map(|_| Modify::Assert(attr.clone(), value.clone())),
                     None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 },
-                Modify::Purged(attr) => {
-                    match schema_attributes.get(attr) {
-                        Some(_attr_name) => Ok(Modify::Purged(attr.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr.to_string())),
-                    }
-                }
+                Modify::Purged(attr) => match schema_attributes.get(attr) {
+                    Some(_attr_name) => Ok(Modify::Purged(attr.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
             })
             .collect();
 

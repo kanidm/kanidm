@@ -110,10 +110,11 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         let r_attrs: Option<BTreeSet<Attribute>> = attrs.map(|vs| {
             vs.iter()
-                .filter_map(|a|
-                    qs.get_schema().normalise_attr_if_exists(a.as_str())
+                .filter_map(|a| {
+                    qs.get_schema()
+                        .normalise_attr_if_exists(a.as_str())
                         .map(|a_str| Attribute::from(a_str.as_str()))
-                )
+                })
                 .collect()
         });
 
@@ -146,10 +147,11 @@ impl SearchEvent {
     ) -> Result<Self, OperationError> {
         let r_attrs: Option<BTreeSet<Attribute>> = attrs.map(|vs| {
             vs.iter()
-                .filter_map(|a|
-                    qs.get_schema().normalise_attr_if_exists(a.as_str())
+                .filter_map(|a| {
+                    qs.get_schema()
+                        .normalise_attr_if_exists(a.as_str())
                         .map(|a_str| Attribute::from(a_str.as_str()))
-                )
+                })
                 .collect()
         });
 

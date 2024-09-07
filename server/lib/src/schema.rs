@@ -189,7 +189,11 @@ impl SchemaAttribute {
     // There may be a difference between a value and a filter value on complex
     // types - IE a complex type may have multiple parts that are secret, but a filter
     // on that may only use a single tagged attribute for example.
-    pub fn validate_partialvalue(&self, a: &Attribute, v: &PartialValue) -> Result<(), SchemaError> {
+    pub fn validate_partialvalue(
+        &self,
+        a: &Attribute,
+        v: &PartialValue,
+    ) -> Result<(), SchemaError> {
         let r = match self.syntax {
             SyntaxType::Boolean => matches!(v, PartialValue::Bool(_)),
             SyntaxType::SyntaxId => matches!(v, PartialValue::Syntax(_)),
@@ -574,7 +578,10 @@ impl From<SchemaClass> for EntryInitNew {
         if !value.systemmust.is_empty() {
             entry.set_ava(
                 Attribute::SystemMust,
-                value.systemmust.iter().map(|s| Value::new_iutf8(s.as_str())),
+                value
+                    .systemmust
+                    .iter()
+                    .map(|s| Value::new_iutf8(s.as_str())),
             );
         }
         // systemsupplements
@@ -2555,7 +2562,8 @@ mod tests {
             ..Default::default()
         };
 
-        let r1 = single_value_string.validate_ava(&Attribute::from("single_value"), &(vs_iutf8!["test"] as _));
+        let r1 = single_value_string
+            .validate_ava(&Attribute::from("single_value"), &(vs_iutf8!["test"] as _));
         assert_eq!(r1, Ok(()));
 
         let rvs = vs_iutf8!["test1", "test2"] as _;

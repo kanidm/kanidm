@@ -58,6 +58,13 @@ pub enum Access {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AccessClass {
+    Grant,
+    Denied,
+    Allow(BTreeSet<AttrString>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
     // I don't think we need this? The ident is implied by the requester.
     // ident: Uuid,
@@ -66,7 +73,7 @@ pub struct AccessEffectivePermission {
     pub search: Access,
     pub modify_pres: Access,
     pub modify_rem: Access,
-    pub modify_class: AttrString,
+    pub modify_class: AccessClass,
 }
 
 pub enum AccessResult {
@@ -83,7 +90,8 @@ pub enum AccessResult {
     Allow(BTreeSet<Attribute>),
 }
 
-pub enum AccessResultClass {
+#[allow(dead_code)]
+pub enum AccessResultClass<'a> {
     // Deny this operation unconditionally.
     Denied,
     // Unbounded allow, provided no denied exists.
@@ -92,9 +100,9 @@ pub enum AccessResultClass {
     Ignore,
     // Limit the allowed attr set to this - this doesn't
     // allow anything, it constrains what might be allowed.
-    Constrain(BTreeSet<AttrString>),
+    Constrain(BTreeSet<&'a str>),
     // Allow these attributes within constraints.
-    Allow(BTreeSet<AttrString>),
+    Allow(BTreeSet<&'a str>),
 }
 
 // =========================================================================
@@ -107,7 +115,7 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
-    sync_agreements: HashMap<Uuid, BTreeSet<String>>,
+    sync_agreements: HashMap<Uuid, BTreeSet<Attribute>>,
     // Oauth2
     // Sync prov
 }
@@ -575,19 +583,19 @@ pub trait AccessControlsTransaction<'a> {
             }
 
             // build two sets of "requested pres" and "requested rem"
-            let requested_pres: BTreeSet<&str> = modlist
+            let requested_pres: BTreeSet<Attribute> = modlist
                 .iter()
                 .filter_map(|m| match m {
-                    Modify::Present(a, _) => Some(a.as_str()),
+                    Modify::Present(a, _) => Some(a.clone()),
                     _ => None,
                 })
                 .collect();
 
-            let requested_rem: BTreeSet<&str> = modlist
+            let requested_rem: BTreeSet<Attribute> = modlist
                 .iter()
                 .filter_map(|m| match m {
-                    Modify::Removed(a, _) => Some(a.as_str()),
-                    Modify::Purged(a) => Some(a.as_str()),
+                    Modify::Removed(a, _) => Some(a.clone()),
+                    Modify::Purged(a) => Some(a.clone()),
                     _ => None,
                 })
                 .collect();
@@ -846,12 +854,12 @@ pub trait AccessControlsTransaction<'a> {
                     sync_agmts,
                     e,
                 ) {
-                    ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
-                    ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                    ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
+                    ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
                     ModifyResult::Allow { pres, rem, cls } => (
-                        Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
-                        Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
-                        Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(pres.into_iter().collect()),
+                        Access::Allow(rem.into_iter().collect()),
+                        AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
                     ),
                 };
 
@@ -923,7 +931,10 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn update_sync_agreements(&mut self, mut sync_agreements: HashMap<Uuid, BTreeSet<String>>) {
+    pub fn update_sync_agreements(
+        &mut self,
+        mut sync_agreements: HashMap<Uuid, BTreeSet<Attribute>>,
+    ) {
         std::mem::swap(
             &mut sync_agreements,
             &mut self.inner.deref_mut().sync_agreements,
@@ -1071,7 +1082,7 @@ mod tests {
             AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
             AccessControlSearch, AccessControlTarget,
         },
-        Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
+        Access, AccessClass, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
 
@@ -1871,7 +1882,7 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let mut sync_agmt = HashMap::new();
             let mut set = BTreeSet::new();
-            set.insert($sync_yield_attr.to_string());
+            set.insert($sync_yield_attr);
             sync_agmt.insert($sync_uuid, set);
             acw.update_sync_agreements(sync_agmt);
             let acw = acw;
@@ -2403,7 +2414,7 @@ mod tests {
                 search: Access::Allow(btreeset![Attribute::Name.into()]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
-                modify_class: Access::Allow(BTreeSet::new()),
+                modify_class: AccessClass::Allow(BTreeSet::new()),
             }]
         )
     }
@@ -2442,9 +2453,9 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
-                modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
-                modify_class: Access::Allow(btreeset![EntryClass::Object.into()]),
+                modify_pres: Access::Allow(btreeset![Attribute::Name]),
+                modify_rem: Access::Allow(btreeset![Attribute::Name]),
+                modify_class: AccessClass::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }

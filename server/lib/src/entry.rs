@@ -173,11 +173,7 @@ pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     let allkeys: Set<&str> = left
         .keys()
         .filter(|k| *k != &Attribute::LastModifiedCid)
-        .chain(
-            right
-                .keys()
-                .filter(|k| *k != &Attribute::LastModifiedCid),
-        )
+        .chain(right.keys().filter(|k| *k != &Attribute::LastModifiedCid))
         .map(|s| s.as_ref())
         .collect();
 
@@ -307,11 +303,11 @@ impl Entry<EntryInit, EntryNew> {
             .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
-                let nk = qs.get_schema()
-                    .normalise_attr_name(k);
+                let nk = qs.get_schema().normalise_attr_name(k);
                 let attr_nk = Attribute::from(nk.as_str());
-                let nv =
-                    valueset::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&attr_nk, vr)));
+                let nv = valueset::from_result_value_iter(
+                    v.iter().map(|vr| qs.clone_value(&attr_nk, vr)),
+                );
                 trace!(?nv, "new valueset transform");
                 match nv {
                     Ok(nvi) => Ok((attr_nk, nvi)),
@@ -1143,7 +1139,10 @@ impl<STATE> Entry<EntryInvalid, STATE> {
     /// Access a reference set in a directly mutable form. This is "safe" because
     /// referential integrity will check the values added are valid, and because
     /// this is strongly typed it can't violate syntax.
-    pub(crate) fn get_ava_refer_mut<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<&mut BTreeSet<Uuid>> {
+    pub(crate) fn get_ava_refer_mut<A: AsRef<Attribute>>(
+        &mut self,
+        attr: A,
+    ) -> Option<&mut BTreeSet<Uuid>> {
         self.attrs
             .get_mut(attr.as_ref())
             .and_then(|vs| vs.as_refer_set_mut())
@@ -1684,7 +1683,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        match (pre_e.get_ava_set(&ikey.attr), post_e.get_ava_set(&ikey.attr)) {
+                        match (
+                            pre_e.get_ava_set(&ikey.attr),
+                            post_e.get_ava_set(&ikey.attr),
+                        ) {
                             (None, None) => {
                                 // Neither have it, do nothing.
                                 Vec::with_capacity(0)
@@ -2381,10 +2383,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         let attrs = self
             .attrs
             .iter()
-            .filter_map(|(k, vs)| {
-                vs.to_scim_value()
-                    .map(|scim_value| (k.clone(), scim_value))
-            })
+            .filter_map(|(k, vs)| vs.to_scim_value().map(|scim_value| (k.clone(), scim_value)))
             .collect();
 
         let id = self.get_uuid();
@@ -2589,38 +2588,41 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     pub fn get_ava_refer<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<Uuid>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_refer_set())
+        self.get_ava_set(attr).and_then(|vs| vs.as_refer_set())
     }
 
-    pub fn get_ava_as_iutf8_iter<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_iutf8_iter())
+    pub fn get_ava_as_iutf8_iter<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_iutf8_iter())
     }
 
     pub fn get_ava_as_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<String>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_iutf8_set())
+        self.get_ava_set(attr).and_then(|vs| vs.as_iutf8_set())
     }
 
     pub fn get_ava_as_image<A: AsRef<Attribute>>(&self, attr: A) -> Option<&HashSet<ImageValue>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_imageset())
+        self.get_ava_set(attr).and_then(|vs| vs.as_imageset())
     }
 
     pub fn get_ava_single_image<A: AsRef<Attribute>>(&self, attr: A) -> Option<ImageValue> {
-        let images =
-            self.get_ava_set(attr)
-            .and_then(|vs| vs.as_imageset())?;
+        let images = self.get_ava_set(attr).and_then(|vs| vs.as_imageset())?;
         images.iter().next().cloned()
     }
 
-    pub fn get_ava_single_credential_type<A: AsRef<Attribute>>(&self, attr: A) -> Option<CredentialType> {
+    pub fn get_ava_single_credential_type<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<CredentialType> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_credentialtype_single())
     }
 
-    pub fn get_ava_as_oauthscopes<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_as_oauthscopes<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_oauthscope_iter())
     }
@@ -2629,8 +2631,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         &self,
         attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, std::collections::BTreeSet<String>>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_oauthscopemap())
+        self.get_ava_set(attr).and_then(|vs| vs.as_oauthscopemap())
     }
 
     pub fn get_ava_as_intenttokens<A: AsRef<Attribute>>(
@@ -2645,16 +2646,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         &self,
         attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, Session>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_session_map())
+        self.get_ava_set(attr).and_then(|vs| vs.as_session_map())
     }
 
     pub fn get_ava_as_apitoken_map<A: AsRef<Attribute>>(
         &self,
         attr: A,
     ) -> Option<&std::collections::BTreeMap<Uuid, ApiToken>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_apitoken_map())
+        self.get_ava_set(attr).and_then(|vs| vs.as_apitoken_map())
     }
 
     pub fn get_ava_as_oauth2session_map<A: AsRef<Attribute>>(
@@ -2666,12 +2665,18 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     /// If possible, return an iterator over the set of values transformed into a `&str`.
-    pub fn get_ava_iter_iname<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_iname<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_iname_iter())
     }
 
     /// If possible, return an iterator over the set of values transformed into a `&str`.
-    pub fn get_ava_iter_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_iutf8<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_iutf8_iter())
     }
 
@@ -2714,8 +2719,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Return a single value of this attributes name, or `None` if it is NOT present, or
     /// there are multiple values present (ambiguous).
     pub fn get_ava_single<A: AsRef<Attribute>>(&self, attr: A) -> Option<Value> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_value_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_value_single())
     }
 
     pub fn get_ava_single_proto_string<A: AsRef<Attribute>>(&self, attr: A) -> Option<String> {
@@ -2725,14 +2729,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Return a single bool, if valid to transform this value into a boolean.
     pub fn get_ava_single_bool<A: AsRef<Attribute>>(&self, attr: A) -> Option<bool> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_bool_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_bool_single())
     }
 
     /// Return a single uint32, if valid to transform this value.
     pub fn get_ava_single_uint32<A: AsRef<Attribute>>(&self, attr: A) -> Option<u32> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_uint32_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_uint32_single())
     }
 
     /// Return a single syntax type, if valid to transform this value.
@@ -2752,14 +2754,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         &self,
         attr: A,
     ) -> Option<&BTreeMap<Uuid, (String, PasskeyV4)>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_passkey_map())
+        self.get_ava_set(attr).and_then(|vs| vs.as_passkey_map())
     }
 
     /// Get the set of devicekeys on this account, if any are present.
     pub fn get_ava_attestedpasskeys<A: AsRef<Attribute>>(
         &self,
-        attr: A
+        attr: A,
     ) -> Option<&BTreeMap<Uuid, (String, AttestedPasskeyV4)>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_attestedpasskey_map())
@@ -2767,14 +2768,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Get the set of uihints on this account, if any are present.
     pub fn get_ava_uihint<A: AsRef<Attribute>>(&self, attr: A) -> Option<&BTreeSet<UiHint>> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.as_uihint_set())
+        self.get_ava_set(attr).and_then(|vs| vs.as_uihint_set())
     }
 
     /// Return a single secret value, if valid to transform this value.
     pub fn get_ava_single_secret<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_secret_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_secret_single())
     }
 
     /// Return a single datetime, if valid to transform this value.
@@ -2785,36 +2784,30 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Return a single `&str`, if valid to transform this value.
     pub(crate) fn get_ava_single_utf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_utf8_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_utf8_single())
     }
 
     /// Return a single `&str`, if valid to transform this value.
     pub(crate) fn get_ava_single_iutf8<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_iutf8_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_iutf8_single())
     }
 
     /// Return a single `&str`, if valid to transform this value.
     pub(crate) fn get_ava_single_iname<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_iname_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_iname_single())
     }
 
     /// Return a single `&Url`, if valid to transform this value.
     pub fn get_ava_single_url<A: AsRef<Attribute>>(&self, attr: A) -> Option<&Url> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_url_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_url_single())
     }
 
     pub fn get_ava_single_uuid<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_uuid_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_uuid_single())
     }
 
     pub fn get_ava_single_refer<A: AsRef<Attribute>>(&self, attr: A) -> Option<Uuid> {
-        self.get_ava_set(attr)
-            .and_then(|vs| vs.to_refer_single())
+        self.get_ava_set(attr).and_then(|vs| vs.to_refer_single())
     }
 
     pub fn get_ava_mail_primary<A: AsRef<Attribute>>(&self, attr: A) -> Option<&str> {
@@ -2822,7 +2815,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_email_address_primary_str())
     }
 
-    pub fn get_ava_iter_mail<A: AsRef<Attribute>>(&self, attr: A) -> Option<impl Iterator<Item = &str>> {
+    pub fn get_ava_iter_mail<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_email_str_iter())
     }
 
@@ -2837,24 +2833,33 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_private_binary_single())
     }
 
-    pub fn get_ava_single_jws_key_es256<A: AsRef<Attribute>>(&self, attr: A) -> Option<&JwsEs256Signer> {
+    pub fn get_ava_single_jws_key_es256<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<&JwsEs256Signer> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_jws_key_es256_single())
     }
 
-    pub fn get_ava_single_eckey_private<A: AsRef<Attribute>>(&self, attr: A) -> Option<&EcKey<Private>> {
+    pub fn get_ava_single_eckey_private<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<&EcKey<Private>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_eckey_private_single())
     }
 
-    pub fn get_ava_single_eckey_public<A: AsRef<Attribute>>(&self, attr: A) -> Option<&EcKey<Public>> {
+    pub fn get_ava_single_eckey_public<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<&EcKey<Public>> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.to_eckey_public_single())
     }
 
     pub fn get_ava_webauthn_attestation_ca_list<A: AsRef<Attribute>>(
         &self,
-        attr: A
+        attr: A,
     ) -> Option<&AttestationCaList> {
         self.get_ava_set(attr)
             .and_then(|vs| vs.as_webauthn_attestation_ca_list())
@@ -2894,7 +2899,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Assert if an attribute of this name is present, and one of it's values contains
     /// the following substring, if possible to perform the substring comparison.
-    pub fn attribute_substring<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+    pub fn attribute_substring<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+        subvalue: &PartialValue,
+    ) -> bool {
         self.get_ava_set(attr)
             .map(|vset| vset.substring(subvalue))
             .unwrap_or(false)
@@ -2902,7 +2911,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Assert if an attribute of this name is present, and one of its values startswith
     /// the following string, if possible to perform the comparison.
-    pub fn attribute_startswith<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+    pub fn attribute_startswith<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+        subvalue: &PartialValue,
+    ) -> bool {
         self.get_ava_set(attr)
             .map(|vset| vset.startswith(subvalue))
             .unwrap_or(false)
@@ -2910,7 +2923,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Assert if an attribute of this name is present, and one of its values startswith
     /// the following string, if possible to perform the comparison.
-    pub fn attribute_endswith<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+    pub fn attribute_endswith<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+        subvalue: &PartialValue,
+    ) -> bool {
         self.get_ava_set(attr)
             .map(|vset| vset.endswith(subvalue))
             .unwrap_or(false)
@@ -2918,7 +2935,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     /// Assert if an attribute of this name is present, and one of its values is less than
     /// the following partial value
-    pub fn attribute_lessthan<A: AsRef<Attribute>>(&self, attr: A, subvalue: &PartialValue) -> bool {
+    pub fn attribute_lessthan<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+        subvalue: &PartialValue,
+    ) -> bool {
         self.get_ava_set(attr)
             .map(|vset| vset.lessthan(subvalue))
             .unwrap_or(false)
@@ -3126,8 +3147,14 @@ where
         }
     }
 
-    fn assert_ava<A: AsRef<Attribute>>(&mut self, attr: A, value: &PartialValue) -> Result<(), OperationError> {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr.as_ref());
+    fn assert_ava<A: AsRef<Attribute>>(
+        &mut self,
+        attr: A,
+        value: &PartialValue,
+    ) -> Result<(), OperationError> {
+        self.valid
+            .ecstate
+            .change_ava(&self.valid.cid, attr.as_ref());
 
         if self.attribute_equality(attr, value) {
             Ok(())
@@ -3153,7 +3180,11 @@ where
         };
     }
 
-    pub(crate) fn remove_avas<A: AsRef<Attribute>>(&mut self, attr: A, values: &BTreeSet<PartialValue>) {
+    pub(crate) fn remove_avas<A: AsRef<Attribute>>(
+        &mut self,
+        attr: A,
+        values: &BTreeSet<PartialValue>,
+    ) {
         let attr_ref = attr.as_ref();
         self.valid.ecstate.change_ava(&self.valid.cid, attr_ref);
 
@@ -3211,7 +3242,9 @@ where
     /// sessions from the value set that you otherwise, could not.
     #[cfg(test)]
     pub(crate) fn force_trim_ava<A: AsRef<Attribute>>(&mut self, attr: A) -> Option<ValueSet> {
-        self.valid.ecstate.change_ava(&self.valid.cid, attr.as_ref());
+        self.valid
+            .ecstate
+            .change_ava(&self.valid.cid, attr.as_ref());
         self.attrs.remove(attr.as_ref())
     }
 

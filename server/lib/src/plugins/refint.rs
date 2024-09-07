@@ -103,9 +103,9 @@ impl ReferentialIntegrity {
         let filt = filter_all!(FC::Or(
             uuids
                 .into_iter()
-                .flat_map(|u| ref_types.values().map(move |r_type| {
-                    f_eq(r_type.name.clone(), PartialValue::Refer(u))
-                }))
+                .flat_map(|u| ref_types
+                    .values()
+                    .map(move |r_type| { f_eq(r_type.name.clone(), PartialValue::Refer(u)) }))
                 .collect(),
         ));
 

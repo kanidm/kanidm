@@ -1,8 +1,8 @@
+use crate::prelude::entries::Attribute;
+use crate::value::IndexType;
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
-use crate::prelude::entries::Attribute;
-use crate::value::IndexType;
 
 pub type IdxSlope = u8;
 
@@ -16,10 +16,7 @@ pub struct IdxKey {
 
 impl IdxKey {
     pub fn new(attr: Attribute, itype: IndexType) -> Self {
-        IdxKey {
-            attr,
-            itype,
-        }
+        IdxKey { attr, itype }
     }
 }
 

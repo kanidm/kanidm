@@ -1986,10 +1986,7 @@ mod tests {
                     "spn=testperson1@example.com,dc=example,dc=com",
                     (Attribute::Name, "testperson1"),
                     (Attribute::Mail, "testperson1@example.com"),
-                    (
-                        Attribute::Mail,
-                        "testperson1.alternative@example.com"
-                    ),
+                    (Attribute::Mail, "testperson1.alternative@example.com"),
                     (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
                     (
                         LDAP_ATTR_MAIL_ALTERNATIVE,
@@ -2046,10 +2043,7 @@ mod tests {
                     "spn=testperson1@example.com,dc=example,dc=com",
                     (Attribute::Name, "testperson1"),
                     (Attribute::Mail, "testperson1@example.com"),
-                    (
-                        Attribute::Mail,
-                        "testperson1.alternative@example.com"
-                    ),
+                    (Attribute::Mail, "testperson1.alternative@example.com"),
                     (LDAP_ATTR_MAIL_PRIMARY, "testperson1@example.com"),
                     (
                         LDAP_ATTR_MAIL_ALTERNATIVE,
@@ -2125,10 +2119,7 @@ mod tests {
                     (Attribute::Name, "testperson1"),
                     (Attribute::DisplayName, "testperson1"),
                     (Attribute::Uuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    (
-                        Attribute::EntryUuid,
-                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
-                    )
+                    (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => panic!("Oh no"),
@@ -2218,10 +2209,7 @@ mod tests {
                 assert_entry_contains!(
                     lsre,
                     "spn=testperson1@example.com,dc=example,dc=com",
-                    (
-                        Attribute::EntryUuid,
-                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
-                    )
+                    (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => panic!("Oh no"),
@@ -2426,10 +2414,7 @@ mod tests {
                     (Attribute::Gecos, "testperson1"),
                     (Attribute::UidNumber, "12345"),
                     (Attribute::GidNumber, "12345"),
-                    (
-                        Attribute::EntryUuid,
-                        "cc8e95b4-c24f-4d68-ba54-8bed76f63930"
-                    )
+                    (Attribute::EntryUuid, "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
                 );
             }
             _ => panic!("Oh no"),

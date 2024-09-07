@@ -9,22 +9,22 @@ use super::profiles::{
 use super::{AccessResult, AccessResultClass};
 use std::sync::Arc;
 
-pub(super) enum ModifyResult {
+pub(super) enum ModifyResult<'a> {
     Denied,
     Grant,
     Allow {
         pres: BTreeSet<Attribute>,
         rem: BTreeSet<Attribute>,
-        cls: BTreeSet<AttrString>,
+        cls: BTreeSet<&'a str>,
     },
 }
 
-pub(super) fn apply_modify_access(
+pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
-    related_acp: &[AccessControlModifyResolved],
+    related_acp: &'a [AccessControlModifyResolved],
     sync_agreements: &HashMap<Uuid, BTreeSet<Attribute>>,
     entry: &Arc<EntrySealedCommitted>,
-) -> ModifyResult {
+) -> ModifyResult<'a> {
     let mut denied = false;
     let mut grant = false;
     let mut constrain_pres = BTreeSet::default();
@@ -229,10 +229,10 @@ fn modify_rem_test(scoped_acp: &[&AccessControlModify]) -> AccessResult {
 
 // TODO: Should this be reverted to the Str borrow method? Or do we try to change
 // to EntryClass?
-fn modify_cls_test(scoped_acp: &[&AccessControlModify]) -> AccessResultClass {
-    let allowed_classes: BTreeSet<AttrString> = scoped_acp
+fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResultClass<'a> {
+    let allowed_classes: BTreeSet<&'a str> = scoped_acp
         .iter()
-        .flat_map(|acp| acp.classes.iter().cloned())
+        .flat_map(|acp| acp.classes.iter().map(|s| s.as_str()))
         .collect();
     AccessResultClass::Allow(allowed_classes)
 }
