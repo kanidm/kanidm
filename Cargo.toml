@@ -139,11 +139,11 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.4.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.4.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.4.0-dev" }
 
-anyhow = { version = "1.0.86" }
+anyhow = { version = "1.0.87" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde"] }
 async-recursion = "1.1.0"
-async-trait = "^0.1.81"
+async-trait = "^0.1.82"
 axum = { version = "0.7.5", features = [
     "form",
     "json",
@@ -160,8 +160,8 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
 bytes = "^1.7.1"
-clap = { version = "^4.5.16", features = ["derive", "env"] }
-clap_complete = "^4.5.23"
+clap = { version = "^4.5.17", features = ["derive", "env"] }
+clap_complete = "^4.5.26"
 # Forced by saffron/cron
 chrono = "^0.4.35"
 compact_jwt = { version = "^0.4.2", default-features = false }
@@ -208,7 +208,7 @@ ldap3_proto = { version = "^0.5.2", features = ["serde"] }
 libc = "^0.2.158"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
-lodepng = "3.10.6"
+lodepng = "3.10.7"
 lru = "^0.12.4"
 mathru = "^0.13.0"
 mimalloc = "0.1.43"
@@ -253,9 +253,9 @@ rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 
 sd-notify = "^0.4.2"
 selinux = "^0.4.5"
-serde = "^1.0.209"
+serde = "^1.0.210"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
-serde_json = "^1.0.127"
+serde_json = "^1.0.128"
 serde-wasm-bindgen = "0.5"
 serde_with = "3.9.0"
 sha2 = "0.10.8"
@@ -271,7 +271,7 @@ time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
 
 tokio = "^1.40.0"
 tokio-openssl = "^0.6.4"
-tokio-util = "^0.7.10"
+tokio-util = "^0.7.12"
 
 toml = "^0.5.11"
 tracing = { version = "^0.1.40", features = [
@@ -302,7 +302,7 @@ webauthn-rs-core = "0.5.0"
 webauthn-rs-proto = "0.5.0"
 
 web-sys = "^0.3.70"
-whoami = "^1.5.1"
+whoami = "^1.5.2"
 walkdir = "2"
 
 x509-cert = "0.2.5"
