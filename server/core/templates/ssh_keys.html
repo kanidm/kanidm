@@ -1,0 +1,26 @@
+(% extends "user_settings_partial_base.html" %)
+(% block selected_setting_group %)SSH Keys(% endblock %)
+
+(% block key %)active(% endblock %)
+
+(% block settings_window %)
+<div>
+    <p>This is a list of SSH keys associated with your account.</p>
+    <ul class="list-group">
+        (% for ssh_key in ssh_keys %)
+        <li class="list-group-item d-flex column-gap-3 py-3">
+            <div>
+                <img class="ssh-list-icon" src="/pkg/img/icons/key.svg" alt="" />
+            </div>
+            <div class="d-flex flex-column align-items-start row-gap-2 flex-grow-1">
+                <span class="badge text-bg-secondary">(( ssh_key.kind ))</span> 
+                <div class="font-monospace text-break">(( ssh_key.key ))</div>
+                (% if let Some(comment) = ssh_key.comment %)
+                    <div class="rounded bg-body-tertiary border border-light-subtle text-body-secondary px-2 py-1 align-self-stretch">Comment: (( comment ))</div>
+                (% endif %)
+            </div>
+        </li>
+        (% endfor %)
+    </ul>
+</div>
+(% endblock %)
