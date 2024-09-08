@@ -480,7 +480,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .inspect_err(|err| {
                     error!(
                         ?err,
-                        "Failed to modify sync objects to grant authority to kanidm"
+                        "Failed to modify sync objects to grant authority to Kanidm"
                     );
                 })?;
 

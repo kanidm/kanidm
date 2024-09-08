@@ -323,14 +323,6 @@ pub trait AccessControlsTransaction<'a> {
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
 
-        /*
-        // TODO: I think this isn't needed?
-        let requested_attrs: Option<BTreeSet<Attribute>> = se
-            .attrs
-            .as_ref()
-            .map(|vs| vs.iter().cloned().collect());
-        */
-
         // Get the relevant acps for this receiver.
         let related_acp = self.search_related_acp(&se.ident);
         let related_acp: Vec<_> = if let Some(r_attrs) = se.attrs.as_ref() {

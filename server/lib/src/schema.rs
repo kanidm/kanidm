@@ -454,10 +454,6 @@ impl SchemaClass {
                 OperationError::InvalidSchemaState(format!("missing {}", Attribute::ClassName))
             })?;
 
-        if name == "key_provider" {
-            trace!(?value);
-        }
-
         // description
         let description = value
             .get_ava_single_utf8(Attribute::Description)

@@ -24,7 +24,6 @@ use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
-// use smartstring::alias::String as Attribute;
 use serde::Deserialize;
 use uuid::Uuid;
 
