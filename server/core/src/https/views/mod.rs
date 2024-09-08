@@ -23,6 +23,7 @@ mod navbar;
 mod oauth2;
 mod profile;
 mod reset;
+mod sshkeys;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -40,6 +41,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
+        .route("/ssh_keys", get(sshkeys::view_sshkeys_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
