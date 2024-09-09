@@ -115,7 +115,9 @@ async def test_ssl_wrong_hostname_verify_certificate() -> None:
 @pytest.mark.asyncio
 async def test_ssl_revoked() -> None:
     """tests with a revoked certificate"""
+    logging.basicConfig(level=logging.DEBUG, force=True)
 
+    # TODO: I can't work out why this won't work but.. it's an issue with upstream
     # with pytest.raises(aiohttp.ClientConnectorCertificateError):
     client = KanidmClient(
         uri="https://revoked.badssl.com/",

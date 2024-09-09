@@ -4,6 +4,7 @@ from datetime import datetime
 from functools import lru_cache
 import json as json_lib  # because we're taking a field "json" at various points
 from logging import Logger, getLogger
+import logging
 import os
 from pathlib import Path
 import platform
@@ -117,26 +118,31 @@ class KanidmClient:
         if self.config.uri is None:
             raise ValueError("Please initialize this with a server URI")
 
-        self._validate_ssl: Optional[Union[bool, ssl.SSLContext]] = None
+        self._ssl_context: Optional[Union[bool, ssl.SSLContext]] = None
         self._configure_ssl()
 
     def _configure_ssl(self) -> None:
         """Sets up SSL configuration for the client"""
         if False in [self.config.verify_certificate, self.config.verify_hostnames ]:
-            self._validate_ssl = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
-            self._validate_ssl.hostname_checks_common_name = False
-            self._validate_ssl.check_hostname = False
-            self._validate_ssl.verify_mode = ssl.CERT_NONE
+            logging.debug("Setting up SSL context with no verification")
+            self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+            self._ssl_context.hostname_checks_common_name = False
+            self._ssl_context.check_hostname = False
+            self._ssl_context.verify_mode = ssl.CERT_NONE
         else:
             if self.config.ca_path is not None:
                 if not Path(self.config.ca_path).expanduser().resolve().exists():
                     raise FileNotFoundError(f"CA Path not found: {self.config.ca_path}")
                 else:
-                    self.logger.debug("Setting up SSL context with CA path: %s", self.config.ca_path)
-                    self._validate_ssl = ssl.create_default_context(cafile=self.config.ca_path)
+                    self.logger.debug("Setting up SSL context with CA path=%s", self.config.ca_path)
+                    self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,cafile=self.config.ca_path)
             else:
-                self._validate_ssl = ssl.create_default_context()
-            self._validate_ssl.check_hostname = self.config.verify_hostnames
+
+                logging.debug("Setting up default SSL context")
+                self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+
+            logging.debug("SSL context verify_hostnames=%s", self.config.verify_hostnames)
+            self._ssl_context.check_hostname = self.config.verify_hostnames
 
     def parse_config_data(
         self,
@@ -208,7 +214,7 @@ class KanidmClient:
         response_headers: Dict[str, Any] = {}
         response_status: int = -1
         async with aiohttp.client.ClientSession() as session:
-            ssl_context = self._validate_ssl if self._validate_ssl is not None else False
+            ssl_context = self._ssl_context if self._ssl_context is not None else False
             async with session.request(
                 method=method,
                 url=self.get_path_uri(path),
