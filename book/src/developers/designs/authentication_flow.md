@@ -1,4 +1,6 @@
-# Authentication Flow
+# User Authentication Flow
+
+This authentication flow is for interactive users. If you're using a [service account](../../accounts/service_accounts.md), use [Bearer authentication](../../accounts/service_accounts.html#api-tokens-with-kanidm-httpsrest-api) with the token.
 
 1. Client sends an init request. This can be either:
    1. `AuthStep::Init` which just includes the username, or
