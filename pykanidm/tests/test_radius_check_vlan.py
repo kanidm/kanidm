@@ -1,5 +1,6 @@
-""" tests the check_vlan function """
+"""tests the check_vlan function"""
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -11,8 +12,10 @@ from kanidm.radius.utils import check_vlan
 
 
 @pytest.mark.asyncio
-async def test_check_vlan(event_loop: Any) -> None:
+async def test_check_vlan() -> None:
     """test 1"""
+
+    # event_loop = asyncio.get_running_loop()
 
     testconfig = KanidmClientConfig.parse_toml(
         """

@@ -11,10 +11,13 @@ import pytest
 @pytest.fixture(scope="function")
 async def client() -> KanidmClient:
     """sets up a client with a basic thing"""
-
-    return KanidmClient(
-        config_file=Path(__file__).parent.parent.parent / "examples/config_localhost",
-    )
+    try:
+        client = KanidmClient(
+            config_file=Path(__file__).parent.parent.parent / "examples/config_localhost",
+        )
+    except FileNotFoundError as error:
+        raise pytest.skip(f"File not found: {error}")
+    return client
 
 
 @pytest.mark.network
@@ -31,17 +34,11 @@ async def test_oauth2_rs_list(client: KanidmClient) -> None:
         print("No KANIDM_PASSWORD env var set for testing")
         raise pytest.skip("No KANIDM_PASSWORD env var set for testing")
 
-    auth_resp = await client.authenticate_password(
-        username, password, update_internal_auth_token=True
-    )
+    auth_resp = await client.authenticate_password(username, password, update_internal_auth_token=True)
     if auth_resp.state is None:
-        raise ValueError(
-            "Failed to authenticate, check the admin password is set right"
-        )
+        raise ValueError("Failed to authenticate, check the admin password is set right")
     if auth_resp.state.success is None:
-        raise ValueError(
-            "Failed to authenticate, check the admin password is set right"
-        )
+        raise ValueError("Failed to authenticate, check the admin password is set right")
 
     resource_servers = await client.oauth2_rs_list()
     print("content:")

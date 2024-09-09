@@ -1,4 +1,4 @@
-""" tests the config file things """
+"""tests the config file things"""
 
 from pathlib import Path
 import sys
@@ -11,6 +11,7 @@ from kanidm.utils import load_config
 
 
 EXAMPLE_CONFIG_FILE = Path(__file__).parent.parent.parent / "examples/config"
+
 
 def test_radius_groups() -> None:
     """testing loading a config file with radius groups defined"""

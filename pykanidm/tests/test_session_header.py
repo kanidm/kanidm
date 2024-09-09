@@ -1,4 +1,4 @@
-""" testing session header function """
+"""testing session header function"""
 
 import pytest
 

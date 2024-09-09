@@ -1,4 +1,4 @@
-""" reusable widgets for testing """
+"""reusable widgets for testing"""
 
 from logging import DEBUG, basicConfig, getLogger
 from pathlib import Path
