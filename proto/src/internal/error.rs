@@ -5,6 +5,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use super::credupdate::PasswordFeedback;
+use crate::attribute::Attribute;
 
 /* ===== errors ===== */
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, ToSchema)]
@@ -13,7 +14,7 @@ pub enum SchemaError {
     NotImplemented,
     NoClassFound,
     InvalidClass(Vec<String>),
-    MissingMustAttribute(Vec<String>),
+    MissingMustAttribute(Vec<Attribute>),
     InvalidAttribute(String),
     InvalidAttributeSyntax(String),
     AttributeNotValidForClass(String),

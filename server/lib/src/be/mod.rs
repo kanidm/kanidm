@@ -15,7 +15,6 @@ use hashbrown::{HashMap as Map, HashSet};
 use idlset::v2::IDLBitRange;
 use idlset::AndNot;
 use kanidm_proto::internal::{ConsistencyError, OperationError};
-use smartstring::alias::String as AttrString;
 use tracing::{trace, trace_span};
 use uuid::Uuid;
 
@@ -566,7 +565,7 @@ pub trait BackendTransaction {
 
     fn filter2idl_sub(
         &mut self,
-        attr: &AttrString,
+        attr: &Attribute,
         sub_idx_key: String,
     ) -> Result<(IdList, FilterPlan), OperationError> {
         // Now given that idx_key, we will iterate over the possible graphemes.
@@ -1209,11 +1208,9 @@ impl<'a> BackendWriteTransaction<'a> {
             let ctx_ent_uuid = ctx_ent.get_uuid();
             let idx_key = ctx_ent_uuid.as_hyphenated().to_string();
 
-            let idl = self.get_idlayer().get_idl(
-                Attribute::Uuid.as_ref(),
-                IndexType::Equality,
-                &idx_key,
-            )?;
+            let idl =
+                self.get_idlayer()
+                    .get_idl(&Attribute::Uuid, IndexType::Equality, &idx_key)?;
 
             let entry = match idl {
                 Some(idl) if idl.is_empty() => {
@@ -1591,7 +1588,7 @@ impl<'a> BackendWriteTransaction<'a> {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
                                 if cfg!(debug_assertions)
-                                    && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
+                                    && *attr == Attribute::Uuid && itype == IndexType::Equality {
                                         // This means a duplicate UUID has appeared in the index.
                                         if idl.len() > 1 {
                                             trace!(duplicate_idl = ?idl, ?idx_key);
@@ -1614,7 +1611,7 @@ impl<'a> BackendWriteTransaction<'a> {
                         match self.idlayer.get_idl(attr, itype, &idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                if cfg!(debug_assertions) && attr == Attribute::Uuid.as_ref() && itype == IndexType::Equality {
+                                if cfg!(debug_assertions) && *attr == Attribute::Uuid && itype == IndexType::Equality {
                                         // This means a duplicate UUID has appeared in the index.
                                         if idl.len() > 1 {
                                             trace!(duplicate_idl = ?idl, ?idx_key);
@@ -1638,7 +1635,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[allow(dead_code)]
-    fn missing_idxs(&mut self) -> Result<Vec<(AttrString, IndexType)>, OperationError> {
+    fn missing_idxs(&mut self) -> Result<Vec<(Attribute, IndexType)>, OperationError> {
         let idx_table_list = self.get_idlayer().list_idxs()?;
 
         // Turn the vec to a real set
@@ -1677,10 +1674,10 @@ impl<'a> BackendWriteTransaction<'a> {
         trace!("Creating index -> uuid2rdn");
         self.idlayer.create_uuid2rdn()?;
 
-        self.idxmeta_wr.idxkeys.keys().try_for_each(|ikey| {
-            let attr: Attribute = (&ikey.attr).try_into()?;
-            self.idlayer.create_idx(attr, ikey.itype)
-        })
+        self.idxmeta_wr
+            .idxkeys
+            .keys()
+            .try_for_each(|ikey| self.idlayer.create_idx(&ikey.attr, ikey.itype))
     }
 
     pub fn upgrade_reindex(&mut self, v: i64) -> Result<(), OperationError> {
@@ -1765,7 +1762,7 @@ impl<'a> BackendWriteTransaction<'a> {
     #[cfg(test)]
     pub fn load_test_idl(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
@@ -2297,7 +2294,7 @@ mod tests {
     macro_rules! idl_state {
         ($be:expr, $attr:expr, $itype:expr, $idx_key:expr, $expect:expr) => {{
             let t_idl = $be
-                .load_test_idl(&$attr.to_string(), $itype, &$idx_key.to_string())
+                .load_test_idl(&$attr, $itype, &$idx_key.to_string())
                 .expect("IdList Load failed");
             let t = $expect.map(|v: Vec<u64>| IDLBitRange::from_iter(v));
             assert_eq!(t_idl, t);
@@ -2745,7 +2742,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Name.as_ref(),
+                Attribute::Name,
                 IndexType::Equality,
                 "william",
                 Some(vec![1])
@@ -2753,7 +2750,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Name.as_ref(),
+                Attribute::Name,
                 IndexType::Equality,
                 "claire",
                 Some(vec![2])
@@ -2764,7 +2761,7 @@ mod tests {
             ] {
                 idl_state!(
                     be,
-                    Attribute::Name.as_ref(),
+                    Attribute::Name,
                     IndexType::SubString,
                     sub,
                     Some(vec![1])
@@ -2776,7 +2773,7 @@ mod tests {
             ] {
                 idl_state!(
                     be,
-                    Attribute::Name.as_ref(),
+                    Attribute::Name,
                     IndexType::SubString,
                     sub,
                     Some(vec![2])
@@ -2786,7 +2783,7 @@ mod tests {
             for sub in ["i", "a", "l"] {
                 idl_state!(
                     be,
-                    Attribute::Name.as_ref(),
+                    Attribute::Name,
                     IndexType::SubString,
                     sub,
                     Some(vec![1, 2])
@@ -2795,7 +2792,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Name.as_ref(),
+                Attribute::Name,
                 IndexType::Presence,
                 "_",
                 Some(vec![1, 2])
@@ -2803,7 +2800,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
@@ -2811,7 +2808,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
@@ -2819,7 +2816,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 IndexType::Presence,
                 "_",
                 Some(vec![1, 2])
@@ -2829,7 +2826,7 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Name.as_ref(),
+                Attribute::Name,
                 IndexType::Equality,
                 "not-exist",
                 Some(Vec::with_capacity(0))
@@ -2837,14 +2834,14 @@ mod tests {
 
             idl_state!(
                 be,
-                Attribute::Uuid.as_ref(),
+                Attribute::Uuid,
                 IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::with_capacity(0))
             );
 
             let uuid_p_idl = be
-                .load_test_idl("not_indexed", IndexType::Presence, "_")
+                .load_test_idl(&Attribute::from("not_indexed"), IndexType::Presence, "_")
                 .unwrap(); // unwrap the result
             assert_eq!(uuid_p_idl, None);
 
@@ -3683,7 +3680,7 @@ mod tests {
 
             assert!(single_result.is_ok());
             let filt = e
-                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .filter_from_attrs(&[Attribute::NonExist])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
             // check allow on allids
@@ -3721,7 +3718,7 @@ mod tests {
             assert!(single_result.is_ok());
 
             let filt = e
-                .filter_from_attrs(&[Attribute::NonExist.into()])
+                .filter_from_attrs(&[Attribute::NonExist])
                 .expect("failed to generate filter")
                 .into_valid_resolved();
 
@@ -3824,7 +3821,7 @@ mod tests {
 
         // This is a demo idxmeta, purely for testing.
         let idxmeta = vec![IdxKey {
-            attr: Attribute::Uuid.into(),
+            attr: Attribute::Uuid,
             itype: IndexType::Equality,
         }];
 

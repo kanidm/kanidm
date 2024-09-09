@@ -403,7 +403,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                Attribute::UserAuthTokenSession.into(),
+                Attribute::UserAuthTokenSession,
                 Value::Session(
                     parent_id,
                     Session {
@@ -576,7 +576,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                Attribute::UserAuthTokenSession.into(),
+                Attribute::UserAuthTokenSession,
                 Value::Session(
                     parent_id,
                     Session {

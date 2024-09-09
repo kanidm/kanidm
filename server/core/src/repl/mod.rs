@@ -485,7 +485,7 @@ async fn repl_task(
                 match task {
                     ReplConsumerCtrl::Stop => break,
                     ReplConsumerCtrl::Refresh ( refresh_coord ) => {
-                        last_working_address = match repl_run_consumer_refresh(
+                        last_working_address = (repl_run_consumer_refresh(
                             refresh_coord,
                             domain,
                             &sorted_socket_addrs,
@@ -493,10 +493,7 @@ async fn repl_task(
                             &idms,
                             &consumer_conn_settings
                         )
-                        .await {
-                            Ok(val) => val,
-                            Err(_) => None
-                        };
+                        .await).unwrap_or_default();
                     }
                 }
             }

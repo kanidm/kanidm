@@ -219,15 +219,15 @@ pub(crate) trait IdlSqliteTransaction {
         }
     }
 
-    fn exists_idx(&self, attr: &str, itype: IndexType) -> Result<bool, OperationError> {
-        let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
+    fn exists_idx(&self, attr: &Attribute, itype: IndexType) -> Result<bool, OperationError> {
+        let tname = format!("idx_{}_{}", itype.as_idx_str(), attr.as_str());
         self.exists_table(&tname)
     }
 
     #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
@@ -244,7 +244,7 @@ pub(crate) trait IdlSqliteTransaction {
             "SELECT idl FROM {}.idx_{}_{} WHERE key = :idx_key",
             self.get_db_name(),
             itype.as_idx_str(),
-            attr
+            attr.as_str()
         );
         let mut stmt = self.get_conn()?.prepare(&query).map_err(sqlite_error)?;
         let idl_raw: Option<Vec<u8>> = stmt
@@ -867,7 +867,7 @@ impl IdlSqliteWriteTransaction {
 
     pub fn write_idl(
         &self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
         idl: &IDLBitRange,
@@ -879,7 +879,7 @@ impl IdlSqliteWriteTransaction {
                 "DELETE FROM {}.idx_{}_{} WHERE key = :key",
                 self.get_db_name(),
                 itype.as_idx_str(),
-                attr
+                attr.as_str()
             );
 
             self.get_conn()?
@@ -895,7 +895,7 @@ impl IdlSqliteWriteTransaction {
                 "INSERT OR REPLACE INTO {}.idx_{}_{} (key, idl) VALUES(:key, :idl)",
                 self.get_db_name(),
                 itype.as_idx_str(),
-                attr
+                attr.as_str()
             );
 
             self.get_conn()?
@@ -1205,7 +1205,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     #[instrument(level = "debug", skip(self))]
-    pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: &Attribute, itype: IndexType) -> Result<(), OperationError> {
         // Is there a better way than formatting this? I can't seem
         // to template into the str.
         //
@@ -1214,7 +1214,7 @@ impl IdlSqliteWriteTransaction {
             "CREATE TABLE IF NOT EXISTS {}.idx_{}_{} (key TEXT PRIMARY KEY, idl BLOB)",
             self.get_db_name(),
             itype.as_idx_str(),
-            attr
+            attr.as_str(),
         );
 
         self.get_conn()?

@@ -263,7 +263,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         trace!("operating on {:?}", e.get_uuid());
 
-        let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid.into()]) else {
+        let Some(filt) = e.filter_from_attrs(&[Attribute::Uuid]) else {
             return Err(OperationError::FilterGeneration);
         };
 
@@ -277,7 +277,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else if results.len() == 1 {
             // For each ignored attr, we remove it from entry.
             for attr in attrs.iter() {
-                e.remove_ava(*attr);
+                e.remove_ava(attr);
             }
 
             // If the thing is subset, pass
@@ -412,7 +412,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     .map(|origin_url| {
                         // Copy the origin url to the landing.
                         let modlist = vec![Modify::Present(
-                            Attribute::OAuth2RsOriginLanding.into(),
+                            Attribute::OAuth2RsOriginLanding,
                             Value::Url(origin_url.clone()),
                         )];
 
@@ -431,9 +431,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // Domain info should have the attribute private cookie key removed.
         let modlist = ModifyList::new_list(vec![
-            Modify::Purged(Attribute::PrivateCookieKey.into()),
-            Modify::Purged(Attribute::Es256PrivateKeyDer.into()),
-            Modify::Purged(Attribute::FernetPrivateKeyStr.into()),
+            Modify::Purged(Attribute::PrivateCookieKey),
+            Modify::Purged(Attribute::Es256PrivateKeyDer),
+            Modify::Purged(Attribute::FernetPrivateKeyStr),
         ]);
 
         self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
@@ -443,8 +443,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             f_eq(Attribute::Class, EntryClass::SyncAccount.into())
         ]));
 
-        let modlist =
-            ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey.into())]);
+        let modlist = ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey)]);
 
         self.internal_modify(&filter, &modlist)?;
 

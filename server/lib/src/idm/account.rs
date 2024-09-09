@@ -567,20 +567,20 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged(Attribute::PrimaryCredential.into()));
-            ml.push(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
+            ml.push(Modify::Purged(Attribute::PrimaryCredential));
+            ml.push(Modify::Present(Attribute::PrimaryCredential, vcred));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    Attribute::PassKeys.into(),
+                    Attribute::PassKeys,
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    Attribute::PassKeys.into(),
+                    Attribute::PassKeys,
                     Value::Passkey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -590,12 +590,12 @@ impl Account {
         self.attested_passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    Attribute::AttestedPasskeys.into(),
+                    Attribute::AttestedPasskeys,
                     PartialValue::AttestedPasskey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    Attribute::AttestedPasskeys.into(),
+                    Attribute::AttestedPasskeys,
                     Value::AttestedPasskey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -827,7 +827,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::UserAuthTokenSession.into(),
+            Attribute::UserAuthTokenSession,
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -881,9 +881,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let prev_classes: BTreeSet<_> = account_entry
             .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
-                admin_error!(
+                error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
-                    Attribute::Class.as_ref()
+                    Attribute::Class
                 );
                 OperationError::InvalidAccountState(format!(
                     "Missing attribute: {}",
@@ -916,7 +916,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
         // add person
         modlist.push_mod(Modify::Present(
-            Attribute::Class.into(),
+            Attribute::Class,
             EntryClass::Person.to_value(),
         ));
         // purge the other attrs that are SA only.
@@ -1076,8 +1076,8 @@ mod tests {
                 PartialValue::new_iname("testaccount")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());

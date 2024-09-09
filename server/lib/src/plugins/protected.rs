@@ -149,9 +149,8 @@ impl Plugin for Protected {
                 Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
-            if let Some(a) = a {
-                let attr: Attribute = a.try_into()?;
-                match ALLOWED_ATTRS.contains(&attr) {
+            if let Some(attr) = a {
+                match ALLOWED_ATTRS.contains(attr) {
                     true => Ok(()),
                     false => {
                         trace!("If you're getting this, you need to modify the ALLOWED_ATTRS list");
@@ -229,9 +228,8 @@ impl Plugin for Protected {
                     Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
-                if let Some(a) = a {
-                    let attr: Attribute = a.try_into()?;
-                    match ALLOWED_ATTRS.contains(&attr) {
+                if let Some(attr) = a {
+                    match ALLOWED_ATTRS.contains(attr) {
                         true => Ok(()),
                         false => {
 

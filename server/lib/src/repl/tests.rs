@@ -1075,8 +1075,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
                 changes: changes_right,
             },
         ) => match (
-            changes_left.get(Attribute::Class.into()),
-            changes_right.get(Attribute::Class.into()),
+            changes_left.get(&Attribute::Class),
+            changes_right.get(&Attribute::Class),
         ) {
             (Some(cid_left), Some(cid_right)) => cid_left < cid_right,
             _ => false,
@@ -1647,12 +1647,12 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.write(ct).await.unwrap();
     let modlist = ModifyList::new_list(vec![
-        Modify::Removed(Attribute::Class.into(), EntryClass::Person.into()),
-        Modify::Removed(Attribute::Class.into(), EntryClass::Account.into()),
-        Modify::Present(Attribute::Class.into(), EntryClass::Group.into()),
-        Modify::Purged(Attribute::IdVerificationEcKey.into()),
-        Modify::Purged(Attribute::NameHistory.into()),
-        Modify::Purged(Attribute::DisplayName.into()),
+        Modify::Removed(Attribute::Class, EntryClass::Person.into()),
+        Modify::Removed(Attribute::Class, EntryClass::Account.into()),
+        Modify::Present(Attribute::Class, EntryClass::Group.into()),
+        Modify::Purged(Attribute::IdVerificationEcKey),
+        Modify::Purged(Attribute::NameHistory),
+        Modify::Purged(Attribute::DisplayName),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
     server_b_txn.commit().expect("Failed to commit");

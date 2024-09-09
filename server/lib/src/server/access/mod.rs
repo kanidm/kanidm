@@ -54,6 +54,13 @@ mod search;
 pub enum Access {
     Grant,
     Denied,
+    Allow(BTreeSet<Attribute>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum AccessClass {
+    Grant,
+    Denied,
     Allow(BTreeSet<AttrString>),
 }
 
@@ -66,17 +73,33 @@ pub struct AccessEffectivePermission {
     pub search: Access,
     pub modify_pres: Access,
     pub modify_rem: Access,
-    pub modify_class: Access,
+    pub modify_class: AccessClass,
 }
 
-pub enum AccessResult<'a> {
+pub enum AccessResult {
     // Deny this operation unconditionally.
     Denied,
     // Unbounded allow, provided no denied exists.
     Grant,
     // This module makes no decisions about this entry.
     Ignore,
-    // Limit the allowed attr set to this.
+    // Limit the allowed attr set to this - this doesn't
+    // allow anything, it constrains what might be allowed.
+    Constrain(BTreeSet<Attribute>),
+    // Allow these attributes within constraints.
+    Allow(BTreeSet<Attribute>),
+}
+
+#[allow(dead_code)]
+pub enum AccessResultClass<'a> {
+    // Deny this operation unconditionally.
+    Denied,
+    // Unbounded allow, provided no denied exists.
+    Grant,
+    // This module makes no decisions about this entry.
+    Ignore,
+    // Limit the allowed attr set to this - this doesn't
+    // allow anything, it constrains what might be allowed.
     Constrain(BTreeSet<&'a str>),
     // Allow these attributes within constraints.
     Allow(BTreeSet<&'a str>),
@@ -92,7 +115,7 @@ struct AccessControlsInner {
     acps_create: Vec<AccessControlCreate>,
     acps_modify: Vec<AccessControlModify>,
     acps_delete: Vec<AccessControlDelete>,
-    sync_agreements: HashMap<Uuid, BTreeSet<String>>,
+    sync_agreements: HashMap<Uuid, BTreeSet<Attribute>>,
     // Oauth2
     // Sync prov
 }
@@ -149,7 +172,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_create(&self) -> &Vec<AccessControlCreate>;
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>>;
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>>;
 
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a>;
@@ -238,7 +261,7 @@ pub trait AccessControlsTransaction<'a> {
 
         // Get the set of attributes requested by this se filter. This is what we are
         // going to access check.
-        let requested_attrs: BTreeSet<&str> = filter_orig.get_attr_set();
+        let requested_attrs: BTreeSet<Attribute> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
         let related_acp = self.search_related_acp(ident);
@@ -299,10 +322,6 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
-        let requested_attrs: Option<BTreeSet<_>> = se
-            .attrs
-            .as_ref()
-            .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
         // Get the relevant acps for this receiver.
         let related_acp = self.search_related_acp(&se.ident);
@@ -331,13 +350,13 @@ pub trait AccessControlsTransaction<'a> {
                     SearchResult::Allow(allowed_attrs) => {
                         // The allow set constrained.
                         debug!(
-                            requested = ?requested_attrs,
+                            requested = ?se.attrs,
                             allowed = ?allowed_attrs,
                             "reduction",
                         );
 
                         // Reduce requested by allowed.
-                        let reduced_attrs = if let Some(requested) = requested_attrs.as_ref() {
+                        let reduced_attrs = if let Some(requested) = se.attrs.as_ref() {
                             requested & &allowed_attrs
                         } else {
                             allowed_attrs
@@ -423,21 +442,21 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<_> = self.modify_related_acp(&me.ident);
 
         // build two sets of "requested pres" and "requested rem"
-        let requested_pres: BTreeSet<&str> = me
+        let requested_pres: BTreeSet<Attribute> = me
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Present(a, _) => Some(a.as_str()),
+                Modify::Present(a, _) => Some(a.clone()),
                 _ => None,
             })
             .collect();
 
-        let requested_rem: BTreeSet<&str> = me
+        let requested_rem: BTreeSet<Attribute> = me
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Removed(a, _) => Some(a.as_str()),
-                Modify::Purged(a) => Some(a.as_str()),
+                Modify::Removed(a, _) => Some(a.clone()),
+                Modify::Purged(a) => Some(a.clone()),
                 _ => None,
             })
             .collect();
@@ -556,19 +575,19 @@ pub trait AccessControlsTransaction<'a> {
             }
 
             // build two sets of "requested pres" and "requested rem"
-            let requested_pres: BTreeSet<&str> = modlist
+            let requested_pres: BTreeSet<Attribute> = modlist
                 .iter()
                 .filter_map(|m| match m {
-                    Modify::Present(a, _) => Some(a.as_str()),
+                    Modify::Present(a, _) => Some(a.clone()),
                     _ => None,
                 })
                 .collect();
 
-            let requested_rem: BTreeSet<&str> = modlist
+            let requested_rem: BTreeSet<Attribute> = modlist
                 .iter()
                 .filter_map(|m| match m {
-                    Modify::Removed(a, _) => Some(a.as_str()),
-                    Modify::Purged(a) => Some(a.as_str()),
+                    Modify::Removed(a, _) => Some(a.clone()),
+                    Modify::Purged(a) => Some(a.clone()),
                     _ => None,
                 })
                 .collect();
@@ -756,7 +775,7 @@ pub trait AccessControlsTransaction<'a> {
     fn effective_permission_check(
         &self,
         ident: &Identity,
-        attrs: Option<BTreeSet<AttrString>>,
+        attrs: Option<BTreeSet<Attribute>>,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
         // I think we need a structure like " CheckResult, which is in the order of the
@@ -816,7 +835,7 @@ pub trait AccessControlsTransaction<'a> {
                         SearchResult::Grant => Access::Grant,
                         SearchResult::Allow(allowed_attrs) => {
                             // Bound by requested attrs?
-                            Access::Allow(allowed_attrs.into_iter().map(|s| s.into()).collect())
+                            Access::Allow(allowed_attrs.into_iter().collect())
                         }
                     };
 
@@ -827,12 +846,12 @@ pub trait AccessControlsTransaction<'a> {
                     sync_agmts,
                     e,
                 ) {
-                    ModifyResult::Denied => (Access::Denied, Access::Denied, Access::Denied),
-                    ModifyResult::Grant => (Access::Grant, Access::Grant, Access::Grant),
+                    ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
+                    ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
                     ModifyResult::Allow { pres, rem, cls } => (
-                        Access::Allow(pres.into_iter().map(|s| s.into()).collect()),
-                        Access::Allow(rem.into_iter().map(|s| s.into()).collect()),
-                        Access::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                        Access::Allow(pres.into_iter().collect()),
+                        Access::Allow(rem.into_iter().collect()),
+                        AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
                     ),
                 };
 
@@ -904,7 +923,10 @@ impl<'a> AccessControlsWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn update_sync_agreements(&mut self, mut sync_agreements: HashMap<Uuid, BTreeSet<String>>) {
+    pub fn update_sync_agreements(
+        &mut self,
+        mut sync_agreements: HashMap<Uuid, BTreeSet<Attribute>>,
+    ) {
         std::mem::swap(
             &mut sync_agreements,
             &mut self.inner.deref_mut().sync_agreements,
@@ -935,7 +957,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
         &self.inner.acps_delete
     }
 
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>> {
         &self.inner.sync_agreements
     }
 
@@ -978,7 +1000,7 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
         &self.inner.acps_delete
     }
 
-    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<String>> {
+    fn get_sync_agreements(&self) -> &HashMap<Uuid, BTreeSet<Attribute>> {
         &self.inner.sync_agreements
     }
 
@@ -1052,7 +1074,7 @@ mod tests {
             AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
             AccessControlSearch, AccessControlTarget,
         },
-        Access, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
+        Access, AccessClass, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
 
@@ -1797,7 +1819,7 @@ mod tests {
             )),
         );
         // the requested attrs here.
-        se_anon.attrs = Some(btreeset![Attribute::Name.into()]);
+        se_anon.attrs = Some(btreeset![Attribute::Name]);
 
         let acp = AccessControlSearch::from_raw(
             "test_acp",
@@ -1852,7 +1874,7 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let mut sync_agmt = HashMap::new();
             let mut set = BTreeSet::new();
-            set.insert($sync_yield_attr.to_string());
+            set.insert($sync_yield_attr);
             sync_agmt.insert($sync_uuid, set);
             acw.update_sync_agreements(sync_agmt);
             let acw = acw;
@@ -2381,10 +2403,10 @@ mod tests {
             vec![AccessEffectivePermission {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                search: Access::Allow(btreeset![Attribute::Name.into()]),
+                search: Access::Allow(btreeset![Attribute::Name]),
                 modify_pres: Access::Allow(BTreeSet::new()),
                 modify_rem: Access::Allow(BTreeSet::new()),
-                modify_class: Access::Allow(BTreeSet::new()),
+                modify_class: AccessClass::Allow(BTreeSet::new()),
             }]
         )
     }
@@ -2423,9 +2445,9 @@ mod tests {
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
-                modify_pres: Access::Allow(btreeset![Attribute::Name.into()]),
-                modify_rem: Access::Allow(btreeset![Attribute::Name.into()]),
-                modify_class: Access::Allow(btreeset![EntryClass::Object.into()]),
+                modify_pres: Access::Allow(btreeset![Attribute::Name]),
+                modify_rem: Access::Allow(btreeset![Attribute::Name]),
+                modify_class: AccessClass::Allow(btreeset![EntryClass::Object.into()]),
             }]
         )
     }
@@ -2660,7 +2682,7 @@ mod tests {
             &me_pres,
             vec![acp_allow.clone()],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );
@@ -2669,7 +2691,7 @@ mod tests {
             &me_rem,
             vec![acp_allow.clone()],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );
@@ -2678,7 +2700,7 @@ mod tests {
             &me_purge,
             vec![acp_allow],
             sync_uuid,
-            Attribute::Name.as_ref(),
+            Attribute::Name,
             &r2_set,
             true
         );

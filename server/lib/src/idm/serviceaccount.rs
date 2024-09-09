@@ -235,10 +235,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         })?;
 
         // modify the account to put the session onto it.
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::ApiTokenSession.into(),
-            session,
-        )]);
+        let modlist =
+            ModifyList::new_list(vec![Modify::Present(Attribute::ApiTokenSession, session)]);
 
         self.qs_write
             .impersonate_modify(
@@ -282,7 +280,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::ApiTokenSession.into(),
+            Attribute::ApiTokenSession,
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -331,7 +329,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = ModifyList::new_list(vec![
             m_purge(Attribute::PassKeys),
             m_purge(Attribute::PrimaryCredential),
-            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
+            Modify::Present(Attribute::PrimaryCredential, vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -395,9 +393,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                                                 issued_at: s.issued_at,
                                                 purpose,
                                             })
-                                            .map_err(|e| {
-                                                admin_error!("Invalid api_token {}", u);
-                                                e
+                                            .inspect_err(|err| {
+                                                admin_error!(?err, "Invalid api_token {}", u);
                                             })
                                     })
                                     .collect::<Result<Vec<_>, _>>()

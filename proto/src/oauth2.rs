@@ -520,7 +520,8 @@ mod tests {
             assert_eq!(at, super::AccessTokenType::DPoP);
         }
 
-        for testcase in ["cheese"] {
+        {
+            let testcase = "cheese";
             let at = serde_json::from_str::<super::AccessTokenType>(&format!("\"{}\"", testcase));
             assert!(at.is_err())
         }

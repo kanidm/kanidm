@@ -211,8 +211,8 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid))),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::OAuth2RsBasicSecret.into(),),
-                Modify::Purged(Attribute::OAuth2RsTokenKey.into(),)
+                Modify::Purged(Attribute::OAuth2RsBasicSecret,),
+                Modify::Purged(Attribute::OAuth2RsTokenKey,)
             ]),
             None,
             |_| {},

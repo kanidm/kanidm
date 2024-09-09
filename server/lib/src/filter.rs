@@ -24,7 +24,6 @@ use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
-// use smartstring::alias::String as AttrString;
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -48,20 +47,20 @@ pub type ResolveFilterCacheReadTxn<'a> = ARCacheReadTxn<
 
 // This is &Value so we can lazy const then clone, but perhaps we can reconsider
 // later if this should just take Value.
-pub fn f_eq<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
-    FC::Eq(a.into(), v)
+pub fn f_eq(a: Attribute, v: PartialValue) -> FC {
+    FC::Eq(a, v)
 }
 
-pub fn f_sub<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
-    FC::Cnt(a.into(), v)
+pub fn f_sub(a: Attribute, v: PartialValue) -> FC {
+    FC::Cnt(a, v)
 }
 
-pub fn f_pres<'a>(a: Attribute) -> FC<'a> {
-    FC::Pres(a.into())
+pub fn f_pres(a: Attribute) -> FC {
+    FC::Pres(a)
 }
 
-pub fn f_lt<'a>(a: Attribute, v: PartialValue) -> FC<'a> {
-    FC::LessThan(a.into(), v)
+pub fn f_lt(a: Attribute, v: PartialValue) -> FC {
+    FC::LessThan(a, v)
 }
 
 pub fn f_or(vs: Vec<FC>) -> FC {
@@ -80,16 +79,16 @@ pub fn f_andnot(fc: FC) -> FC {
     FC::AndNot(Box::new(fc))
 }
 
-pub fn f_self<'a>() -> FC<'a> {
+pub fn f_self() -> FC {
     FC::SelfUuid
 }
 
-pub fn f_id(uuid: &str) -> FC<'static> {
+pub fn f_id(uuid: &str) -> FC {
     let uf = Uuid::parse_str(uuid)
         .ok()
-        .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)));
-    let spnf = PartialValue::new_spn_s(uuid).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
-    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(uuid));
+        .map(|u| FC::Eq(Attribute::Uuid, PartialValue::Uuid(u)));
+    let spnf = PartialValue::new_spn_s(uuid).map(|spn| FC::Eq(Attribute::Spn, spn));
+    let nf = FC::Eq(Attribute::Name, PartialValue::new_iname(uuid));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
         .flatten()
@@ -98,9 +97,9 @@ pub fn f_id(uuid: &str) -> FC<'static> {
     FC::Or(f)
 }
 
-pub fn f_spn_name(id: &str) -> FC<'static> {
-    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(Attribute::Spn.as_ref(), spn));
-    let nf = FC::Eq(Attribute::Name.as_ref(), PartialValue::new_iname(id));
+pub fn f_spn_name(id: &str) -> FC {
+    let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq(Attribute::Spn, spn));
+    let nf = FC::Eq(Attribute::Name, PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(spnf).flatten().chain(iter::once(nf)).collect();
     FC::Or(f)
 }
@@ -108,15 +107,15 @@ pub fn f_spn_name(id: &str) -> FC<'static> {
 /// This is the short-form for tests and internal filters that can then
 /// be transformed into a filter for the server to use.
 #[derive(Clone, Debug, Deserialize)]
-pub enum FC<'a> {
-    Eq(&'a str, PartialValue),
-    Cnt(&'a str, PartialValue),
-    Pres(&'a str),
-    LessThan(&'a str, PartialValue),
-    Or(Vec<FC<'a>>),
-    And(Vec<FC<'a>>),
-    Inclusion(Vec<FC<'a>>),
-    AndNot(Box<FC<'a>>),
+pub enum FC {
+    Eq(Attribute, PartialValue),
+    Cnt(Attribute, PartialValue),
+    Pres(Attribute),
+    LessThan(Attribute, PartialValue),
+    Or(Vec<FC>),
+    And(Vec<FC>),
+    Inclusion(Vec<FC>),
+    AndNot(Box<FC>),
     SelfUuid,
     // Not(Box<FC>),
 }
@@ -125,12 +124,12 @@ pub enum FC<'a> {
 #[derive(Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
-    Eq(AttrString, PartialValue),
-    Cnt(AttrString, PartialValue),
-    Stw(AttrString, PartialValue),
-    Enw(AttrString, PartialValue),
-    Pres(AttrString),
-    LessThan(AttrString, PartialValue),
+    Eq(Attribute, PartialValue),
+    Cnt(Attribute, PartialValue),
+    Stw(Attribute, PartialValue),
+    Enw(Attribute, PartialValue),
+    Pres(Attribute),
+    LessThan(Attribute, PartialValue),
     Or(Vec<FilterComp>),
     And(Vec<FilterComp>),
     Inclusion(Vec<FilterComp>),
@@ -214,12 +213,12 @@ impl fmt::Debug for FilterComp {
 #[derive(Clone, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
-    Eq(AttrString, PartialValue, Option<NonZeroU8>),
-    Cnt(AttrString, PartialValue, Option<NonZeroU8>),
-    Stw(AttrString, PartialValue, Option<NonZeroU8>),
-    Enw(AttrString, PartialValue, Option<NonZeroU8>),
-    Pres(AttrString, Option<NonZeroU8>),
-    LessThan(AttrString, PartialValue, Option<NonZeroU8>),
+    Eq(Attribute, PartialValue, Option<NonZeroU8>),
+    Cnt(Attribute, PartialValue, Option<NonZeroU8>),
+    Stw(Attribute, PartialValue, Option<NonZeroU8>),
+    Enw(Attribute, PartialValue, Option<NonZeroU8>),
+    Pres(Attribute, Option<NonZeroU8>),
+    LessThan(Attribute, PartialValue, Option<NonZeroU8>),
     Or(Vec<FilterResolved>, Option<NonZeroU8>),
     And(Vec<FilterResolved>, Option<NonZeroU8>),
     // All terms must have 1 or more items, or the inclusion is false!
@@ -335,16 +334,16 @@ pub struct FilterValidResolved {
 #[derive(Debug)]
 pub enum FilterPlan {
     Invalid,
-    EqIndexed(AttrString, String),
-    EqUnindexed(AttrString),
-    EqCorrupt(AttrString),
-    SubIndexed(AttrString, String),
-    SubUnindexed(AttrString),
-    SubCorrupt(AttrString),
-    PresIndexed(AttrString),
-    PresUnindexed(AttrString),
-    PresCorrupt(AttrString),
-    LessThanUnindexed(AttrString),
+    EqIndexed(Attribute, String),
+    EqUnindexed(Attribute),
+    EqCorrupt(Attribute),
+    SubIndexed(Attribute, String),
+    SubUnindexed(Attribute),
+    SubCorrupt(Attribute),
+    PresIndexed(Attribute),
+    PresUnindexed(Attribute),
+    PresCorrupt(Attribute),
+    LessThanUnindexed(Attribute),
     OrUnindexed(Vec<FilterPlan>),
     OrIndexed(Vec<FilterPlan>),
     OrPartial(Vec<FilterPlan>),
@@ -520,7 +519,7 @@ impl Filter<FilterValid> {
         Ok(resolved_filt)
     }
 
-    pub fn get_attr_set(&self) -> BTreeSet<&str> {
+    pub fn get_attr_set(&self) -> BTreeSet<Attribute> {
         // Recurse through the filter getting an attribute set.
         let mut r_set = BTreeSet::new();
         self.state.inner.get_attr_set(&mut r_set);
@@ -603,19 +602,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (Attribute::Uuid.into(), IndexType::Equality),
-            (Attribute::Uuid.into(), IndexType::Presence),
-            (Attribute::Name.into(), IndexType::Equality),
-            (Attribute::Name.into(), IndexType::SubString),
-            (Attribute::Name.into(), IndexType::Presence),
-            (Attribute::Class.into(), IndexType::Equality),
-            (Attribute::Class.into(), IndexType::Presence),
-            (Attribute::Member.into(), IndexType::Equality),
-            (Attribute::Member.into(), IndexType::Presence),
-            (Attribute::MemberOf.into(), IndexType::Equality),
-            (Attribute::MemberOf.into(), IndexType::Presence),
-            (Attribute::DirectMemberOf.into(), IndexType::Equality),
-            (Attribute::DirectMemberOf.into(), IndexType::Presence),
+            (Attribute::Uuid, IndexType::Equality),
+            (Attribute::Uuid, IndexType::Presence),
+            (Attribute::Name, IndexType::Equality),
+            (Attribute::Name, IndexType::SubString),
+            (Attribute::Name, IndexType::Presence),
+            (Attribute::Class, IndexType::Equality),
+            (Attribute::Class, IndexType::Presence),
+            (Attribute::Member, IndexType::Equality),
+            (Attribute::Member, IndexType::Presence),
+            (Attribute::MemberOf, IndexType::Equality),
+            (Attribute::MemberOf, IndexType::Presence),
+            (Attribute::DirectMemberOf, IndexType::Equality),
+            (Attribute::DirectMemberOf, IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -721,10 +720,10 @@ impl FromStr for Filter<FilterInvalid> {
 impl FilterComp {
     fn new(fc: FC) -> Self {
         match fc {
-            FC::Eq(a, v) => FilterComp::Eq(AttrString::from(a), v),
-            FC::Cnt(a, v) => FilterComp::Cnt(AttrString::from(a), v),
-            FC::Pres(a) => FilterComp::Pres(AttrString::from(a)),
-            FC::LessThan(a, v) => FilterComp::LessThan(AttrString::from(a), v),
+            FC::Eq(a, v) => FilterComp::Eq(a, v),
+            FC::Cnt(a, v) => FilterComp::Cnt(a, v),
+            FC::Pres(a) => FilterComp::Pres(a),
+            FC::LessThan(a, v) => FilterComp::LessThan(a, v),
             FC::Or(v) => FilterComp::Or(v.into_iter().map(FilterComp::new).collect()),
             FC::And(v) => FilterComp::And(v.into_iter().map(FilterComp::new).collect()),
             FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
@@ -736,8 +735,8 @@ impl FilterComp {
     fn new_ignore_hidden(fc: FilterComp) -> Self {
         FilterComp::And(vec![
             FilterComp::AndNot(Box::new(FilterComp::Or(vec![
-                FilterComp::Eq(Attribute::Class.into(), EntryClass::Tombstone.into()),
-                FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
+                FilterComp::Eq(Attribute::Class, EntryClass::Tombstone.into()),
+                FilterComp::Eq(Attribute::Class, EntryClass::Recycled.into()),
             ]))),
             fc,
         ])
@@ -745,12 +744,12 @@ impl FilterComp {
 
     fn new_recycled(fc: FilterComp) -> Self {
         FilterComp::And(vec![
-            FilterComp::Eq(Attribute::Class.into(), EntryClass::Recycled.into()),
+            FilterComp::Eq(Attribute::Class, EntryClass::Recycled.into()),
             fc,
         ])
     }
 
-    fn get_attr_set<'a>(&'a self, r_set: &mut BTreeSet<&'a str>) {
+    fn get_attr_set(&self, r_set: &mut BTreeSet<Attribute>) {
         match self {
             FilterComp::Eq(attr, _)
             | FilterComp::Cnt(attr, _)
@@ -758,14 +757,14 @@ impl FilterComp {
             | FilterComp::Enw(attr, _)
             | FilterComp::Pres(attr)
             | FilterComp::LessThan(attr, _) => {
-                r_set.insert(attr.as_str());
+                r_set.insert(attr.clone());
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::And(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::Inclusion(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
             FilterComp::AndNot(f) => f.get_attr_set(r_set),
             FilterComp::SelfUuid => {
-                r_set.insert(ATTR_UUID);
+                r_set.insert(Attribute::Uuid);
             }
         }
     }
@@ -784,89 +783,74 @@ impl FilterComp {
 
         match self {
             FilterComp::Eq(attr, value) => {
-                // Validate/normalise the attr name.
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                // Check the requested attribute exists, and this PV type matches something
+                // that can be queried of the attribute.
+                match schema_attributes.get(attr) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr, value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Eq(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Eq(attr.clone(), value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::Cnt(attr, value) => {
-                // Validate/normalise the attr name.
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                match schema_attributes.get(attr) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr, value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Cnt(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Cnt(attr.clone(), value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::Stw(attr, value) => {
-                // Validate/normalise the attr name.
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                match schema_attributes.get(attr) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr, value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Stw(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Stw(attr.clone(), value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::Enw(attr, value) => {
-                // Validate/normalise the attr name.
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                match schema_attributes.get(attr) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr, value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::Enw(attr_norm, value.clone()))
+                            .map(|_| FilterComp::Enw(attr.clone(), value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::Pres(attr) => {
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                match schema_attributes.get(attr) {
                     Some(_attr_name) => {
                         // Return our valid data
-                        Ok(FilterComp::Pres(attr_norm))
+                        Ok(FilterComp::Pres(attr.clone()))
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::LessThan(attr, value) => {
-                // Validate/normalise the attr name.
-                let attr_norm = schema.normalise_attr_name(attr);
-                // Now check it exists
-                match schema_attributes.get(&attr_norm) {
+                match schema_attributes.get(attr) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr, value)
                             // Okay, it worked, transform to a filter component
-                            .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
+                            .map(|_| FilterComp::LessThan(attr.clone(), value.clone()))
                         // On error, pass the error back out.
                     }
-                    None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 }
             }
             FilterComp::Or(filters) => {
@@ -932,17 +916,17 @@ impl FilterComp {
         let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(nk.as_str(), v)?;
+                let nk = Attribute::from(a.as_str());
+                let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Cnt(a, v) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(nk.as_str(), v)?;
+                let nk = Attribute::from(a.as_str());
+                let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
+                let nk = Attribute::from(a.as_str());
                 FilterComp::Pres(nk)
             }
             ProtoFilter::Or(l) => {
@@ -984,17 +968,17 @@ impl FilterComp {
         let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(nk.as_str(), v)?;
+                let nk = Attribute::from(a.as_str());
+                let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Cnt(a, v) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(nk.as_str(), v)?;
+                let nk = Attribute::from(a.as_str());
+                let v = qs.clone_partialvalue(&nk, v)?;
                 FilterComp::Cnt(nk, v)
             }
             ProtoFilter::Pres(a) => {
-                let nk = qs.get_schema().normalise_attr_name(a);
+                let nk = Attribute::from(a.as_str());
                 FilterComp::Pres(nk)
             }
             ProtoFilter::Or(l) => {
@@ -1065,7 +1049,7 @@ impl FilterComp {
             }
             LdapFilter::Equality(a, v) => {
                 let a = ldap_attr_filter_map(a);
-                let v = qs.clone_partialvalue(a.as_str(), v)?;
+                let v = qs.clone_partialvalue(&a, v)?;
                 FilterComp::Eq(a, v)
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
@@ -1081,17 +1065,17 @@ impl FilterComp {
 
                 let mut terms = Vec::with_capacity(any.len() + 2);
                 if let Some(ini) = initial {
-                    let v = qs.clone_partialvalue(a.as_str(), ini)?;
+                    let v = qs.clone_partialvalue(&a, ini)?;
                     terms.push(FilterComp::Stw(a.clone(), v));
                 }
 
                 for term in any.iter() {
-                    let v = qs.clone_partialvalue(a.as_str(), term)?;
+                    let v = qs.clone_partialvalue(&a, term)?;
                     terms.push(FilterComp::Cnt(a.clone(), v));
                 }
 
                 if let Some(fin) = final_ {
-                    let v = qs.clone_partialvalue(a.as_str(), fin)?;
+                    let v = qs.clone_partialvalue(&a, fin)?;
                     terms.push(FilterComp::Enw(a.clone(), v));
                 }
 
@@ -1227,7 +1211,7 @@ impl FilterResolved {
     /// ⚠️  - Process a filter without verifying with schema.
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
+    fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&Attribute, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Equality));
@@ -1332,7 +1316,7 @@ impl FilterResolved {
                     .get(&idxkref as &dyn IdxKeyToRef)
                     .copied()
                     .and_then(NonZeroU8::new);
-                FilterResolved::Eq(Attribute::Uuid.into(), PartialValue::Uuid(uuid), idx)
+                FilterResolved::Eq(Attribute::Uuid, PartialValue::Uuid(uuid), idx)
             }),
             FilterComp::Cnt(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
@@ -1421,7 +1405,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
-                    Attribute::Uuid.into(),
+                    Attribute::Uuid,
                     PartialValue::Uuid(uuid),
                     NonZeroU8::new(true as u8),
                 )
@@ -2012,8 +1996,8 @@ mod tests {
     #[test]
     fn test_attr_set_filter() {
         let mut f_expect = BTreeSet::new();
-        f_expect.insert("userid");
-        f_expect.insert(Attribute::Class.as_ref());
+        f_expect.insert(Attribute::from("userid"));
+        f_expect.insert(Attribute::Class);
         // Given filters, get their expected attribute sets - this is used by access control profiles
         // to determine what attrs we are requesting regardless of the partialvalue.
         let f_t1a = filter_valid!(f_and!([

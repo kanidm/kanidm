@@ -7,17 +7,17 @@ use super::profiles::{
 use super::AccessResult;
 use std::sync::Arc;
 
-pub(super) enum SearchResult<'a> {
+pub(super) enum SearchResult {
     Denied,
     Grant,
-    Allow(BTreeSet<&'a str>),
+    Allow(BTreeSet<Attribute>),
 }
 
-pub(super) fn apply_search_access<'a>(
+pub(super) fn apply_search_access(
     ident: &Identity,
-    related_acp: &'a [AccessControlSearchResolved],
-    entry: &'a Arc<EntrySealedCommitted>,
-) -> SearchResult<'a> {
+    related_acp: &[AccessControlSearchResolved],
+    entry: &Arc<EntrySealedCommitted>,
+) -> SearchResult {
     // This could be considered "slow" due to allocs each iter with the entry. We
     // could move these out of the loop and reuse, but there are likely risks to
     // that.
@@ -70,11 +70,11 @@ pub(super) fn apply_search_access<'a>(
     }
 }
 
-fn search_filter_entry<'a>(
+fn search_filter_entry(
     ident: &Identity,
-    related_acp: &'a [AccessControlSearchResolved],
-    entry: &'a Arc<EntrySealedCommitted>,
-) -> AccessResult<'a> {
+    related_acp: &[AccessControlSearchResolved],
+    entry: &Arc<EntrySealedCommitted>,
+) -> AccessResult {
     // If this is an internal search, return our working set.
     match &ident.origin {
         IdentType::Internal => {
@@ -106,7 +106,7 @@ fn search_filter_entry<'a>(
     let ident_memberof = ident.get_memberof();
     let ident_uuid = ident.get_uuid();
 
-    let allowed_attrs: BTreeSet<&str> = related_acp
+    let allowed_attrs: BTreeSet<Attribute> = related_acp
         .iter()
         .filter_map(|acs| {
             // Assert that the receiver condition applies.
@@ -156,7 +156,7 @@ fn search_filter_entry<'a>(
 
             security_debug!(entry = ?entry.get_display_id(), acs = %acs.acp.acp.name, "acs applied to entry");
             // add search_attrs to allowed.
-            Some(acs.acp.attrs.iter().map(|s| s.as_str()))
+            Some(acs.acp.attrs.iter().cloned())
         })
         .flatten()
         .collect();
@@ -164,10 +164,7 @@ fn search_filter_entry<'a>(
     AccessResult::Allow(allowed_attrs)
 }
 
-fn search_oauth2_filter_entry<'a>(
-    ident: &Identity,
-    entry: &'a Arc<EntrySealedCommitted>,
-) -> AccessResult<'a> {
+fn search_oauth2_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted>) -> AccessResult {
     match &ident.origin {
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
@@ -189,12 +186,12 @@ fn search_oauth2_filter_entry<'a>(
                 security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a memberof a group granted an oauth2 scope by this entry");
 
                 return AccessResult::Allow(btreeset!(
-                    Attribute::Class.as_ref(),
-                    Attribute::DisplayName.as_ref(),
-                    Attribute::Uuid.as_ref(),
-                    Attribute::Name.as_ref(),
-                    Attribute::OAuth2RsOriginLanding.as_ref(),
-                    Attribute::Image.as_ref()
+                    Attribute::Class,
+                    Attribute::DisplayName,
+                    Attribute::Uuid,
+                    Attribute::Name,
+                    Attribute::OAuth2RsOriginLanding,
+                    Attribute::Image
                 ));
             }
             AccessResult::Ignore
@@ -202,10 +199,10 @@ fn search_oauth2_filter_entry<'a>(
     }
 }
 
-fn search_sync_account_filter_entry<'a>(
+fn search_sync_account_filter_entry(
     ident: &Identity,
-    entry: &'a Arc<EntrySealedCommitted>,
-) -> AccessResult<'a> {
+    entry: &Arc<EntrySealedCommitted>,
+) -> AccessResult {
     match &ident.origin {
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
@@ -243,9 +240,9 @@ fn search_sync_account_filter_entry<'a>(
                         security_debug!(entry = ?entry.get_uuid(), ident = ?iuser.entry.get_uuid2rdn(), "ident is a synchronised account from this sync account");
 
                         return AccessResult::Allow(btreeset!(
-                            Attribute::Class.as_ref(),
-                            Attribute::Uuid.as_ref(),
-                            Attribute::SyncCredentialPortal.as_ref()
+                            Attribute::Class,
+                            Attribute::Uuid,
+                            Attribute::SyncCredentialPortal
                         ));
                     }
                 }

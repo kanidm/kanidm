@@ -41,10 +41,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         trace!(?ctx_entries);
 
-        let db_entries = self.be_txn.incremental_prepare(&ctx_entries).map_err(|e| {
-            error!("Failed to access entries from db");
-            e
-        })?;
+        let db_entries = self
+            .be_txn
+            .incremental_prepare(&ctx_entries)
+            .inspect_err(|err| {
+                error!(?err, "Failed to access entries from db");
+            })?;
 
         trace!(?db_entries);
 
@@ -366,9 +368,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let ruv = self.be_txn.get_ruv_write();
 
         ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
-            .map_err(|e| {
-                error!("Incoming RUV failed preflight checks, unable to proceed.");
-                e
+            .inspect_err(|err| {
+                error!(
+                    ?err,
+                    "Incoming RUV failed preflight checks, unable to proceed."
+                );
             })?;
 
         // == ⚠️  Below this point we begin to make changes! ==
@@ -383,16 +387,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Apply the schema entries first.
         let schema_changed = self
             .consumer_incremental_apply_entries(ctx_schema_entries)
-            .map_err(|e| {
-                error!("Failed to apply incremental schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to apply incremental schema entries");
             })?;
 
         if schema_changed {
             // We need to reload schema now!
-            self.reload_schema().map_err(|e| {
-                error!("Failed to reload schema");
-                e
+            self.reload_schema().inspect_err(|err| {
+                error!(?err, "Failed to reload schema");
             })?;
         }
 
@@ -400,29 +402,25 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Apply meta entries now.
         let meta_changed = self
             .consumer_incremental_apply_entries(ctx_meta_entries)
-            .map_err(|e| {
-                error!("Failed to apply incremental schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to apply incremental schema entries");
             })?;
 
         // This is re-loaded in case the domain name changed on the remote
         if meta_changed {
-            self.reload_domain_info().map_err(|e| {
-                error!("Failed to reload domain info");
-                e
+            self.reload_domain_info().inspect_err(|err| {
+                error!(?err, "Failed to reload domain info");
             })?;
-            self.reload_system_config().map_err(|e| {
-                error!("Failed to reload system configuration");
-                e
+            self.reload_system_config().inspect_err(|err| {
+                error!(?err, "Failed to reload system configuration");
             })?;
         }
 
         debug!("Applying all context entries");
         // Update all other entries now.
         self.consumer_incremental_apply_entries(ctx_entries)
-            .map_err(|e| {
-                error!("Failed to apply incremental schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to apply incremental schema entries");
             })?;
 
         // Reload the domain version, doing any needed migrations.
@@ -432,9 +430,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // was just migrated. As a result, we only need to apply the migrations to entries
         // that were not on the supplier, and therefore need updates here.
         if meta_changed {
-            self.reload_domain_info_version().map_err(|e| {
-                error!("Failed to reload domain info version");
-                e
+            self.reload_domain_info_version().inspect_err(|err| {
+                error!(?err, "Failed to reload domain info version");
             })?;
         }
 
@@ -442,14 +439,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(ctx_ranges).map_err(|e| {
-            error!("RUV ranges were not rebuilt correctly.");
-            e
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
+            error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(ctx_ranges).map_err(|e| {
-            error!("Unable to update RUV with supplier ranges.");
-            e
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
+            error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 
         Ok(ConsumerState::Ok)
@@ -488,9 +483,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .iter()
             .map(EntryRefreshNew::from_repl_entry_v1)
             .collect::<Result<Vec<EntryRefreshNew>, _>>()
-            .map_err(|e| {
-                error!("Failed to convert entries from supplier");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to convert entries from supplier");
             })?;
 
         Plugins::run_pre_repl_refresh(self, candidates.as_slice()).map_err(|e| {
@@ -573,10 +567,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // == ⚠️  Below this point we begin to make changes! ==
 
         // Update the d_uuid. This is what defines us as being part of this repl topology!
-        self.be_txn.set_db_d_uuid(ctx_domain_uuid).map_err(|e| {
-            error!("Failed to reset domain uuid");
-            e
-        })?;
+        self.be_txn
+            .set_db_d_uuid(ctx_domain_uuid)
+            .inspect_err(|err| {
+                error!(?err, "Failed to reset domain uuid");
+            })?;
 
         // We need to reset our server uuid now. This is so that any other servers
         // which had our former server_uuid in their RUV, is able to start to age it
@@ -585,51 +580,46 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Delete all entries - *proper delete, not just tombstone!*
 
-        self.be_txn.danger_delete_all_db_content().map_err(|e| {
-            error!("Failed to clear existing server database content");
-            e
-        })?;
+        self.be_txn
+            .danger_delete_all_db_content()
+            .inspect_err(|err| {
+                error!(?err, "Failed to clear existing server database content");
+            })?;
 
         // Reset this transactions schema to a completely clean slate.
-        self.schema.generate_in_memory().map_err(|e| {
-            error!("Failed to reset in memory schema to clean state");
-            e
+        self.schema.generate_in_memory().inspect_err(|err| {
+            error!(?err, "Failed to reset in memory schema to clean state");
         })?;
 
         // Apply the schema entries first. This is the foundation that everything
         // else will build upon!
         self.consumer_refresh_create_entries(ctx_schema_entries)
-            .map_err(|e| {
-                error!("Failed to refresh schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to refresh schema entries");
             })?;
 
         // We need to reload schema now!
-        self.reload_schema().map_err(|e| {
-            error!("Failed to reload schema");
-            e
+        self.reload_schema().inspect_err(|err| {
+            error!(?err, "Failed to reload schema");
         })?;
 
         // We have to reindex to force all the existing indexes to be dumped
         // and recreated before we start to import.
-        self.reindex().map_err(|e| {
-            error!("Failed to reload schema");
-            e
+        self.reindex().inspect_err(|err| {
+            error!(?err, "Failed to reload schema");
         })?;
 
         // Apply the domain info entry / system info / system config entry?
         self.consumer_refresh_create_entries(ctx_meta_entries)
-            .map_err(|e| {
-                error!("Failed to refresh meta entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to refresh meta entries");
             })?;
 
         // NOTE: The domain info we receive here will have the domain version populated!
         // That's okay though, because all the incoming data is already at the right
         // version!
-        self.reload_domain_info().map_err(|e| {
-            error!("Failed to reload domain info");
-            e
+        self.reload_domain_info().inspect_err(|err| {
+            error!(?err, "Failed to reload domain info");
         })?;
 
         // Mark that everything changed so that post commit hooks function as expected.
@@ -648,23 +638,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Create all the entries. Note we don't hit plugins here beside post repl plugs.
         self.consumer_refresh_create_entries(ctx_entries)
-            .map_err(|e| {
-                error!("Failed to refresh schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to refresh schema entries");
             })?;
 
         // Finally, confirm that the ranges that we have recreated match the ranges from our
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(ctx_ranges).map_err(|e| {
-            error!("RUV ranges were not rebuilt correctly.");
-            e
+        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
+            error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(ctx_ranges).map_err(|e| {
-            error!("Unable to update RUV with supplier ranges.");
-            e
+        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
+            error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 
         Ok(())

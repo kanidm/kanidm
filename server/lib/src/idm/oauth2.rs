@@ -588,7 +588,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     BTreeMap::default()
                 };
 
-                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable);
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
                     trace!("{}", Attribute::Rs256PrivateKeyDer);
                     ent
@@ -819,7 +819,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // and when replication converges the session is actually removed.
 
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::OAuth2Session.into(),
+            Attribute::OAuth2Session,
             PartialValue::Refer(session_id),
         )]);
 
@@ -1005,11 +1005,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Removed(
-                Attribute::OAuth2ConsentScopeMap.into(),
+                Attribute::OAuth2ConsentScopeMap,
                 PartialValue::Refer(o2rs.uuid),
             ),
             Modify::Present(
-                Attribute::OAuth2ConsentScopeMap.into(),
+                Attribute::OAuth2ConsentScopeMap,
                 Value::OauthScopeMap(o2rs.uuid, consent_req.scopes.iter().cloned().collect()),
             ),
         ]);
@@ -1219,7 +1219,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     // Revoke it
                     let modlist = ModifyList::new_list(vec![Modify::Removed(
-                        Attribute::OAuth2Session.into(),
+                        Attribute::OAuth2Session,
                         PartialValue::Refer(session_id),
                     )]);
 
@@ -1352,10 +1352,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         // We need to create this session on the o2rs
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2Session.into(),
-            session,
-        )]);
+        let modlist =
+            ModifyList::new_list(vec![Modify::Present(Attribute::OAuth2Session, session)]);
 
         self.qs_write
             .internal_modify(
@@ -1562,7 +1560,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // NOTE: Oauth2_session has special handling that allows update in place without
             // the remove step needing to be carried out.
             // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
-            Modify::Present(Attribute::OAuth2Session.into(), session),
+            Modify::Present(Attribute::OAuth2Session, session),
         ]);
 
         self.qs_write
@@ -2900,9 +2898,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
-                Attribute::PrimaryCredential.into(),
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -3033,9 +3031,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
-                Attribute::PrimaryCredential.into(),
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -3222,7 +3220,7 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let pkce_request = Some(PkceRequest {
-            code_challenge: code_challenge.into(),
+            code_challenge: code_challenge,
             code_challenge_method: CodeChallengeMethod::S256,
         });
 
@@ -3662,7 +3660,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone().into(),
+                code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://portal.example.com").unwrap(),
@@ -3731,7 +3729,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge: code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("app://cheese").unwrap(),
@@ -3859,10 +3857,7 @@ mod tests {
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
-            ModifyList::new_list(vec![Modify::Present(
-                Attribute::AccountExpire.into(),
-                v_expire,
-            )]),
+            ModifyList::new_list(vec![Modify::Present(Attribute::AccountExpire, v_expire)]),
         );
         // go!
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
@@ -5061,7 +5056,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(Attribute::OAuth2RsScopeMap.as_ref()),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
@@ -5092,7 +5087,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge: code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5124,7 +5119,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::OAuth2RsSupScopeMap.into(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["newscope".to_string()])
                     .expect("invalid oauthscope"),
             )]),
@@ -5149,7 +5144,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge: code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5364,7 +5359,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone().into(),
+                code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
@@ -6057,14 +6052,14 @@ mod tests {
         let modlist = ModifyList::new_list(vec![
             // Member of a claim map.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
                     "custom_a".to_string(),
                     OauthClaimMapJoin::CommaSeparatedValue,
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_TESTGROUP,
@@ -6073,7 +6068,7 @@ mod tests {
             ),
             // If you are a member of two groups, the claim maps merge.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
@@ -6082,14 +6077,14 @@ mod tests {
             ),
             // Map with a different seperator
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
                     "custom_b".to_string(),
                     OauthClaimMapJoin::SpaceSeparatedValue,
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_TESTGROUP,
@@ -6097,7 +6092,7 @@ mod tests {
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
@@ -6106,7 +6101,7 @@ mod tests {
             ),
             // Not a member of the claim map.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ADMINS,
@@ -6296,7 +6291,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2AllowLocalhostRedirect.into(),
+            Attribute::OAuth2AllowLocalhostRedirect,
             Value::Bool(true),
         )]);
 
@@ -6320,7 +6315,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge: code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),

@@ -242,7 +242,7 @@ pub async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: Attribute
                 .await
                 .is_ok(),
         ),
-        entry => {
+        ref entry => {
             let new_value = match entry {
                 Attribute::AcpReceiverGroup => "00000000-0000-0000-0000-000000000011".to_string(),
                 Attribute::AcpTargetScope => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
@@ -320,7 +320,7 @@ pub async fn test_read_attrs(
                 .await
                 .unwrap()
                 .is_some(),
-            _ => e.attrs.contains_key(attr.as_ref()),
+            _ => e.attrs.contains_key(attr.as_str()),
         };
         trace!("is_ok: {}, is_readable: {}", is_ok, is_readable);
         assert_eq!(is_ok, is_readable)
@@ -337,7 +337,7 @@ pub async fn test_write_attrs(
     for attr in attrs.iter() {
         println!("Writing to {} - ex {}", attr, is_writeable);
         #[allow(clippy::unwrap_used)]
-        let is_ok = is_attr_writable(rsclient, id, *attr).await.unwrap();
+        let is_ok = is_attr_writable(rsclient, id, attr.clone()).await.unwrap();
         assert_eq!(is_ok, is_writeable)
     }
 }
@@ -352,7 +352,9 @@ pub async fn test_modify_group(
         println!("Testing group: {}", group);
         for attr in [Attribute::Description, Attribute::Name].into_iter() {
             #[allow(clippy::unwrap_used)]
-            let is_writable = is_attr_writable(rsclient, group, attr).await.unwrap();
+            let is_writable = is_attr_writable(rsclient, group, attr.clone())
+                .await
+                .unwrap();
             dbg!(group, attr, is_writable, can_be_modified);
             assert_eq!(is_writable, can_be_modified)
         }
