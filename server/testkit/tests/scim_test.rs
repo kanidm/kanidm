@@ -1,6 +1,7 @@
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
+use kanidmd_lib::prelude::BUILTIN_GROUP_IDM_ADMINS_V1;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use reqwest::header::HeaderValue;
 use std::str::FromStr;
@@ -157,4 +158,29 @@ async fn test_scim_sync_get(rsclient: KanidmClient) {
     let content_type = response.headers().get(http::header::CONTENT_TYPE).unwrap();
     assert!(content_type.to_str().unwrap().contains("text/html"));
     assert!(response.text().await.unwrap().contains("Sink"));
+}
+
+#[kanidmd_testkit::test]
+async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // All admin to create persons.
+    rsclient
+        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .await
+        .unwrap();
+
+    rsclient
+        .idm_person_account_create("demo_account", "Deeeeemo")
+        .await
+        .unwrap();
+
+    // This will be as raw json, not the strongly typed version the server sees
+    // internally.
+    let scim_entry = rsclient.scim_v1_entry_get("demo_account").await.unwrap();
+
+    tracing::debug!("{:#?}", scim_entry);
 }

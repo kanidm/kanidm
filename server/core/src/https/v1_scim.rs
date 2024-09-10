@@ -11,7 +11,7 @@ use axum::extract::{Path, State};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{server::ScimEntryKanidm, ScimSyncRequest, ScimSyncState};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
@@ -207,6 +207,54 @@ pub async fn sync_account_token_delete(
 }
 
 #[utoipa::path(
+    get,
+    path = "/v1/sync_account/{id}/_attr/{attr}",
+    responses(
+        (status = 200, body=Option<Vec<String>>, content_type="application/json"),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+    operation_id = "sync_account_id_attr_get"
+)]
+pub async fn sync_account_id_attr_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path((id, attr)): Path<(String, String)>,
+) -> Result<Json<Option<Vec<String>>>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
+    json_rest_event_get_id_attr(state, id, attr, filter, kopid, client_auth_info).await
+}
+
+#[utoipa::path(
+    post,
+    path = "/v1/sync_account/{id}/_attr/{attr}",
+    request_body=Vec<String>,
+    responses(
+        DefaultApiResponse,
+    ),
+    security(("token_jwt" = [])),
+    tag = "v1/sync_account",
+    operation_id = "sync_account_id_attr_put"
+)]
+pub async fn sync_account_id_attr_put(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path((id, attr)): Path<(String, String)>,
+    Json(values): Json<Vec<String>>,
+) -> Result<Json<()>, WebError> {
+    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
+    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
+}
+
+/// When you want the kitchen Sink
+async fn scim_sink_get() -> Html<&'static str> {
+    Html::from(include_str!("scim/sink.html"))
+}
+
+#[utoipa::path(
     post,
     path = "/scim/v1/Sync",
     request_body = ScimSyncRequest,
@@ -255,56 +303,58 @@ async fn scim_sync_get(
         .map(Json::from)
         .map_err(WebError::from)
 }
+
 #[utoipa::path(
     get,
-    path = "/v1/sync_account/{id}/_attr/{attr}",
+    path = "/scim/v1/Entry/{id}",
     responses(
-        (status = 200, body=Option<Vec<String>>, content_type="application/json"),
+        (status = 200, content_type="application/json", body=ScimEntry),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
-    tag = "v1/sync_account",
-    operation_id = "sync_account_id_attr_get"
+    tag = "scim",
+    operation_id = "scim_entry_id_get"
 )]
-pub async fn sync_account_id_attr_get(
+async fn scim_entry_id_get(
     State(state): State<ServerState>,
+    Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Path((id, attr)): Path<(String, String)>,
-) -> Result<Json<Option<Vec<String>>>, WebError> {
-    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_get_id_attr(state, id, attr, filter, kopid, client_auth_info).await
-}
-
-#[utoipa::path(
-    post,
-    path = "/v1/sync_account/{id}/_attr/{attr}",
-    request_body=Vec<String>,
-    responses(
-        DefaultApiResponse,
-    ),
-    security(("token_jwt" = [])),
-    tag = "v1/sync_account",
-    operation_id = "sync_account_id_attr_put"
-)]
-pub async fn sync_account_id_attr_put(
-    State(state): State<ServerState>,
-    Extension(kopid): Extension<KOpId>,
-    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Path((id, attr)): Path<(String, String)>,
-    Json(values): Json<Vec<String>>,
-) -> Result<Json<()>, WebError> {
-    let filter = filter_all!(f_eq(Attribute::Class, EntryClass::SyncAccount.into()));
-    json_rest_event_put_attr(state, id, attr, filter, values, kopid, client_auth_info).await
-}
-
-/// When you want the kitchen Sink
-async fn scim_sink_get() -> Html<&'static str> {
-    Html::from(include_str!("scim/sink.html"))
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_id_get(client_auth_info, kopid.eventid, id)
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
 }
 
 pub fn route_setup() -> Router<ServerState> {
     Router::new()
+        .route(
+            "/v1/sync_account",
+            get(sync_account_get).post(sync_account_post),
+        )
+        .route(
+            "/v1/sync_account/:id",
+            get(sync_account_id_get).patch(sync_account_id_patch),
+        )
+        .route(
+            "/v1/sync_account/:id/_attr/:attr",
+            get(sync_account_id_attr_get).put(sync_account_id_attr_put),
+        )
+        .route(
+            "/v1/sync_account/:id/_finalise",
+            get(sync_account_id_finalise_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_terminate",
+            get(sync_account_id_terminate_get),
+        )
+        .route(
+            "/v1/sync_account/:id/_sync_token",
+            post(sync_account_token_post).delete(sync_account_token_delete),
+        )
         // https://datatracker.ietf.org/doc/html/rfc7644#section-3.2
         //
         //  HTTP   SCIM Usage
@@ -366,6 +416,11 @@ pub fn route_setup() -> Router<ServerState> {
         //                                                   POST.
         //  -- Kanidm Resources
         //
+        //  Entry    /Entry/{id}      GET                    Retrieve a generic entry
+        //                                                   of any kind from the database.
+        //                                                   {id} is any unique id.
+        .route("/scim/v1/Entry/:id", get(scim_entry_id_get))
+        //
         //  Sync     /Sync            GET                    Retrieve the current
         //                                                   sync state associated
         //                                                   with the authenticated
@@ -373,30 +428,6 @@ pub fn route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route(
-            "/v1/sync_account",
-            get(sync_account_get).post(sync_account_post),
-        )
-        .route(
-            "/v1/sync_account/:id",
-            get(sync_account_id_get).patch(sync_account_id_patch),
-        )
-        .route(
-            "/v1/sync_account/:id/_attr/:attr",
-            get(sync_account_id_attr_get).put(sync_account_id_attr_put),
-        )
-        .route(
-            "/v1/sync_account/:id/_finalise",
-            get(sync_account_id_finalise_get),
-        )
-        .route(
-            "/v1/sync_account/:id/_terminate",
-            get(sync_account_id_terminate_get),
-        )
-        .route(
-            "/v1/sync_account/:id/_sync_token",
-            post(sync_account_token_post).delete(sync_account_token_delete),
-        )
         .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
         .route("/scim/v1/Sink", get(scim_sink_get)) // skip_route_check
 }

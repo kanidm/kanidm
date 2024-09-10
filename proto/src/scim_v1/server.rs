@@ -1,7 +1,6 @@
 use crate::attribute::Attribute;
 use scim_proto::ScimEntryHeader;
-use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
@@ -9,16 +8,6 @@ use time::OffsetDateTime;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-/// A generic ScimEntry that we receive from a client. This retains attribute
-/// values in a generic state awaiting processing by schema aware transforms
-#[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct ScimEntryGeneric {
-    #[serde(flatten)]
-    pub header: ScimEntryHeader,
-    #[serde(flatten)]
-    pub attrs: BTreeMap<Attribute, JsonValue>,
-}
 
 /// A strongly typed ScimEntry that is for transmission to clients. This uses
 /// Kanidm internal strong types for values allowing direct serialisation and
