@@ -623,7 +623,7 @@ mod tests {
                 PartialValue::new_iname("flarbalgarble")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Description.into(),
+                Attribute::Description,
                 Value::from("anusaosu"),
             )]),
         );
@@ -658,7 +658,7 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_pres(Attribute::Class)),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::NonExist.into(),
+                Attribute::NonExist,
                 Value::from("anusaosu"),
             )]),
         );
@@ -676,8 +676,8 @@ mod tests {
                 PartialValue::new_iname("testperson2")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::Description.into()),
-                Modify::Present(Attribute::Description.into(), Value::from("anusaosu")),
+                Modify::Purged(Attribute::Description),
+                Modify::Present(Attribute::Description, Value::from("anusaosu")),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
@@ -689,8 +689,8 @@ mod tests {
                 f_eq(Attribute::Name, PartialValue::new_iname("testperson2")),
             ])),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::Description.into()),
-                Modify::Present(Attribute::Description.into(), Value::from("anusaosu")),
+                Modify::Purged(Attribute::Description),
+                Modify::Present(Attribute::Description, Value::from("anusaosu")),
             ]),
         );
         assert!(server_txn.modify(&me_mult).is_ok());
@@ -767,7 +767,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Class.into(),
+                Attribute::Class,
                 EntryClass::SystemInfo.to_value(),
             )]),
         );
@@ -780,7 +780,7 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Name.into(),
+                Attribute::Name,
                 Value::new_iname("testpersonx"),
             )]),
         );
@@ -793,9 +793,9 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::SystemInfo.to_value()),
+                Modify::Present(Attribute::Class, EntryClass::SystemInfo.to_value()),
                 // Modify::Present(Attribute::Domain.into(), Value::new_iutf8("domain.name")),
-                Modify::Present(Attribute::Version.into(), Value::new_uint32(1)),
+                Modify::Present(Attribute::Version, Value::new_uint32(1)),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
@@ -807,8 +807,8 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             ModifyList::new_list(vec![
-                Modify::Purged(Attribute::Name.into()),
-                Modify::Present(Attribute::Name.into(), Value::new_iname("testpersonx")),
+                Modify::Purged(Attribute::Name),
+                Modify::Present(Attribute::Name, Value::new_iname("testpersonx")),
             ]),
         );
         assert!(server_txn.modify(&me_sin).is_ok());
@@ -847,10 +847,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testperson1")
             )),
-            ModifyList::new_list(vec![Modify::Present(
-                Attribute::PrimaryCredential.into(),
-                v_cred,
-            )]),
+            ModifyList::new_list(vec![Modify::Present(Attribute::PrimaryCredential, v_cred)]),
         );
         // go!
         assert!(server_txn.modify(&me_inv_m).is_ok());

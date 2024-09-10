@@ -118,7 +118,7 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::DeniedName.into(),
+                Attribute::DeniedName,
                 Value::new_iname("tobias"),
             )]),
         );

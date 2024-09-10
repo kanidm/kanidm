@@ -149,10 +149,7 @@ pub(crate) async fn manifest(DomainInfo(domain_info): DomainInfo) -> impl IntoRe
     let domain_display_name = domain_info.display_name().to_string();
     // TODO: fix the None here to make it the request host
     let manifest_string =
-        match serde_json::to_string_pretty(&manifest_data(None, domain_display_name)) {
-            Ok(val) => val,
-            Err(_) => String::from(""),
-        };
+        serde_json::to_string_pretty(&manifest_data(None, domain_display_name)).unwrap_or_default();
     let mut res = Response::new(manifest_string);
 
     res.headers_mut()

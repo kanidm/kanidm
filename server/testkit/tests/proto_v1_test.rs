@@ -128,7 +128,7 @@ async fn test_server_search(rsclient: KanidmClient) {
     let e = rset.first().unwrap();
     // Check it's admin.
     println!("{:?}", e);
-    let name = e.attrs.get(Attribute::Name.as_ref()).unwrap();
+    let name = e.attrs.get(Attribute::Name.as_str()).unwrap();
     assert_eq!(name, &vec!["admin".to_string()]);
 }
 
@@ -537,7 +537,7 @@ async fn test_server_rest_domain_lifecycle(rsclient: KanidmClient) {
     assert!(
         dlocal
             .attrs
-            .get(Attribute::DomainDisplayName.as_ref())
+            .get(Attribute::DomainDisplayName.as_str())
             .and_then(|v| v.first())
             == Some(&"Super Cool Crabz".to_string())
     );
@@ -870,11 +870,11 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     // What can we see?
     assert!(oauth2_config
         .attrs
-        .contains_key(Attribute::OAuth2RsBasicSecret.as_ref()));
+        .contains_key(Attribute::OAuth2RsBasicSecret.as_str()));
     // This is present, but redacted.
     assert!(oauth2_config
         .attrs
-        .contains_key(Attribute::OAuth2RsTokenKey.as_ref()));
+        .contains_key(Attribute::OAuth2RsTokenKey.as_str()));
 
     // Mod delete the secret/key and check them again.
     // Check we can patch the oauth2_rs_name / oauth2_rs_origin

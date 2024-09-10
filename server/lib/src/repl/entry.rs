@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 pub enum State {
     Live {
         at: Cid,
-        changes: BTreeMap<AttrString, Cid>,
+        changes: BTreeMap<Attribute, Cid>,
     },
     Tombstone {
         at: Cid,
@@ -40,7 +40,7 @@ impl EntryChangeState {
     }
 
     pub fn new_without_schema(cid: &Cid, attrs: &Eattrs) -> Self {
-        let class = attrs.get(Attribute::Class.as_ref());
+        let class = attrs.get(&Attribute::Class);
         let st = if class
             .as_ref()
             .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))
@@ -75,7 +75,7 @@ impl EntryChangeState {
                     .iter()
                     .map(|(attr, cid)| {
                         (
-                            attr.to_string(),
+                            attr.clone(),
                             DbCidV1 {
                                 server_id: cid.s_uuid,
                                 timestamp: cid.ts,
@@ -109,7 +109,7 @@ impl EntryChangeState {
                     .iter()
                     .map(|(attr, cid)| {
                         (
-                            attr.into(),
+                            attr.clone(),
                             Cid {
                                 s_uuid: cid.server_id,
                                 ts: cid.timestamp,
@@ -159,19 +159,19 @@ impl EntryChangeState {
         EntryChangeState { st }
     }
 
-    pub fn change_ava(&mut self, cid: &Cid, attr: Attribute) {
+    pub fn change_ava(&mut self, cid: &Cid, attr: &Attribute) {
         match &mut self.st {
             State::Live {
                 at: _,
                 ref mut changes,
             } => {
-                if let Some(change) = changes.get_mut(attr.as_ref()) {
+                if let Some(change) = changes.get_mut(attr) {
                     // Update the cid.
                     if change != cid {
                         *change = cid.clone()
                     }
                 } else {
-                    changes.insert(attr.into(), cid.clone());
+                    changes.insert(attr.clone(), cid.clone());
                 }
             }
             State::Tombstone { .. } => {
@@ -221,7 +221,7 @@ impl EntryChangeState {
     #[cfg(test)]
     pub(crate) fn get_attr_cid(&self, attr: Attribute) -> Option<&Cid> {
         match &self.st {
-            State::Live { at: _, changes } => changes.get(attr.as_ref()),
+            State::Live { at: _, changes } => changes.get(&attr),
             State::Tombstone { at: _ } => None,
         }
     }
@@ -240,7 +240,7 @@ impl EntryChangeState {
 
     pub fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&AttrString, &mut Cid) -> bool,
+        F: FnMut(&Attribute, &mut Cid) -> bool,
     {
         match &mut self.st {
             State::Live { at: _, changes } => changes.retain(f),
@@ -256,7 +256,7 @@ impl EntryChangeState {
         entry_id: u64,
         results: &mut Vec<Result<(), ConsistencyError>>,
     ) {
-        let class = expected_attrs.get(Attribute::Class.as_ref());
+        let class = expected_attrs.get(&Attribute::Class);
         let is_ts = class
             .as_ref()
             .map(|c| c.contains(&EntryClass::Tombstone.to_partialvalue()))

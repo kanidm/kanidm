@@ -83,7 +83,7 @@ impl CredImport {
                     Some(c) => {
                         let c = c.update_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential,
+                            &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -91,7 +91,7 @@ impl CredImport {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
                         e.set_ava(
-                            Attribute::PrimaryCredential,
+                            &Attribute::PrimaryCredential,
                             once(Value::new_credential("primary", c)),
                         );
                     }
@@ -113,7 +113,7 @@ impl CredImport {
                         acc.append_totp(label.clone(), totp.clone())
                     });
                     e.set_ava(
-                        Attribute::PrimaryCredential,
+                        &Attribute::PrimaryCredential,
                         once(Value::new_credential("primary", c)),
                     );
                 } else {
@@ -153,7 +153,7 @@ impl CredImport {
                 // Unix pw's aren't like primary, we can just splat them here.
                 let c = Credential::new_from_password(pw);
                 e.set_ava(
-                    Attribute::UnixPassword,
+                    &Attribute::UnixPassword,
                     once(Value::new_credential("primary", c)),
                 );
             };
@@ -235,7 +235,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::PasswordImport.into(),
+                Attribute::PasswordImport,
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -278,7 +278,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::PasswordImport.into(),
+                Attribute::PasswordImport,
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -324,7 +324,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::PasswordImport.into(),
+                Attribute::PasswordImport,
                 Value::from(IMPORT_HASH)
             )]),
             None,
@@ -378,15 +378,15 @@ mod tests {
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    Attribute::PasswordImport.into(),
+                    Attribute::PasswordImport,
                     Value::Utf8(IMPORT_HASH.to_string())
                 ),
                 Modify::Present(
-                    Attribute::TotpImport.into(),
+                    Attribute::TotpImport,
                     Value::TotpSecret("a".to_string(), totp_a.clone())
                 ),
                 Modify::Present(
-                    Attribute::TotpImport.into(),
+                    Attribute::TotpImport,
                     Value::TotpSecret("b".to_string(), totp_b.clone())
                 )
             ]),
@@ -443,7 +443,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::TotpImport.into(),
+                Attribute::TotpImport,
                 Value::TotpSecret("a".to_string(), totp_a)
             )]),
             None,
@@ -480,7 +480,7 @@ mod tests {
             preload,
             filter!(f_eq(Attribute::Name, PartialValue::new_iutf8("testperson"))),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::UnixPasswordImport.into(),
+                Attribute::UnixPasswordImport,
                 Value::from(IMPORT_HASH)
             )]),
             None,

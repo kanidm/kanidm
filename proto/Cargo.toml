@@ -17,10 +17,10 @@ doctest = true
 
 [features]
 wasm = ["webauthn-rs-proto/wasm"]
+test = []
 
 [dependencies]
 base32 = { workspace = true }
-enum-iterator = { workspace = true }
 num_enum = { workspace = true }
 scim_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -34,3 +34,6 @@ urlencoding = { workspace = true }
 utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
+
+[dev-dependencies]
+enum-iterator = { workspace = true }

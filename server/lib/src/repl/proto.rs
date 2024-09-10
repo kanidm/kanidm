@@ -460,7 +460,7 @@ pub enum ReplStateV1 {
     Live {
         at: ReplCidV1,
         // Also add AT here for breaking entry origin on conflict.
-        attrs: BTreeMap<String, ReplAttrStateV1>,
+        attrs: BTreeMap<Attribute, ReplAttrStateV1>,
     },
     Tombstone {
         at: ReplCidV1,
@@ -489,7 +489,7 @@ impl ReplEntryV1 {
                     .iter()
                     .filter_map(|(attr_name, cid)| {
                         if schema.is_replicated(attr_name) {
-                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let live_attr = live_attrs.get(attr_name);
 
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe|
@@ -507,7 +507,7 @@ impl ReplEntryV1 {
                                 }
                             );
 
-                            Some((attr_name.to_string(), ReplAttrStateV1 { cid, attr }))
+                            Some((attr_name.clone(), ReplAttrStateV1 { cid, attr }))
                         } else {
                             None
                         }
@@ -535,15 +535,13 @@ impl ReplEntryV1 {
                 let mut eattrs = Eattrs::default();
 
                 for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
-                    let astring: AttrString = attr_name.as_str().into();
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
-                            error!("Unable to restore valueset for {}", attr_name);
-                            e
+                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                            error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
-                        if eattrs.insert(astring.clone(), v).is_some() {
+                        if eattrs.insert(attr_name.clone(), v).is_some() {
                             error!(
                                 "Impossible eattrs state, attribute {} appears to be duplicated!",
                                 attr_name
@@ -552,7 +550,7 @@ impl ReplEntryV1 {
                         }
                     }
 
-                    if changes.insert(astring, cid).is_some() {
+                    if changes.insert(attr_name.clone(), cid).is_some() {
                         error!(
                             "Impossible changes state, attribute {} appears to be duplicated!",
                             attr_name
@@ -576,9 +574,9 @@ impl ReplEntryV1 {
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
 
-                eattrs.insert(Attribute::Uuid.into(), vs_uuid![self.uuid]);
-                eattrs.insert(Attribute::Class.into(), class_ava);
-                eattrs.insert(Attribute::LastModifiedCid.into(), last_mod_ava);
+                eattrs.insert(Attribute::Uuid, vs_uuid![self.uuid]);
+                eattrs.insert(Attribute::Class, class_ava);
+                eattrs.insert(Attribute::LastModifiedCid, last_mod_ava);
 
                 let ecstate = EntryChangeState {
                     st: State::Tombstone { at },
@@ -632,7 +630,7 @@ impl ReplIncrementalEntryV1 {
 
                         // Then setup to supply it.
                         if within {
-                            let live_attr = live_attrs.get(attr_name.as_str());
+                            let live_attr = live_attrs.get(attr_name);
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe| {
                                 if maybe.len() > 0 {
@@ -642,7 +640,7 @@ impl ReplIncrementalEntryV1 {
                                 }
                             });
 
-                            Some((attr_name.to_string(), ReplAttrStateV1 { cid, attr }))
+                            Some((attr_name.clone(), ReplAttrStateV1 { cid, attr }))
                         } else {
                             None
                         }
@@ -669,15 +667,13 @@ impl ReplIncrementalEntryV1 {
                 let mut eattrs = Eattrs::default();
 
                 for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
-                    let astring: AttrString = attr_name.as_str().into();
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).map_err(|e| {
-                            error!("Unable to restore valueset for {}", attr_name);
-                            e
+                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                            error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
-                        if eattrs.insert(astring.clone(), v).is_some() {
+                        if eattrs.insert(attr_name.clone(), v).is_some() {
                             error!(
                                 "Impossible eattrs state, attribute {} appears to be duplicated!",
                                 attr_name
@@ -686,7 +682,7 @@ impl ReplIncrementalEntryV1 {
                         }
                     }
 
-                    if changes.insert(astring, cid).is_some() {
+                    if changes.insert(attr_name.clone(), cid).is_some() {
                         error!(
                             "Impossible changes state, attribute {} appears to be duplicated!",
                             attr_name

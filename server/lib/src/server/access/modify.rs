@@ -6,15 +6,15 @@ use super::profiles::{
     AccessControlModify, AccessControlModifyResolved, AccessControlReceiverCondition,
     AccessControlTargetCondition,
 };
-use super::AccessResult;
+use super::{AccessResult, AccessResultClass};
 use std::sync::Arc;
 
 pub(super) enum ModifyResult<'a> {
     Denied,
     Grant,
     Allow {
-        pres: BTreeSet<&'a str>,
-        rem: BTreeSet<&'a str>,
+        pres: BTreeSet<Attribute>,
+        rem: BTreeSet<Attribute>,
         cls: BTreeSet<&'a str>,
     },
 }
@@ -22,8 +22,8 @@ pub(super) enum ModifyResult<'a> {
 pub(super) fn apply_modify_access<'a>(
     ident: &Identity,
     related_acp: &'a [AccessControlModifyResolved],
-    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
-    entry: &'a Arc<EntrySealedCommitted>,
+    sync_agreements: &HashMap<Uuid, BTreeSet<Attribute>>,
+    entry: &Arc<EntrySealedCommitted>,
 ) -> ModifyResult<'a> {
     let mut denied = false;
     let mut grant = false;
@@ -57,7 +57,7 @@ pub(super) fn apply_modify_access<'a>(
         match modify_sync_constrain(ident, entry, sync_agreements) {
             AccessResult::Denied => denied = true,
             AccessResult::Constrain(mut set) => {
-                constrain_rem.extend(set.iter().copied());
+                constrain_rem.extend(set.iter().cloned());
                 constrain_pres.append(&mut set)
             }
             // Can't grant.
@@ -140,12 +140,12 @@ pub(super) fn apply_modify_access<'a>(
         }
 
         match modify_cls_test(scoped_acp.as_slice()) {
-            AccessResult::Denied => denied = true,
+            AccessResultClass::Denied => denied = true,
             // Can never return a unilateral grant.
-            AccessResult::Grant => {}
-            AccessResult::Ignore => {}
-            AccessResult::Constrain(mut set) => constrain_cls.append(&mut set),
-            AccessResult::Allow(mut set) => allow_cls.append(&mut set),
+            AccessResultClass::Grant => {}
+            AccessResultClass::Ignore => {}
+            AccessResultClass::Constrain(mut set) => constrain_cls.append(&mut set),
+            AccessResultClass::Allow(mut set) => allow_cls.append(&mut set),
         }
     }
 
@@ -183,7 +183,7 @@ pub(super) fn apply_modify_access<'a>(
     }
 }
 
-fn modify_ident_test<'a>(ident: &Identity) -> AccessResult<'a> {
+fn modify_ident_test(ident: &Identity) -> AccessResult {
     match &ident.origin {
         IdentType::Internal => {
             trace!("Internal operation, bypassing access check");
@@ -211,35 +211,37 @@ fn modify_ident_test<'a>(ident: &Identity) -> AccessResult<'a> {
     AccessResult::Ignore
 }
 
-fn modify_pres_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'a> {
-    let allowed_pres: BTreeSet<&str> = scoped_acp
+fn modify_pres_test(scoped_acp: &[&AccessControlModify]) -> AccessResult {
+    let allowed_pres: BTreeSet<Attribute> = scoped_acp
         .iter()
-        .flat_map(|acp| acp.presattrs.iter().map(|v| v.as_str()))
+        .flat_map(|acp| acp.presattrs.iter().cloned())
         .collect();
     AccessResult::Allow(allowed_pres)
 }
 
-fn modify_rem_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'a> {
-    let allowed_rem: BTreeSet<&str> = scoped_acp
+fn modify_rem_test(scoped_acp: &[&AccessControlModify]) -> AccessResult {
+    let allowed_rem: BTreeSet<Attribute> = scoped_acp
         .iter()
-        .flat_map(|acp| acp.remattrs.iter().map(|v| v.as_str()))
+        .flat_map(|acp| acp.remattrs.iter().cloned())
         .collect();
     AccessResult::Allow(allowed_rem)
 }
 
-fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResult<'a> {
-    let allowed_classes: BTreeSet<&str> = scoped_acp
+// TODO: Should this be reverted to the Str borrow method? Or do we try to change
+// to EntryClass?
+fn modify_cls_test<'a>(scoped_acp: &[&'a AccessControlModify]) -> AccessResultClass<'a> {
+    let allowed_classes: BTreeSet<&'a str> = scoped_acp
         .iter()
-        .flat_map(|acp| acp.classes.iter().map(|v| v.as_str()))
+        .flat_map(|acp| acp.classes.iter().map(|s| s.as_str()))
         .collect();
-    AccessResult::Allow(allowed_classes)
+    AccessResultClass::Allow(allowed_classes)
 }
 
-fn modify_sync_constrain<'a>(
+fn modify_sync_constrain(
     ident: &Identity,
-    entry: &'a Arc<EntrySealedCommitted>,
-    sync_agreements: &'a HashMap<Uuid, BTreeSet<String>>,
-) -> AccessResult<'a> {
+    entry: &Arc<EntrySealedCommitted>,
+    sync_agreements: &HashMap<Uuid, BTreeSet<Attribute>>,
+) -> AccessResult {
     match &ident.origin {
         IdentType::Internal => AccessResult::Ignore,
         IdentType::Synch(_) => {
@@ -262,14 +264,14 @@ fn modify_sync_constrain<'a>(
 
             if let Some(sync_uuid) = entry.get_ava_single_refer(Attribute::SyncParentUuid) {
                 let mut set = btreeset![
-                    Attribute::UserAuthTokenSession.as_ref(),
-                    Attribute::OAuth2Session.as_ref(),
-                    Attribute::OAuth2ConsentScopeMap.as_ref(),
-                    Attribute::CredentialUpdateIntentToken.as_ref()
+                    Attribute::UserAuthTokenSession,
+                    Attribute::OAuth2Session,
+                    Attribute::OAuth2ConsentScopeMap,
+                    Attribute::CredentialUpdateIntentToken
                 ];
 
                 if let Some(sync_yield_authority) = sync_agreements.get(&sync_uuid) {
-                    set.extend(sync_yield_authority.iter().map(|s| s.as_str()))
+                    set.extend(sync_yield_authority.iter().cloned())
                 }
 
                 AccessResult::Constrain(set)

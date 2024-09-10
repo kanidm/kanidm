@@ -1252,16 +1252,15 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             self.webauthn,
                             self.qs_read.pw_badlist(),
                         )
-                        .map(|aus| {
+                        .inspect(|aus| {
                             // Inspect the result:
                             // if it was a failure, we need to inc the softlock.
-                            if let AuthState::Denied(_) = &aus {
+                            if let AuthState::Denied(_) = aus {
                                 // Update it.
                                 if let Some(ref mut slock) = maybe_slock {
                                     slock.record_failure(ct);
                                 }
                             };
-                            aus
                         })
                 } else {
                     // Fail the session
@@ -1341,12 +1340,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
             // Account is unlocked, can proceed.
             account
                 .verify_unix_credential(uae.cleartext.as_str(), &self.async_tx, ct)
-                .map(|res| {
+                .inspect(|res| {
                     if res.is_none() {
                         // Update it.
                         slock.record_failure(ct);
                     };
-                    res
                 })
         } else {
             // Account is slocked!
@@ -1671,9 +1669,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
                 .cloned()
-                .map_err(|e| {
-                    security_info!("zxcvbn returned no feedback when score < 3");
-                    e
+                .inspect_err(|err| {
+                    security_info!(?err, "zxcvbn returned no feedback when score < 3");
                 })?;
 
             security_info!(?feedback, "pw quality feedback");
@@ -1881,7 +1878,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = ModifyList::new_list(vec![
             m_purge(Attribute::PassKeys),
             m_purge(Attribute::PrimaryCredential),
-            Modify::Present(Attribute::PrimaryCredential.into(), vcred),
+            Modify::Present(Attribute::PrimaryCredential, vcred),
         ]);
 
         trace!(?modlist, "processing change");
@@ -2386,10 +2383,7 @@ mod tests {
         // now modify and provide a primary credential.
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
-            ModifyList::new_list(vec![Modify::Present(
-                Attribute::PrimaryCredential.into(),
-                v_cred,
-            )]),
+            ModifyList::new_list(vec![Modify::Present(Attribute::PrimaryCredential, v_cred)]),
         );
         // go!
         assert!(idms_write.qs_write.modify(&me_inv_m).is_ok());
@@ -2684,8 +2678,8 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2766,8 +2760,8 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2803,7 +2797,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         let me_purge_up = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::UnixPassword.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::UnixPassword)]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_purge_up).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -2843,7 +2837,7 @@ mod tests {
                 ModifyEvent::new_internal_invalid(
                         filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
                         ModifyList::new_list(vec![Modify::Present(
-                            Attribute::PasswordImport.into(),
+                            Attribute::PasswordImport,
                             Value::from("{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM")
                         )]),
                     );
@@ -2923,9 +2917,9 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Name, PartialValue::new_iname("admin"))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
-                Modify::Present(Attribute::UnixPassword.into(), v_cred),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
+                Modify::Present(Attribute::UnixPassword, v_cred),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -2978,8 +2972,8 @@ mod tests {
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::AccountExpire.into(), v_expire),
-                Modify::Present(Attribute::AccountValidFrom.into(), v_valid_from),
+                Modify::Present(Attribute::AccountExpire, v_expire),
+                Modify::Present(Attribute::AccountValidFrom, v_valid_from),
             ]),
         );
         // go!
@@ -3068,8 +3062,8 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());
@@ -3434,8 +3428,8 @@ mod tests {
         let me_posix = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());

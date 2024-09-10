@@ -45,7 +45,7 @@ impl Plugin for Base {
                     // Generate
                     let ava_uuid = Value::Uuid(Uuid::new_v4());
                     trace!("Setting temporary UUID {:?} to entry", ava_uuid);
-                    entry.set_ava(Attribute::Uuid, once(ava_uuid));
+                    entry.set_ava(&Attribute::Uuid, once(ava_uuid));
                 }
                 Some(1) => {
                     // Do nothing
@@ -124,7 +124,7 @@ impl Plugin for Base {
         let filt_in = filter_all!(FC::Or(
             cand_uuid
                 .into_iter()
-                .map(|u| FC::Eq(Attribute::Uuid.as_ref(), PartialValue::Uuid(u)))
+                .map(|u| FC::Eq(Attribute::Uuid, PartialValue::Uuid(u)))
                 .collect(),
         ));
 
@@ -169,7 +169,7 @@ impl Plugin for Base {
                 Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
-            if attr == Some(&AttrString::from(Attribute::Uuid)) {
+            if attr == Some(&Attribute::Uuid) {
                 debug!(?modify, "Modify in violation");
                 request_error!("Modifications to UUID's are NOT ALLOWED");
                 Err(OperationError::SystemProtectedAttribute)
@@ -196,7 +196,7 @@ impl Plugin for Base {
                     Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
-                if attr == Some(&AttrString::from(Attribute::Uuid)) {
+                if attr == Some(&Attribute::Uuid) {
                     debug!(?modify, "Modify in violation");
                     request_error!("Modifications to UUID's are NOT ALLOWED");
                     Err(OperationError::SystemProtectedAttribute)
@@ -616,7 +616,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Uuid.into(),
+                Attribute::Uuid,
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
@@ -649,7 +649,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Uuid.into(),
+                Attribute::Uuid,
                 PartialValue::Uuid(uuid!("f15a7219-1d15-44e3-a7b4-bec899c07788"))
             )]),
             None,
@@ -681,7 +681,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_a")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::Uuid.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Uuid)]),
             None,
             |_| {},
             |_| {}

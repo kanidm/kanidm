@@ -199,7 +199,7 @@ macro_rules! get_idl {
         let db_r = $self.db.get_idl($attr, $itype, $idx_key)?;
         if let Some(ref idl) = db_r {
             let ncache_key = IdlCacheKey {
-                a: $attr.into(),
+                a: $attr.clone(),
                 i: $itype.clone(),
                 k: $idx_key.into(),
             };
@@ -346,7 +346,7 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_idl(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError>;
@@ -404,7 +404,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
@@ -499,7 +499,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     #[instrument(level = "trace", skip_all)]
     fn get_idl(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
@@ -626,7 +626,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             .iter_mut_mark_clean()
             .try_for_each(|(k, v)| {
                 match v {
-                    Some(idl) => db.write_idl(k.a.as_str(), k.i, k.k.as_str(), idl),
+                    Some(idl) => db.write_idl(&k.a, k.i, k.k.as_str(), idl),
                     #[allow(clippy::unreachable)]
                     None => {
                         // Due to how we remove items, we always write an empty idl
@@ -759,13 +759,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
     pub fn write_idl(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         itype: IndexType,
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
         let cache_key = IdlCacheKey {
-            a: attr.into(),
+            a: attr.clone(),
             i: itype,
             k: idx_key.into(),
         };
@@ -1127,7 +1127,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         Ok(())
     }
 
-    pub fn create_idx(&self, attr: Attribute, itype: IndexType) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: &Attribute, itype: IndexType) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(attr, itype)
     }
