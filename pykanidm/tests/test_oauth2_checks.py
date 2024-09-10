@@ -1,4 +1,4 @@
-""" test validation of urls """
+"""test validation of urls"""
 
 import pytest
 

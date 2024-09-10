@@ -189,7 +189,7 @@ test/pykanidm/pytest: ## python library testing
 test/pykanidm/lint: ## python library linting
 	cd pykanidm && \
 	poetry install && \
-	poetry run ruff tests kanidm
+	poetry run ruff check tests kanidm
 
 .PHONY: test/pykanidm/mypy
 test/pykanidm/mypy: ## python library type checking

@@ -1,5 +1,4 @@
-""" testing get_radius_token """
-
+"""testing get_radius_token"""
 
 import json
 import logging
@@ -22,9 +21,7 @@ async def test_radius_call(client_configfile: KanidmClient) -> None:
     print("Doing auth_init using token")
 
     if client_configfile.config.auth_token is None:
-        pytest.skip(
-            "You can't test auth if you don't have an auth_token in ~/.config/kanidm"
-        )
+        pytest.skip("You can't test auth if you don't have an auth_token in ~/.config/kanidm")
     result = await client_configfile.get_radius_token(RADIUS_TEST_USER)
 
     print(f"{result=}")

@@ -1,4 +1,4 @@
-""" tests types """
+"""tests types"""
 
 import pytest
 from pydantic import ValidationError
