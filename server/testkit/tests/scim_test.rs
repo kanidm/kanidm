@@ -1,7 +1,7 @@
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
-use kanidmd_lib::prelude::BUILTIN_GROUP_IDM_ADMINS_V1;
+use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use reqwest::header::HeaderValue;
 use std::str::FromStr;
@@ -182,5 +182,16 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
     // internally.
     let scim_entry = rsclient.scim_v1_entry_get("demo_account").await.unwrap();
 
-    tracing::debug!("{:#?}", scim_entry);
+    tracing::info!("{:#?}", scim_entry);
+
+    assert!(scim_entry.attrs.contains_key(&Attribute::Class));
+    assert!(scim_entry.attrs.contains_key(&Attribute::Name));
+    assert_eq!(
+        scim_entry
+            .attrs
+            .get(&Attribute::Name)
+            .and_then(|v| v.as_str())
+            .unwrap(),
+        "demo_account".to_string()
+    );
 }
