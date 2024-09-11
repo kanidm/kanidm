@@ -1,9 +1,10 @@
 #![allow(warnings)]
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttrPath {
     // Uri: Option<String>,
     a: String,
@@ -25,7 +26,7 @@ impl ToString for AttrPath {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScimFilter {
     Or(Box<ScimFilter>, Box<ScimFilter>),
     And(Box<ScimFilter>, Box<ScimFilter>),
@@ -68,7 +69,7 @@ impl ToString for ScimFilter {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScimComplexFilter {
     Or(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
     And(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
