@@ -63,6 +63,26 @@ pub enum ScimComplexFilter {
     LessOrEqual(String, Value),
 }
 
+impl ToString for ScimComplexFilter {
+    fn to_string(&self) -> String {
+        match self {
+            Self::And(this, that) => format!("({} and {})", this.to_string(), that.to_string()),
+            Self::Contains(attrname, value) => format!("({attrname} co {value})"),
+            Self::EndsWith(attrname, value) => format!("({attrname} ew {value})"),
+            Self::Equal(attrname, value) => format!("({attrname} eq {value})"),
+            Self::Greater(attrname, value) => format!("({attrname} gt {value})"),
+            Self::GreaterOrEqual(attrname, value) => format!("({attrname} ge {value})"),
+            Self::Less(attrname, value) => format!("({attrname} lt {value})"),
+            Self::LessOrEqual(attrname, value) => format!("({attrname} le {value})"),
+            Self::Not(expr) => format!("(not ({}))", expr.to_string()),
+            Self::NotEqual(attrname, value) => format!("({attrname} ne {value})"),
+            Self::Or(this, that) => format!("({} or {})", this.to_string(), that.to_string()),
+            Self::Present(attrname) => format!("({attrname} pr)"),
+            Self::StartsWith(attrname, value) => format!("({attrname} sw {value})"),
+        }
+    }
+}
+
 // separator()* "(" e:term() ")" separator()* { e }
 
 peg::parser! {
