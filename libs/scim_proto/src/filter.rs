@@ -10,6 +10,21 @@ pub struct AttrPath {
     s: Option<String>,
 }
 
+impl ToString for AttrPath {
+    fn to_string(&self) -> String {
+        match self {
+            Self {
+                a: attrname,
+                s: Some(subattr),
+            } => format!("{attrname}.{subattr}"),
+            Self {
+                a: attrname,
+                s: None,
+            } => attrname.to_owned(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScimFilter {
     Or(Box<ScimFilter>, Box<ScimFilter>),
