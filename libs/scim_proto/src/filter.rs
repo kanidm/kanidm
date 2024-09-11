@@ -45,6 +45,29 @@ pub enum ScimFilter {
     Complex(String, Box<ScimComplexFilter>),
 }
 
+impl ToString for ScimFilter {
+    fn to_string(&self) -> String {
+        match self {
+            Self::And(this, that) => format!("({} and {})", this.to_string(), that.to_string()),
+            Self::Contains(attrpath, value) => format!("({} co {value})", attrpath.to_string()),
+            Self::EndsWith(attrpath, value) => format!("({} ew {value})", attrpath.to_string()),
+            Self::Equal(attrpath, value) => format!("({} eq {value})", attrpath.to_string()),
+            Self::Greater(attrpath, value) => format!("({} gt {value})", attrpath.to_string()),
+            Self::GreaterOrEqual(attrpath, value) => {
+                format!("({} ge {value})", attrpath.to_string())
+            }
+            Self::Less(attrpath, value) => format!("({} lt {value})", attrpath.to_string()),
+            Self::LessOrEqual(attrpath, value) => format!("({} le {value})", attrpath.to_string()),
+            Self::Not(expr) => format!("(not ({}))", expr.to_string()),
+            Self::NotEqual(attrpath, value) => format!("({} ne {value})", attrpath.to_string()),
+            Self::Or(this, that) => format!("({} or {})", this.to_string(), that.to_string()),
+            Self::Present(attrpath) => format!("({} pr)", attrpath.to_string()),
+            Self::StartsWith(attrpath, value) => format!("({} sw {value})", attrpath.to_string()),
+            Self::Complex(attrname, expr) => format!("{attrname}[{}]", expr.to_string()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScimComplexFilter {
     Or(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
