@@ -271,6 +271,27 @@ peg::parser! {
     }
 }
 
+impl FromStr for AttrPath {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::attrpath(input)
+    }
+}
+
+impl FromStr for ScimFilter {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::parse(input)
+    }
+}
+
+impl FromStr for ScimComplexFilter {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::parse_complex(input)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
