@@ -146,7 +146,7 @@ impl BackendConfig {
             path: "".to_string(),
             db_name,
             fstype: FsType::Generic,
-            arcsize: Some(1024),
+            arcsize: Some(2048),
         }
     }
 }
