@@ -73,6 +73,7 @@ pub enum OperationError {
     Backend,
     NoMatchingEntries,
     NoMatchingAttributes,
+    UniqueConstraintViolation,
     CorruptedEntry(u64),
     CorruptedIndex(String),
     // TODO: this should just be a vec of the ConsistencyErrors, surely?
@@ -256,6 +257,7 @@ impl OperationError {
             Self::Backend => None,
             Self::NoMatchingEntries => None,
             Self::NoMatchingAttributes => None,
+            Self::UniqueConstraintViolation => Some("A unique constraint was violated resulting in multiple conflicting results."),
             Self::CorruptedEntry(_) => None,
             Self::CorruptedIndex(_) => None,
             Self::ConsistencyError(_) => None,

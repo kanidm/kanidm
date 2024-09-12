@@ -2433,6 +2433,8 @@ impl Entry<EntryReduced, EntryCommitted> {
         let attrs = self
             .attrs
             .iter()
+            // We want to skip some attributes as they are already in the header.
+            .filter(|(k, _vs)| **k != Attribute::Uuid)
             .filter_map(|(k, vs)| vs.to_scim_value().map(|scim_value| (k.clone(), scim_value)))
             .collect();
 

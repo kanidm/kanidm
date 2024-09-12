@@ -5,7 +5,7 @@ use kanidmd_lib::idm::scim::{
 };
 use kanidmd_lib::idm::server::IdmServerTransaction;
 
-use kanidm_proto::scim_v1::{ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{server::ScimEntryKanidm, ScimSyncRequest, ScimSyncState};
 
 use super::{QueryServerReadV1, QueryServerWriteV1};
 
@@ -196,5 +196,37 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read.validate_sync_client_auth_info_to_ident(client_auth_info, ct)?;
 
         idms_prox_read.scim_sync_get_state(&ident)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_entry_id_get(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        uuid_or_name: String,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity");
+            })?;
+
+        let target_uuid = idms_prox_read
+            .qs_read
+            .name_to_uuid(uuid_or_name.as_str())
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
+            })?;
+
+        idms_prox_read
+            .qs_read
+            .impersonate_search_ext_uuid(target_uuid, &ident)
+            .and_then(|entry| entry.to_scim_kanidm())
     }
 }
