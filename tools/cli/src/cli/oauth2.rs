@@ -258,7 +258,6 @@ impl Oauth2Opt {
                 path,
                 image_type,
             } => {
-                let client = nopt.copt.to_client(OpType::Write).await;
                 let img_res: Result<ImageValue, Error> = (move || {
                     let file_name = path
                         .file_name()
@@ -267,30 +266,41 @@ impl Oauth2Opt {
                         .context("Path contains non utf-8")?
                         .to_string();
 
-                    let image_type = if let Some(image_type) = image_type {
-                        image_type.as_str().try_into().map_err(Error::msg)?
-                    } else {
-                        path
-                            .extension().context("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
-                            .to_str().context("Path contains invalid utf-8")?
-                            .try_into()
-                            .map_err(Error::msg)?
+                    let image_type = match image_type {
+                        Some(val) => val.clone(),
+                        None => {
+                            path
+                                .extension().context("Path has no extension so we can't infer the imageType, or you could pass the optional imageType argument yourself.")?
+                                .to_str().context("Path contains invalid utf-8")?
+                                .try_into()
+                                .map_err(Error::msg)?
+                        }
                     };
 
                     let read_res = read(path);
                     match read_res {
                         Ok(data) => Ok(ImageValue::new(file_name, image_type, data)),
-                        Err(err) => Err(err).context("Reading error"),
+                        Err(err) => {
+                            if nopt.copt.debug {
+                                eprintln!(
+                                    "{}",
+                                    kanidm_lib_file_permissions::diagnose_path(path.as_ref())
+                                );
+                            }
+                            Err(err).context(format!("Failed to read file at '{}'", path.display()))
+                        }
                     }
                 })();
 
                 let img = match img_res {
                     Ok(img) => img,
                     Err(err) => {
-                        eprintln!("{err}");
+                        eprintln!("{:?}", err);
                         return;
                     }
                 };
+
+                let client = nopt.copt.to_client(OpType::Write).await;
 
                 match client
                     .idm_oauth2_rs_update_image(nopt.name.as_str(), img)
