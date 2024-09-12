@@ -1,16 +1,32 @@
 #![allow(warnings)]
 
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::str::FromStr;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AttrPath {
     // Uri: Option<String>,
     a: String,
     s: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl ToString for AttrPath {
+    fn to_string(&self) -> String {
+        match self {
+            Self {
+                a: attrname,
+                s: Some(subattr),
+            } => format!("{attrname}.{subattr}"),
+            Self {
+                a: attrname,
+                s: None,
+            } => attrname.to_owned(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScimFilter {
     Or(Box<ScimFilter>, Box<ScimFilter>),
     And(Box<ScimFilter>, Box<ScimFilter>),
@@ -30,7 +46,30 @@ pub enum ScimFilter {
     Complex(String, Box<ScimComplexFilter>),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+impl ToString for ScimFilter {
+    fn to_string(&self) -> String {
+        match self {
+            Self::And(this, that) => format!("({} and {})", this.to_string(), that.to_string()),
+            Self::Contains(attrpath, value) => format!("({} co {value})", attrpath.to_string()),
+            Self::EndsWith(attrpath, value) => format!("({} ew {value})", attrpath.to_string()),
+            Self::Equal(attrpath, value) => format!("({} eq {value})", attrpath.to_string()),
+            Self::Greater(attrpath, value) => format!("({} gt {value})", attrpath.to_string()),
+            Self::GreaterOrEqual(attrpath, value) => {
+                format!("({} ge {value})", attrpath.to_string())
+            }
+            Self::Less(attrpath, value) => format!("({} lt {value})", attrpath.to_string()),
+            Self::LessOrEqual(attrpath, value) => format!("({} le {value})", attrpath.to_string()),
+            Self::Not(expr) => format!("(not ({}))", expr.to_string()),
+            Self::NotEqual(attrpath, value) => format!("({} ne {value})", attrpath.to_string()),
+            Self::Or(this, that) => format!("({} or {})", this.to_string(), that.to_string()),
+            Self::Present(attrpath) => format!("({} pr)", attrpath.to_string()),
+            Self::StartsWith(attrpath, value) => format!("({} sw {value})", attrpath.to_string()),
+            Self::Complex(attrname, expr) => format!("{attrname}[{}]", expr.to_string()),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ScimComplexFilter {
     Or(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
     And(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
@@ -46,6 +85,26 @@ pub enum ScimComplexFilter {
     Less(String, Value),
     GreaterOrEqual(String, Value),
     LessOrEqual(String, Value),
+}
+
+impl ToString for ScimComplexFilter {
+    fn to_string(&self) -> String {
+        match self {
+            Self::And(this, that) => format!("({} and {})", this.to_string(), that.to_string()),
+            Self::Contains(attrname, value) => format!("({attrname} co {value})"),
+            Self::EndsWith(attrname, value) => format!("({attrname} ew {value})"),
+            Self::Equal(attrname, value) => format!("({attrname} eq {value})"),
+            Self::Greater(attrname, value) => format!("({attrname} gt {value})"),
+            Self::GreaterOrEqual(attrname, value) => format!("({attrname} ge {value})"),
+            Self::Less(attrname, value) => format!("({attrname} lt {value})"),
+            Self::LessOrEqual(attrname, value) => format!("({attrname} le {value})"),
+            Self::Not(expr) => format!("(not ({}))", expr.to_string()),
+            Self::NotEqual(attrname, value) => format!("({attrname} ne {value})"),
+            Self::Or(this, that) => format!("({} or {})", this.to_string(), that.to_string()),
+            Self::Present(attrname) => format!("({attrname} pr)"),
+            Self::StartsWith(attrname, value) => format!("({attrname} sw {value})"),
+        }
+    }
 }
 
 // separator()* "(" e:term() ")" separator()* { e }
@@ -210,6 +269,27 @@ peg::parser! {
 
         pub(crate) rule attrname() -> String =
             s:$([ 'a'..='z' | 'A'..='Z']['a'..='z' | 'A'..='Z' | '0'..='9' | '-' | '_' ]*) { s.to_string() }
+    }
+}
+
+impl FromStr for AttrPath {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::attrpath(input)
+    }
+}
+
+impl FromStr for ScimFilter {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::parse(input)
+    }
+}
+
+impl FromStr for ScimComplexFilter {
+    type Err = peg::error::ParseError<peg::str::LineCol>;
+    fn from_str(input: &str) -> Result<Self, Self::Err> {
+        scimfilter::parse_complex(input)
     }
 }
 
