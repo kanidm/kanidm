@@ -825,16 +825,13 @@ impl Entry<EntryIncremental, EntryNew> {
                         cnf_ent.add_ava(Attribute::Class, EntryClass::Recycled.into());
                         cnf_ent.add_ava(Attribute::Class, EntryClass::Conflict.into());
 
-                        // Setup the last changed to now.
-                        let last_mod_cid = cid.clone();
-                        // Set the created_at to now, since we are creating a new conflict entry here.
-                        let created_at_cid = cid.clone();
-
                         // Bypass add_ava here so that we don't update the ecstate with the
-                        // metadata of these attrs.
-                        let cv = vs_cid![last_mod_cid];
+                        // metadata of these attrs.                        
+                        // Setup the last changed to now.
+                        let cv = vs_cid![cid.clone()];
                         let _ = cnf_ent.attrs.insert(Attribute::LastModifiedCid, cv);
-                        let cv = vs_cid![created_at_cid];
+                        // Set the created_at to now, since we are creating a new conflict entry here.
+                        let cv = vs_cid![cid.clone();
                         let _ = cnf_ent.attrs.insert(Attribute::CreatedAtCid, cv);
 
                         // Now we have to internally bypass some states.
