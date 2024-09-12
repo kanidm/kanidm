@@ -318,6 +318,7 @@ pub const UUID_SCHEMA_CLASS_APPLICATION: Uuid = uuid!("00000000-0000-0000-0000-f
 pub const UUID_SCHEMA_ATTR_LINKED_GROUP: Uuid = uuid!("00000000-0000-0000-0000-ffff00000182");
 pub const UUID_SCHEMA_ATTR_APPLICATION_PASSWORD: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000183");
+pub const UUID_SCHEMA_ATTR_CREATED_AT_CID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000184");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

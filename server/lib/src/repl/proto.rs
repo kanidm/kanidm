@@ -15,6 +15,7 @@ use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
@@ -69,7 +70,7 @@ impl From<&ReplCidV1> for Cid {
 /// and also includes the list of all CIDs that occur between those two points. This allows these
 /// extra change "anchors" to be injected into the consumer RUV during an incremental. Once
 /// inserted, these anchors prevent RUV trimming from creating "jumps" due to idle servers.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReplAnchoredCidRange {
     #[serde(rename = "m")]
     pub ts_min: Duration,
@@ -79,14 +80,37 @@ pub struct ReplAnchoredCidRange {
     pub ts_max: Duration,
 }
 
+impl fmt::Debug for ReplAnchoredCidRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:032} --{}-> {:032}",
+            self.ts_min.as_nanos(),
+            self.anchors.len(),
+            self.ts_max.as_nanos()
+        )
+    }
+}
+
 /// A CID range. This contains the minimum and maximum values of a range. This is used for
 /// querying the RUV to select all elements in this range.
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct ReplCidRange {
     #[serde(rename = "m")]
     pub ts_min: Duration,
     #[serde(rename = "x")]
     pub ts_max: Duration,
+}
+
+impl fmt::Debug for ReplCidRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{:032} -> {:032}",
+            self.ts_min.as_nanos(),
+            self.ts_max.as_nanos()
+        )
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
