@@ -1033,12 +1033,10 @@ impl Entry<EntryIncremental, EntryNew> {
                 // the created/mod cid's.
                 ecstate.retain(|k, _| schema.is_replicated(k));
 
-                let last_mod_cid = ecstate.get_max_cid();
-                let cv = vs_cid![last_mod_cid.clone()];
+                let cv = vs_cid![ecstate.get_max_cid()];
                 let _ = eattrs.insert(Attribute::LastModifiedCid, cv);
 
-                let create_at_cid = ecstate.at();
-                let cv = vs_cid![create_at_cid.clone()];
+                let cv = vs_cid![ecstate.at()];
                 let _ = eattrs.insert(Attribute::CreatedAtCid, cv);
 
                 Entry {
