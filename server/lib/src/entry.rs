@@ -826,12 +826,12 @@ impl Entry<EntryIncremental, EntryNew> {
                         cnf_ent.add_ava(Attribute::Class, EntryClass::Conflict.into());
 
                         // Bypass add_ava here so that we don't update the ecstate with the
-                        // metadata of these attrs.                        
+                        // metadata of these attrs.
                         // Setup the last changed to now.
                         let cv = vs_cid![cid.clone()];
                         let _ = cnf_ent.attrs.insert(Attribute::LastModifiedCid, cv);
                         // Set the created_at to now, since we are creating a new conflict entry here.
-                        let cv = vs_cid![cid.clone();
+                        let cv = vs_cid![cid.clone()];
                         let _ = cnf_ent.attrs.insert(Attribute::CreatedAtCid, cv);
 
                         // Now we have to internally bypass some states.
@@ -1030,10 +1030,10 @@ impl Entry<EntryIncremental, EntryNew> {
                 // the created/mod cid's.
                 ecstate.retain(|k, _| schema.is_replicated(k));
 
-                let cv = vs_cid![ecstate.get_max_cid()];
+                let cv = vs_cid![ecstate.get_max_cid().clone()];
                 let _ = eattrs.insert(Attribute::LastModifiedCid, cv);
 
-                let cv = vs_cid![ecstate.at()];
+                let cv = vs_cid![ecstate.at().clone()];
                 let _ = eattrs.insert(Attribute::CreatedAtCid, cv);
 
                 Entry {
