@@ -42,6 +42,7 @@
 - fossdd
 - Wei Jian Gan (weijiangan)
 - adamcstephens
+- Chris Olstrom (colstrom)
 
 ## Acknowledgements
 
