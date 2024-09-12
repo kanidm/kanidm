@@ -586,7 +586,14 @@ pub trait QueryServerTransaction<'a> {
         let mut vs = self.impersonate_search_ext(filter, filter_intent, event)?;
         match vs.pop() {
             Some(entry) if vs.is_empty() => Ok(entry),
-            _ => Err(OperationError::NoMatchingEntries),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
         }
     }
 

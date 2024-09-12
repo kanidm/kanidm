@@ -73,8 +73,10 @@ impl Modify for SecurityAddon {
         super::v1_oauth2::oauth2_id_claimmap_join_post,
         super::v1_oauth2::oauth2_id_claimmap_post,
         super::v1_oauth2::oauth2_id_claimmap_delete,
+
         super::v1_scim::scim_sync_post,
         super::v1_scim::scim_sync_get,
+        super::v1_scim::scim_entry_id_get,
 
         super::v1::schema_get,
         super::v1::whoami,

@@ -209,13 +209,11 @@ impl EntryChangeState {
         }
     }
 
-    #[cfg(test)]
-    pub(crate) fn get_tail_cid(&self) -> Cid {
-        #![allow(clippy::expect_used)]
-        self.cid_iter()
-            .pop()
-            .cloned()
-            .expect("Failed to get tail cid")
+    pub(crate) fn get_max_cid(&self) -> &Cid {
+        match &self.st {
+            State::Live { at, changes } => changes.values().max().unwrap_or(at),
+            State::Tombstone { at } => at,
+        }
     }
 
     #[cfg(test)]
@@ -226,7 +224,7 @@ impl EntryChangeState {
         }
     }
 
-    pub fn cid_iter(&self) -> Vec<&Cid> {
+    pub(crate) fn cid_iter(&self) -> Vec<&Cid> {
         match &self.st {
             State::Live { at: _, changes } => {
                 let mut v: Vec<_> = changes.values().collect();

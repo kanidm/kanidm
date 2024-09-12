@@ -905,6 +905,23 @@ impl<'a> SchemaWriteTransaction<'a> {
             },
         );
         self.attributes.insert(
+            Attribute::CreatedAtCid,
+            SchemaAttribute {
+                name: Attribute::CreatedAtCid,
+                uuid: UUID_SCHEMA_ATTR_CREATED_AT_CID,
+                description: String::from("The cid when this entry was created"),
+                multivalue: false,
+                // Uniqueness is handled by base.rs, not attrunique here due to
+                // needing to check recycled objects too.
+                unique: false,
+                phantom: false,
+                sync_allowed: false,
+                replicated: false,
+                index: vec![],
+                syntax: SyntaxType::Cid,
+            },
+        );
+        self.attributes.insert(
             Attribute::LastModifiedCid,
             SchemaAttribute {
                 name: Attribute::LastModifiedCid,
@@ -916,7 +933,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 unique: false,
                 phantom: false,
                 sync_allowed: false,
-                replicated: true,
+                replicated: false,
                 index: vec![],
                 syntax: SyntaxType::Cid,
             },
@@ -1978,6 +1995,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     Attribute::Class,
                     Attribute::Uuid,
                     Attribute::LastModifiedCid,
+                    Attribute::CreatedAtCid,
                 ],
                 ..Default::default()
             },
@@ -2996,6 +3014,7 @@ mod tests {
                 Attribute::Class,
                 Attribute::Uuid,
                 Attribute::LastModifiedCid,
+                Attribute::CreatedAtCid,
             ],
             systemsupplements: vec![EntryClass::Service.into(), EntryClass::Person.into()],
             ..Default::default()
@@ -3009,6 +3028,7 @@ mod tests {
                 Attribute::Class,
                 Attribute::Uuid,
                 Attribute::LastModifiedCid,
+                Attribute::CreatedAtCid,
             ],
             ..Default::default()
         };
@@ -3021,6 +3041,7 @@ mod tests {
                 Attribute::Class,
                 Attribute::Uuid,
                 Attribute::LastModifiedCid,
+                Attribute::CreatedAtCid,
             ],
             excludes: vec![EntryClass::Person.into()],
             ..Default::default()

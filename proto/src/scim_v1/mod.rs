@@ -16,15 +16,29 @@
 //! The server module, which describes how a server should transmit entries and
 //! how it should recieve them.
 
+use crate::attribute::Attribute;
+use serde::{Deserialize, Serialize};
+use serde_json::Value as JsonValue;
+use std::collections::BTreeMap;
+use utoipa::ToSchema;
+
+pub use self::synch::*;
+pub use scim_proto::prelude::*;
+
 mod client;
 pub mod server;
 mod synch;
 
-pub use scim_proto::prelude::*;
-
-pub use self::synch::*;
-
-//
+/// A generic ScimEntry. This retains attribute
+/// values in a generic state awaiting processing by schema aware transforms
+/// either by the server or the client.
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct ScimEntryGeneric {
+    #[serde(flatten)]
+    pub header: ScimEntryHeader,
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, JsonValue>,
+}
 
 #[cfg(test)]
 mod tests {

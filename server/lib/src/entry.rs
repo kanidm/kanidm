@@ -173,7 +173,7 @@ pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     let allkeys: Set<&Attribute> = left
         .keys()
         .chain(right.keys())
-        .filter(|k| *k != &Attribute::LastModifiedCid)
+        .filter(|k| *k != &Attribute::LastModifiedCid && *k != &Attribute::CreatedAtCid)
         .collect();
 
     allkeys.into_iter().all(|k| {
@@ -526,7 +526,7 @@ impl Entry<EntryInit, EntryNew> {
     /// Assign the Change Identifier to this Entry, allowing it to be modified and then
     /// written to the `Backend`
     pub fn assign_cid(
-        self,
+        mut self,
         cid: Cid,
         schema: &dyn SchemaTransaction,
     ) -> Entry<EntryInvalid, EntryNew> {
@@ -537,14 +537,18 @@ impl Entry<EntryInit, EntryNew> {
          */
         let ecstate = EntryChangeState::new(&cid, &self.attrs, schema);
 
-        let mut ent = Entry {
+        // Since the entry is now created, and modified here, we set the initial CID
+        // values.
+        let cv = vs_cid![cid.clone()];
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
+        let cv = vs_cid![cid.clone()];
+        let _ = self.attrs.insert(Attribute::CreatedAtCid, cv);
+
+        Entry {
             valid: EntryInvalid { cid, ecstate },
             state: EntryNew,
             attrs: self.attrs,
-        };
-        // trace!("trigger_last_changed - assign_cid");
-        ent.trigger_last_changed();
-        ent
+        }
     }
 
     /// Compare this entry to another.
@@ -652,7 +656,17 @@ impl Entry<EntryInit, EntryNew> {
 impl Entry<EntryRefresh, EntryNew> {
     pub fn from_repl_entry_v1(repl_entry: &ReplEntryV1) -> Result<Self, OperationError> {
         // From the entry, we have to rebuild the ecstate and the attrs.
-        let (ecstate, attrs) = repl_entry.rehydrate()?;
+        let (ecstate, mut attrs) = repl_entry.rehydrate()?;
+
+        // During seal, these values will be re-written, but we need them present for
+        // schema validation.
+        let last_mod_cid = ecstate.get_max_cid();
+        let cv = vs_cid![last_mod_cid.clone()];
+        let _ = attrs.insert(Attribute::LastModifiedCid, cv);
+
+        let create_at_cid = ecstate.at();
+        let cv = vs_cid![create_at_cid.clone()];
+        let _ = attrs.insert(Attribute::CreatedAtCid, cv);
 
         Ok(Entry {
             valid: EntryRefresh { ecstate },
@@ -756,6 +770,10 @@ impl Entry<EntryIncremental, EntryNew> {
                 // 1. The incoming ReplIncremental is after DBentry. This means RI is the
                 //    conflicting node. We take no action and just return the db_ent
                 //    as the valid state.
+                //
+                //    Since we are returning the existing database entry, we already have
+                //    locally applies the needed LastModifiedCid and CreatedAtCid. We
+                //    can proceed with no other changes.
                 if at_left > at_right {
                     trace!("RI > DE, return DE");
                     (
@@ -797,9 +815,6 @@ impl Entry<EntryIncremental, EntryNew> {
                             attrs: db_ent.attrs.clone(),
                         };
 
-                        // Setup the last changed to now.
-                        cnf_ent.trigger_last_changed();
-
                         // Move the current uuid to source_uuid
                         cnf_ent.add_ava(Attribute::SourceUuid, Value::Uuid(db_ent.valid.uuid));
 
@@ -809,6 +824,15 @@ impl Entry<EntryIncremental, EntryNew> {
                         cnf_ent.add_ava(Attribute::Uuid, Value::Uuid(new_uuid));
                         cnf_ent.add_ava(Attribute::Class, EntryClass::Recycled.into());
                         cnf_ent.add_ava(Attribute::Class, EntryClass::Conflict.into());
+
+                        // Bypass add_ava here so that we don't update the ecstate with the
+                        // metadata of these attrs.
+                        // Setup the last changed to now.
+                        let cv = vs_cid![cid.clone()];
+                        let _ = cnf_ent.attrs.insert(Attribute::LastModifiedCid, cv);
+                        // Set the created_at to now, since we are creating a new conflict entry here.
+                        let cv = vs_cid![cid.clone()];
+                        let _ = cnf_ent.attrs.insert(Attribute::CreatedAtCid, cv);
 
                         // Now we have to internally bypass some states.
                         // This is okay because conflict entries aren't subject
@@ -833,17 +857,31 @@ impl Entry<EntryIncremental, EntryNew> {
                         None
                     };
 
+                    // Since we are going to make the incoming node, we need to now
+                    // populate it's last-mod and created attributes.
+
+                    let mut attrs = self.attrs.clone();
+                    let ecstate = self_cs.clone();
+
+                    let last_mod_cid = ecstate.get_max_cid();
+                    let cv = vs_cid![last_mod_cid.clone()];
+                    let _ = attrs.insert(Attribute::LastModifiedCid, cv);
+
+                    let create_at_cid = ecstate.at();
+                    let cv = vs_cid![create_at_cid.clone()];
+                    let _ = attrs.insert(Attribute::CreatedAtCid, cv);
+
                     (
                         conflict,
                         Entry {
                             valid: EntryIncremental {
                                 uuid: self.valid.uuid,
-                                ecstate: self_cs.clone(),
+                                ecstate,
                             },
                             state: EntryCommitted {
                                 id: db_ent.state.id,
                             },
-                            attrs: self.attrs.clone(),
+                            attrs,
                         },
                     )
                 }
@@ -856,7 +894,7 @@ impl Entry<EntryIncremental, EntryNew> {
     pub(crate) fn merge_state(
         &self,
         db_ent: &EntrySealedCommitted,
-        _schema: &dyn SchemaTransaction,
+        schema: &dyn SchemaTransaction,
         trim_cid: &Cid,
     ) -> EntryIncrementalCommitted {
         use crate::repl::entry::State;
@@ -982,10 +1020,21 @@ impl Entry<EntryIncremental, EntryNew> {
                     }
                 }
 
-                let ecstate = EntryChangeState::build(State::Live {
+                let mut ecstate = EntryChangeState::build(State::Live {
                     at: at_left.clone(),
                     changes,
                 });
+
+                // Similar to the process of "seal", remove anything that isn't
+                // replicated from the ecstate (should be a no-op), and then update
+                // the created/mod cid's.
+                ecstate.retain(|k, _| schema.is_replicated(k));
+
+                let cv = vs_cid![ecstate.get_max_cid().clone()];
+                let _ = eattrs.insert(Attribute::LastModifiedCid, cv);
+
+                let cv = vs_cid![ecstate.at().clone()];
+                let _ = eattrs.insert(Attribute::CreatedAtCid, cv);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1005,10 +1054,12 @@ impl Entry<EntryIncremental, EntryNew> {
                 let mut attrs_new: Eattrs = Map::new();
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![left_at.clone()];
+                let created_ava = vs_cid![left_at.clone()];
 
                 attrs_new.insert(Attribute::Uuid, vs_uuid![self.valid.uuid]);
                 attrs_new.insert(Attribute::Class, class_ava);
                 attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
+                attrs_new.insert(Attribute::CreatedAtCid, created_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1054,10 +1105,12 @@ impl Entry<EntryIncremental, EntryNew> {
                 let mut attrs_new: Eattrs = Map::new();
                 let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
                 let last_mod_ava = vs_cid![at.clone()];
+                let created_ava = vs_cid![at.clone()];
 
                 attrs_new.insert(Attribute::Uuid, vs_uuid![db_ent.valid.uuid]);
                 attrs_new.insert(Attribute::Class, class_ava);
                 attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
+                attrs_new.insert(Attribute::CreatedAtCid, created_ava);
 
                 Entry {
                     valid: EntryIncremental {
@@ -1346,7 +1399,7 @@ impl<STATE> Entry<EntrySealed, STATE> {
 impl Entry<EntrySealed, EntryCommitted> {
     #[cfg(test)]
     pub(crate) fn get_last_changed(&self) -> Cid {
-        self.valid.ecstate.get_tail_cid()
+        self.valid.ecstate.get_max_cid().clone()
     }
 
     /// State transititon to allow self to self for certain test macros.
@@ -1969,10 +2022,12 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let class_ava = vs_iutf8![EntryClass::Object.into(), EntryClass::Tombstone.into()];
         let last_mod_ava = vs_cid![cid.clone()];
+        let created_ava = vs_cid![cid.clone()];
 
         attrs_new.insert(Attribute::Uuid, vs_uuid![self.get_uuid()]);
         attrs_new.insert(Attribute::Class, class_ava);
         attrs_new.insert(Attribute::LastModifiedCid, last_mod_ava);
+        attrs_new.insert(Attribute::CreatedAtCid, created_ava);
 
         // ⚠️  No return from this point!
         ecstate.tombstone(&cid);
@@ -2255,13 +2310,25 @@ impl<STATE> Entry<EntryValid, STATE> {
         Ok(())
     }
 
-    pub fn seal(self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
+    pub fn seal(mut self, schema: &dyn SchemaTransaction) -> Entry<EntrySealed, STATE> {
         let EntryValid { uuid, mut ecstate } = self.valid;
 
         // Remove anything from the ecstate that is not a replicated attribute in the schema.
         // This is to allow ecstate equality to work, but also to just prevent ruv updates and
         // replicating things that only touched or changed phantom attrs.
         ecstate.retain(|k, _| schema.is_replicated(k));
+
+        // Update the last changed time.
+        let last_mod_cid = ecstate.get_max_cid();
+        let cv = vs_cid![last_mod_cid.clone()];
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
+
+        // Update created-at time. This is needed for migrations currently. It could
+        // be alternately in the entry create path, but it makes more sense here as
+        // we get the create_at time from the replication metadata
+        let create_at_cid = ecstate.at();
+        let cv = vs_cid![create_at_cid.clone()];
+        let _ = self.attrs.insert(Attribute::CreatedAtCid, cv);
 
         Entry {
             valid: EntrySealed { uuid, ecstate },
@@ -2293,16 +2360,6 @@ where
             state: self.state,
             attrs: self.attrs,
         }
-        /* Setup our last changed time. */
-        // We can't actually trigger last changed here. This creates a replication loop
-        // inside of memberof plugin which invalidates. For now we treat last_changed
-        // more as "create" so we only trigger it via assign_cid in the create path
-        // and in conflict entry creation.
-        /*
-        trace!("trigger_last_changed - invalidate");
-        ent.trigger_last_changed();
-        ent
-        */
     }
 
     pub fn get_uuid(&self) -> Uuid {
@@ -2376,6 +2433,8 @@ impl Entry<EntryReduced, EntryCommitted> {
         let attrs = self
             .attrs
             .iter()
+            // We want to skip some attributes as they are already in the header.
+            .filter(|(k, _vs)| **k != Attribute::Uuid)
             .filter_map(|(k, vs)| vs.to_scim_value().map(|scim_value| (k.clone(), scim_value)))
             .collect();
 
@@ -2538,8 +2597,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Update the last_changed flag of this entry to the given change identifier.
     #[cfg(test)]
     fn set_last_changed(&mut self, cid: Cid) {
-        let cv = vs_cid![cid];
+        let cv = vs_cid![cid.clone()];
         let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
+        let cv = vs_cid![cid];
+        let _ = self.attrs.insert(Attribute::CreatedAtCid, cv);
     }
 
     pub(crate) fn get_display_id(&self) -> String {
@@ -3115,14 +3176,6 @@ impl<STATE> Entry<EntryInvalid, STATE>
 where
     STATE: Clone,
 {
-    fn trigger_last_changed(&mut self) {
-        self.valid
-            .ecstate
-            .change_ava(&self.valid.cid, &Attribute::LastModifiedCid);
-        let cv = vs_cid![self.valid.cid.clone()];
-        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
-    }
-
     // This should always work? It's only on validate that we'll build
     // a list of syntax violations ...
     // If this already exists, we silently drop the event. This is because
