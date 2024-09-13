@@ -89,6 +89,12 @@ pub(crate) struct Result {}
 pub(crate) struct ScimEntry {}
 
 #[derive(Debug, Clone, ToSchema)]
+///  workaround for the fact that BTreeSet can't be represented in JSON
+pub(crate) struct ProtoEntry {
+    attrs: std::collections::HashMap<String, Vec<String>>,
+}
+
+#[derive(Debug, Clone, ToSchema)]
 pub(crate) struct Jwk {}
 
 #[derive(Debug, Clone, ToSchema)]

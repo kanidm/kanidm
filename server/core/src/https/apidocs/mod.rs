@@ -212,7 +212,7 @@ impl Modify for SecurityAddon {
     components(
         schemas(
             kanidm_proto::attribute::Attribute,
-            ProtoEntry,
+
 
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
@@ -294,7 +294,10 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
+            //  workaround for the fact that BTreeSet can't be represented in JSON
+            response_schema::ProtoEntry,
             // terrible workaround for other things
+            Jwk,
             response_schema::Jwk,
             response_schema::ScimComplexAttr,
             WebError,
