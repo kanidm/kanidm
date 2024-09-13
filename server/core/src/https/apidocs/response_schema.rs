@@ -60,10 +60,6 @@ impl IntoResponses for ApiResponseWithout200 {
     }
 }
 
-/// Placeholder until we can handle a BTree in utipa
-#[derive(Debug, Clone, ToSchema)]
-pub(crate) struct ProtoEntry {}
-
 #[derive(Debug, Clone, ToSchema)]
 // TODO: this should be `webauthn_rs_proto::auth::PublicKeyCredential``, but ... I don't know how to make it possible in utoipa
 pub(crate) struct PublicKeyCredential {}
