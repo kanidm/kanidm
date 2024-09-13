@@ -91,7 +91,7 @@ pub(crate) struct ScimEntry {}
 #[derive(Debug, Clone, ToSchema)]
 ///  workaround for the fact that BTreeSet can't be represented in JSON
 pub(crate) struct ProtoEntry {
-    #[allow(dead_code)] // because it's a schema definition
+    #[allow(dead_code, clippy::disallowed_types)] // because it's a schema definition
     attrs: std::collections::HashMap<String, Vec<String>>,
 }
 
