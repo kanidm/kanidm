@@ -1,8 +1,5 @@
 use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
-use kanidm_proto::{
-    internal, scim_v1,
-    v1::{self, Entry as ProtoEntry},
-};
+use kanidm_proto::{internal, scim_v1, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -297,7 +294,6 @@ impl Modify for SecurityAddon {
             //  workaround for the fact that BTreeSet can't be represented in JSON
             response_schema::ProtoEntry,
             // terrible workaround for other things
-            Jwk,
             response_schema::Jwk,
             response_schema::ScimComplexAttr,
             WebError,
