@@ -208,7 +208,7 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
-            kanidm_proto::attribute::Attribute,
+            // kanidm_proto::attribute::Attribute,
 
 
             scim_v1::ScimSyncState,
