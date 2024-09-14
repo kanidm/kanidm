@@ -67,7 +67,7 @@ impl SystemProvider {
                 if !(group.members.is_empty()
                     || (group.members.len() == 1 && group.members.first() == Some(&user.name)))
                 {
-                    error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group must not have members, THIS IS A SECURITY RISK!");
+                    error!(name = %user.name, uid = %user.uid, gid = %user.gid, members = ?group.members, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }
             } else {
                 info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");

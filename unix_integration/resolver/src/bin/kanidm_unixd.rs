@@ -213,7 +213,7 @@ async fn handle_client(
 
     trace!("Waiting for requests ...");
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::INFO, "client_request");
+        let span = span!(Level::DEBUG, "client_request");
         let _enter = span.enter();
 
         let resp = match req {
@@ -484,7 +484,10 @@ async fn write_hsm_pin(hsm_pin_path: &str) -> Result<(), Box<dyn Error>> {
 fn open_tpm(tcti_name: &str) -> Option<BoxedDynTpm> {
     use kanidm_hsm_crypto::tpm::TpmTss;
     match TpmTss::new(tcti_name) {
-        Ok(tpm) => Some(BoxedDynTpm::new(tpm)),
+        Ok(tpm) => {
+            debug!("opened hw tpm");
+            Some(BoxedDynTpm::new(tpm))
+        }
         Err(tpm_err) => {
             error!(?tpm_err, "Unable to open requested tpm device");
             None
@@ -502,7 +505,10 @@ fn open_tpm(_tcti_name: &str) -> Option<BoxedDynTpm> {
 fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
     use kanidm_hsm_crypto::tpm::TpmTss;
     match TpmTss::new(tcti_name) {
-        Ok(tpm) => BoxedDynTpm::new(tpm),
+        Ok(tpm) => {
+            debug!("opened hw tpm");
+            BoxedDynTpm::new(tpm)
+        }
         Err(tpm_err) => {
             warn!(
                 ?tpm_err,
@@ -515,6 +521,7 @@ fn open_tpm_if_possible(tcti_name: &str) -> BoxedDynTpm {
 
 #[cfg(not(feature = "tpm"))]
 fn open_tpm_if_possible(_tcti_name: &str) -> BoxedDynTpm {
+    debug!("opened soft tpm");
     BoxedDynTpm::new(SoftTpm::new())
 }
 
@@ -704,7 +711,7 @@ async fn main() -> ExitCode {
                 eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
                 eprintln!("{}", cfg);
                 eprintln!("###################################");
-                eprintln!("Client config (from {:#?})", &cfg_path);
+                eprintln!("kanidm client config (from {:#?})", &cfg_path);
                 eprintln!("{}", cb);
                 return ExitCode::SUCCESS;
             }
@@ -714,10 +721,10 @@ async fn main() -> ExitCode {
             rm_if_exist(cfg.task_sock_path.as_str());
 
             // Check the db path will be okay.
-            if !cfg.db_path.is_empty() {
-                let db_path = PathBuf::from(cfg.db_path.as_str());
+            if !cfg.cache_db_path.is_empty() {
+                let cache_db_path = PathBuf::from(cfg.cache_db_path.as_str());
                 // We only need to check the parent folder path permissions as the db itself may not exist yet.
-                if let Some(db_parent_path) = db_path.parent() {
+                if let Some(db_parent_path) = cache_db_path.parent() {
                     if !db_parent_path.exists() {
                         error!(
                             "Refusing to run, DB folder {} does not exist",
@@ -725,7 +732,7 @@ async fn main() -> ExitCode {
                                 .to_str()
                                 .unwrap_or("<db_parent_path invalid>")
                         );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
                         info!(%diag);
                         return ExitCode::FAILURE
                     }
@@ -769,26 +776,26 @@ async fn main() -> ExitCode {
                 }
 
                 // check to see if the db's already there
-                if db_path.exists() {
-                    if !db_path.is_file() {
+                if cache_db_path.exists() {
+                    if !cache_db_path.is_file() {
                         error!(
                             "Refusing to run - DB path {} already exists and is not a file.",
-                            db_path.to_str().unwrap_or("<db_path invalid>")
+                            cache_db_path.to_str().unwrap_or("<cache_db_path invalid>")
                         );
-                        let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                        let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
                         info!(%diag);
                         return ExitCode::FAILURE
                     };
 
-                    match metadata(&db_path) {
+                    match metadata(&cache_db_path) {
                         Ok(v) => v,
                         Err(e) => {
                             error!(
                                 "Unable to read metadata for {} - {:?}",
-                                db_path.to_str().unwrap_or("<db_path invalid>"),
+                                cache_db_path.to_str().unwrap_or("<cache_db_path invalid>"),
                                 e
                             );
-                            let diag = kanidm_lib_file_permissions::diagnose_path(db_path.as_ref());
+                            let diag = kanidm_lib_file_permissions::diagnose_path(cache_db_path.as_ref());
                             info!(%diag);
                             return ExitCode::FAILURE
                         }
@@ -808,7 +815,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let db = match Db::new(cfg.db_path.as_str()) {
+            let db = match Db::new(cfg.cache_db_path.as_str()) {
                 Ok(db) => db,
                 Err(_e) => {
                     error!("Failed to create database");
@@ -900,7 +907,7 @@ async fn main() -> ExitCode {
                 Ok(mk) => mk,
                 Err(err) => {
                     error!(?err, "Unable to load machine root key - This can occur if you have changed your HSM pin");
-                    error!("To proceed you must remove the content of the cache db ({}) to reset all keys", cfg.db_path.as_str());
+                    error!("To proceed you must remove the content of the cache db ({}) to reset all keys", cfg.cache_db_path.as_str());
                     return ExitCode::FAILURE
                 }
             };

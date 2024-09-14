@@ -76,6 +76,9 @@ pub struct Resolver {
     // A set of remote resolvers, ordered by priority.
     clients: Vec<Arc<dyn IdProvider + Sync + Send>>,
 
+    // The id of the primary-provider which may use name over spn.
+    primary_origin: ProviderOrigin,
+
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
     default_shell: String,
@@ -120,6 +123,10 @@ impl Resolver {
 
         let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
 
+        let primary_origin = clients.get(0)
+            .map(|c| c.origin())
+            .unwrap_or_default();
+
         let client_ids: HashMap<_, _> = clients
             .iter()
             .map(|provider| (provider.origin(), provider.clone()))
@@ -132,6 +139,7 @@ impl Resolver {
             hsm,
             system_provider,
             clients,
+            primary_origin,
             client_ids,
             timeout_seconds,
             pam_allow_groups: pam_allow_groups.into_iter().collect(),
@@ -582,32 +590,30 @@ impl Resolver {
             .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 
-    #[inline(always)]
     fn token_homedirectory_alias(&self, token: &UserToken) -> Option<String> {
+        let is_primary_origin = token.provider == self.primary_origin;
         self.home_alias.map(|t| match t {
             // If we have an alias. use it.
+            HomeAttr::Name if is_primary_origin => token.name.as_str().to_string(),
             HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
-            HomeAttr::Spn => token.spn.as_str().to_string(),
-            HomeAttr::Name => token.name.as_str().to_string(),
+            HomeAttr::Spn | HomeAttr::Name => token.spn.as_str().to_string(),
         })
     }
 
-    #[inline(always)]
     fn token_homedirectory_attr(&self, token: &UserToken) -> String {
+        let is_primary_origin = token.provider == self.primary_origin;
         match self.home_attr {
+            HomeAttr::Name if is_primary_origin => token.name.as_str().to_string(),
             HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
-            HomeAttr::Spn => token.spn.as_str().to_string(),
-            HomeAttr::Name => token.name.as_str().to_string(),
+            HomeAttr::Spn | HomeAttr::Name => token.spn.as_str().to_string(),
         }
     }
 
-    #[inline(always)]
     fn token_homedirectory(&self, token: &UserToken) -> String {
         self.token_homedirectory_alias(token)
             .unwrap_or_else(|| self.token_homedirectory_attr(token))
     }
 
-    #[inline(always)]
     fn token_abs_homedirectory(&self, token: &UserToken) -> String {
         self.home_prefix
             .join(self.token_homedirectory(token))
@@ -615,11 +621,11 @@ impl Resolver {
             .to_string()
     }
 
-    #[inline(always)]
     fn token_uidattr(&self, token: &UserToken) -> String {
+        let is_primary_origin = token.provider == self.primary_origin;
         match self.uid_attr_map {
-            UidAttr::Spn => token.spn.as_str(),
-            UidAttr::Name => token.name.as_str(),
+            UidAttr::Name if is_primary_origin => token.name.as_str(),
+            UidAttr::Spn | UidAttr::Name => token.spn.as_str(),
         }
         .to_string()
     }
@@ -673,7 +679,6 @@ impl Resolver {
         self.get_nssaccount(Id::Gid(gid)).await
     }
 
-    #[inline(always)]
     fn token_gidattr(&self, token: &GroupToken) -> String {
         match self.gid_attr_map {
             UidAttr::Spn => token.spn.as_str(),

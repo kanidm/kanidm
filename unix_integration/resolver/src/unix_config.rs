@@ -16,7 +16,7 @@ use kanidm_unix_common::constants::*;
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
-    db_path: Option<String>,
+    cache_db_path: Option<String>,
     sock_path: Option<String>,
     task_sock_path: Option<String>,
     conn_timeout: Option<u64>,
@@ -61,7 +61,7 @@ impl Display for HsmType {
 
 #[derive(Debug)]
 pub struct KanidmUnixdConfig {
-    pub db_path: String,
+    pub cache_db_path: String,
     pub sock_path: String,
     pub task_sock_path: String,
     pub conn_timeout: u64,
@@ -92,7 +92,7 @@ impl Default for KanidmUnixdConfig {
 
 impl Display for KanidmUnixdConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "db_path: {}", &self.db_path)?;
+        writeln!(f, "cache_db_path: {}", &self.cache_db_path)?;
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
         writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
@@ -133,9 +133,9 @@ impl Display for KanidmUnixdConfig {
 
 impl KanidmUnixdConfig {
     pub fn new() -> Self {
-        let db_path = match env::var("KANIDM_DB_PATH") {
+        let cache_db_path = match env::var("KANIDM_CACHE_DB_PATH") {
             Ok(val) => val,
-            Err(_) => DEFAULT_DB_PATH.into(),
+            Err(_) => DEFAULT_CACHE_DB_PATH.into(),
         };
         let hsm_pin_path = match env::var("KANIDM_HSM_PIN_PATH") {
             Ok(val) => val,
@@ -143,7 +143,7 @@ impl KanidmUnixdConfig {
         };
 
         KanidmUnixdConfig {
-            db_path,
+            cache_db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
             conn_timeout: DEFAULT_CONN_TIMEOUT,
@@ -217,7 +217,7 @@ impl KanidmUnixdConfig {
 
         // Now map the values into our config.
         Ok(KanidmUnixdConfig {
-            db_path: config.db_path.unwrap_or(self.db_path),
+            cache_db_path: config.cache_db_path.unwrap_or(self.cache_db_path),
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
             conn_timeout,
