@@ -29,7 +29,7 @@ use crate::idprovider::interface::{
 };
 use crate::idprovider::system::SystemProvider;
 use crate::unix_config::{HomeAttr, UidAttr};
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
     HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, ProviderStatus,
 };
@@ -123,9 +123,7 @@ impl Resolver {
 
         let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
 
-        let primary_origin = clients.get(0)
-            .map(|c| c.origin())
-            .unwrap_or_default();
+        let primary_origin = clients.first().map(|c| c.origin()).unwrap_or_default();
 
         let client_ids: HashMap<_, _> = clients
             .iter()
@@ -208,8 +206,13 @@ impl Resolver {
         nxcache_txn.get(id).copied()
     }
 
-    pub async fn reload_system_identities(&self, users: Vec<EtcUser>, groups: Vec<EtcGroup>) {
-        self.system_provider.reload(users, groups).await
+    pub async fn reload_system_identities(
+        &self,
+        users: Vec<EtcUser>,
+        shadow: Option<Vec<EtcShadow>>,
+        groups: Vec<EtcGroup>,
+    ) {
+        self.system_provider.reload(users, shadow, groups).await
     }
 
     async fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UserToken>), ()> {

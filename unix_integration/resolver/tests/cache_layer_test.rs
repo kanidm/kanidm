@@ -760,6 +760,7 @@ async fn test_cache_nxset_account() {
                 homedir: Default::default(),
                 shell: Default::default(),
             }],
+            None,
             vec![],
         )
         .await;
@@ -815,6 +816,7 @@ async fn test_cache_nxset_group() {
     cachelayer
         .reload_system_identities(
             vec![],
+            None,
             vec![EtcGroup {
                 name: "testgroup1".to_string(),
                 // Important! We set the GID to differ from what kanidm stores so we can

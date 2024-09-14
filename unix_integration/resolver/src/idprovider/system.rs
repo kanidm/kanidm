@@ -3,7 +3,7 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 use super::interface::{Id, IdpError};
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{NssGroup, NssUser};
 
 pub struct SystemProviderInternal {
@@ -29,7 +29,12 @@ impl SystemProvider {
         })
     }
 
-    pub async fn reload(&self, users: Vec<EtcUser>, groups: Vec<EtcGroup>) {
+    pub async fn reload(
+        &self,
+        users: Vec<EtcUser>,
+        _shadow: Option<Vec<EtcShadow>>,
+        groups: Vec<EtcGroup>,
+    ) {
         let mut system_ids_txn = self.inner.lock().await;
         system_ids_txn.users.clear();
         system_ids_txn.user_list.clear();

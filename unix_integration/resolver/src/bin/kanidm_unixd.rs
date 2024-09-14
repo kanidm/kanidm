@@ -27,7 +27,7 @@ use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
-use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd};
+use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
@@ -439,13 +439,33 @@ async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn E
 
     let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
 
+    let maybe_shadow = match File::open("/etc/shadow").await {
+        Ok(mut file) => {
+            let mut contents = vec![];
+            file.read_to_end(&mut contents).await?;
+
+            let shadow =
+                parse_etc_shadow(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
+            Some(shadow)
+        }
+        Err(io_err) => {
+            warn!(
+                ?io_err,
+                "Unable to read /etc/shadow, some features will be disabled."
+            );
+            None
+        }
+    };
+
     let mut file = File::open("/etc/group").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
     let groups = parse_etc_group(contents.as_slice()).map_err(|_| "Invalid group content")?;
 
-    cachelayer.reload_system_identities(users, groups).await;
+    cachelayer
+        .reload_system_identities(users, maybe_shadow, groups)
+        .await;
 
     Ok(())
 }
@@ -1060,6 +1080,9 @@ async fn main() -> ExitCode {
                         .map(|()| debouncer)
                 })
                 .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
+                        .map(|()| debouncer)
+                )
+                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
                 );
             let watcher =
