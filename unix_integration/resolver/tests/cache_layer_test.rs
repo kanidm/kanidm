@@ -4,6 +4,7 @@ use std::pin::Pin;
 use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{Duration, SystemTime};
+use time::OffsetDateTime;
 
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::constants::ATTR_ACCOUNT_EXPIRE;
@@ -11,7 +12,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::interface::Id;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
@@ -446,11 +447,12 @@ async fn test_cache_account_delete() {
 
 #[tokio::test]
 async fn test_cache_account_password() {
+    let current_time = OffsetDateTime::now_utc();
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     // Test authentication failure.
     let a1 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_INC)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
@@ -460,7 +462,7 @@ async fn test_cache_account_password() {
 
     // Test authentication success.
     let a2 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
     assert_eq!(a2, Some(true));
@@ -477,7 +479,7 @@ async fn test_cache_account_password() {
 
     // test auth (old pw) fail
     let a3 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
     assert_eq!(a3, Some(false));
@@ -487,7 +489,7 @@ async fn test_cache_account_password() {
 
     // test auth (new pw) success
     let a4 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert_eq!(a4, Some(true));
@@ -497,7 +499,7 @@ async fn test_cache_account_password() {
 
     // Test auth success
     let a5 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert_eq!(a5, Some(true));
@@ -506,7 +508,7 @@ async fn test_cache_account_password() {
 
     // Test auth failure.
     let a6 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_INC)
         .await
         .expect("failed to authenticate");
     assert_eq!(a6, Some(false));
@@ -519,7 +521,7 @@ async fn test_cache_account_password() {
 
     // test auth good (fail)
     let a7 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert!(a7.is_none());
@@ -530,7 +532,7 @@ async fn test_cache_account_password() {
 
     // test auth success
     let a8 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert_eq!(a8, Some(true));
@@ -570,6 +572,7 @@ async fn test_cache_account_pam_allowed() {
 
 #[tokio::test]
 async fn test_cache_account_pam_nonexist() {
+    let current_time = OffsetDateTime::now_utc();
     let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
 
@@ -580,7 +583,7 @@ async fn test_cache_account_pam_nonexist() {
     assert!(a1.is_none());
 
     let a2 = cachelayer
-        .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("NO_SUCH_ACCOUNT", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert!(a2.is_none());
@@ -594,7 +597,7 @@ async fn test_cache_account_pam_nonexist() {
     assert!(a1.is_none());
 
     let a2 = cachelayer
-        .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
+        .pam_account_authenticate("NO_SUCH_ACCOUNT", current_time, TESTACCOUNT1_PASSWORD_B)
         .await
         .expect("failed to authenticate");
     assert!(a2.is_none());
@@ -602,13 +605,14 @@ async fn test_cache_account_pam_nonexist() {
 
 #[tokio::test]
 async fn test_cache_account_expiry() {
+    let current_time = OffsetDateTime::now_utc();
     let (cachelayer, adminclient) = setup_test(fixture(test_fixture)).await;
     cachelayer.mark_next_check_now(SystemTime::now()).await;
     assert!(cachelayer.test_connection().await);
 
     // We need one good auth first to prime the cache with a hash.
     let a1 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(true));
@@ -626,7 +630,7 @@ async fn test_cache_account_expiry() {
         .unwrap();
     // auth will fail
     let a2 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
     assert_eq!(a2, Some(false));
@@ -651,7 +655,7 @@ async fn test_cache_account_expiry() {
     // Now, check again. Since this uses the cached pw and we are offline, this
     // will now succeed.
     let a4 = cachelayer
-        .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
+        .pam_account_authenticate("testaccount1", current_time, TESTACCOUNT1_PASSWORD_A)
         .await
         .expect("failed to authenticate");
     assert_eq!(a4, Some(true));
@@ -890,6 +894,119 @@ async fn test_cache_nxset_group() {
     debug!("{:?}", gs);
     assert_eq!(gs.len(), 1);
     assert_eq!(gs[0].gid, 30001);
+}
+
+#[tokio::test]
+async fn test_cache_authenticate_system_account() {
+    const SECURE_PASSWORD: &str = "a";
+
+    let current_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(365);
+    let expire_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(380);
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    // Important! This is what sets up that testaccount1 won't be resolved
+    // because it's in the "local" user set.
+    cachelayer
+        .reload_system_identities(
+            vec![
+            EtcUser {
+                name: "testaccount1".to_string(),
+                uid: 30000,
+                gid: 30000,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
+            },
+            EtcUser {
+                name: "testaccount2".to_string(),
+                uid: 30001,
+                gid: 30001,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
+            }
+            ],
+            Some(vec![
+                EtcShadow {
+                    name: "testaccount1".to_string(),
+                    // The very secure password, "a".
+                    password: "$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string(),
+                    epoch_change_days: None,
+                    days_min_password_age: 0,
+                    days_max_password_age: Some(1),
+                    days_warning_period: 1,
+                    days_inactivity_period: None,
+                    epoch_expire_date: Some(380),
+                    flag_reserved: None
+                },
+                EtcShadow {
+                    name: "testaccount2".to_string(),
+                    // The very secure password, "a".
+                    password: "$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string(),
+    epoch_change_days: Some(364),
+                    days_min_password_age: 0,
+                    days_max_password_age: Some(2),
+                    days_warning_period: 1,
+                    days_inactivity_period: None,
+                    epoch_expire_date: Some(380),
+                    flag_reserved: None
+                },
+            ]),
+            vec![],
+        )
+        .await;
+
+    // get the accounts to assert they exist,
+    let _ = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    let _ = cachelayer
+        .get_nssaccount_name("testaccount2")
+        .await
+        .expect("Failed to get from cache");
+
+    // Non exist name
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount69", current_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, None);
+
+    // Check wrong pw.
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount1", current_time, "wrong password")
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
+    // Check correct pw (both accounts)
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount1", current_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount2", current_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(true));
+
+    // Check expired time (both accounts)
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount1", expire_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
+
+    let a1 = cachelayer
+        .pam_account_authenticate("testaccount2", expire_time, SECURE_PASSWORD)
+        .await
+        .expect("failed to authenticate");
+    assert_eq!(a1, Some(false));
 }
 
 /// Issue 1830. If cache items expire where we have an account and a group, and we

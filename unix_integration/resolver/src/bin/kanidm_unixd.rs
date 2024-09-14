@@ -41,13 +41,13 @@ use sketching::tracing::span;
 use sketching::tracing_forest::traits::*;
 use sketching::tracing_forest::util::*;
 use sketching::tracing_forest::{self};
+use time::OffsetDateTime;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt; // for read_to_end()
 use tokio::net::{UnixListener, UnixStream};
 use tokio::sync::broadcast;
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 use tokio::sync::oneshot;
-use tokio::time;
 use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use kanidm_hsm_crypto::{soft::SoftTpm, AuthValue, BoxedDynTpm, Tpm};
@@ -306,9 +306,12 @@ async fn handle_client(
                         ClientResponse::Error
                     }
                     None => {
+                        let current_time = OffsetDateTime::now_utc();
+
                         match cachelayer
                             .pam_account_authenticate_init(
                                 account_id.as_str(),
+                                current_time,
                                 shutdown_tx.subscribe(),
                             )
                             .await
@@ -362,8 +365,8 @@ async fn handle_client(
                         {
                             Ok(()) => {
                                 // Now wait for the other end OR timeout.
-                                match time::timeout_at(
-                                    time::Instant::now() + Duration::from_millis(1000),
+                                match tokio::time::timeout_at(
+                                    tokio::time::Instant::now() + Duration::from_millis(1000),
                                     rx,
                                 )
                                 .await

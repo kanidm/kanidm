@@ -10,6 +10,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use lru::LruCache;
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -27,7 +28,7 @@ use crate::idprovider::interface::{
     UserToken,
     UserTokenState,
 };
-use crate::idprovider::system::SystemProvider;
+use crate::idprovider::system::{Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit};
 use crate::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
@@ -57,6 +58,10 @@ pub enum AuthSession {
         client: Arc<dyn IdProvider + Sync + Send>,
         token: Box<UserToken>,
         cred_handler: AuthCredHandler,
+    },
+    System {
+        cred_handler: AuthCredHandler,
+        shadow: Arc<Shadow>,
     },
     Success,
     Denied,
@@ -148,7 +153,6 @@ impl Resolver {
             uid_attr_map,
             gid_attr_map,
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
-            // system_identities,
         })
     }
 
@@ -773,6 +777,7 @@ impl Resolver {
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
+        current_time: OffsetDateTime,
         shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(AuthSession, PamAuthResponse), ()> {
         // Setup an auth session. If possible bring the resolver online.
@@ -784,9 +789,50 @@ impl Resolver {
 
         let id = Id::Name(account_id.to_string());
 
-        if self.system_provider.contains_account(&id).await {
-            debug!("Ignoring auth request for system user");
-            return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+        match self.system_provider.auth_init(&id, current_time).await {
+            // The system provider will not take part in this authentication.
+            SystemProviderAuthInit::Ignore => {
+                debug!("account unknown to system provider, continue.");
+            }
+            // The provider knows the account, and is unable to proceed,
+            // We return unknown here so that pam_kanidm can be skipped and fall back
+            // to pam_unix.so.
+            SystemProviderAuthInit::ShadowMissing => {
+                warn!(
+                    ?account_id,
+                    "Resolver unable to proceed, /etc/shadow was not accessible."
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+            }
+            // There are no credentials for this account
+            SystemProviderAuthInit::CredentialsUnavailable => {
+                warn!(
+                    ?account_id,
+                    "Denying auth request for system user with no valid credentials"
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Denied));
+            }
+            // The account has expired
+            SystemProviderAuthInit::Expired => {
+                warn!(
+                    ?account_id,
+                    "Denying auth request for system user with expired credentials"
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Denied));
+            }
+            // The provider knows the account and wants to proceed,
+            SystemProviderAuthInit::Begin {
+                next_request,
+                cred_handler,
+                shadow,
+            } => {
+                let auth_session = AuthSession::System {
+                    shadow,
+                    cred_handler,
+                };
+
+                return Ok((auth_session, next_request.into()));
+            }
         }
 
         let token = self.get_usertoken(&id).await?;
@@ -953,6 +999,32 @@ impl Resolver {
                     )
                     .await
             }
+            &mut AuthSession::System {
+                ref mut cred_handler,
+                ref shadow,
+            } => {
+                // I had a lot of thoughts here, but I think system auth is
+                // not the same as provider, so I think we special case here and have a separate
+                // return type.
+                let system_auth_result = shadow.auth_step(cred_handler, pam_next_req);
+
+                let next = match system_auth_result {
+                    SystemAuthResult::Denied => {
+                        *auth_session = AuthSession::Denied;
+
+                        Ok(PamAuthResponse::Denied)
+                    }
+                    SystemAuthResult::Success => {
+                        *auth_session = AuthSession::Success;
+
+                        Ok(PamAuthResponse::Success)
+                    }
+                    SystemAuthResult::Next(req) => Ok(req.into()),
+                };
+
+                // We shortcut here
+                return next;
+            }
             &mut AuthSession::Success | &mut AuthSession::Denied => Err(IdpError::BadRequest),
         };
 
@@ -981,12 +1053,13 @@ impl Resolver {
     pub async fn pam_account_authenticate(
         &self,
         account_id: &str,
+        current_time: OffsetDateTime,
         password: &str,
     ) -> Result<Option<bool>, ()> {
         let (_shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
         let mut auth_session = match self
-            .pam_account_authenticate_init(account_id, shutdown_rx)
+            .pam_account_authenticate_init(account_id, current_time, shutdown_rx)
             .await?
         {
             (auth_session, PamAuthResponse::Password) => {

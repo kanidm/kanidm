@@ -16,6 +16,7 @@ use kanidm_unix_common::constants::*;
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
+    #[serde(alias = "db_path")]
     cache_db_path: Option<String>,
     sock_path: Option<String>,
     task_sock_path: Option<String>,

@@ -258,6 +258,7 @@ serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.128"
 serde-wasm-bindgen = "0.5"
 serde_with = "3.9.0"
+sha-crypt = "0.5.0"
 sha2 = "0.10.8"
 shellexpand = "^2.1.2"
 smartstring = "^1.0.1"
