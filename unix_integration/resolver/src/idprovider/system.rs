@@ -197,17 +197,15 @@ impl SystemProvider {
 
                 match CryptPw::try_from(password) {
                     Ok(crypt_pw) => {
-                        let aging_policy = if let Some(change_days) = epoch_change_days {
-                            Some(AgingPolicy::new(
+                        let aging_policy = epoch_change_days.map(|change_days| {
+                            AgingPolicy::new(
                                 change_days,
                                 days_min_password_age,
                                 days_max_password_age,
                                 days_warning_period,
                                 days_inactivity_period,
-                            ))
-                        } else {
-                            None
-                        };
+                            )
+                        });
 
                         let expiration_date = epoch_expire_date.map(|expire| {
                             OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire)

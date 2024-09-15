@@ -748,9 +748,8 @@ impl Resolver {
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let id = Id::Name(account_id.to_string());
 
-        match self.system_provider.authorise(&id).await {
-            Some(answer) => return Ok(Some(answer)),
-            None => {}
+        if let Some(answer) = self.system_provider.authorise(&id).await {
+            return Ok(Some(answer));
         };
 
         // Not a system account, handle with the provider.

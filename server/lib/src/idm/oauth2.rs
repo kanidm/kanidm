@@ -3240,7 +3240,7 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let pkce_request = Some(PkceRequest {
-            code_challenge: code_challenge,
+            code_challenge,
             code_challenge_method: CodeChallengeMethod::S256,
         });
 
@@ -3749,7 +3749,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge,
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("app://cheese").unwrap(),
@@ -5135,7 +5135,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge,
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5192,7 +5192,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge,
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -6363,7 +6363,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge,
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
