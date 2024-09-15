@@ -1007,6 +1007,33 @@ async fn test_cache_authenticate_system_account() {
         .await
         .expect("failed to authenticate");
     assert_eq!(a1, Some(false));
+
+    // due to how posix auth works, session and authorisation are simpler, and should
+    // always just return "true".
+    let a1 = cachelayer
+        .pam_account_allowed("testaccount1")
+        .await
+        .expect("failed to authorise");
+    assert_eq!(a1, Some(true));
+
+    let a1 = cachelayer
+        .pam_account_allowed("testaccount2")
+        .await
+        .expect("failed to authorise");
+    assert_eq!(a1, Some(true));
+
+    // Should we make home dirs?
+    let a1 = cachelayer
+        .pam_account_beginsession("testaccount1")
+        .await
+        .expect("failed to begin session");
+    assert_eq!(a1, None);
+
+    let a1 = cachelayer
+        .pam_account_beginsession("testaccount2")
+        .await
+        .expect("failed to begin session");
+    assert_eq!(a1, None);
 }
 
 /// Issue 1830. If cache items expire where we have an account and a group, and we

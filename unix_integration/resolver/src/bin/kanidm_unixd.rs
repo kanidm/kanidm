@@ -387,6 +387,10 @@ async fn handle_client(
                             }
                         }
                     }
+                    Ok(None) => {
+                        // The session can begin, but we do not need to create the home dir.
+                        ClientResponse::Ok
+                    }
                     _ => ClientResponse::Error,
                 }
             }

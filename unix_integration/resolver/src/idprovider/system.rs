@@ -30,6 +30,13 @@ pub enum SystemProviderAuthInit {
     Ignore,
 }
 
+pub enum SystemProviderSession {
+    Start,
+    // Not sure that we need this
+    // StartCreateHome(HomeDirectoryInfo),
+    Ignore,
+}
+
 pub enum SystemAuthResult {
     Denied,
     Success,
@@ -126,8 +133,8 @@ impl Shadow {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
                 let is_valid = match &self.crypt_pw {
-                    CryptPw::Sha256(crypt) => sha_crypt::sha256_check(&cred, &crypt).is_ok(),
-                    CryptPw::Sha512(crypt) => sha_crypt::sha512_check(&cred, &crypt).is_ok(),
+                    CryptPw::Sha256(crypt) => sha_crypt::sha256_check(&cred, crypt).is_ok(),
+                    CryptPw::Sha512(crypt) => sha_crypt::sha512_check(&cred, crypt).is_ok(),
                 };
 
                 if is_valid {
@@ -328,6 +335,24 @@ impl SystemProvider {
             next_request,
             cred_handler,
             shadow: shadow.clone(),
+        }
+    }
+
+    pub async fn authorise(&self, account_id: &Id) -> Option<bool> {
+        let inner = self.inner.lock().await;
+        if inner.users.contains_key(account_id) {
+            Some(true)
+        } else {
+            None
+        }
+    }
+
+    pub async fn begin_session(&self, account_id: &Id) -> SystemProviderSession {
+        let inner = self.inner.lock().await;
+        if inner.users.contains_key(account_id) {
+            SystemProviderSession::Start
+        } else {
+            SystemProviderSession::Ignore
         }
     }
 

@@ -28,7 +28,9 @@ use crate::idprovider::interface::{
     UserToken,
     UserTokenState,
 };
-use crate::idprovider::system::{Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit};
+use crate::idprovider::system::{
+    Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
+};
 use crate::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
@@ -744,9 +746,15 @@ impl Resolver {
 
     #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
-        let token = self
-            .get_usertoken(&Id::Name(account_id.to_string()))
-            .await?;
+        let id = Id::Name(account_id.to_string());
+
+        match self.system_provider.authorise(&id).await {
+            Some(answer) => return Ok(Some(answer)),
+            None => {}
+        };
+
+        // Not a system account, handle with the provider.
+        let token = self.get_usertoken(&id).await?;
 
         if self.pam_allow_groups.is_empty() {
             // can't allow anything if the group list is zero...
@@ -1123,9 +1131,24 @@ impl Resolver {
         &self,
         account_id: &str,
     ) -> Result<Option<HomeDirectoryInfo>, ()> {
-        let token = self
-            .get_usertoken(&Id::Name(account_id.to_string()))
-            .await?;
+        let id = Id::Name(account_id.to_string());
+
+        match self.system_provider.begin_session(&id).await {
+            SystemProviderSession::Start => {
+                return Ok(None);
+            }
+            /*
+            SystemProviderSession::StartCreateHome(
+                info
+            ) => {
+                return Ok(Some(info));
+            }
+            */
+            SystemProviderSession::Ignore => {}
+        };
+
+        // Not a system account, check based on the token and resolve.
+        let token = self.get_usertoken(&id).await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
             gid: tok.gidnumber,
             name: self.token_homedirectory_attr(tok),
