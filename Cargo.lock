@@ -124,9 +124,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.87"
+version = "1.0.89"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "10f00e1f6e58a40e807377c75c6a7f97bf9044fab57816f2414e6f5f4499d7b8"
+checksum = "86fdf8605db99b54d3cd748a44c6d04df638eb5dafb219b135d0149bd0db01f6"
 
 [[package]]
 name = "anymap2"
@@ -2892,9 +2892,9 @@ dependencies = [
 
 [[package]]
 name = "hyper-util"
-version = "0.1.7"
+version = "0.1.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cde7055719c54e36e95e8719f95883f22072a48ede39db7fc17a4e1d5281e9b9"
+checksum = "da62f120a8a37763efb0cf8fdf264b884c7b8b9ac8660b900c8661030c00e6ba"
 dependencies = [
  "bytes",
  "futures-channel",
@@ -3140,15 +3140,14 @@ dependencies = [
 
 [[package]]
 name = "jsonschema"
-version = "0.18.1"
+version = "0.19.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f5f037c58cadb17e8591b620b523cc6a7ab2b91b6ce3121f8eb4171f8d80115c"
+checksum = "14a655181740aa66dfcb182daca1bc8109fda5c7c0399c4f30dcb155ab0d32a6"
 dependencies = [
  "ahash",
  "anyhow",
  "base64 0.22.1",
  "bytecount",
- "clap",
  "fancy-regex 0.13.0",
  "fraction",
  "getrandom",
@@ -3165,7 +3164,7 @@ dependencies = [
  "serde_json",
  "time",
  "url",
- "uuid",
+ "uuid-simd",
 ]
 
 [[package]]
@@ -3456,7 +3455,7 @@ dependencies = [
  "tokio-openssl",
  "tokio-util",
  "toml",
- "tower 0.5.0",
+ "tower 0.5.1",
  "tower-http",
  "tracing",
  "tracing-subscriber",
@@ -4525,6 +4524,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "outref"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4030760ffd992bef45b0ae3f10ce1aba99e33464c90d14dd7c039884963ddc7a"
+
+[[package]]
 name = "overload"
 version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5434,9 +5439,9 @@ dependencies = [
 
 [[package]]
 name = "selinux"
-version = "0.4.5"
+version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fed598e66584465b1fb0d4b8fdbc24f5827b1b3953aaf199f64ab34a2d4d768c"
+checksum = "0139b2436c81305eb6bda33af151851f75bd62783817b25f44daa371119c30b5"
 dependencies = [
  "bitflags 2.6.0",
  "libc",
@@ -6052,11 +6057,10 @@ dependencies = [
 
 [[package]]
 name = "tokio-openssl"
-version = "0.6.4"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ffab79df67727f6acf57f1ff743091873c24c579b1e2ce4d8f53e47ded4d63d"
+checksum = "59df6849caa43bb7567f9a36f863c447d95a11d5903c9cc334ba32576a27eadd"
 dependencies = [
- "futures-util",
  "openssl",
  "openssl-sys",
  "tokio",
@@ -6174,9 +6178,9 @@ dependencies = [
 
 [[package]]
 name = "tower"
-version = "0.5.0"
+version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "36b837f86b25d7c0d7988f00a54e74739be6477f2aac6201b8f429a7569991b7"
+checksum = "2873938d487c3cfb9aed7546dc9f2711d867c9f90c46b889989a2cb84eba6b4f"
 dependencies = [
  "tokio-stream",
  "tower-layer",
@@ -6527,6 +6531,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "uuid-simd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "23b082222b4f6619906941c17eb2297fff4c2fb96cb60164170522942a200bd8"
+dependencies = [
+ "outref",
+ "uuid",
+ "vsimd",
+]
+
+[[package]]
 name = "valuable"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6543,6 +6558,12 @@ name = "version_check"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b928f33d975fc6ad9f86c8f283853ad26bdd5b10b7f1542aa2fa15e2289105a"
+
+[[package]]
+name = "vsimd"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5c3082ca00d5a5ef149bb8b555a72ae84c9c59f7250f013ac822ac2e49b19c64"
 
 [[package]]
 name = "wait-timeout"

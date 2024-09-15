@@ -139,7 +139,7 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.4.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.4.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.4.0-dev" }
 
-anyhow = { version = "1.0.87" }
+anyhow = { version = "1.0.89" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde"] }
 async-recursion = "1.1.0"
@@ -188,7 +188,7 @@ http = "1.1.0"
 hyper = { version = "1.4.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
-hyper-util = { version = "0.1.7", features = ["server", "tokio"] }
+hyper-util = { version = "0.1.8", features = ["server", "tokio"] }
 hyper-tls = "0.6.0"
 idlset = "^0.2.5"
 image = { version = "0.24.9", default-features = false, features = [
@@ -252,7 +252,7 @@ rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 
 sd-notify = "^0.4.2"
-selinux = "^0.4.5"
+selinux = "^0.4.6"
 serde = "^1.0.210"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.128"
@@ -270,7 +270,7 @@ testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
 
 tokio = "^1.40.0"
-tokio-openssl = "^0.6.4"
+tokio-openssl = "^0.6.5"
 tokio-util = "^0.7.12"
 
 toml = "^0.5.11"
