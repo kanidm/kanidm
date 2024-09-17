@@ -34,7 +34,8 @@ use crate::idprovider::system::{
 use crate::unix_config::{HomeAttr, UidAttr};
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
-    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, ProviderStatus,
+    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
+    ProviderStatus,
 };
 
 use kanidm_hsm_crypto::BoxedDynTpm;
@@ -784,7 +785,7 @@ impl Resolver {
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
-        pam_service: &str,
+        pam_info: &PamServiceInfo,
         current_time: OffsetDateTime,
         shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(AuthSession, PamAuthResponse), ()> {
@@ -1066,8 +1067,14 @@ impl Resolver {
     ) -> Result<Option<bool>, ()> {
         let (_shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
+        let pam_info = PamServiceInfo {
+            service: "kanidm-unix-test".to_string(),
+            tty: "/dev/null".to_string(),
+            rhost: "localhost".to_string(),
+        };
+
         let mut auth_session = match self
-            .pam_account_authenticate_init(account_id, current_time, shutdown_rx)
+            .pam_account_authenticate_init(account_id, &pam_info, current_time, shutdown_rx)
             .await?
         {
             (auth_session, PamAuthResponse::Password) => {
@@ -1150,6 +1157,7 @@ impl Resolver {
         // Not a system account, check based on the token and resolve.
         let token = self.get_usertoken(&id).await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
+            uid: tok.gidnumber,
             gid: tok.gidnumber,
             name: self.token_homedirectory_attr(tok),
             aliases: self
