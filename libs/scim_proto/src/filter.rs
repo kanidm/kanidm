@@ -259,7 +259,7 @@ peg::parser! {
             barevalue()
 
         rule barevalue() -> Value =
-            s:$((!operator()[_])*) {? eprintln!("--> {}", s); serde_json::from_str(s).map_err(|_| "invalid json value" ) }
+            s:$((!operator()[_])*) {? serde_json::from_str(s).map_err(|_| "invalid json value" ) }
 
         pub(crate) rule attrpath() -> AttrPath =
             a:attrname() s:subattr()? { AttrPath { a, s } }

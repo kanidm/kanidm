@@ -43,6 +43,7 @@ dialoguer = { workspace = true }
 futures-concurrency = { workspace = true }
 libc = { workspace = true }
 kanidm_client = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 kanidm_proto = { workspace = true }
 qrcode = { workspace = true }
 rpassword = { workspace = true }
@@ -61,6 +62,7 @@ regex = { workspace = true }
 sketching = { workspace = true }
 
 [build-dependencies]
+kanidm_proto = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }

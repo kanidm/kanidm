@@ -1,4 +1,5 @@
 use clap::{builder::PossibleValue, Args, Subcommand, ValueEnum};
+use kanidm_proto::internal::ImageType;
 use std::fmt;
 
 #[derive(Debug, Args)]
@@ -1089,16 +1090,17 @@ pub enum Oauth2Opt {
         #[clap(name = "landing-url")]
         url: Url,
     },
-    /// The image presented on the Kanidm Apps Listing page for an oauth2 resource server.
+    /// The image presented on the Kanidm Apps Listing page for an OAuth2 resource server.
     #[clap(name = "set-image")]
     SetImage {
         #[clap(flatten)]
         nopt: Named,
         #[clap(name = "file-path")]
+        /// A local file path to an image to use as the icon for this OAuth2 client.
         path: PathBuf,
-        #[clap(name = "image-type",
-        value_parser = clap::builder::NonEmptyStringValueParser::new())]
-        image_type: Option<String>,
+        #[clap(name = "image-type")]
+        /// The type of image being uploaded.
+        image_type: Option<ImageType>,
     },
     /// Removes the custom image previously set.
     #[clap(name = "remove-image")]
@@ -1275,17 +1277,17 @@ pub enum DomainOpt {
         key_id: String,
     },
     /// The image presented as the instance logo
-    #[clap(name="set-image")]
+    #[clap(name = "set-image")]
     SetImage {
         #[clap(flatten)]
         copt: CommonOpt,
         #[clap(name = "file-path")]
         path: PathBuf,
         #[clap(name = "image-type")]
-        image_type: Option<String>,
+        image_type: Option<ImageType>,
     },
     /// The remove the current instance logo, reverting to the default.
-    #[clap(name="remove-image")]
+    #[clap(name = "remove-image")]
     RemoveImage {
         #[clap(flatten)]
         copt: CommonOpt,
