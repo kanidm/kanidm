@@ -5,6 +5,7 @@ use uuid::Uuid;
 
 use scim_proto::user::MultiValueAttr;
 use scim_proto::{ScimEntry, ScimEntryHeader};
+use serde_with::skip_serializing_none;
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
@@ -82,6 +83,7 @@ pub struct ScimSshPubKey {
     pub value: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimSyncPerson {
@@ -93,9 +95,12 @@ pub struct ScimSyncPerson {
     pub gidnumber: Option<u32>,
     pub password_import: Option<String>,
     pub unix_password_import: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub totp_import: Vec<ScimTotp>,
     pub login_shell: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mail: Vec<MultiValueAttr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub ssh_publickey: Vec<ScimSshPubKey>,
     pub account_valid_from: Option<String>,
     pub account_expire: Option<String>,

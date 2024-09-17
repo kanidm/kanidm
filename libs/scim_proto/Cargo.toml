@@ -19,6 +19,7 @@ doctest = false
 base64urlsafedata = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
+serde_with = { workspace = true }
 peg = { workspace = true }
 time = { workspace = true, features = [
     "local-offset",
