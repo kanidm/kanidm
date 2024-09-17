@@ -1,8 +1,7 @@
 use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
 use axum::response::IntoResponse;
-use axum::routing::get;
-use axum::{Extension, Router};
+use axum::Extension;
 use kanidmd_lib::status::StatusRequestEvent;
 
 use super::middleware::KOpId;
@@ -50,10 +49,4 @@ pub async fn robots_txt() -> impl IntoResponse {
 "#,
         ),
     )
-}
-
-pub(crate) fn route_setup() -> Router<ServerState> {
-    Router::new()
-        .route("/robots.txt", get(robots_txt))
-        .route("/status", get(status))
 }
