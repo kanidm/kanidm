@@ -784,6 +784,7 @@ impl Resolver {
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
+        pam_service: &str,
         current_time: OffsetDateTime,
         shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(AuthSession, PamAuthResponse), ()> {

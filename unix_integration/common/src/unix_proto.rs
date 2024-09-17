@@ -111,7 +111,12 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
-    PamAuthenticateInit(String),
+    PamAuthenticateInit {
+        account_id: String,
+        pam_service: String,
+        tty: String,
+        rhost: String,
+    },
     PamAuthenticateStep(PamAuthRequest),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
@@ -175,6 +180,7 @@ impl From<PamAuthResponse> for ClientResponse {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct HomeDirectoryInfo {
+    pub uid: u32,
     pub gid: u32,
     pub name: String,
     pub aliases: Vec<String>,
