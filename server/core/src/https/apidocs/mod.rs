@@ -208,6 +208,9 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
+            // kanidm_proto::attribute::Attribute,
+
+
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
@@ -215,8 +218,7 @@ impl Modify for SecurityAddon {
             scim_v1::ScimValue,
             scim_v1::ScimMeta,
             scim_v1::ScimAttr,
-            // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
-            // v1::Entry,
+
             internal::ApiToken,
             internal::ApiTokenPurpose,
             internal::BackupCodesView,
@@ -276,8 +278,7 @@ impl Modify for SecurityAddon {
             internal::IdentifyUserRequest,
             // terrible workaround for other things
             response_schema::CreationChallengeResponse,
-            // terrible workaround for other things
-            response_schema::ProtoEntry,
+
             // terrible workaround for other things
             response_schema::PublicKeyCredential,
             // terrible workaround for other things
@@ -290,6 +291,8 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
+            //  workaround for the fact that BTreeSet can't be represented in JSON
+            response_schema::ProtoEntry,
             // terrible workaround for other things
             response_schema::Jwk,
             response_schema::ScimComplexAttr,

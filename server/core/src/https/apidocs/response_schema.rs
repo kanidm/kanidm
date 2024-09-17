@@ -60,10 +60,6 @@ impl IntoResponses for ApiResponseWithout200 {
     }
 }
 
-/// Placeholder until we can handle a BTree in utipa
-#[derive(Debug, Clone, ToSchema)]
-pub(crate) struct ProtoEntry {}
-
 #[derive(Debug, Clone, ToSchema)]
 // TODO: this should be `webauthn_rs_proto::auth::PublicKeyCredential``, but ... I don't know how to make it possible in utoipa
 pub(crate) struct PublicKeyCredential {}
@@ -91,6 +87,13 @@ pub(crate) struct Result {}
 #[derive(Debug, Clone, ToSchema)]
 // TODO: this should be handled elsewhere, but ... I don't know how to make it possible in utoipa
 pub(crate) struct ScimEntry {}
+
+#[derive(Debug, Clone, ToSchema)]
+///  workaround for the fact that BTreeSet can't be represented in JSON
+pub(crate) struct ProtoEntry {
+    #[allow(dead_code, clippy::disallowed_types)] // because it's a schema definition
+    attrs: BTreeMap<String, Vec<String>>,
+}
 
 #[derive(Debug, Clone, ToSchema)]
 pub(crate) struct Jwk {}

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
 use crate::constants::*;
 use crate::internal::OperationError;
@@ -6,7 +7,9 @@ use std::fmt;
 
 pub use smartstring::alias::String as AttrString;
 
-#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default)]
+#[derive(
+    Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default, ToSchema,
+)]
 #[cfg_attr(test, derive(enum_iterator::Sequence))]
 #[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
 pub enum Attribute {

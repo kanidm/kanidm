@@ -301,10 +301,10 @@ pub async fn create_https_server(
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
     let app = Router::new()
-        .merge(generic::route_setup())
         .merge(oauth2::route_setup(state.clone()))
         .merge(v1_scim::route_setup())
-        .merge(v1::route_setup(state.clone()));
+        .merge(v1::route_setup(state.clone()))
+        .route("/robots.txt", get(generic::robots_txt));
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
@@ -362,6 +362,7 @@ pub async fn create_https_server(
     let app = app.layer(from_fn(middleware::are_we_json_yet));
 
     let app = app
+        .route("/status", get(generic::status))
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging
