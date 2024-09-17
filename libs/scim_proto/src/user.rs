@@ -5,7 +5,9 @@ use url::Url;
 use uuid::Uuid;
 
 use serde::{Deserialize, Serialize};
+use serde_with::skip_serializing_none;
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Name {
@@ -73,7 +75,8 @@ impl fmt::Display for Timezone {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct MultiValueAttr {
     #[serde(rename = "type")]
@@ -85,6 +88,7 @@ pub struct MultiValueAttr {
     pub value: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Photo {
@@ -97,6 +101,7 @@ pub struct Photo {
     value: Url,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Binary {
     #[serde(rename = "type")]
@@ -108,6 +113,7 @@ pub struct Binary {
     value: Base64UrlSafeData,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Address {
@@ -130,6 +136,7 @@ enum Membership {
 }
 */
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Group {
@@ -141,6 +148,7 @@ pub struct Group {
     display: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct User {
@@ -163,17 +171,23 @@ pub struct User {
     timezone: Option<Timezone>,
     active: bool,
     password: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     emails: Vec<MultiValueAttr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     phone_numbers: Vec<MultiValueAttr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     ims: Vec<MultiValueAttr>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     photos: Vec<Photo>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     addresses: Vec<Address>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     groups: Vec<Group>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     entitlements: Vec<MultiValueAttr>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     roles: Vec<MultiValueAttr>,
-    #[serde(default)]
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     x509certificates: Vec<Binary>,
 }
 

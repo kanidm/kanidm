@@ -5388,6 +5388,7 @@ dependencies = [
  "peg",
  "serde",
  "serde_json",
+ "serde_with",
  "time",
  "tracing",
  "tracing-subscriber",
