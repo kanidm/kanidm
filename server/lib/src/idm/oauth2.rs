@@ -2473,6 +2473,20 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             Vec::with_capacity(0)
         };
 
+        // The following are extensions allowed by the oidc specification.
+
+        let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
+        let revocation_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
+        let introspection_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
         Ok(OidcDiscoveryResponse {
             issuer,
             authorization_endpoint,
@@ -2513,6 +2527,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             op_policy_uri: None,
             op_tos_uri: None,
             code_challenge_methods_supported,
+            // Extensions
+            revocation_endpoint,
+            revocation_endpoint_auth_methods_supported,
+            introspection_endpoint,
+            introspection_endpoint_auth_methods_supported,
+            introspection_endpoint_auth_signing_alg_values_supported: None,
         })
     }
 
@@ -4481,7 +4501,35 @@ mod tests {
         assert_eq!(
             discovery.code_challenge_methods_supported,
             vec![PkceAlg::S256]
-        )
+        );
+
+        // Extensions
+        assert!(
+            discovery.revocation_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+        );
+        assert!(
+            discovery.revocation_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+
+        assert!(
+            discovery.introspection_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+        );
+        assert!(
+            discovery.introspection_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery
+            .introspection_endpoint_auth_signing_alg_values_supported
+            .is_none());
     }
 
     #[idm_test]
