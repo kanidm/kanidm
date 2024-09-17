@@ -433,6 +433,21 @@ pub struct OidcDiscoveryResponse {
     pub require_request_uri_registration: bool,
 
     pub code_challenge_methods_supported: Vec<PkceAlg>,
+
+    // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationResponse
+    // "content type that contains a set of Claims as its members that are a subset of the Metadata
+    //  values defined in Section 3. Other Claims MAY also be returned. "
+    //
+    // In addition, we also return the following claims in kanidm
+
+    // rfc7009
+    pub revocation_endpoint: Option<Url>,
+    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+
+    // rfc7662
+    pub introspection_endpoint: Option<Url>,
+    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 }
 
 /// The response to an OAuth2 rfc8414 metadata request
