@@ -5,6 +5,7 @@
 use crate::constants::{
     CONTENT_TYPE_GIF, CONTENT_TYPE_JPG, CONTENT_TYPE_PNG, CONTENT_TYPE_SVG, CONTENT_TYPE_WEBP,
 };
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
@@ -100,7 +101,7 @@ pub enum IdentifyUserResponse {
     InvalidUserId,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash, Ord, PartialOrd, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum ImageType {
     Png,
