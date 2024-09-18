@@ -1,14 +1,5 @@
 ## Kanidm Unixd Service Configuration - /etc/kanidm/unixd
 
-# Defines a set of POSIX groups where membership of any of these groups
-# will be allowed to login via PAM. All POSIX users and groups can be
-# resolved by nss regardless of PAM login status. This may be a group
-# name, spn, or uuid.
-#
-# Default: empty set (no access allowed)
-
-pam_allowed_login_groups = ["posix_group"]
-
 # Kanidm unix will bind all cached credentials to a local Hardware Security
 # Module (HSM) to prevent exfiltration and attacks against these. In addition,
 # any internal private keys will also be stored in this HSM.
@@ -132,3 +123,17 @@ pam_allowed_login_groups = ["posix_group"]
 # Default: Empty set (no overrides)
 
 # allow_local_account_override = ["admin"]
+
+
+# This section enables the kanidm provider
+[kanidm]
+
+# Defines a set of POSIX groups where membership of any of these groups
+# will be allowed to login via PAM. All POSIX users and groups can be
+# resolved by nss regardless of PAM login status. This may be a group
+# name, spn, or uuid.
+#
+# Default: empty set (no access allowed)
+
+pam_allowed_login_groups = ["posix_group"]
+

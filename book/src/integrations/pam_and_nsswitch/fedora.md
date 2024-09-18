@@ -23,22 +23,15 @@ Edit the content.
 # /etc/pam.d/password-auth
 auth        required                                     pam_env.so
 auth        required                                     pam_faildelay.so delay=2000000
-auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
-auth        sufficient                                   pam_unix.so nullok try_first_pass
-auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
 auth        sufficient                                   pam_kanidm.so ignore_unknown_user
 auth        required                                     pam_deny.so
 
-account     sufficient                                   pam_unix.so
-account     sufficient                                   pam_localuser.so
 account     sufficient                                   pam_usertype.so issystem
 account     sufficient                                   pam_kanidm.so ignore_unknown_user
-account     required                                     pam_permit.so
+account     required                                     pam_deny.so
 
 password    requisite                                    pam_pwquality.so try_first_pass local_users_only
 password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-password    sufficient                                   pam_kanidm.so
 password    required                                     pam_deny.so
 
 session     optional                                     pam_keyinit.so revoke
@@ -54,22 +47,15 @@ session     optional                                     pam_kanidm.so
 auth        required                                     pam_env.so
 auth        required                                     pam_faildelay.so delay=2000000
 auth        sufficient                                   pam_fprintd.so
-auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
-auth        sufficient                                   pam_unix.so nullok try_first_pass
-auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
 auth        sufficient                                   pam_kanidm.so ignore_unknown_user
 auth        required                                     pam_deny.so
 
-account     sufficient                                   pam_unix.so
-account     sufficient                                   pam_localuser.so
 account     sufficient                                   pam_usertype.so issystem
 account     sufficient                                   pam_kanidm.so ignore_unknown_user
-account     required                                     pam_permit.so
+account     required                                     pam_deny.so
 
 password    requisite                                    pam_pwquality.so try_first_pass local_users_only
 password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-password    sufficient                                   pam_kanidm.so
 password    required                                     pam_deny.so
 
 session     optional                                     pam_keyinit.so revoke
@@ -101,13 +87,13 @@ system-auth should be the same as above. nsswitch should be modified for your us
 example looks like this:
 
 ```text
-passwd: compat kanidm sss files systemd
-group: compat kanidm sss files systemd
+passwd: kanidm compat systemd
+group:  kanidm compat systemd
 shadow:     files
 hosts:      files dns myhostname
-services:   sss files
-netgroup:   sss files
-automount:  sss files
+services:   files
+netgroup:   files
+automount:  files
 
 aliases:    files
 ethers:     files

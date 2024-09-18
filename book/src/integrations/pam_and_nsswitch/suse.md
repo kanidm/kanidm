@@ -29,43 +29,36 @@ cp /etc/pam.d/common-session-pc  /etc/pam.d/common-session
 cp /etc/pam.d/common-password-pc /etc/pam.d/common-password
 ```
 
+> NOTE: Unlike other pam modules, replaces the functionality of `pam_unix` and can authenticate
+> local users securely.
+
 The content should look like:
 
 ```text
 # /etc/pam.d/common-account
 # Controls authorisation to this system (who may login)
-account    [default=1 ignore=ignore success=ok] pam_localuser.so
-account    sufficient    pam_unix.so
-account    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
 account    sufficient    pam_kanidm.so ignore_unknown_user
 account    required      pam_deny.so
 
 # /etc/pam.d/common-auth
 # Controls authentication to this system (verification of credentials)
 auth        required      pam_env.so
-auth        [default=1 ignore=ignore success=ok] pam_localuser.so
-auth        sufficient    pam_unix.so nullok try_first_pass
-auth        requisite     pam_succeed_if.so uid >= 1000 quiet_success
 auth        sufficient    pam_kanidm.so ignore_unknown_user
 auth        required      pam_deny.so
 
 # /etc/pam.d/common-password
 # Controls flow of what happens when a user invokes the passwd command. Currently does NOT
 # push password changes back to kanidm
-password    [default=1 ignore=ignore success=ok] pam_localuser.so
 password    required    pam_unix.so nullok shadow try_first_pass
-password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
-password    required    pam_kanidm.so
 
 # /etc/pam.d/common-session
 # Controls setup of the user session once a successful authentication and authorisation has
 # occurred.
 session optional    pam_systemd.so
 session required    pam_limits.so
-session optional    pam_unix.so try_first_pass
 session optional    pam_umask.so
-session [default=1 ignore=ignore success=ok] pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
 session optional    pam_kanidm.so
+session optional    pam_unix.so try_first_pass
 session optional    pam_env.so
 ```
 
