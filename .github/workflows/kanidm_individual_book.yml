@@ -53,7 +53,7 @@ jobs:
       - name: Build the docs
         # pinning mdbook-alerts because of <https://github.com/kanidm/kanidm/issues/2637>
         run: |
-          cargo install 'mdbook-alerts=0.6.4' 
+          cargo install mdbook-alerts --version 0.6.4
           cargo install mdbook-mermaid
           cargo doc --no-deps
           mdbook build *book
