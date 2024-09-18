@@ -55,9 +55,10 @@ pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationE
         .from_reader(bytes);
     rdr.deserialize()
         .map(|result| {
-            result
-                .inspect_err(|err| eprintln!("{:?}", err))
-                .map_err(|_e| UnixIntegrationError)
+            result.map_err(|err| {
+                eprintln!("{:?}", err);
+                UnixIntegrationError
+            })
         })
         .collect::<Result<Vec<EtcShadow>, UnixIntegrationError>>()
 }
