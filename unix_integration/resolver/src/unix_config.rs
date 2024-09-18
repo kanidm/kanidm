@@ -19,8 +19,8 @@ use kanidm_unix_common::constants::*;
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ConfigUntagged {
-    Legacy(ConfigInt),
     Versioned(ConfigVersion),
+    Legacy(ConfigInt),
 }
 
 #[derive(Debug, Deserialize)]

@@ -909,6 +909,8 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE
             };
 
+            info!("Started system provider");
+
             let mut clients: Vec<Arc<dyn IdProvider + Send + Sync>> = Vec::with_capacity(1);
 
             // Setup Kanidm provider if the configuration requests it.
@@ -938,6 +940,7 @@ async fn main() -> ExitCode {
 
                 // Now stacked for the resolver.
                 clients.push(Arc::new(idprovider));
+                info!("Started kanidm provider");
             }
 
             drop(machine_key);

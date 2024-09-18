@@ -691,6 +691,12 @@ impl Resolver {
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
         let mut r = self.system_provider.get_nssgroups().await;
 
+        // Get all the system -> extension maps.
+
+        // For each sysgroup.
+        //    if there is an extension.
+        //    locate it, and resolve + extend.
+
         let l = self.get_cached_grouptokens().await?;
         r.reserve(l.len());
         for tok in l.into_iter() {
