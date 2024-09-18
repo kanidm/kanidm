@@ -217,86 +217,63 @@ async fn handle_client(
         let _enter = span.enter();
 
         let resp = match req {
-            ClientRequest::SshKey(account_id) => {
-                debug!("sshkey req");
-                cachelayer
-                    .get_sshkeys(account_id.as_str())
-                    .await
-                    .map(ClientResponse::SshKeys)
-                    .unwrap_or_else(|_| {
-                        error!("unable to load keys, returning empty set.");
-                        ClientResponse::SshKeys(vec![])
-                    })
-            }
-            ClientRequest::NssAccounts => {
-                debug!("nssaccounts req");
-                cachelayer
-                    .get_nssaccounts()
-                    .await
-                    .map(ClientResponse::NssAccounts)
-                    .unwrap_or_else(|_| {
-                        error!("unable to enum accounts");
-                        ClientResponse::NssAccounts(Vec::new())
-                    })
-            }
-            ClientRequest::NssAccountByUid(gid) => {
-                debug!("nssaccountbyuid req");
-                cachelayer
-                    .get_nssaccount_gid(gid)
-                    .await
-                    .map(ClientResponse::NssAccount)
-                    .unwrap_or_else(|_| {
-                        error!("unable to load account, returning empty.");
-                        ClientResponse::NssAccount(None)
-                    })
-            }
-            ClientRequest::NssAccountByName(account_id) => {
-                debug!("nssaccountbyname req");
-                cachelayer
-                    .get_nssaccount_name(account_id.as_str())
-                    .await
-                    .map(ClientResponse::NssAccount)
-                    .unwrap_or_else(|_| {
-                        error!("unable to load account, returning empty.");
-                        ClientResponse::NssAccount(None)
-                    })
-            }
-            ClientRequest::NssGroups => {
-                debug!("nssgroups req");
-                cachelayer
-                    .get_nssgroups()
-                    .await
-                    .map(ClientResponse::NssGroups)
-                    .unwrap_or_else(|_| {
-                        error!("unable to enum groups");
-                        ClientResponse::NssGroups(Vec::new())
-                    })
-            }
-            ClientRequest::NssGroupByGid(gid) => {
-                debug!("nssgroupbygid req");
-                cachelayer
-                    .get_nssgroup_gid(gid)
-                    .await
-                    .map(ClientResponse::NssGroup)
-                    .unwrap_or_else(|_| {
-                        error!("unable to load group, returning empty.");
-                        ClientResponse::NssGroup(None)
-                    })
-            }
-            ClientRequest::NssGroupByName(grp_id) => {
-                debug!("nssgroupbyname req");
-                cachelayer
-                    .get_nssgroup_name(grp_id.as_str())
-                    .await
-                    .map(ClientResponse::NssGroup)
-                    .unwrap_or_else(|_| {
-                        error!("unable to load group, returning empty.");
-                        ClientResponse::NssGroup(None)
-                    })
-            }
+            ClientRequest::SshKey(account_id) => cachelayer
+                .get_sshkeys(account_id.as_str())
+                .await
+                .map(ClientResponse::SshKeys)
+                .unwrap_or_else(|_| {
+                    error!("unable to load keys, returning empty set.");
+                    ClientResponse::SshKeys(vec![])
+                }),
+            ClientRequest::NssAccounts => cachelayer
+                .get_nssaccounts()
+                .await
+                .map(ClientResponse::NssAccounts)
+                .unwrap_or_else(|_| {
+                    error!("unable to enum accounts");
+                    ClientResponse::NssAccounts(Vec::new())
+                }),
+            ClientRequest::NssAccountByUid(gid) => cachelayer
+                .get_nssaccount_gid(gid)
+                .await
+                .map(ClientResponse::NssAccount)
+                .unwrap_or_else(|_| {
+                    error!("unable to load account, returning empty.");
+                    ClientResponse::NssAccount(None)
+                }),
+            ClientRequest::NssAccountByName(account_id) => cachelayer
+                .get_nssaccount_name(account_id.as_str())
+                .await
+                .map(ClientResponse::NssAccount)
+                .unwrap_or_else(|_| {
+                    error!("unable to load account, returning empty.");
+                    ClientResponse::NssAccount(None)
+                }),
+            ClientRequest::NssGroups => cachelayer
+                .get_nssgroups()
+                .await
+                .map(ClientResponse::NssGroups)
+                .unwrap_or_else(|_| {
+                    error!("unable to enum groups");
+                    ClientResponse::NssGroups(Vec::new())
+                }),
+            ClientRequest::NssGroupByGid(gid) => cachelayer
+                .get_nssgroup_gid(gid)
+                .await
+                .map(ClientResponse::NssGroup)
+                .unwrap_or_else(|_| {
+                    error!("unable to load group, returning empty.");
+                    ClientResponse::NssGroup(None)
+                }),
+            ClientRequest::NssGroupByName(grp_id) => cachelayer
+                .get_nssgroup_name(grp_id.as_str())
+                .await
+                .map(ClientResponse::NssGroup)
+                .unwrap_or_else(|_| {
+                    error!("unable to load group, returning empty.");
+                    ClientResponse::NssGroup(None)
+                }),
             ClientRequest::PamAuthenticateInit { account_id, info } => {
-                debug!("pam authenticate init");
-
                 match &pam_auth_session_state {
                     Some(_auth_session) => {
                         // Invalid to init a request twice.
@@ -326,30 +303,23 @@ async fn handle_client(
                     }
                 }
             }
-            ClientRequest::PamAuthenticateStep(pam_next_req) => {
-                debug!("pam authenticate step");
-                match &mut pam_auth_session_state {
-                    Some(auth_session) => cachelayer
-                        .pam_account_authenticate_step(auth_session, pam_next_req)
-                        .await
-                        .map(|pam_auth_response| pam_auth_response.into())
-                        .unwrap_or(ClientResponse::Error),
-                    None => {
-                        warn!("Attempt to continue auth session while current session is inactive");
-                        ClientResponse::Error
-                    }
-                }
-            }
-            ClientRequest::PamAccountAllowed(account_id) => {
-                debug!("pam account allowed");
-                cachelayer
-                    .pam_account_allowed(account_id.as_str())
+            ClientRequest::PamAuthenticateStep(pam_next_req) => match &mut pam_auth_session_state {
+                Some(auth_session) => cachelayer
+                    .pam_account_authenticate_step(auth_session, pam_next_req)
                     .await
-                    .map(ClientResponse::PamStatus)
-                    .unwrap_or(ClientResponse::Error)
-            }
+                    .map(|pam_auth_response| pam_auth_response.into())
+                    .unwrap_or(ClientResponse::Error),
+                None => {
+                    warn!("Attempt to continue auth session while current session is inactive");
+                    ClientResponse::Error
+                }
+            },
+            ClientRequest::PamAccountAllowed(account_id) => cachelayer
+                .pam_account_allowed(account_id.as_str())
+                .await
+                .map(ClientResponse::PamStatus)
+                .unwrap_or(ClientResponse::Error),
             ClientRequest::PamAccountBeginSession(account_id) => {
-                debug!("pam account begin session");
                 match cachelayer
                     .pam_account_beginsession(account_id.as_str())
                     .await
@@ -395,16 +365,12 @@ async fn handle_client(
                     _ => ClientResponse::Error,
                 }
             }
-            ClientRequest::InvalidateCache => {
-                debug!("invalidate cache");
-                cachelayer
-                    .invalidate()
-                    .await
-                    .map(|_| ClientResponse::Ok)
-                    .unwrap_or(ClientResponse::Error)
-            }
+            ClientRequest::InvalidateCache => cachelayer
+                .invalidate()
+                .await
+                .map(|_| ClientResponse::Ok)
+                .unwrap_or(ClientResponse::Error),
             ClientRequest::ClearCache => {
-                debug!("clear cache");
                 if ucred.uid() == 0 {
                     cachelayer
                         .clear_cache()
@@ -417,14 +383,13 @@ async fn handle_client(
                 }
             }
             ClientRequest::Status => {
-                debug!("status check");
                 let status = cachelayer.provider_status().await;
                 ClientResponse::ProviderStatus(status)
             }
         };
         reqs.send(resp).await?;
         reqs.flush().await?;
-        debug!("flushed response!");
+        trace!("flushed response!");
     }
 
     // Signal any tasks that they need to stop.
