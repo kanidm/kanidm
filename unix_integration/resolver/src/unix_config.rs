@@ -55,11 +55,14 @@ struct ConfigV2 {
     hsm_type: Option<String>,
     tpm_tcti_name: Option<String>,
 
-    // Allow the following accounts to be over-ridden by a remote source.
-    #[serde(default)]
-    allow_local_account_override: Vec<String>,
-
     kanidm: Option<KanidmConfigV2>,
+}
+
+#[derive(Debug, Deserialize)]
+#[allow(dead_code)]
+pub struct GroupMap {
+    local: String,
+    with: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -67,6 +70,9 @@ struct KanidmConfigV2 {
     conn_timeout: Option<u64>,
     request_timeout: Option<u64>,
     pam_allowed_login_groups: Option<Vec<String>>,
+
+    #[allow(dead_code)]
+    extend: Vec<GroupMap>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -135,8 +141,6 @@ pub struct UnixdConfig {
     pub hsm_pin_path: String,
     pub tpm_tcti_name: String,
 
-    pub allow_local_account_override: Vec<String>,
-
     pub kanidm_config: Option<KanidmConfig>,
 }
 
@@ -145,6 +149,7 @@ pub struct KanidmConfig {
     pub conn_timeout: u64,
     pub request_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
+    pub extend: Vec<GroupMap>,
 }
 
 impl Default for UnixdConfig {
@@ -179,11 +184,6 @@ impl Display for UnixdConfig {
         writeln!(f, "tpm_tcti_name: {}", self.tpm_tcti_name)?;
 
         writeln!(f, "selinux: {}", self.selinux)?;
-        writeln!(
-            f,
-            "allow_local_account_override: {:#?}",
-            self.allow_local_account_override
-        )?;
 
         if let Some(kconfig) = &self.kanidm_config {
             writeln!(f, "kanidm: enabled")?;
@@ -231,7 +231,6 @@ impl UnixdConfig {
             hsm_pin_path,
             hsm_type: HsmType::default(),
             tpm_tcti_name: DEFAULT_TPM_TCTI_NAME.to_string(),
-            allow_local_account_override: Vec::default(),
 
             kanidm_config: None,
         }
@@ -292,10 +291,20 @@ impl UnixdConfig {
     }
 
     fn apply_from_config_legacy(self, config: ConfigInt) -> Result<Self, UnixIntegrationError> {
+        let extend = config
+            .allow_local_account_override
+            .iter()
+            .map(|name| GroupMap {
+                local: name.clone(),
+                with: name.clone(),
+            })
+            .collect();
+
         let kanidm_config = Some(KanidmConfig {
             conn_timeout: config.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
             request_timeout: config.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
             pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or_default(),
+            extend,
         });
 
         // Now map the values into our config.
@@ -380,7 +389,6 @@ impl UnixdConfig {
             tpm_tcti_name: config
                 .tpm_tcti_name
                 .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
-            allow_local_account_override: config.allow_local_account_override,
             kanidm_config,
         })
     }
@@ -391,6 +399,7 @@ impl UnixdConfig {
                 conn_timeout: kconfig.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
                 request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
                 pam_allowed_login_groups: kconfig.pam_allowed_login_groups.unwrap_or_default(),
+                extend: kconfig.extend,
             })
         } else {
             None
@@ -478,7 +487,6 @@ impl UnixdConfig {
             tpm_tcti_name: config
                 .tpm_tcti_name
                 .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
-            allow_local_account_override: config.allow_local_account_override,
             kanidm_config,
         })
     }

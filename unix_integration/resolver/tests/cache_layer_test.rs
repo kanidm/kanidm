@@ -131,6 +131,7 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
             conn_timeout: 1,
             request_timeout: 1,
             pam_allowed_login_groups: vec!["allowed_group".to_string()],
+            extend: vec![],
         },
         SystemTime::now(),
         &mut (&mut dbtxn).into(),

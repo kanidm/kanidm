@@ -1161,7 +1161,10 @@ impl Resolver {
 
         let mut results = Vec::with_capacity(self.clients.len() + 1);
 
-        results.push(ProviderStatus { "system".to_string(), online: true });
+        results.push(ProviderStatus {
+            name: "system".to_string(),
+            online: true,
+        });
 
         for client in self.clients.iter() {
             let online = client.attempt_online(hsm_lock.deref_mut(), now).await;
