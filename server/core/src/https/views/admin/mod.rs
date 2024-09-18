@@ -20,7 +20,8 @@ pub fn admin_router() -> Router<ServerState> {
         .route("/group/create", post(groups::view_group_create_post));
 
     let guarded_router = Router::new()
-        .layer(HxRequestGuardLayer::new("/ui"));
+        .layer(HxRequestGuardLayer::new("/ui"))
+        .route("/api/group/:group_uuid/member", post(groups::view_group_new_member_post));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
 }

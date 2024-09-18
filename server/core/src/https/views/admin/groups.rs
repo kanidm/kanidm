@@ -11,16 +11,18 @@ use axum::response::{ErrorResponse, IntoResponse, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest};
+use axum_macros::debug_handler;
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_ENTRY_MANAGED_BY, ATTR_NAME, ATTR_UUID};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, ATTR_SPN, ATTR_UUID};
 use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_and, f_eq, f_id, Filter, FC};
+use kanidmd_lib::filter::{f_and, f_eq, f_id, f_or, Filter, FC};
 use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use kanidmd_lib::value::PartialValue;
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -29,7 +31,6 @@ struct GroupsView {
     partial: GroupsPartialView,
 }
 
-
 #[derive(Template)]
 #[template(path = "admin/admin_groups_partial.html")]
 struct GroupsPartialView {
@@ -37,7 +38,7 @@ struct GroupsPartialView {
     groups: Vec<GroupInfo>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct GroupInfo {
     uuid: String,
     name: String,
@@ -48,12 +49,12 @@ struct GroupInfo {
     members: Vec<MemberInfo>
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct GroupACP{
     enabled: bool
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 struct MemberInfo {
     uuid: String,
     name: String,
@@ -118,6 +119,68 @@ pub(crate) async fn view_group_delete_post(
     view_groups_get(State(state), HxRequest(is_htmx), Extension(kopid), VerifiedClientInformation(client_auth_info)).await
 }
 
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub(crate) struct GroupAddMemberFormData {
+    member: String,
+}
+
+#[derive(Template)]
+#[template(path = "admin/admin_group_member_partial.html")]
+struct GroupMemberPartialView {
+    can_edit: bool,
+    group_uuid: Uuid,
+    member: MemberInfo,
+}
+
+#[debug_handler]
+pub(crate) async fn view_group_new_member_post(
+    State(state): State<ServerState>,
+    HxRequest(_is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(guuid): Path<Uuid>,
+    Form(data): Form<GroupAddMemberFormData>,
+) -> axum::response::Result<Response> {
+    let mut ors = vec![f_id(data.member.as_str())];
+    let class_filter = vec![f_eq(Attribute::Class, EntryClass::Group.into()), f_eq(Attribute::Class, EntryClass::Person.into())];
+    let spn_value = data.member.split_once('@').map(|x| PartialValue::Spn(x.0.into(), x.1.into()));
+    if let Some(spn_value) = spn_value {
+        ors.push(f_eq(Attribute::Spn, spn_value))
+    }
+
+    let filter = filter_all!(f_and!([
+        f_or(class_filter),
+        f_or(ors)
+    ]));
+
+    let perfect_members = state.qe_r_ref.handle_internalsearch(client_auth_info.clone(), filter, None, kopid.clone().eventid)
+        .await
+        .map_err(|x| HtmxError::new(&kopid, x))?;
+
+    dbg!(perfect_members.clone());
+
+    if let Some(perfect_entry) = perfect_members.first() {
+        let filter = filter_all!(f_and!([
+            f_eq(Attribute::Class, EntryClass::Group.into()),
+        ]));
+        let uuid = perfect_entry.attrs.get(ATTR_UUID).unwrap_or(&vec![]).first().unwrap().clone();
+        state.qe_w_ref.handle_appendattribute(client_auth_info, guuid.into(), "members".to_string(), vec![uuid], filter, kopid.eventid)
+            .await
+            .map_err(|x| HtmxError::new(&kopid, x))?;
+
+        Ok(HtmlTemplate(GroupMemberPartialView {
+            can_edit: true,
+            group_uuid: guuid,
+            member: entry_into_memberinfo(perfect_entry)
+        }).into_response())
+    } else {
+        Ok("".into_response())
+    }
+
+
+
+
+}
 pub(crate) async fn view_group_create_post(
     State(state): State<ServerState>,
     HxRequest(is_htmx): HxRequest,
@@ -285,6 +348,44 @@ async fn get_groups_info(state: ServerState, kopid: &KOpId, client_auth_info: Cl
     groups.sort_by_key(|gi| gi.uuid.clone());
     groups.reverse();
     Ok(groups)
+}
+
+fn entry_into_memberinfo(entry: &Entry) -> MemberInfo {
+    let uuid = entry
+        .attrs
+        .get(ATTR_UUID)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+    let name = entry
+        .attrs
+        .get(ATTR_NAME)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+    let spn = entry
+        .attrs
+        .get(ATTR_SPN)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+    let displayname = entry
+        .attrs
+        .get(ATTR_DISPLAYNAME)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&"".to_string())
+        .clone();
+
+    MemberInfo {
+        uuid,
+        name,
+        spn,
+        displayname,
+    }
 }
 
 fn entry_into_groupinfo(entry: &Entry) -> GroupInfo {

@@ -79,21 +79,20 @@ Groups Management
             </div>
         </li>
         (% endfor %)
+        (% if can_edit %)
+            <li class="list-group-item d-flex flex-row justify-content-between">
+                <input type="text" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
+                <button id="groupAddEmailBtn" class="btn btn-success text-nowrap"
+                        hx-post="/ui/api/group/(( group.uuid ))/mail"
+                        hx-include="#groupAddEmailInput"
+                        type="button">
+                    Add Email
+                </button>
+            </li>
+        (% endif %)
     </ol>
 (% endif %)
-(% if can_edit %)
-<div class="col-12 col-md-8 col-lg-6 mt-2">
-    <div class="input-group">
-        <input type="text" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
-        <button id="groupAddEmailBtn" class="btn btn-success"
-                hx-post="/ui/api/group/(( group.uuid ))/mail"
-                hx-include="#groupAddEmailInput"
-                type="button">
-            Add Email
-        </button>
-    </div>
-</div>
-(% endif %)
+
 
 <label class="mt-3 fw-bold">Account Policy (ACP)</label>
 <div>
@@ -112,36 +111,24 @@ Groups Management
     <p>none</p>
 (% else %)
     <ul class="list-group col-12 col-md-8 col-lg-6">
+        (% let group_uuid = group.uuid.clone() %)
         (% for member in group.members %)
-        <li id="groupMember(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
-            <div class="d-flex align-items-center">
-                <a href="/ui/admin/group/(( member.uuid ))/view" hx-target="#main">(( member.spn ))</a>
-            </div>
-            <div class="buttons float-end">
-                (% if can_edit %)
-                    <button hx-target="#groupMember(( loop.index ))"
-                            hx-swap="delete"
-                            hx-delete="/ui/admin/group/(( group.uuid ))/member/(( member.uuid ))"
-                            hx-confirm="Are you sure you want to remove (( member.name )) from (( group.name ))?"
-                            type="button" class="btn btn-danger">Remove</button>
-                (% endif %)
-            </div>
-        </li>
+            (% include "admin_group_member_partial.html" %)
         (% endfor %)
+        (% if can_edit %)
+        <li class="list-group-item d-flex flex-row justify-content-between" id="addMemberBtn">
+            <input type="text" class="form-control" id="groupAddMemberInput" placeholder="Member name/spn/uuid" name="member" aria-label="Member name/spn/uuid to add as group member" aria-describedby="groupAddMemberBtn">
+            <button id="groupAddMemberBtn" class="btn btn-success text-nowrap"
+                    hx-post="/ui/admin/api/group/(( group.uuid ))/member"
+                    hx-include="#groupAddMemberInput"
+                    hx-target="#addMemberBtn"
+                    hx-swap="beforebegin"
+                    type="button">
+                Add Member
+            </button>
+        </li>
+        (% endif %)
     </ul>
-(% endif %)
-(% if can_edit %)
-<div class="col-12 col-md-8 col-lg-6 mt-2">
-    <div class="input-group">
-        <input type="text" class="form-control" id="groupAddMemberInput" placeholder="Member name/spn/uuid" aria-label="Member name/spn/uuid to add as group member" aria-describedby="groupAddMemberBtn">
-        <button id="groupAddMemberBtn" class="btn btn-success"
-                hx-post="/ui/api/group/(( group.uuid ))/member"
-                hx-include="#groupAddMemberInput"
-                type="button">
-            Add Member
-        </button>
-    </div>
-</div>
 (% endif %)
 
 (% endblock %)
