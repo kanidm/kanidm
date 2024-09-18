@@ -59,10 +59,9 @@ struct ConfigV2 {
 }
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 pub struct GroupMap {
-    local: String,
-    with: String,
+    pub local: String,
+    pub with: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -70,8 +69,6 @@ struct KanidmConfigV2 {
     conn_timeout: Option<u64>,
     request_timeout: Option<u64>,
     pam_allowed_login_groups: Option<Vec<String>>,
-
-    #[allow(dead_code)]
     extend: Vec<GroupMap>,
 }
 

@@ -18,7 +18,7 @@ use kanidm_unix_resolver::idprovider::interface::Id;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
-use kanidm_unix_resolver::unix_config::KanidmConfig;
+use kanidm_unix_resolver::unix_config::{GroupMap, KanidmConfig};
 use kanidmd_core::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidmd_core::create_server_core;
 use kanidmd_testkit::{is_free_port, PORT_ALLOC};
@@ -131,7 +131,10 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
             conn_timeout: 1,
             request_timeout: 1,
             pam_allowed_login_groups: vec!["allowed_group".to_string()],
-            extend: vec![],
+            extend: vec![GroupMap {
+                local: "extensible".to_string(),
+                with: "testgroup1".to_string(),
+            }],
         },
         SystemTime::now(),
         &mut (&mut dbtxn).into(),
