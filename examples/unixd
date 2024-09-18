@@ -1,5 +1,8 @@
 ## Kanidm Unixd Service Configuration - /etc/kanidm/unixd
 
+# The configuration file version.
+version = '2'
+
 # Kanidm unix will bind all cached credentials to a local Hardware Security
 # Module (HSM) to prevent exfiltration and attacks against these. In addition,
 # any internal private keys will also be stored in this HSM.
