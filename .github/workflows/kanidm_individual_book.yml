@@ -51,7 +51,7 @@ jobs:
           python-version: "3.10"
 
       - name: Build the docs
-        # pinning mdbook-alerts because of <https://github.com/kanidm/kanidm/issues/2637>
+        # pinning mdbook-alerts because of <https://github.com/lambdalisue/rs-mdbook-alerts/issues/79>
         run: |
           cargo install mdbook-alerts --version 0.6.4
           cargo install mdbook-mermaid
