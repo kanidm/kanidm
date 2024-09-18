@@ -62,6 +62,7 @@ impl TryFrom<String> for CryptPw {
     }
 }
 
+#[allow(dead_code)]
 struct AgingPolicy {
     last_change: time::OffsetDateTime,
     min_password_change: time::OffsetDateTime,
@@ -120,6 +121,7 @@ impl AgingPolicy {
 
 pub struct Shadow {
     crypt_pw: CryptPw,
+    #[allow(dead_code)]
     aging_policy: Option<AgingPolicy>,
     expiration_date: Option<time::OffsetDateTime>,
 }

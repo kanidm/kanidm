@@ -1,6 +1,4 @@
-// Swear to god william, don't forget to uncomment this
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::todo)]
 #![deny(clippy::unimplemented)]

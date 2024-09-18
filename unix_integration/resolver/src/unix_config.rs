@@ -14,6 +14,61 @@ use serde::Deserialize;
 
 use kanidm_unix_common::constants::*;
 
+// This bit of magic lets us deserialise the old config and the new versions.
+
+#[derive(Debug, Deserialize)]
+#[serde(untagged)]
+enum ConfigUntagged {
+    Legacy(ConfigInt),
+    Versioned(ConfigVersion),
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(tag = "version")]
+enum ConfigVersion {
+    #[serde(rename = "2")]
+    V2 {
+        #[serde(flatten)]
+        values: ConfigV2,
+    },
+}
+
+#[derive(Debug, Deserialize)]
+struct ConfigV2 {
+    cache_db_path: Option<String>,
+    sock_path: Option<String>,
+    task_sock_path: Option<String>,
+
+    cache_timeout: Option<u64>,
+
+    default_shell: Option<String>,
+    home_prefix: Option<String>,
+    home_mount_prefix: Option<String>,
+    home_attr: Option<String>,
+    home_alias: Option<String>,
+    use_etc_skel: Option<bool>,
+    uid_attr_map: Option<String>,
+    gid_attr_map: Option<String>,
+    selinux: Option<bool>,
+
+    hsm_pin_path: Option<String>,
+    hsm_type: Option<String>,
+    tpm_tcti_name: Option<String>,
+
+    // Allow the following accounts to be over-ridden by a remote source.
+    #[serde(default)]
+    allow_local_account_override: Vec<String>,
+
+    kanidm: Option<KanidmConfigV2>,
+}
+
+#[derive(Debug, Deserialize)]
+struct KanidmConfigV2 {
+    conn_timeout: Option<u64>,
+    request_timeout: Option<u64>,
+    pam_allowed_login_groups: Option<Vec<String>>,
+}
+
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
     #[serde(alias = "db_path")]
@@ -61,15 +116,12 @@ impl Display for HsmType {
 }
 
 #[derive(Debug)]
-pub struct KanidmUnixdConfig {
+pub struct UnixdConfig {
     pub cache_db_path: String,
     pub sock_path: String,
     pub task_sock_path: String,
-    pub conn_timeout: u64,
-    pub request_timeout: u64,
     pub cache_timeout: u64,
     pub unix_sock_timeout: u64,
-    pub pam_allowed_login_groups: Vec<String>,
     pub default_shell: String,
     pub home_prefix: PathBuf,
     pub home_mount_prefix: Option<PathBuf>,
@@ -82,29 +134,32 @@ pub struct KanidmUnixdConfig {
     pub hsm_type: HsmType,
     pub hsm_pin_path: String,
     pub tpm_tcti_name: String,
+
     pub allow_local_account_override: Vec<String>,
+
+    pub kanidm_config: Option<KanidmConfig>,
 }
 
-impl Default for KanidmUnixdConfig {
+#[derive(Debug)]
+pub struct KanidmConfig {
+    pub conn_timeout: u64,
+    pub request_timeout: u64,
+    pub pam_allowed_login_groups: Vec<String>,
+}
+
+impl Default for UnixdConfig {
     fn default() -> Self {
-        KanidmUnixdConfig::new()
+        UnixdConfig::new()
     }
 }
 
-impl Display for KanidmUnixdConfig {
+impl Display for UnixdConfig {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "cache_db_path: {}", &self.cache_db_path)?;
         writeln!(f, "sock_path: {}", self.sock_path)?;
         writeln!(f, "task_sock_path: {}", self.task_sock_path)?;
-        writeln!(f, "conn_timeout: {}", self.conn_timeout)?;
-        writeln!(f, "request_timeout: {}", self.request_timeout)?;
         writeln!(f, "unix_sock_timeout: {}", self.unix_sock_timeout)?;
         writeln!(f, "cache_timeout: {}", self.cache_timeout)?;
-        writeln!(
-            f,
-            "pam_allowed_login_groups: {:#?}",
-            self.pam_allowed_login_groups
-        )?;
         writeln!(f, "default_shell: {}", self.default_shell)?;
         writeln!(f, "home_prefix: {:?}", self.home_prefix)?;
         match self.home_mount_prefix.as_deref() {
@@ -128,11 +183,26 @@ impl Display for KanidmUnixdConfig {
             f,
             "allow_local_account_override: {:#?}",
             self.allow_local_account_override
-        )
+        )?;
+
+        if let Some(kconfig) = &self.kanidm_config {
+            writeln!(f, "kanidm: enabled")?;
+            writeln!(
+                f,
+                "kanidm pam_allowed_login_groups: {:#?}",
+                kconfig.pam_allowed_login_groups
+            )?;
+            writeln!(f, "kanidm conn_timeout: {}", kconfig.conn_timeout)?;
+            writeln!(f, "kanidm request_timeout: {}", kconfig.request_timeout)?;
+        } else {
+            writeln!(f, "kanidm: disabled")?;
+        };
+
+        Ok(())
     }
 }
 
-impl KanidmUnixdConfig {
+impl UnixdConfig {
     pub fn new() -> Self {
         let cache_db_path = match env::var("KANIDM_CACHE_DB_PATH") {
             Ok(val) => val,
@@ -143,15 +213,12 @@ impl KanidmUnixdConfig {
             Err(_) => DEFAULT_HSM_PIN_PATH.into(),
         };
 
-        KanidmUnixdConfig {
+        UnixdConfig {
             cache_db_path,
             sock_path: DEFAULT_SOCK_PATH.to_string(),
             task_sock_path: DEFAULT_TASK_SOCK_PATH.to_string(),
-            conn_timeout: DEFAULT_CONN_TIMEOUT,
-            request_timeout: DEFAULT_CONN_TIMEOUT * 2,
             unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
             cache_timeout: DEFAULT_CACHE_TIMEOUT,
-            pam_allowed_login_groups: Vec::new(),
             default_shell: DEFAULT_SHELL.to_string(),
             home_prefix: DEFAULT_HOME_PREFIX.into(),
             home_mount_prefix: None,
@@ -165,6 +232,8 @@ impl KanidmUnixdConfig {
             hsm_type: HsmType::default(),
             tpm_tcti_name: DEFAULT_TPM_TCTI_NAME.to_string(),
             allow_local_account_override: Vec::default(),
+
+            kanidm_config: None,
         }
     }
 
@@ -209,25 +278,33 @@ impl KanidmUnixdConfig {
             UnixIntegrationError
         })?;
 
-        let config: ConfigInt = toml::from_str(contents.as_str()).map_err(|e| {
+        let config: ConfigUntagged = toml::from_str(contents.as_str()).map_err(|e| {
             error!("{:?}", e);
             UnixIntegrationError
         })?;
 
-        let conn_timeout = config.conn_timeout.unwrap_or(self.conn_timeout);
+        match config {
+            ConfigUntagged::Legacy(config) => self.apply_from_config_legacy(config),
+            ConfigUntagged::Versioned(ConfigVersion::V2 { values }) => {
+                self.apply_from_config_v2(values)
+            }
+        }
+    }
+
+    fn apply_from_config_legacy(self, config: ConfigInt) -> Result<Self, UnixIntegrationError> {
+        let kanidm_config = Some(KanidmConfig {
+            conn_timeout: config.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
+            request_timeout: config.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
+            pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or_default(),
+        });
 
         // Now map the values into our config.
-        Ok(KanidmUnixdConfig {
+        Ok(UnixdConfig {
             cache_db_path: config.cache_db_path.unwrap_or(self.cache_db_path),
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
-            conn_timeout,
-            request_timeout: config.request_timeout.unwrap_or(conn_timeout * 2),
-            unix_sock_timeout: conn_timeout * 2,
+            unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
             cache_timeout: config.cache_timeout.unwrap_or(self.cache_timeout),
-            pam_allowed_login_groups: config
-                .pam_allowed_login_groups
-                .unwrap_or(self.pam_allowed_login_groups),
             default_shell: config.default_shell.unwrap_or(self.default_shell),
             home_prefix: config
                 .home_prefix
@@ -304,6 +381,105 @@ impl KanidmUnixdConfig {
                 .tpm_tcti_name
                 .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
             allow_local_account_override: config.allow_local_account_override,
+            kanidm_config,
+        })
+    }
+
+    fn apply_from_config_v2(self, config: ConfigV2) -> Result<Self, UnixIntegrationError> {
+        let kanidm_config = if let Some(kconfig) = config.kanidm {
+            Some(KanidmConfig {
+                conn_timeout: kconfig.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
+                request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
+                pam_allowed_login_groups: kconfig.pam_allowed_login_groups.unwrap_or_default(),
+            })
+        } else {
+            None
+        };
+
+        // Now map the values into our config.
+        Ok(UnixdConfig {
+            cache_db_path: config.cache_db_path.unwrap_or(self.cache_db_path),
+            sock_path: config.sock_path.unwrap_or(self.sock_path),
+            task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
+            unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
+            cache_timeout: config.cache_timeout.unwrap_or(self.cache_timeout),
+            default_shell: config.default_shell.unwrap_or(self.default_shell),
+            home_prefix: config
+                .home_prefix
+                .map(|p| p.into())
+                .unwrap_or(self.home_prefix.clone()),
+            home_mount_prefix: config.home_mount_prefix.map(|p| p.into()),
+            home_attr: config
+                .home_attr
+                .and_then(|v| match v.as_str() {
+                    "uuid" => Some(HomeAttr::Uuid),
+                    "spn" => Some(HomeAttr::Spn),
+                    "name" => Some(HomeAttr::Name),
+                    _ => {
+                        warn!("Invalid home_attr configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.home_attr),
+            home_alias: config
+                .home_alias
+                .and_then(|v| match v.as_str() {
+                    "none" => Some(None),
+                    "uuid" => Some(Some(HomeAttr::Uuid)),
+                    "spn" => Some(Some(HomeAttr::Spn)),
+                    "name" => Some(Some(HomeAttr::Name)),
+                    _ => {
+                        warn!("Invalid home_alias configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.home_alias),
+            use_etc_skel: config.use_etc_skel.unwrap_or(self.use_etc_skel),
+            uid_attr_map: config
+                .uid_attr_map
+                .and_then(|v| match v.as_str() {
+                    "spn" => Some(UidAttr::Spn),
+                    "name" => Some(UidAttr::Name),
+                    _ => {
+                        warn!("Invalid uid_attr_map configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.uid_attr_map),
+            gid_attr_map: config
+                .gid_attr_map
+                .and_then(|v| match v.as_str() {
+                    "spn" => Some(UidAttr::Spn),
+                    "name" => Some(UidAttr::Name),
+                    _ => {
+                        warn!("Invalid gid_attr_map configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.gid_attr_map),
+            selinux: match config.selinux.unwrap_or(self.selinux) {
+                #[cfg(all(target_family = "unix", feature = "selinux"))]
+                true => selinux_util::supported(),
+                _ => false,
+            },
+            hsm_pin_path: config.hsm_pin_path.unwrap_or(self.hsm_pin_path),
+            hsm_type: config
+                .hsm_type
+                .and_then(|v| match v.as_str() {
+                    "soft" => Some(HsmType::Soft),
+                    "tpm_if_possible" => Some(HsmType::TpmIfPossible),
+                    "tpm" => Some(HsmType::Tpm),
+                    _ => {
+                        warn!("Invalid hsm_type configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.hsm_type),
+            tpm_tcti_name: config
+                .tpm_tcti_name
+                .unwrap_or(DEFAULT_TPM_TCTI_NAME.to_string()),
+            allow_local_account_override: config.allow_local_account_override,
+            kanidm_config,
         })
     }
 }

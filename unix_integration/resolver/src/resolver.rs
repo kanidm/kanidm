@@ -1,6 +1,5 @@
 // use async_trait::async_trait;
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::num::NonZeroUsize;
 use std::ops::DerefMut;
@@ -87,7 +86,6 @@ pub struct Resolver {
     // The id of the primary-provider which may use name over spn.
     primary_origin: ProviderOrigin,
 
-    pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
     default_shell: String,
     home_prefix: PathBuf,
@@ -112,10 +110,9 @@ impl Resolver {
     pub async fn new(
         db: Db,
         system_provider: Arc<SystemProvider>,
-        client: Arc<dyn IdProvider + Sync + Send>,
+        clients: Vec<Arc<dyn IdProvider + Sync + Send>>,
         hsm: BoxedDynTpm,
         timeout_seconds: u64,
-        pam_allow_groups: Vec<String>,
         default_shell: String,
         home_prefix: PathBuf,
         home_attr: HomeAttr,
@@ -124,12 +121,6 @@ impl Resolver {
         gid_attr_map: UidAttr,
     ) -> Result<Self, ()> {
         let hsm = Mutex::new(hsm);
-
-        if pam_allow_groups.is_empty() {
-            warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
-        }
-
-        let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
 
         let primary_origin = clients.first().map(|c| c.origin()).unwrap_or_default();
 
@@ -148,7 +139,6 @@ impl Resolver {
             primary_origin,
             client_ids,
             timeout_seconds,
-            pam_allow_groups: pam_allow_groups.into_iter().collect(),
             default_shell,
             home_prefix,
             home_attr,
@@ -756,28 +746,20 @@ impl Resolver {
         // Not a system account, handle with the provider.
         let token = self.get_usertoken(&id).await?;
 
-        if self.pam_allow_groups.is_empty() {
-            // can't allow anything if the group list is zero...
-            eprintln!("Cannot authenticate users, no allowed groups in configuration!");
-            Ok(Some(false))
-        } else {
-            Ok(token.map(|tok| {
-                let user_set: BTreeSet<_> = tok
-                    .groups
-                    .iter()
-                    .flat_map(|g| [g.name.clone(), g.uuid.hyphenated().to_string()])
-                    .collect();
+        // If there is no token, return Ok(None) to trigger unknown-user path in pam.
+        match token {
+            Some(token) => {
+                let client = self.client_ids.get(&token.provider)
+                    .cloned()
+                    .ok_or_else(|| {
+                        error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
+                    })?;
 
-                debug!(
-                    "Checking if user is in allowed groups ({:?}) -> {:?}",
-                    self.pam_allow_groups, user_set,
-                );
-                let intersection_count = user_set.intersection(&self.pam_allow_groups).count();
-                debug!("Number of intersecting groups: {}", intersection_count);
-                debug!("User token is valid: {}", tok.valid);
-
-                intersection_count > 0 && tok.valid
-            }))
+                client.unix_user_authorise(&token).await.map_err(|err| {
+                    error!(?err, "unable to authorise account");
+                })
+            }
+            None => Ok(None),
         }
     }
 

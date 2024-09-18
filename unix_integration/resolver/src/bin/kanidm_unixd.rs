@@ -30,10 +30,11 @@ use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 use kanidm_unix_resolver::db::{Cache, Db};
+use kanidm_unix_resolver::idprovider::interface::IdProvider;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
 use kanidm_unix_resolver::idprovider::system::SystemProvider;
 use kanidm_unix_resolver::resolver::Resolver;
-use kanidm_unix_resolver::unix_config::{HsmType, KanidmUnixdConfig};
+use kanidm_unix_resolver::unix_config::{HsmType, UnixdConfig};
 
 use kanidm_utils_users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 use libc::umask;
@@ -681,16 +682,7 @@ async fn main() -> ExitCode {
                 }
             }
 
-            // setup
-            let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
-                Ok(v) => v,
-                Err(_) => {
-                    error!("Failed to parse {}", cfg_path_str);
-                    return ExitCode::FAILURE
-                }
-            };
-
-            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(&unixd_path) {
+            let cfg = match UnixdConfig::new().read_options_from_optional_config(&unixd_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);
@@ -698,14 +690,31 @@ async fn main() -> ExitCode {
                 }
             };
 
+            let client_builder = if let Some(kconfig) = &cfg.kanidm_config {
+                // setup
+                let cb = match KanidmClientBuilder::new().read_options_from_optional_config(&cfg_path) {
+                    Ok(v) => v,
+                    Err(_) => {
+                        error!("Failed to parse {}", cfg_path_str);
+                        return ExitCode::FAILURE
+                    }
+                };
+
+                Some((cb, kconfig))
+            } else { None };
+
             if clap_args.get_flag("configtest") {
                 eprintln!("###################################");
                 eprintln!("Dumping configs:\n###################################");
                 eprintln!("kanidm_unixd config (from {:#?})", &unixd_path);
                 eprintln!("{}", cfg);
                 eprintln!("###################################");
-                eprintln!("kanidm client config (from {:#?})", &cfg_path);
-                eprintln!("{}", cb);
+                if let Some((cb, _)) = client_builder.as_ref() {
+                    eprintln!("kanidm client config (from {:#?})", &cfg_path);
+                    eprintln!("{}", cb);
+                }  else {
+                    eprintln!("kanidm client: disabled");
+                }
                 return ExitCode::SUCCESS;
             }
 
@@ -796,17 +805,6 @@ async fn main() -> ExitCode {
                     // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
                 };
             }
-
-            let cb = cb.connect_timeout(cfg.conn_timeout);
-            let cb = cb.request_timeout(cfg.request_timeout);
-
-            let rsclient = match cb.build() {
-                Ok(rsc) => rsc,
-                Err(_e) => {
-                    error!("Failed to build async client");
-                    return ExitCode::FAILURE
-                }
-            };
 
             let db = match Db::new(cfg.cache_db_path.as_str()) {
                 Ok(db) => db,
@@ -911,16 +909,36 @@ async fn main() -> ExitCode {
                 return ExitCode::FAILURE
             };
 
-            let Ok(idprovider) = KanidmProvider::new(
-                rsclient,
-                SystemTime::now(),
-                &mut (&mut db_txn).into(),
-                &mut hsm,
-                &machine_key
-            ) else {
-                error!("Failed to configure Kanidm Provider");
-                return ExitCode::FAILURE
-            };
+            let mut clients: Vec<Arc<dyn IdProvider + Send + Sync>> = Vec::with_capacity(1);
+
+            // Setup Kanidm provider if the configuration requests it.
+            if let Some((cb, kconfig)) = client_builder {
+                let cb = cb.connect_timeout(kconfig.conn_timeout);
+                let cb = cb.request_timeout(kconfig.request_timeout);
+
+                let rsclient = match cb.build() {
+                    Ok(rsc) => rsc,
+                    Err(_e) => {
+                        error!("Failed to build async client");
+                        return ExitCode::FAILURE
+                    }
+                };
+
+                let Ok(idprovider) = KanidmProvider::new(
+                    rsclient,
+                    kconfig,
+                    SystemTime::now(),
+                    &mut (&mut db_txn).into(),
+                    &mut hsm,
+                    &machine_key
+                ) else {
+                    error!("Failed to configure Kanidm Provider");
+                    return ExitCode::FAILURE
+                };
+
+                // Now stacked for the resolver.
+                clients.push(Arc::new(idprovider));
+            }
 
             drop(machine_key);
 
@@ -937,14 +955,12 @@ async fn main() -> ExitCode {
             }
 
             // Okay, the hsm is now loaded and ready to go.
-
             let cl_inner = match Resolver::new(
                 db,
                 Arc::new(system_provider),
-                Arc::new(idprovider),
+                clients,
                 hsm,
                 cfg.cache_timeout,
-                cfg.pam_allowed_login_groups.clone(),
                 cfg.default_shell.clone(),
                 cfg.home_prefix.clone(),
                 cfg.home_attr,
