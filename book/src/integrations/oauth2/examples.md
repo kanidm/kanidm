@@ -50,6 +50,112 @@ In the virtual host, to protect a location/directory
 </Directory>
 ```
 
+## GitLab
+
+[GitLab](https://gitlab.com) is a Git-based software development platform, which
+[supports OpenID Connect](https://docs.gitlab.com/ee/administration/auth/oidc.html)
+on [self-managed installations](https://docs.gitlab.com/ee/install/) *only*
+(ie: **not** GitLab.com).
+
+To set up a self-managed GitLab instance to authenticate with Kanidm:
+
+1.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update your_username -m your_username@example.com
+    ```
+
+2.  Create a new Kanidm group for your GitLab users (`gitlab_users`), and
+    add your regular account to it:
+
+    ```sh
+    kanidm group create gitlab_users
+    kanidm group add-members gitlab_users your_username
+    ```
+
+3.  Create a new OAuth2 application configuration in Kanidm (`gitlab`),
+    configure the redirect URL, and scope access to the `gitlab_users` group:
+
+    ```sh
+    kanidm system oauth2 create gitlab GitLab https://gitlab.example.com
+    kanidm system oauth2 add-redirect-url gitlab https://gitlab.example.com/users/auth/oauth2_generic/callback
+    kanidm system oauth2 update-scope-map gitlab gitlab_users email openid profile groups
+    ```
+
+4.  Get the `gitlab` OAuth2 client secret from Kanidm:
+
+    ```sh
+    kanidm system oauth2 show-basic-secret gitlab
+    ```
+
+5.  Configure GitLab to authenticate to Kanidm with OpenID Connect in
+    `/etc/gitlab/gitlab.rb`:
+
+    ```ruby
+    # Allow OpenID Connect for single sign on
+    gitlab_rails['omniauth_allow_single_sign_on'] = ['openid_connect']
+
+    # Automatically approve any account from an OmniAuth provider.
+    #
+    # This is insecure if you *don't* control *all* the providers in use.
+    # For example, if you allowed sign in Kanidm *and* with some public identity
+    # provider, it will let anyone with an account sign in to your GitLab
+    # instance.
+    gitlab_rails['omniauth_block_auto_created_users'] = false
+
+    # Automatically link existing users to Kanidm by email address.
+    #
+    # This is insecure if users are allowed to change their own email address
+    # in Kanidm (disabled by default), or any provider doesn't validate
+    # ownership of email addresses.
+    gitlab_rails['omniauth_auto_link_user'] = ['openid_connect']
+
+    # Update the user's profile with info from Kanidm whenever they log in.
+    # GitLab locks these fields when sync is enabled.
+    gitlab_rails['omniauth_sync_profile_from_provider'] = ['openid_connect']
+    gitlab_rails['omniauth_sync_profile_attributes'] = ['name', 'email']
+
+    # Connect to Kanidm
+    gitlab_rails['omniauth_providers'] = [
+      {
+        name: "openid_connect",
+        label: "Kanidm",
+        icon: "https://kanidm.example.com/pkg/img/logo-192.png",
+        args: {
+          name: "openid_connect",
+          scope: ["openid","profile","email"],
+          response_type: "code",
+          # Point this at your Kanidm host. "gitlab" is the OAuth2 client ID.
+          # Don't include a trailing slash!
+          issuer: "https://kanidm.example.com/oauth2/openid/gitlab",
+          discovery: true,
+          client_auth_method: "query",
+          # Key the GitLab identity by UUID.
+          uid_field: "sub",
+          pkce: true,
+          client_options: {
+            # OAuth2 client ID
+            identifier: "gitlab",
+            secret: "YOUR KANIDM BASIC SECRET HERE",
+            redirect_uri: "https://gitlab.example.com/users/auth/openid_connect/callback"
+          }
+        },
+      },
+    ]
+    ```
+
+    > [!TIP]
+    >
+    > If you're running GitLab in Docker (or other container platform), you can add
+    > this configuration to the `GITLAB_OMNIBUS_CONFIG` environment variable.
+
+6.  Restart GitLab (`gitlab-ctl reconfigure`), and wait for it to come back up
+    again (this may take several minutes).
+
+Once GitLab is up and running, you should now see a "Kanidm" option on your
+GitLab sign-in page below the normal login form.
+
 ## Miniflux
 
 Miniflux is a feedreader that supports OAuth 2.0 and OpenID connect. It automatically appends the
