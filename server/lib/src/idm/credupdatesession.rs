@@ -130,11 +130,11 @@ pub(crate) struct CredentialUpdateSession {
 
     // Unix / Sudo PW
     unixcred: Option<Credential>,
-    unixcred_can_edit: bool,
+    unixcred_state: CredentialState,
 
     // Ssh Keys
     sshkeys: BTreeMap<String, SshPublicKey>,
-    sshpubkey_can_edit: bool,
+    sshkeys_state: CredentialState,
 
     // Passkeys that have been configured.
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
@@ -325,6 +325,9 @@ pub struct CredentialUpdateSessionStatus {
     attested_passkeys: Vec<PasskeyDetail>,
     attested_passkeys_state: CredentialState,
     attested_passkeys_allowed_devices: Vec<String>,
+
+    unixcred: Option<CredentialDetail>,
+    unixcred_state: CredentialState,
 }
 
 impl CredentialUpdateSessionStatus {
@@ -366,6 +369,8 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             attested_passkeys: self.attested_passkeys,
             attested_passkeys_state: self.attested_passkeys_state.into(),
             attested_passkeys_allowed_devices: self.attested_passkeys_allowed_devices,
+            unixcred: self.unixcred,
+            unixcred_state: self.unixcred_state.into(),
         }
     }
 }
@@ -414,6 +419,10 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 .collect(),
             attested_passkeys_state: session.attested_passkeys_state,
             attested_passkeys_allowed_devices,
+
+            unixcred: session.unixcred.as_ref().map(|c| c.into()),
+            unixcred_state: session.unixcred_state,
+
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
@@ -713,8 +722,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
-        let unixcred_can_edit = perms.unixcred_can_edit;
-        let sshpubkey_can_edit = perms.sshpubkey_can_edit;
 
         let cred_type_min = resolved_account_policy.credential_policy();
 
@@ -755,6 +762,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny
         };
 
+        let unixcred_state = if perms.unixcred_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
+        let sshkeys_state = if perms.sshpubkey_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
         // - stash the current state of all associated credentials
         let primary = if matches!(primary_state, CredentialState::Modifiable) {
             account.primary.clone()
@@ -768,13 +787,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             BTreeMap::default()
         };
 
-        let unixcred: Option<Credential> = if unixcred_can_edit {
+        let unixcred: Option<Credential> = if matches!(unixcred_state, CredentialState::Modifiable)
+        {
             account.unix_extn().and_then(|uext| uext.ucred()).cloned()
         } else {
             None
         };
 
-        let sshkeys = if sshpubkey_can_edit {
+        let sshkeys = if matches!(sshkeys_state, CredentialState::Modifiable) {
             account
                 .unix_extn()
                 .map(|uext| uext.sshkeys().clone())
@@ -842,9 +862,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             primary,
             primary_state,
             unixcred,
-            unixcred_can_edit,
+            unixcred_state,
             sshkeys,
-            sshpubkey_can_edit,
+            sshkeys_state,
             passkeys,
             passkeys_state,
             attested_passkeys,
@@ -1371,21 +1391,33 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny => {}
         };
 
-        if session.unixcred_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
-            if let Some(ncred) = &session.unixcred {
-                let vcred = Value::new_credential("unix", ncred.clone());
-                modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
+        match session.unixcred_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+                if let Some(ncred) = &session.unixcred {
+                    let vcred = Value::new_credential("unix", ncred.clone());
+                    modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
+                }
             }
-        }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+            }
+            CredentialState::AccessDeny => {}
+        };
 
-        if session.sshpubkey_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
-            for (tag, pk) in &session.sshkeys {
-                let v_sk = Value::SshKey(tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(Attribute::SshPublicKey, v_sk));
+        match session.sshkeys_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
+                for (tag, pk) in &session.sshkeys {
+                    let v_sk = Value::SshKey(tag.clone(), pk.clone());
+                    modlist.push_mod(Modify::Present(Attribute::SshPublicKey, v_sk));
+                }
             }
-        }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
+            }
+            CredentialState::AccessDeny => {}
+        };
 
         // Apply to the account!
         trace!(?modlist, "processing change");
@@ -3608,6 +3640,8 @@ mod tests {
             attested_passkeys: _,
             attested_passkeys_state,
             attested_passkeys_allowed_devices: _,
+            unixcred_state,
+            unixcred: _,
         } = custatus;
 
         assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
@@ -3617,6 +3651,7 @@ mod tests {
             attested_passkeys_state,
             CredentialState::AccessDeny
         ));
+        assert!(matches!(unixcred_state, CredentialState::AccessDeny));
 
         let cutxn = idms.cred_update_transaction().await.unwrap();
 

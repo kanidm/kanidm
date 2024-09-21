@@ -167,6 +167,9 @@ pub struct CUStatus {
     pub attested_passkeys: Vec<PasskeyDetail>,
     pub attested_passkeys_state: CUCredState,
     pub attested_passkeys_allowed_devices: Vec<String>,
+
+    pub unixcred: Option<CredentialDetail>,
+    pub unixcred_state: CUCredState,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]
