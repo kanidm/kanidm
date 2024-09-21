@@ -12,7 +12,7 @@ service has many features which are useful even without Kanidm as a network auth
 The Kanidm UNIX Daemon:
 
 * Caches Kanidm users and groups for users with unreliable networks, or for roaming users.
-* Securely caches user credentials with TPM backed cryptographic operations.
+* Securely caches user credentials with optional TPM backed cryptographic operations.
 * Automatically creates home directories for users.
 * Caches and resolves the content of `/etc/passwd` and `/etc/group` improving system performance.
 * Has a small set of hardened libraries to reduce attack surface.
