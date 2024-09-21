@@ -1894,6 +1894,27 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_account_credential_update_sshkey_add(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+        key: SshPublicKey,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::SshPublicKey(label, key);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_sshkey_remove(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::SshPublicKeyRemove(label);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
     pub async fn idm_account_credential_update_passkey_init(
         &self,
         session_token: &CUSessionToken,

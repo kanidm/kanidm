@@ -1335,13 +1335,13 @@ impl QueryServerReadV1 {
                     error!(?err, "Failed to begin credential_unix_set_password");
                 }),
 
-            CURequest::SSHKeySubmit(label, pubkey) => idms_cred_update
+            CURequest::SshPublicKey(label, pubkey) => idms_cred_update
                 .credential_sshkey_add(&session_token, ct, label, pubkey)
                 .inspect_err(|err| {
                     error!(?err, "Failed to begin credential_sshkey_remove");
                 }),
 
-            CURequest::SSHKeyRemove(label) => idms_cred_update
+            CURequest::SshPublicKeyRemove(label) => idms_cred_update
                 .credential_sshkey_remove(&session_token, ct, &label)
                 .inspect_err(|err| {
                     error!(?err, "Failed to begin credential_sshkey_remove");

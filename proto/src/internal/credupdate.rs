@@ -8,7 +8,7 @@ use uuid::Uuid;
 use webauthn_rs_proto::CreationChallengeResponse;
 use webauthn_rs_proto::RegisterPublicKeyCredential;
 
-use sshkey_attest::proto::PublicKey as SshPublicKey;
+pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -91,8 +91,8 @@ pub enum CURequest {
     AttestedPasskeyRemove(Uuid),
     UnixPasswordRemove,
     UnixPassword(String),
-    SSHKeySubmit(String, SshPublicKey),
-    SSHKeyRemove(String),
+    SshPublicKey(String, SshPublicKey),
+    SshPublicKeyRemove(String),
 }
 
 impl fmt::Debug for CURequest {
@@ -115,8 +115,8 @@ impl fmt::Debug for CURequest {
             CURequest::AttestedPasskeyRemove(_) => "CURequest::AttestedPasskeyRemove",
             CURequest::UnixPassword(_) => "CURequest::UnixPassword",
             CURequest::UnixPasswordRemove => "CURequest::UnixPasswordRemove",
-            CURequest::SSHKeySubmit(_, _) => "CURequest::SSHKeySubmit",
-            CURequest::SSHKeyRemove(_) => "CURequest::SSHKeyRemove",
+            CURequest::SshPublicKey(_, _) => "CURequest::SSHKeySubmit",
+            CURequest::SshPublicKeyRemove(_) => "CURequest::SSHKeyRemove",
         };
         writeln!(f, "{}", t)
     }
