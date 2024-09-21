@@ -3298,6 +3298,7 @@ dependencies = [
  "serde_json",
  "serde_with",
  "smartstring",
+ "sshkey-attest",
  "time",
  "tracing",
  "url",

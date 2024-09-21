@@ -1172,6 +1172,8 @@ fn display_status(status: CUStatus) {
         attested_passkeys_allowed_devices,
         unixcred,
         unixcred_state,
+        sshkeys,
+        sshkeys_state,
     } = status;
 
     println!("spn: {}", spn);
@@ -1297,6 +1299,34 @@ fn display_status(status: CUStatus) {
         }
         CUCredState::PolicyDeny => {
             println!("  unable to modify - account does not have posix attributes");
+        }
+    }
+
+    println!("SSH Public Keys:");
+    match sshkeys_state {
+        CUCredState::Modifiable => {
+            if sshkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for (label, sk) in sshkeys {
+                    println!("  {}: {}", label, sk);
+                }
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if sshkeys.is_empty() {
+                println!("  unable to modify - access denied");
+            } else {
+                for (label, sk) in sshkeys {
+                    println!("  {}: {}", label, sk);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
         }
     }
 

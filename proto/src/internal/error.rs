@@ -69,6 +69,8 @@ pub enum ConsistencyError {
 pub enum OperationError {
     // Logic errors, or "soft" errors.
     SessionExpired,
+    DuplicateKey,
+    DuplicateLabel,
     EmptyRequest,
     Backend,
     NoMatchingEntries,
@@ -84,6 +86,7 @@ pub enum OperationError {
     FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
+    InvalidLabel,
     InvalidDbState,
     InvalidCacheState,
     InvalidValueState,
@@ -273,6 +276,9 @@ impl OperationError {
             Self::FilterUuidResolution => None,
             Self::InvalidAttributeName(_) => None,
             Self::InvalidAttribute(_) => None,
+            Self::InvalidLabel => Some("The submitted label for this item is invalid."),
+            Self::DuplicateLabel => Some("The submitted label for this item is already in use."),
+            Self::DuplicateKey => Some("The submitted key already exists."),
             Self::InvalidDbState => None,
             Self::InvalidCacheState => None,
             Self::InvalidValueState => None,

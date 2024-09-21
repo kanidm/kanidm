@@ -377,6 +377,8 @@ impl CredentialResetApp {
             attested_passkeys_allowed_devices,
             unixcred: _,
             unixcred_state: _,
+            sshkeys: _,
+            sshkeys_state: _,
         } = status;
 
         let (username, domain) = spn.split_once('@').unwrap_or(("", spn));

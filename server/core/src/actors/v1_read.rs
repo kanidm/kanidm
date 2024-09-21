@@ -1293,7 +1293,7 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     error!(
                         err = ?e,
-                        "Failed to begin credential_passkey_remove",
+                        "Failed to begin credential_passkey_remove"
                     );
                     e
                 }),
@@ -1302,7 +1302,7 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     error!(
                         err = ?e,
-                        "Failed to begin credential_attested_passkey_init",
+                        "Failed to begin credential_attested_passkey_init"
                     );
                     e
                 }),
@@ -1311,7 +1311,7 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     error!(
                         err = ?e,
-                        "Failed to begin credential_attested_passkey_finish",
+                        "Failed to begin credential_attested_passkey_finish"
                     );
                     e
                 }),
@@ -1320,19 +1320,31 @@ impl QueryServerReadV1 {
                 .map_err(|e| {
                     error!(
                         err = ?e,
-                        "Failed to begin credential_attested_passkey_remove",
+                        "Failed to begin credential_attested_passkey_remove"
                     );
                     e
                 }),
             CURequest::UnixPasswordRemove => idms_cred_update
                 .credential_unix_delete(&session_token, ct)
                 .inspect_err(|err| {
-                    error!(?err, "Failed to begin credential_unix_delete",);
+                    error!(?err, "Failed to begin credential_unix_delete");
                 }),
             CURequest::UnixPassword(pw) => idms_cred_update
                 .credential_unix_set_password(&session_token, ct, &pw)
                 .inspect_err(|err| {
-                    error!(?err, "Failed to begin credential_unix_set_password",);
+                    error!(?err, "Failed to begin credential_unix_set_password");
+                }),
+
+            CURequest::SSHKeySubmit(label, pubkey) => idms_cred_update
+                .credential_sshkey_add(&session_token, ct, label, pubkey)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_sshkey_remove");
+                }),
+
+            CURequest::SSHKeyRemove(label) => idms_cred_update
+                .credential_sshkey_remove(&session_token, ct, &label)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_sshkey_remove");
                 }),
         }
         .map(|sta| sta.into())
