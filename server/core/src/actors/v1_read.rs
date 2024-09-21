@@ -1324,6 +1324,16 @@ impl QueryServerReadV1 {
                     );
                     e
                 }),
+            CURequest::UnixPasswordRemove => idms_cred_update
+                .credential_unix_delete(&session_token, ct)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_unix_delete",);
+                }),
+            CURequest::UnixPassword(pw) => idms_cred_update
+                .credential_unix_set_password(&session_token, ct, &pw)
+                .inspect_err(|err| {
+                    error!(?err, "Failed to begin credential_unix_set_password",);
+                }),
         }
         .map(|sta| sta.into())
     }

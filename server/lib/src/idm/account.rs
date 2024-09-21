@@ -35,7 +35,6 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 pub struct UnixExtensions {
     ucred: Option<Credential>,
     shell: Option<String>,
-    sshkeys: BTreeMap<String, SshPublicKey>,
     gidnumber: u32,
     groups: Vec<UnixGroup>,
 }
@@ -43,10 +42,6 @@ pub struct UnixExtensions {
 impl UnixExtensions {
     pub(crate) fn ucred(&self) -> Option<&Credential> {
         self.ucred.as_ref()
-    }
-
-    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
-        &self.sshkeys
     }
 }
 
@@ -71,6 +66,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
+    pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
 }
 
@@ -156,17 +152,17 @@ macro_rules! try_from_entry {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
+        let sshkeys = $value
+            .get_ava_set(Attribute::SshPublicKey)
+            .and_then(|vs| vs.as_sshkey_map())
+            .cloned()
+            .unwrap_or_default();
+
         let unix_extn = if $value.attribute_equality(
             Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
-
-            let sshkeys = $value
-                .get_ava_set(Attribute::SshPublicKey)
-                .and_then(|vs| vs.as_sshkey_map())
-                .cloned()
-                .unwrap_or_default();
 
             let ucred = $value
                 .get_ava_single_credential(Attribute::UnixPassword)
@@ -185,7 +181,6 @@ macro_rules! try_from_entry {
             Some(UnixExtensions {
                 ucred,
                 shell,
-                sshkeys,
                 gidnumber,
                 groups,
             })
@@ -216,6 +211,7 @@ macro_rules! try_from_entry {
             mail,
             credential_update_intent_tokens,
             unix_extn,
+            sshkeys,
             apps_pwds,
         })
     }};
@@ -228,6 +224,10 @@ impl Account {
 
     pub(crate) fn primary(&self) -> Option<&Credential> {
         self.primary.as_ref()
+    }
+
+    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
+        &self.sshkeys
     }
 
     #[instrument(level = "trace", skip_all)]

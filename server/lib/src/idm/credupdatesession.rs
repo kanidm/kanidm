@@ -762,7 +762,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny
         };
 
-        let unixcred_state = if perms.unixcred_can_edit {
+        let unixcred_state = if account.unix_extn().is_none() {
+            CredentialState::PolicyDeny
+        } else if perms.unixcred_can_edit {
             CredentialState::Modifiable
         } else {
             CredentialState::AccessDeny
@@ -795,10 +797,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         let sshkeys = if matches!(sshkeys_state, CredentialState::Modifiable) {
-            account
-                .unix_extn()
-                .map(|uext| uext.sshkeys().clone())
-                .unwrap_or_default()
+            account.sshkeys().clone()
         } else {
             BTreeMap::default()
         };
@@ -2065,6 +2064,29 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    pub fn credential_primary_delete(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.primary_state, CredentialState::Modifiable)
+            || matches!(session.primary_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        session.primary = None;
+        Ok(session.deref().into())
+    }
+
     pub fn credential_passkey_init(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -2314,6 +2336,79 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    #[instrument(level = "trace", skip(cust, self))]
+    pub fn credential_unix_set_password(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        pw: &str,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !matches!(session.unixcred_state, CredentialState::Modifiable) {
+            error!("Session does not have permission to modify unix credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        self.check_password_quality(
+            pw,
+            &session.resolved_account_policy,
+            session.account.related_inputs().as_slice(),
+            session.account.radius_secret.as_deref(),
+        )
+        .map_err(|e| match e {
+            PasswordQuality::TooShort(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
+            }
+            PasswordQuality::BadListed => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
+            }
+            PasswordQuality::DontReusePasswords => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::DontReusePasswords])
+            }
+            PasswordQuality::Feedback(feedback) => OperationError::PasswordQuality(feedback),
+        })?;
+
+        let ncred = match &session.unixcred {
+            Some(unixcred) => {
+                // Is there a need to update the uuid of the cred re softlocks?
+                unixcred.set_password(self.crypto_policy, pw)?
+            }
+            None => Credential::new_password_only(self.crypto_policy, pw)?,
+        };
+
+        session.unixcred = Some(ncred);
+        Ok(session.deref().into())
+    }
+
+    pub fn credential_unix_delete(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.unixcred_state, CredentialState::Modifiable)
+            || matches!(session.unixcred_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify unix credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        session.unixcred = None;
+        Ok(session.deref().into())
+    }
+
     pub fn credential_update_cancel_mfareg(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -2329,29 +2424,6 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub fn credential_primary_delete(
-        &self,
-        cust: &CredentialUpdateSessionToken,
-        ct: Duration,
-    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
-        let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.try_lock().map_err(|_| {
-            admin_error!("Session already locked, unable to proceed.");
-            OperationError::InvalidState
-        })?;
-        trace!(?session);
-
-        if !(matches!(session.primary_state, CredentialState::Modifiable)
-            || matches!(session.primary_state, CredentialState::DeleteOnly))
-        {
-            error!("Session does not have permission to modify primary credential");
-            return Err(OperationError::AccessDenied);
-        };
-
-        session.primary = None;
-        Ok(session.deref().into())
-    }
-
     // Generate password?
 }
 
@@ -2361,7 +2433,7 @@ mod tests {
     use std::time::Duration;
 
     use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};
@@ -2377,7 +2449,9 @@ mod tests {
     use crate::event::CreateEvent;
     use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent};
+    use crate::idm::event::{
+        AuthEvent, AuthResult, RegenerateRadiusSecretEvent, UnixUserAuthEvent,
+    };
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
@@ -2410,6 +2484,7 @@ mod tests {
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
@@ -2522,6 +2597,7 @@ mod tests {
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
@@ -2639,6 +2715,22 @@ mod tests {
             }
             _ => None,
         }
+    }
+
+    async fn check_testperson_unix_password(
+        idms: &IdmServer,
+        // idms_delayed: &mut IdmServerDelayed,
+        pw: &str,
+        ct: Duration,
+    ) -> Option<UnixUserToken> {
+        let mut idms_auth = idms.auth().await.unwrap();
+
+        let auth_event = UnixUserAuthEvent::new_internal(TESTPERSON_UUID, pw);
+
+        idms_auth
+            .auth_unix(&auth_event, ct)
+            .await
+            .expect("Unable to perform unix authentication")
     }
 
     async fn check_testperson_password_totp(
@@ -3596,6 +3688,7 @@ mod tests {
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::SyncObject.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
             (Attribute::Name, Value::new_iname("testperson")),
@@ -3662,6 +3755,12 @@ mod tests {
         // credential_primary_set_password
         let err = cutxn
             .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        // credential_primary_set_password
+        let err = cutxn
+            .credential_unix_set_password(&cust, ct, "password")
             .unwrap_err();
         assert!(matches!(err, OperationError::AccessDenied));
 
@@ -4364,5 +4463,69 @@ mod tests {
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
+    }
+
+    #[idm_test]
+    async fn test_idm_credential_update_unix_password(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.unixcred.is_none());
+
+        // Test initially creating a credential.
+        //   - pw first
+        let c_status = cutxn
+            .credential_unix_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the unix cred password");
+
+        assert!(c_status.can_commit);
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Check it works!
+        assert!(check_testperson_unix_password(idms, test_pw, ct)
+            .await
+            .is_some());
+
+        // Test deleting the pw
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+        trace!(?c_status);
+        assert!(c_status.unixcred.is_some());
+
+        let c_status = cutxn
+            .credential_unix_delete(&cust, ct)
+            .expect("Failed to delete the unix cred");
+        trace!(?c_status);
+        assert!(c_status.unixcred.is_none());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Must fail now!
+        assert!(check_testperson_unix_password(idms, test_pw, ct)
+            .await
+            .is_none());
     }
 }

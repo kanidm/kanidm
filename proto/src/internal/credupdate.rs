@@ -86,6 +86,8 @@ pub enum CURequest {
     AttestedPasskeyInit,
     AttestedPasskeyFinish(String, RegisterPublicKeyCredential),
     AttestedPasskeyRemove(Uuid),
+    UnixPasswordRemove,
+    UnixPassword(String),
 }
 
 impl fmt::Debug for CURequest {
@@ -106,6 +108,8 @@ impl fmt::Debug for CURequest {
             CURequest::AttestedPasskeyInit => "CURequest::AttestedPasskeyInit",
             CURequest::AttestedPasskeyFinish(_, _) => "CURequest::AttestedPasskeyFinish",
             CURequest::AttestedPasskeyRemove(_) => "CURequest::AttestedPasskeyRemove",
+            CURequest::UnixPassword(_) => "CURequest::UnixPassword",
+            CURequest::UnixPasswordRemove => "CURequest::UnixPasswordRemove",
         };
         writeln!(f, "{}", t)
     }
