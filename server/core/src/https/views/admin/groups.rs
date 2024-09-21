@@ -1,3 +1,4 @@
+use crate::https::views::admin::filters;
 use std::str::FromStr;
 use crate::https::extractors::{AccessInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
@@ -11,10 +12,9 @@ use axum::response::{ErrorResponse, IntoResponse, Response};
 use axum::{Extension, Form};
 use axum_extra::extract::CookieJar;
 use axum_htmx::{HxPushUrl, HxRequest};
-use axum_macros::debug_handler;
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_NAME, ATTR_SPN, ATTR_UUID};
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_MEMBER, ATTR_NAME, ATTR_SPN, ATTR_UUID};
 use kanidm_proto::internal::{OperationError, UserAuthToken};
 use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
@@ -132,7 +132,6 @@ struct GroupMemberPartialView {
     member: MemberInfo,
 }
 
-#[debug_handler]
 pub(crate) async fn view_group_new_member_post(
     State(state): State<ServerState>,
     HxRequest(_is_htmx): HxRequest,
@@ -142,7 +141,7 @@ pub(crate) async fn view_group_new_member_post(
     Form(data): Form<GroupAddMemberFormData>,
 ) -> axum::response::Result<Response> {
     let mut ors = vec![f_id(data.member.as_str())];
-    let class_filter = vec![f_eq(Attribute::Class, EntryClass::Group.into()), f_eq(Attribute::Class, EntryClass::Person.into())];
+    let class_filter = vec![f_eq(Attribute::Class, EntryClass::Group.into()), f_eq(Attribute::Class, EntryClass::Account.into())];
     let spn_value = data.member.split_once('@').map(|x| PartialValue::Spn(x.0.into(), x.1.into()));
     if let Some(spn_value) = spn_value {
         ors.push(f_eq(Attribute::Spn, spn_value))
@@ -164,7 +163,7 @@ pub(crate) async fn view_group_new_member_post(
             f_eq(Attribute::Class, EntryClass::Group.into()),
         ]));
         let uuid = perfect_entry.attrs.get(ATTR_UUID).unwrap_or(&vec![]).first().unwrap().clone();
-        state.qe_w_ref.handle_appendattribute(client_auth_info, guuid.into(), "members".to_string(), vec![uuid], filter, kopid.eventid)
+        state.qe_w_ref.handle_appendattribute(client_auth_info, guuid.into(), ATTR_MEMBER.to_string(), vec![uuid], filter, kopid.eventid)
             .await
             .map_err(|x| HtmxError::new(&kopid, x))?;
 
@@ -176,11 +175,44 @@ pub(crate) async fn view_group_new_member_post(
     } else {
         Ok("".into_response())
     }
-
-
-
-
 }
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub(crate) struct GroupAddMailFormData {
+    mail: String
+}
+
+#[derive(Template)]
+#[template(path = "admin/admin_group_mail_partial.html")]
+struct GroupMailPartialView {
+    can_edit: bool,
+    group_uuid: Uuid,
+    mail: String,
+}
+
+pub(crate) async fn view_group_new_mail_post(
+    State(state): State<ServerState>,
+    HxRequest(_is_htmx): HxRequest,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Path(guuid): Path<Uuid>,
+    Form(data): Form<GroupAddMailFormData>,
+) -> axum::response::Result<Response> {
+    let filter = filter_all!(f_and!([
+        f_eq(Attribute::Class, EntryClass::Group.into()),
+    ]));
+    let mail = data.mail;
+    state.qe_w_ref.handle_appendattribute(client_auth_info, guuid.into(), ATTR_MAIL.to_string(), vec![mail.clone()], filter, kopid.eventid)
+        .await
+        .map_err(|x| HtmxError::new(&kopid, x))?;
+
+    Ok(HtmlTemplate(GroupMailPartialView {
+        can_edit: true,
+        group_uuid: guuid,
+        mail
+    }).into_response())
+}
+
 pub(crate) async fn view_group_create_post(
     State(state): State<ServerState>,
     HxRequest(is_htmx): HxRequest,
@@ -396,6 +428,7 @@ fn entry_into_groupinfo(entry: &Entry) -> GroupInfo {
         .first()
         .unwrap_or(&"".to_string())
         .clone();
+
     let name = entry
         .attrs
         .get(ATTR_NAME)
@@ -403,20 +436,34 @@ fn entry_into_groupinfo(entry: &Entry) -> GroupInfo {
         .first()
         .unwrap_or(&"".to_string())
         .clone();
+
+    let spn = entry
+        .attrs
+        .get(ATTR_SPN)
+        .unwrap_or(&vec![])
+        .first()
+        .unwrap_or(&format!("{name}@localhost").to_string())
+        .clone();
+
     let entry_manager = entry
         .attrs
         .get(ATTR_ENTRY_MANAGED_BY)
         .unwrap_or(&vec![])
         .first()
         .cloned();
+    let mails = entry
+        .attrs
+        .get(ATTR_MAIL)
+        .unwrap_or(& vec![format!("{name}@melijn.com")])
+        .clone();
 
     GroupInfo {
         uuid,
         name: name.clone(),
-        spn: format!("{name}@localhost").to_string(),
+        spn,
         entry_manager,
         acp: GroupACP { enabled: false },
-        mails: vec![format!("{name}@melijn.com")],
+        mails,
         members: vec![MemberInfo {
             uuid: "793e3694-9766-433f-b898-6da5052334d1".to_string(),
             name: "merlijn".to_string(),

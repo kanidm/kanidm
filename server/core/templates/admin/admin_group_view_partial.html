@@ -42,7 +42,7 @@ Groups Management
     </a>
 (% endif %)
 
-<form>
+<form hx-validate="true" hx-ext="bs-validation">
 (% call string_attr("Name", group.name) %)
 
 (% call string_attr("UUID", group.uuid) %)
@@ -61,6 +61,7 @@ Groups Management
 </form>
 <hr>
 <label class="mt-3 fw-bold">Emails</label>
+<form hx-validate="true" hx-ext="bs-validation">
 (% if group.mails.len() == 0 %)
     <p>none</p>
 (% else %)
@@ -80,19 +81,26 @@ Groups Management
         </li>
         (% endfor %)
         (% if can_edit %)
-            <li class="list-group-item d-flex flex-row justify-content-between">
-                <input type="text" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
-                <button id="groupAddEmailBtn" class="btn btn-success text-nowrap"
-                        hx-post="/ui/api/group/(( group.uuid ))/mail"
-                        hx-include="#groupAddEmailInput"
-                        type="button">
-                    Add Email
-                </button>
+            <li class="list-group-item"  id="addEmailField">
+                <div class="input-group d-flex flex-row justify-content-between">
+                    <input type="email" name="mail" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
+                    <button id="groupAddEmailBtn" class="btn btn-success text-nowrap"
+                            hx-post="/ui/admin/api/group/(( group.uuid ))/mail"
+                            hx-include="#groupAddEmailInput"
+                            hx-target="#addEmailField"
+                            hx-swap="beforebegin"
+                            type="button">
+                        Add Email
+                    </button>
+                </div>
+                <div class="invalid-feedback">
+                    Please choose a valid email.
+                </div>
             </li>
         (% endif %)
     </ol>
 (% endif %)
-
+</form>
 
 <label class="mt-3 fw-bold">Account Policy (ACP)</label>
 <div>
@@ -107,6 +115,7 @@ Groups Management
 </div>
 
 <label class="mt-3 fw-bold">Members</label>
+<form hx-validate="true" hx-ext="bs-validation">
 (% if group.members.len() == 0 %)
     <p>none</p>
 (% else %)
@@ -116,19 +125,25 @@ Groups Management
             (% include "admin_group_member_partial.html" %)
         (% endfor %)
         (% if can_edit %)
-        <li class="list-group-item d-flex flex-row justify-content-between" id="addMemberBtn">
-            <input type="text" class="form-control" id="groupAddMemberInput" placeholder="Member name/spn/uuid" name="member" aria-label="Member name/spn/uuid to add as group member" aria-describedby="groupAddMemberBtn">
-            <button id="groupAddMemberBtn" class="btn btn-success text-nowrap"
-                    hx-post="/ui/admin/api/group/(( group.uuid ))/member"
-                    hx-include="#groupAddMemberInput"
-                    hx-target="#addMemberBtn"
-                    hx-swap="beforebegin"
-                    type="button">
-                Add Member
-            </button>
+        <li class="list-group-item" id="addMemberField">
+            <div class="input-group d-flex flex-row justify-content-between">
+                <input type="text" class="form-control" id="groupAddMemberInput" placeholder="Member name/spn/uuid" name="member" aria-label="Member name/spn/uuid to add as group member" aria-describedby="groupAddMemberBtn">
+                <button id="groupAddMemberBtn" class="btn btn-success text-nowrap"
+                        hx-post="/ui/admin/api/group/(( group.uuid ))/member"
+                        hx-include="#groupAddMemberInput"
+                        hx-target="#addMemberField"
+                        hx-swap="beforebegin"
+                        type="button">
+                    Add Member
+                </button>
+            </div>
+            <div class="invalid-feedback">
+                Please choose a valid email.
+            </div>
         </li>
         (% endif %)
     </ul>
 (% endif %)
+</form>
 
 (% endblock %)
