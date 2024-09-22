@@ -144,7 +144,7 @@ argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde"] }
 async-recursion = "1.1.0"
 async-trait = "^0.1.82"
-axum = { version = "0.7.5", features = [
+axum = { version = "0.7.6", features = [
     "form",
     "json",
     "macros",
@@ -159,9 +159,9 @@ base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
-bytes = "^1.7.1"
-clap = { version = "^4.5.17", features = ["derive", "env"] }
-clap_complete = "^4.5.26"
+bytes = "^1.7.2"
+clap = { version = "^4.5.18", features = ["derive", "env"] }
+clap_complete = "^4.5.29"
 # Forced by saffron/cron
 chrono = "^0.4.35"
 compact_jwt = { version = "^0.4.2", default-features = false }
