@@ -1,0 +1,34 @@
+(% macro string_attr(dispname, name, value, editable) %)
+<div class="row mt-3">
+    (% if can_edit %)
+        <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0 py-md-2">(( dispname ))</label>
+    (% else %)
+        <label for="group(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    (% endif %)
+    <div class="col-12 col-md-8 col-lg-6">
+        (% if can_edit && editable %)
+            <input class="form-control" id="group(( name ))" name="(( name ))" value="(( value ))">
+        (% else %)
+            <input readonly class="form-control-plaintext py-0" id="group(( name ))" name="(( name ))" value="(( value ))">
+        (% endif %)
+    </div>
+</div>
+(% endmacro %)
+
+<form hx-validate="true" hx-ext="bs-validation">
+    (% call string_attr("UUID", "uuid", group.uuid, false) %)
+
+    (% call string_attr("SPN", "spn", group.spn, false) %)
+
+    (% call string_attr("Name", "name", group.name, true) %)
+
+    (% if let Some(entry_manager) = group.entry_manager %)
+        (% call string_attr("Entry Manager", "entry_manager", entry_manager, true) %)
+    (% else %)
+        (% call string_attr("Entry Manager", "entry_manager", "none", true) %)
+    (% endif %)
+
+    (% if can_edit %)
+        <button type="submit" class="btn btn-success mt-2" hx-target="#main" hx-post="/ui/admin/api/group/(( group.uuid ))">Save</button>
+    (% endif %)
+</form>
