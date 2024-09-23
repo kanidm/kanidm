@@ -21,6 +21,7 @@ pub fn admin_router() -> Router<ServerState> {
 
     let guarded_router = Router::new()
         .layer(HxRequestGuardLayer::new("/ui"))
+        .route("/api/group/:group_uuid", post(groups::view_group_save_post))
         .route("/api/group/:group_uuid/member", post(groups::view_group_new_member_post))
         .route("/api/group/:group_uuid/mail", post(groups::view_group_new_mail_post));
 

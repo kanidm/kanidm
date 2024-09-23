@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
-use axum_htmx::{HxReswap, HxRetarget, SwapOption};
+use axum_htmx::{HxEvent, HxResponseTrigger, HxReswap, HxRetarget, SwapOption};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -40,7 +40,10 @@ impl IntoResponse for HtmxError {
                     | OperationError::SessionExpired
                     | OperationError::InvalidSessionState => Redirect::to("/ui").into_response(),
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        (StatusCode::FORBIDDEN, body).into_response()
+                        let trigger = HxResponseTrigger::after_swap([
+                            HxEvent::new("permissionDenied".to_string())
+                        ]);
+                        (trigger, (StatusCode::FORBIDDEN, body).into_response()).into_response()
                     }
                     OperationError::NoMatchingEntries => {
                         (StatusCode::NOT_FOUND, body).into_response()
