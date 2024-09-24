@@ -9,7 +9,9 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::constants::{
     ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
 };
-use kanidm_proto::internal::OperationError::PasswordQuality;
+use kanidm_proto::internal::OperationError::{
+    DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+};
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
     SshPublicKey, TotpSecret,
@@ -1168,22 +1170,37 @@ async fn sshkey_add_prompt(session_token: &CUSessionToken, client: &KanidmClient
         .clone()
         .unwrap_or_else(|| ssh_pub_key.fingerprint().hash);
 
-    // Get the label
-    let label: String = Input::new()
-        .with_prompt("\nEnter the label of the new SSH Public Key")
-        .default(default_label.clone())
-        .interact_text()
-        .expect("Failed to interact with interactive session");
+    loop {
+        // Get the label
+        let label: String = Input::new()
+            .with_prompt("\nEnter the label of the new SSH Public Key")
+            .default(default_label.clone())
+            .interact_text()
+            .expect("Failed to interact with interactive session");
 
-    if let Err(err) = client
-        .idm_account_credential_update_sshkey_add(session_token, label, ssh_pub_key)
-        .await
-    {
-        match err {
-            _ => eprintln!("An error occured -> {:?}", err),
+        if let Err(err) = client
+            .idm_account_credential_update_sshkey_add(session_token, label, ssh_pub_key.clone())
+            .await
+        {
+            match err {
+                ClientErrorHttp(_, Some(InvalidLabel), _) => {
+                    eprintln!("Invalid SSH Public Key label - must only contain letters, numbers, and the characters '@' or '.'");
+                    continue;
+                }
+                ClientErrorHttp(_, Some(DuplicateLabel), _) => {
+                    eprintln!("SSH Public Key label already exists - choose another");
+                    continue;
+                }
+                ClientErrorHttp(_, Some(DuplicateKey), _) => {
+                    eprintln!("SSH Public Key already exists in this account");
+                }
+                _ => eprintln!("An error occured -> {:?}", err),
+            }
+            break;
+        } else {
+            println!("Successfully added SSH Public Key");
+            break;
         }
-    } else {
-        println!("Successfully added SSH Public Key");
     }
 }
 
@@ -1204,6 +1221,9 @@ async fn sshkey_remove_prompt(session_token: &CUSessionToken, client: &KanidmCli
         .await
     {
         match err {
+            ClientErrorHttp(_, Some(NoMatchingEntries), _) => {
+                eprintln!("SSH Public Key does not exist. Keys were NOT removed.");
+            }
             _ => eprintln!("An error occured -> {:?}", err),
         }
     } else {
