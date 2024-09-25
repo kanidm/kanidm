@@ -309,7 +309,7 @@ pub trait QueryServerTransaction<'a> {
                 e
             })?;
 
-        let lims = se.get_limits();
+        let lims = se.ident.limits();
 
         // NOTE: We currently can't build search plugins due to the inability to hand
         // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
@@ -345,7 +345,7 @@ pub trait QueryServerTransaction<'a> {
                 e
             })?;
 
-        let lims = ee.get_limits();
+        let lims = ee.ident.limits();
 
         if ee.ident.is_internal() {
             // We take a fast-path on internal because we can skip loading entries

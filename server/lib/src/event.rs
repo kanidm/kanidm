@@ -333,10 +333,6 @@ impl SearchEvent {
             attrs: None,
         }
     }
-
-    pub(crate) fn get_limits(&self) -> &Limits {
-        &self.ident.limits
-    }
 }
 
 // Represents the decoded entries from the protocol -> internal entry representation
@@ -426,10 +422,6 @@ impl ExistsEvent {
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
-    }
-
-    pub(crate) fn get_limits(&self) -> &Limits {
-        &self.ident.limits
     }
 }
 

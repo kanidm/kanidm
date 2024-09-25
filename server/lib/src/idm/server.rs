@@ -683,13 +683,13 @@ pub trait IdmServerTransaction<'a> {
         trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
         */
 
-        Ok(Identity {
-            origin: IdentType::User(IdentUser { entry }),
+        Ok(Identity::new(
+            IdentType::User(IdentUser { entry }),
             source,
-            session_id: uat.session_id,
+            uat.session_id,
             scope,
             limits,
-        })
+        ))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -710,13 +710,13 @@ pub trait IdmServerTransaction<'a> {
         let scope = (&apit.purpose).into();
 
         let limits = Limits::api_token();
-        Ok(Identity {
-            origin: IdentType::User(IdentUser { entry }),
+        Ok(Identity::new(
+            IdentType::User(IdentUser { entry }),
             source,
-            session_id: apit.token_id,
+            apit.token_id,
             scope,
             limits,
-        })
+        ))
     }
 
     fn client_cert_info_entry(
@@ -802,14 +802,14 @@ pub trait IdmServerTransaction<'a> {
 
         let certificate_uuid = cert_entry.get_uuid();
 
-        Ok(Identity {
-            origin: IdentType::User(IdentUser { entry }),
+        Ok(Identity::new(
+            IdentType::User(IdentUser { entry }),
             source,
             // session_id is the certificate uuid.
-            session_id: certificate_uuid,
+            certificate_uuid,
             scope,
             limits,
-        })
+        ))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -900,13 +900,13 @@ pub trait IdmServerTransaction<'a> {
 
         // Users via LDAP are always only granted anonymous rights unless
         // they auth with an api-token
-        Ok(Identity {
-            origin: IdentType::User(IdentUser { entry: anon_entry }),
+        Ok(Identity::new(
+            IdentType::User(IdentUser { entry: anon_entry }),
             source,
             session_id,
-            scope: AccessScope::ReadOnly,
+            AccessScope::ReadOnly,
             limits,
-        })
+        ))
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -990,13 +990,13 @@ pub trait IdmServerTransaction<'a> {
         let scope = (&sync_token.purpose).into();
 
         let limits = Limits::unlimited();
-        Ok(Identity {
-            origin: IdentType::Synch(entry.get_uuid()),
-            source: client_auth_info.source,
-            session_id: sync_token.token_id,
+        Ok(Identity::new(
+            IdentType::Synch(entry.get_uuid()),
+            client_auth_info.source,
+            sync_token.token_id,
             scope,
             limits,
-        })
+        ))
     }
 }
 
