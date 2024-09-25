@@ -49,7 +49,7 @@ pub(crate) async fn view_accounts_get(
     )]));
     let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
-        .scim_entries_get(client_auth_info.clone(), filter, kopid.eventid)
+        .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
