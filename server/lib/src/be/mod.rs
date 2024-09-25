@@ -1890,12 +1890,6 @@ impl<'a> BackendWriteTransaction<'a> {
 
         info!("Restoring {} entries ...", dbentries.len());
 
-        // Migrate any v1 entries to v2 if needed.
-        let dbentries = dbentries
-            .into_iter()
-            .map(|dbe| dbe.convert_to_v2())
-            .collect::<Result<Vec<_>, _>>()?;
-
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;
         let identries: Result<Vec<IdRawEntry>, _> = dbentries
