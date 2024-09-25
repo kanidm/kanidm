@@ -101,7 +101,7 @@ scope of failure is reduced to that single client. This is not the case with TLS
 to configure, and in the case of compromise of an internal network between a load balancer and
 Kanidm, the attacker can access and steal all traffic and authentication data.
 
-### Why is RSA considered legacy
+### Why is RSA considered legacy?
 
 While RSA is cryptographically sound, to achieve the same level as security as ECDSA it requires
 signatures and keys that are significantly larger. This has costs for network transmission and CPU
