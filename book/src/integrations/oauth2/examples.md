@@ -155,6 +155,16 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
 Once GitLab is up and running, you should now see a "Kanidm" option on your
 GitLab sign-in page below the normal login form.
 
+Once you've got everything working, you may wish configure GitLab to:
+
+*   [Automatically redirect to the `openid_connect` provider at the login form](https://docs.gitlab.com/ee/integration/omniauth.html#sign-in-with-a-provider-automatically)
+
+*   [Disable password authentication in GitLab](https://docs.gitlab.com/ee/administration/settings/sign_in_restrictions.html#password-authentication-enabled)
+
+*   [Disable new sign-ups in GitLab](https://docs.gitlab.com/ee/administration/settings/sign_up_restrictions.html)
+
+More information about these features is available in GitLab's documentation.
+
 ## JetBrains Hub and YouTrack
 
 > These instructions were tested with the on-prem version of JetBrains YouTrack
