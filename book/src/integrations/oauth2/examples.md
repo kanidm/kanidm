@@ -74,11 +74,12 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
     kanidm group add-members gitlab_users your_username
     ```
 
-3.  Create a new OAuth2 application configuration in Kanidm (`gitlab`)
-    and scope access to the `gitlab_users` group:
+3.  Create a new OAuth2 application configuration in Kanidm (`gitlab`),
+    configure the redirect URL, and scope access to the `gitlab_users` group:
 
     ```sh
     kanidm system oauth2 create gitlab GitLab https://gitlab.example.com/users/sign_in
+    kanidm system oauth2 add-redirect-url gitlab https://gitlab.example.com/users/auth/openid_connect/callback
     kanidm system oauth2 update-scope-map gitlab gitlab_users email openid profile groups
     ```
 
