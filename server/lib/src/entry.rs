@@ -654,7 +654,7 @@ impl Entry<EntryInit, EntryNew> {
 }
 
 impl Entry<EntryRefresh, EntryNew> {
-    pub fn from_repl_entry_v1(repl_entry: &ReplEntryV1) -> Result<Self, OperationError> {
+    pub fn from_repl_entry_v1(repl_entry: ReplEntryV1) -> Result<Self, OperationError> {
         // From the entry, we have to rebuild the ecstate and the attrs.
         let (ecstate, mut attrs) = repl_entry.rehydrate()?;
 
@@ -715,7 +715,7 @@ impl Entry<EntryIncremental, EntryNew> {
         self.valid.ecstate.stub()
     }
 
-    pub fn rehydrate(repl_inc_entry: &ReplIncrementalEntryV1) -> Result<Self, OperationError> {
+    pub fn rehydrate(repl_inc_entry: ReplIncrementalEntryV1) -> Result<Self, OperationError> {
         let (uuid, ecstate, attrs) = repl_inc_entry.rehydrate()?;
 
         Ok(Entry {

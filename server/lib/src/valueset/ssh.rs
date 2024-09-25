@@ -3,7 +3,6 @@ use std::collections::BTreeMap;
 
 use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -40,22 +39,6 @@ impl ValueSetSshKey {
                     .ok()
             })
             .collect();
-        Ok(Box::new(ValueSetSshKey { map }))
-    }
-
-    pub fn from_repl_v1(data: &[(String, String)]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(|(tag, data)| {
-                SshPublicKey::from_string(data)
-                    .map_err(|err| {
-                        warn!(%tag, ?err, "discarding corrupted ssh public key");
-                        OperationError::VS0001IncomingReplSshPublicKey
-                    })
-                    .map(|pk| (tag.clone(), pk))
-            })
-            .collect::<Result<BTreeMap<_, _>, _>>()?;
-
         Ok(Box::new(ValueSetSshKey { map }))
     }
 
@@ -176,16 +159,6 @@ impl ValueSetT for ValueSetSshKey {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::SshKey {
-            set: self
-                .map
-                .iter()
-                .map(|(tag, key)| (tag.clone(), key.to_string()))
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

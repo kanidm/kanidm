@@ -50,7 +50,7 @@ impl fmt::Display for DbCidV1 {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbValueIntentTokenStateV1 {
     #[serde(rename = "v")]
     Valid {
@@ -90,14 +90,14 @@ pub enum DbValueIntentTokenStateV1 {
     Consumed { max_ttl: Duration },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbTotpAlgoV1 {
     S1,
     S256,
     S512,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct DbTotpV1 {
     #[serde(rename = "l")]
     pub label: String,
@@ -137,7 +137,7 @@ pub struct DbWebauthnV1 {
     pub registration_policy: UserVerificationPolicy,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, PartialEq, Eq)]
 pub struct DbBackupCodeV1 {
     pub code_set: HashSet<String>, // has to use std::HashSet for serde
 }
@@ -219,6 +219,30 @@ pub enum DbCred {
         webauthn: Vec<(String, SecurityKeyV4)>,
         uuid: Uuid,
     },
+}
+
+impl DbCred {
+    fn uuid(&self) -> Uuid {
+        match self {
+            DbCred::Pw { uuid, .. }
+            | DbCred::GPw { uuid, .. }
+            | DbCred::PwMfa { uuid, .. }
+            | DbCred::Wn { uuid, .. }
+            | DbCred::TmpWn { uuid, .. }
+            | DbCred::V2PasswordMfa { uuid, .. }
+            | DbCred::V2Password { uuid, .. }
+            | DbCred::V2GenPassword { uuid, .. }
+            | DbCred::V3PasswordMfa { uuid, .. } => *uuid,
+        }
+    }
+}
+
+impl Eq for DbCred {}
+
+impl PartialEq for DbCred {
+    fn eq(&self, other: &Self) -> bool {
+        self.uuid() == other.uuid()
+    }
 }
 
 impl fmt::Display for DbCred {
@@ -329,7 +353,7 @@ impl fmt::Display for DbCred {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueCredV1 {
     #[serde(rename = "t")]
     pub tag: String,
@@ -342,6 +366,27 @@ pub enum DbValuePasskeyV1 {
     V4 { u: Uuid, t: String, k: PasskeyV4 },
 }
 
+impl Eq for DbValuePasskeyV1 {}
+
+impl PartialEq for DbValuePasskeyV1 {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                DbValuePasskeyV1::V4 {
+                    u: self_uuid,
+                    k: self_key,
+                    t: _,
+                },
+                DbValuePasskeyV1::V4 {
+                    u: other_uuid,
+                    k: other_key,
+                    t: _,
+                },
+            ) => self_uuid == other_uuid && self_key.cred_id() == other_key.cred_id(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueAttestedPasskeyV1 {
     V4 {
@@ -351,7 +396,28 @@ pub enum DbValueAttestedPasskeyV1 {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl Eq for DbValueAttestedPasskeyV1 {}
+
+impl PartialEq for DbValueAttestedPasskeyV1 {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (
+                DbValueAttestedPasskeyV1::V4 {
+                    u: self_uuid,
+                    k: self_key,
+                    t: _,
+                },
+                DbValueAttestedPasskeyV1::V4 {
+                    u: other_uuid,
+                    k: other_key,
+                    t: _,
+                },
+            ) => self_uuid == other_uuid && self_key.cred_id() == other_key.cred_id(),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueTaggedStringV1 {
     #[serde(rename = "t")]
     pub tag: String,
@@ -359,7 +425,7 @@ pub struct DbValueTaggedStringV1 {
     pub data: String,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueEmailAddressV1 {
     pub d: String,
     #[serde(skip_serializing_if = "is_false", default)]
@@ -373,7 +439,7 @@ pub struct DbValuePhoneNumberV1 {
     pub p: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueAddressV1 {
     #[serde(rename = "f")]
     pub formatted: String,
@@ -399,7 +465,7 @@ pub enum DbValueOauthClaimMapJoinV1 {
     JsonArray,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbValueOauthClaimMap {
     V1 {
         #[serde(rename = "n")]
@@ -411,7 +477,7 @@ pub enum DbValueOauthClaimMap {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct DbValueOauthScopeMapV1 {
     #[serde(rename = "u")]
     pub refer: Uuid,
@@ -543,7 +609,7 @@ pub enum DbValueSession {
     },
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Default, PartialEq, Eq)]
 pub enum DbValueApiTokenScopeV1 {
     #[serde(rename = "r")]
     #[default]
@@ -554,7 +620,7 @@ pub enum DbValueApiTokenScopeV1 {
     Synchronise,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbValueApiToken {
     V1 {
         #[serde(rename = "u")]
@@ -573,7 +639,7 @@ pub enum DbValueApiToken {
 }
 
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbValueOauth2Session {
     V1 {
         #[serde(rename = "u")]
@@ -732,7 +798,7 @@ pub enum DbValueV1 {
     Session { u: Uuid },
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub enum DbValueSetV2 {
     #[serde(rename = "U8")]
     Utf8(Vec<String>),
