@@ -229,4 +229,36 @@ impl QueryServerReadV1 {
             .impersonate_search_ext_uuid(target_uuid, &ident)
             .and_then(|entry| entry.to_scim_kanidm())
     }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_entries_get(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        filter_intent: Filter<FilterInvalid>,
+        eventid: Uuid
+    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity");
+            })?;
+
+        let filter = filter_all!(f_and!([f_eq(
+            Attribute::Class,
+            EntryClass::Account.into()
+        )]));
+
+        idms_prox_read
+            .qs_read
+            .impersonate_search_ext(filter_intent, filter, &ident)?
+            .into_iter()
+            .map(|entry| entry.to_scim_kanidm())
+            .collect()
+    }
 }
