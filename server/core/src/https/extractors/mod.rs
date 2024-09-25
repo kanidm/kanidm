@@ -191,7 +191,7 @@ pub struct AccessInfo {
 impl AccessInfo {
     pub fn new() -> Self {
         AccessInfo {
-            has_any_admin_access: true,
+            has_any_admin_access: cfg!(feature = "ui_admin"),
         }
     }
 }
