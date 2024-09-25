@@ -11,11 +11,11 @@ use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_NAME, ATTR_UUID};
-use kanidm_proto::v1::Entry;
+use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimValueKanidm};
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_eq, f_and, FC, Filter};
+use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use serde::{Deserialize, Serialize};
+use uuid::Uuid;
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -27,12 +27,12 @@ struct AccountsView {
 #[derive(Template)]
 #[template(path = "admin/admin_accounts_partial.html")]
 struct AccountsPartialView {
-    accounts: Vec<AccountInfo>
+    accounts: Vec<AccountInfo>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct AccountInfo {
-    uuid: String,
+    uuid: Uuid,
     name: String,
     displayname: String,
 }
@@ -47,22 +47,22 @@ pub(crate) async fn view_accounts_get(
         Attribute::Class,
         EntryClass::Account.into()
     )]));
-    let base: Vec<Entry> = state
+    let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
-        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
+        .scim_entries_get(client_auth_info.clone(), filter, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    let accounts = base.into_iter().map(|entry: Entry| {
-        let uuid = entry.attrs.get(ATTR_UUID).unwrap_or(&vec![]).first().unwrap_or(&"".to_string()).clone();
-        let name = entry.attrs.get(ATTR_NAME).unwrap_or(&vec![]).first().unwrap_or(&"".to_string()).clone();
-        let displayname = entry.attrs.get(ATTR_DISPLAYNAME).unwrap_or(&vec![]).first().unwrap_or(&"".to_string()).clone();
+    let accounts = base.into_iter().filter_map(|entry: ScimEntryKanidm| {
+        let uuid = entry.header.id;
+        let name = get_scim_attr_string(&entry, &Attribute::Name)?;
+        let displayname = get_scim_attr_string(&entry, &Attribute::DisplayName)?;
 
-        AccountInfo {
+        Some(AccountInfo {
             uuid,
             name,
             displayname,
-        }
+        })
     }).collect();
     let accounts_partial = AccountsPartialView { accounts };
 
@@ -78,4 +78,17 @@ pub(crate) async fn view_accounts_get(
             }),
         ).into_response()
     })
+}
+
+fn get_scim_attr_string(entry: &ScimEntryKanidm, attr: &Attribute) -> Option<String> {
+    match entry.attrs.get(attr) {
+        Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.clone()),
+        Some(sv) => {
+            eprintln!("Scim entry did had the {attr} attr but expected ScimValueKanidm::String, actual: {sv:?}");
+            None
+        }
+        None => {
+            None
+        }
+    }
 }

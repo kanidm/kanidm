@@ -1,4 +1,4 @@
-use crate::https::extractors::{AccessInfo, VerifiedClientInformation};
+use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::admin::filters;
 use crate::https::views::errors::HtmxError;
@@ -224,6 +224,7 @@ pub(crate) async fn view_group_new_member_post(
 
     let filter = filter_all!(f_and!([f_or(class_filter), f_or(ors)]));
 
+    // Q1
     let perfect_members = state
         .qe_r_ref
         .handle_internalsearch(
@@ -246,6 +247,8 @@ pub(crate) async fn view_group_new_member_post(
             .first()
             .unwrap()
             .clone();
+
+        // Q2
         state
             .qe_w_ref
             .handle_appendattribute(
@@ -441,6 +444,7 @@ pub(crate) async fn view_groups_unlock_get(
     Extension(kopid): Extension<KOpId>,
     headers: HeaderMap,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let referrer = match headers.get(header::REFERER) {
@@ -450,7 +454,7 @@ pub(crate) async fn view_groups_unlock_get(
         })?,
         None => "/ui/admin/groups",
     };
-    login::view_reauth_get(state, client_auth_info, kopid, jar, referrer).await
+    login::view_reauth_get(state, client_auth_info, kopid, jar, referrer, domain_info).await
 }
 
 async fn get_can_rw(
