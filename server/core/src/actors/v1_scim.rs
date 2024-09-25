@@ -235,7 +235,7 @@ impl QueryServerReadV1 {
         skip_all,
         fields(uuid = ?eventid)
     )]
-    pub async fn scim_entries_get(
+    pub async fn scim_entry_search(
         &self,
         client_auth_info: ClientAuthInfo,
         filter_intent: Filter<FilterInvalid>,
