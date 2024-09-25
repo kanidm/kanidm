@@ -288,13 +288,6 @@ impl SystemProvider {
         }
     }
 
-    /*
-    pub async fn contains_account(&self, account_id: &Id) -> bool {
-        let inner = self.inner.lock().await;
-        inner.users.contains_key(account_id)
-    }
-    */
-
     pub async fn auth_init(
         &self,
         account_id: &Id,

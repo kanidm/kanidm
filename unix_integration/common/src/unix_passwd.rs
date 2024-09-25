@@ -141,7 +141,7 @@ nobody:x:65534:65534:nobody:/var/lib/nobody:/bin/bash
         );
     }
 
-    // IMPORTANT this is the password "a". Very secure, tottaly secret.
+    // IMPORTANT this is the password "a". Very secure, totes secret.
     const EXAMPLE_SHADOW: &str = r#"sshd:!:19978::::::
 tss:!:19980::::::
 admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//:19980:0:99999:7:::

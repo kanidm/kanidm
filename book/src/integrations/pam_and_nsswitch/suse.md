@@ -29,7 +29,7 @@ cp /etc/pam.d/common-session-pc  /etc/pam.d/common-session
 cp /etc/pam.d/common-password-pc /etc/pam.d/common-password
 ```
 
-> NOTE: Unlike other pam modules, replaces the functionality of `pam_unix` and can authenticate
+> NOTE: Unlike other PAM modules, Kanidm replaces the functionality of `pam_unix` and can authenticate
 > local users securely.
 
 The content should look like:
@@ -38,12 +38,14 @@ The content should look like:
 # /etc/pam.d/common-account
 # Controls authorisation to this system (who may login)
 account    sufficient    pam_kanidm.so ignore_unknown_user
+account    sufficient    pam_unix.so
 account    required      pam_deny.so
 
 # /etc/pam.d/common-auth
 # Controls authentication to this system (verification of credentials)
 auth        required      pam_env.so
 auth        sufficient    pam_kanidm.so ignore_unknown_user
+auth        sufficient    pam_unix.so try_first_pass
 auth        required      pam_deny.so
 
 # /etc/pam.d/common-password

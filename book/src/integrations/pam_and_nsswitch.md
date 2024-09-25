@@ -6,7 +6,7 @@ Kanidm into accounts that can be used on the machine for various interactive tas
 
 ## The UNIX Daemon
 
-Kanidm provides a UNIX daemon that runs on any client that wants to supports PAM and nsswitch. This
+Kanidm provides a UNIX daemon that runs on any client that wants to support PAM and nsswitch. This
 service has many features which are useful even without Kanidm as a network authentication service.
 
 The Kanidm UNIX Daemon:
@@ -61,10 +61,10 @@ You can also configure unixd with the file /etc/kanidm/unixd:
 {{#rustdoc_include ../../../examples/unixd}}
 ```
 
-If you are using the kanidm provider features, you also need to configure
+If you are using the Kanidm provider features, you also need to configure
 `/etc/kanidm/config`. This is the covered in [client_tools](../client_tools.md#kanidm-configuration).
 
-You can then check the status of the daemon:
+You can start, and then check the status of the daemon with the following commands:
 
 ```bash
 systemctl enable --now kanidm-unixd
@@ -95,10 +95,10 @@ passwd: kanidm compat
 group:  kanidm compat
 ```
 
-> NOTE: Unlike other nsswitch module kanidm should be before compat or files. This is because
-> kanidm caches and provides the content from `/etc/passwd` and `/etc/group`.
+> NOTE: Unlike other nsswitch modules, Kanidm should be before compat or files. This is because
+> Kanidm caches and provides the content from `/etc/passwd` and `/etc/group`.
 
-Then [create a user](../accounts/intro.md) then
+Then [create a user](../accounts/intro.md) and
 [enable POSIX feature on the user](../accounts/posix_accounts_and_groups.md#enabling-posix-attributes-on-accounts).
 
 Test that the POSIX extended user is able to be resolved with:

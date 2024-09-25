@@ -128,13 +128,13 @@ version = '2'
 # allow_local_account_override = ["admin"]
 
 
-# This section enables the kanidm provider
+# This section enables the Kanidm provider
 [kanidm]
 
 # Defines a set of POSIX groups where membership of any of these groups
 # will be allowed to login via PAM. All POSIX users and groups can be
-# resolved by nss regardless of PAM login status. This may be a group
-# name, spn, or uuid.
+# resolved by NSS regardless of PAM login status. You may specify a
+# group's name, SPN or UUID
 #
 # Default: empty set (no access allowed)
 
