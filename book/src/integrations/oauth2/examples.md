@@ -156,6 +156,246 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
 Once GitLab is up and running, you should now see a "Kanidm" option on your
 GitLab sign-in page below the normal login form.
 
+## JetBrains Hub and YouTrack
+
+> These instructions were tested with the on-prem version of JetBrains YouTrack
+> 2024.3.44799 and its built-in Hub.
+
+[JetBrains Hub](https://www.jetbrains.com/hub/) is an authentication and
+authorisation system for TeamCity and YouTrack, which also provides a "single
+pane of glass" view of those applications.
+
+TeamCity is a CI/CD tool, and YouTrack is a project and issue management tool.
+
+The on-prem version of YouTrack comes with a built-in version of Hub, which it
+uses for all authentication.
+
+[JetBrains Hub supports OAuth2](https://www.jetbrains.com/help/hub/oauth2-authentication-module.html),
+but has some limitations:
+
+*   JetBrains Hub's OAuth2 Auth Module does not support PKCE (as a client),
+    [which is a security issue][pkce-disable-security].
+
+*   JetBrains Hub does not automatically update profile attributes after account
+    creation.
+
+    However, users can update their own profile manually.
+
+*   JetBrains Hub does not support using an auto-configuration URL, which means
+    you have to set a lot of options manually (which this guide will describe).
+
+To set up YouTrack (with its built-in JetBrains Hub) to authenticate with Kanidm
+using OAuth2:
+
+1.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update your_username -m your_username@example.com
+    ```
+
+2.  Create a new Kanidm group for your YouTrack users (`youtrack_users`), and
+    add your regular account to it:
+
+    ```sh
+    kanidm group create youtrack_users
+    kanidm group add-members youtrack_users your_username
+    ```
+
+3.  Create a new OAuth2 application configuration in Kanidm (`youtrack`),
+    disable the PKCE requirement ([this is insecure][pkce-disable-security], but
+    YouTrack doesn't support it), and scope access to the `youtrack_users` group:
+
+    ```sh
+    kanidm system oauth2 create youtrack YouTrack https://youtrack.example.com
+    kanidm system oauth2 warning-insecure-client-disable-pkce youtrack
+    kanidm system oauth2 update-scope-map gitlab gitlab_users email openid profile groups
+    ```
+
+4.  **(optional)** By default, Kanidm presents the account's full SPN (eg:
+    `your_username@kanidm.example.com`) as its "preferred username".
+
+    You can set `youtrack` to use a short username (eg: `your_username`) with:
+
+    ```sh
+    kanidm system oauth2 prefer-short-username youtrack
+    ```
+
+5.  Log in to YouTrack with an account that has full system administrator
+    rights.
+
+6.  Open the Auth Modules configuration in YouTrack
+    (<kbd>⚙️ Administration</kbd> → <kbd>Access Management</kbd> → <kbd>Auth
+    Modules</kbd>)
+
+7.  Click <kbd>New module</kbd> → <kbd>OAuth2</kbd>, and enter the following
+    details:
+
+    * Name: `Kanidm`
+    * Authorization URL: `https://kanidm.example.com/ui/oauth2`
+
+    Click Create, and you'll be taken to the Auth Module's settings page.
+
+8.  Copy the <kbd>Redirect URI</kbd> from YouTrack and set it in Kanidm:
+
+    ```sh
+    kanidm system oauth2 add-redirect-url youtrack https://youtrack.example.com/hub/...
+    ```
+
+9.  Configure the Kanidm Auth Module as follows:
+
+    <dl>
+
+    <dt>Button image</dt>
+
+    <dd>
+
+    Upload a Kanidm or other organisational logo.
+    
+    This will appear on the login form (with no text) to prompt users to sign
+    in.
+
+    By default, this is the OAuth2 logo.
+
+    </dd>
+
+    <dt>Client ID</dt>
+
+    <dd>
+
+    `youtrack`
+
+    </dd>
+
+    <dt>Client secret</dt>
+
+    <dd>
+
+    Copy the secret from the output of this command:
+
+    ```sh
+    kanidm system oauth2 show-basic-secret youtrack
+    ```
+
+    </dd>
+
+    <dt>Extension grant</dt>
+
+    <dd>
+
+    _Leave blank_
+
+    </dd>
+
+    <dt><strong>Authorization Service Endpoints</strong></dt>
+    <dd></dd>
+
+    <dt>Authorization URL</dt>
+
+    <dd>
+
+    `https://kanidm.example.com/ui/oauth2`
+
+    </dd>
+
+    <dt>Token endpoint URL</dt>
+
+    <dd>
+
+    `https://kanidm.example.com/oauth2/token`
+
+    </dd>
+
+    <dt>User data endpoint URL</dt>
+
+    <dd>
+
+    `https://kanidm.example.com/oauth2/openid/youtrack/userinfo`
+
+    </dd>
+
+    <dt>Email endpoint URL</dt>
+
+    <dd>
+
+    _Leave blank_
+
+    </dd>
+
+    <dt>Avatar endpoint URL</dt>
+
+    <dd>
+
+    _Leave blank_
+
+    </dd>
+
+    <dt><strong>Field mapping</strong></dt>
+    <dd></dd>
+
+    <dt>User ID</dt>
+
+    <dd>
+
+    `sub`
+
+    </dd>
+
+    <dt>Username</dt>
+
+    <dd>
+
+    `preferred_username`
+
+    </dd>
+
+    <dt>Full name</dt>
+
+    <dd>
+
+    `name`
+
+    </dd>
+
+    <dt>Email</dt>
+
+    <dd>
+
+    `email`
+
+    </dd>
+
+    <dt><strong>Additional settings</strong></dt>
+    <dd></dd>
+
+    <dt>Scope</dt>
+
+    <dd>
+
+    `openid,profile,email`
+
+    </dd>
+
+    <dt>User creation</dt>
+
+    <dd>Enabled</dd>
+
+    </dl>
+
+10. Click <kbd>Save</kbd> at the bottom of the page.
+
+11. Click <kbd>Enable module</kbd> at the top of the page.
+
+12. Click <kbd>Test login...</kbd> at the top of the page to try logging in with
+    Kanidm.
+
+    You may need to allow pop-ups for YouTrack in your browser for this to work.
+
+YouTrack's log in page should now have show the button image you set for Kanidm
+below the normal log in form – which you can use to log in with Kanidm.
+
+[pkce-disable-security]: ../../frequently_asked_questions.md#why-is-disabling-pkce-considered-insecure
+
 ## Miniflux
 
 Miniflux is a feedreader that supports OAuth 2.0 and OpenID connect. It automatically appends the
