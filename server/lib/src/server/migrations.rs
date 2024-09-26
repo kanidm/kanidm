@@ -221,21 +221,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn internal_migrate_or_create_str(&mut self, e_str: &str) -> Result<(), OperationError> {
-        let res = Entry::from_proto_entry_str(e_str, self)
-            /*
-            .and_then(|e: Entry<EntryInvalid, EntryNew>| {
-                let schema = self.get_schema();
-                e.validate(schema).map_err(OperationError::SchemaViolation)
-            })
-            */
-            .and_then(|e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(e));
-        trace!(?res);
-        debug_assert!(res.is_ok());
-        res
-    }
-
-    #[instrument(level = "debug", skip_all)]
     /// - If the thing exists:
     ///   - Ensure the set of attributes match and are present
     ///     (but don't delete multivalue, or extended attributes in the situation.
