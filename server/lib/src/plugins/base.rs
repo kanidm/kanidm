@@ -350,15 +350,14 @@ mod tests {
     fn test_pre_create_no_uuid() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            )
         );
 
         let create = vec![e];
@@ -386,16 +385,15 @@ mod tests {
     fn test_pre_create_uuid_invalid() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["xxxxxx"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (Attribute::Uuid, Value::Utf8("xxxxxx".to_string()))
         );
 
         let create = vec![e];
@@ -416,16 +414,18 @@ mod tests {
     fn test_pre_create_uuid_empty() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let mut e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
-            }
-        }"#,
+        let mut e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let vs = e.get_ava_mut(Attribute::Uuid).unwrap();
@@ -449,16 +449,18 @@ mod tests {
     fn test_pre_create_uuid_valid() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "account"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let create = vec![e];
@@ -488,16 +490,22 @@ mod tests {
     fn test_pre_create_uuid_valid_multi() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d", "79724141-3603-4060-b6bb-35c72772611e"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611e"))
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let create = vec![e];
@@ -523,16 +531,18 @@ mod tests {
     // to ensure we always have a name space to draw from?
     #[test]
     fn test_pre_create_uuid_exist() {
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let create = vec![e.clone()];
@@ -554,29 +564,21 @@ mod tests {
         // Test adding two entries with the same uuid
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson_a"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("Test Person".to_string())
+            ),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person"],
-                "name": ["testperson_a"],
-                "description": ["testperson"],
-                "displayname": ["testperson"],
-                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
-            }
-        }"#,
-        );
+        let eb = ea.clone();
 
         let create = vec![ea, eb];
 
@@ -595,15 +597,13 @@ mod tests {
     #[test]
     fn test_modify_uuid_present() {
         // Add another uuid to a type
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let preload = vec![ea];
