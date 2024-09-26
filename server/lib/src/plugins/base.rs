@@ -628,15 +628,13 @@ mod tests {
     #[test]
     fn test_modify_uuid_removed() {
         // Test attempting to remove a uuid
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let preload = vec![ea];
@@ -661,15 +659,13 @@ mod tests {
     #[test]
     fn test_modify_uuid_purged() {
         // Test attempting to purge uuid
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("79724141-3603-4060-b6bb-35c72772611d"))
+            )
         );
 
         let preload = vec![ea];
@@ -695,16 +691,15 @@ mod tests {
         // up testing this every time we run :P
         let preload = PRELOAD.clone();
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "system"],
-                "name": ["testperson"],
-                "uuid": ["00000000-0000-0000-0000-f0f0f0f0f0f0"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::DisplayName, Value::new_iname("testperson")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("00000000-0000-0000-0000-f0f0f0f0f0f0"))
+            )
         );
 
         let create = vec![e];
@@ -727,16 +722,15 @@ mod tests {
         // up testing this every time we run :P
         let preload = PRELOAD.clone();
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "system"],
-                "name": ["testperson"],
-                "uuid": ["00000000-0000-0000-0000-ffff00000088"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::DisplayName, Value::new_iname("testperson")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("00000000-0000-0000-0000-f0f0f0f0f0f0"))
+            )
         );
 
         let create = vec![e];
@@ -757,16 +751,15 @@ mod tests {
         // Test that internal create of "does not exist" will fail.
         let preload = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["person", "system"],
-                "name": ["testperson"],
-                "uuid": ["00000000-0000-0000-0000-fffffffffffe"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (Attribute::DisplayName, Value::new_iname("testperson")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("00000000-0000-0000-0000-fffffffffffe"))
+            )
         );
 
         let create = vec![e];
