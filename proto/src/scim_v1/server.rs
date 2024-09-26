@@ -228,6 +228,21 @@ pub enum ScimValueKanidm {
     KeyInternal(Vec<ScimKeyInternal>),
 }
 
+impl ScimEntryKanidm{
+    pub fn attr_str(&self, attr: &Attribute) -> Option<&str> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
+            Some(sv) => {
+                eprintln!("Scim entry did had the {attr} attr but expected ScimValueKanidm::String, actual: {sv:?}");
+                None
+            }
+            None => {
+                None
+            }
+        }
+    }
+}
+
 impl From<bool> for ScimValueKanidm {
     fn from(b: bool) -> Self {
         Self::Bool(b)
