@@ -449,6 +449,137 @@ php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
 You can login directly by appending `?direct=1` to your login page. You can re-enable other backends
 by setting the value to `1`
 
+## ownCloud
+
+> These instructions were tested with ownCloud 10.15.10.
+
+To set up an ownCloud instance to authenticate with Kanidm:
+
+1.  Install the [ownCloud OpenID Connect app](https://marketplace.owncloud.com/apps/openidconnect)
+    (for web auth) **and** [ownCloud OAuth2 app][owncloud-oauth2-app] (for
+    desktop and mobile app auth) from the ownCloud Market.
+
+2.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update your_username -m your_username@example.com
+    ```
+
+3.  Create a new Kanidm group for your ownCloud users (`owncloud_users`), and
+    add your regular account to it:
+
+    ```sh
+    kanidm group create owncloud_users
+    kanidm group add-members owncloud_users your_username
+    ```
+
+4.  Create a new OAuth2 application configuration in Kanidm (`owncloud`), allow
+    use of legacy crypto
+    ([ownCloud does not support `ES256`](https://github.com/owncloud/openidconnect/issues/313)),
+    configure the redirect URLs, and scope access to the `owncloud_users` group:
+
+    ```sh
+    kanidm system oauth2 create owncloud ownCloud https://owncloud.example.com
+    kanidm system oauth2 warning-enable-legacy-crypto owncloud
+    kanidm system oauth2 add-redirect-url owncloud https://owncloud.example.com/apps/openidconnect/redirect
+    kanidm system oauth2 update-scope-map owncloud owncloud_users email openid profile groups
+    ```
+
+5.  **(optional)** By default, Kanidm presents the account's full SPN (eg:
+    `your_username@kanidm.example.com`) as its "preferred username".
+    You can set `owncloud` to use a short username (eg: `your_username`) with:
+
+    ```sh
+    kanidm system oauth2 prefer-short-username owncloud
+    ```
+
+6.  Get the `owncloud` OAuth2 client secret from Kanidm:
+
+    ```sh
+    kanidm system oauth2 show-basic-secret owncloud
+    ```
+
+7.  Create a JSON configuration file (`oidc-config.json`) for ownCloud's OIDC
+    App.
+
+    To key users by UID (most secure configuration, but not suitable if you have
+    existing ownCloud accounts) – so their UID is their ownCloud username, use
+    this configuration:
+
+    ```json
+    {
+      "provider-url": "https://kanidm.example.com/oauth2/openid/owncloud",
+      "client-id": "owncloud",
+      "client-secret": "YOUR CLIENT SECRET HERE",
+      "loginButtonName": "Kanidm",
+      "mode": "userid",
+      "search-attribute": "sub",
+      "auto-provision": {
+        "enabled": true,
+        "email-claim": "email",
+        "display-name-claim": "name",
+        "update": {"enabled": true}
+      },
+      "scopes": ["openid", "profile", "email"]
+    }
+    ```
+
+    To key users by email address (vulnerable to account take-over, but allows
+    for migrating existing ownCloud accounts), modify the `mode` and
+    `search-attribute` settings to use the `email` attribute:
+
+    ```json
+    {
+      "mode": "email",
+      "search-attribute": "email"
+    }
+    ```
+
+8.  Deploy the config file you created with [`occ`][occ].
+
+    [The exact command varies][occ] depending on how you've deployed ownCloud.
+
+    ```sh
+    occ config:app:set openidconnect openid-connect --value="$(<oidc-config.json)"
+    ```
+
+ownCloud's login page should now show "Alternative logins" below the normal
+login form, which you can use to sign in.
+
+> [!WARNING]
+>
+> **Do not** configure [OIDC Service Discovery][owncloud-oidcsd] rewrite rules
+> (`/.well-known/openid-configuration`) in ownCloud – **this breaks the ownCloud
+> desktop and mobile clients**.
+>
+> The ownCloud desktop and mobile clients use
+> [hard coded secrets][owncloud-secrets] which **cannot** be entered into
+> Kanidm, because this is a security risk.
+>
+> With the [ownCloud OAuth2 app][owncloud-oauth2-app] installed, the ownCloud
+> clients will instead authenticate to ownCloud Server as an OAuth provider
+> (which has [the hard coded secrets][owncloud-secrets] installed by default),
+> which then in turn can authenticate to ownCloud locally or to Kanidm with
+> your own client ID/secret.
+>
+> To use OIDC Service Discovery with the ownCloud clients, you'd need to create
+> OAuth2 client configurations in Kanidm for the ownCloud Android, desktop and
+> iOS apps, and get those secrets added to the clients either by:
+>
+> * modifying and recompiling the apps yourself from source, or,
+> * [using an iOS MDM configuration][owncloud-ios-mdm] (iOS only), or,
+> * [requesting branded apps as part of an ownCloud Enterprise subscription][owncloud-branding]
+>
+> Setting that up is beyond the scope of this document.
+
+[owncloud-branding]: https://doc.owncloud.com/server/next/admin_manual/enterprise/clients/creating_branded_apps.html
+[owncloud-oidcsd]: https://doc.owncloud.com/server/next/admin_manual/configuration/user/oidc/oidc.html#set-up-service-discovery
+[owncloud-secrets]: https://doc.owncloud.com/server/next/admin_manual/configuration/user/oidc/oidc.html#client-ids-secrets-and-redirect-uris
+[owncloud-oauth2-app]: https://marketplace.owncloud.com/apps/oauth2
+[owncloud-ios-mdm]: https://doc.owncloud.com/ios-app/12.2/appendices/mdm.html#oauth2-based-authentication
+[occ]: https://doc.owncloud.com/server/next/admin_manual/configuration/server/occ_command.html
+
 ## Velociraptor
 
 Velociraptor supports OIDC. To configure it select "Authenticate with SSO" then "OIDC" during the
