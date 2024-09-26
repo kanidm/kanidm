@@ -11,7 +11,7 @@ use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
-use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimValueKanidm};
+use kanidm_proto::scim_v1::server::ScimEntryKanidm;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use serde::{Deserialize, Serialize};
@@ -55,8 +55,8 @@ pub(crate) async fn view_accounts_get(
 
     let accounts = base.into_iter().filter_map(|entry: ScimEntryKanidm| {
         let uuid = entry.header.id;
-        let name = get_scim_attr_string(&entry, &Attribute::Name)?;
-        let displayname = get_scim_attr_string(&entry, &Attribute::DisplayName)?;
+        let name = entry.attr_str(&Attribute::Name)?.to_string();
+        let displayname = entry.attr_str(&Attribute::DisplayName)?.to_string();
 
         Some(AccountInfo {
             uuid,
@@ -78,17 +78,4 @@ pub(crate) async fn view_accounts_get(
             }),
         ).into_response()
     })
-}
-
-fn get_scim_attr_string(entry: &ScimEntryKanidm, attr: &Attribute) -> Option<String> {
-    match entry.attrs.get(attr) {
-        Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.clone()),
-        Some(sv) => {
-            eprintln!("Scim entry did had the {attr} attr but expected ScimValueKanidm::String, actual: {sv:?}");
-            None
-        }
-        None => {
-            None
-        }
-    }
 }
