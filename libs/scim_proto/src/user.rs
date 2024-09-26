@@ -41,7 +41,7 @@ pub enum Locale {
     #[serde(rename = "en-US")]
     en_US,
     de,
-    #[serde(rename = "en-DE")]
+    #[serde(rename = "de-DE")]
     de_DE,
 }
 
