@@ -2193,13 +2193,13 @@ mod tests {
 
     #[test]
     fn test_value_index_tryfrom() {
-        let r1 = IndexType::try_from("EQUALITY");
+        let r1 = IndexType::try_from("EQualiTY");
         assert_eq!(r1, Ok(IndexType::Equality));
 
-        let r2 = IndexType::try_from("PRESENCE");
+        let r2 = IndexType::try_from("PResenCE");
         assert_eq!(r2, Ok(IndexType::Presence));
 
-        let r3 = IndexType::try_from("SUBSTRING");
+        let r3 = IndexType::try_from("SUbstrING");
         assert_eq!(r3, Ok(IndexType::SubString));
 
         let r4 = IndexType::try_from("thaoeusaneuh");
@@ -2208,10 +2208,10 @@ mod tests {
 
     #[test]
     fn test_value_syntax_tryfrom() {
-        let r1 = SyntaxType::try_from("UTF8STRING");
+        let r1 = SyntaxType::try_from("UTF8strinG");
         assert_eq!(r1, Ok(SyntaxType::Utf8String));
 
-        let r2 = SyntaxType::try_from("UTF8STRING_INSENSITIVE");
+        let r2 = SyntaxType::try_from("UTF8STRING_INSensitIVE");
         assert_eq!(r2, Ok(SyntaxType::Utf8StringInsensitive));
 
         let r3 = SyntaxType::try_from("BOOLEAN");

@@ -1110,8 +1110,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = e1.into_sealed_committed();
+            let ev1 = $e.into_sealed_committed();
 
             let r1 = <$type>::try_from($qs, &ev1);
             error!(?r1);
@@ -1147,39 +1146,66 @@ mod tests {
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Name, Value::new_iname("acp_invalid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                )
+            ),
             AccessControlProfile
         );
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverGroup.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlTargetScope.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_invalid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                )
+            ),
             AccessControlProfile
         );
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile", "access_control_receiver_g", "access_control_target_scope"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [""]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverGroup.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlTargetScope.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_invalid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (Attribute::AcpReceiverGroup, Value::Bool(true)),
+                (Attribute::AcpTargetScope, Value::Bool(true))
+            ),
             AccessControlProfile
         );
 
@@ -1191,6 +1217,14 @@ mod tests {
                 (
                     Attribute::Class,
                     EntryClass::AccessControlProfile.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlReceiverGroup.to_value()
+                ),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlTargetScope.to_value()
                 ),
                 (Attribute::Name, Value::new_iname("acp_valid")),
                 (
@@ -1216,17 +1250,26 @@ mod tests {
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_valid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
             AccessControlDelete
         );
 
@@ -1265,53 +1308,80 @@ mod tests {
         // Missing class acp
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_search"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_search_attr": ["name", "class"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
+            ),
             AccessControlSearch
         );
 
         // Missing class acs
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_search_attr": ["name", "class"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+                (Attribute::AcpSearchAttr, Value::new_iutf8("class"))
+            ),
             AccessControlSearch
         );
 
         // Missing attr acp_search_attr
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile", "access_control_search"],
-                        "name": ["acp_invalid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Class, EntryClass::AccessControlSearch.to_value()),
+                (Attribute::Name, Value::new_iname("acp_valid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
             AccessControlSearch
         );
 
@@ -1352,20 +1422,26 @@ mod tests {
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_valid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_modify_removedattr": ["name"],
-                        "acp_modify_presentattr": ["name"],
-                        "acp_modify_class": ["object"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_invalid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                )
+            ),
             AccessControlModify
         );
 
@@ -1438,19 +1514,28 @@ mod tests {
 
         acp_from_entry_err!(
             &mut qs_write,
-            r#"{
-                    "attrs": {
-                        "class": ["object", "access_control_profile"],
-                        "name": ["acp_valid"],
-                        "uuid": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_receiver_group": ["cc8e95b4-c24f-4d68-ba54-8bed76f63930"],
-                        "acp_targetscope": [
-                            "{\"eq\":[\"name\",\"a\"]}"
-                        ],
-                        "acp_create_class": ["object"],
-                        "acp_create_attr": ["name"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (
+                    Attribute::Class,
+                    EntryClass::AccessControlProfile.to_value()
+                ),
+                (Attribute::Name, Value::new_iname("acp_invalid")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpReceiverGroup,
+                    Value::Refer(uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"))
+                ),
+                (
+                    Attribute::AcpTargetScope,
+                    Value::new_json_filter_s("{\"eq\":[\"name\",\"a\"]}").expect("filter")
+                ),
+                (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
+                (Attribute::AcpCreateClass, EntryClass::Object.to_value())
+            ),
             AccessControlCreate
         );
 

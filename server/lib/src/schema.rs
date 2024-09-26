@@ -2814,60 +2814,17 @@ mod tests {
     }
 
     #[test]
-    fn test_schema_entry_validate() {
-        // Check that entries can be normalised and validated sanely
-        let schema_outer = Schema::new().expect("failed to create schema");
-        let schema = schema_outer.write_blocking();
-
-        // Check syntax to upper
-        // check index to upper
-        // insense to lower
-        // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "attributename": ["TestPerson"],
-                "syntax": ["utf8string"],
-                "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "InDeX": ["equality"]
-            }
-        }"#,
-        )
-        .into_invalid_new();
-
-        let e_expect: Entry<EntryValid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-                "attrs": {
-                    "class": ["extensibleobject"],
-                    "attributename": ["testperson"],
-                    "syntax": ["UTF8STRING"],
-                    "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                    "index": ["EQUALITY"]
-                }
-            }"#,
-        )
-        .into_valid_new();
-
-        let e_valid = e_test.validate(&schema).expect("validation failure");
-
-        assert_eq!(e_expect, e_valid);
-    }
-
-    #[test]
     fn test_schema_extensible() {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
-
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "multivalue": ["zzzz"]
-            }
-        }"#,
+        let e_extensible_bad = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::MultiValue, Value::Utf8("zzzz".to_string()))
         )
         .into_invalid_new();
 
@@ -2879,14 +2836,13 @@ mod tests {
         );
 
         // Extensible doesn't mean you can have the phantoms
-        let e_extensible_phantom: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "password_import": ["zzzz"]
-            }
-        }"#,
+        let e_extensible_phantom = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::PasswordImport, Value::Utf8("zzzz".to_string()))
         )
         .into_invalid_new();
 
@@ -2897,14 +2853,13 @@ mod tests {
             ))
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "multivalue": ["true"]
-            }
-        }"#,
+        let e_extensible = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::MultiValue, Value::Bool(true))
         )
         .into_invalid_new();
 
