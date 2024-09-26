@@ -598,7 +598,6 @@ impl fmt::Display for Attribute {
 mod test {
     use super::Attribute;
 
-
     #[test]
     fn test_valueattribute_from_str() {
         assert_eq!(Attribute::Uuid, Attribute::from_str("UUID"));
