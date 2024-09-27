@@ -13,13 +13,39 @@
 
 use clap::Parser;
 use kanidm_cli::KanidmClientParser;
+use std::process::ExitCode;
 use std::thread;
 use tokio::runtime;
+use tokio::signal::unix::{signal, SignalKind};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-fn main() {
+async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
+    // We need a signal handler to deal with a few things that can occur during runtime, especially
+    // sigpipe on linux.
+
+    let mut signal_quit = signal(SignalKind::quit()).expect("Invalid Signal");
+    let mut signal_term = signal(SignalKind::terminate()).expect("Invalid Signal");
+    let mut signal_pipe = signal(SignalKind::pipe()).expect("Invalid Signal");
+
+    tokio::select! {
+        _ = opt.commands.exec() => {
+            ExitCode::SUCCESS
+        }
+        _ = signal_quit.recv() => {
+            ExitCode::SUCCESS
+        }
+        _ = signal_term.recv() => {
+            ExitCode::SUCCESS
+        }
+        _ = signal_pipe.recv() => {
+            ExitCode::SUCCESS
+        }
+    }
+}
+
+fn main() -> ExitCode {
     let opt = KanidmClientParser::parse();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -30,7 +56,7 @@ fn main() {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("ERROR! Unable to start tracing {:?}", e);
-                return;
+                return ExitCode::FAILURE;
             }
         }
     } else {
@@ -61,5 +87,5 @@ fn main() {
     #[cfg(debug_assertions)]
     tracing::debug!("Using {} worker threads", par_count);
 
-    rt.block_on(async { opt.commands.exec().await });
+    rt.block_on(signal_handler(opt))
 }
