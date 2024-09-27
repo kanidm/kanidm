@@ -200,8 +200,6 @@ impl ResolvedAccountPolicy {
         self.limit_search_max_filter_test
     }
 
-    //TODO: Remove this when we have a proper implementation
-    #[allow(dead_code)]
     pub(crate) fn allow_primary_cred_fallback(&self) -> Option<bool> {
         self.allow_primary_cred_fallback
     }
@@ -307,7 +305,7 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
             webauthn_att_ca_list: Some(att_ca_list_b),
             limit_search_max_filter_test: Some(5),
             limit_search_max_results: Some(15),
-            allow_primary_cred_fallback: None,
+            allow_primary_cred_fallback: Some(false),
         };
 
         let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
@@ -318,6 +316,7 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
         assert_eq!(rap.credential_policy, CredentialType::Passkey);
         assert_eq!(rap.limit_search_max_results(), Some(15));
         assert_eq!(rap.limit_search_max_filter_test(), Some(10));
+        assert_eq!(rap.allow_primary_cred_fallback(), Some(false));
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
 

@@ -37,6 +37,7 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
+use crate::idm::group::Group;
 
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -1285,7 +1286,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             .qs_read
             .internal_search_uuid(uae.target)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)
+                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read, false)
             })
             .map_err(|e| {
                 admin_error!("Failed to start auth unix -> {:?}", e);
@@ -1394,6 +1395,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
             e
         })?;
 
+        let (_, rap) =
+            Group::try_from_account_entry_with_policy(&account_entry, &mut self.qs_read)?;
+
         // if anonymous
         if lae.target == UUID_ANONYMOUS {
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
@@ -1423,7 +1427,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 return Ok(None);
             }
             let account =
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read, rap.allow_primary_cred_fallback().unwrap_or(false))?;
 
             if !account.is_within_valid_time(ct) {
                 security_info!("Account is not within valid time period");
@@ -1557,7 +1561,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .qs_read
             .impersonate_search_uuid(uute.target, &uute.ident)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(&account_entry, &mut self.qs_read)
+                UnixUserAccount::try_from_entry_ro(&account_entry, &mut self.qs_read, false)
             })
             .map_err(|e| {
                 admin_error!("Failed to start unix user token -> {:?}", e);

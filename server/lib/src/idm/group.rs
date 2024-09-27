@@ -111,6 +111,7 @@ impl Group {
 
         let rap = ResolvedAccountPolicy::fold_from(groups.iter().filter_map(|entry| {
             let acc_pol: Option<AccountPolicy> = entry.as_ref().into();
+            
             acc_pol
         }));
 

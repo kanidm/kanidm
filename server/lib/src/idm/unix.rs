@@ -146,9 +146,22 @@ impl UnixUserAccount {
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
+        allow_default_cred_fallback: bool,
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_ro(value, qs)?;
-        try_from_entry!(value, groups)
+        let result: Result<UnixUserAccount, OperationError> = try_from_entry!(value, groups);
+        let mut result = match result {
+            Ok(v) => v,
+            Err(_) => unreachable!(),
+        };
+
+        if result.cred.is_none() && allow_default_cred_fallback {
+            result.cred = value
+                .get_ava_single_credential(Attribute::PrimaryCredential)
+                .cloned();
+        }
+
+        Ok(result)
     }
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
