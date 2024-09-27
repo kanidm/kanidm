@@ -4141,13 +4141,27 @@ mod tests {
         {
             let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
+            if let Some(allow_primary_cred_fallback) = allow_primary_cred_fallback {
+                idms_prox_write
+                    .qs_write
+                    .internal_modify_uuid(
+                        UUID_IDM_ALL_ACCOUNTS,
+                        &ModifyList::new_purge_and_set(
+                            Attribute::AllowPrimaryCredFallback,
+                            Value::new_bool(allow_primary_cred_fallback),
+                        ),
+                    )
+                    .expect("Unable to change default session exp");
+            }
+
             let mut e = entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Uuid, Value::Uuid(target_uuid)),
                 (Attribute::Name, Value::new_iname("kevin")),
                 (Attribute::DisplayName, Value::new_utf8s("Kevin")),
-                (Attribute::Uuid, Value::Uuid(target_uuid)),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
                 (
                     Attribute::PrimaryCredential,
                     Value::Cred(
@@ -4156,13 +4170,6 @@ mod tests {
                     )
                 )
             );
-
-            if let Some(allow_primary_cred_fallback) = allow_primary_cred_fallback {
-                e.add_ava(
-                    Attribute::AllowPrimaryCredFallback,
-                    Value::new_bool(allow_primary_cred_fallback),
-                );
-            }
 
             if has_posix_password {
                 e.add_ava(
