@@ -2188,9 +2188,10 @@ mod tests {
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
-        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
+
     use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -4124,5 +4125,83 @@ mod tests {
             .is_ok());
 
         // Any checks?
+    }
+
+    async fn idm_fallback_auth_fixture(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+        has_posix_password: bool,
+        allow_primary_cred_fallback: Option<bool>,
+        expected: Option<()>,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let target_uuid = Uuid::new_v4();
+
+        let p = CryptoPolicy::minimum();
+
+        let mut e = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Name, Value::new_iname("kevin")),
+            (Attribute::Uuid, Value::Uuid(target_uuid)),
+            (
+                Attribute::PrimaryCredential,
+                Value::Cred(
+                    "primary".to_string(),
+                    Credential::new_password_only(&p, "banana").unwrap()
+                )
+            )
+        );
+
+        if has_posix_password {
+            e.add_ava(
+                Attribute::UnixPassword,
+                Value::Cred(
+                    "unix".to_string(),
+                    Credential::new_password_only(&p, "kampai").unwrap(),
+                ),
+            );
+        }
+
+        let ce = CreateEvent::new_internal(vec![e]);
+        let cr = idms_prox_write.qs_write.create(&ce);
+        assert!(cr.is_ok());
+
+        let result = idms
+            .auth()
+            .await
+            .unwrap()
+            .auth_ldap(
+                &LdapAuthEvent {
+                    target: target_uuid,
+                    cleartext: if has_posix_password {
+                        "kampai".to_string()
+                    } else {
+                        "banana".to_string()
+                    },
+                },
+                ct,
+            )
+            .await;
+
+        assert!(result.is_ok());
+        if let Some(_) = expected {
+            assert!(result.unwrap().is_some());
+        } else {
+            assert!(result.unwrap().is_none());
+        }
+    }
+
+    #[idm_test]
+    async fn test_idm_fallback_auth(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, None, None).await;
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, None, Some(())).await;
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(true), Some(())).await;
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(true), Some(())).await;
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(false), None).await;
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(false), Some(())).await;
     }
 }
