@@ -1,10 +1,10 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::internal::Filter as ProtoFilter;
-
 use smolset::SmolSet;
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJsonFilter {
@@ -39,6 +39,12 @@ impl ValueSetJsonFilter {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetJsonFilter { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetJsonFilter {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -206,6 +212,9 @@ mod tests {
   "{\"pres\":\"class\"}"
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetJsonFilter>(vs, &[])
     }
 }

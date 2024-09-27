@@ -1,7 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 use std::collections::BTreeSet;
 
@@ -35,6 +36,12 @@ impl ValueSetHexString {
     {
         let set = iter.into_iter().map(str::to_string).collect();
         Some(Box::new(ValueSetHexString { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetHexString {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -183,6 +190,12 @@ mod tests {
     fn test_scim_hexstring() {
         let vs: ValueSet =
             ValueSetHexString::new("D68475C760A7A0F6A924C28F095573A967F600D6".to_string());
-        crate::valueset::scim_json_reflexive(vs, r#""D68475C760A7A0F6A924C28F095573A967F600D6""#);
+        crate::valueset::scim_json_reflexive(
+            vs.clone(),
+            r#""D68475C760A7A0F6A924C28F095573A967F600D6""#,
+        );
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetHexString>(vs, &[])
     }
 }

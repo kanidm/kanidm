@@ -1,9 +1,7 @@
 use crate::credential::totp::Totp;
 use crate::prelude::*;
-
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
-
 use crate::be::dbvalue::DbTotpV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};

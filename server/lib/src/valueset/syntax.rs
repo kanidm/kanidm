@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
 use smolset::SmolSet;
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSyntax {
@@ -24,6 +24,12 @@ impl ValueSetSyntax {
         let set: Result<_, _> = data.into_iter().map(SyntaxType::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetSyntax {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -162,6 +168,9 @@ mod tests {
     #[test]
     fn test_scim_syntax() {
         let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
-        crate::valueset::scim_json_reflexive(vs, r#"["UUID"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#"["UUID"]"#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetSyntax>(vs, &[])
     }
 }

@@ -3199,6 +3199,7 @@ where
                         error!("Modification assertion was not met. {} {:?}", attr, value);
                     })?;
                 }
+                Modify::Set(attr, valueset) => self.set_ava_set(attr, valueset.clone()),
             }
         }
         Ok(())

@@ -146,7 +146,10 @@ impl Plugin for Protected {
         me.modlist.into_iter().try_fold((), |(), m| {
             // Already hit an error, move on.
             let a = match m {
-                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                Modify::Present(a, _)
+                | Modify::Removed(a, _)
+                | Modify::Set(a, _)
+                | Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
             if let Some(attr) = a {
@@ -225,7 +228,7 @@ impl Plugin for Protected {
             .try_fold((), |(), m| {
                 // Already hit an error, move on.
                 let a = match m {
-                    Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
+                    Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Set(a, _) | Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
                 if let Some(attr) = a {

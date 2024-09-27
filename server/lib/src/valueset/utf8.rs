@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
 use std::collections::BTreeSet;
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUtf8 {
@@ -24,6 +24,12 @@ impl ValueSetUtf8 {
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
         Ok(Box::new(ValueSetUtf8 { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetUtf8 {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -227,6 +233,10 @@ mod tests {
     #[test]
     fn test_scim_utf8() {
         let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
-        crate::valueset::scim_json_reflexive(vs, r#""Test""#);
+        // Test that the output json matches some known str
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""Test""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetUtf8>(vs, &[])
     }
 }

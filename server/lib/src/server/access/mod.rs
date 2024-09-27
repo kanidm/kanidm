@@ -450,8 +450,8 @@ pub trait AccessControlsTransaction<'a> {
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Present(a, _) => Some(a.clone()),
-                _ => None,
+                Modify::Present(a, _) | Modify::Set(a, _) => Some(a.clone()),
+                Modify::Removed(..) | Modify::Assert(..) | Modify::Purged(_) => None,
             })
             .collect();
 
@@ -459,19 +459,18 @@ pub trait AccessControlsTransaction<'a> {
             .modlist
             .iter()
             .filter_map(|m| match m {
-                Modify::Removed(a, _) => Some(a.clone()),
-                Modify::Purged(a) => Some(a.clone()),
-                _ => None,
+                Modify::Set(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a.clone()),
+                Modify::Present(..) | Modify::Assert(..) => None,
             })
             .collect();
 
         // Build the set of classes that we to work on, only in terms of "addition". To remove
         // I think we have no limit, but ... william of the future may find a problem with this
         // policy.
-        let requested_classes: BTreeSet<&str> = me
-            .modlist
-            .iter()
-            .filter_map(|m| match m {
+        let mut requested_classes: BTreeSet<&str> = Default::default();
+
+        for modify in me.modlist.iter() {
+            match modify {
                 Modify::Present(a, v) => {
                     if a == Attribute::Class.as_ref() {
                         // Here we have an option<&str> which could mean there is a risk of
@@ -480,21 +479,23 @@ pub trait AccessControlsTransaction<'a> {
                         // existence, and second, we would have failed the mod at schema checking
                         // earlier in the process as these were not correctly type. As a result
                         // we can trust these to be correct here and not to be "None".
-                        v.to_str()
-                    } else {
-                        None
+                        requested_classes.extend(v.to_str())
                     }
                 }
                 Modify::Removed(a, v) => {
                     if a == Attribute::Class.as_ref() {
-                        v.to_str()
-                    } else {
-                        None
+                        requested_classes.extend(v.to_str())
                     }
                 }
-                _ => None,
-            })
-            .collect();
+                Modify::Set(a, v) => {
+                    if a == Attribute::Class.as_ref() {
+                        // flatten to remove the option down to an iterator
+                        requested_classes.extend(v.as_iutf8_iter().into_iter().flatten())
+                    }
+                }
+                _ => {}
+            }
+        }
 
         debug!(?requested_pres, "Requested present set");
         debug!(?requested_rem, "Requested remove set");
@@ -1081,6 +1082,7 @@ mod tests {
         Access, AccessClass, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::prelude::*;
+    use crate::valueset::ValueSetIname;
 
     const UUID_TEST_ACCOUNT_1: Uuid = uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
     const UUID_TEST_ACCOUNT_2: Uuid = uuid::uuid!("cec0852a-abdf-4ea6-9dae-d3157cb33d3a");
@@ -1948,7 +1950,7 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert_eq!(res, $expect);
+            assert_eq!($expect, res);
         }};
         (
             $me:expr,
@@ -1975,12 +1977,14 @@ mod tests {
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
-            assert_eq!(res, $expect);
+            assert_eq!($expect, res);
         }};
     }
 
     #[test]
     fn test_access_enforce_modify() {
+        sketching::test_init();
+
         let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
@@ -2012,6 +2016,16 @@ mod tests {
             modlist!([m_purge(Attribute::Name)]),
         );
 
+        // Name Set
+        let me_set = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(Attribute::Name, ValueSetIname::new("value"))]),
+        );
+
         // Class account pres
         let me_pres_class = ModifyEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
@@ -2041,6 +2055,19 @@ mod tests {
                 PartialValue::new_iname("testperson1")
             )),
             modlist!([m_purge(Attribute::Class)]),
+        );
+
+        // Set Class
+        let me_set_class = ModifyEvent::new_impersonate_entry(
+            E_TEST_ACCOUNT_1.clone(),
+            filter_all!(f_eq(
+                Attribute::Name,
+                PartialValue::new_iname("testperson1")
+            )),
+            modlist!([Modify::Set(
+                Attribute::Class,
+                EntryClass::Account.to_valueset()
+            )]),
         );
 
         // Allow name and class, class is account
@@ -2104,6 +2131,8 @@ mod tests {
         test_acp_modify!(&me_rem, vec![acp_allow.clone()], &r_set, true);
         // test allowed purge
         test_acp_modify!(&me_purge, vec![acp_allow.clone()], &r_set, true);
+        // test allowed set
+        test_acp_modify!(&me_set, vec![acp_allow.clone()], &r_set, true);
 
         // Test rejected pres
         test_acp_modify!(&me_pres, vec![acp_deny.clone()], &r_set, false);
@@ -2111,22 +2140,31 @@ mod tests {
         test_acp_modify!(&me_rem, vec![acp_deny.clone()], &r_set, false);
         // Test rejected purge
         test_acp_modify!(&me_purge, vec![acp_deny.clone()], &r_set, false);
+        // Test rejected set
+        test_acp_modify!(&me_set, vec![acp_deny.clone()], &r_set, false);
 
         // test allowed pres class
         test_acp_modify!(&me_pres_class, vec![acp_allow.clone()], &r_set, true);
         // test allowed rem class
         test_acp_modify!(&me_rem_class, vec![acp_allow.clone()], &r_set, true);
         // test reject purge-class even if class present in allowed remattrs
-        test_acp_modify!(&me_purge_class, vec![acp_allow], &r_set, false);
+        test_acp_modify!(&me_purge_class, vec![acp_allow.clone()], &r_set, false);
+        // test allowed set class
+        test_acp_modify!(&me_set_class, vec![acp_allow], &r_set, true);
 
         // Test reject pres class, but class not in classes
         test_acp_modify!(&me_pres_class, vec![acp_no_class.clone()], &r_set, false);
         // Test reject pres class, class in classes but not in pres attrs
         test_acp_modify!(&me_pres_class, vec![acp_deny.clone()], &r_set, false);
         // test reject rem class, but class not in classes
-        test_acp_modify!(&me_rem_class, vec![acp_no_class], &r_set, false);
+        test_acp_modify!(&me_rem_class, vec![acp_no_class.clone()], &r_set, false);
         // test reject rem class, class in classes but not in pres attrs
-        test_acp_modify!(&me_rem_class, vec![acp_deny], &r_set, false);
+        test_acp_modify!(&me_rem_class, vec![acp_deny.clone()], &r_set, false);
+
+        // Test reject set class, but class not in classes
+        test_acp_modify!(&me_set_class, vec![acp_no_class], &r_set, false);
+        // Test reject set class, class in classes but not in pres attrs
+        test_acp_modify!(&me_set_class, vec![acp_deny], &r_set, false);
     }
 
     #[test]

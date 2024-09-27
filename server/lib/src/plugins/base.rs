@@ -164,9 +164,10 @@ impl Plugin for Base {
     ) -> Result<(), OperationError> {
         me.modlist.iter().try_for_each(|modify| {
             let attr = match &modify {
-                Modify::Present(a, _) => Some(a),
-                Modify::Removed(a, _) => Some(a),
-                Modify::Purged(a) => Some(a),
+                Modify::Present(a, _)
+                | Modify::Removed(a, _)
+                | Modify::Purged(a)
+                | Modify::Set(a, _) => Some(a),
                 Modify::Assert(_, _) => None,
             };
             if attr == Some(&Attribute::Uuid) {
@@ -191,9 +192,10 @@ impl Plugin for Base {
             .flat_map(|ml| ml.iter())
             .try_for_each(|modify| {
                 let attr = match &modify {
-                    Modify::Present(a, _) => Some(a),
-                    Modify::Removed(a, _) => Some(a),
-                    Modify::Purged(a) => Some(a),
+                    Modify::Present(a, _)
+                    | Modify::Removed(a, _)
+                    | Modify::Set(a, _)
+                    | Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
                 if attr == Some(&Attribute::Uuid) {
