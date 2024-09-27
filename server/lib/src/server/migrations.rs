@@ -584,7 +584,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
             SCHEMA_CLASS_PERSON_DL8.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
-            SCHEMA_ATTR_UUID_SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
+            SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
             SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
         ];
 

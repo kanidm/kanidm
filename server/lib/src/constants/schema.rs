@@ -779,7 +779,7 @@ pub static ref SCHEMA_ATTR_LINKED_GROUP_DL8: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
-pub static ref SCHEMA_ATTR_UUID_SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8: SchemaAttribute = SchemaAttribute {
+pub static ref SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK,
     name: Attribute::AllowPrimaryCredFallback,
     description: "Allow fallback to primary password if no POSIX password exists".to_string(),
