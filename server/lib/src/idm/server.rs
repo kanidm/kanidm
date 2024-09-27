@@ -4213,12 +4213,45 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_fallback_auth(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+    async fn test_idm_fallback_auth_no_pass_none_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, false, None, None).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_none_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, true, None, Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_no_pass_true_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(true), Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_true_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(true), Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_no_pass_false_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(false), None).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_false_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
         idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(false), Some(())).await;
     }
 }

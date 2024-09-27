@@ -12,6 +12,7 @@ pub(crate) struct AccountPolicy {
     webauthn_att_ca_list: Option<AttestationCaList>,
     limit_search_max_filter_test: Option<u64>,
     limit_search_max_results: Option<u64>,
+    allow_primary_cred_fallback: Option<bool>
 }
 
 impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
@@ -50,6 +51,9 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
         let limit_search_max_filter_test = val
             .get_ava_single_uint32(Attribute::LimitSearchMaxFilterTest)
             .map(|u| u as u64);
+        
+        let allow_primary_cred_fallback = val
+            .get_ava_single_bool(Attribute::AllowPrimaryCredFallback);
 
         Some(AccountPolicy {
             privilege_expiry,
@@ -59,6 +63,7 @@ impl From<&EntrySealedCommitted> for Option<AccountPolicy> {
             webauthn_att_ca_list,
             limit_search_max_filter_test,
             limit_search_max_results,
+            allow_primary_cred_fallback
         })
     }
 }
@@ -73,6 +78,7 @@ pub(crate) struct ResolvedAccountPolicy {
     webauthn_att_ca_list: Option<AttestationCaList>,
     limit_search_max_filter_test: Option<u64>,
     limit_search_max_results: Option<u64>,
+    allow_primary_cred_fallback: Option<bool>
 }
 
 impl ResolvedAccountPolicy {
@@ -86,6 +92,7 @@ impl ResolvedAccountPolicy {
             webauthn_att_ca_list: None,
             limit_search_max_filter_test: Some(DEFAULT_LIMIT_SEARCH_MAX_FILTER_TEST),
             limit_search_max_results: Some(DEFAULT_LIMIT_SEARCH_MAX_RESULTS),
+            allow_primary_cred_fallback: None,
         }
     }
 
@@ -102,6 +109,7 @@ impl ResolvedAccountPolicy {
             webauthn_att_ca_list: None,
             limit_search_max_filter_test: None,
             limit_search_max_results: None,
+            allow_primary_cred_fallback: None,
         };
 
         iter.for_each(|acc_pol| {
@@ -152,6 +160,13 @@ impl ResolvedAccountPolicy {
                     accumulate.webauthn_att_ca_list = Some(acc_pol_w_att_ca);
                 }
             }
+
+            if let Some(allow_primary_cred_fallback) = acc_pol.allow_primary_cred_fallback {
+                accumulate.allow_primary_cred_fallback = match accumulate.allow_primary_cred_fallback {
+                    Some(acc_fallback) => Some(allow_primary_cred_fallback && acc_fallback),
+                    None => Some(allow_primary_cred_fallback),
+                };
+            }
         });
 
         accumulate
@@ -183,6 +198,12 @@ impl ResolvedAccountPolicy {
 
     pub(crate) fn limit_search_max_filter_test(&self) -> Option<u64> {
         self.limit_search_max_filter_test
+    }
+
+    //TODO: Remove this when we have a proper implementation
+    #[allow(dead_code)]
+    pub(crate) fn allow_primary_cred_fallback(&self) -> Option<bool> {
+        self.allow_primary_cred_fallback
     }
 }
 
@@ -264,6 +285,7 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
             webauthn_att_ca_list: Some(att_ca_list_a),
             limit_search_max_filter_test: Some(10),
             limit_search_max_results: Some(10),
+            allow_primary_cred_fallback: None
         };
 
         let mut att_ca_builder = AttestationCaListBuilder::new();
@@ -285,6 +307,7 @@ jAGGiQIwHFj+dJZYUJR786osByBelJYsVZd2GbHQu209b5RCmGQ21gpSAk9QZW4B
             webauthn_att_ca_list: Some(att_ca_list_b),
             limit_search_max_filter_test: Some(5),
             limit_search_max_results: Some(15),
+            allow_primary_cred_fallback: None,
         };
 
         let rap = ResolvedAccountPolicy::fold_from([policy_a, policy_b].into_iter());
