@@ -4135,40 +4135,50 @@ mod tests {
         expected: Option<()>,
     ) {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
         let target_uuid = Uuid::new_v4();
-
         let p = CryptoPolicy::minimum();
 
-        let mut e = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("kevin")),
-            (Attribute::Uuid, Value::Uuid(target_uuid)),
-            (
-                Attribute::PrimaryCredential,
-                Value::Cred(
-                    "primary".to_string(),
-                    Credential::new_password_only(&p, "banana").unwrap()
+        {
+            let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+            let mut e = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("kevin")),
+                (Attribute::DisplayName, Value::new_utf8s("Kevin")),
+                (Attribute::Uuid, Value::Uuid(target_uuid)),
+                (
+                    Attribute::PrimaryCredential,
+                    Value::Cred(
+                        "primary".to_string(),
+                        Credential::new_password_only(&p, "banana").unwrap()
+                    )
                 )
-            )
-        );
-
-        if has_posix_password {
-            e.add_ava(
-                Attribute::UnixPassword,
-                Value::Cred(
-                    "unix".to_string(),
-                    Credential::new_password_only(&p, "kampai").unwrap(),
-                ),
             );
-        }
 
-        let ce = CreateEvent::new_internal(vec![e]);
-        let cr = idms_prox_write.qs_write.create(&ce);
-        assert!(cr.is_ok());
+            if let Some(allow_primary_cred_fallback) = allow_primary_cred_fallback {
+                e.add_ava(
+                    Attribute::AllowPrimaryCredFallback,
+                    Value::new_bool(allow_primary_cred_fallback),
+                );
+            }
+
+            if has_posix_password {
+                e.add_ava(
+                    Attribute::UnixPassword,
+                    Value::Cred(
+                        "unix".to_string(),
+                        Credential::new_password_only(&p, "kampai").unwrap(),
+                    ),
+                );
+            }
+
+            let ce = CreateEvent::new_internal(vec![e]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
+            idms_prox_write.commit().expect("Must not fail");
+        }
 
         let result = idms
             .auth()
