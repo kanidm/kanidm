@@ -1,3 +1,9 @@
+//! These are types that a client will send to the server.
+use crate::attribute::Attribute;
+use serde::Deserialize;
+use serde_json::Value as JsonValue;
+use std::collections::BTreeMap;
+use uuid::Uuid;
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
@@ -8,4 +14,17 @@ pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
 pub struct ScimSshPublicKey {
     pub label: String,
     pub value: SshPublicKey,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ScimEntryPutGeneric {
+    // id is only used to target the entry in question
+    pub id: Uuid,
+    // external_id can't be set by put
+    // meta is skipped on put
+    // Schemas are decoded as part of "attrs".
+    /// Update an attribute to contain the following value state.
+    /// If the attribute is None, it is removed.
+    #[serde(flatten)]
+    pub attrs: BTreeMap<Attribute, Option<JsonValue>>,
 }

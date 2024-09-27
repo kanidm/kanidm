@@ -2,8 +2,9 @@ use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::server::ScimCertificate;
+use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
@@ -98,6 +99,12 @@ impl ValueSetCertificate {
         }
 
         Some(Box::new(ValueSetCertificate { map }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetCertificate {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -313,5 +320,8 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
                 .unwrap();
 
         assert_eq!(cert.s256, expect_s256);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetCertificate>(vs, &[])
     }
 }

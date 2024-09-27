@@ -1,8 +1,8 @@
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
-
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 
@@ -43,6 +43,12 @@ impl ValueSetDateTime {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetDateTime { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetDateTime {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 
@@ -200,6 +206,9 @@ mod tests {
         let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
         let vs: ValueSet = ValueSetDateTime::new(odt);
 
-        crate::valueset::scim_json_reflexive(vs, r#""1970-01-01T19:17:00Z""#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""1970-01-01T19:17:00Z""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetDateTime>(vs, &[])
     }
 }

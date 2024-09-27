@@ -13,18 +13,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
-// We use so many, we just import them all ...
-use self::access::{
-    profiles::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
-    },
-    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
-    AccessControlsWriteTransaction,
-};
-use self::keys::{
-    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
-    KeyProvidersWriteTransaction,
-};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
+use kanidm_proto::scim_v1::JsonValue;
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
     ResolveFilterCacheReadTxn,
@@ -42,6 +33,19 @@ use crate::schema::{
 use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::uuid_to_proto_string;
 use crate::valueset::ScimValueIntermediate;
+use crate::valueset::image::ValueSetImage;
+use crate::valueset::*;
+use self::access::{
+    profiles::{
+        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    },
+    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+    AccessControlsWriteTransaction,
+};
+use self::keys::{
+    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvidersWriteTransaction,
+};
 
 pub(crate) mod access;
 pub mod batch_modify;
@@ -52,6 +56,7 @@ pub(crate) mod keys;
 pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
+pub mod scim;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
@@ -869,6 +874,112 @@ pub trait QueryServerTransaction<'a> {
                 Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
             }
         }
+    }
+
+    fn resolve_scim_json_put(
+        &mut self,
+        attr: &Attribute,
+        value: Option<JsonValue>,
+    ) -> Result<Option<ValueSet>, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        let Some(schema_a) = schema.get_attributes().get(attr) else {
+            // No attribute of this name exists - fail fast, there is no point to
+            // proceed, as nothing can be satisfied.
+            return Err(OperationError::InvalidAttributeName(attr.to_string()));
+        };
+
+        let Some(value) = value else {
+            // It's a none so the value needs to be unset, and the attr DOES exist in
+            // schema.
+            return Ok(None);
+        };
+
+        match schema_a.syntax {
+            SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
+            SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
+            SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
+            SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
+            SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
+            SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
+            SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
+            SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
+            SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
+            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
+            SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
+            SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
+            SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
+            SyntaxType::UiHint => ValueSetUiHint::from_scim_json_put(value),
+            SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
+            SyntaxType::CredentialType => ValueSetCredentialType::from_scim_json_put(value),
+            SyntaxType::WebauthnAttestationCaList => {
+                ValueSetWebauthnAttestationCaList::from_scim_json_put(value)
+            }
+            SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
+            SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
+            SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
+            SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
+
+            // Syntax types that can not be submitted
+            SyntaxType::Credential => Err(OperationError::InvalidAttribute(
+                "Credentials are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute(
+                "Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute(
+                "SPNs are not able to be set.".to_string(),
+            )),
+            SyntaxType::Cid => Err(OperationError::InvalidAttribute(
+                "CIDs are not able to be set.".to_string(),
+            )),
+            SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute(
+                "Private Binaries are not able to be set.".to_string(),
+            )),
+            SyntaxType::IntentToken => Err(OperationError::InvalidAttribute(
+                "Intent Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::Passkey => Err(OperationError::InvalidAttribute(
+                "Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::AttestedPasskey => Err(OperationError::InvalidAttribute(
+                "Attested Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute(
+                "Jws ES256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute(
+                "Jws RS256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute(
+                "TOTP Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApiToken => Err(OperationError::InvalidAttribute(
+                "API Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute(
+                "Audit Strings are not able to be set.".to_string(),
+            )),
+            SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute(
+                "EC Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute(
+                "Key Internal Structures are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute(
+                "Application Passwords are not able to be set.".to_string(),
+            )),
+        }
+        .map(|valueset| Some(valueset))
     }
 
     // In the opposite direction, we can resolve values for presentation
