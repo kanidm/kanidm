@@ -232,6 +232,10 @@ impl Account {
     pub(crate) fn unix_extn(&self) -> Option<&UnixExtensions> {
         self.unix_extn.as_ref()
     }
+    
+    pub(crate) fn primary(&self) -> Option<&Credential> {
+        self.primary.as_ref()
+    }
 
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(

@@ -37,7 +37,6 @@ use crate::idm::delayed::{
     AuthSessionRecord, BackupCodeRemoval, DelayedAction, PasswordUpgrade, UnixPasswordUpgrade,
     WebauthnCounterIncrement,
 };
-use crate::idm::group::Group;
 
 #[cfg(test)]
 use crate::idm::event::PasswordChangeEvent;
@@ -1276,83 +1275,171 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
     }
 
+    async fn auth_with_unix_pass(
+        &mut self,
+        id: Uuid,
+        _cleartext: &str,
+        ct: Duration,
+    ) -> Result<Option<(Account, UnixUserToken)>, OperationError> {
+        let entry = match self.qs_read.internal_search_uuid(id) {
+            Ok(entry) => entry,
+            Err(e) => {
+                admin_error!("Failed to start auth unix -> {:?}", e);
+                return Err(e);
+            }
+        };
+
+        let (account, acp) =
+            Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
+
+        if !account.is_within_valid_time(ct) {
+            security_info!("Account is expired or not yet valid.");
+            return Err(OperationError::SessionExpired);
+        }
+
+        let cred = if acp.allow_primary_cred_fallback() == Some(true) {
+            account
+                .unix_extn()
+                .and_then(|extn| extn.ucred())
+                .or_else(|| account.primary())
+        } else {
+            account.unix_extn().and_then(|extn| extn.ucred())
+        };
+
+        let (_cred, cred_id, cred_slock_policy) = match cred {
+            None => {
+                if acp.allow_primary_cred_fallback() == Some(true) {
+                    security_info!("Account does not have a posix or primary password configured.");
+                } else {
+                    security_info!("Account does not have a posix password configured.");
+                }
+                //TODO: Did we want to return an error condition?
+                return Ok(None);
+            }
+            Some(cred) => (cred, cred.uuid, cred.softlock_policy()),
+        };
+
+        let slock_ref = {
+            let softlock_read = self.softlocks.read();
+            if let Some(slock_ref) = softlock_read.get(&cred_id) {
+                slock_ref.clone()
+            } else {
+                let _session_ticket = self.session_ticket.acquire().await;
+                let mut softlock_write = self.softlocks.write();
+                let slock = Arc::new(Mutex::new(CredSoftLock::new(cred_slock_policy)));
+                softlock_write.insert(cred_id, slock.clone());
+                softlock_write.commit();
+                slock
+            }
+        };
+
+        let mut slock = slock_ref.lock().await;
+
+        // Apply the current time.
+        slock.apply_time_step(ct);
+        // Now check the results
+        if !slock.is_valid() {
+            security_info!("Account is softlocked.");
+            //TODO: Did we want to return an error condition?
+            return Ok(None);
+        }
+        // Account is unlocked, can proceed.
+
+        //TODO: Fill this in
+        // account
+        //     .verify_unix_credential(cleartext, &self.async_tx, ct)
+        //     .inspect(|res| {
+        //         if res.is_none() {
+        //             // Update it.
+        //             slock.record_failure(ct);
+        //         };
+        //     })
+
+        Ok(None)
+    }
+
     pub async fn auth_unix(
         &mut self,
         uae: &UnixUserAuthEvent,
         ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        // Get the entry/target we are working on.
-        let account = self
-            .qs_read
-            .internal_search_uuid(uae.target)
-            .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read, false)
-            })
-            .map_err(|e| {
-                admin_error!("Failed to start auth unix -> {:?}", e);
-                e
-            })?;
+        Ok(self
+            .auth_with_unix_pass(uae.target, &uae.cleartext, ct)
+            .await?
+            .map(|(_, uut)| uut))
 
-        if !account.is_within_valid_time(ct) {
-            security_info!("Account is not within valid time period");
-            return Ok(None);
-        }
+        // // Get the entry/target we are working on.
+        // let account = self
+        //     .qs_read
+        //     .internal_search_uuid(uae.target)
+        //     .and_then(|account_entry| {
+        //         UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read, false)
+        //     })
+        //     .map_err(|e| {
+        //         admin_error!("Failed to start auth unix -> {:?}", e);
+        //         e
+        //     })?;
 
-        let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
-            Some((cred_uuid, policy)) => {
-                let softlock_read = self.softlocks.read();
-                let slock_ref = match softlock_read.get(&cred_uuid) {
-                    Some(slock_ref) => slock_ref.clone(),
-                    None => {
-                        let _session_ticket = self.session_ticket.acquire().await;
-                        let mut softlock_write = self.softlocks.write();
-                        let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
-                        softlock_write.insert(cred_uuid, slock.clone());
-                        softlock_write.commit();
-                        slock
-                    }
-                };
-                Some(slock_ref)
-            }
-            None => None,
-        };
+        // if !account.is_within_valid_time(ct) {
+        //     security_info!("Account is not within valid time period");
+        //     return Ok(None);
+        // }
 
-        let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
-            Some(s.lock().await)
-        } else {
-            None
-        };
+        // let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
+        //     Some((cred_uuid, policy)) => {
+        //         let softlock_read = self.softlocks.read();
+        //         let slock_ref = match softlock_read.get(&cred_uuid) {
+        //             Some(slock_ref) => slock_ref.clone(),
+        //             None => {
+        //                 let _session_ticket = self.session_ticket.acquire().await;
+        //                 let mut softlock_write = self.softlocks.write();
+        //                 let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+        //                 softlock_write.insert(cred_uuid, slock.clone());
+        //                 softlock_write.commit();
+        //                 slock
+        //             }
+        //         };
+        //         Some(slock_ref)
+        //     }
+        //     None => None,
+        // };
 
-        let maybe_valid = if let Some(mut slock) = maybe_slock {
-            // Apply the current time.
-            slock.apply_time_step(ct);
-            // Now check the results
-            if slock.is_valid() {
-                Some(slock)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
+        // let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
+        //     Some(s.lock().await)
+        // } else {
+        //     None
+        // };
 
-        // Validate the unix_pw - this checks the account/cred lock states.
-        let res = if let Some(mut slock) = maybe_valid {
-            // Account is unlocked, can proceed.
-            account
-                .verify_unix_credential(uae.cleartext.as_str(), &self.async_tx, ct)
-                .inspect(|res| {
-                    if res.is_none() {
-                        // Update it.
-                        slock.record_failure(ct);
-                    };
-                })
-        } else {
-            // Account is slocked!
-            security_info!("Account is softlocked.");
-            Ok(None)
-        };
-        res
+        // let maybe_valid = if let Some(mut slock) = maybe_slock {
+        //     // Apply the current time.
+        //     slock.apply_time_step(ct);
+        //     // Now check the results
+        //     if slock.is_valid() {
+        //         Some(slock)
+        //     } else {
+        //         None
+        //     }
+        // } else {
+        //     None
+        // };
+
+        // // Validate the unix_pw - this checks the account/cred lock states.
+        // let res = if let Some(mut slock) = maybe_valid {
+        //     // Account is unlocked, can proceed.
+        //     account
+        //         .verify_unix_credential(uae.cleartext.as_str(), &self.async_tx, ct)
+        //         .inspect(|res| {
+        //             if res.is_none() {
+        //                 // Update it.
+        //                 slock.record_failure(ct);
+        //             };
+        //         })
+        // } else {
+        //     // Account is slocked!
+        //     security_info!("Account is softlocked.");
+        //     Ok(None)
+        // };
+        // res
     }
 
     pub async fn token_auth_ldap(
@@ -1390,123 +1477,149 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
-            admin_error!("Failed to start auth ldap -> {:?}", e);
-            e
-        })?;
+        let thing = self
+            .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
+            .await?;
 
-        let (_, rap) =
-            Group::try_from_account_entry_with_policy(&account_entry, &mut self.qs_read)?;
+        match thing {
+            Some((account, _)) => {
+                let session_id = Uuid::new_v4();
+                security_info!(
+                    "Starting session {} for {} {}",
+                    session_id,
+                    account.spn,
+                    account.uuid
+                );
 
-        // if anonymous
-        if lae.target == UUID_ANONYMOUS {
-            let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
-            // Check if the anon account has been locked.
-            if !account.is_within_valid_time(ct) {
-                security_info!("Account is not within valid time period");
-                return Ok(None);
+                Ok(Some(LdapBoundToken {
+                    spn: account.spn,
+                    session_id,
+                    effective_session: LdapSession::UnixBind(account.uuid),
+                }))
             }
-
-            let session_id = Uuid::new_v4();
-            security_info!(
-                "Starting session {} for {} {}",
-                session_id,
-                account.spn,
-                account.uuid
-            );
-
-            // Account must be anon, so we can gen the uat.
-            Ok(Some(LdapBoundToken {
-                session_id,
-                spn: account.spn,
-                effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
-            }))
-        } else {
-            if !self.qs_read.d_info.d_ldap_allow_unix_pw_bind {
-                security_info!("Bind not allowed through Unix passwords.");
-                return Ok(None);
-            }
-            let account =
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read, rap.allow_primary_cred_fallback().unwrap_or(false))?;
-
-            if !account.is_within_valid_time(ct) {
-                security_info!("Account is not within valid time period");
-                return Ok(None);
-            }
-
-            let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
-                Some((cred_uuid, policy)) => {
-                    let softlock_read = self.softlocks.read();
-                    let slock_ref = match softlock_read.get(&cred_uuid) {
-                        Some(slock_ref) => slock_ref.clone(),
-                        None => {
-                            let _session_ticket = self.session_ticket.acquire().await;
-                            let mut softlock_write = self.softlocks.write();
-                            let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
-                            softlock_write.insert(cred_uuid, slock.clone());
-                            softlock_write.commit();
-                            slock
-                        }
-                    };
-                    Ok(slock_ref)
-                }
-                None => Err(false),
-            };
-
-            let maybe_slock = match maybe_slock_ref.as_ref() {
-                Ok(s) => Ok(s.lock().await),
-                Err(cred_state) => Err(cred_state),
-            };
-
-            let maybe_valid = match maybe_slock {
-                Ok(mut slock) => {
-                    // Apply the current time.
-                    slock.apply_time_step(ct);
-                    // Now check the results
-                    if slock.is_valid() {
-                        Ok(slock)
-                    } else {
-                        Err(true)
-                    }
-                }
-                Err(cred_state) => Err(*cred_state),
-            };
-
-            match maybe_valid {
-                Ok(mut slock) => {
-                    if account
-                        .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
-                        .is_some()
-                    {
-                        let session_id = Uuid::new_v4();
-                        security_info!(
-                            "Starting session {} for {} {}",
-                            session_id,
-                            account.spn,
-                            account.uuid
-                        );
-
-                        Ok(Some(LdapBoundToken {
-                            spn: account.spn,
-                            session_id,
-                            effective_session: LdapSession::UnixBind(account.uuid),
-                        }))
-                    } else {
-                        // PW failure, update softlock.
-                        slock.record_failure(ct);
-                        Ok(None)
-                    }
-                }
-                Err(true) => {
-                    security_info!("Account is softlocked.");
-                    Ok(None)
-                }
-                Err(false) => {
-                    security_info!("Account does not have a configured posix password.");
-                    Ok(None)
-                }
-            }
+            None => Ok(None),
         }
+
+        // let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+        //     admin_error!("Failed to start auth ldap -> {:?}", e);
+        //     e
+        // })?;
+
+        // let (_, rap) =
+        //     Group::try_from_account_entry_with_policy(&account_entry, &mut self.qs_read)?;
+
+        // // if anonymous
+        // if lae.target == UUID_ANONYMOUS {
+        //     let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+        //     // Check if the anon account has been locked.
+        //     if !account.is_within_valid_time(ct) {
+        //         security_info!("Account is not within valid time period");
+        //         return Ok(None);
+        //     }
+
+        //     let session_id = Uuid::new_v4();
+        //     security_info!(
+        //         "Starting session {} for {} {}",
+        //         session_id,
+        //         account.spn,
+        //         account.uuid
+        //     );
+
+        //     // Account must be anon, so we can gen the uat.
+        //     Ok(Some(LdapBoundToken {
+        //         session_id,
+        //         spn: account.spn,
+        //         effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
+        //     }))
+        // } else {
+        //     if !self.qs_read.d_info.d_ldap_allow_unix_pw_bind {
+        //         security_info!("Bind not allowed through Unix passwords.");
+        //         return Ok(None);
+        //     }
+        //     let account = UnixUserAccount::try_from_entry_ro(
+        //         account_entry.as_ref(),
+        //         &mut self.qs_read,
+        //         rap.allow_primary_cred_fallback().unwrap_or(false),
+        //     )?;
+
+        //     if !account.is_within_valid_time(ct) {
+        //         security_info!("Account is not within valid time period");
+        //         return Ok(None);
+        //     }
+
+        //     let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
+        //         Some((cred_uuid, policy)) => {
+        //             let softlock_read = self.softlocks.read();
+        //             let slock_ref = match softlock_read.get(&cred_uuid) {
+        //                 Some(slock_ref) => slock_ref.clone(),
+        //                 None => {
+        //                     let _session_ticket = self.session_ticket.acquire().await;
+        //                     let mut softlock_write = self.softlocks.write();
+        //                     let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+        //                     softlock_write.insert(cred_uuid, slock.clone());
+        //                     softlock_write.commit();
+        //                     slock
+        //                 }
+        //             };
+        //             Ok(slock_ref)
+        //         }
+        //         None => Err(false),
+        //     };
+
+        //     let maybe_slock = match maybe_slock_ref.as_ref() {
+        //         Ok(s) => Ok(s.lock().await),
+        //         Err(cred_state) => Err(cred_state),
+        //     };
+
+        //     let maybe_valid = match maybe_slock {
+        //         Ok(mut slock) => {
+        //             // Apply the current time.
+        //             slock.apply_time_step(ct);
+        //             // Now check the results
+        //             if slock.is_valid() {
+        //                 Ok(slock)
+        //             } else {
+        //                 Err(true)
+        //             }
+        //         }
+        //         Err(cred_state) => Err(*cred_state),
+        //     };
+
+        //     match maybe_valid {
+        //         Ok(mut slock) => {
+        //             if account
+        //                 .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
+        //                 .is_some()
+        //             {
+        //                 let session_id = Uuid::new_v4();
+        //                 security_info!(
+        //                     "Starting session {} for {} {}",
+        //                     session_id,
+        //                     account.spn,
+        //                     account.uuid
+        //                 );
+
+        //                 Ok(Some(LdapBoundToken {
+        //                     spn: account.spn,
+        //                     session_id,
+        //                     effective_session: LdapSession::UnixBind(account.uuid),
+        //                 }))
+        //             } else {
+        //                 // PW failure, update softlock.
+        //                 slock.record_failure(ct);
+        //                 Ok(None)
+        //             }
+        //         }
+        //         Err(true) => {
+        //             security_info!("Account is softlocked.");
+        //             Ok(None)
+        //         }
+        //         Err(false) => {
+        //             security_info!("Account does not have a configured posix password.");
+        //             Ok(None)
+        //         }
+        //     }
+        // }
     }
 
     pub fn commit(self) -> Result<(), OperationError> {

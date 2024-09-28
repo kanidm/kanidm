@@ -134,6 +134,7 @@ macro_rules! try_from_entry {
     }};
 }
 
+#[allow(dead_code)]
 impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
