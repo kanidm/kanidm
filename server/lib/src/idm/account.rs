@@ -4,7 +4,7 @@ use std::time::Duration;
 use kanidm_proto::internal::{
     BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
 };
-use kanidm_proto::v1::{UatStatus, UatStatusState};
+use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -12,6 +12,7 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
+use super::unix::UnixGroup;
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
@@ -31,9 +32,10 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
     ucred: Option<Credential>,
-    _shell: Option<String>,
+    shell: Option<String>,
     sshkeys: BTreeMap<String, SshPublicKey>,
-    _gidnumber: u32,
+    gidnumber: u32,
+    groups: Vec<UnixGroup>,
 }
 
 impl UnixExtensions {
@@ -71,7 +73,7 @@ pub struct Account {
 }
 
 macro_rules! try_from_entry {
-    ($value:expr, $groups:expr) => {{
+    ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
             return Err(OperationError::InvalidAccountState(format!(
@@ -177,11 +179,11 @@ macro_rules! try_from_entry {
                 .get_ava_single_credential(Attribute::UnixPassword)
                 .cloned();
 
-            let _shell = $value
+            let shell = $value
                 .get_ava_single_iutf8(Attribute::LoginShell)
                 .map(|s| s.to_string());
 
-            let _gidnumber = $value
+            let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
                 .ok_or_else(|| {
                     OperationError::InvalidAccountState(format!(
@@ -189,12 +191,15 @@ macro_rules! try_from_entry {
                         Attribute::GidNumber
                     ))
                 })?;
+            
+            let groups = $unix_groups;
 
             Some(UnixExtensions {
                 ucred,
-                _shell,
+                shell,
                 sshkeys,
-                _gidnumber,
+                gidnumber,
+                groups,
             })
         } else {
             None
@@ -232,7 +237,7 @@ impl Account {
     pub(crate) fn unix_extn(&self) -> Option<&UnixExtensions> {
         self.unix_extn.as_ref()
     }
-    
+
     pub(crate) fn primary(&self) -> Option<&Credential> {
         self.primary.as_ref()
     }
@@ -243,7 +248,18 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+
+        // I cannot express with words how much I hate this.
+        // Since all unix groups are also present as Group (as above) I would like to resolve them all together in one go
+        // I would also like to not resolve them at all if the account is not a posix account but that would require refactoring the macro
+        // Please let me know if you have a preference.
+        let unix_groups = match UnixGroup::try_from_account_entry_ro(value, qs) {
+            Ok(groups) => groups,
+            Err(_) => {
+                vec![]
+            }
+        };
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -255,7 +271,13 @@ impl Account {
         TXN: QueryServerTransaction<'a>,
     {
         let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        try_from_entry!(value, groups).map(|acct| (acct, rap))
+        let unix_groups = match UnixGroup::try_from_account_entry(value, qs) {
+            Ok(groups) => groups,
+            Err(_) => {
+                vec![]
+            }
+        };
+        try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -264,7 +286,13 @@ impl Account {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+        let unix_groups = match UnixGroup::try_from_account_entry_rw(value, qs) {
+            Ok(groups) => groups,
+            Err(_) => {
+                vec![]
+            }
+        };
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -273,7 +301,7 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry_reduced(value, qs)?;
-        try_from_entry!(value, groups)
+        try_from_entry!(value, groups, vec![])
     }
 
     /// Given the session_id and other metadata, create a user authentication token
@@ -797,6 +825,32 @@ impl Account {
         let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
         let vap = Value::ApplicationPassword(ap);
         Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
+    }
+
+    pub(crate) fn to_unixusertoken(
+        &self,
+        ct: Duration,
+    ) -> Result<Option<UnixUserToken>, OperationError> {
+        let (gidnumber, shell, sshkeys, groups) = if let Some(ue) = &self.unix_extn {
+            let sshkeys: Vec<String> = ue.sshkeys.iter().map(|(k, _)| k.clone()).collect();
+            (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
+        } else {
+            return Ok(None);
+        };
+
+        let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
+
+        Ok(Some(UnixUserToken {
+            name: self.name.clone(),
+            spn: self.spn.clone(),
+            displayname: self.displayname.clone(),
+            gidnumber: gidnumber,
+            uuid: self.uuid,
+            shell: shell.clone(),
+            groups,
+            sshkeys: sshkeys,
+            valid: self.is_within_valid_time(ct),
+        }))
     }
 }
 

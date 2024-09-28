@@ -166,8 +166,7 @@ impl UnixUserAccount {
     }
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
-        let groups: Result<Vec<_>, _> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
-        let groups = groups?;
+        let groups: Vec<_> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
 
         Ok(UnixUserToken {
             name: self.name.clone(),
@@ -324,6 +323,8 @@ impl UnixUserAccount {
     }
 }
 
+// Would be nice to move this into group.rs to keep the "group" connection.
+// UnixUserAccount can probably be deleted due to the consolidation in Account.
 #[derive(Debug, Clone)]
 pub(crate) struct UnixGroup {
     pub name: String,
@@ -500,6 +501,16 @@ impl UnixGroup {
         try_from_account_group_e!(value, qs)
     }
 
+    pub(crate) fn try_from_account_entry<'a, TXN>(
+        value: &Entry<EntrySealed, EntryCommitted>,
+        qs: &mut TXN,
+    ) -> Result<Vec<Self>, OperationError>
+    where
+        TXN: QueryServerTransaction<'a>,
+    {
+        try_from_account_group_e!(value, qs)
+    }
+
     /*
     pub fn try_from_account_entry_red_ro(
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -521,12 +532,12 @@ impl UnixGroup {
         try_from_group_e!(value)
     }
 
-    pub(crate) fn to_unixgrouptoken(&self) -> Result<UnixGroupToken, OperationError> {
-        Ok(UnixGroupToken {
+    pub(crate) fn to_unixgrouptoken(&self) -> UnixGroupToken {
+        UnixGroupToken {
             name: self.name.clone(),
             spn: self.spn.clone(),
             uuid: self.uuid,
             gidnumber: self.gidnumber,
-        })
+        }
     }
 }
