@@ -610,6 +610,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
             IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
             IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
         ];
 
         idm_data
