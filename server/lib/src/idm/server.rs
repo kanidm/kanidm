@@ -1378,7 +1378,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 })?;
         }
 
-        Ok(account.to_unixusertoken(ct)?.map(|uut| (account, uut)))
+        let uut = account.to_unixusertoken(ct)?;
+        Ok(Some((account, uut)))
     }
 
     pub async fn auth_unix(
