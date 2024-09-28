@@ -1294,7 +1294,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         if !account.is_within_valid_time(ct) {
             security_info!("Account is expired or not yet valid.");
-            return Err(OperationError::SessionExpired);
+            return Ok(None);
         }
 
         let cred = if acp.allow_primary_cred_fallback() == Some(true) {

@@ -191,7 +191,7 @@ macro_rules! try_from_entry {
                         Attribute::GidNumber
                     ))
                 })?;
-            
+
             let groups = $unix_groups;
 
             Some(UnixExtensions {
@@ -827,20 +827,19 @@ impl Account {
         Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
     }
 
-    pub(crate) fn to_unixusertoken(
-        &self,
-        ct: Duration,
-    ) -> Result<Option<UnixUserToken>, OperationError> {
+    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let (gidnumber, shell, sshkeys, groups) = if let Some(ue) = &self.unix_extn {
             let sshkeys: Vec<String> = ue.sshkeys.iter().map(|(k, _)| k.clone()).collect();
             (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
         } else {
-            return Ok(None);
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: posixaccount".to_string(),
+            ));
         };
 
         let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
 
-        Ok(Some(UnixUserToken {
+        Ok(UnixUserToken {
             name: self.name.clone(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
@@ -850,7 +849,7 @@ impl Account {
             groups,
             sshkeys: sshkeys,
             valid: self.is_within_valid_time(ct),
-        }))
+        })
     }
 }
 
