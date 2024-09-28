@@ -21,6 +21,7 @@ use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
+#[cfg(target_family = "unix")]
 async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
     // We need a signal handler to deal with a few things that can occur during runtime, especially
     // sigpipe on linux.
@@ -43,6 +44,12 @@ async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
             ExitCode::SUCCESS
         }
     }
+}
+
+#[cfg(target_family = "windows")]
+async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
+    opt.commands.exec().await;
+    ExitCode::SUCCESS
 }
 
 fn main() -> ExitCode {
