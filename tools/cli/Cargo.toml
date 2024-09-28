@@ -53,7 +53,7 @@ shellexpand = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
-tokio = { workspace = true, features = ["rt", "macros", "fs"] }
+tokio = { workspace = true, features = ["rt", "macros", "fs", "signal"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
