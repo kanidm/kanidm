@@ -1280,7 +1280,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         id: Uuid,
         cleartext: &str,
         ct: Duration,
-    ) -> Result<Option<(Account, UnixUserToken)>, OperationError> {
+    ) -> Result<Option<Account>, OperationError> {
         let entry = match self.qs_read.internal_search_uuid(id) {
             Ok(entry) => entry,
             Err(e) => {
@@ -1378,8 +1378,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 })?;
         }
 
-        let uut = account.to_unixusertoken(ct)?;
-        Ok(Some((account, uut)))
+        Ok(Some(account))
     }
 
     pub async fn auth_unix(
@@ -1390,7 +1389,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         Ok(self
             .auth_with_unix_pass(uae.target, &uae.cleartext, ct)
             .await?
-            .map(|(_, uut)| uut))
+            .and_then(|acc| acc.to_unixusertoken(ct).ok()))
     }
 
     pub async fn auth_ldap(
@@ -1431,7 +1430,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 .await?;
 
             match auth {
-                Some((account, _)) => {
+                Some(account) => {
                     let session_id = Uuid::new_v4();
                     security_info!(
                         "Starting session {} for {} {}",
