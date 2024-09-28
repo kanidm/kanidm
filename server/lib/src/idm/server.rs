@@ -1335,7 +1335,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         let mut slock = slock_ref.lock().await;
 
-
         slock.apply_time_step(ct);
 
         if !slock.is_valid() {
@@ -1398,27 +1397,56 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let thing = self
-            .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
-            .await?;
+        if lae.target == UUID_ANONYMOUS {
+            let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+                admin_error!("Failed to start auth ldap -> {:?}", e);
+                e
+            })?;
 
-        match thing {
-            Some((account, _)) => {
-                let session_id = Uuid::new_v4();
-                security_info!(
-                    "Starting session {} for {} {}",
-                    session_id,
-                    account.spn,
-                    account.uuid
-                );
-
-                Ok(Some(LdapBoundToken {
-                    spn: account.spn,
-                    session_id,
-                    effective_session: LdapSession::UnixBind(account.uuid),
-                }))
+            let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+            // Check if the anon account has been locked.
+            if !account.is_within_valid_time(ct) {
+                security_info!("Account is not within valid time period");
+                return Ok(None);
             }
-            None => Ok(None),
+
+            let session_id = Uuid::new_v4();
+            security_info!(
+                "Starting session {} for {} {}",
+                session_id,
+                account.spn,
+                account.uuid
+            );
+
+            // Account must be anon, so we can gen the uat.
+            Ok(Some(LdapBoundToken {
+                session_id,
+                spn: account.spn,
+                effective_session: LdapSession::UnixBind(UUID_ANONYMOUS),
+            }))
+        } else {
+            let auth = self
+                .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
+                .await?;
+
+            match auth {
+                Some((account, _)) => {
+                    let session_id = Uuid::new_v4();
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        account.spn,
+                        account.uuid
+                    );
+
+                    Ok(Some(LdapBoundToken {
+                        spn: account.spn,
+                        session_id,
+                        effective_session: LdapSession::UnixBind(account.uuid),
+                    }))
+                }
+                None => Ok(None),
+            }
         }
     }
 
@@ -1503,9 +1531,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let account = self
             .qs_read
             .impersonate_search_uuid(uute.target, &uute.ident)
-            .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(&account_entry, &mut self.qs_read, false)
-            })
+            .and_then(|account_entry| Account::try_from_entry_ro(&account_entry, &mut self.qs_read))
             .map_err(|e| {
                 admin_error!("Failed to start unix user token -> {:?}", e);
                 e
