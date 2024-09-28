@@ -254,7 +254,7 @@ impl Account {
         // I would also like to not resolve them at all if the account is not a posix account but that would require refactoring the macro
         // Please let me know if you have a preference.
         let unix_groups = UnixGroup::try_from_account_entry_ro(value, qs).unwrap_or_default();
-        
+
         try_from_entry!(value, groups, unix_groups)
     }
 
@@ -816,13 +816,16 @@ impl Account {
     }
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
-        let (gidnumber, shell, sshkeys, groups) = if let Some(ue) = &self.unix_extn {
-            let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
-            (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
-        } else {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: posixaccount".to_string(),
-            ));
+        let (gidnumber, shell, sshkeys, groups) = match self.unix_extn {
+            Some(ue) => {
+                let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
+                (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
+            }
+            None => {
+                return Err(OperationError::InvalidAccountState(
+                    "Missing class: posixaccount".to_string(),
+                ));
+            }
         };
 
         let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
