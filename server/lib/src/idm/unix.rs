@@ -1,17 +1,12 @@
 use std::iter;
-// use crossbeam::channel::Sender;
-use std::time::Duration;
 
-use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use kanidm_proto::v1::UnixGroupToken;
 use time::OffsetDateTime;
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 
 use kanidm_lib_crypto::CryptoPolicy;
 
-use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::Credential;
-use crate::idm::delayed::{DelayedAction, UnixPasswordUpgrade};
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::prelude::*;
 
@@ -21,16 +16,16 @@ pub(crate) struct UnixUserAccount {
     pub spn: String,
     pub displayname: String,
     pub uuid: Uuid,
-    pub valid_from: Option<OffsetDateTime>,
-    pub expire: Option<OffsetDateTime>,
+    pub _valid_from: Option<OffsetDateTime>,
+    pub _expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
     pub mail: Vec<String>,
 
     cred: Option<Credential>,
-    pub shell: Option<String>,
-    pub sshkeys: Vec<String>,
-    pub gidnumber: u32,
-    pub groups: Vec<UnixGroup>,
+    pub _shell: Option<String>,
+    pub _sshkeys: Vec<String>,
+    pub _gidnumber: u32,
+    pub _groups: Vec<UnixGroup>,
 }
 
 macro_rules! try_from_entry {
@@ -81,7 +76,7 @@ macro_rules! try_from_entry {
                 ))
             })?;
 
-        let gidnumber = $value
+        let _gidnumber = $value
             .get_ava_single_uint32(Attribute::GidNumber)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState(format!(
@@ -90,11 +85,11 @@ macro_rules! try_from_entry {
                 ))
             })?;
 
-        let shell = $value
+        let _shell = $value
             .get_ava_single_iutf8(Attribute::LoginShell)
             .map(|s| s.to_string());
 
-        let sshkeys = $value
+        let _sshkeys = $value
             .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .map(|i| i.map(|s| s.to_string()).collect())
             .unwrap_or_default();
@@ -112,29 +107,28 @@ macro_rules! try_from_entry {
             .map(|i| i.map(str::to_string).collect())
             .unwrap_or_default();
 
-        let valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
+        let _valid_from = $value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
-        let expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
+        let _expire = $value.get_ava_single_datetime(Attribute::AccountExpire);
 
         Ok(UnixUserAccount {
             name,
             spn,
             uuid,
             displayname,
-            gidnumber,
-            shell,
-            sshkeys,
-            groups: $groups,
+            _gidnumber,
+            _shell,
+            _sshkeys,
+            _groups: $groups,
             cred,
-            valid_from,
-            expire,
+            _valid_from,
+            _expire,
             radius_secret,
             mail,
         })
     }};
 }
 
-#[allow(dead_code)]
 impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
@@ -142,49 +136,6 @@ impl UnixUserAccount {
     ) -> Result<Self, OperationError> {
         let groups = UnixGroup::try_from_account_entry_rw(value, qs)?;
         try_from_entry!(value, groups)
-    }
-
-    pub(crate) fn try_from_entry_ro(
-        value: &Entry<EntrySealed, EntryCommitted>,
-        qs: &mut QueryServerReadTransaction,
-        allow_default_cred_fallback: bool,
-    ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_ro(value, qs)?;
-        let result: Result<UnixUserAccount, OperationError> = try_from_entry!(value, groups);
-        let mut result = match result {
-            Ok(v) => v,
-            Err(_) => unreachable!(),
-        };
-
-        if result.cred.is_none() && allow_default_cred_fallback {
-            result.cred = value
-                .get_ava_single_credential(Attribute::PrimaryCredential)
-                .cloned();
-        }
-
-        Ok(result)
-    }
-
-    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
-        let groups: Vec<_> = self.groups.iter().map(|g| g.to_unixgrouptoken()).collect();
-
-        Ok(UnixUserToken {
-            name: self.name.clone(),
-            spn: self.spn.clone(),
-            displayname: self.displayname.clone(),
-            gidnumber: self.gidnumber,
-            uuid: self.uuid,
-            shell: self.shell.clone(),
-            groups,
-            sshkeys: self.sshkeys.clone(),
-            valid: self.is_within_valid_time(ct),
-        })
-    }
-
-    pub fn unix_cred_uuid_and_policy(&self) -> Option<(Uuid, CredSoftLockPolicy)> {
-        self.cred
-            .as_ref()
-            .map(|cred| (cred.uuid, cred.softlock_policy()))
     }
 
     pub fn is_anonymous(&self) -> bool {
@@ -228,27 +179,6 @@ impl UnixUserAccount {
         }
     }
 
-    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
-        let cot = OffsetDateTime::UNIX_EPOCH + ct;
-
-        let vmin = if let Some(vft) = &self.valid_from {
-            // If current time greater than start time window
-            vft < &cot
-        } else {
-            // We have no time, not expired.
-            true
-        };
-        let vmax = if let Some(ext) = &self.expire {
-            // If exp greater than ct then expired.
-            &cot < ext
-        } else {
-            // If not present, we are not expired
-            true
-        };
-        // Mix the results
-        vmin && vmax
-    }
-
     // Get related inputs, such as account name, email, etc.
     pub fn related_inputs(&self) -> Vec<&str> {
         let mut inputs = Vec::with_capacity(4 + self.mail.len());
@@ -262,64 +192,6 @@ impl UnixUserAccount {
             inputs.push(s);
         }
         inputs
-    }
-
-    pub(crate) fn verify_unix_credential(
-        &self,
-        cleartext: &str,
-        async_tx: &Sender<DelayedAction>,
-        ct: Duration,
-    ) -> Result<Option<UnixUserToken>, OperationError> {
-        // Is the cred locked?
-        // NOW checked by the caller!
-
-        /*
-        if !self.is_within_valid_time(ct) {
-            lsecurity!(au, "Account is not within valid time period");
-            return Ok(None);
-        }
-        */
-
-        // is the cred some or none?
-        match &self.cred {
-            Some(cred) => {
-                cred.password_ref().and_then(|pw| {
-                    let valid = pw.verify(cleartext).map_err(|e| {
-                        error!(crypto_err = ?e);
-                        e.into()
-                    })?;
-                    if valid {
-                        security_info!("Successful unix cred handling");
-                        if pw.requires_upgrade() {
-                            async_tx
-                                .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
-                                    target_uuid: self.uuid,
-                                    existing_password: cleartext.to_string(),
-                                }))
-                                .map_err(|_| {
-                                    admin_error!(
-                                        "failed to queue delayed action - unix password upgrade"
-                                    );
-                                    OperationError::InvalidState
-                                })?;
-                        }
-
-                        // Technically this means we check the times twice, but that doesn't
-                        // seem like a big deal when we want to short cut return on invalid.
-                        Some(self.to_unixusertoken(ct)).transpose()
-                    } else {
-                        // Failed to auth
-                        security_info!("Failed unix cred handling (denied)");
-                        Ok(None)
-                    }
-                })
-            }
-            // They don't have a unix cred, fail the auth.
-            None => {
-                security_info!("Failed unix cred handling (no cred present)");
-                Ok(None)
-            }
-        }
     }
 }
 
