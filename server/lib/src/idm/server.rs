@@ -1343,10 +1343,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Ok(None);
         }
 
-        let password = match cred.password_ref() {
-            Ok(pw) => pw,
-            // This Credential should only ever be a password
-            Err(_) => unreachable!(),
+        let Ok(password) = cred.password_ref() else {
+            // The credential should only ever be a password
+            unreachable!();
         };
 
         // Check the provided password against the stored hash
@@ -1429,7 +1428,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 security_info!("Bind not allowed through Unix passwords.");
                 return Ok(None);
             }
-            
+
             let auth = self
                 .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
                 .await?;

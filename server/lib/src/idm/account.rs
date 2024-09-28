@@ -253,12 +253,8 @@ impl Account {
         // Since all unix groups are also present as Group (as above) I would like to resolve them all together in one go
         // I would also like to not resolve them at all if the account is not a posix account but that would require refactoring the macro
         // Please let me know if you have a preference.
-        let unix_groups = match UnixGroup::try_from_account_entry_ro(value, qs) {
-            Ok(groups) => groups,
-            Err(_) => {
-                vec![]
-            }
-        };
+        let unix_groups = UnixGroup::try_from_account_entry_ro(value, qs).unwrap_or_default();
+        
         try_from_entry!(value, groups, unix_groups)
     }
 
@@ -271,12 +267,8 @@ impl Account {
         TXN: QueryServerTransaction<'a>,
     {
         let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        let unix_groups = match UnixGroup::try_from_account_entry(value, qs) {
-            Ok(groups) => groups,
-            Err(_) => {
-                vec![]
-            }
-        };
+        let unix_groups = UnixGroup::try_from_account_entry(value, qs).unwrap_or_default();
+
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
 
@@ -286,12 +278,8 @@ impl Account {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::try_from_account_entry(value, qs)?;
-        let unix_groups = match UnixGroup::try_from_account_entry_rw(value, qs) {
-            Ok(groups) => groups,
-            Err(_) => {
-                vec![]
-            }
-        };
+        let unix_groups = UnixGroup::try_from_account_entry_rw(value, qs).unwrap_or_default();
+
         try_from_entry!(value, groups, unix_groups)
     }
 
@@ -829,7 +817,7 @@ impl Account {
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let (gidnumber, shell, sshkeys, groups) = if let Some(ue) = &self.unix_extn {
-            let sshkeys: Vec<String> = ue.sshkeys.iter().map(|(k, _)| k.clone()).collect();
+            let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
             (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
         } else {
             return Err(OperationError::InvalidAccountState(
@@ -843,11 +831,11 @@ impl Account {
             name: self.name.clone(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),
-            gidnumber: gidnumber,
+            gidnumber,
             uuid: self.uuid,
             shell: shell.clone(),
             groups,
-            sshkeys: sshkeys,
+            sshkeys,
             valid: self.is_within_valid_time(ct),
         })
     }
