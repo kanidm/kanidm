@@ -16,10 +16,12 @@ use kanidm_cli::KanidmClientParser;
 use std::process::ExitCode;
 use std::thread;
 use tokio::runtime;
-use tokio::signal::unix::{signal, SignalKind};
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
+
+#[cfg(target_family = "unix")]
+use tokio::signal::unix::{signal, SignalKind};
 
 #[cfg(target_family = "unix")]
 async fn signal_handler(opt: KanidmClientParser) -> ExitCode {
