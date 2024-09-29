@@ -12,14 +12,16 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
-use super::unix::UnixGroup;
+use super::group::{
+    load_all_groups_from_account_entry, load_all_groups_from_account_entry_reduced,
+    load_all_groups_from_account_entry_with_policy, Group, UnixGroup,
+};
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
 use crate::idm::application::Application;
-use crate::idm::group::Group;
 use crate::idm::ldap::{LdapBoundToken, LdapSession};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -247,13 +249,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-
-        // I cannot express with words how much I hate this.
-        // Since all unix groups are also present as Group (as above) I would like to resolve them all together in one go
-        // I would also like to not resolve them at all if the account is not a posix account but that would require refactoring the macro
-        // Please let me know if you have a preference.
-        let unix_groups = UnixGroup::try_from_account_entry_ro(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -266,8 +262,8 @@ impl Account {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        let unix_groups = UnixGroup::try_from_account_entry(value, qs).unwrap_or_default();
+        let ((groups, unix_groups), rap) =
+            load_all_groups_from_account_entry_with_policy(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
@@ -277,8 +273,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-        let unix_groups = UnixGroup::try_from_account_entry_rw(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -288,8 +283,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_reduced(value, qs)?;
-        try_from_entry!(value, groups, vec![])
+        let (groups, unix_groups) = load_all_groups_from_account_entry_reduced(value, qs)?;
+        try_from_entry!(value, groups, unix_groups)
     }
 
     /// Given the session_id and other metadata, create a user authentication token
@@ -816,7 +811,7 @@ impl Account {
     }
 
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
-        let (gidnumber, shell, sshkeys, groups) = match self.unix_extn {
+        let (gidnumber, shell, sshkeys, groups) = match &self.unix_extn {
             Some(ue) => {
                 let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())

@@ -53,7 +53,8 @@ use crate::idm::oauth2::{
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
-use crate::idm::unix::{UnixGroup, UnixUserAccount};
+use crate::idm::group::UnixGroup;
+use crate::idm::unix::UnixUserAccount;
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
