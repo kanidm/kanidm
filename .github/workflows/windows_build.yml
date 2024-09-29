@@ -28,7 +28,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.5
+        uses: mozilla-actions/sccache-action@v0.0.6
         with:
           version: "v0.4.2"
       - run: cargo build -p kanidm_client -p kanidm_tools --bin kanidm
