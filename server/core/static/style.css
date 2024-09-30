@@ -268,7 +268,9 @@ body {
   height: fit-content;
 }
 
-
-
-
-
+.ssh-list-icon {
+  --icon-size: 32px;
+  width: var(--icon-size); 
+  height: var(--icon-size); 
+  transform: rotate(35deg);
+}
