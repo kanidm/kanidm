@@ -2352,6 +2352,21 @@ where
             vs.trim(trim_cid);
         }
 
+        // During migration to the new modified/created cid system, we need to account
+        // for entries that don't have this yet. Normally we would apply this in seal()
+        // to the current CID. At this point we enter in the expected value from the
+        // entry. Note, we don't set last mod to cid yet, we leave that to seal() so that
+        // if this entry is excluded later in the change, we haven't tainted anything, or
+        // so that if the change only applies to non-replicated attrs we haven't mucked
+        // up the value.
+        let last_mod_cid = self.valid.ecstate.get_max_cid();
+        let cv = vs_cid![last_mod_cid.clone()];
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
+
+        let create_at_cid = self.valid.ecstate.at();
+        let cv = vs_cid![create_at_cid.clone()];
+        let _ = self.attrs.insert(Attribute::CreatedAtCid, cv);
+
         Entry {
             valid: EntryInvalid {
                 cid,
