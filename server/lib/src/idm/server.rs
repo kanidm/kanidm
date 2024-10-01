@@ -1399,7 +1399,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             })?;
 
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
-            
+
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
                 security_info!("Account is not within valid time period");
@@ -1994,9 +1994,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // No credential no problem
-        let cred = match cred {
-            Some(cred) => cred,
-            None => { return Ok(()); }
+        let Some(cred) = cred else {
+            return Ok(());
         };
 
         let maybe_modlist =
@@ -2007,7 +2006,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
             ),
-            None => Ok(())
+            None => Ok(()),
         }
     }
 
