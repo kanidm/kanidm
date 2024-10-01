@@ -599,9 +599,16 @@ mod test {
     use super::Attribute;
 
     #[test]
+    fn test_valueattribute_from_str() {
+        assert_eq!(Attribute::Uuid, Attribute::from_str("UUID"));
+        assert_eq!(Attribute::Uuid, Attribute::from_str("UuiD"));
+        assert_eq!(Attribute::Uuid, Attribute::from_str("uuid"));
+    }
+
+    #[test]
     fn test_valueattribute_as_str() {
-        assert!(Attribute::Class.as_str() == "class");
-        assert!(Attribute::Class.to_string() == *"class");
+        assert_eq!(Attribute::Class.as_str(), "class");
+        assert_eq!(Attribute::Class.to_string(), "class".to_string());
     }
 
     #[test]
