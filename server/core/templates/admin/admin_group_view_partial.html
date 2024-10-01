@@ -34,18 +34,18 @@ Groups Management
 (% else %)
     <ol class="list-group col-12 col-md-8 col-lg-6">
         (% for mail in group.mails %)
-        <li id="groupMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
-            <div class="d-flex align-items-center">(( mail ))</div>
-            <div class="buttons float-end">
-                (% if can_edit %)
-                <button hx-target="#groupMail(( loop.index ))"
-                        hx-swap="delete"
-                        hx-delete="/ui/admin/group/(( group.uuid ))/mail/(( mail ))"
-                        hx-confirm="Are you sure you want to remove (( mail )) from (( group.name ))?"
-                        type="button" class="btn btn-danger">Remove</button>
-                (% endif %)
-            </div>
-        </li>
+            <li id="groupMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
+                <div class="d-flex align-items-center">(( mail.value ))</div>
+                <div class="buttons float-end">
+                    (% if can_edit %)
+                    <button hx-target="#groupMail(( loop.index ))"
+                            hx-swap="delete"
+                            hx-delete="/ui/admin/group/(( group.uuid ))/mail/(( mail.value ))"
+                            hx-confirm="Are you sure you want to remove (( mail.value )) from (( group.name ))?"
+                            type="button" class="btn btn-danger">Remove</button>
+                    (% endif %)
+                </div>
+            </li>
         (% endfor %)
         (% if can_edit %)
             <li class="list-group-item"  id="addEmailField">
