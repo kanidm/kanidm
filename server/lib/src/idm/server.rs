@@ -46,6 +46,7 @@ use crate::idm::event::{
     RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
     UnixUserTokenEvent,
 };
+use crate::idm::group::UnixGroup;
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
@@ -53,8 +54,6 @@ use crate::idm::oauth2::{
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
-use crate::idm::group::UnixGroup;
-use crate::idm::unix::UnixUserAccount;
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
@@ -1498,6 +1497,35 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
     }
 }
 
+fn gen_password_mod(
+    cleartext: &str,
+    crypto_policy: &CryptoPolicy,
+) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+    let new_cred = Credential::new_password_only(crypto_policy, cleartext)?;
+    let cred_value = Value::new_credential("unix", new_cred);
+    Ok(ModifyList::new_purge_and_set(
+        Attribute::UnixPassword,
+        cred_value,
+    ))
+}
+
+fn gen_password_upgrade_mod(
+    unix_cred: &Credential,
+    cleartext: &str,
+    crypto_policy: &CryptoPolicy,
+) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+    if let Some(new_cred) = unix_cred.upgrade_password(crypto_policy, cleartext)? {
+        let cred_value = Value::new_credential("primary", new_cred);
+        Ok(Some(ModifyList::new_purge_and_set(
+            Attribute::UnixPassword,
+            cred_value,
+        )))
+    } else {
+        // No action, not the same pw
+        Ok(None)
+    }
+}
+
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn jws_public_jwk(&mut self, key_id: &str) -> Result<Jwk, OperationError> {
         self.qs_read
@@ -1764,13 +1792,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .internal_search_uuid(pce.target)
             .and_then(|account_entry| {
                 // Assert the account is unix and valid.
-                UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
+                Account::try_from_entry_rw(&account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 admin_error!("Failed to start set unix account password {:?}", e);
                 e
             })?;
-        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Account is not a unix account
+        if account.unix_extn().is_none() {
+            return Err(OperationError::InvalidAccountState(
+                "Missing class: posixaccount".to_string(),
+            ));
+        }
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
@@ -1778,9 +1812,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
-            .map_err(|e| {
+        let modlist =
+            gen_password_mod(pce.cleartext.as_str(), self.crypto_policy).map_err(|e| {
                 admin_error!(?e, "Unable to generate password change modlist");
                 e
             })?;
@@ -1947,24 +1980,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .internal_search_uuid(pwu.target_uuid)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
+                Account::try_from_entry_rw(&account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 admin_error!("Failed to start unix pw upgrade -> {:?}", e);
                 e
             })?;
 
-        let maybe_modlist =
-            account.gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)?;
+        let cred = match account.unix_extn() {
+            Some(ue) => ue.ucred(),
+            None => {
+                return Err(OperationError::InvalidAccountState(
+                    "Missing class: posixaccount".to_string(),
+                ));
+            }
+        };
 
-        if let Some(modlist) = maybe_modlist {
-            self.qs_write.internal_modify(
+        // No credential no problem
+        let cred = match cred {
+            Some(cred) => cred,
+            None => { return Ok(()); }
+        };
+
+        let maybe_modlist =
+            gen_password_upgrade_mod(cred, pwu.existing_password.as_str(), self.crypto_policy)?;
+
+        match maybe_modlist {
+            Some(modlist) => self.qs_write.internal_modify(
                 &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
-            )
-        } else {
-            // No action needed, it's probably been changed/updated already.
-            Ok(())
+            ),
+            None => Ok(())
         }
     }
 

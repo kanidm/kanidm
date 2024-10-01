@@ -416,6 +416,7 @@ macro_rules! try_from_account_group_e {
 }
 
 impl UnixGroup {
+    #[allow(dead_code)]
     pub(crate) fn try_from_account_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
