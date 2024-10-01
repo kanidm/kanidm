@@ -1313,7 +1313,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 } else {
                     security_info!("Account does not have a posix password configured.");
                 }
-                //TODO: Did we want to return an error condition?
                 return Ok(None);
             }
             Some(cred) => (cred, cred.uuid, cred.softlock_policy()),
@@ -1339,13 +1338,13 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         if !slock.is_valid() {
             security_info!("Account is softlocked.");
-            //TODO: Did we want to return an error condition?
             return Ok(None);
         }
 
         let Ok(password) = cred.password_ref() else {
             // The credential should only ever be a password
-            unreachable!();
+            error!("user unix or primary credential is not a password");
+            return Err(OperationError::InvalidState);
         };
 
         // Check the provided password against the stored hash
@@ -1363,9 +1362,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         security_info!("Successfully authenticated with unix (or primary) password");
         if password.requires_upgrade() {
-            //TODO: Do we really want to throw if pushing to the async queue fails?
-            // We should log it & continue so the logic attempt which is completely valid completes,
-            // even if their credential is out of date and writing into the queue has failed.
             self.async_tx
                 .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
                     target_uuid: id,
@@ -1403,6 +1399,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             })?;
 
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+            
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
                 security_info!("Account is not within valid time period");
