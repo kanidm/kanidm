@@ -28,14 +28,14 @@ pub fn admin_router() -> Router<ServerState> {
     Router::new().merge(unguarded_router).merge(guarded_router)
 }
 
-// Any filter defined in the module `filters` is accessible in your template.
-mod filters {
-    use std::hash::{DefaultHasher, Hash, Hasher};
-
-    // This filter does not have extra arguments
-    pub fn hash<T: std::fmt::Display + Hash>(t: T) -> ::askama::Result<u64> {
-        let mut s = DefaultHasher::new();
-        t.hash(&mut s);
-        Ok(s.finish())
-    }
-}
+// // Any filter defined in the module `filters` is accessible in your template.
+// mod filters {
+//     use std::hash::{DefaultHasher, Hash, Hasher};
+//
+//     // This filter does not have extra arguments
+//     pub fn hash<T: std::fmt::Display + Hash>(t: T) -> ::askama::Result<u64> {
+//         let mut s = DefaultHasher::new();
+//         t.hash(&mut s);
+//         Ok(s.finish())
+//     }
+// }

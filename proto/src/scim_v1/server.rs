@@ -1,10 +1,11 @@
 use crate::attribute::Attribute;
 use scim_proto::ScimEntryHeader;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use tracing::debug;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -31,7 +32,7 @@ pub struct ScimAddress {
     pub country: String,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimMail {
     pub primary: bool,
@@ -221,7 +222,34 @@ impl ScimEntryKanidm{
         match self.attrs.get(attr) {
             Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
             Some(sv) => {
-                eprintln!("Scim entry did had the {attr} attr but expected ScimValueKanidm::String, actual: {sv:?}");
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
+                None
+            }
+            None => {
+                None
+            }
+        }
+    }
+
+    pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
+        match self.attrs.get(&Attribute::Mail) {
+            Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
+                None
+            }
+            None => {
+                None
+            }
+        }
+    }
+
+
+    pub fn attr_uuids(&self, attr: &Attribute) -> Option<&Vec<Uuid>> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::ArrayUuid(uuids)) => Some(uuids),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::ArrayUuid type, actual: {:?}", attr, sv);
                 None
             }
             None => {

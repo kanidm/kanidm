@@ -1,6 +1,5 @@
 use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
-use crate::https::views::admin::filters;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::{login, HtmlTemplate};
 use crate::https::ServerState;
@@ -15,13 +14,13 @@ use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 
 use kanidm_proto::internal::{OperationError, UserAuthToken};
-use kanidm_proto::v1::Entry;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_and, f_eq, f_id, Filter, FC};
+use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
+use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimMail};
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -39,12 +38,12 @@ struct GroupsPartialView {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct GroupInfo {
-    uuid: String,
+    uuid: Uuid,
     name: String,
     spn: String,
     entry_manager: Option<String>,
     acp: GroupACP,
-    mails: Vec<String>,
+    mails: Vec<ScimMail>,
     members: Vec<MemberInfo>,
 }
 
@@ -55,7 +54,7 @@ struct GroupACP {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct MemberInfo {
-    uuid: String,
+    uuid: Uuid,
     name: String,
     spn: String,
     displayname: String,
@@ -156,13 +155,13 @@ pub(crate) struct GroupAddMemberFormData {
     member: String,
 }
 
-#[derive(Template)]
-#[template(path = "admin/admin_group_member_partial.html")]
-struct GroupMemberPartialView {
-    can_edit: bool,
-    group_uuid: Uuid,
-    member: MemberInfo,
-}
+// #[derive(Template)]
+// #[template(path = "admin/admin_group_member_partial.html")]
+// struct GroupMemberPartialView {
+//     can_edit: bool,
+//     group_uuid: Uuid,
+//     member: MemberInfo,
+// }
 
 pub(crate) async fn view_group_new_member_post(
     State(_state): State<ServerState>,
@@ -181,13 +180,13 @@ pub(crate) struct GroupAddMailFormData {
     mail: String,
 }
 
-#[derive(Template)]
-#[template(path = "admin/admin_group_mail_partial.html")]
-struct GroupMailPartialView {
-    can_edit: bool,
-    group_uuid: Uuid,
-    mail: String,
-}
+// #[derive(Template)]
+// #[template(path = "admin/admin_group_mail_partial.html")]
+// struct GroupMailPartialView {
+//     can_edit: bool,
+//     group_uuid: Uuid,
+//     mail: String,
+// }
 
 pub(crate) async fn view_group_new_mail_post(
     State(_state): State<ServerState>,
@@ -358,40 +357,70 @@ async fn get_group_info(
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
 ) -> Result<GroupInfo, ErrorResponse> {
-    let filter = filter_all!(f_and!([
-        f_eq(Attribute::Class, EntryClass::Group.into()),
-        f_id(uuid.to_string().as_str())
-    ]));
-    let base: Vec<Entry> = state
+    let scim_entry: ScimEntryKanidm = state
         .qe_r_ref
-        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
+        .scim_entry_id_get(client_auth_info.clone(), kopid.eventid, uuid.to_string())
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    let first = base.first().ok_or(HtmxError::OperationError(
-        kopid.eventid,
-        OperationError::NoMatchingEntries,
-    ))?;
-    Ok(entry_into_groupinfo(first))
+    if let Some(group_info) = scimentry_into_groupinfo(&scim_entry) {
+        Ok(group_info)
+    } else {
+        Err(HtmxError::new(kopid, OperationError::InvalidState).into())
+    }
 }
+
 async fn get_groups_info(
     state: ServerState,
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
 ) -> Result<Vec<GroupInfo>, ErrorResponse> {
     let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Group.into())]));
-    let base: Vec<Entry> = state
+    let base: Vec<_> = state
         .qe_r_ref
-        .handle_internalsearch(client_auth_info.clone(), filter, None, kopid.eventid)
+        .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
     // TODO: inefficient to sort here
     let mut groups: Vec<_> = base
         .iter()
-        .map(|entry: &Entry| entry_into_groupinfo(entry))
+        // TODO: Filtering away unsuccessful entries may not be desired.
+        .filter_map(|entry| scimentry_into_groupinfo(entry))
         .collect();
     groups.sort_by_key(|gi| gi.uuid.clone());
     groups.reverse();
     Ok(groups)
+}
+
+fn scimentry_into_groupinfo(scim_entry: &ScimEntryKanidm) -> Option<GroupInfo> {
+    let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
+    let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
+    let entry_manager = scim_entry.attr_str(&Attribute::EntryManagedBy).map(|t| { t.to_string() });
+    let mails = scim_entry.attr_mails().unwrap_or_default().clone();
+    let members_ids: Vec<_> = scim_entry.attr_uuids(&Attribute::Member).unwrap_or_default();
+    // TODO: new pr for resolving uuids into names
+
+    Some(GroupInfo {
+        uuid: scim_entry.header.id,
+        name,
+        spn,
+        entry_manager,
+        acp: GroupACP { enabled: false },
+        mails,
+        members,
+    })
+}
+
+fn scimentry_into_memberinfo(scim_entry: &ScimEntryKanidm) -> Option<MemberInfo> {
+    let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
+    let displayname = scim_entry.attr_str(&Attribute::DisplayName)?.to_string();
+    let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
+
+    Some(MemberInfo {
+        uuid: scim_entry.header.id,
+        displayname,
+        name,
+        spn,
+    })
 }
