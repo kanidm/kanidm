@@ -185,7 +185,7 @@ pub struct ScimOAuth2ClaimMap {
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
-    pub entry_display: String,
+    pub value: String,
 }
 
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only

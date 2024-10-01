@@ -2643,7 +2643,7 @@ mod tests {
         let entry_managed_by_scim = scim_entry.attrs.get(&Attribute::EntryManagedBy).unwrap();
         match entry_managed_by_scim {
             ScimValueKanidm::EntryReference(reference) => {
-                assert_eq!(reference.clone(), ScimReference { uuid: UUID_IDM_ADMINS, entry_display: "idm_admins".to_string() })
+                assert_eq!(reference.clone(), ScimReference { uuid: UUID_IDM_ADMINS, value: "idm_admins".to_string() })
             }
             _ => {
                 panic!("expected EntryReference, actual {:?}", entry_managed_by_scim);
@@ -2653,7 +2653,7 @@ mod tests {
         let members_scim = scim_entry.attrs.get(&Attribute::Member).unwrap();
         match members_scim {
             ScimValueKanidm::EntryReferences(members) => {
-                assert_eq!(members.first().unwrap().clone(), ScimReference { uuid: UUID_IDM_ALL_PERSONS, entry_display: "idm_all_persons".to_string() })
+                assert_eq!(members.first().unwrap().clone(), ScimReference { uuid: UUID_IDM_ALL_PERSONS, value: "idm_all_persons".to_string() })
             }
             _ => {
                 panic!("expected EntryReferences, actual {:?}", members_scim);
