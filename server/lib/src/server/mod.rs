@@ -2267,6 +2267,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
+    use kanidm_proto::scim_v1::server::ScimReference;
     use crate::prelude::*;
 
     #[qs_test]
@@ -2613,4 +2614,52 @@ mod tests {
         server_txn.commit().expect("should not fail");
         // Commit.
     }
+
+    #[qs_test]
+    async fn test_scim_entry_structure(server: &QueryServer) {
+        let mut read_txn = server.read().await.unwrap();
+
+        // Query entry (A buitin one ?)
+        let entry = read_txn.internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE).unwrap();
+
+        // Convert entry into scim
+        let reduced = entry.as_ref().clone().into_reduced();
+        let scim_entry = reduced.to_scim_kanidm().unwrap();
+
+        // Assert scim entry attributes are as expected
+        assert_eq!(scim_entry.header.id, UUID_IDM_PEOPLE_SELF_NAME_WRITE);
+        let name_scim = scim_entry.attrs.get(&Attribute::Name).unwrap();
+        match name_scim {
+            ScimValueKanidm::String(name) => {
+                assert_eq!(name.clone(), "idm_people_self_name_write")
+            }
+            _ => {
+                panic!("expected String, actual {:?}", name_scim);
+            }
+        }
+
+
+        // such as returning a new struct type for `members` attributes or `managed_by`
+        let entry_managed_by_scim = scim_entry.attrs.get(&Attribute::EntryManagedBy).unwrap();
+        match entry_managed_by_scim {
+            ScimValueKanidm::EntryReference(reference) => {
+                assert_eq!(reference.clone(), ScimReference { uuid: UUID_IDM_ADMINS, entry_display: "idm_admins".to_string() })
+            }
+            _ => {
+                panic!("expected EntryReference, actual {:?}", entry_managed_by_scim);
+            }
+        }
+
+        let members_scim = scim_entry.attrs.get(&Attribute::Member).unwrap();
+        match members_scim {
+            ScimValueKanidm::EntryReferences(members) => {
+                assert_eq!(members.first().unwrap().clone(), ScimReference { uuid: UUID_IDM_ALL_PERSONS, entry_display: "idm_all_persons".to_string() })
+            }
+            _ => {
+                panic!("expected EntryReferences, actual {:?}", members_scim);
+            }
+        }
+
+    }
+
 }
