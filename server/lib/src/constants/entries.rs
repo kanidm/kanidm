@@ -14,6 +14,11 @@ use kanidm_proto::v1::AccountType;
 
 use uuid::Uuid;
 
+//TODO: This would do well in the proto lib
+// together with all the other definitions.
+// That way`OperationError::MissingClass` can
+// Directly reference the entryclass rather
+// than relying on its string name
 #[derive(Copy, Clone, Debug)]
 pub enum EntryClass {
     AccessControlCreate,

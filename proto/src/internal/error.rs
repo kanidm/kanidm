@@ -98,6 +98,8 @@ pub enum OperationError {
     InvalidSchemaState(String),
     InvalidAccountState(String),
     // This really oughta be EntryClass but its not in proto...
+    // And it should at least be &'static str but we
+    // Serialize & Deserialize this class...
     MissingClass(String),
     MissingAttribute(Attribute),
     MissingEntries,
