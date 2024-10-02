@@ -21,14 +21,14 @@ TRIPLET=$(echo $1 | cut -d \- -f 3-)
 echo "Crossbuilding for: $TRIPLET"
 
 CROSS_CONFIG="platform/crossbuild/${1}/Cross.toml" \
-    cross build --target aarch64-unknown-linux-gnu \
+    cross build --target "$TRIPLET" \
         --bin kanidm_unixd \
         --bin kanidm_unixd_tasks \
         --bin kanidm_ssh_authorizedkeys \
         --bin kanidm-unix \
         --release
 CROSS_CONFIG="platform/crossbuild/${1}/Cross.toml" \
-    cross build --target aarch64-unknown-linux-gnu \
+    cross build --target "$TRIPLET" \
         -p pam_kanidm \
         -p nss_kanidm \
         --release
