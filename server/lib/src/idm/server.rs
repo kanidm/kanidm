@@ -1802,7 +1802,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Account is not a unix account
         if account.unix_extn().is_none() {
             return OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
+                "Missing class: {}",
                 EntryClass::PosixAccount
             ));
         }
@@ -1992,7 +1992,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             Some(ue) => ue.ucred(),
             None => {
                 return Err(OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
+                    "Missing class: {}",
                     EntryClass::PosixAccount
                 )));
             }
