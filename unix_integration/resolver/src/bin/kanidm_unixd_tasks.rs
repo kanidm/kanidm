@@ -22,7 +22,7 @@ use bytes::{BufMut, BytesMut};
 use futures::{SinkExt, StreamExt};
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_proto::{HomeDirectoryInfo, TaskRequest, TaskResponse};
-use kanidm_unix_resolver::unix_config::KanidmUnixdConfig;
+use kanidm_unix_resolver::unix_config::UnixdConfig;
 use kanidm_utils_users::{get_effective_gid, get_effective_uid};
 use libc::{lchown, umask};
 use sketching::tracing_forest::traits::*;
@@ -272,7 +272,7 @@ fn create_home_directory(
     Ok(())
 }
 
-async fn handle_tasks(stream: UnixStream, cfg: &KanidmUnixdConfig) {
+async fn handle_tasks(stream: UnixStream, cfg: &UnixdConfig) {
     let mut reqs = Framed::new(stream, TaskCodec::new());
 
     loop {
@@ -361,7 +361,7 @@ async fn main() -> ExitCode {
                 }
             };
 
-            let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
+            let cfg = match UnixdConfig::new().read_options_from_optional_config(unixd_path) {
                 Ok(v) => v,
                 Err(_) => {
                     error!("Failed to parse {}", unixd_path_str);

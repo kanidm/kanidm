@@ -1,6 +1,5 @@
 // use async_trait::async_trait;
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
 use std::fmt::Display;
 use std::num::NonZeroUsize;
 use std::ops::DerefMut;
@@ -10,6 +9,7 @@ use std::sync::Arc;
 use std::time::{Duration, SystemTime};
 
 use lru::LruCache;
+use time::OffsetDateTime;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -27,11 +27,14 @@ use crate::idprovider::interface::{
     UserToken,
     UserTokenState,
 };
-use crate::idprovider::system::SystemProvider;
+use crate::idprovider::system::{
+    Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
+};
 use crate::unix_config::{HomeAttr, UidAttr};
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
-    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, ProviderStatus,
+    HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
+    ProviderStatus,
 };
 
 use kanidm_hsm_crypto::BoxedDynTpm;
@@ -58,6 +61,10 @@ pub enum AuthSession {
         token: Box<UserToken>,
         cred_handler: AuthCredHandler,
     },
+    System {
+        cred_handler: AuthCredHandler,
+        shadow: Arc<Shadow>,
+    },
     Success,
     Denied,
 }
@@ -76,7 +83,9 @@ pub struct Resolver {
     // A set of remote resolvers, ordered by priority.
     clients: Vec<Arc<dyn IdProvider + Sync + Send>>,
 
-    pam_allow_groups: BTreeSet<String>,
+    // The id of the primary-provider which may use name over spn.
+    primary_origin: ProviderOrigin,
+
     timeout_seconds: u64,
     default_shell: String,
     home_prefix: PathBuf,
@@ -101,10 +110,9 @@ impl Resolver {
     pub async fn new(
         db: Db,
         system_provider: Arc<SystemProvider>,
-        client: Arc<dyn IdProvider + Sync + Send>,
+        clients: Vec<Arc<dyn IdProvider + Sync + Send>>,
         hsm: BoxedDynTpm,
         timeout_seconds: u64,
-        pam_allow_groups: Vec<String>,
         default_shell: String,
         home_prefix: PathBuf,
         home_attr: HomeAttr,
@@ -114,11 +122,7 @@ impl Resolver {
     ) -> Result<Self, ()> {
         let hsm = Mutex::new(hsm);
 
-        if pam_allow_groups.is_empty() {
-            warn!("Will not be able to authorise user logins, pam_allow_groups config is not configured.");
-        }
-
-        let clients: Vec<Arc<dyn IdProvider + Sync + Send>> = vec![client];
+        let primary_origin = clients.first().map(|c| c.origin()).unwrap_or_default();
 
         let client_ids: HashMap<_, _> = clients
             .iter()
@@ -132,9 +136,9 @@ impl Resolver {
             hsm,
             system_provider,
             clients,
+            primary_origin,
             client_ids,
             timeout_seconds,
-            pam_allow_groups: pam_allow_groups.into_iter().collect(),
             default_shell,
             home_prefix,
             home_attr,
@@ -142,7 +146,6 @@ impl Resolver {
             uid_attr_map,
             gid_attr_map,
             nxcache: Mutex::new(LruCache::new(NXCACHE_SIZE)),
-            // system_identities,
         })
     }
 
@@ -200,8 +203,13 @@ impl Resolver {
         nxcache_txn.get(id).copied()
     }
 
-    pub async fn reload_system_identities(&self, users: Vec<EtcUser>, groups: Vec<EtcGroup>) {
-        self.system_provider.reload(users, groups).await
+    pub async fn reload_system_identities(
+        &self,
+        users: Vec<EtcUser>,
+        shadow: Option<Vec<EtcShadow>>,
+        groups: Vec<EtcGroup>,
+    ) {
+        self.system_provider.reload(users, shadow, groups).await
     }
 
     async fn get_cached_usertoken(&self, account_id: &Id) -> Result<(bool, Option<UserToken>), ()> {
@@ -582,32 +590,30 @@ impl Resolver {
             .unwrap_or_else(|| Vec::with_capacity(0)))
     }
 
-    #[inline(always)]
     fn token_homedirectory_alias(&self, token: &UserToken) -> Option<String> {
+        let is_primary_origin = token.provider == self.primary_origin;
         self.home_alias.map(|t| match t {
             // If we have an alias. use it.
+            HomeAttr::Name if is_primary_origin => token.name.as_str().to_string(),
             HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
-            HomeAttr::Spn => token.spn.as_str().to_string(),
-            HomeAttr::Name => token.name.as_str().to_string(),
+            HomeAttr::Spn | HomeAttr::Name => token.spn.as_str().to_string(),
         })
     }
 
-    #[inline(always)]
     fn token_homedirectory_attr(&self, token: &UserToken) -> String {
+        let is_primary_origin = token.provider == self.primary_origin;
         match self.home_attr {
+            HomeAttr::Name if is_primary_origin => token.name.as_str().to_string(),
             HomeAttr::Uuid => token.uuid.hyphenated().to_string(),
-            HomeAttr::Spn => token.spn.as_str().to_string(),
-            HomeAttr::Name => token.name.as_str().to_string(),
+            HomeAttr::Spn | HomeAttr::Name => token.spn.as_str().to_string(),
         }
     }
 
-    #[inline(always)]
     fn token_homedirectory(&self, token: &UserToken) -> String {
         self.token_homedirectory_alias(token)
             .unwrap_or_else(|| self.token_homedirectory_attr(token))
     }
 
-    #[inline(always)]
     fn token_abs_homedirectory(&self, token: &UserToken) -> String {
         self.home_prefix
             .join(self.token_homedirectory(token))
@@ -615,11 +621,11 @@ impl Resolver {
             .to_string()
     }
 
-    #[inline(always)]
     fn token_uidattr(&self, token: &UserToken) -> String {
+        let is_primary_origin = token.provider == self.primary_origin;
         match self.uid_attr_map {
-            UidAttr::Spn => token.spn.as_str(),
-            UidAttr::Name => token.name.as_str(),
+            UidAttr::Name if is_primary_origin => token.name.as_str(),
+            UidAttr::Spn | UidAttr::Name => token.spn.as_str(),
         }
         .to_string()
     }
@@ -673,7 +679,6 @@ impl Resolver {
         self.get_nssaccount(Id::Gid(gid)).await
     }
 
-    #[inline(always)]
     fn token_gidattr(&self, token: &GroupToken) -> String {
         match self.gid_attr_map {
             UidAttr::Spn => token.spn.as_str(),
@@ -685,6 +690,12 @@ impl Resolver {
     #[instrument(level = "debug", skip_all)]
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
         let mut r = self.system_provider.get_nssgroups().await;
+
+        // Get all the system -> extension maps.
+
+        // For each sysgroup.
+        //    if there is an extension.
+        //    locate it, and resolve + extend.
 
         let l = self.get_cached_grouptokens().await?;
         r.reserve(l.len());
@@ -732,32 +743,29 @@ impl Resolver {
 
     #[instrument(level = "debug", skip(self))]
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
-        let token = self
-            .get_usertoken(&Id::Name(account_id.to_string()))
-            .await?;
+        let id = Id::Name(account_id.to_string());
 
-        if self.pam_allow_groups.is_empty() {
-            // can't allow anything if the group list is zero...
-            eprintln!("Cannot authenticate users, no allowed groups in configuration!");
-            Ok(Some(false))
-        } else {
-            Ok(token.map(|tok| {
-                let user_set: BTreeSet<_> = tok
-                    .groups
-                    .iter()
-                    .flat_map(|g| [g.name.clone(), g.uuid.hyphenated().to_string()])
-                    .collect();
+        if let Some(answer) = self.system_provider.authorise(&id).await {
+            return Ok(Some(answer));
+        };
 
-                debug!(
-                    "Checking if user is in allowed groups ({:?}) -> {:?}",
-                    self.pam_allow_groups, user_set,
-                );
-                let intersection_count = user_set.intersection(&self.pam_allow_groups).count();
-                debug!("Number of intersecting groups: {}", intersection_count);
-                debug!("User token is valid: {}", tok.valid);
+        // Not a system account, handle with the provider.
+        let token = self.get_usertoken(&id).await?;
 
-                intersection_count > 0 && tok.valid
-            }))
+        // If there is no token, return Ok(None) to trigger unknown-user path in pam.
+        match token {
+            Some(token) => {
+                let client = self.client_ids.get(&token.provider)
+                    .cloned()
+                    .ok_or_else(|| {
+                        error!(provider = ?token.provider, "Token was resolved by a provider that no longer appears to be present.");
+                    })?;
+
+                client.unix_user_authorise(&token).await.map_err(|err| {
+                    error!(?err, "unable to authorise account");
+                })
+            }
+            None => Ok(None),
         }
     }
 
@@ -765,6 +773,8 @@ impl Resolver {
     pub async fn pam_account_authenticate_init(
         &self,
         account_id: &str,
+        pam_info: &PamServiceInfo,
+        current_time: OffsetDateTime,
         shutdown_rx: broadcast::Receiver<()>,
     ) -> Result<(AuthSession, PamAuthResponse), ()> {
         // Setup an auth session. If possible bring the resolver online.
@@ -776,9 +786,50 @@ impl Resolver {
 
         let id = Id::Name(account_id.to_string());
 
-        if self.system_provider.contains_account(&id).await {
-            debug!("Ignoring auth request for system user");
-            return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+        match self.system_provider.auth_init(&id, current_time).await {
+            // The system provider will not take part in this authentication.
+            SystemProviderAuthInit::Ignore => {
+                debug!("account unknown to system provider, continue.");
+            }
+            // The provider knows the account, and is unable to proceed,
+            // We return unknown here so that pam_kanidm can be skipped and fall back
+            // to pam_unix.so.
+            SystemProviderAuthInit::ShadowMissing => {
+                warn!(
+                    ?account_id,
+                    "Resolver unable to proceed, /etc/shadow was not accessible."
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Unknown));
+            }
+            // There are no credentials for this account
+            SystemProviderAuthInit::CredentialsUnavailable => {
+                warn!(
+                    ?account_id,
+                    "Denying auth request for system user with no valid credentials"
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Denied));
+            }
+            // The account has expired
+            SystemProviderAuthInit::Expired => {
+                warn!(
+                    ?account_id,
+                    "Denying auth request for system user with expired credentials"
+                );
+                return Ok((AuthSession::Denied, PamAuthResponse::Denied));
+            }
+            // The provider knows the account and wants to proceed,
+            SystemProviderAuthInit::Begin {
+                next_request,
+                cred_handler,
+                shadow,
+            } => {
+                let auth_session = AuthSession::System {
+                    shadow,
+                    cred_handler,
+                };
+
+                return Ok((auth_session, next_request.into()));
+            }
         }
 
         let token = self.get_usertoken(&id).await?;
@@ -945,6 +996,32 @@ impl Resolver {
                     )
                     .await
             }
+            &mut AuthSession::System {
+                ref mut cred_handler,
+                ref shadow,
+            } => {
+                // I had a lot of thoughts here, but I think system auth is
+                // not the same as provider, so I think we special case here and have a separate
+                // return type.
+                let system_auth_result = shadow.auth_step(cred_handler, pam_next_req);
+
+                let next = match system_auth_result {
+                    SystemAuthResult::Denied => {
+                        *auth_session = AuthSession::Denied;
+
+                        Ok(PamAuthResponse::Denied)
+                    }
+                    SystemAuthResult::Success => {
+                        *auth_session = AuthSession::Success;
+
+                        Ok(PamAuthResponse::Success)
+                    }
+                    SystemAuthResult::Next(req) => Ok(req.into()),
+                };
+
+                // We shortcut here
+                return next;
+            }
             &mut AuthSession::Success | &mut AuthSession::Denied => Err(IdpError::BadRequest),
         };
 
@@ -973,12 +1050,19 @@ impl Resolver {
     pub async fn pam_account_authenticate(
         &self,
         account_id: &str,
+        current_time: OffsetDateTime,
         password: &str,
     ) -> Result<Option<bool>, ()> {
         let (_shutdown_tx, shutdown_rx) = broadcast::channel(1);
 
+        let pam_info = PamServiceInfo {
+            service: "kanidm-unix-test".to_string(),
+            tty: "/dev/null".to_string(),
+            rhost: "localhost".to_string(),
+        };
+
         let mut auth_session = match self
-            .pam_account_authenticate_init(account_id, shutdown_rx)
+            .pam_account_authenticate_init(account_id, &pam_info, current_time, shutdown_rx)
             .await?
         {
             (auth_session, PamAuthResponse::Password) => {
@@ -1042,10 +1126,26 @@ impl Resolver {
         &self,
         account_id: &str,
     ) -> Result<Option<HomeDirectoryInfo>, ()> {
-        let token = self
-            .get_usertoken(&Id::Name(account_id.to_string()))
-            .await?;
+        let id = Id::Name(account_id.to_string());
+
+        match self.system_provider.begin_session(&id).await {
+            SystemProviderSession::Start => {
+                return Ok(None);
+            }
+            /*
+            SystemProviderSession::StartCreateHome(
+                info
+            ) => {
+                return Ok(Some(info));
+            }
+            */
+            SystemProviderSession::Ignore => {}
+        };
+
+        // Not a system account, check based on the token and resolve.
+        let token = self.get_usertoken(&id).await?;
         Ok(token.as_ref().map(|tok| HomeDirectoryInfo {
+            uid: tok.gidnumber,
             gid: tok.gidnumber,
             name: self.token_homedirectory_attr(tok),
             aliases: self
@@ -1059,7 +1159,12 @@ impl Resolver {
         let now = SystemTime::now();
         let mut hsm_lock = self.hsm.lock().await;
 
-        let mut results = Vec::with_capacity(self.clients.len());
+        let mut results = Vec::with_capacity(self.clients.len() + 1);
+
+        results.push(ProviderStatus {
+            name: "system".to_string(),
+            online: true,
+        });
 
         for client in self.clients.iter() {
             let online = client.attempt_online(hsm_lock.deref_mut(), now).await;

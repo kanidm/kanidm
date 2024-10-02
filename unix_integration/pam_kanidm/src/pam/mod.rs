@@ -218,11 +218,15 @@ impl PamHooks for PamKanidm {
 
         install_subscriber(opts.debug);
 
-        // This will == "Ok(Some("ssh"))" on remote auth.
-        let tty = pamh.get_tty();
-        let rhost = pamh.get_rhost();
+        let info = match pamh.get_pam_info() {
+            Ok(info) => info,
+            Err(e) => {
+                error!(err = ?e, "get_pam_info");
+                return e;
+            }
+        };
 
-        debug!(?args, ?opts, ?tty, ?rhost, "sm_authenticate");
+        debug!(?args, ?opts, ?info, "sm_authenticate");
 
         let account_id = match pamh.get_user(None) {
             Ok(aid) => aid,
@@ -273,7 +277,7 @@ impl PamHooks for PamKanidm {
             }
         };
 
-        let mut req = ClientRequest::PamAuthenticateInit(account_id);
+        let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
         loop {
             match_sm_auth_client_response!(daemon_client.call_and_wait(&req, timeout), opts,
