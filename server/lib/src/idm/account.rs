@@ -817,9 +817,10 @@ impl Account {
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
-                return Err(OperationError::InvalidAccountState(
-                    "Missing class: posixaccount".to_string(),
-                ));
+                return Err(OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::PosixAccount
+                )));
             }
         };
 

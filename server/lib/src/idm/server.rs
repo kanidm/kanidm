@@ -1309,9 +1309,9 @@ impl<'a> IdmServerAuthTransaction<'a> {
         let (cred, cred_id, cred_slock_policy) = match cred {
             None => {
                 if acp.allow_primary_cred_fallback() == Some(true) {
-                    security_info!("Account does not have a posix or primary password configured.");
+                    security_info!("Account does not have a POSIX or primary password configured.");
                 } else {
-                    security_info!("Account does not have a posix password configured.");
+                    security_info!("Account does not have a POSIX password configured.");
                 }
                 return Ok(None);
             }
@@ -1343,7 +1343,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         let Ok(password) = cred.password_ref() else {
             // The credential should only ever be a password
-            error!("user unix or primary credential is not a password");
+            error!("User's UNIX or primary credential is not a password, can't authenticate!");
             return Err(OperationError::InvalidState);
         };
 
@@ -1469,7 +1469,10 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 let spn = entry
                     .get_ava_single_proto_string(Attribute::Spn)
                     .ok_or_else(|| {
-                        OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+                        OperationError::InvalidAccountState(format!(
+                            "Missing attribute: {}",
+                            Attribute::Spn
+                        ))
                     })?;
 
                 Ok(Some(LdapBoundToken {
@@ -1798,9 +1801,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Account is not a unix account
         if account.unix_extn().is_none() {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: posixaccount".to_string(),
-            ));
+            OperationError::InvalidAccountState(format!(
+                "Missing attribute: {}",
+                Attribute::PosixAccount
+            ))
         }
 
         // Deny the change if the account is anonymous!
@@ -1987,9 +1991,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let cred = match account.unix_extn() {
             Some(ue) => ue.ucred(),
             None => {
-                return Err(OperationError::InvalidAccountState(
-                    "Missing class: posixaccount".to_string(),
-                ));
+                return Err(OperationError::InvalidAccountState(format!(
+                    "Missing attribute: {}",
+                    Attribute::PosixAccount
+                )));
             }
         };
 
