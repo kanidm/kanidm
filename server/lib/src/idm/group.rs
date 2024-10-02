@@ -87,12 +87,10 @@ macro_rules! load_all_groups_from_iter {
             let group = Group::try_from_entry(group_entry.as_ref())?;
             groups.push(group);
 
-            if is_unix_account {
-                if !group_entry
+            if is_unix_account
+                && group_entry
                     .attribute_equality(Attribute::Class, &EntryClass::PosixGroup.to_partialvalue())
-                {
-                    continue;
-                }
+            {
                 let unix_group = UnixGroup::try_from_entry(group_entry.as_ref())?;
                 unix_groups.push(unix_group);
             }

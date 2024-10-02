@@ -1318,6 +1318,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Some(cred) => (cred, cred.uuid, cred.softlock_policy()),
         };
 
+        // The credential should only ever be a password
+        let Ok(password) = cred.password_ref() else {
+            error!("User's UNIX or primary credential is not a password, can't authenticate!");
+            return Err(OperationError::InvalidState);
+        };
+
         let slock_ref = {
             let softlock_read = self.softlocks.read();
             if let Some(slock_ref) = softlock_read.get(&cred_id) {
@@ -1340,12 +1346,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
             security_info!("Account is softlocked.");
             return Ok(None);
         }
-
-        let Ok(password) = cred.password_ref() else {
-            // The credential should only ever be a password
-            error!("User's UNIX or primary credential is not a password, can't authenticate!");
-            return Err(OperationError::InvalidState);
-        };
 
         // Check the provided password against the stored hash
         let valid = password.verify(cleartext).map_err(|e| {
