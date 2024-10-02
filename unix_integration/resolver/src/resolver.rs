@@ -695,7 +695,7 @@ impl Resolver {
         for nss_group in r.iter_mut() {
             for client in self.clients.iter() {
                 if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
-                    let token = self.get_grouptoken(extend_group_id.clone()).await?;
+                    let (_, token) = self.get_cached_grouptoken(extend_group_id).await?;
                     if let Some(token) = token {
                         let members = self.get_groupmembers(token.uuid).await;
                         nss_group.members.extend(members);
