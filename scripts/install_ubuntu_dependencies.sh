@@ -27,11 +27,11 @@ if [ -z "${PACKAGING}" ]; then
 fi
 
 if [ "${PACKAGING}" -eq 1 ]; then
+    # Install packages needed for cargo-deb to build healthy debs for any supported target
+    ${SUDOCMD} dpkg --add-architecture arm64 && ${SUDOCMD} apt-get update
     ${SUDOCMD} apt-get install -y \
-        devscripts \
-        fakeroot \
-        dh-make \
-        debmake
+    	libpam0g:{amd64,arm64} \
+    	libssl3:{amd64,arm64}
     export INSTALL_RUST=1
 fi
 
@@ -67,6 +67,10 @@ fi
 if [ $ERROR -eq 0 ] && [ -z "$(which wasm-bindgen)" ]; then
     echo "You don't have wasm-bindgen installed! Installing it now..."
     cargo install -f wasm-bindgen-cli
+fi
+if [ $ERROR -eq 0 ] && [ -z "$(which cargo-deb)" ]; then
+    echo "You don't have cargo-deb installed! Installing it now..."
+    cargo install -f cargo-deb
 fi
 
 
