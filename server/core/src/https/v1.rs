@@ -2061,7 +2061,6 @@ pub async fn account_id_unix_token(
         .await
         .map(Json::from);
 
-    // 👀 No way we have real functional code that uses the stringly defined error message as the condition
     // if they're not a posix user we should just hide them
     if let Err(OperationError::MissingClass(class)) = &res {
         if class == ENTRYCLASS_POSIX_ACCOUNT {
