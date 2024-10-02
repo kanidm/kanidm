@@ -1801,10 +1801,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Account is not a unix account
         if account.unix_extn().is_none() {
-            return OperationError::InvalidAccountState(format!(
+            return Err(OperationError::InvalidAccountState(format!(
                 "Missing class: {}",
                 EntryClass::PosixAccount
-            ));
+            )));
         }
 
         // Deny the change if the account is anonymous!
