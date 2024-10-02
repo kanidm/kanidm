@@ -74,8 +74,7 @@ struct KanidmConfigV2 {
 
 #[derive(Debug, Deserialize)]
 struct ConfigInt {
-    #[serde(alias = "db_path")]
-    cache_db_path: Option<String>,
+    db_path: Option<String>,
     sock_path: Option<String>,
     task_sock_path: Option<String>,
     conn_timeout: Option<u64>,
@@ -306,7 +305,7 @@ impl UnixdConfig {
 
         // Now map the values into our config.
         Ok(UnixdConfig {
-            cache_db_path: config.cache_db_path.unwrap_or(self.cache_db_path),
+            cache_db_path: config.db_path.unwrap_or(self.cache_db_path),
             sock_path: config.sock_path.unwrap_or(self.sock_path),
             task_sock_path: config.task_sock_path.unwrap_or(self.task_sock_path),
             unix_sock_timeout: DEFAULT_CONN_TIMEOUT * 2,
