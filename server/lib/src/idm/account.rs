@@ -4,7 +4,7 @@ use std::time::Duration;
 use kanidm_proto::internal::{
     BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
 };
-use kanidm_proto::v1::{UatStatus, UatStatusState};
+use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -12,13 +12,16 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
+use super::group::{
+    load_all_groups_from_account_entry, load_all_groups_from_account_entry_reduced,
+    load_all_groups_from_account_entry_with_policy, Group, UnixGroup,
+};
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
 use crate::idm::application::Application;
-use crate::idm::group::Group;
 use crate::idm::ldap::{LdapBoundToken, LdapSession};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -31,9 +34,10 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
     ucred: Option<Credential>,
-    _shell: Option<String>,
+    shell: Option<String>,
     sshkeys: BTreeMap<String, SshPublicKey>,
-    _gidnumber: u32,
+    gidnumber: u32,
+    groups: Vec<UnixGroup>,
 }
 
 impl UnixExtensions {
@@ -71,7 +75,7 @@ pub struct Account {
 }
 
 macro_rules! try_from_entry {
-    ($value:expr, $groups:expr) => {{
+    ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
             return Err(OperationError::InvalidAccountState(format!(
@@ -177,11 +181,11 @@ macro_rules! try_from_entry {
                 .get_ava_single_credential(Attribute::UnixPassword)
                 .cloned();
 
-            let _shell = $value
+            let shell = $value
                 .get_ava_single_iutf8(Attribute::LoginShell)
                 .map(|s| s.to_string());
 
-            let _gidnumber = $value
+            let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
                 .ok_or_else(|| {
                     OperationError::InvalidAccountState(format!(
@@ -190,11 +194,14 @@ macro_rules! try_from_entry {
                     ))
                 })?;
 
+            let groups = $unix_groups;
+
             Some(UnixExtensions {
                 ucred,
-                _shell,
+                shell,
                 sshkeys,
-                _gidnumber,
+                gidnumber,
+                groups,
             })
         } else {
             None
@@ -233,13 +240,18 @@ impl Account {
         self.unix_extn.as_ref()
     }
 
+    pub(crate) fn primary(&self) -> Option<&Credential> {
+        self.primary.as_ref()
+    }
+
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -250,8 +262,10 @@ impl Account {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        try_from_entry!(value, groups).map(|acct| (acct, rap))
+        let ((groups, unix_groups), rap) =
+            load_all_groups_from_account_entry_with_policy(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -259,8 +273,9 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -268,8 +283,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_reduced(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry_reduced(value, qs)?;
+        try_from_entry!(value, groups, unix_groups)
     }
 
     /// Given the session_id and other metadata, create a user authentication token
@@ -793,6 +808,35 @@ impl Account {
         let ap = ApplicationPassword::new(application, label, cleartext, policy)?;
         let vap = Value::ApplicationPassword(ap);
         Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
+    }
+
+    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
+        let (gidnumber, shell, sshkeys, groups) = match &self.unix_extn {
+            Some(ue) => {
+                let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
+                (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
+            }
+            None => {
+                return Err(OperationError::InvalidAccountState(format!(
+                    "Missing class: {}",
+                    EntryClass::PosixAccount
+                )));
+            }
+        };
+
+        let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
+
+        Ok(UnixUserToken {
+            name: self.name.clone(),
+            spn: self.spn.clone(),
+            displayname: self.displayname.clone(),
+            gidnumber,
+            uuid: self.uuid,
+            shell: shell.clone(),
+            groups,
+            sshkeys,
+            valid: self.is_within_valid_time(ct),
+        })
     }
 }
 

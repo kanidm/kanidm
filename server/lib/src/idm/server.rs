@@ -46,6 +46,7 @@ use crate::idm::event::{
     RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
     UnixUserTokenEvent,
 };
+use crate::idm::group::UnixGroup;
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
@@ -53,7 +54,6 @@ use crate::idm::oauth2::{
 use crate::idm::radius::RadiusAccount;
 use crate::idm::scim::SyncAccount;
 use crate::idm::serviceaccount::ServiceAccount;
-use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::prelude::*;
 use crate::server::keys::KeyProvidersTransaction;
@@ -1275,113 +1275,116 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
     }
 
+    async fn auth_with_unix_pass(
+        &mut self,
+        id: Uuid,
+        cleartext: &str,
+        ct: Duration,
+    ) -> Result<Option<Account>, OperationError> {
+        let entry = match self.qs_read.internal_search_uuid(id) {
+            Ok(entry) => entry,
+            Err(e) => {
+                admin_error!("Failed to start auth unix -> {:?}", e);
+                return Err(e);
+            }
+        };
+
+        let (account, acp) =
+            Account::try_from_entry_with_policy(entry.as_ref(), &mut self.qs_read)?;
+
+        if !account.is_within_valid_time(ct) {
+            security_info!("Account is expired or not yet valid.");
+            return Ok(None);
+        }
+
+        let cred = if acp.allow_primary_cred_fallback() == Some(true) {
+            account
+                .unix_extn()
+                .and_then(|extn| extn.ucred())
+                .or_else(|| account.primary())
+        } else {
+            account.unix_extn().and_then(|extn| extn.ucred())
+        };
+
+        let (cred, cred_id, cred_slock_policy) = match cred {
+            None => {
+                if acp.allow_primary_cred_fallback() == Some(true) {
+                    security_info!("Account does not have a POSIX or primary password configured.");
+                } else {
+                    security_info!("Account does not have a POSIX password configured.");
+                }
+                return Ok(None);
+            }
+            Some(cred) => (cred, cred.uuid, cred.softlock_policy()),
+        };
+
+        // The credential should only ever be a password
+        let Ok(password) = cred.password_ref() else {
+            error!("User's UNIX or primary credential is not a password, can't authenticate!");
+            return Err(OperationError::InvalidState);
+        };
+
+        let slock_ref = {
+            let softlock_read = self.softlocks.read();
+            if let Some(slock_ref) = softlock_read.get(&cred_id) {
+                slock_ref.clone()
+            } else {
+                let _session_ticket = self.session_ticket.acquire().await;
+                let mut softlock_write = self.softlocks.write();
+                let slock = Arc::new(Mutex::new(CredSoftLock::new(cred_slock_policy)));
+                softlock_write.insert(cred_id, slock.clone());
+                softlock_write.commit();
+                slock
+            }
+        };
+
+        let mut slock = slock_ref.lock().await;
+
+        slock.apply_time_step(ct);
+
+        if !slock.is_valid() {
+            security_info!("Account is softlocked.");
+            return Ok(None);
+        }
+
+        // Check the provided password against the stored hash
+        let valid = password.verify(cleartext).map_err(|e| {
+            error!(crypto_err = ?e);
+            e.into()
+        })?;
+
+        if !valid {
+            // Update it.
+            slock.record_failure(ct);
+
+            return Ok(None);
+        }
+
+        security_info!("Successfully authenticated with unix (or primary) password");
+        if password.requires_upgrade() {
+            self.async_tx
+                .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
+                    target_uuid: id,
+                    existing_password: cleartext.to_string(),
+                }))
+                .map_err(|_| {
+                    admin_error!("failed to queue delayed action - unix password upgrade");
+                    OperationError::InvalidState
+                })?;
+        }
+
+        Ok(Some(account))
+    }
+
     pub async fn auth_unix(
         &mut self,
         uae: &UnixUserAuthEvent,
         ct: Duration,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        // Get the entry/target we are working on.
-        let account = self
-            .qs_read
-            .internal_search_uuid(uae.target)
-            .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)
-            })
-            .map_err(|e| {
-                admin_error!("Failed to start auth unix -> {:?}", e);
-                e
-            })?;
-
-        if !account.is_within_valid_time(ct) {
-            security_info!("Account is not within valid time period");
-            return Ok(None);
-        }
-
-        let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
-            Some((cred_uuid, policy)) => {
-                let softlock_read = self.softlocks.read();
-                let slock_ref = match softlock_read.get(&cred_uuid) {
-                    Some(slock_ref) => slock_ref.clone(),
-                    None => {
-                        let _session_ticket = self.session_ticket.acquire().await;
-                        let mut softlock_write = self.softlocks.write();
-                        let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
-                        softlock_write.insert(cred_uuid, slock.clone());
-                        softlock_write.commit();
-                        slock
-                    }
-                };
-                Some(slock_ref)
-            }
-            None => None,
-        };
-
-        let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
-            Some(s.lock().await)
-        } else {
-            None
-        };
-
-        let maybe_valid = if let Some(mut slock) = maybe_slock {
-            // Apply the current time.
-            slock.apply_time_step(ct);
-            // Now check the results
-            if slock.is_valid() {
-                Some(slock)
-            } else {
-                None
-            }
-        } else {
-            None
-        };
-
-        // Validate the unix_pw - this checks the account/cred lock states.
-        let res = if let Some(mut slock) = maybe_valid {
-            // Account is unlocked, can proceed.
-            account
-                .verify_unix_credential(uae.cleartext.as_str(), &self.async_tx, ct)
-                .inspect(|res| {
-                    if res.is_none() {
-                        // Update it.
-                        slock.record_failure(ct);
-                    };
-                })
-        } else {
-            // Account is slocked!
-            security_info!("Account is softlocked.");
-            Ok(None)
-        };
-        res
-    }
-
-    pub async fn token_auth_ldap(
-        &mut self,
-        lae: &LdapTokenAuthEvent,
-        ct: Duration,
-    ) -> Result<Option<LdapBoundToken>, OperationError> {
-        match self.validate_and_parse_token_to_token(&lae.token, ct)? {
-            Token::UserAuthToken(uat) => {
-                let spn = uat.spn.clone();
-                Ok(Some(LdapBoundToken {
-                    session_id: uat.session_id,
-                    spn,
-                    effective_session: LdapSession::UserAuthToken(uat),
-                }))
-            }
-            Token::ApiToken(apit, entry) => {
-                let spn = entry
-                    .get_ava_single_proto_string(Attribute::Spn)
-                    .ok_or_else(|| {
-                        OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-                    })?;
-
-                Ok(Some(LdapBoundToken {
-                    session_id: apit.token_id,
-                    spn,
-                    effective_session: LdapSession::ApiToken(apit),
-                }))
-            }
-        }
+        Ok(self
+            .auth_with_unix_pass(uae.target, &uae.cleartext, ct)
+            .await?
+            .and_then(|acc| acc.to_unixusertoken(ct).ok()))
     }
 
     pub async fn auth_ldap(
@@ -1389,14 +1392,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
         lae: &LdapAuthEvent,
         ct: Duration,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
-        let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
-            admin_error!("Failed to start auth ldap -> {:?}", e);
-            e
-        })?;
-
-        // if anonymous
         if lae.target == UUID_ANONYMOUS {
+            let account_entry = self.qs_read.internal_search_uuid(lae.target).map_err(|e| {
+                admin_error!("Failed to start auth ldap -> {:?}", e);
+                e
+            })?;
+
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
+
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
                 security_info!("Account is not within valid time period");
@@ -1422,85 +1425,61 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 security_info!("Bind not allowed through Unix passwords.");
                 return Ok(None);
             }
-            let account =
-                UnixUserAccount::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
 
-            if !account.is_within_valid_time(ct) {
-                security_info!("Account is not within valid time period");
-                return Ok(None);
+            let auth = self
+                .auth_with_unix_pass(lae.target, &lae.cleartext, ct)
+                .await?;
+
+            match auth {
+                Some(account) => {
+                    let session_id = Uuid::new_v4();
+                    security_info!(
+                        "Starting session {} for {} {}",
+                        session_id,
+                        account.spn,
+                        account.uuid
+                    );
+
+                    Ok(Some(LdapBoundToken {
+                        spn: account.spn,
+                        session_id,
+                        effective_session: LdapSession::UnixBind(account.uuid),
+                    }))
+                }
+                None => Ok(None),
             }
+        }
+    }
 
-            let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
-                Some((cred_uuid, policy)) => {
-                    let softlock_read = self.softlocks.read();
-                    let slock_ref = match softlock_read.get(&cred_uuid) {
-                        Some(slock_ref) => slock_ref.clone(),
-                        None => {
-                            let _session_ticket = self.session_ticket.acquire().await;
-                            let mut softlock_write = self.softlocks.write();
-                            let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
-                            softlock_write.insert(cred_uuid, slock.clone());
-                            softlock_write.commit();
-                            slock
-                        }
-                    };
-                    Ok(slock_ref)
-                }
-                None => Err(false),
-            };
+    pub async fn token_auth_ldap(
+        &mut self,
+        lae: &LdapTokenAuthEvent,
+        ct: Duration,
+    ) -> Result<Option<LdapBoundToken>, OperationError> {
+        match self.validate_and_parse_token_to_token(&lae.token, ct)? {
+            Token::UserAuthToken(uat) => {
+                let spn = uat.spn.clone();
+                Ok(Some(LdapBoundToken {
+                    session_id: uat.session_id,
+                    spn,
+                    effective_session: LdapSession::UserAuthToken(uat),
+                }))
+            }
+            Token::ApiToken(apit, entry) => {
+                let spn = entry
+                    .get_ava_single_proto_string(Attribute::Spn)
+                    .ok_or_else(|| {
+                        OperationError::InvalidAccountState(format!(
+                            "Missing attribute: {}",
+                            Attribute::Spn
+                        ))
+                    })?;
 
-            let maybe_slock = match maybe_slock_ref.as_ref() {
-                Ok(s) => Ok(s.lock().await),
-                Err(cred_state) => Err(cred_state),
-            };
-
-            let maybe_valid = match maybe_slock {
-                Ok(mut slock) => {
-                    // Apply the current time.
-                    slock.apply_time_step(ct);
-                    // Now check the results
-                    if slock.is_valid() {
-                        Ok(slock)
-                    } else {
-                        Err(true)
-                    }
-                }
-                Err(cred_state) => Err(*cred_state),
-            };
-
-            match maybe_valid {
-                Ok(mut slock) => {
-                    if account
-                        .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
-                        .is_some()
-                    {
-                        let session_id = Uuid::new_v4();
-                        security_info!(
-                            "Starting session {} for {} {}",
-                            session_id,
-                            account.spn,
-                            account.uuid
-                        );
-
-                        Ok(Some(LdapBoundToken {
-                            spn: account.spn,
-                            session_id,
-                            effective_session: LdapSession::UnixBind(account.uuid),
-                        }))
-                    } else {
-                        // PW failure, update softlock.
-                        slock.record_failure(ct);
-                        Ok(None)
-                    }
-                }
-                Err(true) => {
-                    security_info!("Account is softlocked.");
-                    Ok(None)
-                }
-                Err(false) => {
-                    security_info!("Account does not have a configured posix password.");
-                    Ok(None)
-                }
+                Ok(Some(LdapBoundToken {
+                    session_id: apit.token_id,
+                    spn,
+                    effective_session: LdapSession::ApiToken(apit),
+                }))
             }
         }
     }
@@ -1515,6 +1494,35 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 
     fn get_qs_txn(&mut self) -> &mut Self::QsTransactionType {
         &mut self.qs_read
+    }
+}
+
+fn gen_password_mod(
+    cleartext: &str,
+    crypto_policy: &CryptoPolicy,
+) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+    let new_cred = Credential::new_password_only(crypto_policy, cleartext)?;
+    let cred_value = Value::new_credential("unix", new_cred);
+    Ok(ModifyList::new_purge_and_set(
+        Attribute::UnixPassword,
+        cred_value,
+    ))
+}
+
+fn gen_password_upgrade_mod(
+    unix_cred: &Credential,
+    cleartext: &str,
+    crypto_policy: &CryptoPolicy,
+) -> Result<Option<ModifyList<ModifyInvalid>>, OperationError> {
+    if let Some(new_cred) = unix_cred.upgrade_password(crypto_policy, cleartext)? {
+        let cred_value = Value::new_credential("primary", new_cred);
+        Ok(Some(ModifyList::new_purge_and_set(
+            Attribute::UnixPassword,
+            cred_value,
+        )))
+    } else {
+        // No action, not the same pw
+        Ok(None)
     }
 }
 
@@ -1556,9 +1564,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let account = self
             .qs_read
             .impersonate_search_uuid(uute.target, &uute.ident)
-            .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(&account_entry, &mut self.qs_read)
-            })
+            .and_then(|account_entry| Account::try_from_entry_ro(&account_entry, &mut self.qs_read))
             .map_err(|e| {
                 admin_error!("Failed to start unix user token -> {:?}", e);
                 e
@@ -1579,7 +1585,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 admin_error!("Failed to start unix group token {:?}", e);
                 e
             })?;
-        group.to_unixgrouptoken()
+        Ok(group.to_unixgrouptoken())
     }
 
     pub fn get_credentialstatus(
@@ -1786,13 +1792,20 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .internal_search_uuid(pce.target)
             .and_then(|account_entry| {
                 // Assert the account is unix and valid.
-                UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
+                Account::try_from_entry_rw(&account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 admin_error!("Failed to start set unix account password {:?}", e);
                 e
             })?;
-        // Ask if tis all good - this step checks pwpolicy and such
+
+        // Account is not a unix account
+        if account.unix_extn().is_none() {
+            return Err(OperationError::InvalidAccountState(format!(
+                "Missing class: {}",
+                EntryClass::PosixAccount
+            )));
+        }
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
@@ -1800,9 +1813,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
-            .map_err(|e| {
+        let modlist =
+            gen_password_mod(pce.cleartext.as_str(), self.crypto_policy).map_err(|e| {
                 admin_error!(?e, "Unable to generate password change modlist");
                 e
             })?;
@@ -1969,24 +1981,37 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .qs_write
             .internal_search_uuid(pwu.target_uuid)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_rw(&account_entry, &mut self.qs_write)
+                Account::try_from_entry_rw(&account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
                 admin_error!("Failed to start unix pw upgrade -> {:?}", e);
                 e
             })?;
 
-        let maybe_modlist =
-            account.gen_password_upgrade_mod(pwu.existing_password.as_str(), self.crypto_policy)?;
+        let cred = match account.unix_extn() {
+            Some(ue) => ue.ucred(),
+            None => {
+                return Err(OperationError::InvalidAccountState(format!(
+                    "Missing class: {}",
+                    EntryClass::PosixAccount
+                )));
+            }
+        };
 
-        if let Some(modlist) = maybe_modlist {
-            self.qs_write.internal_modify(
+        // No credential no problem
+        let Some(cred) = cred else {
+            return Ok(());
+        };
+
+        let maybe_modlist =
+            gen_password_upgrade_mod(cred, pwu.existing_password.as_str(), self.crypto_policy)?;
+
+        match maybe_modlist {
+            Some(modlist) => self.qs_write.internal_modify(
                 &filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(pwu.target_uuid))),
                 &modlist,
-            )
-        } else {
-            // No action needed, it's probably been changed/updated already.
-            Ok(())
+            ),
+            None => Ok(()),
         }
     }
 
@@ -2188,9 +2213,10 @@ mod tests {
     use crate::idm::delayed::{AuthSessionRecord, DelayedAction};
     use crate::idm::event::{AuthEvent, AuthResult};
     use crate::idm::event::{
-        PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+        LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
         UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
     };
+
     use crate::idm::server::{IdmServer, IdmServerTransaction, Token};
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -4124,5 +4150,133 @@ mod tests {
             .is_ok());
 
         // Any checks?
+    }
+
+    async fn idm_fallback_auth_fixture(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+        has_posix_password: bool,
+        allow_primary_cred_fallback: Option<bool>,
+        expected: Option<()>,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let target_uuid = Uuid::new_v4();
+        let p = CryptoPolicy::minimum();
+
+        {
+            let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+            if let Some(allow_primary_cred_fallback) = allow_primary_cred_fallback {
+                idms_prox_write
+                    .qs_write
+                    .internal_modify_uuid(
+                        UUID_IDM_ALL_ACCOUNTS,
+                        &ModifyList::new_purge_and_set(
+                            Attribute::AllowPrimaryCredFallback,
+                            Value::new_bool(allow_primary_cred_fallback),
+                        ),
+                    )
+                    .expect("Unable to change default session exp");
+            }
+
+            let mut e = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Uuid, Value::Uuid(target_uuid)),
+                (Attribute::Name, Value::new_iname("kevin")),
+                (Attribute::DisplayName, Value::new_utf8s("Kevin")),
+                (Attribute::Class, EntryClass::PosixAccount.to_value()),
+                (
+                    Attribute::PrimaryCredential,
+                    Value::Cred(
+                        "primary".to_string(),
+                        Credential::new_password_only(&p, "banana").unwrap()
+                    )
+                )
+            );
+
+            if has_posix_password {
+                e.add_ava(
+                    Attribute::UnixPassword,
+                    Value::Cred(
+                        "unix".to_string(),
+                        Credential::new_password_only(&p, "kampai").unwrap(),
+                    ),
+                );
+            }
+
+            let ce = CreateEvent::new_internal(vec![e]);
+            let cr = idms_prox_write.qs_write.create(&ce);
+            assert!(cr.is_ok());
+            idms_prox_write.commit().expect("Must not fail");
+        }
+
+        let result = idms
+            .auth()
+            .await
+            .unwrap()
+            .auth_ldap(
+                &LdapAuthEvent {
+                    target: target_uuid,
+                    cleartext: if has_posix_password {
+                        "kampai".to_string()
+                    } else {
+                        "banana".to_string()
+                    },
+                },
+                ct,
+            )
+            .await;
+
+        assert!(result.is_ok());
+        if let Some(_) = expected {
+            assert!(result.unwrap().is_some());
+        } else {
+            assert!(result.unwrap().is_none());
+        }
+    }
+
+    #[idm_test]
+    async fn test_idm_fallback_auth_no_pass_none_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, None, None).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_none_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, None, Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_no_pass_true_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(true), Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_true_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(true), Some(())).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_no_pass_false_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, false, Some(false), None).await;
+    }
+    #[idm_test]
+    async fn test_idm_fallback_auth_pass_false_fallback(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        idm_fallback_auth_fixture(idms, _idms_delayed, true, Some(false), Some(())).await;
     }
 }
