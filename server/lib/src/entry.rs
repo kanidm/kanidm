@@ -351,178 +351,6 @@ impl Entry<EntryInit, EntryNew> {
         Self::from_proto_entry(&pe, qs)
     }
 
-    #[cfg(test)]
-    // TODO: #[deprecated(note = "Use entry_init! macro instead or like... anything else")]
-    pub(crate) fn unsafe_from_entry_str(es: &str) -> Self {
-        // Just use log directly here, it's testing
-        // str -> proto entry
-        let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
-        // use a const map to convert str -> ava
-        let x: Eattrs = pe.attrs.into_iter()
-            .filter_map(|(k, vs)| {
-                if vs.is_empty() {
-                    None
-                } else {
-                    let attr = Attribute::from(k.to_lowercase().as_str());
-                    let vv: ValueSet = match attr.as_str() {
-                        kanidm_proto::constants::ATTR_ATTRIBUTENAME | kanidm_proto::constants::ATTR_CLASSNAME | kanidm_proto::constants::ATTR_DOMAIN => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_iutf8(&v))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_NAME | kanidm_proto::constants::ATTR_DOMAIN_NAME => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_iname(&v))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_USERID | kanidm_proto::constants::ATTR_UIDNUMBER  => {
-                            warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_iutf8(&v))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_CLASS | kanidm_proto::constants::ATTR_ACP_CREATE_CLASS | kanidm_proto::constants::ATTR_ACP_MODIFY_CLASS  => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_class(v.as_str()))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_ACP_CREATE_ATTR |
-                        kanidm_proto::constants::ATTR_ACP_SEARCH_ATTR |
-                        kanidm_proto::constants::ATTR_ACP_MODIFY_REMOVEDATTR |
-                        kanidm_proto::constants::ATTR_ACP_MODIFY_PRESENTATTR |
-                        kanidm_proto::constants::ATTR_SYSTEMMAY |
-                        kanidm_proto::constants::ATTR_SYSTEMMUST |
-                        kanidm_proto::constants::ATTR_MAY |
-                        kanidm_proto::constants::ATTR_MUST
-                        => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_attr(v.as_str()))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_UUID |
-                        kanidm_proto::constants::ATTR_DOMAIN_UUID => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_uuid_s(v.as_str())
-                                    .unwrap_or_else(|| {
-                                        warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                        Value::new_utf8(v)
-                                    })
-                                )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_MEMBER |
-                        kanidm_proto::constants::ATTR_MEMBEROF |
-                        kanidm_proto::constants::ATTR_DIRECTMEMBEROF |
-                        kanidm_proto::constants::ATTR_ACP_RECEIVER_GROUP => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).expect("Failed to convert value") )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_ACP_ENABLE |
-                        kanidm_proto::constants::ATTR_MULTIVALUE |
-                        kanidm_proto::constants::ATTR_UNIQUE => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_bools(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                                )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_SYNTAX => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                            )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_INDEX => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_indexes(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                            )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_ACP_TARGET_SCOPE |
-                        kanidm_proto::constants::ATTR_ACP_RECEIVER
-                         => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                            )
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_DISPLAYNAME | kanidm_proto::constants::ATTR_DESCRIPTION | kanidm_proto::constants::ATTR_DOMAIN_DISPLAY_NAME => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(Value::new_utf8)
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_SPN => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| {
-                                Value::new_spn_parse(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                            })
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_GIDNUMBER |
-                        kanidm_proto::constants::ATTR_VERSION => {
-                            valueset::from_value_iter(
-                            vs.into_iter().map(|v| {
-                                Value::new_uint32_str(v.as_str())
-                                .unwrap_or_else(|| {
-                                    warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
-                                    Value::new_utf8(v)
-                                })
-                            })
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_DOMAIN_TOKEN_KEY |
-                        kanidm_proto::constants::ATTR_FERNET_PRIVATE_KEY_STR => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_secret_str(&v))
-                            )
-                        }
-                        kanidm_proto::constants::ATTR_ES256_PRIVATE_KEY_DER |
-                        kanidm_proto::constants::ATTR_PRIVATE_COOKIE_KEY => {
-                            valueset::from_value_iter(
-                                vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
-                            )
-                        }
-                        ia => {
-                            error!("WARNING: Allowing invalid attribute {} to be interpreted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
-                            valueset::from_value_iter(
-                                vs.into_iter().map(Value::new_utf8)
-                            )
-                        }
-                    }
-                    .expect("Failed to convert value from string");
-                    Some((attr, vv))
-                }
-            })
-            .collect();
-
-        // return the entry!
-        Entry {
-            valid: EntryInit,
-            state: EntryNew,
-            attrs: x,
-        }
-    }
-
     /// Assign the Change Identifier to this Entry, allowing it to be modified and then
     /// written to the `Backend`
     pub fn assign_cid(
@@ -2309,6 +2137,21 @@ where
         for vs in self.attrs.values_mut() {
             vs.trim(trim_cid);
         }
+
+        // During migration to the new modified/created cid system, we need to account
+        // for entries that don't have this yet. Normally we would apply this in seal()
+        // to the current CID. At this point we enter in the expected value from the
+        // entry. Note, we don't set last mod to cid yet, we leave that to seal() so that
+        // if this entry is excluded later in the change, we haven't tainted anything, or
+        // so that if the change only applies to non-replicated attrs we haven't mucked
+        // up the value.
+        let last_mod_cid = self.valid.ecstate.get_max_cid();
+        let cv = vs_cid![last_mod_cid.clone()];
+        let _ = self.attrs.insert(Attribute::LastModifiedCid, cv);
+
+        let create_at_cid = self.valid.ecstate.at();
+        let cv = vs_cid![create_at_cid.clone()];
+        let _ = self.attrs.insert(Attribute::CreatedAtCid, cv);
 
         Entry {
             valid: EntryInvalid {

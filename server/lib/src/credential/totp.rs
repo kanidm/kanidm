@@ -9,8 +9,9 @@ use rand::prelude::*;
 
 use crate::be::dbvalue::{DbTotpAlgoV1, DbTotpV1};
 
-// This is 64 bits of entropy, as the examples in https://tools.ietf.org/html/rfc6238 show.
-const SECRET_SIZE_BYTES: usize = 8;
+// Update to match advice that totp hmac key should be the same
+// number of bytes as the output.
+const SECRET_SIZE_BYTES: usize = 32;
 pub const TOTP_DEFAULT_STEP: u64 = 30;
 
 #[derive(Debug, PartialEq, Eq)]

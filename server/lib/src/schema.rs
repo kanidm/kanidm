@@ -2332,8 +2332,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = e1.into_sealed_committed();
+            let ev1 = $e.into_sealed_committed();
 
             let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_ok());
@@ -2345,8 +2344,7 @@ mod tests {
             $e:expr,
             $type:ty
         ) => {{
-            let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
-            let ev1 = e1.into_sealed_committed();
+            let ev1 = $e.into_sealed_committed();
 
             let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_err());
@@ -2356,110 +2354,160 @@ mod tests {
     #[test]
     fn test_schema_attribute_from_entry() {
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "unique": ["false"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (Attribute::Unique, Value::Bool(false))
+            ),
             SchemaAttribute
         );
 
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "multivalue": ["false"],
-                        "unique": ["false"],
-                        "index": ["EQUALITY"],
-                        "syntax": ["UTF8STRING"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (Attribute::MultiValue, Value::Bool(false)),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
+                (Attribute::Index, Value::Index(IndexType::Equality))
+            ),
             SchemaAttribute
         );
 
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "description": ["Test attr parsing"],
-                        "multivalue": ["htouaoeu"],
-                        "unique": ["false"],
-                        "index": ["EQUALITY"],
-                        "syntax": ["UTF8STRING"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("Test attr parsing".to_string())
+                ),
+                (Attribute::MultiValue, Value::Utf8("htouaoeu".to_string())),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
+                (Attribute::Index, Value::Index(IndexType::Equality))
+            ),
             SchemaAttribute
         );
 
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "description": ["Test attr parsing"],
-                        "multivalue": ["false"],
-                        "unique": ["false"],
-                        "index": ["NTEHNOU"],
-                        "syntax": ["UTF8STRING"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("Test attr parsing".to_string())
+                ),
+                (Attribute::MultiValue, Value::Bool(false)),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
+                (Attribute::Index, Value::Utf8("NTEHNOU".to_string()))
+            ),
             SchemaAttribute
         );
 
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "description": ["Test attr parsing"],
-                        "multivalue": ["false"],
-                        "unique": ["false"],
-                        "index": ["EQUALITY"],
-                        "syntax": ["TNEOUNTUH"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("Test attr parsing".to_string())
+                ),
+                (Attribute::MultiValue, Value::Bool(false)),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Utf8("TNEOUNTUH".to_string())),
+                (Attribute::Index, Value::Index(IndexType::Equality))
+            ),
             SchemaAttribute
         );
 
         // Index is allowed to be empty
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "description": ["Test attr parsing"],
-                        "multivalue": ["false"],
-                        "unique": ["false"],
-                        "syntax": ["UTF8STRING"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("Test attr parsing".to_string())
+                ),
+                (Attribute::MultiValue, Value::Bool(false)),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String))
+            ),
             SchemaAttribute
         );
 
         // Index present
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "attributetype"],
-                        "attributename": ["schema_attr_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "description": ["Test attr parsing"],
-                        "multivalue": ["false"],
-                        "unique": ["false"],
-                        "index": ["EQUALITY"],
-                        "syntax": ["UTF8STRING"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::AttributeType.to_value()),
+                (
+                    Attribute::AttributeName,
+                    Value::new_iutf8("schema_attr_test")
+                ),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("Test attr parsing".to_string())
+                ),
+                (Attribute::MultiValue, Value::Bool(false)),
+                (Attribute::Unique, Value::Bool(false)),
+                (Attribute::Syntax, Value::Syntax(SyntaxType::Utf8String)),
+                (Attribute::Index, Value::Index(IndexType::Equality))
+            ),
             SchemaAttribute
         );
     }
@@ -2467,95 +2515,126 @@ mod tests {
     #[test]
     fn test_schema_class_from_entry() {
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                )
+            ),
             SchemaClass
         );
 
         sch_from_entry_err!(
-            r#"{
-                    "attrs": {
-                        "class": ["object"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                )
+            ),
             SchemaClass
         );
 
         // Classes can be valid with no attributes provided.
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                )
+            ),
             SchemaClass
         );
 
         // Classes with various may/must
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "systemmust": ["d"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                ),
+                (Attribute::SystemMust, Value::new_iutf8("a"))
+            ),
             SchemaClass
         );
 
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "systemmay": ["c"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                ),
+                (Attribute::SystemMay, Value::new_iutf8("a"))
+            ),
             SchemaClass
         );
 
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "may": ["a"],
-                        "must": ["b"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                ),
+                (Attribute::May, Value::new_iutf8("a")),
+                (Attribute::Must, Value::new_iutf8("b"))
+            ),
             SchemaClass
         );
 
         sch_from_entry_ok!(
-            r#"{
-                    "attrs": {
-                        "class": ["object", "classtype"],
-                        "classname": ["schema_class_test"],
-                        "description": ["class test"],
-                        "uuid": ["66c68b2f-d02c-4243-8013-7946e40fe321"],
-                        "may": ["a"],
-                        "must": ["b"],
-                        "systemmay": ["c"],
-                        "systemmust": ["d"]
-                    }
-                }"#,
+            entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ClassType.to_value()),
+                (Attribute::ClassName, Value::new_iutf8("schema_class_test")),
+                (
+                    Attribute::Uuid,
+                    Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+                ),
+                (
+                    Attribute::Description,
+                    Value::Utf8("class test".to_string())
+                ),
+                (Attribute::May, Value::new_iutf8("a")),
+                (Attribute::Must, Value::new_iutf8("b")),
+                (Attribute::SystemMay, Value::new_iutf8("c")),
+                (Attribute::SystemMust, Value::new_iutf8("d"))
+            ),
             SchemaClass
         );
     }
@@ -2814,60 +2893,17 @@ mod tests {
     }
 
     #[test]
-    fn test_schema_entry_validate() {
-        // Check that entries can be normalised and validated sanely
-        let schema_outer = Schema::new().expect("failed to create schema");
-        let schema = schema_outer.write_blocking();
-
-        // Check syntax to upper
-        // check index to upper
-        // insense to lower
-        // attr name to lower
-        let e_test: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "attributename": ["TestPerson"],
-                "syntax": ["utf8string"],
-                "UUID": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "InDeX": ["equality"]
-            }
-        }"#,
-        )
-        .into_invalid_new();
-
-        let e_expect: Entry<EntryValid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-                "attrs": {
-                    "class": ["extensibleobject"],
-                    "attributename": ["testperson"],
-                    "syntax": ["UTF8STRING"],
-                    "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                    "index": ["EQUALITY"]
-                }
-            }"#,
-        )
-        .into_valid_new();
-
-        let e_valid = e_test.validate(&schema).expect("validation failure");
-
-        assert_eq!(e_expect, e_valid);
-    }
-
-    #[test]
     fn test_schema_extensible() {
         let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
-
-        let e_extensible_bad: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "multivalue": ["zzzz"]
-            }
-        }"#,
+        let e_extensible_bad = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::MultiValue, Value::Utf8("zzzz".to_string()))
         )
         .into_invalid_new();
 
@@ -2879,14 +2915,13 @@ mod tests {
         );
 
         // Extensible doesn't mean you can have the phantoms
-        let e_extensible_phantom: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "password_import": ["zzzz"]
-            }
-        }"#,
+        let e_extensible_phantom = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::PasswordImport, Value::Utf8("zzzz".to_string()))
         )
         .into_invalid_new();
 
@@ -2897,14 +2932,13 @@ mod tests {
             ))
         );
 
-        let e_extensible: Entry<EntryInvalid, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["extensibleobject"],
-                "uuid": ["db237e8a-0079-4b8c-8a56-593b22aa44d1"],
-                "multivalue": ["true"]
-            }
-        }"#,
+        let e_extensible = entry_init!(
+            (Attribute::Class, EntryClass::ExtensibleObject.to_value()),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("db237e8a-0079-4b8c-8a56-593b22aa44d1"))
+            ),
+            (Attribute::MultiValue, Value::Bool(true))
         )
         .into_invalid_new();
 

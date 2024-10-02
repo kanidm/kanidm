@@ -20,47 +20,168 @@ resource server as a service.
 It's important for you to know _how_ your service will interact with OAuth2. For example, does it
 rely on OpenID connect for identity information, or does it support RFC7662 token introspection?
 
-Kanidm will expose its OAuth2 APIs at the following URLs:
+In general, Kanidm **requires** that your service supports three things:
 
-- User auth: `https://idm.example.com/ui/oauth2`
-- API auth: `https://idm.example.com/oauth2/authorise`
-- Token: `https://idm.example.com/oauth2/token`
-- RFC7662 token introspection URL: `https://idm.example.com/oauth2/token/introspect`
-- RFC7009 token revoke URL: `https://idm.example.com/oauth2/token/revoke`
+* HTTP basic authentication to the authorisation server (Kanidm)
 
-In general Kanidm requires that your service supports:
+* PKCE `S256` code verification (`code_challenge_methods_supported`)
 
-- HTTP basic authentication to the authorisation server (Kanidm)
-- PKCE S256 code verification
-- If it uses OIDC, JWT ES256 for token signatures
+* If it uses OIDC, `ES256` for token signatures
+  (`id_token_signing_alg_values_supported`)
 
-Kanidm issues tokens that are RFC9068 JWT's allowing service introspection.
+If your service doesn't support PKCE or only supports `RS256` token signatures,
+see [extended options for legacy clients](#extended-options-for-legacy-clients).
+
+Kanidm issues tokens which are
+[RFC 9068 JWTs](https://datatracker.ietf.org/doc/html/rfc9068), allowing service
+introspection.
 
 > [!NOTE]
 >
-> Previous versions of this document incorrectly named clients as resource servers due to clarity
-> issues in the OAuth2 RFC.
+> Previous versions of this document incorrectly described "clients" as
+> "resource servers" due to clarity issues in the OAuth2 RFC.
 
-### OAuth2 Server Metadata
+## Kanidm's OAuth2 URLs
 
-You need to substitute your OAuth2 `:client_id:` in the following urls
+Kanidm will expose its OAuth2 APIs at the following URLs, substituting
+`:client_id:` with an OAuth2 client ID.
 
-- OAuth2 issuer URL: `https://idm.example.com/oauth2/openid/:client_id:/`
-- OAuth2 RFC8414 discovery:
-  `https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+<dl>
 
-### OpenID Connect Discovery
+<dt>
 
-You need to substitute your OAuth2 `:client_id:` in the following urls:
+[OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
+URL **(recommended)**
 
-- OpenID connect issuer uri: `https://idm.example.com/oauth2/openid/:client_id:/`
-- OpenID connect discovery:
-  `https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
+</dt>
+<dd>
 
-### Manual OpenID Configuration
+`https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 
-- OpenID connect userinfo: `https://idm.example.com/oauth2/openid/:client_id:/userinfo`
-- token signing public key: `https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`
+This document includes all the URLs and attributes an app needs to be able to
+authenticate using OIDC with Kanidm, *except* for the `client_id` and
+`client_secret`.
+
+Use this document wherever possible, as it will allow you to easily build and/or
+configure an interoperable OIDC client without needing to code or configure
+anything special for Kanidm (or another provider).
+
+**Note:** some apps automatically append `/.well-known/openid-configuration` to
+the end of an OIDC Discovery URL, so you may need to omit that.
+
+</dd>
+
+<dt>
+
+[RFC 8414 OAuth 2.0 Authorisation Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414) URL
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+
+</dd>
+
+<dt>
+
+User auth
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/ui/oauth2`
+
+</dd>
+
+<dt>
+
+API auth
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/authorise`
+
+**Note:** "authorise" is spelled the British English (non-OED) way.
+
+</dd>
+
+<dt>
+
+Token endpoint
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/token`
+
+</dd>
+
+<dt>
+
+[RFC 7662 Token Introspection](https://datatracker.ietf.org/doc/html/rfc7662) URL
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/token/introspect`
+
+</dd>
+
+<dt>
+
+[RFC 7662 token revocation](https://datatracker.ietf.org/doc/html/rfc7009) URL
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/token/revoke`
+
+</dd>
+
+<dt>
+
+OpenID Connect issuer URI
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:`
+
+</dd>
+
+<dt>
+
+OpenID Connect user info
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/userinfo`
+
+</dd>
+
+<dt>
+
+Token signing public key
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk`
+
+</dd>
+
+</dl>
 
 ## Configuration
 
@@ -280,11 +401,14 @@ To disable PKCE for a confidential client:
 kanidm system oauth2 warning-insecure-client-disable-pkce <client name>
 ```
 
-To enable legacy cryptography (RSA PKCS1-5 SHA256):
+To use the legacy RSA PKCS1-5 SHA256 cryptographic algorithm
+(`id_token_signing_alg_values_supported` = `RS256`):
 
 ```bash
 kanidm system oauth2 warning-enable-legacy-crypto <client name>
 ```
+
+In this mode, Kanidm will not offer `ES256` support for the client at all.
 
 ## Resetting Client Security Material
 

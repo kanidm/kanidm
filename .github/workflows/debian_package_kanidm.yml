@@ -35,7 +35,7 @@ jobs:
         run: |
           apt-get update && apt-get install -y curl
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.5
+        uses: mozilla-actions/sccache-action@v0.0.6
         with:
           version: "v0.4.2"
       - name: Install Rust

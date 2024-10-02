@@ -208,20 +208,6 @@ impl SearchEvent {
     /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
-        // Just impersonate the account with no filter changes.
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        SearchEvent {
-            ident: Identity::from_impersonate_entry_readonly(Arc::new(ei.into_sealed_committed())),
-            filter: filter.clone().into_valid(),
-            filter_orig: filter.into_valid(),
-            attrs: None,
-        }
-    }
-
-    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
     pub fn new_impersonate_entry(
         e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
@@ -368,17 +354,6 @@ impl CreateEvent {
         }
     }
 
-    /// ⚠️  - Use an unsafe entry impersonation method.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        CreateEvent {
-            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
-            entries,
-        }
-    }
-
     #[cfg(test)]
     pub fn new_impersonate_identity(
         ident: Identity,
@@ -488,18 +463,6 @@ impl DeleteEvent {
     pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             ident,
-            filter: filter.clone().into_valid(),
-            filter_orig: filter.into_valid(),
-        }
-    }
-
-    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        DeleteEvent {
-            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }

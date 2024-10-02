@@ -461,15 +461,15 @@ mod tests {
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let create = vec![e];
@@ -487,15 +487,15 @@ mod tests {
     #[test]
     fn test_pre_modify_system_deny() {
         // Test modify of class to a system is denied
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let mut preload = PRELOAD.clone();
@@ -519,15 +519,18 @@ mod tests {
     fn test_pre_modify_class_add_deny() {
         // Show that adding a system class is denied
         // TODO: replace this with a `SchemaClass` object
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["object", "classtype"],
-                "classname": ["testclass"],
-                "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
-                "description": ["Test Class"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, Value::new_iutf8("testclass")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+            ),
+            (
+                Attribute::Description,
+                Value::Utf8("class test".to_string())
+            )
         );
         let mut preload = PRELOAD.clone();
         preload.push(e);
@@ -535,7 +538,10 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
+            filter!(f_eq(
+                Attribute::ClassName,
+                PartialValue::new_iutf8("testclass")
+            )),
             modlist!([
                 m_pres(Attribute::May, &Value::from(Attribute::Name)),
                 m_pres(Attribute::Must, &Value::from(Attribute::Name)),
@@ -549,15 +555,15 @@ mod tests {
     #[test]
     fn test_pre_delete_deny() {
         // Test deleting with class: system is rejected.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let mut preload = PRELOAD.clone();
@@ -576,20 +582,19 @@ mod tests {
     fn test_modify_domain() {
         // Can edit *my* domain_ssid and domain_name
         // Show that adding a system class is denied
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_modify_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
 
         let mut preload = PRELOAD.clone();
@@ -615,22 +620,21 @@ mod tests {
     #[test]
     fn test_ext_create_domain() {
         // can not add a domain_info type - note the lack of class: system
-
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_ext_create_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
+
         let create = vec![e];
         let preload = PRELOAD.clone();
 
@@ -646,20 +650,19 @@ mod tests {
     #[test]
     fn test_delete_domain() {
         // On the real thing we have a class: system, but to prove the point ...
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_delete_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
 
         let mut preload = PRELOAD.clone();
