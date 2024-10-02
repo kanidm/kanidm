@@ -819,7 +819,7 @@ impl Account {
             None => {
                 return Err(OperationError::InvalidAccountState(format!(
                     "Missing attribute: {}",
-                    Attribute::PosixAccount
+                    EntryClass::PosixAccount
                 )));
             }
         };

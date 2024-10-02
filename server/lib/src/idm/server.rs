@@ -1801,10 +1801,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Account is not a unix account
         if account.unix_extn().is_none() {
-            OperationError::InvalidAccountState(format!(
+            return OperationError::InvalidAccountState(format!(
                 "Missing attribute: {}",
-                Attribute::PosixAccount
-            ))
+                EntryClass::PosixAccount
+            ));
         }
 
         // Deny the change if the account is anonymous!
@@ -1993,7 +1993,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             None => {
                 return Err(OperationError::InvalidAccountState(format!(
                     "Missing attribute: {}",
-                    Attribute::PosixAccount
+                    EntryClass::PosixAccount
                 )));
             }
         };
