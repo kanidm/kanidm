@@ -1,0 +1,15 @@
+[build.env]
+
+[target.x86_64-unknown-linux-gnu]
+dockerfile = "platform/crossbuild/debian-12-x86_64-unknown-linux-gnu/Dockerfile"
+pre-build = [
+    "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+
+    # Install the bits that need to match the native arch
+    "apt update && apt install --assume-yes rsync libssl-dev build-essential pkg-config",
+
+    # Enable multiarch
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    # Install the bits that need to match the target arch
+    "apt update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH",
+]
