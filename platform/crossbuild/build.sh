@@ -19,6 +19,7 @@ fi
 # Find the target rust architecture
 TRIPLET=$(echo $1 | cut -d \- -f 3-)
 echo "Crossbuilding for: $TRIPLET"
+rustup target add "$TRIPLET"
 
 CROSS_CONFIG="platform/crossbuild/${1}/Cross.toml" \
     cross build --target "$TRIPLET" \
