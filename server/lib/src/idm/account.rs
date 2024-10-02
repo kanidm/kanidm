@@ -78,9 +78,7 @@ macro_rules! try_from_entry {
     ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::MissingClass(
-                ENTRYCLASS_ACCOUNT.into()
-            ));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         // Now extract our needed attributes
@@ -110,9 +108,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::MissingAttribute(Attribute::Spn),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let mail_primary = $value
             .get_ava_mail_primary(Attribute::Mail)
@@ -180,9 +178,7 @@ macro_rules! try_from_entry {
 
             let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
-                .ok_or_else(|| {
-                    OperationError::MissingAttribute(Attribute::GidNumber)
-                })?;
+                .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
 
             let groups = $unix_groups;
 
@@ -807,7 +803,9 @@ impl Account {
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
-                return Err(OperationError::MissingClass(ENTRYCLASS_POSIX_ACCOUNT.into()));
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
             }
         };
 
