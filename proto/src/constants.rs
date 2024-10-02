@@ -272,7 +272,6 @@ pub const ACCESS_CONTROL_RECEIVER_GROUP: &str = "access_control_receiver_group";
 pub const ACCESS_CONTROL_SEARCH: &str = "access_control_search";
 pub const ACCESS_CONTROL_TARGET_SCOPE: &str = "access_control_target_scope";
 
-
 /// Entryclass
 pub const ENTRYCLASS_BUILTIN: &str = "builtin";
 pub const ENTRYCLASS_ACCOUNT: &str = "account";
