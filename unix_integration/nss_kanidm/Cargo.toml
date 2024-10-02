@@ -23,3 +23,24 @@ libc = { workspace = true }
 paste = { workspace = true }
 lazy_static = { workspace = true }
 
+## Debian packaging
+# The base metadata does **not** work to build a functioning package!
+# A target specific variant must be used to get the right multiarch path.
+[package.metadata.deb]
+name = "kanidm-nss"
+depends = "$auto"
+section = "network"
+priority = "optional"
+assets = [
+	# Empty on purpose
+]
+
+[package.metadata.deb.variants.aarch64]
+merge-assets.append = [
+    [ "target/release/libnss_kanidm.so", "usr/lib/aarch64-linux-gnu/libnss_kanidm.so.2", "644"],
+]
+
+[package.metadata.deb.variants.x86_64]
+merge-assets.append = [
+    [ "target/release/libnss_kanidm.so", "usr/lib/x86_64-linux-gnu/libnss_kanidm.so.2", "644"],
+]
