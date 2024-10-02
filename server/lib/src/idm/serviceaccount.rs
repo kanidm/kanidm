@@ -19,7 +19,7 @@ macro_rules! try_from_entry {
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) {
             return Err(OperationError::MissingClass(
-                ENTRYCLASS_SERVICEACCOUNT.into(),
+                ENTRYCLASS_SERVICE_ACCOUNT.into(),
             ));
         }
 

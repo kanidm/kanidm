@@ -78,9 +78,9 @@ macro_rules! try_from_entry {
     ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::MissingClass
+            return Err(OperationError::MissingClass(
                 ENTRYCLASS_ACCOUNT.into()
-            );
+            ));
         }
 
         // Now extract our needed attributes
@@ -807,7 +807,7 @@ impl Account {
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
-                return Err(OperationError::MissingClass(ENTRYCLASS_POSIXACCOUNT.into()));
+                return Err(OperationError::MissingClass(ENTRYCLASS_POSIX_ACCOUNT.into()));
             }
         };
 
