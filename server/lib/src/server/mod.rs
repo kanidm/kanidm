@@ -1704,7 +1704,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else {
             // Log the failures?
             admin_error!("Schema reload failed -> {:?}", valid_r);
-            Err(OperationError::ConsistencyError(valid_r))
+            Err(OperationError::ConsistencyError(
+                valid_r.into_iter().filter_map(|v| v.err()).collect(),
+            ))
         }?;
 
         // TODO: Clear the filter resolve cache.

@@ -2061,6 +2061,7 @@ pub async fn account_id_unix_token(
         .await
         .map(Json::from);
 
+    // 👀 No way we have real functional code that uses the stringly defined error message as the condition
     if let Err(OperationError::InvalidAccountState(val)) = &res {
         // if they're not a posix user we should just hide them
         if *val == format!("Missing class: {}", "posixaccount") {
