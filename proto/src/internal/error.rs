@@ -76,7 +76,6 @@ pub enum OperationError {
     UniqueConstraintViolation,
     CorruptedEntry(u64),
     CorruptedIndex(String),
-    // TODO: this should just be a vec of the ConsistencyErrors, surely?
     ConsistencyError(Vec<ConsistencyError>),
     SchemaViolation(SchemaError),
     Plugin(PluginError),
