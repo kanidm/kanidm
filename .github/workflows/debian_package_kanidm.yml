@@ -1,13 +1,14 @@
 ---
 name: "Build Deb Packages"
 
+# The general logic is to:
+# 1. crossbuild the target triplet via cross
+# 2. build debs for the target triplet via cargo-deb
+# 3. Push the debs to a specific release. This step is a dirty hack that should go away.
+
 "on":
   push:
   pull_request:
-
-env:
-  SCCACHE_GHA_ENABLED: "true"
-  RUSTC_WRAPPER: "sccache"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,40 +23,43 @@ jobs:
             version: 22.04
           - name: debian
             version: 12
+        target:
+          - name: x86_64-unknown-linux-gnu
+          - name: aarch64-unknown-linux-gnu
       fail-fast: false
     runs-on: ubuntu-latest
-    container:
-      image: "${{ matrix.image.name }}:${{ matrix.image.version }}"
-      env:
-        DEBIAN_FRONTEND: noninteractive
     steps:
+      - name: Dump matrix spec
+        run: "echo Matrix: ${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
       - name: Checkout
         uses: actions/checkout@v4
-      - name: install curl
-        run: |
-          apt-get update && apt-get install -y curl
-      - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+      # Step 1. crossbuild
+      - name: Build packages (cross)
+        uses: houseabsolute/actions-rust-cross@v0
         with:
-          version: "v0.4.2"
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-      - name: Install dependencies
+          target: ${{ matrix.target.name }}
+          args: "--locked --release"
+        env:
+          CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
+      - name: Install deb build dependencies  # TODO(jinnatar): This is a bit overkill and could be slimmer
         run: |
           scripts/install_ubuntu_dependencies.sh
-      - name: Install wasm-pack
-        run: cargo install wasm-pack
-      - name: Build packages (kanidm-unixd)
-        run: make -f platform/debian/Makefile debs/kanidm-unixd
-      - name: Build packages (kanidm)
-        run: make -f platform/debian/Makefile debs/kanidm
+        env:
+          PACKAGING: 1
+      # Step 2. deb build
+      - name: Build packages (debs)
+        run: platform/debian/build_debs.sh "${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
+        env:
+          SKIP_DEPS: 1  # Already done in separate step
 
       - name: Upload debs
         uses: actions/upload-artifact@v4
         with:
           name: "${{ matrix.image.name }}${{ matrix.image.version }}"
           path: |
-            target/*.deb
+            target/${{ matrix.target.name }}/debian/*.deb
+
+  # Step 3. Create deb release
   upload-to-releases:
     permissions:
       # https://docs.github.com/en/actions/using-jobs/assigning-permissions-to-jobs
