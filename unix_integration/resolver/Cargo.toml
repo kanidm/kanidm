@@ -115,7 +115,7 @@ kanidm_build_profiles = { workspace = true }
 # We only package unixd itself here as shared libraries must be packaged separarately due to multiarch rules.
 [package.metadata.deb]
 name = "kanidm-unixd"
-depends = "$auto"
+depends = ["$auto", "tpm-udev"]
 section = "network"
 priority = "optional"
 recommends = [
@@ -127,4 +127,9 @@ assets = [
     [ "target/release/kanidm_unixd_tasks", "usr/sbin/", "755" ],
     [ "target/release/kanidm_unixd", "usr/sbin/", "755" ],
     [ "target/release/kanidm-unix", "usr/sbin/", "755" ],
+]
+maintainer-scripts = "debian/"
+systemd-units = [
+	{ unit-name = "kanidm-unixd", enable = false}, 
+	{ unit-name = "kanidm-unixd-tasks", enable = false}, 
 ]
