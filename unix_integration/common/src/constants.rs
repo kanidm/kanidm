@@ -3,7 +3,7 @@ use crate::unix_config::{HomeAttr, UidAttr};
 pub const DEFAULT_CONFIG_PATH: &str = "/etc/kanidm/unixd";
 pub const DEFAULT_SOCK_PATH: &str = "/var/run/kanidm-unixd/sock";
 pub const DEFAULT_TASK_SOCK_PATH: &str = "/var/run/kanidm-unixd/task_sock";
-pub const DEFAULT_PERSISTENT_DB_PATH: &str = "/var/lib/kanidm-unixd/kanidm.cache.db";
+pub const DEFAULT_PERSISTENT_DB_PATH: &str = "/var/lib/kanidm-unixd/kanidm.db";
 pub const DEFAULT_CACHE_DB_PATH: &str = "/var/cache/kanidm-unixd/kanidm.cache.db";
 pub const DEFAULT_CONN_TIMEOUT: u64 = 2;
 pub const DEFAULT_CACHE_TIMEOUT: u64 = 15;
