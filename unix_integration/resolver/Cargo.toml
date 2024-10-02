@@ -110,3 +110,19 @@ kanidmd_testkit = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }
+
+## Debian packaging
+[package.metadata.deb]
+name = "kanidm-unixd"
+depends = "$auto"
+section = "network"
+priority = "optional"
+assets = [
+    [ "target/release/kanidm_ssh_authorizedkeys", "usr/sbin/", "755" ],
+    [ "target/release/kanidm_unixd_tasks", "usr/sbin/", "755" ],
+    [ "target/release/kanidm_unixd", "usr/sbin/", "755" ],
+    [ "target/release/kanidm-unix", "usr/sbin/", "755" ],
+    [ "target/release/libnss_kanidm.so", "usr/lib/libnss_kanidm.so.2", "644"],
+    [ "target/release/libpam_kanidm.so", "usr/lib/security/pam_kanidm.so", "644"],
+    [ "../../platform/debian/kanidm-unixd/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+]
