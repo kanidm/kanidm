@@ -41,7 +41,7 @@ jobs:
         if: matrix.target.features == 'native-deps'
         run: |
           sudo apt-get update
-          sudo apt-get install --y \
+          sudo apt-get install -y \
             pkg-config \
             libssl3 libssl-dev \
             libudev-dev \
