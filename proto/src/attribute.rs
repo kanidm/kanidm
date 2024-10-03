@@ -172,6 +172,7 @@ pub enum Attribute {
     Uuid,
     Version,
     WebauthnAttestationCaList,
+    AllowPrimaryCredFallback,
 
     #[cfg(any(debug_assertions, test, feature = "test"))]
     NonExist,
@@ -385,6 +386,7 @@ impl Attribute {
             Attribute::Uuid => ATTR_UUID,
             Attribute::Version => ATTR_VERSION,
             Attribute::WebauthnAttestationCaList => ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
+            Attribute::AllowPrimaryCredFallback => ATTR_ALLOW_PRIMARY_CRED_FALLBACK,
 
             #[cfg(any(debug_assertions, test, feature = "test"))]
             Attribute::NonExist => TEST_ATTR_NON_EXIST,
@@ -564,6 +566,7 @@ impl Attribute {
             ATTR_UUID => Attribute::Uuid,
             ATTR_VERSION => Attribute::Version,
             ATTR_WEBAUTHN_ATTESTATION_CA_LIST => Attribute::WebauthnAttestationCaList,
+            ATTR_ALLOW_PRIMARY_CRED_FALLBACK => Attribute::AllowPrimaryCredFallback,
 
             #[cfg(any(debug_assertions, test, feature = "test"))]
             TEST_ATTR_NON_EXIST => Attribute::NonExist,

@@ -779,6 +779,16 @@ pub static ref SCHEMA_ATTR_LINKED_GROUP_DL8: SchemaAttribute = SchemaAttribute {
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK,
+    name: Attribute::AllowPrimaryCredFallback,
+    description: "Allow fallback to primary password if no POSIX password exists".to_string(),
+
+    multivalue: false,
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_CERTIFICATE_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_CERTIFICATE,
     name: Attribute::Certificate,
@@ -928,6 +938,25 @@ pub static ref SCHEMA_CLASS_ACCOUNT_POLICY_DL6: SchemaClass = SchemaClass {
         Attribute::WebauthnAttestationCaList,
         Attribute::LimitSearchMaxResults,
         Attribute::LimitSearchMaxFilterTest,
+    ],
+    systemsupplements: vec![Attribute::Group.into()],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_ACCOUNT_POLICY_DL8: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_ACCOUNT_POLICY,
+    name: EntryClass::AccountPolicy.into(),
+    description: "Policies applied to accounts that are members of a group".to_string(),
+
+    systemmay: vec![
+        Attribute::AuthSessionExpiry,
+        Attribute::PrivilegeExpiry,
+        Attribute::AuthPasswordMinimumLength,
+        Attribute::CredentialTypeMinimum,
+        Attribute::WebauthnAttestationCaList,
+        Attribute::LimitSearchMaxResults,
+        Attribute::LimitSearchMaxFilterTest,
+        Attribute::AllowPrimaryCredFallback,
     ],
     systemsupplements: vec![Attribute::Group.into()],
     ..Default::default()

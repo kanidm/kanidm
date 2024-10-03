@@ -109,6 +109,18 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_allow_primary_cred_fallback(
+        &self,
+        id: &str,
+        allow: bool,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/group/{}/_attr/allow_primary_cred_fallback", id),
+            vec![allow.to_string()],
+        )
+        .await
+    }
+
     pub async fn idm_group_purge_mail(&self, id: &str) -> Result<(), ClientError> {
         self.idm_group_purge_attr(id, "mail").await
     }
