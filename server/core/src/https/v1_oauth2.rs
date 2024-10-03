@@ -478,7 +478,7 @@ pub(crate) async fn oauth2_id_image_delete(
 ) -> Result<Json<()>, WebError> {
     state
         .qe_w_ref
-        .handle_oauth2_rs_image_delete(client_auth_info, oauth2_id(&rs_name))
+        .handle_image_update(client_auth_info, oauth2_id(&rs_name), None)
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -553,10 +553,10 @@ pub(crate) async fn oauth2_id_image_post(
                     Err(WebError::from(OperationError::InvalidRequestState))
                 }
                 Ok(_) => {
-                    let rs_name = oauth2_id(&rs_name);
+                    let rs_filter = oauth2_id(&rs_name);
                     state
                         .qe_w_ref
-                        .handle_oauth2_rs_image_update(client_auth_info, rs_name, image)
+                        .handle_image_update(client_auth_info, rs_filter, Some(image))
                         .await
                         .map(Json::from)
                         .map_err(WebError::from)

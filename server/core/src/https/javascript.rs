@@ -53,13 +53,13 @@ impl JavaScriptFile {
         };
         if self.dynamic {
             format!(
-                r#"<meta async src="/pkg/{}" integrity="sha384-{}"{} />"#,
-                self.filepath, &self.hash, &filetype,
+                r#"<meta async src="/pkg/{}?hash={}" integrity="sha384-{}"{} />"#,
+                self.filepath, &self.hash, &self.hash, &filetype,
             )
         } else {
             format!(
-                r#"<script async src="/pkg/{}" integrity="sha384-{}"{}></script>"#,
-                self.filepath, &self.hash, &filetype,
+                r#"<script async src="/pkg/{}?hash={}" integrity="sha384-{}"{}></script>"#,
+                self.filepath, &self.hash, &self.hash, &filetype,
             )
         }
     }

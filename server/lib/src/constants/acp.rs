@@ -150,23 +150,23 @@ impl From<BuiltinAcp> for EntryInitNew {
             value
                 .search_attrs
                 .into_iter()
-                .map(|sa| sa.to_value())
+                .map(Value::from)
                 .collect::<Vec<Value>>(),
         );
         value.modify_present_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyPresentAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpModifyPresentAttr, Value::from(attr));
         });
         value.modify_removed_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpModifyRemovedAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpModifyRemovedAttr, Value::from(attr));
         });
         value.modify_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpModifyClass, class.to_value());
+            entry.add_ava(Attribute::AcpModifyClass, Value::from(class));
         });
         value.create_classes.into_iter().for_each(|class| {
-            entry.add_ava(Attribute::AcpCreateClass, class.to_value());
+            entry.add_ava(Attribute::AcpCreateClass, Value::from(class));
         });
         value.create_attrs.into_iter().for_each(|attr| {
-            entry.add_ava(Attribute::AcpCreateAttr, attr.to_value());
+            entry.add_ava(Attribute::AcpCreateAttr, Value::from(attr));
         });
         entry
     }
@@ -545,6 +545,62 @@ lazy_static! {
 }
 
 lazy_static! {
+    pub static ref IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_group_account_policy_manage",
+        uuid: UUID_IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE,
+        description: "Builtin IDM Control for management of account policy on groups",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCOUNT_POLICY_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            match_class_filter!(EntryClass::Group),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+            Attribute::AllowPrimaryCredFallback,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+            Attribute::AllowPrimaryCredFallback,
+        ],
+        modify_present_attrs: vec![
+            Attribute::Class,
+            Attribute::AuthSessionExpiry,
+            Attribute::AuthPasswordMinimumLength,
+            Attribute::CredentialTypeMinimum,
+            Attribute::PrivilegeExpiry,
+            Attribute::WebauthnAttestationCaList,
+            Attribute::LimitSearchMaxResults,
+            Attribute::LimitSearchMaxFilterTest,
+            Attribute::AllowPrimaryCredFallback,
+        ],
+        modify_classes: vec![EntryClass::AccountPolicy,],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
     pub static ref IDM_ACP_OAUTH2_MANAGE_DL4: BuiltinAcp = BuiltinAcp {
         classes: vec![
             EntryClass::Object,
@@ -902,6 +958,61 @@ lazy_static! {
             Attribute::LdapAllowUnixPwBind,
             Attribute::KeyActionRevoke,
             Attribute::KeyActionRotate,
+        ],
+        ..Default::default()
+    };
+}
+
+lazy_static! {
+    pub static ref IDM_ACP_DOMAIN_ADMIN_DL8: BuiltinAcp = BuiltinAcp {
+        classes: vec![
+            EntryClass::Object,
+            EntryClass::AccessControlProfile,
+            EntryClass::AccessControlModify,
+            EntryClass::AccessControlSearch
+        ],
+        name: "idm_acp_domain_admin",
+        uuid: UUID_IDM_ACP_DOMAIN_ADMIN_V1,
+        description: "Builtin IDM Control for granting domain info administration locally",
+        receiver: BuiltinAcpReceiver::Group(vec![UUID_DOMAIN_ADMINS]),
+        target: BuiltinAcpTarget::Filter(ProtoFilter::And(vec![
+            ProtoFilter::Eq(
+                Attribute::Uuid.to_string(),
+                STR_UUID_DOMAIN_INFO.to_string()
+            ),
+            FILTER_ANDNOT_TOMBSTONE_OR_RECYCLED.clone()
+        ])),
+        search_attrs: vec![
+            Attribute::Class,
+            Attribute::Name,
+            Attribute::Uuid,
+            Attribute::DomainDisplayName,
+            Attribute::DomainName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::DomainUuid,
+            Attribute::KeyInternalData,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::Version,
+            Attribute::Image,
+        ],
+        modify_removed_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainSsid,
+            Attribute::DomainLdapBasedn,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
+            Attribute::Image,
+        ],
+        modify_present_attrs: vec![
+            Attribute::DomainDisplayName,
+            Attribute::DomainLdapBasedn,
+            Attribute::DomainSsid,
+            Attribute::LdapAllowUnixPwBind,
+            Attribute::KeyActionRevoke,
+            Attribute::KeyActionRotate,
+            Attribute::Image,
         ],
         ..Default::default()
     };

@@ -24,26 +24,43 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_CU_SESSION_TOKEN,
 };
 
-use crate::https::extractors::VerifiedClientInformation;
+use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
+use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
 use crate::https::ServerState;
 
 use super::{HtmlTemplate, UnrecoverableErrorView};
 
 #[derive(Template)]
+#[template(path = "user_settings.html")]
+struct ProfileView {
+    profile_partial: CredStatusView,
+}
+
+#[derive(Template)]
 #[template(path = "credentials_reset_form.html")]
 struct ResetCredFormView {
-    domain: String,
+    domain_info: DomainInfoRead,
     wrong_code: bool,
 }
 
 #[derive(Template)]
 #[template(path = "credentials_reset.html")]
 struct CredResetView {
-    domain: String,
+    domain_info: DomainInfoRead,
     names: String,
     credentials_update_partial: CredResetPartialView,
+}
+
+#[derive(Template)]
+#[template(path = "credentials_status.html")]
+struct CredStatusView {
+    domain_info: DomainInfoRead,
+    menu_active_item: ProfileMenuItems,
+    names: String,
+    credentials_update_partial: CredResetPartialView,
+    posix_enabled: bool,
 }
 
 #[derive(Template)]
@@ -571,6 +588,7 @@ pub(crate) async fn view_self_reset_get(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
     let uat: UserAuthToken = state
@@ -589,13 +607,7 @@ pub(crate) async fn view_self_reset_get(
             .map_err(|op_err| HtmxError::new(&kopid, op_err))
             .await?;
 
-        let domain_display_name = state
-            .qe_r_ref
-            .get_domain_display_name(kopid.eventid)
-            .await
-            .unwrap_or_default();
-
-        let cu_resp = get_cu_response(domain_display_name, cu_status);
+        let cu_resp = get_cu_response(domain_info, cu_status, true);
 
         jar = add_cu_cookie(jar, &state, cu_session_token);
         Ok((jar, cu_resp).into_response())
@@ -606,6 +618,7 @@ pub(crate) async fn view_self_reset_get(
             kopid,
             jar,
             "/ui/update_credentials",
+            domain_info,
         )
         .await
     }
@@ -629,16 +642,18 @@ pub(crate) async fn view_reset_get(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let domain_display_name = state
-        .qe_r_ref
-        .get_domain_display_name(kopid.eventid)
-        .await
-        .unwrap_or_default();
     let push_url = HxPushUrl(Uri::from_static("/ui/reset"));
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
+    let is_logged_in = state
+        .qe_r_ref
+        .handle_auth_valid(_client_auth_info.clone(), kopid.eventid)
+        .await
+        .is_ok();
+
     if let Some(cookie) = cookie {
         // We already have a session
         let cu_session_token = cookie.value();
@@ -669,7 +684,7 @@ pub(crate) async fn view_reset_get(
         };
 
         // CU Session cookie is okay
-        let cu_resp = get_cu_response(domain_display_name, cu_status);
+        let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
         Ok(cu_resp)
     } else if let Some(token) = params.token {
         // We have a reset token and want to create a new session
@@ -679,14 +694,14 @@ pub(crate) async fn view_reset_get(
             .await
         {
             Ok((cu_session_token, cu_status)) => {
-                let cu_resp = get_cu_response(domain_display_name, cu_status);
+                let cu_resp = get_cu_response(domain_info, cu_status, is_logged_in);
 
                 jar = add_cu_cookie(jar, &state, cu_session_token);
                 Ok((jar, cu_resp).into_response())
             }
             Err(OperationError::SessionExpired) | Err(OperationError::Wait(_)) => {
                 let cred_form_view = ResetCredFormView {
-                    domain: domain_display_name.clone(),
+                    domain_info,
                     wrong_code: true,
                 };
 
@@ -699,7 +714,7 @@ pub(crate) async fn view_reset_get(
         }
     } else {
         let cred_form_view = ResetCredFormView {
-            domain: domain_display_name.clone(),
+            domain_info,
             wrong_code: false,
         };
         // We don't have any credential, show reset token input form
@@ -744,21 +759,46 @@ fn get_cu_partial_response(cu_status: CUStatus) -> Response {
         .into_response()
 }
 
-fn get_cu_response(domain: String, cu_status: CUStatus) -> Response {
+fn get_cu_response(
+    domain_info: DomainInfoRead,
+    cu_status: CUStatus,
+    is_logged_in: bool,
+) -> Response {
     let spn = cu_status.spn.clone();
     let displayname = cu_status.displayname.clone();
     let (username, _domain) = spn.split_once('@').unwrap_or(("", &spn));
     let names = format!("{} ({})", displayname, username);
     let credentials_update_partial = get_cu_partial(cu_status);
-    (
-        HxPushUrl(Uri::from_static("/ui/reset")),
-        HtmlTemplate(CredResetView {
-            domain,
+
+    if is_logged_in {
+        let cred_status_view = CredStatusView {
+            menu_active_item: ProfileMenuItems::Credentials,
+            domain_info,
             names,
             credentials_update_partial,
-        }),
-    )
-        .into_response()
+            // TODO: fill in posix enabled
+            posix_enabled: false,
+        };
+        let profile_view = ProfileView {
+            profile_partial: cred_status_view,
+        };
+
+        (
+            HxPushUrl(Uri::from_static("/ui/update_credentials")),
+            HtmlTemplate(profile_view),
+        )
+            .into_response()
+    } else {
+        (
+            HxPushUrl(Uri::from_static("/ui/reset")),
+            HtmlTemplate(CredResetView {
+                domain_info,
+                names,
+                credentials_update_partial,
+            }),
+        )
+            .into_response()
+    }
 }
 
 async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {

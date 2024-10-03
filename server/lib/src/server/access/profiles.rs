@@ -19,7 +19,7 @@ pub struct AccessControlSearchResolved<'a> {
 #[derive(Debug, Clone)]
 pub struct AccessControlSearch {
     pub acp: AccessControlProfile,
-    pub attrs: BTreeSet<AttrString>,
+    pub attrs: BTreeSet<Attribute>,
 }
 
 impl AccessControlSearch {
@@ -35,14 +35,19 @@ impl AccessControlSearch {
             )));
         }
 
-        let attrs = value
+        let mut attrs: BTreeSet<_> = value
             .get_ava_iter_iutf8(Attribute::AcpSearchAttr)
             .ok_or_else(|| {
                 admin_error!("Missing {}", Attribute::AcpSearchAttr);
                 OperationError::InvalidAcpState(format!("Missing {}", Attribute::AcpSearchAttr))
             })?
-            .map(AttrString::from)
+            .map(Attribute::from)
             .collect();
+
+        // Ability to search memberof, implies the ability to read directmemberof
+        if attrs.contains(&Attribute::MemberOf) {
+            attrs.insert(Attribute::DirectMemberOf);
+        }
 
         let acp = AccessControlProfile::try_from(qs, value)?;
 
@@ -59,6 +64,13 @@ impl AccessControlSearch {
         targetscope: Filter<FilterValid>,
         attrs: &str,
     ) -> Self {
+        let mut attrs: BTreeSet<_> = attrs.split_whitespace().map(Attribute::from).collect();
+
+        // Ability to search memberof, implies the ability to read directmemberof
+        if attrs.contains(&Attribute::MemberOf) {
+            attrs.insert(Attribute::DirectMemberOf);
+        }
+
         AccessControlSearch {
             acp: AccessControlProfile {
                 name: name.to_string(),
@@ -66,7 +78,7 @@ impl AccessControlSearch {
                 receiver: AccessControlReceiver::Group(btreeset!(receiver)),
                 target: AccessControlTarget::Scope(targetscope),
             },
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+            attrs,
         }
     }
 
@@ -86,7 +98,7 @@ impl AccessControlSearch {
                 receiver: AccessControlReceiver::EntryManager,
                 target,
             },
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(Attribute::from).collect(),
         }
     }
 }
@@ -165,7 +177,7 @@ pub struct AccessControlCreateResolved<'a> {
 pub struct AccessControlCreate {
     pub acp: AccessControlProfile,
     pub classes: Vec<AttrString>,
-    pub attrs: Vec<AttrString>,
+    pub attrs: Vec<Attribute>,
 }
 
 impl AccessControlCreate {
@@ -183,7 +195,7 @@ impl AccessControlCreate {
 
         let attrs = value
             .get_ava_iter_iutf8(Attribute::AcpCreateAttr)
-            .map(|i| i.map(AttrString::from).collect())
+            .map(|i| i.map(Attribute::from).collect())
             .unwrap_or_default();
 
         let classes = value
@@ -217,7 +229,7 @@ impl AccessControlCreate {
                 target: AccessControlTarget::Scope(targetscope),
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(Attribute::from).collect(),
         }
     }
 
@@ -239,7 +251,7 @@ impl AccessControlCreate {
                 target,
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
-            attrs: attrs.split_whitespace().map(AttrString::from).collect(),
+            attrs: attrs.split_whitespace().map(Attribute::from).collect(),
         }
     }
 }
@@ -255,8 +267,8 @@ pub struct AccessControlModifyResolved<'a> {
 pub struct AccessControlModify {
     pub acp: AccessControlProfile,
     pub classes: Vec<AttrString>,
-    pub presattrs: Vec<AttrString>,
-    pub remattrs: Vec<AttrString>,
+    pub presattrs: Vec<Attribute>,
+    pub remattrs: Vec<Attribute>,
 }
 
 impl AccessControlModify {
@@ -273,12 +285,12 @@ impl AccessControlModify {
 
         let presattrs = value
             .get_ava_iter_iutf8(Attribute::AcpModifyPresentAttr)
-            .map(|i| i.map(AttrString::from).collect())
+            .map(|i| i.map(Attribute::from).collect())
             .unwrap_or_default();
 
         let remattrs = value
             .get_ava_iter_iutf8(Attribute::AcpModifyRemovedAttr)
-            .map(|i| i.map(AttrString::from).collect())
+            .map(|i| i.map(Attribute::from).collect())
             .unwrap_or_default();
 
         let classes = value
@@ -314,8 +326,8 @@ impl AccessControlModify {
                 target: AccessControlTarget::Scope(targetscope),
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
-            presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
-            remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
+            presattrs: presattrs.split_whitespace().map(Attribute::from).collect(),
+            remattrs: remattrs.split_whitespace().map(Attribute::from).collect(),
         }
     }
 
@@ -338,8 +350,8 @@ impl AccessControlModify {
                 target,
             },
             classes: classes.split_whitespace().map(AttrString::from).collect(),
-            presattrs: presattrs.split_whitespace().map(AttrString::from).collect(),
-            remattrs: remattrs.split_whitespace().map(AttrString::from).collect(),
+            presattrs: presattrs.split_whitespace().map(Attribute::from).collect(),
+            remattrs: remattrs.split_whitespace().map(Attribute::from).collect(),
         }
     }
 }

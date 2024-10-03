@@ -1,4 +1,4 @@
-""" tests the config file things """
+"""tests the config file things"""
 
 import logging
 from pathlib import Path

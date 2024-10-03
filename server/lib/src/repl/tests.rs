@@ -1075,8 +1075,8 @@ async fn test_repl_increment_basic_bidirectional_recycle(
                 changes: changes_right,
             },
         ) => match (
-            changes_left.get(Attribute::Class.into()),
-            changes_right.get(Attribute::Class.into()),
+            changes_left.get(&Attribute::Class),
+            changes_right.get(&Attribute::Class),
         ) {
             (Some(cid_left), Some(cid_right)) => cid_left < cid_right,
             _ => false,
@@ -1647,12 +1647,12 @@ async fn test_repl_increment_schema_conflict(server_a: &QueryServer, server_b: &
     let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.write(ct).await.unwrap();
     let modlist = ModifyList::new_list(vec![
-        Modify::Removed(Attribute::Class.into(), EntryClass::Person.into()),
-        Modify::Removed(Attribute::Class.into(), EntryClass::Account.into()),
-        Modify::Present(Attribute::Class.into(), EntryClass::Group.into()),
-        Modify::Purged(Attribute::IdVerificationEcKey.into()),
-        Modify::Purged(Attribute::NameHistory.into()),
-        Modify::Purged(Attribute::DisplayName.into()),
+        Modify::Removed(Attribute::Class, EntryClass::Person.into()),
+        Modify::Removed(Attribute::Class, EntryClass::Account.into()),
+        Modify::Present(Attribute::Class, EntryClass::Group.into()),
+        Modify::Purged(Attribute::IdVerificationEcKey),
+        Modify::Purged(Attribute::NameHistory),
+        Modify::Purged(Attribute::DisplayName),
     ]);
     assert!(server_b_txn.internal_modify_uuid(t_uuid, &modlist).is_ok());
     server_b_txn.commit().expect("Failed to commit");
@@ -2280,7 +2280,7 @@ async fn test_repl_increment_schema_dynamic(server_a: &QueryServer, server_b: &Q
             (Attribute::ClassName, EntryClass::TestClass.to_value()),
             (Attribute::Uuid, Value::Uuid(s_uuid)),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Attribute::Name.to_value())
+            (Attribute::May, Value::from(Attribute::Name))
         )])
         .is_ok());
     // Schema doesn't take effect til after a commit.
@@ -2424,8 +2424,9 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
         .is_ok());
     drop(server_b_txn);
 
-    // First, we need to create a group on b that will conflict
-    let mut server_b_txn = server_b.write(duration_from_epoch_now()).await.unwrap();
+    // First, we need to create a group on b that will conflict. This needs to be
+    // at a time point earlier than A.
+    let mut server_b_txn = server_b.write(ct).await.unwrap();
     let g_uuid = Uuid::new_v4();
 
     assert!(server_b_txn
@@ -2439,8 +2440,10 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
     server_b_txn.commit().expect("Failed to commit");
 
+    // Advance the clock so that A's operation is later than B
+    let ct = ct + Duration::from_secs(1);
     // Now on a, use the same uuid, make the user and a group as it's member.
-    let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
+    let mut server_a_txn = server_a.write(ct).await.unwrap();
     let t_uuid = Uuid::new_v4();
     assert!(server_a_txn
         .internal_create(vec![entry_init!(
@@ -2459,6 +2462,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Group.to_value()),
             (Attribute::Name, Value::new_iname("testgroup1")),
+            // This UUID is what will conflict
             (Attribute::Uuid, Value::Uuid(g_uuid)),
             (Attribute::Member, Value::Refer(t_uuid))
         ),])
@@ -2468,6 +2472,7 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
 
     // Now do A -> B. B should show that the second group was a conflict and
     // the membership drops.
+    let ct = ct + Duration::from_secs(1);
     let mut server_a_txn = server_a.read().await.unwrap();
     let mut server_b_txn = server_b.write(ct).await.unwrap();
 
@@ -2491,7 +2496,10 @@ async fn test_repl_increment_memberof_conflict(server_a: &QueryServer, server_b:
     server_b_txn.commit().expect("Failed to commit");
     drop(server_a_txn);
 
-    // Now B -> A. A will now reflect the conflict as well.
+    // Now B -> A. A will now reflect the conflict as well, causing the local group on A
+    // to become a conflict, and the group from B will take over. This causes the membership
+    // on test user to be dropped.
+    let ct = ct + Duration::from_secs(1);
     let mut server_b_txn = server_b.read().await.unwrap();
     let mut server_a_txn = server_a.write(ct).await.unwrap();
 

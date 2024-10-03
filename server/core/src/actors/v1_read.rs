@@ -40,7 +40,7 @@ use kanidmd_lib::{
         AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
-    idm::server::IdmServerTransaction,
+    idm::server::{DomainInfoRead, IdmServerTransaction},
     idm::serviceaccount::ListApiTokenEvent,
     idm::ClientAuthInfo,
 };
@@ -77,14 +77,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(?e, "Invalid identity");
+                error!(?e, "Invalid identity");
                 e
             })?;
 
         // Make an event from the request
         let search =
             SearchEvent::from_message(ident, &req, &mut idms_prox_read.qs_read).map_err(|e| {
-                admin_error!(?e, "Failed to begin search");
+                error!(?e, "Failed to begin search");
                 e
             })?;
 
@@ -120,7 +120,7 @@ impl QueryServerReadV1 {
         // Convert the AuthRequest to an AuthEvent that the idm server
         // can use.
         let ae = AuthEvent::from_message(sessionid, req).map_err(|e| {
-            admin_error!(err = ?e, "Failed to parse AuthEvent");
+            error!(err = ?e, "Failed to parse AuthEvent");
             e
         })?;
 
@@ -160,7 +160,7 @@ impl QueryServerReadV1 {
         let ident = idm_auth
             .validate_client_auth_info_to_ident(client_auth_info.clone(), ct)
             .map_err(|e| {
-                admin_error!(?e, "Invalid identity");
+                error!(?e, "Invalid identity");
                 e
             })?;
 
@@ -333,12 +333,12 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(?e, "Invalid identity");
+                error!(?e, "Invalid identity");
                 e
             })?;
         let srch =
             SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
-                admin_error!(?e, "Failed to begin whoami");
+                error!(?e, "Failed to begin whoami");
                 e
             })?;
 
@@ -378,7 +378,7 @@ impl QueryServerReadV1 {
         idms_prox_read
             .validate_client_auth_info_to_uat(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(?e, "Invalid identity");
+                error!(?e, "Invalid identity");
                 e
             })
     }
@@ -389,14 +389,14 @@ impl QueryServerReadV1 {
         &self,
         client_auth_info: ClientAuthInfo,
         rs: Filter<FilterInvalid>,
-    ) -> Result<ImageValue, OperationError> {
+    ) -> Result<Option<ImageValue>, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ct = duration_from_epoch_now();
 
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image");
+                error!(err = ?e, "Invalid identity in handle_oauth2_rs_image_get_image");
                 e
             })?;
         let attrs = vec![Attribute::Image.to_string()];
@@ -409,17 +409,9 @@ impl QueryServerReadV1 {
         )?;
 
         let entries = idms_prox_read.qs_read.search(&search)?;
-        if entries.is_empty() {
-            return Err(OperationError::NoMatchingEntries);
-        }
-        let entry = match entries.first() {
-            Some(entry) => entry,
-            None => return Err(OperationError::NoMatchingEntries),
-        };
-        match entry.get_ava_single_image(Attribute::Image) {
-            Some(image) => Ok(image),
-            None => Err(OperationError::NoMatchingEntries),
-        }
+        Ok(entries
+            .first()
+            .and_then(|entry| entry.get_ava_single_image(Attribute::Image)))
     }
 
     #[instrument(
@@ -439,7 +431,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         // Make an event from the request
@@ -451,7 +443,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin internal api search: {:?}", e);
+                error!("Failed to begin internal api search: {:?}", e);
                 return Err(e);
             }
         };
@@ -483,16 +475,15 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         // Update the filter with the target_uuid
@@ -510,7 +501,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin internal api search: {:?}", e);
+                error!("Failed to begin internal api search: {:?}", e);
                 return Err(e);
             }
         };
@@ -542,7 +533,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         // Make an event from the request
@@ -554,7 +545,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin recycled search: {:?}", e);
+                error!("Failed to begin recycled search: {:?}", e);
                 return Err(e);
             }
         };
@@ -584,16 +575,15 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         // Make an event from the request
@@ -604,7 +594,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin radius read: {:?}", e);
+                error!("Failed to begin radius read: {:?}", e);
                 return Err(e);
             }
         };
@@ -645,16 +635,15 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         // Make an event from the request
@@ -665,7 +654,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin radius token read: {:?}", e);
+                error!("Failed to begin radius token read: {:?}", e);
                 return Err(e);
             }
         };
@@ -692,7 +681,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
@@ -718,7 +707,7 @@ impl QueryServerReadV1 {
         let rate = match UnixUserTokenEvent::from_parts(ident, target_uuid) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin unix token read: {:?}", e);
+                error!("Failed to begin unix token read: {:?}", e);
                 return Err(e);
             }
         };
@@ -744,7 +733,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
@@ -764,7 +753,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin unix group token read: {:?}", e);
+                error!("Failed to begin unix group token read: {:?}", e);
                 return Err(e);
             }
         };
@@ -790,15 +779,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         // Make an event from the request
@@ -809,7 +797,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin ssh key read: {:?}", e);
+                error!("Failed to begin ssh key read: {:?}", e);
                 return Err(e);
             }
         };
@@ -853,15 +841,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_info!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                admin_info!(?err, "Error resolving id to target");
             })?;
 
         // Make an event from the request
@@ -872,7 +859,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin sshkey tag read: {:?}", e);
+                error!("Failed to begin sshkey tag read: {:?}", e);
                 return Err(e);
             }
         };
@@ -917,15 +904,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         let lte = ListApiTokenEvent { ident, target };
@@ -949,15 +935,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         let lte = ListUserAuthTokenEvent { ident, target };
@@ -983,14 +968,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target = idms_prox_read
             .qs_read
             .name_to_uuid(&other_id)
             .map_err(|e| {
-                admin_error!("No user found with the provided ID: {:?}", e);
+                error!("No user found with the provided ID: {:?}", e);
                 e
             })?;
         match user_request {
@@ -1024,7 +1009,7 @@ impl QueryServerReadV1 {
         let ident = idm_auth
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
 
@@ -1039,7 +1024,7 @@ impl QueryServerReadV1 {
         let uuae = match UnixUserAuthEvent::from_parts(ident, target_uuid, cred) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin unix auth");
+                error!(err = ?e, "Failed to begin unix auth");
                 return Err(e);
             }
         };
@@ -1073,14 +1058,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!(err = ?e, "Invalid identity");
+                error!(err = ?e, "Invalid identity");
                 e
             })?;
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                admin_error!(err = ?e, "Error resolving id to target");
+                error!(err = ?e, "Error resolving id to target");
                 e
             })?;
 
@@ -1092,7 +1077,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!(err = ?e, "Failed to begin credential status read");
+                error!(err = ?e, "Failed to begin credential status read");
                 return Err(e);
             }
         };
@@ -1119,15 +1104,14 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
         let target_uuid = idms_prox_read
             .qs_read
             .name_to_uuid(uuid_or_name.as_str())
-            .map_err(|e| {
-                admin_error!("Error resolving id to target");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Error resolving id to target");
             })?;
 
         // Make an event from the request
@@ -1138,7 +1122,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin backup code read: {:?}", e);
+                error!("Failed to begin backup code read: {:?}", e);
                 return Err(e);
             }
         };
@@ -1172,7 +1156,7 @@ impl QueryServerReadV1 {
         idms_cred_update
             .credential_update_status(&session_token, ct)
             .map_err(|e| {
-                admin_error!(
+                error!(
                     err = ?e,
                     "Failed to begin credential_update_status",
                 );
@@ -1208,7 +1192,7 @@ impl QueryServerReadV1 {
             CURequest::PrimaryRemove => idms_cred_update
                 .credential_primary_delete(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_delete",
                     );
@@ -1217,7 +1201,7 @@ impl QueryServerReadV1 {
             CURequest::Password(pw) => idms_cred_update
                 .credential_primary_set_password(&session_token, ct, &pw)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_set_password",
                     );
@@ -1226,7 +1210,7 @@ impl QueryServerReadV1 {
             CURequest::CancelMFAReg => idms_cred_update
                 .credential_update_cancel_mfareg(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_update_cancel_mfareg",
                     );
@@ -1235,7 +1219,7 @@ impl QueryServerReadV1 {
             CURequest::TotpGenerate => idms_cred_update
                 .credential_primary_init_totp(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_init_totp",
                     );
@@ -1244,7 +1228,7 @@ impl QueryServerReadV1 {
             CURequest::TotpVerify(totp_chal, label) => idms_cred_update
                 .credential_primary_check_totp(&session_token, ct, totp_chal, &label)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_check_totp",
                     );
@@ -1253,7 +1237,7 @@ impl QueryServerReadV1 {
             CURequest::TotpAcceptSha1 => idms_cred_update
                 .credential_primary_accept_sha1_totp(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_accept_sha1_totp",
                     );
@@ -1262,7 +1246,7 @@ impl QueryServerReadV1 {
             CURequest::TotpRemove(label) => idms_cred_update
                 .credential_primary_remove_totp(&session_token, ct, &label)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_remove_totp",
                     );
@@ -1271,7 +1255,7 @@ impl QueryServerReadV1 {
             CURequest::BackupCodeGenerate => idms_cred_update
                 .credential_primary_init_backup_codes(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_init_backup_codes",
                     );
@@ -1280,7 +1264,7 @@ impl QueryServerReadV1 {
             CURequest::BackupCodeRemove => idms_cred_update
                 .credential_primary_remove_backup_codes(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_primary_remove_backup_codes",
                     );
@@ -1289,7 +1273,7 @@ impl QueryServerReadV1 {
             CURequest::PasskeyInit => idms_cred_update
                 .credential_passkey_init(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_passkey_init",
                     );
@@ -1298,7 +1282,7 @@ impl QueryServerReadV1 {
             CURequest::PasskeyFinish(label, rpkc) => idms_cred_update
                 .credential_passkey_finish(&session_token, ct, label, &rpkc)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_passkey_finish",
                     );
@@ -1307,7 +1291,7 @@ impl QueryServerReadV1 {
             CURequest::PasskeyRemove(uuid) => idms_cred_update
                 .credential_passkey_remove(&session_token, ct, uuid)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_passkey_remove",
                     );
@@ -1316,7 +1300,7 @@ impl QueryServerReadV1 {
             CURequest::AttestedPasskeyInit => idms_cred_update
                 .credential_attested_passkey_init(&session_token, ct)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_attested_passkey_init",
                     );
@@ -1325,7 +1309,7 @@ impl QueryServerReadV1 {
             CURequest::AttestedPasskeyFinish(label, rpkc) => idms_cred_update
                 .credential_attested_passkey_finish(&session_token, ct, label, &rpkc)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_attested_passkey_finish",
                     );
@@ -1334,7 +1318,7 @@ impl QueryServerReadV1 {
             CURequest::AttestedPasskeyRemove(uuid) => idms_cred_update
                 .credential_attested_passkey_remove(&session_token, ct, uuid)
                 .map_err(|e| {
-                    admin_error!(
+                    error!(
                         err = ?e,
                         "Failed to begin credential_attested_passkey_remove",
                     );
@@ -1360,7 +1344,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
@@ -1373,7 +1357,7 @@ impl QueryServerReadV1 {
         ) {
             Ok(s) => s,
             Err(e) => {
-                admin_error!("Failed to begin oauth2 basic secret read: {:?}", e);
+                error!("Failed to begin oauth2 basic secret read: {:?}", e);
                 return Err(e);
             }
         };
@@ -1417,7 +1401,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 Oauth2Error::AuthenticationRequired
             })?;
 
@@ -1441,7 +1425,7 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
@@ -1546,22 +1530,12 @@ impl QueryServerReadV1 {
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })?;
 
         // Nice and easy!
         idms_prox_read.list_applinks(&ident)
-    }
-
-    #[instrument(
-        level = "info",
-        skip_all,
-        fields(uuid = ?eventid)
-    )]
-    pub async fn get_domain_display_name(&self, eventid: Uuid) -> Result<String, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await?;
-        Ok(idms_prox_read.qs_read.get_domain_display_name().to_string())
     }
 
     #[instrument(
@@ -1581,7 +1555,7 @@ impl QueryServerReadV1 {
             .validate_client_auth_info_to_ident(client_auth_info, ct)
             .map(|_| ())
             .map_err(|e| {
-                admin_error!("Invalid identity: {:?}", e);
+                error!("Invalid identity: {:?}", e);
                 e
             })
     }
@@ -1620,7 +1594,7 @@ impl QueryServerReadV1 {
                 .do_op(&self.idms, server_op, uat, ip_addr, eventid)
                 .await
                 .unwrap_or_else(|e| {
-                    admin_error!("do_op failed -> {:?}", e);
+                    error!("do_op failed -> {:?}", e);
                     LdapResponseState::Disconnect(DisconnectionNotice::gen(
                         LdapResultCode::Other,
                         format!("Internal Server Error {:?}", &eventid).as_str(),
@@ -1632,5 +1606,9 @@ impl QueryServerReadV1 {
             )),
         };
         Some(res)
+    }
+
+    pub fn domain_info_read(&self) -> DomainInfoRead {
+        self.idms.domain_read()
     }
 }

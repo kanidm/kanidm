@@ -1,6 +1,4 @@
 //! Constant Entries for the IDM
-use crate::prelude::AttrString;
-use enum_iterator::Sequence;
 use std::fmt::Display;
 
 use crate::constants::groups::idm_builtin_admin_groups;
@@ -9,612 +7,18 @@ use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
+pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::v1::AccountType;
 
-#[cfg(test)]
-use uuid::uuid;
-
 use uuid::Uuid;
 
-#[test]
-fn test_valueattribute_as_str() {
-    assert_eq!(Attribute::Class.as_ref(), "class");
-    assert_eq!(Attribute::Class.to_string(), *"class");
-}
-
-#[test]
-// this ensures we cover both ends of the conversion to/from string-types
-fn test_valueattribute_round_trip() {
-    use enum_iterator::all;
-    let the_list = all::<Attribute>().collect::<Vec<_>>();
-    for attr in the_list {
-        let s: &'static str = attr.into();
-        let attr2 = Attribute::try_from(s).unwrap();
-        assert_eq!(attr, attr2);
-    }
-}
-
-#[derive(Copy, Clone, Debug, Eq, PartialEq, Sequence, Hash)]
-pub enum Attribute {
-    Account,
-    AccountExpire,
-    AccountValidFrom,
-    AcpCreateAttr,
-    AcpCreateClass,
-    AcpEnable,
-    AcpModifyClass,
-    AcpModifyPresentAttr,
-    AcpModifyRemovedAttr,
-    AcpReceiver,
-    AcpReceiverGroup,
-    AcpSearchAttr,
-    AcpTargetScope,
-    ApiTokenSession,
-    ApplicationPassword,
-    AttestedPasskeys,
-    Attr,
-    AttributeName,
-    AttributeType,
-    AuthSessionExpiry,
-    AuthPasswordMinimumLength,
-    BadlistPassword,
-    Certificate,
-    Claim,
-    Class,
-    ClassName,
-    Cn,
-    CookiePrivateKey,
-    CredentialUpdateIntentToken,
-    CredentialTypeMinimum,
-    DeniedName,
-    Description,
-    DirectMemberOf,
-    DisplayName,
-    Dn,
-    Domain,
-    DomainDevelopmentTaint,
-    DomainDisplayName,
-    DomainLdapBasedn,
-    DomainName,
-    DomainSsid,
-    DomainTokenKey,
-    DomainUuid,
-    DynGroup,
-    DynGroupFilter,
-    DynMember,
-    Email,
-    EmailAlternative,
-    EmailPrimary,
-    EntryDn,
-    EntryManagedBy,
-    EntryUuid,
-    Es256PrivateKeyDer,
-    Excludes,
-    FernetPrivateKeyStr,
-    Gecos,
-    GidNumber,
-    GrantUiHint,
-    Group,
-    IdVerificationEcKey,
-    Image,
-    Index,
-    IpaNtHash,
-    IpaSshPubKey,
-    JwsEs256PrivateKey,
-    KeyActionRotate,
-    KeyActionRevoke,
-    KeyActionImportJwsEs256,
-    KeyInternalData,
-    KeyProvider,
-    LastModifiedCid,
-    LdapAllowUnixPwBind,
-    /// An LDAP Compatible emailAddress
-    LdapEmailAddress,
-    /// An LDAP Compatible sshkeys virtual attribute
-    LdapKeys,
-    LegalName,
-    LimitSearchMaxResults,
-    LimitSearchMaxFilterTest,
-    LinkedGroup,
-    LoginShell,
-    Mail,
-    May,
-    Member,
-    MemberOf,
-    MultiValue,
-    Must,
-    Name,
-    NameHistory,
-    NoIndex,
-    NsUniqueId,
-    NsAccountLock,
-    OAuth2AllowInsecureClientDisablePkce,
-    OAuth2AllowLocalhostRedirect,
-    OAuth2ConsentScopeMap,
-    OAuth2JwtLegacyCryptoEnable,
-    OAuth2PreferShortUsername,
-    OAuth2RsBasicSecret,
-    OAuth2RsClaimMap,
-    OAuth2RsImplicitScopes,
-    OAuth2RsName,
-    OAuth2RsOrigin,
-    OAuth2RsOriginLanding,
-    OAuth2RsScopeMap,
-    OAuth2RsSupScopeMap,
-    OAuth2RsTokenKey,
-    OAuth2Session,
-    OAuth2StrictRedirectUri,
-    ObjectClass,
-    OtherNoIndex,
-    PassKeys,
-    PasswordImport,
-    PatchLevel,
-    Phantom,
-    PrimaryCredential,
-    PrivateCookieKey,
-    PrivilegeExpiry,
-    RadiusSecret,
-    RecycledDirectMemberOf,
-    Refers,
-    Replicated,
-    Rs256PrivateKeyDer,
-    Scope,
-    SourceUuid,
-    Spn,
-    /// An LDAP-compatible sshpublickey
-    LdapSshPublicKey,
-    /// The Kanidm-local ssh_publickey
-    SshPublicKey,
-    SudoHost,
-    Supplements,
-    SystemSupplements,
-    SyncAllowed,
-    SyncClass,
-    SyncCookie,
-    SyncCredentialPortal,
-    SyncExternalId,
-    SyncParentUuid,
-    SyncTokenSession,
-    SyncYieldAuthority,
-    Syntax,
-    SystemExcludes,
-    SystemMay,
-    SystemMust,
-    Term,
-    TotpImport,
-    Uid,
-    UidNumber,
-    Unique,
-    UnixPassword,
-    UnixPasswordImport,
-    UserAuthTokenSession,
-    UserId,
-    UserPassword,
-    Uuid,
-    Version,
-    WebauthnAttestationCaList,
-
-    #[cfg(any(debug_assertions, test))]
-    NonExist,
-    #[cfg(any(debug_assertions, test))]
-    TestAttr,
-    #[cfg(any(debug_assertions, test))]
-    TestNumber,
-    #[cfg(any(debug_assertions, test))]
-    Extra,
-    #[cfg(any(debug_assertions, test))]
-    TestNotAllowed,
-}
-
-impl AsRef<str> for Attribute {
-    fn as_ref(&self) -> &str {
-        self.into()
-    }
-}
-
-impl From<&Attribute> for &'static str {
-    fn from(value: &Attribute) -> Self {
-        (*value).into()
-    }
-}
-
-impl TryFrom<&AttrString> for Attribute {
-    type Error = OperationError;
-
-    fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
-        Attribute::try_from(value.as_str())
-    }
-}
-
-impl<'a> TryFrom<&'a str> for Attribute {
-    type Error = OperationError;
-    fn try_from(val: &'a str) -> Result<Self, OperationError> {
-        let res = match val {
-            ATTR_ACCOUNT => Attribute::Account,
-            ATTR_ACCOUNT_EXPIRE => Attribute::AccountExpire,
-            ATTR_ACCOUNT_VALID_FROM => Attribute::AccountValidFrom,
-            ATTR_ACP_CREATE_ATTR => Attribute::AcpCreateAttr,
-            ATTR_ACP_CREATE_CLASS => Attribute::AcpCreateClass,
-            ATTR_ACP_ENABLE => Attribute::AcpEnable,
-            ATTR_ACP_MODIFY_CLASS => Attribute::AcpModifyClass,
-            ATTR_ACP_MODIFY_PRESENTATTR => Attribute::AcpModifyPresentAttr,
-            ATTR_ACP_MODIFY_REMOVEDATTR => Attribute::AcpModifyRemovedAttr,
-            ATTR_ACP_RECEIVER => Attribute::AcpReceiver,
-            ATTR_ACP_RECEIVER_GROUP => Attribute::AcpReceiverGroup,
-            ATTR_ACP_SEARCH_ATTR => Attribute::AcpSearchAttr,
-            ATTR_ACP_TARGET_SCOPE => Attribute::AcpTargetScope,
-            ATTR_API_TOKEN_SESSION => Attribute::ApiTokenSession,
-            ATTR_APPLICATION_PASSWORD => Attribute::ApplicationPassword,
-            ATTR_ATTESTED_PASSKEYS => Attribute::AttestedPasskeys,
-            ATTR_ATTR => Attribute::Attr,
-            ATTR_ATTRIBUTENAME => Attribute::AttributeName,
-            ATTR_ATTRIBUTETYPE => Attribute::AttributeType,
-            ATTR_AUTH_SESSION_EXPIRY => Attribute::AuthSessionExpiry,
-            ATTR_AUTH_PASSWORD_MINIMUM_LENGTH => Attribute::AuthPasswordMinimumLength,
-            ATTR_BADLIST_PASSWORD => Attribute::BadlistPassword,
-            ATTR_CERTIFICATE => Attribute::Certificate,
-            ATTR_CLAIM => Attribute::Claim,
-            ATTR_CLASS => Attribute::Class,
-            ATTR_CLASSNAME => Attribute::ClassName,
-            ATTR_CN => Attribute::Cn,
-            ATTR_COOKIE_PRIVATE_KEY => Attribute::CookiePrivateKey,
-            ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN => Attribute::CredentialUpdateIntentToken,
-            ATTR_CREDENTIAL_TYPE_MINIMUM => Attribute::CredentialTypeMinimum,
-            ATTR_DENIED_NAME => Attribute::DeniedName,
-            ATTR_DESCRIPTION => Attribute::Description,
-            ATTR_DIRECTMEMBEROF => Attribute::DirectMemberOf,
-            ATTR_DISPLAYNAME => Attribute::DisplayName,
-            ATTR_DN => Attribute::Dn,
-            ATTR_DOMAIN => Attribute::Domain,
-            ATTR_DOMAIN_DISPLAY_NAME => Attribute::DomainDisplayName,
-            ATTR_DOMAIN_DEVELOPMENT_TAINT => Attribute::DomainDevelopmentTaint,
-            ATTR_DOMAIN_LDAP_BASEDN => Attribute::DomainLdapBasedn,
-            ATTR_DOMAIN_NAME => Attribute::DomainName,
-            ATTR_DOMAIN_SSID => Attribute::DomainSsid,
-            ATTR_DOMAIN_TOKEN_KEY => Attribute::DomainTokenKey,
-            ATTR_DOMAIN_UUID => Attribute::DomainUuid,
-            ATTR_DYNGROUP => Attribute::DynGroup,
-            ATTR_DYNGROUP_FILTER => Attribute::DynGroupFilter,
-            ATTR_DYNMEMBER => Attribute::DynMember,
-            ATTR_EMAIL => Attribute::Email,
-            ATTR_EMAIL_ALTERNATIVE => Attribute::EmailAlternative,
-            ATTR_EMAIL_PRIMARY => Attribute::EmailPrimary,
-            ATTR_ENTRYDN => Attribute::EntryDn,
-            ATTR_ENTRY_MANAGED_BY => Attribute::EntryManagedBy,
-            ATTR_ENTRYUUID => Attribute::EntryUuid,
-            ATTR_ES256_PRIVATE_KEY_DER => Attribute::Es256PrivateKeyDer,
-            ATTR_EXCLUDES => Attribute::Excludes,
-            ATTR_FERNET_PRIVATE_KEY_STR => Attribute::FernetPrivateKeyStr,
-            ATTR_GECOS => Attribute::Gecos,
-            ATTR_GIDNUMBER => Attribute::GidNumber,
-            ATTR_GRANT_UI_HINT => Attribute::GrantUiHint,
-            ATTR_GROUP => Attribute::Group,
-            ATTR_ID_VERIFICATION_ECKEY => Attribute::IdVerificationEcKey,
-            ATTR_IMAGE => Attribute::Image,
-            ATTR_INDEX => Attribute::Index,
-            ATTR_IPANTHASH => Attribute::IpaNtHash,
-            ATTR_IPASSHPUBKEY => Attribute::IpaSshPubKey,
-            ATTR_JWS_ES256_PRIVATE_KEY => Attribute::JwsEs256PrivateKey,
-            ATTR_KEY_ACTION_ROTATE => Attribute::KeyActionRotate,
-            ATTR_KEY_ACTION_REVOKE => Attribute::KeyActionRevoke,
-            ATTR_KEY_ACTION_IMPORT_JWS_ES256 => Attribute::KeyActionImportJwsEs256,
-            ATTR_KEY_INTERNAL_DATA => Attribute::KeyInternalData,
-            ATTR_KEY_PROVIDER => Attribute::KeyProvider,
-            ATTR_LAST_MODIFIED_CID => Attribute::LastModifiedCid,
-            ATTR_LDAP_ALLOW_UNIX_PW_BIND => Attribute::LdapAllowUnixPwBind,
-            ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
-            ATTR_LDAP_KEYS => Attribute::LdapKeys,
-            ATTR_SSH_PUBLICKEY => Attribute::SshPublicKey,
-            ATTR_LEGALNAME => Attribute::LegalName,
-            ATTR_LINKEDGROUP => Attribute::LinkedGroup,
-            ATTR_LOGINSHELL => Attribute::LoginShell,
-            ATTR_LIMIT_SEARCH_MAX_RESULTS => Attribute::LimitSearchMaxResults,
-            ATTR_LIMIT_SEARCH_MAX_FILTER_TEST => Attribute::LimitSearchMaxFilterTest,
-            ATTR_MAIL => Attribute::Mail,
-            ATTR_MAY => Attribute::May,
-            ATTR_MEMBER => Attribute::Member,
-            ATTR_MEMBEROF => Attribute::MemberOf,
-            ATTR_MULTIVALUE => Attribute::MultiValue,
-            ATTR_MUST => Attribute::Must,
-            ATTR_NAME => Attribute::Name,
-            ATTR_NAME_HISTORY => Attribute::NameHistory,
-            ATTR_NO_INDEX => Attribute::NoIndex,
-            ATTR_NSUNIQUEID => Attribute::NsUniqueId,
-            ATTR_NSACCOUNTLOCK => Attribute::NsAccountLock,
-            ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE => {
-                Attribute::OAuth2AllowInsecureClientDisablePkce
-            }
-            ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT => Attribute::OAuth2AllowLocalhostRedirect,
-            ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
-            ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
-            ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
-            ATTR_OAUTH2_RS_BASIC_SECRET => Attribute::OAuth2RsBasicSecret,
-            ATTR_OAUTH2_RS_CLAIM_MAP => Attribute::OAuth2RsClaimMap,
-            ATTR_OAUTH2_RS_IMPLICIT_SCOPES => Attribute::OAuth2RsImplicitScopes,
-            ATTR_OAUTH2_RS_NAME => Attribute::OAuth2RsName,
-            ATTR_OAUTH2_RS_ORIGIN => Attribute::OAuth2RsOrigin,
-            ATTR_OAUTH2_RS_ORIGIN_LANDING => Attribute::OAuth2RsOriginLanding,
-            ATTR_OAUTH2_RS_SCOPE_MAP => Attribute::OAuth2RsScopeMap,
-            ATTR_OAUTH2_RS_SUP_SCOPE_MAP => Attribute::OAuth2RsSupScopeMap,
-            ATTR_OAUTH2_RS_TOKEN_KEY => Attribute::OAuth2RsTokenKey,
-            ATTR_OAUTH2_SESSION => Attribute::OAuth2Session,
-            ATTR_OAUTH2_STRICT_REDIRECT_URI => Attribute::OAuth2StrictRedirectUri,
-            ATTR_OBJECTCLASS => Attribute::ObjectClass,
-            ATTR_OTHER_NO_INDEX => Attribute::OtherNoIndex,
-            ATTR_PASSKEYS => Attribute::PassKeys,
-            ATTR_PASSWORD_IMPORT => Attribute::PasswordImport,
-            ATTR_PATCH_LEVEL => Attribute::PatchLevel,
-            ATTR_PHANTOM => Attribute::Phantom,
-            ATTR_PRIMARY_CREDENTIAL => Attribute::PrimaryCredential,
-            ATTR_PRIVATE_COOKIE_KEY => Attribute::PrivateCookieKey,
-            ATTR_PRIVILEGE_EXPIRY => Attribute::PrivilegeExpiry,
-            ATTR_RADIUS_SECRET => Attribute::RadiusSecret,
-            ATTR_RECYCLEDDIRECTMEMBEROF => Attribute::RecycledDirectMemberOf,
-            ATTR_REFERS => Attribute::Refers,
-            ATTR_REPLICATED => Attribute::Replicated,
-            ATTR_RS256_PRIVATE_KEY_DER => Attribute::Rs256PrivateKeyDer,
-            ATTR_SCOPE => Attribute::Scope,
-            ATTR_SOURCE_UUID => Attribute::SourceUuid,
-            ATTR_SPN => Attribute::Spn,
-            ATTR_LDAP_SSHPUBLICKEY => Attribute::LdapSshPublicKey,
-            ATTR_SUDOHOST => Attribute::SudoHost,
-            ATTR_SUPPLEMENTS => Attribute::Supplements,
-            ATTR_SYNC_ALLOWED => Attribute::SyncAllowed,
-            ATTR_SYNC_CLASS => Attribute::SyncClass,
-            ATTR_SYNC_COOKIE => Attribute::SyncCookie,
-            ATTR_SYNC_CREDENTIAL_PORTAL => Attribute::SyncCredentialPortal,
-            ATTR_SYNC_EXTERNAL_ID => Attribute::SyncExternalId,
-            ATTR_SYNC_PARENT_UUID => Attribute::SyncParentUuid,
-            ATTR_SYNC_TOKEN_SESSION => Attribute::SyncTokenSession,
-            ATTR_SYNC_YIELD_AUTHORITY => Attribute::SyncYieldAuthority,
-            ATTR_SYNTAX => Attribute::Syntax,
-            ATTR_SYSTEMEXCLUDES => Attribute::SystemExcludes,
-            ATTR_SYSTEMMAY => Attribute::SystemMay,
-            ATTR_SYSTEMMUST => Attribute::SystemMust,
-            ATTR_SYSTEMSUPPLEMENTS => Attribute::SystemSupplements,
-            ATTR_TERM => Attribute::Term,
-            ATTR_TOTP_IMPORT => Attribute::TotpImport,
-            ATTR_UID => Attribute::Uid,
-            ATTR_UIDNUMBER => Attribute::UidNumber,
-            ATTR_UNIQUE => Attribute::Unique,
-            ATTR_UNIX_PASSWORD => Attribute::UnixPassword,
-            ATTR_UNIX_PASSWORD_IMPORT => Attribute::UnixPasswordImport,
-            ATTR_USER_AUTH_TOKEN_SESSION => Attribute::UserAuthTokenSession,
-            ATTR_USERID => Attribute::UserId,
-            ATTR_USERPASSWORD => Attribute::UserPassword,
-            ATTR_UUID => Attribute::Uuid,
-            ATTR_VERSION => Attribute::Version,
-            ATTR_WEBAUTHN_ATTESTATION_CA_LIST => Attribute::WebauthnAttestationCaList,
-
-            #[cfg(any(debug_assertions, test))]
-            TEST_ATTR_NON_EXIST => Attribute::NonExist,
-            #[cfg(any(debug_assertions, test))]
-            TEST_ATTR_TEST_ATTR => Attribute::TestAttr,
-            #[cfg(any(debug_assertions, test))]
-            TEST_ATTR_EXTRA => Attribute::Extra,
-            #[cfg(any(debug_assertions, test))]
-            TEST_ATTR_NUMBER => Attribute::TestNumber,
-            #[cfg(any(debug_assertions, test))]
-            TEST_ATTR_NOTALLOWED => Attribute::TestNotAllowed,
-            _ => {
-                trace!("Failed to convert {} to Attribute", val);
-                return Err(OperationError::InvalidAttributeName(val.to_string()));
-            }
-        };
-        Ok(res)
-    }
-}
-
-impl From<Attribute> for &'static str {
-    fn from(val: Attribute) -> Self {
-        match val {
-            Attribute::Account => ATTR_ACCOUNT,
-            Attribute::AccountExpire => ATTR_ACCOUNT_EXPIRE,
-            Attribute::AccountValidFrom => ATTR_ACCOUNT_VALID_FROM,
-            Attribute::AcpCreateAttr => ATTR_ACP_CREATE_ATTR,
-            Attribute::AcpCreateClass => ATTR_ACP_CREATE_CLASS,
-            Attribute::AcpEnable => ATTR_ACP_ENABLE,
-            Attribute::AcpModifyClass => ATTR_ACP_MODIFY_CLASS,
-            Attribute::AcpModifyPresentAttr => ATTR_ACP_MODIFY_PRESENTATTR,
-            Attribute::AcpModifyRemovedAttr => ATTR_ACP_MODIFY_REMOVEDATTR,
-            Attribute::AcpReceiver => ATTR_ACP_RECEIVER,
-            Attribute::AcpReceiverGroup => ATTR_ACP_RECEIVER_GROUP,
-            Attribute::AcpSearchAttr => ATTR_ACP_SEARCH_ATTR,
-            Attribute::AcpTargetScope => ATTR_ACP_TARGET_SCOPE,
-            Attribute::ApiTokenSession => ATTR_API_TOKEN_SESSION,
-            Attribute::ApplicationPassword => ATTR_APPLICATION_PASSWORD,
-            Attribute::AttestedPasskeys => ATTR_ATTESTED_PASSKEYS,
-            Attribute::Attr => ATTR_ATTR,
-            Attribute::AttributeName => ATTR_ATTRIBUTENAME,
-            Attribute::AttributeType => ATTR_ATTRIBUTETYPE,
-            Attribute::AuthSessionExpiry => ATTR_AUTH_SESSION_EXPIRY,
-            Attribute::AuthPasswordMinimumLength => ATTR_AUTH_PASSWORD_MINIMUM_LENGTH,
-            Attribute::BadlistPassword => ATTR_BADLIST_PASSWORD,
-            Attribute::Certificate => ATTR_CERTIFICATE,
-            Attribute::Claim => ATTR_CLAIM,
-            Attribute::Class => ATTR_CLASS,
-            Attribute::ClassName => ATTR_CLASSNAME,
-            Attribute::Cn => ATTR_CN,
-            Attribute::CookiePrivateKey => ATTR_COOKIE_PRIVATE_KEY,
-            Attribute::CredentialUpdateIntentToken => ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
-            Attribute::CredentialTypeMinimum => ATTR_CREDENTIAL_TYPE_MINIMUM,
-            Attribute::DeniedName => ATTR_DENIED_NAME,
-            Attribute::Description => ATTR_DESCRIPTION,
-            Attribute::DirectMemberOf => ATTR_DIRECTMEMBEROF,
-            Attribute::DisplayName => ATTR_DISPLAYNAME,
-            Attribute::Dn => ATTR_DN,
-            Attribute::Domain => ATTR_DOMAIN,
-            Attribute::DomainDevelopmentTaint => ATTR_DOMAIN_DEVELOPMENT_TAINT,
-            Attribute::DomainDisplayName => ATTR_DOMAIN_DISPLAY_NAME,
-            Attribute::DomainLdapBasedn => ATTR_DOMAIN_LDAP_BASEDN,
-            Attribute::DomainName => ATTR_DOMAIN_NAME,
-            Attribute::DomainSsid => ATTR_DOMAIN_SSID,
-            Attribute::DomainTokenKey => ATTR_DOMAIN_TOKEN_KEY,
-            Attribute::DomainUuid => ATTR_DOMAIN_UUID,
-            Attribute::DynGroup => ATTR_DYNGROUP,
-            Attribute::DynGroupFilter => ATTR_DYNGROUP_FILTER,
-            Attribute::DynMember => ATTR_DYNMEMBER,
-            Attribute::Email => ATTR_EMAIL,
-            Attribute::EmailAlternative => ATTR_EMAIL_ALTERNATIVE,
-            Attribute::EmailPrimary => ATTR_EMAIL_PRIMARY,
-            Attribute::EntryDn => ATTR_ENTRYDN,
-            Attribute::EntryManagedBy => ATTR_ENTRY_MANAGED_BY,
-            Attribute::EntryUuid => ATTR_ENTRYUUID,
-            Attribute::Es256PrivateKeyDer => ATTR_ES256_PRIVATE_KEY_DER,
-            Attribute::Excludes => ATTR_EXCLUDES,
-            Attribute::FernetPrivateKeyStr => ATTR_FERNET_PRIVATE_KEY_STR,
-            Attribute::Gecos => ATTR_GECOS,
-            Attribute::GidNumber => ATTR_GIDNUMBER,
-            Attribute::GrantUiHint => ATTR_GRANT_UI_HINT,
-            Attribute::Group => ATTR_GROUP,
-            Attribute::IdVerificationEcKey => ATTR_ID_VERIFICATION_ECKEY,
-            Attribute::Image => ATTR_IMAGE,
-            Attribute::Index => ATTR_INDEX,
-            Attribute::IpaNtHash => ATTR_IPANTHASH,
-            Attribute::IpaSshPubKey => ATTR_IPASSHPUBKEY,
-            Attribute::JwsEs256PrivateKey => ATTR_JWS_ES256_PRIVATE_KEY,
-            Attribute::KeyActionRotate => ATTR_KEY_ACTION_ROTATE,
-            Attribute::KeyActionRevoke => ATTR_KEY_ACTION_REVOKE,
-            Attribute::KeyActionImportJwsEs256 => ATTR_KEY_ACTION_IMPORT_JWS_ES256,
-            Attribute::KeyInternalData => ATTR_KEY_INTERNAL_DATA,
-            Attribute::KeyProvider => ATTR_KEY_PROVIDER,
-            Attribute::LastModifiedCid => ATTR_LAST_MODIFIED_CID,
-            Attribute::LdapAllowUnixPwBind => ATTR_LDAP_ALLOW_UNIX_PW_BIND,
-            Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,
-            Attribute::LdapKeys => ATTR_LDAP_KEYS,
-            Attribute::LdapSshPublicKey => ATTR_LDAP_SSHPUBLICKEY,
-            Attribute::LegalName => ATTR_LEGALNAME,
-            Attribute::LimitSearchMaxResults => ATTR_LIMIT_SEARCH_MAX_RESULTS,
-            Attribute::LimitSearchMaxFilterTest => ATTR_LIMIT_SEARCH_MAX_FILTER_TEST,
-            Attribute::LinkedGroup => ATTR_LINKEDGROUP,
-            Attribute::LoginShell => ATTR_LOGINSHELL,
-            Attribute::Mail => ATTR_MAIL,
-            Attribute::May => ATTR_MAY,
-            Attribute::Member => ATTR_MEMBER,
-            Attribute::MemberOf => ATTR_MEMBEROF,
-            Attribute::MultiValue => ATTR_MULTIVALUE,
-            Attribute::Must => ATTR_MUST,
-            Attribute::Name => ATTR_NAME,
-            Attribute::NameHistory => ATTR_NAME_HISTORY,
-            Attribute::NoIndex => ATTR_NO_INDEX,
-            Attribute::NsUniqueId => ATTR_NSUNIQUEID,
-            Attribute::NsAccountLock => ATTR_NSACCOUNTLOCK,
-            Attribute::OAuth2AllowInsecureClientDisablePkce => {
-                ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE
-            }
-            Attribute::OAuth2AllowLocalhostRedirect => ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
-            Attribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
-            Attribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
-            Attribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
-            Attribute::OAuth2RsBasicSecret => ATTR_OAUTH2_RS_BASIC_SECRET,
-            Attribute::OAuth2RsClaimMap => ATTR_OAUTH2_RS_CLAIM_MAP,
-            Attribute::OAuth2RsImplicitScopes => ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
-            Attribute::OAuth2RsName => ATTR_OAUTH2_RS_NAME,
-            Attribute::OAuth2RsOrigin => ATTR_OAUTH2_RS_ORIGIN,
-            Attribute::OAuth2RsOriginLanding => ATTR_OAUTH2_RS_ORIGIN_LANDING,
-            Attribute::OAuth2RsScopeMap => ATTR_OAUTH2_RS_SCOPE_MAP,
-            Attribute::OAuth2RsSupScopeMap => ATTR_OAUTH2_RS_SUP_SCOPE_MAP,
-            Attribute::OAuth2RsTokenKey => ATTR_OAUTH2_RS_TOKEN_KEY,
-            Attribute::OAuth2Session => ATTR_OAUTH2_SESSION,
-            Attribute::OAuth2StrictRedirectUri => ATTR_OAUTH2_STRICT_REDIRECT_URI,
-            Attribute::ObjectClass => ATTR_OBJECTCLASS,
-            Attribute::OtherNoIndex => ATTR_OTHER_NO_INDEX,
-            Attribute::PassKeys => ATTR_PASSKEYS,
-            Attribute::PasswordImport => ATTR_PASSWORD_IMPORT,
-            Attribute::PatchLevel => ATTR_PATCH_LEVEL,
-            Attribute::Phantom => ATTR_PHANTOM,
-            Attribute::PrimaryCredential => ATTR_PRIMARY_CREDENTIAL,
-            Attribute::PrivateCookieKey => ATTR_PRIVATE_COOKIE_KEY,
-            Attribute::PrivilegeExpiry => ATTR_PRIVILEGE_EXPIRY,
-            Attribute::RadiusSecret => ATTR_RADIUS_SECRET,
-            Attribute::RecycledDirectMemberOf => ATTR_RECYCLEDDIRECTMEMBEROF,
-            Attribute::Refers => ATTR_REFERS,
-            Attribute::Replicated => ATTR_REPLICATED,
-            Attribute::Rs256PrivateKeyDer => ATTR_RS256_PRIVATE_KEY_DER,
-            Attribute::Scope => ATTR_SCOPE,
-            Attribute::SourceUuid => ATTR_SOURCE_UUID,
-            Attribute::Spn => ATTR_SPN,
-            Attribute::SshPublicKey => ATTR_SSH_PUBLICKEY,
-            Attribute::SudoHost => ATTR_SUDOHOST,
-            Attribute::Supplements => ATTR_SUPPLEMENTS,
-            Attribute::SyncAllowed => ATTR_SYNC_ALLOWED,
-            Attribute::SyncClass => ATTR_SYNC_CLASS,
-            Attribute::SyncCookie => ATTR_SYNC_COOKIE,
-            Attribute::SyncCredentialPortal => ATTR_SYNC_CREDENTIAL_PORTAL,
-            Attribute::SyncExternalId => ATTR_SYNC_EXTERNAL_ID,
-            Attribute::SyncParentUuid => ATTR_SYNC_PARENT_UUID,
-            Attribute::SyncTokenSession => ATTR_SYNC_TOKEN_SESSION,
-            Attribute::SyncYieldAuthority => ATTR_SYNC_YIELD_AUTHORITY,
-            Attribute::Syntax => ATTR_SYNTAX,
-            Attribute::SystemExcludes => ATTR_SYSTEMEXCLUDES,
-            Attribute::SystemMay => ATTR_SYSTEMMAY,
-            Attribute::SystemMust => ATTR_SYSTEMMUST,
-            Attribute::SystemSupplements => ATTR_SYSTEMSUPPLEMENTS,
-            Attribute::Term => ATTR_TERM,
-            Attribute::TotpImport => ATTR_TOTP_IMPORT,
-            Attribute::Uid => ATTR_UID,
-            Attribute::UidNumber => ATTR_UIDNUMBER,
-            Attribute::Unique => ATTR_UNIQUE,
-            Attribute::UnixPassword => ATTR_UNIX_PASSWORD,
-            Attribute::UnixPasswordImport => ATTR_UNIX_PASSWORD_IMPORT,
-            Attribute::UserAuthTokenSession => ATTR_USER_AUTH_TOKEN_SESSION,
-            Attribute::UserId => ATTR_USERID,
-            Attribute::UserPassword => ATTR_USERPASSWORD,
-            Attribute::Uuid => ATTR_UUID,
-            Attribute::Version => ATTR_VERSION,
-            Attribute::WebauthnAttestationCaList => ATTR_WEBAUTHN_ATTESTATION_CA_LIST,
-
-            #[cfg(any(debug_assertions, test))]
-            Attribute::NonExist => TEST_ATTR_NON_EXIST,
-            #[cfg(any(debug_assertions, test))]
-            Attribute::TestAttr => TEST_ATTR_TEST_ATTR,
-            #[cfg(any(debug_assertions, test))]
-            Attribute::Extra => TEST_ATTR_EXTRA,
-            #[cfg(any(debug_assertions, test))]
-            Attribute::TestNumber => TEST_ATTR_NUMBER,
-            #[cfg(any(debug_assertions, test))]
-            Attribute::TestNotAllowed => TEST_ATTR_NOTALLOWED,
-        }
-    }
-}
-
-impl From<Attribute> for AttrString {
-    fn from(val: Attribute) -> Self {
-        AttrString::from(val.to_string())
-    }
-}
-
-impl Display for Attribute {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s: &'static str = (*self).into();
-        write!(f, "{}", s)
-    }
-}
-
-impl Attribute {
-    pub fn to_value(self) -> Value {
-        let s: &'static str = self.into();
-        Value::new_iutf8(s)
-    }
-
-    pub fn to_partialvalue(self) -> PartialValue {
-        let s: &'static str = self.into();
-        PartialValue::new_iutf8(s)
-    }
-}
-
-impl<'a> serde::Deserialize<'a> for Attribute {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'a>,
-    {
-        let s = String::deserialize(deserializer)?;
-        Attribute::try_from(s.as_str()).map_err(|e| serde::de::Error::custom(format!("{:?}", e)))
-    }
-}
-
+//TODO: This would do well in the proto lib
+// together with all the other definitions.
+// That way`OperationError::MissingClass` can
+// Directly reference the entryclass rather
+// than relying on its string name
 #[derive(Copy, Clone, Debug)]
 pub enum EntryClass {
     AccessControlCreate,
@@ -670,56 +74,54 @@ pub enum EntryClass {
 impl From<EntryClass> for &'static str {
     fn from(val: EntryClass) -> Self {
         match val {
-            EntryClass::AccessControlCreate => "access_control_create",
-            EntryClass::AccessControlDelete => "access_control_delete",
-            EntryClass::AccessControlModify => "access_control_modify",
-            EntryClass::AccessControlProfile => "access_control_profile",
-            EntryClass::AccessControlReceiverEntryManager => {
-                "access_control_receiver_entry_manager"
-            }
-            EntryClass::AccessControlReceiverGroup => "access_control_receiver_group",
-            EntryClass::AccessControlSearch => "access_control_search",
-            EntryClass::AccessControlTargetScope => "access_control_target_scope",
-            EntryClass::Account => "account",
-            EntryClass::AccountPolicy => "account_policy",
-            EntryClass::Application => "application",
-            EntryClass::AttributeType => "attributetype",
+            EntryClass::AccessControlCreate => ACCESS_CONTROL_CREATE,
+            EntryClass::AccessControlDelete => ACCESS_CONTROL_DELETE,
+            EntryClass::AccessControlModify => ACCESS_CONTROL_MODIFY,
+            EntryClass::AccessControlProfile => ACCESS_CONTROL_PROFILE,
+            EntryClass::AccessControlReceiverEntryManager => ACCESS_CONTROL_RECEIVER_ENTRY_MANAGER,
+            EntryClass::AccessControlReceiverGroup => ACCESS_CONTROL_RECEIVER_GROUP,
+            EntryClass::AccessControlSearch => ACCESS_CONTROL_SEARCH,
+            EntryClass::AccessControlTargetScope => ACCESS_CONTROL_TARGET_SCOPE,
+            EntryClass::Account => ENTRYCLASS_ACCOUNT,
+            EntryClass::AccountPolicy => ENTRYCLASS_ACCOUNT_POLICY,
+            EntryClass::Application => ENTRYCLASS_APPLICATION,
+            EntryClass::AttributeType => ENTRYCLASS_ATTRIBUTE_TYPE,
             EntryClass::Builtin => ENTRYCLASS_BUILTIN,
-            EntryClass::Class => ATTR_CLASS,
-            EntryClass::ClassType => "classtype",
-            EntryClass::ClientCertificate => "client_certificate",
-            EntryClass::Conflict => "conflict",
-            EntryClass::DomainInfo => "domain_info",
-            EntryClass::DynGroup => ATTR_DYNGROUP,
-            EntryClass::ExtensibleObject => "extensibleobject",
-            EntryClass::Group => ATTR_GROUP,
+            EntryClass::Class => ENTRYCLASS_CLASS,
+            EntryClass::ClassType => ENTRYCLASS_CLASS_TYPE,
+            EntryClass::ClientCertificate => ENTRYCLASS_CLIENT_CERTIFICATE,
+            EntryClass::Conflict => ENTRYCLASS_CONFLICT,
+            EntryClass::DomainInfo => ENTRYCLASS_DOMAIN_INFO,
+            EntryClass::DynGroup => ENTRYCLASS_DYN_GROUP,
+            EntryClass::ExtensibleObject => ENTRYCLASS_EXTENSIBLE_OBJECT,
+            EntryClass::Group => ENTRYCLASS_GROUP,
             EntryClass::KeyProvider => ENTRYCLASS_KEY_PROVIDER,
             EntryClass::KeyProviderInternal => ENTRYCLASS_KEY_PROVIDER_INTERNAL,
             EntryClass::KeyObject => ENTRYCLASS_KEY_OBJECT,
             EntryClass::KeyObjectJwtEs256 => ENTRYCLASS_KEY_OBJECT_JWT_ES256,
             EntryClass::KeyObjectJweA128GCM => ENTRYCLASS_KEY_OBJECT_JWE_A128GCM,
             EntryClass::KeyObjectInternal => ENTRYCLASS_KEY_OBJECT_INTERNAL,
-            EntryClass::MemberOf => "memberof",
-            EntryClass::OAuth2ResourceServer => "oauth2_resource_server",
-            EntryClass::OAuth2ResourceServerBasic => "oauth2_resource_server_basic",
-            EntryClass::OAuth2ResourceServerPublic => "oauth2_resource_server_public",
-            EntryClass::Object => "object",
-            EntryClass::OrgPerson => "orgperson",
-            EntryClass::Person => "person",
-            EntryClass::PosixAccount => "posixaccount",
-            EntryClass::PosixGroup => "posixgroup",
-            EntryClass::Recycled => "recycled",
-            EntryClass::Service => "service",
-            EntryClass::ServiceAccount => "service_account",
-            EntryClass::SyncAccount => "sync_account",
-            EntryClass::SyncObject => "sync_object",
-            EntryClass::System => "system",
-            EntryClass::SystemConfig => "system_config",
-            EntryClass::SystemInfo => "system_info",
-            EntryClass::Tombstone => "tombstone",
+            EntryClass::MemberOf => ENTRYCLASS_MEMBER_OF,
+            EntryClass::OAuth2ResourceServer => OAUTH2_RESOURCE_SERVER,
+            EntryClass::OAuth2ResourceServerBasic => OAUTH2_RESOURCE_SERVER_BASIC,
+            EntryClass::OAuth2ResourceServerPublic => OAUTH2_RESOURCE_SERVER_PUBLIC,
+            EntryClass::Object => ENTRYCLASS_OBJECT,
+            EntryClass::OrgPerson => ENTRYCLASS_ORG_PERSON,
+            EntryClass::Person => ENTRYCLASS_PERSON,
+            EntryClass::PosixAccount => ENTRYCLASS_POSIX_ACCOUNT,
+            EntryClass::PosixGroup => ENTRYCLASS_POSIX_GROUP,
+            EntryClass::Recycled => ENTRYCLASS_RECYCLED,
+            EntryClass::Service => ENTRYCLASS_SERVICE,
+            EntryClass::ServiceAccount => ENTRYCLASS_SERVICE_ACCOUNT,
+            EntryClass::SyncAccount => ENTRYCLASS_SYNC_ACCOUNT,
+            EntryClass::SyncObject => ENTRYCLASS_SYNC_OBJECT,
+            EntryClass::System => ENTRYCLASS_SYSTEM,
+            EntryClass::SystemConfig => ENTRYCLASS_SYSTEM_CONFIG,
+            EntryClass::SystemInfo => ENTRYCLASS_SYSTEM_INFO,
+            EntryClass::Tombstone => ENTRYCLASS_TOMBSTONE,
             #[cfg(any(test, debug_assertions))]
-            EntryClass::TestClass => "testclass",
-            EntryClass::User => "user",
+            EntryClass::TestClass => TEST_ENTRYCLASS_TEST_CLASS,
+            EntryClass::User => ENTRYCLASS_USER,
         }
     }
 }
@@ -933,10 +335,10 @@ pub fn builtin_accounts() -> Vec<&'static BuiltinAccount> {
 
 // ============ TEST DATA ============
 #[cfg(test)]
-pub const UUID_TESTPERSON_1: Uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+pub const UUID_TESTPERSON_1: Uuid = ::uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
 #[cfg(test)]
-pub const UUID_TESTPERSON_2: Uuid = uuid!("538faac7-4d29-473b-a59d-23023ac19955");
+pub const UUID_TESTPERSON_2: Uuid = ::uuid::uuid!("538faac7-4d29-473b-a59d-23023ac19955");
 
 #[cfg(test)]
 lazy_static! {

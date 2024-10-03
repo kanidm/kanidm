@@ -1,5 +1,9 @@
 use super::{cookies, empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
+use crate::https::{
+    extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
+    middleware::KOpId,
+    ServerState,
+};
 use askama::Template;
 use axum::{
     extract::State,
@@ -43,6 +47,7 @@ struct SessionContext {
 #[derive(Template)]
 #[template(path = "login.html")]
 struct LoginView {
+    domain_custom_image: bool,
     username: String,
     remember_me: bool,
 }
@@ -55,6 +60,7 @@ pub struct Mech<'a> {
 #[derive(Template)]
 #[template(path = "login_mech_choose.html")]
 struct LoginMechView<'a> {
+    domain_custom_image: bool,
     mechs: Vec<Mech<'a>>,
 }
 
@@ -68,6 +74,7 @@ enum LoginTotpError {
 #[derive(Template, Default)]
 #[template(path = "login_totp.html")]
 struct LoginTotpView {
+    domain_custom_image: bool,
     totp: String,
     errors: LoginTotpError,
 }
@@ -75,16 +82,20 @@ struct LoginTotpView {
 #[derive(Template)]
 #[template(path = "login_password.html")]
 struct LoginPasswordView {
+    domain_custom_image: bool,
     password: String,
 }
 
 #[derive(Template)]
 #[template(path = "login_backupcode.html")]
-struct LoginBackupCodeView {}
+struct LoginBackupCodeView {
+    domain_custom_image: bool,
+}
 
 #[derive(Template)]
 #[template(path = "login_webauthn.html")]
 struct LoginWebauthnView {
+    domain_custom_image: bool,
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,
@@ -94,6 +105,7 @@ struct LoginWebauthnView {
 #[derive(Template, Default)]
 #[template(path = "login_denied.html")]
 struct LoginDeniedView {
+    domain_custom_image: bool,
     reason: String,
     operation_id: Uuid,
 }
@@ -129,6 +141,7 @@ pub async fn view_reauth_get(
     kopid: KOpId,
     jar: CookieJar,
     return_location: &str,
+    domain_info: DomainInfoRead,
 ) -> axum::response::Result<Response> {
     let session_valid_result = state
         .qe_r_ref
@@ -165,6 +178,7 @@ pub async fn view_reauth_get(
                         ar,
                         client_auth_info,
                         session_context,
+                        domain_info,
                     )
                     .await
                     {
@@ -194,7 +208,10 @@ pub async fn view_reauth_get(
 
             let remember_me = !username.is_empty();
 
+            let domain_custom_image = domain_info.image().is_some();
+
             HtmlTemplate(LoginView {
+                domain_custom_image,
                 username,
                 remember_me,
             })
@@ -213,6 +230,7 @@ pub async fn view_reauth_get(
 pub async fn view_index_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
 ) -> Response {
@@ -236,7 +254,10 @@ pub async fn view_index_get(
 
             let remember_me = !username.is_empty();
 
+            let domain_custom_image = domain_info.image().is_some();
+
             HtmlTemplate(LoginView {
+                domain_custom_image,
                 username,
                 remember_me,
             })
@@ -265,6 +286,7 @@ pub async fn view_login_begin_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(login_begin_form): Form<LoginBeginForm>,
 ) -> Response {
@@ -315,6 +337,7 @@ pub async fn view_login_begin_post(
                 ar,
                 client_auth_info,
                 session_context,
+                domain_info,
             )
             .await
             {
@@ -345,6 +368,7 @@ pub async fn view_login_mech_choose_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(login_mech_form): Form<LoginMechForm>,
 ) -> Response {
@@ -378,6 +402,7 @@ pub async fn view_login_mech_choose_post(
                 ar,
                 client_auth_info,
                 session_context,
+                domain_info,
             )
             .await
             {
@@ -408,13 +433,16 @@ pub async fn view_login_totp_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
     // trim leading and trailing white space.
     let Ok(totp) = u32::from_str(login_totp_form.totp.trim()) else {
+        let domain_custom_image = domain_info.image().is_some();
         // If not an int, we need to re-render with an error
         return HtmlTemplate(LoginTotpView {
+            domain_custom_image,
             totp: String::default(),
             errors: LoginTotpError::Syntax,
         })
@@ -422,7 +450,7 @@ pub async fn view_login_totp_post(
     };
 
     let auth_cred = AuthCredential::Totp(totp);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -434,11 +462,12 @@ pub async fn view_login_pw_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(login_pw_form): Form<LoginPwForm>,
 ) -> Response {
     let auth_cred = AuthCredential::Password(login_pw_form.password);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -450,35 +479,38 @@ pub async fn view_login_backupcode_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(login_bc_form): Form<LoginBackupCodeForm>,
 ) -> Response {
     // People (like me) may copy-paste the bc with whitespace that causes issues. Trim it now.
     let trimmed = login_bc_form.backupcode.trim().to_string();
     let auth_cred = AuthCredential::BackupCode(trimmed);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
 pub async fn view_login_passkey_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Json(assertion): Json<Box<PublicKeyCredential>>,
 ) -> Response {
     let auth_cred = AuthCredential::Passkey(assertion);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
 pub async fn view_login_seckey_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Json(assertion): Json<Box<PublicKeyCredential>>,
 ) -> Response {
     let auth_cred = AuthCredential::SecurityKey(assertion);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred).await
+    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
 async fn credential_step(
@@ -487,6 +519,7 @@ async fn credential_step(
     jar: CookieJar,
     client_auth_info: ClientAuthInfo,
     auth_cred: AuthCredential,
+    domain_info: DomainInfoRead,
 ) -> Response {
     let session_context =
         cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
@@ -514,6 +547,7 @@ async fn credential_step(
                 ar,
                 client_auth_info,
                 session_context,
+                domain_info,
             )
             .await
             {
@@ -542,6 +576,7 @@ async fn view_login_step(
     auth_result: AuthResult,
     client_auth_info: ClientAuthInfo,
     mut session_context: SessionContext,
+    domain_info: DomainInfoRead,
 ) -> Result<Response, OperationError> {
     trace!(?auth_result);
 
@@ -550,6 +585,8 @@ async fn view_login_step(
         sessionid,
     } = auth_result;
     session_context.id = Some(sessionid);
+
+    let domain_custom_image = domain_info.image().is_some();
 
     let mut safety = 3;
 
@@ -610,7 +647,11 @@ async fn view_login_step(
                                 name: m,
                             })
                             .collect();
-                        HtmlTemplate(LoginMechView { mechs }).into_response()
+                        HtmlTemplate(LoginMechView {
+                            domain_custom_image,
+                            mechs,
+                        })
+                        .into_response()
                     }
                 };
                 // break acts as return in a loop.
@@ -642,16 +683,19 @@ async fn view_login_step(
                             })
                             .into_response(),
                             AuthAllowed::Password => HtmlTemplate(LoginPasswordView {
+                                domain_custom_image,
                                 password: session_context.password.clone().unwrap_or_default(),
                             })
                             .into_response(),
-                            AuthAllowed::BackupCode => {
-                                HtmlTemplate(LoginBackupCodeView {}).into_response()
-                            }
+                            AuthAllowed::BackupCode => HtmlTemplate(LoginBackupCodeView {
+                                domain_custom_image,
+                            })
+                            .into_response(),
                             AuthAllowed::SecurityKey(chal) => {
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
+                                    domain_custom_image,
                                     passkey: false,
                                     chal: chal_json,
                                 })
@@ -661,6 +705,7 @@ async fn view_login_step(
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
+                                    domain_custom_image,
                                     passkey: true,
                                     chal: chal_json,
                                 })
@@ -738,6 +783,7 @@ async fn view_login_step(
                 jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
                 break HtmlTemplate(LoginDeniedView {
+                    domain_custom_image,
                     reason,
                     operation_id: kopid.eventid,
                 })

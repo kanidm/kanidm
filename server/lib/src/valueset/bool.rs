@@ -111,6 +111,18 @@ impl ValueSetT for ValueSetBool {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        if self.len() == 1 {
+            // Because self.len == 1 we know this has to yield a value.
+            let b = self.set.iter().copied().next().unwrap_or_default();
+
+            Some(b.into())
+        } else {
+            // Makes no sense for more than 1 value.
+            None
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Bool(self.set.iter().cloned().collect())
     }
@@ -157,5 +169,17 @@ impl ValueSetT for ValueSetBool {
 
     fn as_bool_set(&self) -> Option<&SmolSet<[bool; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetBool;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_boolean() {
+        let vs: ValueSet = ValueSetBool::new(true);
+        crate::valueset::scim_json_reflexive(vs, "true");
     }
 }

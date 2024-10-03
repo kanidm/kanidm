@@ -29,7 +29,7 @@ use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 
 use super::errors::WebError;
-use super::middleware::caching::{cache_me, dont_cache_me};
+use super::middleware::caching::{cache_me_short, dont_cache_me};
 use super::middleware::KOpId;
 use super::ServerState;
 use crate::https::apidocs::response_schema::{ApiResponseWithout200, DefaultApiResponse};
@@ -2061,9 +2061,9 @@ pub async fn account_id_unix_token(
         .await
         .map(Json::from);
 
-    if let Err(OperationError::InvalidAccountState(val)) = &res {
-        // if they're not a posix user we should just hide them
-        if *val == format!("Missing class: {}", "posixaccount") {
+    // if they're not a posix user we should just hide them
+    if let Err(OperationError::MissingClass(class)) = &res {
+        if class == ENTRYCLASS_POSIX_ACCOUNT {
             return Err(OperationError::NoMatchingEntries.into());
         }
     };
@@ -3090,7 +3090,7 @@ fn cacheable_routes(state: ServerState) -> Router<ServerState> {
             "/v1/account/:id/_radius/_token",
             get(account_id_radius_token_get),
         )
-        .layer(from_fn(cache_me))
+        .layer(from_fn(cache_me_short))
         .with_state(state)
 }
 
@@ -3347,6 +3347,10 @@ pub(crate) fn route_setup(state: ServerState) -> Router<ServerState> {
         .route("/v1/credential/_cancel", post(credential_update_cancel))
         // domain-things
         .route("/v1/domain", get(domain_get))
+        .route(
+            "/v1/domain/_image",
+            post(super::v1_domain::image_post).delete(super::v1_domain::image_delete),
+        )
         .route(
             "/v1/domain/_attr/:attr",
             get(domain_attr_get)

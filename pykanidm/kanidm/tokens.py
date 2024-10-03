@@ -1,4 +1,4 @@
-""" User Auth Token related widgets """
+"""User Auth Token related widgets"""
 # pylint: disable=too-few-public-methods
 
 import base64
@@ -9,8 +9,8 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from authlib.jose import JsonWebSignature  # type: ignore
-from pydantic import ConfigDict, BaseModel, RootModel
+from authlib.jose import JsonWebSignature # type: ignore
+from pydantic import ConfigDict, BaseModel, Field
 
 from . import TOKEN_PATH
 
@@ -56,9 +56,7 @@ class JWSPayload(BaseModel):
     def expiry_datetime(self) -> datetime:
         """parse the expiry and return a datetime object"""
         year, day, seconds, _ = self.expiry
-        retval = datetime(
-            year=year, month=1, day=1, second=0, hour=0, tzinfo=timezone.utc
-        )
+        retval = datetime(year=year, month=1, day=1, second=0, hour=0, tzinfo=timezone.utc)
         # day - 1 because we're already starting at day 1
         retval += timedelta(days=day - 1, seconds=seconds)
         return retval
@@ -105,78 +103,73 @@ class JWS:
         return header, payload, signature
 
 
-class TokenStore(RootModel[Dict[str, str]]):
+class ConfigInstance(BaseModel):
+    """Configuration Instance"""
+
+    keys: Dict[str, Dict[str, Any]] = Field(dict())
+    tokens: Dict[str, str] = Field(dict())
+
+
+class TokenStore(BaseModel):
     """Represents the user auth tokens, so we can load them from the user store"""
-    root: Dict[str, str]
 
-    # TODO: one day work out how to type the __iter__ on TokenStore properly. It's some kind of iter() that makes mypy unhappy.
-    def __iter__(self) -> Any:
-        """overloading the default function"""
-        for key in self.root.keys():
-            yield key
-
-    def __getitem__(self, item: str) -> str:
-        """overloading the default function"""
-        return self.root[item]
-
-    def __delitem__(self, item: str) -> None:
-        """overloading the default function"""
-        del self.root[item]
-
-    def __setitem__(self, key: str, value: str) -> None:
-        """overloading the default function"""
-        self.root[key] = value
+    instances: Dict[str, ConfigInstance] = Field({"" : {}})
 
     def save(self, filepath: Path = TOKEN_PATH) -> None:
         """saves the cached tokens to disk"""
-        data = json.dumps(self.root, indent=2)
-        with filepath.expanduser().resolve().open(
-            mode="w", encoding="utf-8"
-        ) as file_handle:
+        data = self.model_dump_json(indent=2)
+        with filepath.expanduser().resolve().open(mode="w", encoding="utf-8") as file_handle:
             file_handle.write(data)
 
-    def load(
-        self, overwrite: bool = True, filepath: Path = TOKEN_PATH
-    ) -> Dict[str, str]:
+    def load(self, overwrite: bool = True, filepath: Path = TOKEN_PATH) -> None:
         """Loads the tokens from from the store and caches them in memory - by default
         from the local user's store path, but you can point it at any file path.
-
-        Will return the current cached store.
 
         If overwrite=False, then it will add them to the existing in-memory store"""
         token_path = filepath.expanduser().resolve()
         if not token_path.exists():
-            tokens: Dict[str, str] = {}
+            tokens = TokenStore.model_validate({})
         else:
             with token_path.open(encoding="utf-8") as file_handle:
-                tokens = json.load(file_handle)
+                tokens = TokenStore.model_validate_json(file_handle.read())
 
         if overwrite:
-            self.root = tokens
+            self = TokenStore.model_validate(tokens)
         else:
-            for user in tokens:
-                self.root[user] = tokens[user]
+            # naive update
+            for instance, value in tokens.instances.items():
+                if instance not in self.instances:
+                    self.instances[instance] = value
+        # TODO: make this work properly
+        # self.validate_tokens()
 
-        self.validate_tokens()
-
-        logging.debug(json.dumps(tokens, indent=4))
-        return self.root
+        logging.debug(tokens.model_dump_json(indent=2))
 
     def validate_tokens(self) -> None:
         """validates the JWS tokens for format, not their signature - PRs welcome"""
-        for username in self.root:
-            logging.debug("Parsing %s", username)
-            # TODO: Work out how to get the validation working. We probably shouldn't be worried about this since we're using it for auth...
-            logging.debug(
-                JsonWebSignature().deserialize_compact(s=self[username], key=None)
-            )
+        for instance_name, instance in self.instances.items():
+            for username, token in instance.tokens.items():
+                logging.debug("Parsing instance=%s username=%s", instance_name, username)
+                # TODO: Work out how to get the validation working. We probably shouldn't be worried about this since we're using it for auth...
+                logging.debug(JsonWebSignature().deserialize_compact(s=token, key=None))
 
-    def token_info(self, username: str) -> Optional[JWSPayload]:
+    def token_info(self, username: str, instance: Optional[str] = None) -> Optional[JWSPayload]:
         """grabs a token and returns a complex object object"""
-        if username not in self:
+
+        instance = instance if instance is not None else ""
+
+        if instance not in self.instances:
+            logging.error("No instance found for %s", instance)
             return None
-        parsed_object = JsonWebSignature().deserialize_compact(
-            s=self[username], key=None
-        )
+
+        if not hasattr(self.instances[instance], "tokens"):
+            logging.error("No tokens found for instance '%s'", instance)
+            return None
+
+        token = self.instances[instance].tokens.get(username)
+        if token is None:
+            logging.debug("No token found for %s", username)
+            return None
+        parsed_object = JsonWebSignature().deserialize_compact(s=token, key=None)
         logging.debug(parsed_object)
         return JWSPayload.model_validate_json(parsed_object.payload)

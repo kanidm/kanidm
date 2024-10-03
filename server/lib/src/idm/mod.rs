@@ -21,7 +21,6 @@ pub(crate) mod reauth;
 pub mod scim;
 pub mod server;
 pub mod serviceaccount;
-pub(crate) mod unix;
 
 use crate::server::identity::Source;
 use compact_jwt::JwsCompact;

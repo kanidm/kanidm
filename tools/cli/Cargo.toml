@@ -36,13 +36,13 @@ doctest = false
 
 [dependencies]
 anyhow = { workspace = true }
-async-recursion = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 compact_jwt = { workspace = true, features = ["openssl"] }
 dialoguer = { workspace = true }
 futures-concurrency = { workspace = true }
 libc = { workspace = true }
 kanidm_client = { workspace = true }
+kanidm_lib_file_permissions = { workspace = true }
 kanidm_proto = { workspace = true }
 qrcode = { workspace = true }
 rpassword = { workspace = true }
@@ -52,7 +52,7 @@ shellexpand = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true, features = ["env-filter", "fmt"] }
-tokio = { workspace = true, features = ["rt", "macros", "fs"] }
+tokio = { workspace = true, features = ["rt", "macros", "fs", "signal"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
@@ -61,6 +61,7 @@ regex = { workspace = true }
 sketching = { workspace = true }
 
 [build-dependencies]
+kanidm_proto = { workspace = true }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }

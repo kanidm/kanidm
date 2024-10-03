@@ -81,6 +81,7 @@ pub const ATTR_CLASS: &str = "class";
 pub const ATTR_CLASSNAME: &str = "classname";
 pub const ATTR_CN: &str = "cn";
 pub const ATTR_COOKIE_PRIVATE_KEY: &str = "cookie_private_key";
+pub const ATTR_CREATED_AT_CID: &str = "created_at_cid";
 pub const ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = "credential_update_intent_token";
 pub const ATTR_CREDENTIAL_TYPE_MINIMUM: &str = "credential_type_minimum";
 pub const ATTR_DENIED_NAME: &str = "denied_name";
@@ -211,6 +212,7 @@ pub const ATTR_USERPASSWORD: &str = "userpassword";
 pub const ATTR_UUID: &str = "uuid";
 pub const ATTR_VERSION: &str = "version";
 pub const ATTR_WEBAUTHN_ATTESTATION_CA_LIST: &str = "webauthn_attestation_ca_list";
+pub const ATTR_ALLOW_PRIMARY_CRED_FALLBACK: &str = "allow_primary_cred_fallback";
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
@@ -243,6 +245,7 @@ pub const TEST_ATTR_TEST_ATTR: &str = "testattr";
 pub const TEST_ATTR_EXTRA: &str = "extra";
 pub const TEST_ATTR_NUMBER: &str = "testattrnumber";
 pub const TEST_ATTR_NOTALLOWED: &str = "notallowed";
+pub const TEST_ENTRYCLASS_TEST_CLASS: &str = "testclass";
 
 /// HTTP Header containing an auth session ID for when you're going through an auth flow
 pub const KSESSIONID: &str = "X-KANIDM-AUTH-SESSION-ID";
@@ -254,8 +257,51 @@ pub const KVERSION: &str = "X-KANIDM-VERSION";
 /// X-Forwarded-For header
 pub const X_FORWARDED_FOR: &str = "x-forwarded-for";
 
-/// Builtin object
+// OAuth
+pub const OAUTH2_RESOURCE_SERVER: &str = "oauth2_resource_server";
+pub const OAUTH2_RESOURCE_SERVER_BASIC: &str = "oauth2_resource_server_basic";
+pub const OAUTH2_RESOURCE_SERVER_PUBLIC: &str = "oauth2_resource_server_public";
+
+// Access Control
+pub const ACCESS_CONTROL_CREATE: &str = "access_control_create";
+pub const ACCESS_CONTROL_DELETE: &str = "access_control_delete";
+pub const ACCESS_CONTROL_MODIFY: &str = "access_control_modify";
+pub const ACCESS_CONTROL_PROFILE: &str = "access_control_profile";
+pub const ACCESS_CONTROL_RECEIVER_ENTRY_MANAGER: &str = "access_control_receiver_entry_manager";
+pub const ACCESS_CONTROL_RECEIVER_GROUP: &str = "access_control_receiver_group";
+pub const ACCESS_CONTROL_SEARCH: &str = "access_control_search";
+pub const ACCESS_CONTROL_TARGET_SCOPE: &str = "access_control_target_scope";
+
+/// Entryclass
 pub const ENTRYCLASS_BUILTIN: &str = "builtin";
+pub const ENTRYCLASS_ACCOUNT: &str = "account";
+pub const ENTRYCLASS_ACCOUNT_POLICY: &str = "account_policy";
+pub const ENTRYCLASS_APPLICATION: &str = "application";
+pub const ENTRYCLASS_ATTRIBUTE_TYPE: &str = "attributetype";
+pub const ENTRYCLASS_CLASS: &str = "class";
+pub const ENTRYCLASS_CLASS_TYPE: &str = "classtype";
+pub const ENTRYCLASS_CLIENT_CERTIFICATE: &str = "client_certificate";
+pub const ENTRYCLASS_CONFLICT: &str = "conflict";
+pub const ENTRYCLASS_DOMAIN_INFO: &str = "domain_info";
+pub const ENTRYCLASS_DYN_GROUP: &str = "dyngroup";
+pub const ENTRYCLASS_EXTENSIBLE_OBJECT: &str = "extensibleobject";
+pub const ENTRYCLASS_GROUP: &str = "group";
+pub const ENTRYCLASS_MEMBER_OF: &str = "memberof";
+pub const ENTRYCLASS_OBJECT: &str = "object";
+pub const ENTRYCLASS_ORG_PERSON: &str = "orgperson";
+pub const ENTRYCLASS_PERSON: &str = "person";
+pub const ENTRYCLASS_POSIX_ACCOUNT: &str = "posixaccount";
+pub const ENTRYCLASS_POSIX_GROUP: &str = "posixgroup";
+pub const ENTRYCLASS_RECYCLED: &str = "recycled";
+pub const ENTRYCLASS_SERVICE: &str = "service";
+pub const ENTRYCLASS_SERVICE_ACCOUNT: &str = "service_account";
+pub const ENTRYCLASS_SYNC_ACCOUNT: &str = "sync_account";
+pub const ENTRYCLASS_SYNC_OBJECT: &str = "sync_object";
+pub const ENTRYCLASS_SYSTEM: &str = "system";
+pub const ENTRYCLASS_SYSTEM_CONFIG: &str = "system_config";
+pub const ENTRYCLASS_SYSTEM_INFO: &str = "system_info";
+pub const ENTRYCLASS_TOMBSTONE: &str = "tombstone";
+pub const ENTRYCLASS_USER: &str = "user";
 pub const ENTRYCLASS_KEY_PROVIDER: &str = "key_provider";
 pub const ENTRYCLASS_KEY_PROVIDER_INTERNAL: &str = "key_provider_internal";
 pub const ENTRYCLASS_KEY_OBJECT: &str = "key_object";

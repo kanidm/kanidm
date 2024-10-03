@@ -10,7 +10,6 @@ use kanidm_proto::internal::{
 use kanidm_proto::v1::Entry as ProtoEntry;
 // Should this be std?
 use serde::{Deserialize, Serialize};
-use smartstring::alias::String as AttrString;
 
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -27,25 +26,25 @@ pub enum Modify {
     // This value *should* exist.
     // Clippy doesn't like value here, as value > pv. It could be an improvement to
     // box here, but not sure. ... TODO and thought needed.
-    Present(AttrString, Value),
+    Present(Attribute, Value),
     // This value *should not* exist.
-    Removed(AttrString, PartialValue),
+    Removed(Attribute, PartialValue),
     // This attr *should not* exist.
-    Purged(AttrString),
+    Purged(Attribute),
     // This attr and value must exist *in this state* for this change to proceed.
     Assert(Attribute, PartialValue),
 }
 
 pub fn m_pres(attr: Attribute, v: &Value) -> Modify {
-    Modify::Present(attr.into(), v.clone())
+    Modify::Present(attr, v.clone())
 }
 
 pub fn m_remove(attr: Attribute, v: &PartialValue) -> Modify {
-    Modify::Removed(attr.into(), v.clone())
+    Modify::Removed(attr, v.clone())
 }
 
 pub fn m_purge(attr: Attribute) -> Modify {
-    Modify::Purged(attr.into())
+    Modify::Purged(attr)
 }
 
 pub fn m_assert(attr: Attribute, v: &PartialValue) -> Modify {
@@ -58,9 +57,17 @@ impl Modify {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         Ok(match m {
-            ProtoModify::Present(a, v) => Modify::Present(a.into(), qs.clone_value(a, v)?),
-            ProtoModify::Removed(a, v) => Modify::Removed(a.into(), qs.clone_partialvalue(a, v)?),
-            ProtoModify::Purged(a) => Modify::Purged(a.into()),
+            ProtoModify::Present(a, v) => {
+                let a = Attribute::from(a.as_str());
+                let v = qs.clone_value(&a, v)?;
+                Modify::Present(a, v)
+            }
+            ProtoModify::Removed(a, v) => {
+                let a = Attribute::from(a.as_str());
+                let v = qs.clone_partialvalue(&a, v)?;
+                Modify::Removed(a, v)
+            }
+            ProtoModify::Purged(a) => Modify::Purged(Attribute::from(a.as_str())),
         })
     }
 }
@@ -99,15 +106,15 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn new_purge_and_set(attr: Attribute, v: Value) -> Self {
-        Self::new_list(vec![m_purge(attr), Modify::Present(attr.into(), v)])
+        Self::new_list(vec![m_purge(attr.clone()), Modify::Present(attr, v)])
     }
 
     pub fn new_append(attr: Attribute, v: Value) -> Self {
-        Self::new_list(vec![Modify::Present(attr.into(), v)])
+        Self::new_list(vec![Modify::Present(attr, v)])
     }
 
     pub fn new_remove(attr: Attribute, pv: PartialValue) -> Self {
-        Self::new_list(vec![Modify::Removed(attr.into(), pv)])
+        Self::new_list(vec![Modify::Removed(attr, pv)])
     }
 
     pub fn new_purge(attr: Attribute) -> Self {
@@ -141,13 +148,13 @@ impl ModifyList<ModifyInvalid> {
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.
-            let attr: Attribute = attr.as_str().try_into()?;
-            mods.push(m_purge(attr));
+            let attr: Attribute = attr.as_str().into();
+            mods.push(m_purge(attr.clone()));
             // Now if there are vals, push those too.
             // For each value we want to now be present.
             vals.iter().try_for_each(|val| {
-                qs.clone_value(attr.as_ref(), val).map(|resolved_v| {
-                    mods.push(Modify::Present(attr.into(), resolved_v));
+                qs.clone_value(&attr, val).map(|resolved_v| {
+                    mods.push(Modify::Present(attr.clone(), resolved_v));
                 })
             })
         })?;
@@ -172,38 +179,28 @@ impl ModifyList<ModifyInvalid> {
             .mods
             .iter()
             .map(|m| match m {
-                Modify::Present(attr, value) => {
-                    let attr_norm = schema.normalise_attr_name(attr);
-                    match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => schema_a
-                            .validate_value(attr_norm.as_str(), value)
-                            .map(|_| Modify::Present(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
-                    }
-                }
-                Modify::Removed(attr, value) => {
-                    let attr_norm = schema.normalise_attr_name(attr);
-                    match schema_attributes.get(&attr_norm) {
-                        Some(schema_a) => schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
-                            .map(|_| Modify::Removed(attr_norm, value.clone())),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
-                    }
-                }
-                Modify::Assert(attr, value) => match schema_attributes.get(attr.as_ref()) {
-                    // TODO: given attr is an enum... you can't get this wrong anymore?
+                Modify::Present(attr, value) => match schema_attributes.get(attr) {
                     Some(schema_a) => schema_a
-                        .validate_partialvalue(attr.as_ref(), value)
-                        .map(|_| Modify::Assert(attr.to_owned(), value.clone())),
+                        .validate_value(attr, value)
+                        .map(|_| Modify::Present(attr.clone(), value.clone())),
                     None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 },
-                Modify::Purged(attr) => {
-                    let attr_norm = schema.normalise_attr_name(attr);
-                    match schema_attributes.get(&attr_norm) {
-                        Some(_attr_name) => Ok(Modify::Purged(attr_norm)),
-                        None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
-                    }
-                }
+                Modify::Removed(attr, value) => match schema_attributes.get(attr) {
+                    Some(schema_a) => schema_a
+                        .validate_partialvalue(attr, value)
+                        .map(|_| Modify::Removed(attr.clone(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
+                Modify::Assert(attr, value) => match schema_attributes.get(attr) {
+                    Some(schema_a) => schema_a
+                        .validate_partialvalue(attr, value)
+                        .map(|_| Modify::Assert(attr.clone(), value.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
+                Modify::Purged(attr) => match schema_attributes.get(attr) {
+                    Some(_attr_name) => Ok(Modify::Purged(attr.clone())),
+                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
+                },
             })
             .collect();
 

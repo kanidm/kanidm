@@ -142,6 +142,17 @@ impl ValueSetT for ValueSetIutf8 {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Iutf8(self.set.iter().cloned().collect())
     }
@@ -198,5 +209,17 @@ impl ValueSetT for ValueSetIutf8 {
         let vsi: Option<ValueSet> =
             ValueSetIname::from_iter(self.set.iter().map(|s| s.as_str())).map(|vs| vs as _);
         Ok(vsi)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetIutf8;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_iutf8() {
+        let vs: ValueSet = ValueSetIutf8::new("lowercase string");
+        crate::valueset::scim_json_reflexive(vs, r#""lowercase string""#);
     }
 }

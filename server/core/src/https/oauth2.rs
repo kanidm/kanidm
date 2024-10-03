@@ -107,21 +107,17 @@ pub(crate) async fn oauth2_image_get(
         .await;
 
     match res {
-        Ok(image) => (
+        Ok(Some(image)) => (
             StatusCode::OK,
             [(CONTENT_TYPE, image.filetype.as_content_type_str())],
             image.contents,
         )
             .into_response(),
-        Err(err) => {
-            admin_debug!(
-                "Unable to get image for oauth2 resource server {}: {:?}",
-                rs_name,
-                err
-            );
-            // TODO: a 404 probably isn't perfect but it's not the worst
+        Ok(None) => {
+            warn!(?rs_name, "No image set for OAuth2 client");
             (StatusCode::NOT_FOUND, "").into_response()
         }
+        Err(err) => WebError::from(err).into_response(),
     }
 }
 
@@ -292,12 +288,12 @@ async fn oauth2_authorise(
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            #[allow(clippy::unwrap_used)]
+            #[allow(clippy::expect_used)]
             Response::builder()
                 .status(StatusCode::FORBIDDEN)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
-                .unwrap()
+                .expect("Failed to generate a forbidden response")
         }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
@@ -315,12 +311,12 @@ async fn oauth2_authorise(
                 kopid.eventid,
                 &e.to_string()
             );
-            #[allow(clippy::unwrap_used)]
+            #[allow(clippy::expect_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
-                .unwrap()
+                .expect("Failed to generate a bad request response")
         }
     }
 }
@@ -380,7 +376,7 @@ async fn oauth2_authorise_permit(
                 .clear()
                 .append_pair("state", &state)
                 .append_pair("code", &code);
-            #[allow(clippy::unwrap_used)]
+            #[allow(clippy::expect_used)]
             Response::builder()
                 .status(StatusCode::FOUND)
                 .header(LOCATION, redirect_uri.as_str())
@@ -389,23 +385,30 @@ async fn oauth2_authorise_permit(
                     redirect_uri.origin().ascii_serialization(),
                 )
                 .body(Body::empty())
-                .unwrap()
+                .expect("Failed to generate response")
         }
-        Err(_e) => {
-            // If an error happens in our consent flow, I think
-            // that we should NOT redirect to the calling application
-            // and we need to handle that locally somehow.
-            // This needs to be better!
-            //
-            // Turns out this instinct was correct:
-            //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
-            // Possible to use this with a malicious client configuration to phish / spam.
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+        Err(err) => {
+            match err {
+                OperationError::NotAuthenticated => {
+                    WebError::from(err).response_with_access_control_origin_header()
+                }
+                _ => {
+                    // If an error happens in our consent flow, I think
+                    // that we should NOT redirect to the calling application
+                    // and we need to handle that locally somehow.
+                    // This needs to be better!
+                    //
+                    // Turns out this instinct was correct:
+                    //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
+                    // Possible to use this with a malicious client configuration to phish / spam.
+                    #[allow(clippy::expect_used)]
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .body(Body::empty())
+                        .expect("Failed to generate error response")
+                }
+            }
         }
     }
 }
@@ -464,17 +467,24 @@ async fn oauth2_authorise_reject(
                 .unwrap()
             // I think the client server needs this
         }
-        Err(_e) => {
-            // If an error happens in our reject flow, I think
-            // that we should NOT redirect to the calling application
-            // and we need to handle that locally somehow.
-            // This needs to be better!
-            #[allow(clippy::unwrap_used)]
-            Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .body(Body::empty())
-                .unwrap()
+        Err(err) => {
+            match err {
+                OperationError::NotAuthenticated => {
+                    WebError::from(err).response_with_access_control_origin_header()
+                }
+                _ => {
+                    // If an error happens in our reject flow, I think
+                    // that we should NOT redirect to the calling application
+                    // and we need to handle that locally somehow.
+                    // This needs to be better!
+                    #[allow(clippy::expect_used)]
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+                        .body(Body::empty())
+                        .expect("Failed to generate an error response")
+                }
+            }
         }
     }
 }
@@ -629,12 +639,12 @@ pub async fn oauth2_token_introspect_post(
         }
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            #[allow(clippy::unwrap_used)]
+            #[allow(clippy::expect_used)]
             Response::builder()
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .status(StatusCode::UNAUTHORIZED)
                 .body(Body::empty())
-                .unwrap()
+                .expect("Failed to generate an unauthorized response")
         }
         Err(e) => {
             // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
@@ -649,12 +659,12 @@ pub async fn oauth2_token_introspect_post(
                     format!("{:?}", e)
                 }
             };
-            #[allow(clippy::unwrap_used)]
+            #[allow(clippy::expect_used)]
             Response::builder()
                 .status(StatusCode::BAD_REQUEST)
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
-                .unwrap()
+                .expect("Failed to generate an error response")
         }
     }
 }

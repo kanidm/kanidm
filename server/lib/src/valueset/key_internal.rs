@@ -9,6 +9,9 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 use std::collections::BTreeMap;
 use std::fmt;
+use time::OffsetDateTime;
+
+use kanidm_proto::scim_v1::server::ScimKeyInternal;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
@@ -282,6 +285,25 @@ impl ValueSetT for ValueSetKeyInternal {
                 kid, key_object.status, key_object.usage, key_object.valid_from
             )
         }))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(kid, key_object)| {
+                    let odt: OffsetDateTime =
+                        OffsetDateTime::UNIX_EPOCH + Duration::from_secs(key_object.valid_from);
+
+                    ScimKeyInternal {
+                        key_id: kid.clone(),
+                        status: key_object.status.to_string(),
+                        usage: key_object.usage.to_string(),
+                        valid_from: odt,
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -616,5 +638,30 @@ mod tests {
 
         // Assert the item was trimmed
         assert!(!key_internal_map.contains_key(&kid_2));
+    }
+
+    #[test]
+    fn test_scim_key_internal() {
+        let kid = "test".to_string();
+        let usage = KeyUsage::JwsEs256;
+        let valid_from = 0;
+        let status = KeyStatus::Valid;
+        let status_cid = Cid::new_zero();
+        let der = Vec::with_capacity(0);
+
+        let vs: ValueSet =
+            ValueSetKeyInternal::new(kid.clone(), usage, valid_from, status, status_cid, der);
+
+        let data = r#"
+[
+  {
+    "keyId": "test",
+    "status": "valid",
+    "usage": "jws_es256",
+    "validFrom": "1970-01-01T00:00:00Z"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

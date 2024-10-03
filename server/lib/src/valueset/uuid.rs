@@ -119,6 +119,10 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        self.set.iter().next().copied().map(ScimValueKanidm::Uuid)
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Uuid(self.set.iter().cloned().collect())
     }
@@ -290,6 +294,10 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(self.set.iter().copied().collect::<Vec<_>>().into())
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Reference(self.set.iter().cloned().collect())
     }
@@ -344,5 +352,29 @@ impl ValueSetT for ValueSetRefer {
 
     fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         Some(Box::new(self.set.iter().copied()))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ValueSetRefer, ValueSetUuid};
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_uuid() {
+        let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+
+        let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
+
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_refer() {
+        let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+
+        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
+
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

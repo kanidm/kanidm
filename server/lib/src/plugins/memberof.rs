@@ -65,7 +65,7 @@ fn do_group_memberof(
     // Add all the direct mo's and mos.
     if let Some(dmo) = dmo {
         // We need to clone this else type checker gets real sad.
-        tgte.set_ava_set(Attribute::DirectMemberOf, dmo.clone());
+        tgte.set_ava_set(&Attribute::DirectMemberOf, dmo.clone());
 
         if let Some(mo) = &mut mo {
             let dmo = dmo as ValueSet;
@@ -78,7 +78,7 @@ fn do_group_memberof(
     };
 
     if let Some(mo) = mo {
-        tgte.set_ava_set(Attribute::MemberOf, mo);
+        tgte.set_ava_set(&Attribute::MemberOf, mo);
     }
 
     trace!(
@@ -205,7 +205,7 @@ fn do_leaf_memberof(
                     dmo_set.insert(group_uuid);
                 } else {
                     let dmo = ValueSetRefer::new(group_uuid);
-                    tgte.set_ava_set(Attribute::DirectMemberOf, dmo);
+                    tgte.set_ava_set(&Attribute::DirectMemberOf, dmo);
                 }
 
                 // We're also in member of this group.
@@ -213,7 +213,7 @@ fn do_leaf_memberof(
                     mo_set.insert(group_uuid);
                 } else {
                     let mo = ValueSetRefer::new(group_uuid);
-                    tgte.set_ava_set(Attribute::MemberOf, mo);
+                    tgte.set_ava_set(&Attribute::MemberOf, mo);
                 }
 
                 // If the group has memberOf attributes, we propogate these to
@@ -510,7 +510,7 @@ impl Plugin for MemberOf {
 
         for entry in cand.iter_mut() {
             if let Some(direct_mo_vs) = entry.pop_ava(Attribute::DirectMemberOf) {
-                entry.set_ava_set(Attribute::RecycledDirectMemberOf, direct_mo_vs);
+                entry.set_ava_set(&Attribute::RecycledDirectMemberOf, direct_mo_vs);
             } else {
                 // Ensure it's empty
                 entry.purge_ava(Attribute::RecycledDirectMemberOf);
@@ -763,37 +763,32 @@ mod tests {
     const UUID_C: &str = "cccccccc-9b01-423f-9ba6-51aa4bbd5dd2";
     const UUID_D: &str = "dddddddd-2ab3-48e3-938d-1b4754cd2984";
 
-    const EA: &str = r#"{
-            "attrs": {
-                "class": ["group", "memberof"],
-                "name": ["testgroup_a"],
-                "uuid": ["aaaaaaaa-f82e-4484-a407-181aa03bda5c"]
-            }
-        }"#;
-
-    const EB: &str = r#"{
-            "attrs": {
-                "class": ["group", "memberof"],
-                "name": ["testgroup_b"],
-                "uuid": ["bbbbbbbb-2438-4384-9891-48f4c8172e9b"]
-            }
-        }"#;
-
-    const EC: &str = r#"{
-            "attrs": {
-                "class": ["group", "memberof"],
-                "name": ["testgroup_c"],
-                "uuid": ["cccccccc-9b01-423f-9ba6-51aa4bbd5dd2"]
-            }
-        }"#;
-
-    const ED: &str = r#"{
-            "attrs": {
-                "class": ["group", "memberof"],
-                "name": ["testgroup_d"],
-                "uuid": ["dddddddd-2ab3-48e3-938d-1b4754cd2984"]
-            }
-        }"#;
+    lazy_static! {
+        static ref EA: EntryInitNew = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_A)))
+        );
+        static ref EB: EntryInitNew = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_B)))
+        );
+        static ref EC: EntryInitNew = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_c")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_C)))
+        );
+        static ref ED: EntryInitNew = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Class, EntryClass::MemberOf.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_d")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!(UUID_D)))
+        );
+    }
 
     macro_rules! assert_memberof_int {
         (
@@ -856,9 +851,8 @@ mod tests {
     #[test]
     fn test_create_mo_single() {
         // A -> B
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut ea = EA.clone();
+        let eb = EB.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
 
@@ -884,11 +878,11 @@ mod tests {
     #[test]
     fn test_create_mo_nested() {
         // A -> B -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea = EA.clone();
 
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb = EB.clone();
 
-        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
@@ -935,11 +929,11 @@ mod tests {
     fn test_create_mo_cycle() {
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea = EA.clone();
 
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb = EB.clone();
 
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
@@ -987,13 +981,13 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
+        let mut ea = EA.clone();
 
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut eb = EB.clone();
 
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ec = EC.clone();
 
-        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ed = ED.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
@@ -1061,9 +1055,8 @@ mod tests {
         // A    B
         // Add member
         // A -> B
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let ea = EA.clone();
+        let eb = EB.clone();
 
         let preload = vec![ea, eb];
         run_modify_test!(
@@ -1074,7 +1067,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1096,11 +1089,9 @@ mod tests {
         // A    B -> C
         // Add member A -> B
         // A -> B -> C
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let ea = EA.clone();
+        let mut eb = EB.clone();
+        let ec = EC.clone();
 
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
 
@@ -1113,7 +1104,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1153,11 +1144,9 @@ mod tests {
         // A -> B    C
         // Add member B -> C
         // A -> B -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let eb = EB.clone();
+        let ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
 
@@ -1170,7 +1159,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -1212,11 +1201,9 @@ mod tests {
         // Add member C -> A
         // A -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
@@ -1230,7 +1217,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1276,13 +1263,10 @@ mod tests {
         // A -> B -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
-
-        let ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
+        let ed = ED.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::Member, Value::new_refer_s(UUID_C).unwrap());
@@ -1297,7 +1281,7 @@ mod tests {
                 f_eq(Attribute::Uuid, PartialValue::new_uuid_s(UUID_D).unwrap()),
             ])),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1353,9 +1337,8 @@ mod tests {
         // A -> B
         // remove member A -> B
         // A    B
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1369,7 +1352,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1391,11 +1374,9 @@ mod tests {
         // A -> B -> C
         // Remove A -> B
         // A    B -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1411,7 +1392,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_A).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_B).unwrap()
             )]),
             None,
@@ -1451,11 +1432,9 @@ mod tests {
         // A -> B -> C
         // Remove B -> C
         // A -> B    C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1472,7 +1451,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_B).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_C).unwrap()
             )]),
             None,
@@ -1513,11 +1492,9 @@ mod tests {
         // ^-----------/
         // Remove C -> A
         // A -> B -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_C).unwrap());
@@ -1543,7 +1520,7 @@ mod tests {
                 PartialValue::new_uuid_s(UUID_C).unwrap()
             )),
             ModifyList::new_list(vec![Modify::Removed(
-                Attribute::Member.into(),
+                Attribute::Member,
                 PartialValue::new_refer_s(UUID_A).unwrap()
             )]),
             None,
@@ -1590,13 +1567,10 @@ mod tests {
         // A -> B -> C    D -
         // ^                /
         // |---------------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
-
-        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
+        let mut ed = ED.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_D).unwrap());
@@ -1633,11 +1607,11 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Removed(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     PartialValue::new_refer_s(UUID_A).unwrap()
                 ),
                 Modify::Removed(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     PartialValue::new_refer_s(UUID_D).unwrap()
                 ),
             ]),
@@ -1692,9 +1666,8 @@ mod tests {
     #[test]
     fn test_delete_mo_simple() {
         // X -> B
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1723,11 +1696,9 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_head() {
         // X -> B -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1770,11 +1741,9 @@ mod tests {
     #[test]
     fn test_delete_mo_nested_branch() {
         // A -> X -> C
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         eb.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1818,11 +1787,9 @@ mod tests {
     fn test_delete_mo_cycle() {
         // X -> B -> C -
         // ^-----------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());
@@ -1875,13 +1842,10 @@ mod tests {
         // A -> X -> C --> D -
         // ^-----------/    /
         // |---------------/
-        let mut ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EA);
-
-        let mut eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EB);
-
-        let mut ec: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(EC);
-
-        let mut ed: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(ED);
+        let mut ea = EA.clone();
+        let mut eb = EB.clone();
+        let mut ec = EC.clone();
+        let mut ed = ED.clone();
 
         ea.add_ava(Attribute::Member, Value::new_refer_s(UUID_B).unwrap());
         ea.add_ava(Attribute::MemberOf, Value::new_refer_s(UUID_A).unwrap());

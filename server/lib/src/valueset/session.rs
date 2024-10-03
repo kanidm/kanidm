@@ -19,6 +19,10 @@ use crate::value::{
 };
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
+use kanidm_proto::scim_v1::server::ScimApiToken;
+use kanidm_proto::scim_v1::server::ScimAuthSession;
+use kanidm_proto::scim_v1::server::ScimOAuth2Session;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetSession {
     map: BTreeMap<Uuid, Session>,
@@ -356,6 +360,36 @@ impl ValueSetT for ValueSetSession {
                 .iter()
                 .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
         )
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(session_id, session)| {
+                    let (expires, revoked) = match &session.state {
+                        SessionState::ExpiresAt(odt) => (Some(*odt), None),
+                        SessionState::NeverExpires => (None, None),
+                        SessionState::RevokedAt(cid) => {
+                            let odt: OffsetDateTime = cid.into();
+                            (None, Some(odt))
+                        }
+                    };
+
+                    ScimAuthSession {
+                        id: *session_id,
+                        expires,
+                        revoked,
+
+                        issued_at: session.issued_at,
+                        issued_by: Uuid::from(&session.issued_by),
+                        credential_id: session.cred_id,
+                        auth_type: session.type_.to_string(),
+                        session_scope: session.scope.to_string(),
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -898,6 +932,33 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(session_id, session)| {
+                    let (expires, revoked) = match &session.state {
+                        SessionState::ExpiresAt(odt) => (Some(*odt), None),
+                        SessionState::NeverExpires => (None, None),
+                        SessionState::RevokedAt(cid) => {
+                            let odt: OffsetDateTime = cid.into();
+                            (None, Some(odt))
+                        }
+                    };
+
+                    ScimOAuth2Session {
+                        id: *session_id,
+                        parent_id: session.parent,
+                        client_id: session.rs_uuid,
+                        issued_at: session.issued_at,
+                        expires,
+                        revoked,
+                    }
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Oauth2Session(
             self.map
@@ -1320,6 +1381,22 @@ impl ValueSetT for ValueSetApiToken {
         )
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(token_id, token)| ScimApiToken {
+                    id: *token_id,
+                    label: token.label.clone(),
+                    issued_by: Uuid::from(&token.issued_by),
+                    issued_at: token.issued_at,
+                    expires: token.expiry,
+                    scope: token.scope.to_string(),
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::ApiToken(
             self.map
@@ -1431,10 +1508,10 @@ impl ValueSetT for ValueSetApiToken {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauth2Session, ValueSetSession, SESSION_MAXIMUM};
+    use crate::prelude::ValueSet;
     use crate::prelude::{IdentityId, SessionScope, Uuid};
     use crate::repl::cid::Cid;
     use crate::value::{AuthType, Oauth2Session, Session, SessionState};
-    use crate::valueset::ValueSet;
     use time::OffsetDateTime;
 
     #[test]
@@ -2037,5 +2114,65 @@ mod tests {
         assert!(!sessions.contains_key(&zero_uuid));
         assert!(!sessions.contains_key(&one_uuid));
         assert!(sessions.contains_key(&two_uuid));
+    }
+
+    #[test]
+    fn test_scim_session() {
+        let s_uuid = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+
+        let vs: ValueSet = ValueSetSession::new(
+            s_uuid,
+            Session {
+                label: "hacks".to_string(),
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::UNIX_EPOCH,
+                issued_by: IdentityId::Internal,
+                cred_id: s_uuid,
+                scope: SessionScope::ReadOnly,
+                type_: AuthType::Passkey,
+            },
+        );
+
+        let data = r#"
+[
+  {
+    "authType": "passkey",
+    "credentialId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "issuedAt": "1970-01-01T00:00:00Z",
+    "issuedBy": "00000000-0000-0000-0000-ffffff000000",
+    "id": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "sessionScope": "read_only"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
+    }
+
+    #[test]
+    fn test_scim_oauth2_session() {
+        let s_uuid = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+
+        let vs: ValueSet = ValueSetOauth2Session::new(
+            s_uuid,
+            Oauth2Session {
+                state: SessionState::NeverExpires,
+                issued_at: OffsetDateTime::UNIX_EPOCH,
+                parent: Some(s_uuid),
+                rs_uuid: s_uuid,
+            },
+        );
+
+        let data = r#"
+[
+  {
+    "clientId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "issuedAt": "1970-01-01T00:00:00Z",
+    "parentId": "3a163ca0-4762-4620-a188-06b750c84c86",
+    "id": "3a163ca0-4762-4620-a188-06b750c84c86"
+  }
+]
+        "#;
+
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

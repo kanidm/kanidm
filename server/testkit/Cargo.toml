@@ -55,7 +55,7 @@ assert_cmd = "2.0.16"
 compact_jwt = { workspace = true }
 escargot = "0.5.12"
 # used for webdriver testing
-fantoccini = { version = "0.21.1" }
+fantoccini = { version = "0.21.2" }
 futures = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false }
 openssl = { workspace = true }
@@ -66,4 +66,4 @@ tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.18.1"
+jsonschema = "0.21.0"

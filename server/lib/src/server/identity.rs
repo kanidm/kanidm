@@ -87,6 +87,15 @@ pub enum IdentityId {
     Internal,
 }
 
+impl From<&IdentityId> for Uuid {
+    fn from(ident: &IdentityId) -> Uuid {
+        match ident {
+            IdentityId::User(uuid) | IdentityId::Synch(uuid) => *uuid,
+            IdentityId::Internal => UUID_SYSTEM,
+        }
+    }
+}
+
 impl From<&IdentType> for IdentityId {
     fn from(idt: &IdentType) -> Self {
         match idt {

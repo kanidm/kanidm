@@ -121,20 +121,40 @@ impl ValueSetT for ValueSetJsonFilter {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(self.set.iter().map(|i| {
-            #[allow(clippy::expect_used)]
-            serde_json::to_string(i).expect("A json filter value was corrupted during run-time")
+        Box::new(self.set.iter().filter_map(|i| {
+            serde_json::to_string(i)
+                .inspect_err(|err| {
+                    error!(?err, "A json filter value was corrupted during run-time")
+                })
+                .ok()
         }))
+    }
+
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set
+                .iter()
+                .filter_map(|s| {
+                    serde_json::to_string(s)
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
+                })
+                .collect::<Vec<_>>(),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::JsonFilter(
             self.set
                 .iter()
-                .map(|s| {
-                    #[allow(clippy::expect_used)]
+                .filter_map(|s| {
                     serde_json::to_string(s)
-                        .expect("A json filter value was corrupted during run-time")
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
                 })
                 .collect(),
         )
@@ -145,10 +165,12 @@ impl ValueSetT for ValueSetJsonFilter {
             set: self
                 .set
                 .iter()
-                .map(|s| {
-                    #[allow(clippy::expect_used)]
+                .filter_map(|s| {
                     serde_json::to_string(s)
-                        .expect("A json filter value was corrupted during run-time")
+                        .inspect_err(|err| {
+                            error!(?err, "A json filter value was corrupted during run-time")
+                        })
+                        .ok()
                 })
                 .collect(),
         }
@@ -190,5 +212,24 @@ impl ValueSetT for ValueSetJsonFilter {
 
     fn as_json_filter_set(&self) -> Option<&SmolSet<[ProtoFilter; 1]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{ProtoFilter, ValueSetJsonFilter};
+    use crate::prelude::{Attribute, ValueSet};
+
+    #[test]
+    fn test_scim_json_filter() {
+        let filter = ProtoFilter::Pres(Attribute::Class.to_string());
+        let vs: ValueSet = ValueSetJsonFilter::new(filter);
+
+        let data = r#"
+[
+  "{\"pres\":\"class\"}"
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

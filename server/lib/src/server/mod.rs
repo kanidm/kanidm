@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
 
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, UiHint};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
 
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
@@ -66,6 +66,8 @@ pub(crate) enum ServerPhase {
     Running,
 }
 
+/// Domain Information. This should not contain sensitive information, the data within
+/// this structure may be used for public presentation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DomainInfo {
     pub(crate) d_uuid: Uuid,
@@ -75,6 +77,26 @@ pub struct DomainInfo {
     pub(crate) d_patch_level: u32,
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
+    // In future this should be image reference instead of the image itself.
+    d_image: Option<ImageValue>,
+}
+
+impl DomainInfo {
+    pub fn name(&self) -> &str {
+        self.d_name.as_str()
+    }
+
+    pub fn display_name(&self) -> &str {
+        self.d_display.as_str()
+    }
+
+    pub fn devel_taint(&self) -> bool {
+        self.d_devel_taint
+    }
+
+    pub fn image(&self) -> Option<&ImageValue> {
+        self.d_image.as_ref()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -208,6 +230,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_domain_name(&self) -> &str;
 
     fn get_domain_display_name(&self) -> &str;
+
+    fn get_domain_image_value(&self) -> Option<ImageValue>;
 
     fn get_resolve_filter_cache(&mut self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
@@ -562,7 +586,14 @@ pub trait QueryServerTransaction<'a> {
         let mut vs = self.impersonate_search_ext(filter, filter_intent, event)?;
         match vs.pop() {
             Some(entry) if vs.is_empty() => Ok(entry),
-            _ => Err(OperationError::NoMatchingEntries),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
         }
     }
 
@@ -584,7 +615,7 @@ pub trait QueryServerTransaction<'a> {
 
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
-    fn clone_value(&mut self, attr: &str, value: &str) -> Result<Value, OperationError> {
+    fn clone_value(&mut self, attr: &Attribute, value: &str) -> Result<Value, OperationError> {
         let schema = self.get_schema();
 
         // Should this actually be a fn of Value - no - I think that introduces issues with the
@@ -678,7 +709,7 @@ pub trait QueryServerTransaction<'a> {
 
     fn clone_partialvalue(
         &mut self,
-        attr: &str,
+        attr: &Attribute,
         value: &str,
     ) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
@@ -891,19 +922,8 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
-    /// Pull the domain name from the database
-    fn get_db_domain_name(&mut self) -> Result<String, OperationError> {
+    fn get_db_domain(&mut self) -> Result<Arc<EntrySealedCommitted>, OperationError> {
         self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                trace!(?e);
-                e.get_ava_single_iname(Attribute::DomainName)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain name");
-                e
-            })
     }
 
     fn get_domain_key_object_handle(&self) -> Result<Arc<KeyObject>, OperationError> {
@@ -1105,6 +1125,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     fn get_domain_display_name(&self) -> &str {
         &self.d_info.d_display
     }
+
+    fn get_domain_image_value(&self) -> Option<ImageValue> {
+        self.d_info.d_image.clone()
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -1257,6 +1281,10 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
     fn get_domain_display_name(&self) -> &str {
         &self.d_info.d_display
     }
+
+    fn get_domain_image_value(&self) -> Option<ImageValue> {
+        self.d_info.d_image.clone()
+    }
 }
 
 impl QueryServer {
@@ -1294,6 +1322,7 @@ impl QueryServer {
             // Automatically derive our current taint mode based on the PRERELEASE setting.
             d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
+            d_image: None,
         }));
 
         let cid = Cid::new_lamport(s_uuid, curtime, &ts_max);
@@ -1630,6 +1659,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // load them.
         let attributetypes: Result<Vec<_>, _> =
             res.iter().map(|e| SchemaAttribute::try_from(e)).collect();
+
         let attributetypes = attributetypes.map_err(|e| {
             admin_error!("reload schema attributetypes {:?}", e);
             e
@@ -1674,7 +1704,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else {
             // Log the failures?
             admin_error!("Schema reload failed -> {:?}", valid_r);
-            Err(OperationError::ConsistencyError(valid_r))
+            Err(OperationError::ConsistencyError(
+                valid_r.into_iter().filter_map(|v| v.err()).collect(),
+            ))
         }?;
 
         // TODO: Clear the filter resolve cache.
@@ -1714,12 +1746,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             e
         })?;
 
-        let sync_agreement_map: HashMap<Uuid, BTreeSet<String>> = res
+        let sync_agreement_map: HashMap<Uuid, BTreeSet<Attribute>> = res
             .iter()
             .filter_map(|e| {
                 e.get_ava_as_iutf8(Attribute::SyncYieldAuthority)
-                    .cloned()
-                    .map(|set| (e.get_uuid(), set))
+                    .map(|set| {
+                        let set: BTreeSet<_> =
+                            set.iter().map(|s| Attribute::from(s.as_str())).collect();
+                        (e.get_uuid(), set)
+                    })
             })
             .collect();
 
@@ -1838,20 +1873,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("Failed to update delete accesscontrols {:?}", e);
             e
         })
-    }
-
-    fn get_db_domain_display_name(&mut self) -> Result<String, OperationError> {
-        self.internal_search_uuid(UUID_DOMAIN_INFO)
-            .and_then(|e| {
-                trace!(?e);
-                e.get_ava_single_utf8(Attribute::DomainDisplayName)
-                    .map(str::to_string)
-                    .ok_or(OperationError::InvalidEntryState)
-            })
-            .map_err(|e| {
-                admin_error!(?e, "Error getting domain display name");
-                e
-            })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1988,16 +2009,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// Pulls the domain name from the database and updates the DomainInfo data in memory
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn reload_domain_info(&mut self) -> Result<(), OperationError> {
-        let domain_name = self.get_db_domain_name()?;
-        let display_name = self.get_db_domain_display_name()?;
-        let domain_ldap_allow_unix_pw_bind = match self.get_domain_ldap_allow_unix_pw_bind() {
-            Ok(v) => v,
-            _ => {
-                admin_warn!("Defaulting ldap_allow_unix_pw_bind to true");
-                true
-            }
-        };
+        let domain_entry = self.get_db_domain()?;
+
+        let domain_name = domain_entry
+            .get_ava_single_iname(Attribute::DomainName)
+            .map(str::to_string)
+            .ok_or(OperationError::InvalidEntryState)?;
+
+        let display_name = domain_entry
+            .get_ava_single_utf8(Attribute::DomainDisplayName)
+            .map(str::to_string)
+            .ok_or(OperationError::InvalidEntryState)?;
+
+        let domain_ldap_allow_unix_pw_bind = domain_entry
+            .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)
+            .unwrap_or(true);
+
+        let domain_image = domain_entry.get_ava_single_image(Attribute::Image);
+
         let domain_uuid = self.be_txn.get_db_d_uuid()?;
+
         let mut_d_info = self.d_info.get_mut();
         mut_d_info.d_ldap_allow_unix_pw_bind = domain_ldap_allow_unix_pw_bind;
         if mut_d_info.d_uuid != domain_uuid {
@@ -2020,6 +2051,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             mut_d_info.d_name = domain_name;
         }
         mut_d_info.d_display = display_name;
+        mut_d_info.d_image = domain_image;
         Ok(())
     }
 
@@ -2397,18 +2429,18 @@ mod tests {
         assert!(cr.is_ok());
 
         // test attr not exist
-        let r1 = server_txn.clone_value("tausau", "naoeutnhaou");
+        let r1 = server_txn.clone_value(&Attribute::from("tausau"), "naoeutnhaou");
 
         assert!(r1.is_err());
 
         // test attr not-normalised (error)
         // test attr not-reference
-        let r2 = server_txn.clone_value("NaMe", "NaMe");
+        let r2 = server_txn.clone_value(&Attribute::Custom("NaMe".into()), "NaMe");
 
         assert!(r2.is_err());
 
         // test attr reference
-        let r3 = server_txn.clone_value("member", "testperson1");
+        let r3 = server_txn.clone_value(&Attribute::from("member"), "testperson1");
 
         assert_eq!(
             r3,
@@ -2416,7 +2448,10 @@ mod tests {
         );
 
         // test attr reference already resolved.
-        let r4 = server_txn.clone_value("member", "cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let r4 = server_txn.clone_value(
+            &Attribute::from("member"),
+            "cc8e95b4-c24f-4d68-ba54-8bed76f63930",
+        );
 
         debug!("{:?}", r4);
         assert_eq!(
@@ -2447,7 +2482,7 @@ mod tests {
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
             (Attribute::Description, Value::new_utf8s("Test Class")),
-            (Attribute::May, Attribute::Name.to_value())
+            (Attribute::May, Value::from(Attribute::Name))
         );
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
         // Add a new class.
@@ -2518,7 +2553,7 @@ mod tests {
                 Attribute::Uuid,
                 Value::Uuid(uuid!("cfcae205-31c3-484b-8ced-667d1709c5e3"))
             ),
-            (Attribute::AttributeName, Attribute::TestAttr.to_value()),
+            (Attribute::AttributeName, Value::from(Attribute::TestAttr)),
             (Attribute::Description, Value::new_utf8s("Test Attribute")),
             (Attribute::MultiValue, Value::new_bool(false)),
             (Attribute::Unique, Value::new_bool(false)),
@@ -2554,7 +2589,7 @@ mod tests {
         // delete the attr
         let de_attr = DeleteEvent::new_internal_invalid(filter!(f_eq(
             Attribute::AttributeName,
-            Attribute::TestAttr.to_partialvalue()
+            PartialValue::from(Attribute::TestAttr)
         )));
         assert!(server_txn.delete(&de_attr).is_ok());
         // Commit

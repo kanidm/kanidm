@@ -130,6 +130,10 @@ impl ValueSetT for ValueSetTotpSecret {
         Box::new(self.map.keys().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        None
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::TotpSecret(
             self.map

@@ -29,17 +29,13 @@ macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: sync account".to_string(),
-            ));
+            return Err(OperationError::MissingClass(ENTRYCLASS_SYNC_ACCOUNT.into()));
         }
 
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name".to_string(),
-            ))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
         let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
@@ -167,10 +163,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::SyncTokenSession.into(),
-            session,
-        )]);
+        let modlist =
+            ModifyList::new_list(vec![Modify::Present(Attribute::SyncTokenSession, session)]);
 
         self.qs_write
             .impersonate_modify(
@@ -216,8 +210,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         target: Uuid,
         _ct: Duration,
     ) -> Result<(), OperationError> {
-        let modlist =
-            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]);
+        let modlist = ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession)]);
 
         self.qs_write
             .impersonate_modify(
@@ -339,7 +332,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                Attribute::Class.into(),
+                Attribute::Class,
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -438,9 +431,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let existing_entries = self
             .qs_write
             .internal_search(f_all_sync.clone())
-            .map_err(|e| {
-                error!("Failed to determine existing entries set");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to determine existing entries set");
             })?;
 
         let delete_filter = if existing_entries.is_empty() {
@@ -467,7 +459,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })?;
 
             let modlist = std::iter::once(Modify::Removed(
-                Attribute::Class.into(),
+                Attribute::Class,
                 EntryClass::SyncObject.into(),
             ))
             .chain(
@@ -481,9 +473,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             self.qs_write
                 .internal_modify(&f_all_sync, &mods)
-                .map_err(|e| {
-                    error!("Failed to modify sync objects to grant authority to kanidm");
-                    e
+                .inspect_err(|err| {
+                    error!(
+                        ?err,
+                        "Failed to modify sync objects to grant authority to Kanidm"
+                    );
                 })?;
 
             filter!(f_or!([
@@ -546,15 +540,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
         changes: &'b ScimSyncRequest,
-    ) -> Result<
-        (
-            Uuid,
-            BTreeSet<String>,
-            BTreeMap<Uuid, &'b ScimEntryGeneric>,
-            bool,
-        ),
-        OperationError,
-    > {
+    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>, bool), OperationError> {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -578,10 +564,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         };
 
         // Retrieve the related sync entry.
-        let sync_entry = self.qs_write.internal_search_uuid(sync_uuid).map_err(|e| {
-            error!("Failed to located sync entry related to {}", sync_uuid);
-            e
-        })?;
+        let sync_entry = self
+            .qs_write
+            .internal_search_uuid(sync_uuid)
+            .inspect_err(|err| {
+                error!(
+                    ?err,
+                    "Failed to located sync entry related to {}", sync_uuid
+                );
+            })?;
 
         // Assert that the requested "from" state is consistent to this entry.
         // OperationError::InvalidSyncState
@@ -622,7 +613,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
-        let change_entries: BTreeMap<Uuid, &ScimEntryGeneric> = changes
+        let change_entries: BTreeMap<Uuid, &ScimEntry> = changes
             .entries
             .iter()
             .map(|scim_entry| (scim_entry.id, scim_entry))
@@ -634,7 +625,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_2(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         if change_entries.is_empty() {
@@ -657,9 +648,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let existing_entries = self
             .qs_write
             .internal_search(filter_all!(f_or(filter_or)))
-            .map_err(|e| {
-                error!("Failed to determine existing entries set");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to determine existing entries set");
             })?;
 
         // Refuse to proceed if any entries are in the recycled or tombstone state, since subsequent
@@ -711,10 +701,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // We know that uuid won't conflict because it didn't exist in the previous search, so if we error
         // it has to be something bad.
         if !create_stubs.is_empty() {
-            self.qs_write.internal_create(create_stubs).map_err(|e| {
-                error!("Unable to create stub entries");
-                e
-            })?;
+            self.qs_write
+                .internal_create(create_stubs)
+                .inspect_err(|err| {
+                    error!(?err, "Unable to create stub entries");
+                })?;
         }
 
         // We have to search again now, this way we can do the internal mod process for
@@ -735,18 +726,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                                 Attribute::SyncParentUuid,
                                 PartialValue::Refer(sync_uuid),
                             ),
-                            Modify::Purged(Attribute::SyncExternalId.into()),
-                            Modify::Present(
-                                Attribute::SyncExternalId.into(),
-                                Value::new_iutf8(ext_id),
-                            ),
+                            Modify::Purged(Attribute::SyncExternalId),
+                            Modify::Present(Attribute::SyncExternalId, Value::new_iutf8(ext_id)),
                         ]),
                     )
                 })
             }))
-            .map_err(|e| {
-                error!("Unable to setup external ids from sync entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Unable to setup external ids from sync entries");
             })?;
 
         // Ready to go.
@@ -757,7 +744,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_refresh_cleanup(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
     ) -> Result<(), OperationError> {
         // If this is a refresh, then the providing server is sending a full state of entries
@@ -813,7 +800,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn scim_attr_to_values(
         &mut self,
-        scim_attr_name: &str,
+        scim_attr_name: &Attribute,
         scim_attr: &ScimValue,
     ) -> Result<Vec<Value>, OperationError> {
         let schema = self.qs_write.get_schema();
@@ -1124,7 +1111,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn scim_entry_to_mod(
         &mut self,
-        scim_ent: &ScimEntryGeneric,
+        scim_ent: &ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,
         sync_allow_attr_set: &BTreeSet<String>,
@@ -1162,11 +1149,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         for req_class in requested_classes.keys() {
             mods.push(Modify::Present(
-                Attribute::SyncClass.into(),
+                Attribute::SyncClass,
                 Value::new_iutf8(req_class),
             ));
             mods.push(Modify::Present(
-                Attribute::Class.into(),
+                Attribute::Class,
                 Value::new_iutf8(req_class),
             ));
         }
@@ -1228,21 +1215,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 return Err(OperationError::InvalidEntryState);
             }
 
+            // Make it a native attribute name.
+            let scim_attr_name = Attribute::from(scim_attr_name.as_str());
+
             // Convert each scim_attr to a set of values.
             let values = self
-                .scim_attr_to_values(scim_attr_name, scim_attr)
-                .map_err(|e| {
+                .scim_attr_to_values(&scim_attr_name, scim_attr)
+                .inspect_err(|err| {
                     error!(
-                        "Failed to convert {} for entry {}",
-                        scim_attr_name, scim_ent.id
+                        ?err,
+                        "Failed to convert {} for entry {}", scim_attr_name, scim_ent.id
                     );
-                    e
                 })?;
 
             mods.extend(
                 values
                     .into_iter()
-                    .map(|val| Modify::Present(scim_attr_name.into(), val)),
+                    .map(|val| Modify::Present(scim_attr_name.clone(), val)),
             );
         }
 
@@ -1254,7 +1243,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub(crate) fn scim_sync_apply_phase_3(
         &mut self,
-        change_entries: &BTreeMap<Uuid, &ScimEntryGeneric>,
+        change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
         sync_authority_set: &BTreeSet<String>,
     ) -> Result<(), OperationError> {
@@ -1332,9 +1321,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_batch_modify(asserts.into_iter())
-            .map_err(|e| {
-                error!("Unable to apply modifications to sync entries.");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Unable to apply modifications to sync entries.");
             })
     }
 
@@ -1388,9 +1376,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 let delete_cands = self
                     .qs_write
                     .internal_search(filter_all!(f_or(filter_or)))
-                    .map_err(|e| {
-                        error!("Failed to determine existing entries set");
-                        e
+                    .inspect_err(|err| {
+                        error!(?err, "Failed to determine existing entries set");
                     })?;
 
                 let delete_filter = delete_cands
@@ -1464,9 +1451,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.qs_write
             .internal_modify_uuid(sync_uuid, &modlist)
-            .map_err(|e| {
-                error!("Failed to update sync entry state");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to update sync entry state");
             })
     }
 }
@@ -1506,9 +1492,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         Ok(
             match sync_entry.get_ava_single_private_binary(Attribute::SyncCookie) {
-                Some(b) => ScimSyncState::Active {
-                    cookie: b.to_vec().into(),
-                },
+                Some(b) => ScimSyncState::Active { cookie: b.to_vec() },
                 None => ScimSyncState::Refresh,
             },
         )
@@ -1649,7 +1633,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("test_scim_sync")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::SyncTokenSession)]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
         assert!(idms_prox_write.commit().is_ok());
@@ -1772,7 +1756,7 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Refresh,
             entries: Vec::with_capacity(0),
@@ -1801,9 +1785,9 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
@@ -1869,9 +1853,9 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_PERSON.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("dn=william,ou=people,dc=test".to_string()),
@@ -1899,7 +1883,7 @@ mod tests {
 
     async fn apply_phase_3_test(
         idms: &IdmServer,
-        entries: Vec<ScimEntryGeneric>,
+        entries: Vec<ScimEntry>,
     ) -> Result<(), OperationError> {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
@@ -1909,7 +1893,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             entries,
             retain: ScimSyncRetentionMode::Ignore,
@@ -1937,7 +1921,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -1978,7 +1962,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2011,7 +1995,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2044,7 +2028,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2076,7 +2060,7 @@ mod tests {
 
         assert!(apply_phase_3_test(
             idms,
-            vec![ScimEntryGeneric {
+            vec![ScimEntry {
                 schemas: vec![format!("{SCIM_SCHEMA_SYNC_1}system")],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2112,9 +2096,9 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: user_sync_uuid,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2136,10 +2120,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Active {
-                cookie: vec![2, 3, 4, 5].into(),
+                cookie: vec![2, 3, 4, 5],
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Delete(vec![user_sync_uuid]),
@@ -2179,7 +2163,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::with_capacity(0),
@@ -2218,7 +2202,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::with_capacity(0),
@@ -2260,7 +2244,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             // Doesn't exist. If it does, then bless rng.
             entries: Vec::with_capacity(0),
@@ -2295,10 +2279,10 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             entries: vec![
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2308,7 +2292,7 @@ mod tests {
                         ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
@@ -2331,10 +2315,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Active {
-                cookie: vec![2, 3, 4, 5].into(),
+                cookie: vec![2, 3, 4, 5],
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2379,10 +2363,10 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             entries: vec![
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_a,
                     external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2392,7 +2376,7 @@ mod tests {
                         ScimValue::Simple(ScimAttr::String("testgroup".to_string()))
                     ),),
                 },
-                ScimEntryGeneric {
+                ScimEntry {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id: sync_uuid_b,
                     external_id: Some("cn=anothergroup,ou=people,dc=test".to_string()),
@@ -2415,10 +2399,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Active {
-                cookie: vec![2, 3, 4, 5].into(),
+                cookie: vec![2, 3, 4, 5],
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![]),
@@ -2477,9 +2461,9 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
-            entries: vec![ScimEntryGeneric {
+            entries: vec![ScimEntry {
                 schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                 id: sync_uuid_a,
                 external_id: Some("cn=testgroup,ou=people,dc=test".to_string()),
@@ -2501,10 +2485,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Active {
-                cookie: vec![2, 3, 4, 5].into(),
+                cookie: vec![2, 3, 4, 5],
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Retain(vec![sync_uuid_a]),
@@ -2539,7 +2523,7 @@ mod tests {
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Refresh,
             to_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             entries: Vec::with_capacity(0),
             retain: ScimSyncRetentionMode::Ignore,
@@ -2554,10 +2538,10 @@ mod tests {
 
         let changes = ScimSyncRequest {
             from_state: ScimSyncState::Active {
-                cookie: vec![1, 2, 3, 4].into(),
+                cookie: vec![1, 2, 3, 4],
             },
             to_state: ScimSyncState::Active {
-                cookie: vec![2, 3, 4, 5].into(),
+                cookie: vec![2, 3, 4, 5],
             },
             entries: vec![],
             retain: ScimSyncRetentionMode::Ignore,

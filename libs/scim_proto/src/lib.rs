@@ -10,9 +10,10 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
-use time::OffsetDateTime;
+use time::{format_description::well_known::Rfc3339, OffsetDateTime};
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -25,7 +26,7 @@ pub mod user;
 pub mod prelude {
     pub use crate::constants::*;
     pub use crate::user::MultiValueAttr;
-    pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryGeneric, ScimMeta, ScimValue};
+    pub use crate::{ScimAttr, ScimComplexAttr, ScimEntry, ScimEntryHeader, ScimMeta, ScimValue};
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
@@ -38,9 +39,54 @@ pub enum ScimAttr {
     // These can't be implicitly decoded because we may not know the intent, but we can *encode* them.
     // That's why "String" is above this because it catches anything during deserialization before
     // this point.
+    #[serde(with = "time::serde::rfc3339")]
     DateTime(OffsetDateTime),
-    Binary(Vec<u8>),
+
+    Binary(Base64UrlSafeData),
     Reference(Url),
+}
+
+impl ScimAttr {
+    pub fn parse_as_datetime(&self) -> Option<Self> {
+        let s = match self {
+            ScimAttr::String(s) => s,
+            _ => return None,
+        };
+
+        OffsetDateTime::parse(s, &Rfc3339)
+            .map(ScimAttr::DateTime)
+            .ok()
+    }
+}
+
+impl From<String> for ScimAttr {
+    fn from(s: String) -> Self {
+        ScimAttr::String(s)
+    }
+}
+
+impl From<bool> for ScimAttr {
+    fn from(b: bool) -> Self {
+        ScimAttr::Bool(b)
+    }
+}
+
+impl From<u32> for ScimAttr {
+    fn from(i: u32) -> Self {
+        ScimAttr::Integer(i as i64)
+    }
+}
+
+impl From<Vec<u8>> for ScimAttr {
+    fn from(data: Vec<u8>) -> Self {
+        ScimAttr::Binary(data.into())
+    }
+}
+
+impl From<OffsetDateTime> for ScimAttr {
+    fn from(odt: OffsetDateTime) -> Self {
+        ScimAttr::DateTime(odt)
+    }
 }
 
 impl From<ScimAttr> for ScimValue {
@@ -105,7 +151,7 @@ pub struct ScimMeta {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimEntry {
+pub struct ScimEntryHeader {
     pub schemas: Vec<String>,
     pub id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -116,7 +162,7 @@ pub struct ScimEntry {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct ScimEntryGeneric {
+pub struct ScimEntry {
     pub schemas: Vec<String>,
     pub id: Uuid,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -136,12 +182,144 @@ mod tests {
     fn parse_scim_entry() {
         let _ = tracing_subscriber::fmt::try_init();
 
-        let u: ScimEntryGeneric =
+        let u: ScimEntry =
             serde_json::from_str(RFC7643_USER).expect("Failed to parse RFC7643_USER");
 
         tracing::trace!(?u);
 
         let s = serde_json::to_string_pretty(&u).expect("Failed to serialise RFC7643_USER");
         eprintln!("{}", s);
+    }
+
+    // =========================================================
+    // asymmetric serde tests
+
+    use serde::de::{self, Deserialize, Deserializer, Visitor};
+    use std::fmt;
+    use uuid::Uuid;
+
+    // -> For values, we need to be able to capture and handle "what if it's X" type? But
+    // we can't know the "intent" until we hit schema, so we have to preserve the string
+    // types as well. In this type, we make this *asymmetric*. When we parse we use
+    // this type which has the "maybes" but when we serialise, we use concrete types
+    // instead.
+
+    #[derive(Debug)]
+    #[allow(dead_code)]
+    enum TestB {
+        Integer(i64),
+        Decimal(f64),
+        MaybeUuid(Uuid, String),
+        String(String),
+    }
+
+    struct TestBVisitor;
+
+    impl<'de> Visitor<'de> for TestBVisitor {
+        type Value = TestB;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
+            formatter.write_str("cheese")
+        }
+
+        fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(TestB::Decimal(v))
+        }
+
+        fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(TestB::Integer(v as i64))
+        }
+
+        fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(TestB::Integer(v))
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(if let Ok(u) = Uuid::parse_str(v) {
+                TestB::MaybeUuid(u, v.to_string())
+            } else {
+                TestB::String(v.to_string())
+            })
+        }
+    }
+
+    impl<'de> Deserialize<'de> for TestB {
+        fn deserialize<D>(deserializer: D) -> Result<TestB, D::Error>
+        where
+            D: Deserializer<'de>,
+        {
+            deserializer.deserialize_any(TestBVisitor)
+        }
+    }
+
+    #[test]
+    fn parse_enum_b() {
+        let x: TestB = serde_json::from_str("10").unwrap();
+        eprintln!("{:?}", x);
+
+        let x: TestB = serde_json::from_str("10.5").unwrap();
+        eprintln!("{:?}", x);
+
+        let x: TestB = serde_json::from_str(r#""550e8400-e29b-41d4-a716-446655440000""#).unwrap();
+        eprintln!("{:?}", x);
+
+        let x: TestB = serde_json::from_str(r#""Value""#).unwrap();
+        eprintln!("{:?}", x);
+    }
+
+    // In reverse when we serialise, we can simply use untagged on an enum.
+    // Potentially this lets us have more "scim" types for dedicated serialisations
+    // over the generic ones.
+
+    #[derive(Serialize, Debug, Deserialize, Clone)]
+    #[serde(rename_all = "lowercase", from = "&str", into = "String")]
+    enum TestC {
+        A,
+        B,
+        Unknown(String),
+    }
+
+    impl From<TestC> for String {
+        fn from(v: TestC) -> String {
+            match v {
+                TestC::A => "A".to_string(),
+                TestC::B => "B".to_string(),
+                TestC::Unknown(v) => v,
+            }
+        }
+    }
+
+    impl From<&str> for TestC {
+        fn from(v: &str) -> TestC {
+            match v {
+                "A" => TestC::A,
+                "B" => TestC::B,
+                _ => TestC::Unknown(v.to_string()),
+            }
+        }
+    }
+
+    #[test]
+    fn parse_enum_c() {
+        let x = serde_json::to_string(&TestC::A).unwrap();
+        eprintln!("{:?}", x);
+
+        let x = serde_json::to_string(&TestC::B).unwrap();
+        eprintln!("{:?}", x);
+
+        let x = serde_json::to_string(&TestC::Unknown("X".to_string())).unwrap();
+        eprintln!("{:?}", x);
     }
 }

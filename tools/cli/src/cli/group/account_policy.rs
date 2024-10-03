@@ -11,6 +11,7 @@ impl GroupAccountPolicyOpt {
             | GroupAccountPolicyOpt::WebauthnAttestationCaList { copt, .. }
             | GroupAccountPolicyOpt::LimitSearchMaxResults { copt, .. }
             | GroupAccountPolicyOpt::LimitSearchMaxFilterTest { copt, .. }
+            | GroupAccountPolicyOpt::AllowPrimaryCredFallback { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
     }
@@ -112,6 +113,17 @@ impl GroupAccountPolicyOpt {
                     handle_client_error(e, copt.output_mode);
                 } else {
                     println!("Updated search maximum filter test limit.");
+                }
+            }
+            GroupAccountPolicyOpt::AllowPrimaryCredFallback { name, allow, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_allow_primary_cred_fallback(name, *allow)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Updated primary credential fallback policy.");
                 }
             }
         }

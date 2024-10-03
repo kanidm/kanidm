@@ -144,6 +144,17 @@ impl ValueSetT for ValueSetIname {
         Box::new(self.set.iter().cloned())
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        let mut iter = self.set.iter().cloned();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or_default();
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Iname(self.set.iter().cloned().collect())
     }
@@ -198,5 +209,17 @@ impl ValueSetT for ValueSetIname {
 
     fn migrate_iutf8_iname(&self) -> Result<Option<ValueSet>, OperationError> {
         Ok(None)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetIname;
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_iname() {
+        let vs: ValueSet = ValueSetIname::new("stevo");
+        crate::valueset::scim_json_reflexive(vs, r#""stevo""#);
     }
 }

@@ -14,9 +14,8 @@ use std::time::Duration;
 
 use hashbrown::HashSet;
 
-use base64::{engine::general_purpose, Engine as _};
+use ::base64::{engine::general_purpose, Engine as _};
 
-use base64urlsafedata::Base64UrlSafeData;
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
     crypto::JwsRs256Signer, jws::JwsBuilder, JwsCompact, JwsEs256Signer, JwsSigner,
@@ -39,6 +38,7 @@ use kanidm_proto::oauth2::{
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
+use serde_with::{base64, formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
 use url::{Origin, Url};
@@ -48,6 +48,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
+use crate::utils::str_join;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -96,6 +97,7 @@ impl std::fmt::Display for Oauth2Error {
 
 // == internal state formats that we encrypt and send.
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct ConsentToken {
     pub client_id: String,
@@ -106,7 +108,8 @@ struct ConsentToken {
     // CSRF
     pub state: String,
     // The S256 code challenge.
-    pub code_challenge: Option<Base64UrlSafeData>,
+    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    pub code_challenge: Option<Vec<u8>>,
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
     // The scopes being granted
@@ -115,6 +118,7 @@ struct ConsentToken {
     pub nonce: Option<String>,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug)]
 struct TokenExchangeCode {
     // We don't need the client_id here, because it's signed with an RS specific
@@ -124,7 +128,8 @@ struct TokenExchangeCode {
     pub session_id: Uuid,
 
     // The S256 code challenge.
-    pub code_challenge: Option<Base64UrlSafeData>,
+    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    pub code_challenge: Option<Vec<u8>>,
     // The original redirect uri
     pub redirect_uri: Url,
     // The scopes being granted
@@ -583,7 +588,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     BTreeMap::default()
                 };
 
-                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable.as_ref());
+                trace!("{}", Attribute::OAuth2JwtLegacyCryptoEnable);
                 let jws_signer = if ent.get_ava_single_bool(Attribute::OAuth2JwtLegacyCryptoEnable).unwrap_or(false) {
                     trace!("{}", Attribute::Rs256PrivateKeyDer);
                     ent
@@ -814,7 +819,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // and when replication converges the session is actually removed.
 
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::OAuth2Session.into(),
+            Attribute::OAuth2Session,
             PartialValue::Refer(session_id),
         )]);
 
@@ -1000,11 +1005,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let modlist = ModifyList::new_list(vec![
             Modify::Removed(
-                Attribute::OAuth2ConsentScopeMap.into(),
+                Attribute::OAuth2ConsentScopeMap,
                 PartialValue::Refer(o2rs.uuid),
             ),
             Modify::Present(
-                Attribute::OAuth2ConsentScopeMap.into(),
+                Attribute::OAuth2ConsentScopeMap,
                 Value::OauthScopeMap(o2rs.uuid, consent_req.scopes.iter().cloned().collect()),
             ),
         ]);
@@ -1214,7 +1219,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
                     // Revoke it
                     let modlist = ModifyList::new_list(vec![Modify::Removed(
-                        Attribute::OAuth2Session.into(),
+                        Attribute::OAuth2Session,
                         PartialValue::Refer(session_id),
                     )]);
 
@@ -1347,10 +1352,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         // We need to create this session on the o2rs
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2Session.into(),
-            session,
-        )]);
+        let modlist =
+            ModifyList::new_list(vec![Modify::Present(Attribute::OAuth2Session, session)]);
 
         self.qs_write
             .internal_modify(
@@ -1557,7 +1560,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // NOTE: Oauth2_session has special handling that allows update in place without
             // the remove step needing to be carried out.
             // Modify::Removed("oauth2_session".into(), PartialValue::Refer(session_id)),
-            Modify::Present(Attribute::OAuth2Session.into(), session),
+            Modify::Present(Attribute::OAuth2Session, session),
         ]);
 
         self.qs_write
@@ -2470,6 +2473,20 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             Vec::with_capacity(0)
         };
 
+        // The following are extensions allowed by the oidc specification.
+
+        let revocation_endpoint = Some(o2rs.revocation_endpoint.clone());
+        let revocation_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
+        let introspection_endpoint = Some(o2rs.introspection_endpoint.clone());
+        let introspection_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
+
         Ok(OidcDiscoveryResponse {
             issuer,
             authorization_endpoint,
@@ -2510,6 +2527,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             op_policy_uri: None,
             op_tos_uri: None,
             code_challenge_methods_supported,
+            // Extensions
+            revocation_endpoint,
+            revocation_endpoint_auth_methods_supported,
+            introspection_endpoint,
+            introspection_endpoint_auth_methods_supported,
+            introspection_endpoint_auth_signing_alg_values_supported: None,
         })
     }
 
@@ -2651,20 +2674,6 @@ fn extra_claims_for_account(
     trace!(?extra_claims);
 
     extra_claims
-}
-
-fn str_join(set: &BTreeSet<String>) -> String {
-    let alloc_len = set.iter().fold(0, |acc, s| acc + s.len() + 1);
-    let mut buf = String::with_capacity(alloc_len);
-    set.iter().for_each(|s| {
-        buf.push_str(s);
-        buf.push(' ');
-    });
-
-    // Remove the excess trailing space.
-    let _ = buf.pop();
-
-    buf
 }
 
 fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
@@ -2909,9 +2918,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
-                Attribute::PrimaryCredential.into(),
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -3042,9 +3051,9 @@ mod tests {
 
         // Mod the user
         let modlist = ModifyList::new_list(vec![
-            Modify::Present(Attribute::UserAuthTokenSession.into(), session),
+            Modify::Present(Attribute::UserAuthTokenSession, session),
             Modify::Present(
-                Attribute::PrimaryCredential.into(),
+                Attribute::PrimaryCredential,
                 Value::Cred("primary".to_string(), cred),
             ),
         ]);
@@ -3231,7 +3240,7 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let pkce_request = Some(PkceRequest {
-            code_challenge: code_challenge.into(),
+            code_challenge,
             code_challenge_method: CodeChallengeMethod::S256,
         });
 
@@ -3671,7 +3680,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone().into(),
+                code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://portal.example.com").unwrap(),
@@ -3740,7 +3749,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("app://cheese").unwrap(),
@@ -3868,10 +3877,7 @@ mod tests {
         let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_TESTPERSON_1))),
-            ModifyList::new_list(vec![Modify::Present(
-                Attribute::AccountExpire.into(),
-                v_expire,
-            )]),
+            ModifyList::new_list(vec![Modify::Present(Attribute::AccountExpire, v_expire)]),
         );
         // go!
         assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
@@ -4495,7 +4501,35 @@ mod tests {
         assert_eq!(
             discovery.code_challenge_methods_supported,
             vec![PkceAlg::S256]
-        )
+        );
+
+        // Extensions
+        assert!(
+            discovery.revocation_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+        );
+        assert!(
+            discovery.revocation_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+
+        assert!(
+            discovery.introspection_endpoint
+                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+        );
+        assert!(
+            discovery.introspection_endpoint_auth_methods_supported
+                == vec![
+                    TokenEndpointAuthMethod::ClientSecretBasic,
+                    TokenEndpointAuthMethod::ClientSecretPost
+                ]
+        );
+        assert!(discovery
+            .introspection_endpoint_auth_signing_alg_values_supported
+            .is_none());
     }
 
     #[idm_test]
@@ -5070,7 +5104,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                AttrString::from(Attribute::OAuth2RsScopeMap.as_ref()),
+                Attribute::OAuth2RsScopeMap,
                 Value::new_oauthscopemap(
                     UUID_IDM_ALL_ACCOUNTS,
                     btreeset![
@@ -5101,7 +5135,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5133,7 +5167,7 @@ mod tests {
                 PartialValue::new_iname("test_resource_server")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::OAuth2RsSupScopeMap.into(),
+                Attribute::OAuth2RsSupScopeMap,
                 Value::new_oauthscopemap(UUID_IDM_ALL_ACCOUNTS, btreeset!["newscope".to_string()])
                     .expect("invalid oauthscope"),
             )]),
@@ -5158,7 +5192,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -5373,7 +5407,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.clone().into(),
+                code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
@@ -6066,14 +6100,14 @@ mod tests {
         let modlist = ModifyList::new_list(vec![
             // Member of a claim map.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
                     "custom_a".to_string(),
                     OauthClaimMapJoin::CommaSeparatedValue,
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_TESTGROUP,
@@ -6082,7 +6116,7 @@ mod tests {
             ),
             // If you are a member of two groups, the claim maps merge.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_a".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
@@ -6091,14 +6125,14 @@ mod tests {
             ),
             // Map with a different seperator
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
                     "custom_b".to_string(),
                     OauthClaimMapJoin::SpaceSeparatedValue,
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_TESTGROUP,
@@ -6106,7 +6140,7 @@ mod tests {
                 ),
             ),
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ALL_ACCOUNTS,
@@ -6115,7 +6149,7 @@ mod tests {
             ),
             // Not a member of the claim map.
             Modify::Present(
-                Attribute::OAuth2RsClaimMap.into(),
+                Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimValue(
                     "custom_b".to_string(),
                     UUID_IDM_ADMINS,
@@ -6305,7 +6339,7 @@ mod tests {
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
         let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2AllowLocalhostRedirect.into(),
+            Attribute::OAuth2AllowLocalhostRedirect,
             Value::Bool(true),
         )]);
 
@@ -6329,7 +6363,7 @@ mod tests {
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
-                code_challenge: code_challenge.into(),
+                code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),

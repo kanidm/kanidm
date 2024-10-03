@@ -11,6 +11,7 @@ mod tests;
 pub(crate) mod trace;
 mod ui;
 mod v1;
+mod v1_domain;
 mod v1_oauth2;
 mod v1_scim;
 mod views;
@@ -139,9 +140,9 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
             vec![
                 ("external/bootstrap.bundle.min.js", None, false, false),
                 ("external/htmx.min.1.9.12.js", None, false, false),
-                ("external/cred_update.js", None, false, false),
                 ("external/confetti.js", None, false, false),
                 ("external/base64.js", None, false, false),
+                ("modules/cred_update.mjs", None, false, false),
                 ("pkhtml.js", None, false, false),
             ]
         } else {
@@ -270,12 +271,18 @@ pub async fn create_https_server(
             // Create a spa router that captures everything at ui without key extraction.
             if cfg!(feature = "ui_htmx") {
                 Router::new()
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                    .route("/ui/images/domain", get(v1_domain::image_get))
+                    // Layers only apply to routes that are *already* added, not the ones
+                    // added after.
+                    .layer(middleware::compression::new())
+                    .layer(from_fn(middleware::caching::cache_me_short))
                     .route("/", get(|| async { Redirect::to("/ui") }))
                     .nest("/ui", views::view_router())
-                    .layer(middleware::compression::new())
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
             } else {
                 Router::new()
+                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                    .layer(middleware::compression::new())
                     // Direct users to the base app page. If a login is required,
                     // then views will take care of redirection.
                     .route("/", get(|| async { Redirect::temporary("/ui") }))
@@ -288,18 +295,16 @@ pub async fn create_https_server(
                     .nest("/ui/oauth2", ui::spa_router_login_flows())
                     // admin app
                     .nest("/ui/admin", ui::spa_router_admin())
-                    .layer(middleware::compression::new())
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
                 // skip_route_check
             }
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
     let app = Router::new()
-        .merge(generic::route_setup())
         .merge(oauth2::route_setup(state.clone()))
         .merge(v1_scim::route_setup())
-        .merge(v1::route_setup(state.clone()));
+        .merge(v1::route_setup(state.clone()))
+        .route("/robots.txt", get(generic::robots_txt));
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
@@ -329,7 +334,7 @@ pub async fn create_https_server(
                     .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
                     .layer(middleware::compression::new())
             }
-            .layer(from_fn(middleware::caching::cache_me));
+            .layer(from_fn(middleware::caching::cache_me_short));
 
             app.merge(pkg_router)
         }
@@ -357,6 +362,7 @@ pub async fn create_https_server(
     let app = app.layer(from_fn(middleware::are_we_json_yet));
 
     let app = app
+        .route("/status", get(generic::status))
         // This must be the LAST middleware.
         // This is because the last middleware here is the first to be entered and the last
         // to be exited, and this middleware sets up ids' and other bits for for logging

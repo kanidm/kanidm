@@ -1,4 +1,4 @@
-""" mocked tests """
+"""mocked tests"""
 
 # import asyncio
 # import aiohttp

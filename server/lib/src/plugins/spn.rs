@@ -166,7 +166,7 @@ impl Spn {
                     Attribute::Spn,
                     spn
                 );
-                ent.set_ava(Attribute::Spn, once(spn));
+                ent.set_ava(&Attribute::Spn, once(spn));
             }
         }
         Ok(())

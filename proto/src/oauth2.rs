@@ -2,10 +2,9 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{base64, formats, serde_as, skip_serializing_none, StringWithSeparator};
 use url::Url;
 use uuid::Uuid;
 
@@ -17,9 +16,11 @@ pub enum CodeChallengeMethod {
     S256,
 }
 
+#[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkceRequest {
-    pub code_challenge: Base64UrlSafeData,
+    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    pub code_challenge: Vec<u8>,
     pub code_challenge_method: CodeChallengeMethod,
 }
 
@@ -432,6 +433,21 @@ pub struct OidcDiscoveryResponse {
     pub require_request_uri_registration: bool,
 
     pub code_challenge_methods_supported: Vec<PkceAlg>,
+
+    // https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderConfigurationResponse
+    // "content type that contains a set of Claims as its members that are a subset of the Metadata
+    //  values defined in Section 3. Other Claims MAY also be returned. "
+    //
+    // In addition, we also return the following claims in kanidm
+
+    // rfc7009
+    pub revocation_endpoint: Option<Url>,
+    pub revocation_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+
+    // rfc7662
+    pub introspection_endpoint: Option<Url>,
+    pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
+    pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 }
 
 /// The response to an OAuth2 rfc8414 metadata request
@@ -519,7 +535,8 @@ mod tests {
             assert_eq!(at, super::AccessTokenType::DPoP);
         }
 
-        for testcase in ["cheese"] {
+        {
+            let testcase = "cheese";
             let at = serde_json::from_str::<super::AccessTokenType>(&format!("\"{}\"", testcase));
             assert!(at.is_err())
         }

@@ -327,9 +327,8 @@ impl<'a> QueryServerReadTransaction<'a> {
                     .map(|e| ReplEntryV1::new(e.as_ref(), schema))
                     .collect()
             })
-            .map_err(|e| {
-                error!("Failed to access schema entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to access schema entries");
             })?;
 
         let meta_entries = self
@@ -339,9 +338,8 @@ impl<'a> QueryServerReadTransaction<'a> {
                     .map(|e| ReplEntryV1::new(e.as_ref(), schema))
                     .collect()
             })
-            .map_err(|e| {
-                error!("Failed to access meta entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to access meta entries");
             })?;
 
         let entries = self
@@ -351,9 +349,8 @@ impl<'a> QueryServerReadTransaction<'a> {
                     .map(|e| ReplEntryV1::new(e.as_ref(), schema))
                     .collect()
             })
-            .map_err(|e| {
-                error!("Failed to access entries");
-                e
+            .inspect_err(|err| {
+                error!(?err, "Failed to access entries");
             })?;
 
         // Finally, populate the ranges with anchors from the RUV

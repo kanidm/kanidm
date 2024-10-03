@@ -24,7 +24,7 @@ askama = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-auth = "0.7.0"
-axum-extra = { version = "0.9.3", features = ["cookie"] }
+axum-extra = { version = "0.9.4", features = ["cookie"] }
 axum-macros = "0.4.1"
 axum-server = { version = "0.7.1", features = ["tls-openssl"] }
 bytes = { workspace = true }
@@ -59,8 +59,8 @@ tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-tower = { version = "0.5.0", features = ["tokio-stream", "tracing"] }
-tower-http = { version = "0.5.2", features = [
+tower = { version = "0.5.1", features = ["tokio-stream", "tracing"] }
+tower-http = { version = "0.6.1", features = [
     "compression-gzip",
     "fs",
     "tokio",

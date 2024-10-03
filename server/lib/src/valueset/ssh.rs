@@ -10,6 +10,8 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
+use kanidm_proto::scim_v1::server::ScimSshPublicKey;
+
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
     map: BTreeMap<String, SshPublicKey>,
@@ -152,6 +154,18 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .map(|(label, pk)| ScimSshPublicKey {
+                    label: label.clone(),
+                    value: pk.to_string(),
+                })
+                .collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::SshKey(
             self.map
@@ -214,5 +228,34 @@ impl ValueSetT for ValueSetSshKey {
 
     fn as_sshpubkey_string_iter(&self) -> Option<Box<dyn Iterator<Item = String> + '_>> {
         Some(Box::new(self.map.values().map(|pk| pk.to_string())))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{SshPublicKey, ValueSetSshKey};
+    use crate::prelude::ValueSet;
+
+    #[test]
+    fn test_scim_ssh_public_key() {
+        let ecdsa = concat!("ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3B",
+        "tOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81l",
+        "zPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@a",
+        "methyst");
+
+        let vs: ValueSet = ValueSetSshKey::new(
+            "label".to_string(),
+            SshPublicKey::from_string(ecdsa).unwrap(),
+        );
+
+        let data = r#"
+[
+  {
+    "label": "label",
+    "value": "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3BtOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81lzPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@amethyst"
+  }
+]
+        "#;
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

@@ -13,25 +13,12 @@ pub struct NameHistory {}
 lazy_static! {
     // it contains all the partialvalues used to match against an Entry's class,
     // we just need a partialvalue to match in order to target the entry
-    static ref CLASSES_TO_UPDATE: [PartialValue; 1] = [PartialValue::new_iutf8(EntryClass::Account.into())];
-}
-
-const HISTORY_ATTRIBUTES: [Attribute; 1] = [Attribute::Name];
-
-#[test]
-fn test_history_attribute() {
-    assert_eq!(NameHistory::get_ava_name(Attribute::Name), "name_history");
+    static ref CLASS_TO_UPDATE: PartialValue = PartialValue::new_iutf8(EntryClass::Account.into());
 }
 
 impl NameHistory {
     fn is_entry_to_update<VALUE, STATE>(entry: &mut Entry<VALUE, STATE>) -> bool {
-        CLASSES_TO_UPDATE
-            .iter()
-            .any(|pv| entry.attribute_equality(Attribute::Class, pv))
-    }
-
-    fn get_ava_name(history_attr: Attribute) -> String {
-        format!("{}_history", history_attr)
+        entry.attribute_equality(Attribute::Class, &CLASS_TO_UPDATE)
     }
 
     fn handle_name_updates(
@@ -42,22 +29,16 @@ impl NameHistory {
         for (pre, post) in pre_cand.iter().zip(cand) {
             // here we check if the current entry has at least one of the classes we intend to target
             if Self::is_entry_to_update(post) {
-                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
-                    let pre_name_option = pre.get_ava_single(history_attr);
-                    let post_name_option = post.get_ava_single(history_attr);
-                    if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
-                        if pre_name != post_name {
-                            let ava_name = Self::get_ava_name(history_attr);
-                            //// WARNING!!! this match will have to be adjusted based on what kind of attribute
-                            //// we are matching on, for example for displayname we would have to use Value::utf8 instead!!
-                            // as of now we're interested just in the name so we use Iname
-                            match post_name {
-                                Value::Iname(n) => post.add_ava_if_not_exist(
-                                    ava_name.as_str().try_into()?,
-                                    Value::AuditLogString(cid.clone(), n),
-                                ),
-                                _ => return Err(OperationError::InvalidValueState),
-                            }
+                let pre_name_option = pre.get_ava_single(Attribute::Name);
+                let post_name_option = post.get_ava_single(Attribute::Name);
+                if let (Some(pre_name), Some(post_name)) = (pre_name_option, post_name_option) {
+                    if pre_name != post_name {
+                        match post_name {
+                            Value::Iname(n) => post.add_ava_if_not_exist(
+                                Attribute::NameHistory,
+                                Value::AuditLogString(cid.clone(), n),
+                            ),
+                            _ => return Err(OperationError::InvalidValueState),
                         }
                     }
                 }
@@ -72,16 +53,13 @@ impl NameHistory {
     ) -> Result<(), OperationError> {
         for cand in cands.iter_mut() {
             if Self::is_entry_to_update(cand) {
-                for history_attr in HISTORY_ATTRIBUTES.into_iter() {
-                    if let Some(name) = cand.get_ava_single(history_attr) {
-                        let ava_name = Self::get_ava_name(history_attr);
-                        match name {
-                            Value::Iname(n) => cand.add_ava_if_not_exist(
-                                ava_name.as_str().try_into()?,
-                                Value::AuditLogString(cid.clone(), n),
-                            ),
-                            _ => return Err(OperationError::InvalidValueState),
-                        }
+                if let Some(name) = cand.get_ava_single(Attribute::Name) {
+                    match name {
+                        Value::Iname(n) => cand.add_ava_if_not_exist(
+                            Attribute::NameHistory,
+                            Value::AuditLogString(cid.clone(), n),
+                        ),
+                        _ => return Err(OperationError::InvalidValueState),
                     }
                 }
             }

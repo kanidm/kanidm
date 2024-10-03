@@ -112,6 +112,12 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
+    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+        Some(ScimValueKanidm::from(
+            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
+        ))
+    }
+
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::IndexType(self.set.iter().map(|s| *s as u16).collect())
     }
@@ -154,5 +160,17 @@ impl ValueSetT for ValueSetIndex {
 
     fn as_index_set(&self) -> Option<&SmolSet<[IndexType; 3]>> {
         Some(&self.set)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ValueSetIndex;
+    use crate::prelude::{IndexType, ValueSet};
+
+    #[test]
+    fn test_scim_index() {
+        let vs: ValueSet = ValueSetIndex::new(IndexType::Equality);
+        crate::valueset::scim_json_reflexive(vs, r#"["EQUALITY"]"#);
     }
 }

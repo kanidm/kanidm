@@ -4,7 +4,7 @@ use std::time::Duration;
 use kanidm_proto::internal::{
     BackupCodesView, CredentialStatus, UatPurpose, UiHint, UserAuthToken,
 };
-use kanidm_proto::v1::{UatStatus, UatStatusState};
+use kanidm_proto::v1::{UatStatus, UatStatusState, UnixGroupToken, UnixUserToken};
 use time::OffsetDateTime;
 use uuid::Uuid;
 use webauthn_rs::prelude::{
@@ -12,13 +12,16 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
+use super::group::{
+    load_all_groups_from_account_entry, load_all_groups_from_account_entry_reduced,
+    load_all_groups_from_account_entry_with_policy, Group, UnixGroup,
+};
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::event::SearchEvent;
 use crate::idm::application::Application;
-use crate::idm::group::Group;
 use crate::idm::ldap::{LdapBoundToken, LdapSession};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction};
 use crate::modify::{ModifyInvalid, ModifyList};
@@ -31,9 +34,10 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 #[derive(Debug, Clone)]
 pub struct UnixExtensions {
     ucred: Option<Credential>,
-    _shell: Option<String>,
+    shell: Option<String>,
     sshkeys: BTreeMap<String, SshPublicKey>,
-    _gidnumber: u32,
+    gidnumber: u32,
+    groups: Vec<UnixGroup>,
 }
 
 impl UnixExtensions {
@@ -71,31 +75,22 @@ pub struct Account {
 }
 
 macro_rules! try_from_entry {
-    ($value:expr, $groups:expr) => {{
+    ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::Account
-            )));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         // Now extract our needed attributes
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::Name
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
         let displayname = $value
             .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::DisplayName
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
 
         let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
@@ -113,9 +108,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let mail_primary = $value
             .get_ava_mail_primary(Attribute::Mail)
@@ -177,24 +172,22 @@ macro_rules! try_from_entry {
                 .get_ava_single_credential(Attribute::UnixPassword)
                 .cloned();
 
-            let _shell = $value
+            let shell = $value
                 .get_ava_single_iutf8(Attribute::LoginShell)
                 .map(|s| s.to_string());
 
-            let _gidnumber = $value
+            let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
-                .ok_or_else(|| {
-                    OperationError::InvalidAccountState(format!(
-                        "Missing attribute: {}",
-                        Attribute::GidNumber
-                    ))
-                })?;
+                .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
+
+            let groups = $unix_groups;
 
             Some(UnixExtensions {
                 ucred,
-                _shell,
+                shell,
                 sshkeys,
-                _gidnumber,
+                gidnumber,
+                groups,
             })
         } else {
             None
@@ -233,13 +226,18 @@ impl Account {
         self.unix_extn.as_ref()
     }
 
+    pub(crate) fn primary(&self) -> Option<&Credential> {
+        self.primary.as_ref()
+    }
+
     #[instrument(level = "trace", skip_all)]
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -250,8 +248,10 @@ impl Account {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let (groups, rap) = Group::try_from_account_entry_with_policy(value, qs)?;
-        try_from_entry!(value, groups).map(|acct| (acct, rap))
+        let ((groups, unix_groups), rap) =
+            load_all_groups_from_account_entry_with_policy(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -259,8 +259,9 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
+
+        try_from_entry!(value, groups, unix_groups)
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -268,8 +269,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::try_from_account_entry_reduced(value, qs)?;
-        try_from_entry!(value, groups)
+        let (groups, unix_groups) = load_all_groups_from_account_entry_reduced(value, qs)?;
+        try_from_entry!(value, groups, unix_groups)
     }
 
     /// Given the session_id and other metadata, create a user authentication token
@@ -567,20 +568,20 @@ impl Account {
 
         if let Some(ncred) = opt_ncred {
             let vcred = Value::new_credential("primary", ncred);
-            ml.push(Modify::Purged(Attribute::PrimaryCredential.into()));
-            ml.push(Modify::Present(Attribute::PrimaryCredential.into(), vcred));
+            ml.push(Modify::Purged(Attribute::PrimaryCredential));
+            ml.push(Modify::Present(Attribute::PrimaryCredential, vcred));
         }
 
         // Is it a passkey?
         self.passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    Attribute::PassKeys.into(),
+                    Attribute::PassKeys,
                     PartialValue::Passkey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    Attribute::PassKeys.into(),
+                    Attribute::PassKeys,
                     Value::Passkey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -590,12 +591,12 @@ impl Account {
         self.attested_passkeys.iter_mut().for_each(|(u, (t, k))| {
             if let Some(true) = k.update_credential(auth_result) {
                 ml.push(Modify::Removed(
-                    Attribute::AttestedPasskeys.into(),
+                    Attribute::AttestedPasskeys,
                     PartialValue::AttestedPasskey(*u),
                 ));
 
                 ml.push(Modify::Present(
-                    Attribute::AttestedPasskeys.into(),
+                    Attribute::AttestedPasskeys,
                     Value::AttestedPasskey(*u, t.clone(), k.clone()),
                 ));
             }
@@ -794,6 +795,34 @@ impl Account {
         let vap = Value::ApplicationPassword(ap);
         Ok(ModifyList::new_append(Attribute::ApplicationPassword, vap))
     }
+
+    pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
+        let (gidnumber, shell, sshkeys, groups) = match &self.unix_extn {
+            Some(ue) => {
+                let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
+                (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
+            }
+            None => {
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
+            }
+        };
+
+        let groups: Vec<UnixGroupToken> = groups.iter().map(|g| g.to_unixgrouptoken()).collect();
+
+        Ok(UnixUserToken {
+            name: self.name.clone(),
+            spn: self.spn.clone(),
+            displayname: self.displayname.clone(),
+            gidnumber,
+            uuid: self.uuid,
+            shell: shell.clone(),
+            groups,
+            sshkeys,
+            valid: self.is_within_valid_time(ct),
+        })
+    }
 }
 
 // Need to also add a "to UserAuthToken" ...
@@ -827,7 +856,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // Delete the attribute with uuid.
         let modlist = ModifyList::new_list(vec![Modify::Removed(
-            Attribute::UserAuthTokenSession.into(),
+            Attribute::UserAuthTokenSession,
             PartialValue::Refer(dte.token_id),
         )]);
 
@@ -881,14 +910,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let prev_classes: BTreeSet<_> = account_entry
             .get_ava_as_iutf8_iter(Attribute::Class)
             .ok_or_else(|| {
-                admin_error!(
+                error!(
                     "Invalid entry, {} attribute is not present or not iutf8",
-                    Attribute::Class.as_ref()
-                );
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
                     Attribute::Class
-                ))
+                );
+                OperationError::MissingAttribute(Attribute::Class)
             })?
             .collect();
 
@@ -916,7 +942,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
         // add person
         modlist.push_mod(Modify::Present(
-            Attribute::Class.into(),
+            Attribute::Class,
             EntryClass::Person.to_value(),
         ));
         // purge the other attrs that are SA only.
@@ -1076,8 +1102,8 @@ mod tests {
                 PartialValue::new_iname("testaccount")
             )),
             ModifyList::new_list(vec![
-                Modify::Present(Attribute::Class.into(), EntryClass::PosixAccount.into()),
-                Modify::Present(Attribute::GidNumber.into(), Value::new_uint32(2001)),
+                Modify::Present(Attribute::Class, EntryClass::PosixAccount.into()),
+                Modify::Present(Attribute::GidNumber, Value::new_uint32(2001)),
             ]),
         );
         assert!(idms_prox_write.qs_write.modify(&me_posix).is_ok());

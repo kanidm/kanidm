@@ -73,8 +73,10 @@ impl Modify for SecurityAddon {
         super::v1_oauth2::oauth2_id_claimmap_join_post,
         super::v1_oauth2::oauth2_id_claimmap_post,
         super::v1_oauth2::oauth2_id_claimmap_delete,
+
         super::v1_scim::scim_sync_post,
         super::v1_scim::scim_sync_get,
+        super::v1_scim::scim_entry_id_get,
 
         super::v1::schema_get,
         super::v1::whoami,
@@ -163,6 +165,9 @@ impl Modify for SecurityAddon {
         super::v1::domain_attr_get,
         super::v1::domain_attr_put,
         super::v1::domain_attr_delete,
+        super::v1_domain::image_post,
+        super::v1_domain::image_delete,
+
         super::v1::group_id_unix_token_get,
         super::v1::group_id_unix_post,
         super::v1::group_get,
@@ -203,15 +208,17 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
+            // kanidm_proto::attribute::Attribute,
+
+
             scim_v1::ScimSyncState,
             scim_v1::ScimSyncRequest,
             scim_v1::ScimSyncRetentionMode,
-            scim_v1::ScimEntryGeneric,
+            scim_v1::ScimEntry,
             scim_v1::ScimValue,
             scim_v1::ScimMeta,
             scim_v1::ScimAttr,
-            // TODO: can't add Entry/ProtoEntry to schema as this was only recently supported utoipa v3.5.0 doesn't support it - ref <https://github.com/juhaku/utoipa/pull/756/files>
-            // v1::Entry,
+
             internal::ApiToken,
             internal::ApiTokenPurpose,
             internal::BackupCodesView,
@@ -271,8 +278,7 @@ impl Modify for SecurityAddon {
             internal::IdentifyUserRequest,
             // terrible workaround for other things
             response_schema::CreationChallengeResponse,
-            // terrible workaround for other things
-            response_schema::ProtoEntry,
+
             // terrible workaround for other things
             response_schema::PublicKeyCredential,
             // terrible workaround for other things
@@ -285,6 +291,8 @@ impl Modify for SecurityAddon {
             response_schema::Result,
             // terrible workaround for other things
             response_schema::ScimEntry,
+            //  workaround for the fact that BTreeSet can't be represented in JSON
+            response_schema::ProtoEntry,
             // terrible workaround for other things
             response_schema::Jwk,
             response_schema::ScimComplexAttr,

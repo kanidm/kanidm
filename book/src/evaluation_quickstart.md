@@ -32,10 +32,10 @@ First we create a docker volume to store the data, then we start the container.
 ```bash
 docker volume create kanidmd
 docker create --name kanidmd \
-  -p 443:8443 \
-  -p 636:3636 \
+  -p '443:8443' \
+  -p '636:3636' \
   -v kanidmd:/data \
-  docker.io/kanidm/kanidm/server:latest
+  docker.io/kanidm/server:latest
 ```
 
 ## Copy the configuration to the container

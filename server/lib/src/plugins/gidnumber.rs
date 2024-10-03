@@ -86,7 +86,7 @@ fn apply_gidnumber<T: Clone>(
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
-        e.set_ava(Attribute::GidNumber, once(gid_v));
+        e.set_ava(&Attribute::GidNumber, once(gid_v));
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
         if domain_version <= DOMAIN_LEVEL_6 {

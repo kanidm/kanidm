@@ -76,7 +76,7 @@ pub struct SearchEvent {
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
-    pub attrs: Option<BTreeSet<AttrString>>,
+    pub attrs: Option<BTreeSet<Attribute>>,
 }
 
 impl SearchEvent {
@@ -108,7 +108,7 @@ impl SearchEvent {
         attrs: Option<&[String]>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<AttrString>> = attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<Attribute>> = attrs.map(|vs| {
             vs.iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
@@ -141,9 +141,13 @@ impl SearchEvent {
         attrs: Option<&[String]>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<AttrString>> = attrs.map(|vs| {
+        let r_attrs: Option<BTreeSet<Attribute>> = attrs.map(|vs| {
             vs.iter()
-                .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
+                .filter_map(|a| {
+                    qs.get_schema()
+                        .normalise_attr_if_exists(a.as_str())
+                        .map(|a_str| Attribute::from(a_str.as_str()))
+                })
                 .collect()
         });
 
@@ -199,20 +203,6 @@ impl SearchEvent {
             filter_orig,
             attrs: None,
         })
-    }
-
-    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
-        // Just impersonate the account with no filter changes.
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        SearchEvent {
-            ident: Identity::from_impersonate_entry_readonly(Arc::new(ei.into_sealed_committed())),
-            filter: filter.clone().into_valid(),
-            filter_orig: filter.into_valid(),
-            attrs: None,
-        }
     }
 
     /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
@@ -293,7 +283,7 @@ impl SearchEvent {
         qs: &mut QueryServerReadTransaction,
         ident: Identity,
         lf: &LdapFilter,
-        attrs: Option<BTreeSet<AttrString>>,
+        attrs: Option<BTreeSet<Attribute>>,
     ) -> Result<Self, OperationError> {
         // Kanidm Filter from LdapFilter
         let f = Filter::from_ldap_ro(&ident, lf, qs)?;
@@ -365,17 +355,6 @@ impl CreateEvent {
         match rentries {
             Ok(entries) => Ok(CreateEvent { ident, entries }),
             Err(e) => Err(e),
-        }
-    }
-
-    /// ⚠️  - Use an unsafe entry impersonation method.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        CreateEvent {
-            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
-            entries,
         }
     }
 
@@ -492,18 +471,6 @@ impl DeleteEvent {
     pub fn new_impersonate_identity(ident: Identity, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
             ident,
-            filter: filter.clone().into_valid(),
-            filter_orig: filter.into_valid(),
-        }
-    }
-
-    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
-    pub fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        DeleteEvent {
-            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }

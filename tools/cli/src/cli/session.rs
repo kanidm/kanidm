@@ -1,4 +1,4 @@
-use crate::common::OpType;
+use crate::common::{OpType, ToClientError};
 use std::cmp::Reverse;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
@@ -569,9 +569,7 @@ impl ReauthOpt {
         self.copt.debug
     }
 
-    pub async fn exec(&self) {
-        let client = self.copt.to_client(OpType::Read).await;
-
+    pub(crate) async fn inner(&self, client: KanidmClient) {
         let instance_name = &self.copt.instance;
 
         let allowed = client.reauth_begin().await.unwrap_or_else(|e| {
@@ -580,6 +578,12 @@ impl ReauthOpt {
         });
 
         process_auth_state(allowed, client, &None, instance_name).await;
+    }
+
+    pub async fn exec(&self) {
+        let client = self.copt.to_client(OpType::Read).await;
+        // This is to break a recursion loop in re-auth with to_client
+        self.inner(client).await
     }
 }
 
@@ -626,7 +630,18 @@ impl LogoutOpt {
                 }
             }
         } else {
-            let client = self.copt.to_client(OpType::Read).await;
+            let client = match self.copt.try_to_client(OpType::Read).await {
+                Ok(c) => c,
+                Err(ToClientError::NeedLogin(_)) => {
+                    // There are no session tokens, so return a success.
+                    std::process::exit(0);
+                }
+                Err(ToClientError::NeedReauth(_, _)) | Err(ToClientError::Other) => {
+                    // This can only occur in bad cases, so fail.
+                    std::process::exit(1);
+                }
+            };
+
             let token = match client.get_token().await {
                 Some(t) => t,
                 None => {

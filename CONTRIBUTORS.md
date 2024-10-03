@@ -41,6 +41,9 @@
 - Anton Loukianov (antonl)
 - fossdd
 - Wei Jian Gan (weijiangan)
+- adamcstephens
+- Chris Olstrom (colstrom)
+- Christopher-Robin (cebbinghaus)
 
 ## Acknowledgements
 

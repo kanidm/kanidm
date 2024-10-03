@@ -1,9 +1,10 @@
-""" Kanidm python module """
+"""Kanidm python module"""
 
 from datetime import datetime
 from functools import lru_cache
 import json as json_lib  # because we're taking a field "json" at various points
 from logging import Logger, getLogger
+import logging
 import os
 from pathlib import Path
 import platform
@@ -54,9 +55,7 @@ class Endpoints:
 
 
 XDG_CACHE_HOME = (
-    Path(os.getenv("LOCALAPPDATA", "~/AppData/Local")) / "cache"
-    if platform.system() == "Windows"
-    else Path(os.getenv("XDG_CACHE_HOME", "~/.cache"))
+    Path(os.getenv("LOCALAPPDATA", "~/AppData/Local")) / "cache" if platform.system() == "Windows" else Path(os.getenv("XDG_CACHE_HOME", "~/.cache"))
 )
 
 TOKEN_PATH = XDG_CACHE_HOME / "kanidm_tokens"
@@ -80,6 +79,7 @@ class KanidmClient:
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(
         self,
+        instance_name: Optional[str] = None,
         config: Optional[KanidmClientConfig] = None,
         config_file: Optional[Union[Path, str]] = None,
         uri: Optional[str] = None,
@@ -93,9 +93,9 @@ class KanidmClient:
         """Constructor for KanidmClient"""
 
         self.logger = logger or getLogger(__name__)
+        self.instance_name = instance_name # TODO: use this in loaders etc
         if config is not None:
             self.config = config
-
         else:
             self.config = KanidmClientConfig.model_validate(
                 {
@@ -118,28 +118,31 @@ class KanidmClient:
         if self.config.uri is None:
             raise ValueError("Please initialize this with a server URI")
 
-        self._ssl: Optional[Union[bool, ssl.SSLContext]] = None
+        self._ssl_context: Optional[Union[bool, ssl.SSLContext]] = None
         self._configure_ssl()
 
     def _configure_ssl(self) -> None:
         """Sets up SSL configuration for the client"""
-        if self.config.verify_certificate is False:
-            self._ssl = False
+        if False in [self.config.verify_certificate, self.config.verify_hostnames ]:
+            logging.debug("Setting up SSL context with no verification")
+            self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+            self._ssl_context.hostname_checks_common_name = False
+            self._ssl_context.check_hostname = False
+            self._ssl_context.verify_mode = ssl.CERT_NONE
         else:
-            if (
-                self.config.ca_path is not None
-                and not Path(self.config.ca_path).expanduser().resolve().exists()
-            ):
-                raise FileNotFoundError(f"CA Path not found: {self.config.ca_path}")
-            self.logger.debug(
-                "Setting up SSL context with CA path: %s", self.config.ca_path
-            )
-            self._ssl = ssl.create_default_context(cafile=self.config.ca_path)
-        if self._ssl is not False:
-            # ignoring this for typing because mypy is being weird
-            # ssl.SSLContext.check_hostname is totally a thing
-            # https://docs.python.org/3/library/ssl.html#ssl.SSLContext.check_hostname
-            self._ssl.check_hostname = self.config.verify_hostnames  # type: ignore
+            if self.config.ca_path is not None:
+                if not Path(self.config.ca_path).expanduser().resolve().exists():
+                    raise FileNotFoundError(f"CA Path not found: {self.config.ca_path}")
+                else:
+                    self.logger.debug("Setting up SSL context with CA path=%s", self.config.ca_path)
+                    self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,cafile=self.config.ca_path)
+            else:
+
+                logging.debug("Setting up default SSL context")
+                self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+
+            logging.debug("SSL context verify_hostnames=%s", self.config.verify_hostnames)
+            self._ssl_context.check_hostname = self.config.verify_hostnames
 
     def parse_config_data(
         self,
@@ -211,14 +214,15 @@ class KanidmClient:
         response_headers: Dict[str, Any] = {}
         response_status: int = -1
         async with aiohttp.client.ClientSession() as session:
+            ssl_context = self._ssl_context if self._ssl_context is not None else False
             async with session.request(
                 method=method,
                 url=self.get_path_uri(path),
                 headers=headers,
-                timeout=timeout,
+                timeout=aiohttp.client.ClientTimeout(timeout),
                 json=json,
                 params=params,
-                ssl=self._ssl,
+                ssl=ssl_context,
             ) as request:
                 content = await request.content.read()
                 if len(content) > 0:
@@ -227,9 +231,7 @@ class KanidmClient:
                         response_headers = dict(request.headers)
                         response_status = request.status
                     except json_lib.JSONDecodeError as json_error:
-                        self.logger.error(
-                            "Failed to JSON Decode Response: %s", json_error
-                        )
+                        self.logger.error("Failed to JSON Decode Response: %s", json_error)
                         self.logger.error("Response data: %s", content)
                         response_json = None
                 else:
@@ -241,9 +243,7 @@ class KanidmClient:
                 "status_code": response_status,
             }
             self.logger.debug(json_lib.dumps(response_input, default=str, indent=4))
-            response: ClientResponse[Any] = ClientResponse.model_validate(
-                response_input
-            )
+            response: ClientResponse[Any] = ClientResponse.model_validate(response_input)
             return response
 
     async def call_delete(
@@ -254,9 +254,7 @@ class KanidmClient:
         timeout: Optional[int] = None,
     ) -> ClientResponse[Any]:
         """does a DELETE call to the server"""
-        return await self._call(
-            method="DELETE", path=path, headers=headers, json=json, timeout=timeout
-        )
+        return await self._call(method="DELETE", path=path, headers=headers, json=json, timeout=timeout)
 
     async def call_get(
         self,
@@ -277,9 +275,7 @@ class KanidmClient:
     ) -> ClientResponse[Any]:
         """does a POST call to the server"""
 
-        return await self._call(
-            method="POST", path=path, headers=headers, json=json, timeout=timeout
-        )
+        return await self._call(method="POST", path=path, headers=headers, json=json, timeout=timeout)
 
     async def call_patch(
         self,
@@ -290,9 +286,7 @@ class KanidmClient:
     ) -> ClientResponse[Any]:
         """does a PATCH call to the server"""
 
-        return await self._call(
-            method="PATCH", path=path, headers=headers, json=json, timeout=timeout
-        )
+        return await self._call(method="PATCH", path=path, headers=headers, json=json, timeout=timeout)
 
     async def call_put(
         self,
@@ -303,13 +297,9 @@ class KanidmClient:
     ) -> ClientResponse[Any]:
         """does a PUT call to the server"""
 
-        return await self._call(
-            method="PUT", path=path, headers=headers, json=json, timeout=timeout
-        )
+        return await self._call(method="PUT", path=path, headers=headers, json=json, timeout=timeout)
 
-    async def auth_init(
-        self, username: str, update_internal_auth_token: bool = False
-    ) -> AuthInitResponse:
+    async def auth_init(self, username: str, update_internal_auth_token: bool = False) -> AuthInitResponse:
         """init step, starts the auth session, sets the class-local session ID"""
         init_auth = {"step": {"init": username}}
 
@@ -330,9 +320,7 @@ class KanidmClient:
         if K_AUTH_SESSION_ID not in response.headers:
             self.logger.debug("response.content: %s", response.content)
             self.logger.debug("response.headers: %s", response.headers)
-            raise ValueError(
-                f"Missing {K_AUTH_SESSION_ID} header in init auth response: {response.headers}"
-            )
+            raise ValueError(f"Missing {K_AUTH_SESSION_ID} header in init auth response: {response.headers}")
         else:
             self.config.auth_token = response.headers[K_AUTH_SESSION_ID]
 
@@ -398,17 +386,13 @@ class KanidmClient:
         if username is None and password is None:
             if self.config.username is None or self.config.password is None:
                 # pylint: disable=line-too-long
-                raise ValueError(
-                    "Need username/password to be in caller or class settings before calling authenticate_password"
-                )
+                raise ValueError("Need username/password to be in caller or class settings before calling authenticate_password")
             username = self.config.username
             password = self.config.password
         if username is None or password is None:
             raise ValueError("Username and Password need to be set somewhere!")
 
-        auth_init: AuthInitResponse = await self.auth_init(
-            username, update_internal_auth_token=update_internal_auth_token
-        )
+        auth_init: AuthInitResponse = await self.auth_init(username, update_internal_auth_token=update_internal_auth_token)
 
         if auth_init.response is None:
             raise NotImplementedError("This should throw a really cool response")
@@ -440,9 +424,7 @@ class KanidmClient:
         if password is None:
             password = self.config.password
         if password is None:
-            raise ValueError(
-                "Password has to be passed to auth_step_password or in self.password!"
-            )
+            raise ValueError("Password has to be passed to auth_step_password or in self.password!")
 
         if sessionid is not None:
             headers = {K_AUTH_SESSION_ID: sessionid}
@@ -450,9 +432,7 @@ class KanidmClient:
             headers = {K_AUTH_SESSION_ID: self.config.auth_token}
 
         cred_auth = {"step": {"cred": {"password": password}}}
-        response = await self.call_post(
-            path=Endpoints.AUTH, json=cred_auth, headers=headers
-        )
+        response = await self.call_post(path=Endpoints.AUTH, json=cred_auth, headers=headers)
 
         if response.status_code != 200:
             # TODO: write test coverage auth_step_password raises AuthCredFailed
@@ -524,9 +504,7 @@ class KanidmClient:
         path = f"/v1/account/{username}/_radius/_token"
         response = await self.call_get(path)
         if response.status_code == 404:
-            raise NoMatchingEntries(
-                f"No user found: '{username}' {response.headers['x-kanidm-opid']}"
-            )
+            raise NoMatchingEntries(f"No user found: '{username}' {response.headers['x-kanidm-opid']}")
         return response
 
     async def oauth2_rs_list(self) -> List[OAuth2Rs]:
@@ -535,9 +513,7 @@ class KanidmClient:
         if response.data is None:
             return []
         if response.status_code != 200:
-            raise ValueError(
-                f"Failed to get oauth2 resource servers: {response.content}"
-            )
+            raise ValueError(f"Failed to get oauth2 resource servers: {response.content}")
         oauth2_rs_list = Oauth2RsList.model_validate(response.data)
         return [oauth2_rs.as_oauth2_rs for oauth2_rs in oauth2_rs_list.root]
 
@@ -546,13 +522,9 @@ class KanidmClient:
         endpoint = f"{Endpoints.OAUTH2}/{rs_name}"
         response: ClientResponse[IOauth2Rs] = await self.call_get(endpoint)
         if response.status_code != 200:
-            raise ValueError(
-                f"Failed to get oauth2 resource server: {response.content}"
-            )
+            raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
         if response.data is None:
-            raise ValueError(
-                f"Failed to get oauth2 resource server: {response.content}"
-            )
+            raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
         return RawOAuth2Rs(**response.data).as_oauth2_rs
 
     async def oauth2_rs_secret_get(self, rs_name: str) -> str:
@@ -560,9 +532,7 @@ class KanidmClient:
         endpoint = f"{Endpoints.OAUTH2}/{rs_name}/_basic_secret"
         response: ClientResponse[str] = await self.call_get(endpoint)
         if response.status_code != 200:
-            raise ValueError(
-                f"Failed to get oauth2 resource server secret: {response.content}"
-            )
+            raise ValueError(f"Failed to get oauth2 resource server secret: {response.content}")
         return response.data or ""
 
     async def oauth2_rs_delete(self, rs_name: str) -> ClientResponse[None]:
@@ -571,9 +541,7 @@ class KanidmClient:
 
         return await self.call_delete(endpoint)
 
-    async def oauth2_rs_basic_create(
-        self, rs_name: str, displayname: str, origin: str
-    ) -> ClientResponse[None]:
+    async def oauth2_rs_basic_create(self, rs_name: str, displayname: str, origin: str) -> ClientResponse[None]:
         """Create a basic OAuth2 RS"""
 
         self._validate_is_valid_origin_url(origin)
@@ -593,9 +561,7 @@ class KanidmClient:
         """Check if it's HTTPS and a valid URL as far as we can tell"""
         parsed_url = yarl.URL(url)
         if parsed_url.scheme not in ["http", "https"]:
-            raise ValueError(
-                f"Invalid scheme: {parsed_url.scheme} for origin URL: {url}"
-            )
+            raise ValueError(f"Invalid scheme: {parsed_url.scheme} for origin URL: {url}")
         if parsed_url.host is None:
             raise ValueError(f"Empty/invalid host for origin URL: {url}")
         if parsed_url.user is not None:
@@ -610,13 +576,8 @@ class KanidmClient:
             return []
         if response.status_code != 200:
             raise ValueError(f"Failed to get service accounts: {response.content}")
-        service_account_list = ServiceAccountList.model_validate(
-            json_lib.loads(response.content)
-        )
-        return [
-            service_account.as_service_account
-            for service_account in service_account_list.root
-        ]
+        service_account_list = ServiceAccountList.model_validate(json_lib.loads(response.content))
+        return [service_account.as_service_account for service_account in service_account_list.root]
 
     async def service_account_get(self, name: str) -> ServiceAccount:
         """Get a service account"""
@@ -628,9 +589,7 @@ class KanidmClient:
             raise ValueError(f"Failed to get service account: {response.content}")
         return RawServiceAccount(**response.data).as_service_account
 
-    async def service_account_create(
-        self, name: str, displayname: str
-    ) -> ClientResponse[None]:
+    async def service_account_create(self, name: str, displayname: str) -> ClientResponse[None]:
         """Create a service account"""
         endpoint = f"{Endpoints.SERVICE_ACCOUNT}"
         payload = {
@@ -661,25 +620,17 @@ class KanidmClient:
             json=payload,
         )
 
-    async def service_account_delete_ssh_pubkey(
-        self, id: str, tag: str
-    ) -> ClientResponse[None]:
-        return await self.call_delete(
-            f"{Endpoints.SERVICE_ACCOUNT}/{id}/_ssh_pubkeys/{tag}"
-        )
+    async def service_account_delete_ssh_pubkey(self, id: str, tag: str) -> ClientResponse[None]:
+        return await self.call_delete(f"{Endpoints.SERVICE_ACCOUNT}/{id}/_ssh_pubkeys/{tag}")
 
-    async def service_account_generate_api_token(
-        self, account_id: str, label: str, expiry: str, read_write: bool = False
-    ) -> ClientResponse[None]:
+    async def service_account_generate_api_token(self, account_id: str, label: str, expiry: str, read_write: bool = False) -> ClientResponse[None]:
         """Create a service account API token, expiry needs to be in RFC3339 format."""
 
         # parse the expiry as rfc3339
         try:
             datetime.strptime(expiry, "%Y-%m-%dT%H:%M:%SZ")
         except Exception as error:
-            raise ValueError(
-                f"Failed to parse expiry from {expiry} (needs to be RFC3339 format): {error}"
-            )
+            raise ValueError(f"Failed to parse expiry from {expiry} (needs to be RFC3339 format): {error}")
         payload = {
             "label": label,
             "expiry": expiry,
@@ -739,23 +690,17 @@ class KanidmClient:
 
         return await self.call_delete(endpoint)
 
-    async def group_set_members(
-        self, id: str, members: List[str]
-    ) -> ClientResponse[None]:
+    async def group_set_members(self, id: str, members: List[str]) -> ClientResponse[None]:
         """Set group member list"""
         endpoint = f"{Endpoints.GROUP}/{id}/_attr/member"
         return await self.call_put(endpoint, json=members)
 
-    async def group_add_members(
-        self, id: str, members: List[str]
-    ) -> ClientResponse[None]:
+    async def group_add_members(self, id: str, members: List[str]) -> ClientResponse[None]:
         """Add members to a group"""
         endpoint = f"{Endpoints.GROUP}/{id}/_attr/member"
         return await self.call_post(endpoint, json=members)
 
-    async def group_delete_members(
-        self, id: str, members: List[str]
-    ) -> ClientResponse[None]:
+    async def group_delete_members(self, id: str, members: List[str]) -> ClientResponse[None]:
         """Remove members from a group"""
         endpoint = f"{Endpoints.GROUP}/{id}/_attr/member"
         return await self.call_delete(endpoint, json=members)
@@ -780,9 +725,7 @@ class KanidmClient:
             raise ValueError(f"Failed to get person: {response.content}")
         return RawPerson(**response.data).as_person
 
-    async def person_account_create(
-        self, name: str, displayname: str
-    ) -> ClientResponse[None]:
+    async def person_account_create(self, name: str, displayname: str) -> ClientResponse[None]:
         """Create a person account"""
         payload = {
             "attrs": {
@@ -822,9 +765,7 @@ class KanidmClient:
         endpoint = f"{Endpoints.PERSON}/{id}"
         return await self.call_delete(endpoint)
 
-    async def person_account_post_ssh_key(
-        self, id: str, tag: str, pubkey: str
-    ) -> ClientResponse[None]:
+    async def person_account_post_ssh_key(self, id: str, tag: str, pubkey: str) -> ClientResponse[None]:
         """Create an SSH key for a user"""
         endpoint = f"{Endpoints.PERSON}/{id}/_ssh_pubkeys"
 
@@ -832,9 +773,7 @@ class KanidmClient:
 
         return await self.call_post(endpoint, json=payload)
 
-    async def person_account_delete_ssh_key(
-        self, id: str, tag: str
-    ) -> ClientResponse[None]:
+    async def person_account_delete_ssh_key(self, id: str, tag: str) -> ClientResponse[None]:
         """Delete an SSH key for a user"""
         endpoint = f"{Endpoints.PERSON}/{id}/_ssh_pubkeys/{tag}"
 
@@ -856,17 +795,13 @@ class KanidmClient:
         payload = [expiry]
         return await self.call_put(endpoint, json=payload)
 
-    async def group_account_policy_password_minimum_length_set(
-        self, id: str, minimum_length: int
-    ) -> ClientResponse[None]:
+    async def group_account_policy_password_minimum_length_set(self, id: str, minimum_length: int) -> ClientResponse[None]:
         """set the account policy password minimum length for a group"""
         endpoint = f"{Endpoints.GROUP}/{id}/_attr/auth_password_minimum_length"
         payload = [minimum_length]
         return await self.call_put(endpoint, json=payload)
 
-    async def group_account_policy_privilege_expiry_set(
-        self, id: str, expiry: int
-    ) -> ClientResponse[None]:
+    async def group_account_policy_privilege_expiry_set(self, id: str, expiry: int) -> ClientResponse[None]:
         """set the account policy privilege expiry for a group"""
         endpoint = f"{Endpoints.GROUP}/{id}/_attr/privilege_expiry"
         payload = [expiry]
@@ -880,40 +815,28 @@ class KanidmClient:
             return []
         return badlist
 
-    async def system_password_badlist_append(
-        self, new_passwords: List[str]
-    ) -> ClientResponse[None]:
+    async def system_password_badlist_append(self, new_passwords: List[str]) -> ClientResponse[None]:
         """Add new items to the password badlist"""
 
-        return await self.call_post(
-            "/v1/system/_attr/badlist_password", json=new_passwords
-        )
+        return await self.call_post("/v1/system/_attr/badlist_password", json=new_passwords)
 
-    async def system_password_badlist_remove(
-        self, items: List[str]
-    ) -> ClientResponse[None]:
+    async def system_password_badlist_remove(self, items: List[str]) -> ClientResponse[None]:
         """Remove items from the password badlist"""
 
         return await self.call_delete("/v1/system/_attr/badlist_password", json=items)
 
     async def system_denied_names_get(self) -> List[str]:
         """Get the denied names list"""
-        response: Optional[List[str]] = (
-            await self.call_get("/v1/system/_attr/denied_name")
-        ).data
+        response: Optional[List[str]] = (await self.call_get("/v1/system/_attr/denied_name")).data
         if response is None:
             return []
         return response
 
-    async def system_denied_names_append(
-        self, names: List[str]
-    ) -> ClientResponse[None]:
+    async def system_denied_names_append(self, names: List[str]) -> ClientResponse[None]:
         """Add items to the denied names list"""
         return await self.call_post("/v1/system/_attr/denied_name", json=names)
 
-    async def system_denied_names_remove(
-        self, names: List[str]
-    ) -> ClientResponse[None]:
+    async def system_denied_names_remove(self, names: List[str]) -> ClientResponse[None]:
         """Remove items from the denied names list"""
         return await self.call_delete("/v1/system/_attr/denied_name", json=names)
 
@@ -978,9 +901,7 @@ class KanidmClient:
 
         return await self.call_patch(endpoint, json=payload)
 
-    async def oauth2_rs_update_scope_map(
-        self, id: str, group: str, scopes: List[str]
-    ) -> ClientResponse[None]:
+    async def oauth2_rs_update_scope_map(self, id: str, group: str, scopes: List[str]) -> ClientResponse[None]:
         """Update an OAuth2 scope map"""
 
         endpoint = f"{Endpoints.OAUTH2}/{id}/_scopemap/{group}"
@@ -995,9 +916,7 @@ class KanidmClient:
         """Delete an OAuth2 scope map"""
         return await self.call_delete(f"{Endpoints.OAUTH2}/{id}/_scopemap/{group}")
 
-    async def oauth2_rs_update_sup_scope_map(
-        self, id: str, group: str, scopes: List[str]
-    ) -> ClientResponse[None]:
+    async def oauth2_rs_update_sup_scope_map(self, id: str, group: str, scopes: List[str]) -> ClientResponse[None]:
         """Update an OAuth2 supplemental scope map"""
 
         endpoint = f"{Endpoints.OAUTH2}/{id}/_sup_scopemap/{group}"

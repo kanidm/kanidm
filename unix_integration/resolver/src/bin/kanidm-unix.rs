@@ -20,7 +20,7 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
+    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
 // use std::io;
 use std::path::PathBuf;
@@ -63,7 +63,14 @@ async fn main() -> ExitCode {
 
             info!("Sending request for user {}", &account_id);
 
-            let mut req = ClientRequest::PamAuthenticateInit(account_id.clone());
+            let mut req = ClientRequest::PamAuthenticateInit {
+                account_id: account_id.clone(),
+                info: PamServiceInfo {
+                    service: "kanidm-unix".to_string(),
+                    tty: "/dev/null".to_string(),
+                    rhost: "localhost".to_string(),
+                },
+            };
             loop {
                 match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
                     Ok(r) => match r {

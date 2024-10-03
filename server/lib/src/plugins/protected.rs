@@ -34,6 +34,7 @@ lazy_static! {
         Attribute::BadlistPassword,
         Attribute::DeniedName,
         Attribute::DomainDisplayName,
+        Attribute::Image,
         // modification of account policy values for dyngroup.
         Attribute::AuthSessionExpiry,
         Attribute::PrivilegeExpiry,
@@ -148,9 +149,8 @@ impl Plugin for Protected {
                 Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                 Modify::Assert(_, _) => None,
             };
-            if let Some(a) = a {
-                let attr: Attribute = a.try_into()?;
-                match ALLOWED_ATTRS.contains(&attr) {
+            if let Some(attr) = a {
+                match ALLOWED_ATTRS.contains(attr) {
                     true => Ok(()),
                     false => {
                         trace!("If you're getting this, you need to modify the ALLOWED_ATTRS list");
@@ -228,9 +228,8 @@ impl Plugin for Protected {
                     Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => Some(a),
                     Modify::Assert(_, _) => None,
                 };
-                if let Some(a) = a {
-                    let attr: Attribute = a.try_into()?;
-                    match ALLOWED_ATTRS.contains(&attr) {
+                if let Some(attr) = a {
+                    match ALLOWED_ATTRS.contains(attr) {
                         true => Ok(()),
                         false => {
 
@@ -324,9 +323,9 @@ mod tests {
                 Attribute::AcpTargetScope,
                 Value::new_json_filter_s("{\"pres\":\"class\"}").expect("filter")
             ),
-            (Attribute::AcpSearchAttr, Attribute::Name.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Class.to_value()),
-            (Attribute::AcpSearchAttr, Attribute::Uuid.to_value()),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Name)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Class)),
+            (Attribute::AcpSearchAttr, Value::from(Attribute::Uuid)),
             (Attribute::AcpSearchAttr, Value::new_iutf8("classname")),
             (
                 Attribute::AcpSearchAttr,
@@ -334,106 +333,124 @@ mod tests {
             ),
             (Attribute::AcpModifyClass, EntryClass::System.to_value()),
             (Attribute::AcpModifyClass, Value::new_iutf8("domain_info")),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Class.to_value()),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DisplayName.to_value()
-            ),
-            (Attribute::AcpModifyRemovedAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyRemovedAttr, Attribute::Must.to_value()),
-            (
-                Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainName.to_value()
+                Value::from(Attribute::Class)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainDisplayName.to_value()
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyRemovedAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Must)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainUuid.to_value()
+                Value::from(Attribute::DomainName)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::DomainSsid.to_value()
+                Value::from(Attribute::DomainDisplayName)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::DomainUuid)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DomainSsid)
             ),
             (
                 Attribute::AcpModifyRemovedAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::FernetPrivateKeyStr)
             ),
-            (Attribute::AcpModifyPresentAttr, Attribute::Class.to_value()),
             (
-                Attribute::AcpModifyPresentAttr,
-                Attribute::DisplayName.to_value()
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::Es256PrivateKeyDer)
             ),
-            (Attribute::AcpModifyPresentAttr, Attribute::May.to_value()),
-            (Attribute::AcpModifyPresentAttr, Attribute::Must.to_value()),
             (
-                Attribute::AcpModifyPresentAttr,
-                Attribute::DomainName.to_value()
+                Attribute::AcpModifyRemovedAttr,
+                Value::from(Attribute::PrivateCookieKey)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainDisplayName.to_value()
+                Value::from(Attribute::Class)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainUuid.to_value()
+                Value::from(Attribute::DisplayName)
+            ),
+            (Attribute::AcpModifyPresentAttr, Value::from(Attribute::May)),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Must)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::DomainSsid.to_value()
+                Value::from(Attribute::DomainName)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::DomainDisplayName)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DomainUuid)
             ),
             (
                 Attribute::AcpModifyPresentAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::DomainSsid)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::FernetPrivateKeyStr)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::Es256PrivateKeyDer)
+            ),
+            (
+                Attribute::AcpModifyPresentAttr,
+                Value::from(Attribute::PrivateCookieKey)
             ),
             (Attribute::AcpCreateClass, EntryClass::Object.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Account.to_value()),
             (Attribute::AcpCreateClass, EntryClass::Person.to_value()),
             (Attribute::AcpCreateClass, EntryClass::System.to_value()),
             (Attribute::AcpCreateClass, EntryClass::DomainInfo.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Name.to_value()),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Name)),
             (Attribute::AcpCreateAttr, EntryClass::Class.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::Description.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::DisplayName.to_value(),),
-            (Attribute::AcpCreateAttr, Attribute::DomainName.to_value(),),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::DomainDisplayName.to_value()
-            ),
-            (Attribute::AcpCreateAttr, Attribute::DomainUuid.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::DomainSsid.to_value()),
-            (Attribute::AcpCreateAttr, Attribute::Uuid.to_value()),
-            (
-                Attribute::AcpCreateAttr,
-                Attribute::FernetPrivateKeyStr.to_value()
+                Value::from(Attribute::Description),
             ),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::Es256PrivateKeyDer.to_value()
+                Value::from(Attribute::DisplayName),
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainName),),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::DomainDisplayName)
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainUuid)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::DomainSsid)),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Uuid)),
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::FernetPrivateKeyStr)
             ),
             (
                 Attribute::AcpCreateAttr,
-                Attribute::PrivateCookieKey.to_value()
+                Value::from(Attribute::Es256PrivateKeyDer)
             ),
-            (Attribute::AcpCreateAttr, Attribute::Version.to_value())
+            (
+                Attribute::AcpCreateAttr,
+                Value::from(Attribute::PrivateCookieKey)
+            ),
+            (Attribute::AcpCreateAttr, Value::from(Attribute::Version))
         );
         pub static ref PRELOAD: Vec<EntryInitNew> =
             vec![TEST_ACCOUNT.clone(), TEST_GROUP.clone(), ALLOW_ALL.clone()];
@@ -444,15 +461,15 @@ mod tests {
     #[test]
     fn test_pre_create_deny() {
         // Test creating with class: system is rejected.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let create = vec![e];
@@ -470,15 +487,15 @@ mod tests {
     #[test]
     fn test_pre_modify_system_deny() {
         // Test modify of class to a system is denied
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let mut preload = PRELOAD.clone();
@@ -502,15 +519,18 @@ mod tests {
     fn test_pre_modify_class_add_deny() {
         // Show that adding a system class is denied
         // TODO: replace this with a `SchemaClass` object
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["object", "classtype"],
-                "classname": ["testclass"],
-                "uuid": ["cfcae205-31c3-484b-8ced-667d1709c5e3"],
-                "description": ["Test Class"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::ClassType.to_value()),
+            (Attribute::ClassName, Value::new_iutf8("testclass")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!("66c68b2f-d02c-4243-8013-7946e40fe321"))
+            ),
+            (
+                Attribute::Description,
+                Value::Utf8("class test".to_string())
+            )
         );
         let mut preload = PRELOAD.clone();
         preload.push(e);
@@ -518,10 +538,13 @@ mod tests {
         run_modify_test!(
             Ok(()),
             preload,
-            filter!(f_eq(Attribute::ClassName, EntryClass::TestClass.into())),
+            filter!(f_eq(
+                Attribute::ClassName,
+                PartialValue::new_iutf8("testclass")
+            )),
             modlist!([
-                m_pres(Attribute::May, &Attribute::Name.to_value()),
-                m_pres(Attribute::Must, &Attribute::Name.to_value()),
+                m_pres(Attribute::May, &Value::from(Attribute::Name)),
+                m_pres(Attribute::Must, &Value::from(Attribute::Name)),
             ]),
             Some(E_TEST_ACCOUNT.clone()),
             |_| {},
@@ -532,15 +555,15 @@ mod tests {
     #[test]
     fn test_pre_delete_deny() {
         // Test deleting with class: system is rejected.
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["account", "person", "system"],
-                "name": ["testperson"],
-                "description": ["testperson"],
-                "displayname": ["testperson"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::System.to_value()),
+            (Attribute::Name, Value::new_iname("testperson")),
+            (
+                Attribute::DisplayName,
+                Value::Utf8("testperson".to_string())
+            )
         );
 
         let mut preload = PRELOAD.clone();
@@ -559,20 +582,19 @@ mod tests {
     fn test_modify_domain() {
         // Can edit *my* domain_ssid and domain_name
         // Show that adding a system class is denied
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_modify_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
 
         let mut preload = PRELOAD.clone();
@@ -598,22 +620,21 @@ mod tests {
     #[test]
     fn test_ext_create_domain() {
         // can not add a domain_info type - note the lack of class: system
-
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_ext_create_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
+
         let create = vec![e];
         let preload = PRELOAD.clone();
 
@@ -629,20 +650,19 @@ mod tests {
     #[test]
     fn test_delete_domain() {
         // On the real thing we have a class: system, but to prove the point ...
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["domain_info"],
-                "name": ["domain_example.net.au"],
-                "uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "domain_uuid": ["96fd1112-28bc-48ae-9dda-5acb4719aaba"],
-                "description": ["Demonstration of a remote domain's info being created for uuid generation in test_delete_domain"],
-                "domain_name": ["example.net.au"],
-                "domain_display_name": ["example.net.au"],
-                "domain_ssid": ["Example_Wifi"],
-                "version": ["1"]
-            }
-        }"#,
+        let e = entry_init!(
+            (Attribute::Class, EntryClass::DomainInfo.to_value()),
+            (Attribute::Name, Value::new_iname("domain_example.net.au")),
+            (Attribute::Uuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (
+                Attribute::Description,
+                Value::new_utf8s("Demonstration of a remote domain's info being created for uuid generation in test_modify_domain")
+            ),
+            (Attribute::DomainUuid, Value::Uuid(uuid::uuid!("96fd1112-28bc-48ae-9dda-5acb4719aaba"))),
+            (Attribute::DomainName, Value::new_iname("example.net.au")),
+            (Attribute::DomainDisplayName, Value::Utf8("example.net.au".to_string())),
+            (Attribute::DomainSsid, Value::Utf8("Example_Wifi".to_string())),
+            (Attribute::Version, Value::Uint32(1))
         );
 
         let mut preload = PRELOAD.clone();

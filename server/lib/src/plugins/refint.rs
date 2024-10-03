@@ -103,24 +103,9 @@ impl ReferentialIntegrity {
         let filt = filter_all!(FC::Or(
             uuids
                 .into_iter()
-                .flat_map(|u| ref_types.values().filter_map(move |r_type| {
-                    let value_attribute = r_type.name.to_string();
-                    // For everything that references the uuid's in the deleted set.
-                    let val: Result<Attribute, OperationError> = value_attribute.as_str().try_into();
-                    // error!("{:?}", val);
-                    let res = match val {
-                        Ok(val) => {
-                            let res = f_eq(val, PartialValue::Refer(u));
-                            Some(res)
-                        }
-                        Err(err) => {
-                            // we shouldn't be able to get here...
-                            admin_error!("post_delete invalid attribute specified - please log this as a bug! {:?}", err);
-                            None
-                        }
-                    };
-                    res
-                }))
+                .flat_map(|u| ref_types
+                    .values()
+                    .map(move |r_type| { f_eq(r_type.name.clone(), PartialValue::Refer(u)) }))
                 .collect(),
         ));
 
@@ -130,8 +115,7 @@ impl ReferentialIntegrity {
 
         for (_, post) in work_set.iter_mut() {
             for schema_attribute in ref_types.values() {
-                let attribute = (&schema_attribute.name).try_into()?;
-                post.remove_avas(attribute, &removed_ids);
+                post.remove_avas(&schema_attribute.name, &removed_ids);
             }
         }
 
@@ -324,19 +308,8 @@ impl Plugin for ReferentialIntegrity {
         for c in &all_cand {
             // For all reference in each cand.
             for rtype in ref_types.values() {
-                let attr: Attribute = match (&rtype.name).try_into() {
-                    Ok(val) => val,
-                    Err(err) => {
-                        // we shouldn't be able to get here...
-                        admin_error!("verify referential integrity invalid attribute {} specified - please log this as a bug! {:?}", &rtype.name, err);
-                        res.push(Err(ConsistencyError::InvalidAttributeType(
-                            rtype.name.to_string(),
-                        )));
-                        continue;
-                    }
-                };
                 // If the attribute is present
-                if let Some(vs) = c.get_ava_set(attr) {
+                if let Some(vs) = c.get_ava_set(&rtype.name) {
                     // For each value in the set.
                     match vs.as_ref_uuid_iter() {
                         Some(uuid_iter) => {
@@ -359,7 +332,7 @@ impl Plugin for ReferentialIntegrity {
 }
 
 fn update_reference_set<'a, I>(
-    ref_types: &HashMap<AttrString, SchemaAttribute>,
+    ref_types: &HashMap<Attribute, SchemaAttribute>,
     entry_iter: I,
     reference_set: &mut BTreeSet<Uuid>,
 ) -> Result<(), OperationError>
@@ -374,23 +347,14 @@ where
         // For all reference types that exist in the schema.
         let cand_ref_valuesets = ref_types.values().filter_map(|rtype| {
             // If the entry is a dyn-group, skip dyn member.
-            let skip_mb = dyn_group && rtype.name == Attribute::DynMember.as_ref();
+            let skip_mb = dyn_group && rtype.name == Attribute::DynMember;
             // MemberOf is always recalculated, so it can be skipped
-            let skip_mo = rtype.name == Attribute::MemberOf.as_ref();
+            let skip_mo = rtype.name == Attribute::MemberOf;
 
             if skip_mb || skip_mo {
                 None
             } else {
-                trace!(rtype_name = ?rtype.name, "examining");
-                cand.get_ava_set(
-                    (&rtype.name)
-                        .try_into()
-                        .map_err(|e| {
-                            admin_error!(?e, "invalid attribute type {}", &rtype.name);
-                            None::<Attribute>
-                        })
-                        .ok()?,
-                )
+                cand.get_ava_set(&rtype.name)
             }
         });
 
@@ -399,8 +363,8 @@ where
                 reference_set.extend(uuid_iter);
                 Ok(())
             } else {
-                admin_error!(?vs, "reference value could not convert to reference uuid.");
-                admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                error!(?vs, "reference value could not convert to reference uuid.");
+                error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                 Err(OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string(),
                 ))
@@ -558,19 +522,16 @@ mod tests {
     fn test_create_uuid_reference_self() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::with_capacity(0);
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup"],
-                "description": ["testgroup"],
-                "uuid": ["8cef42bc-2cac-43e4-96b3-8f54561885ca"],
-                "member": ["8cef42bc-2cac-43e4-96b3-8f54561885ca"]
-            }
-        }"#,
+        let id = uuid::uuid!("8cef42bc-2cac-43e4-96b3-8f54561885ca");
+
+        let e_group = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(id)),
+            (Attribute::Member, Value::Refer(id))
         );
 
-        let create = vec![e];
+        let create = vec![e_group];
 
         run_create_test!(
             Ok(()),
@@ -592,25 +553,18 @@ mod tests {
     // Modify references a different object - allow
     #[test]
     fn test_modify_uuid_reference_exist() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b"))
         );
 
         let preload = vec![ea, eb];
@@ -623,7 +577,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -635,14 +589,9 @@ mod tests {
     // Modify reference something that doesn't exist - must be rejected
     #[test]
     fn test_modify_uuid_reference_not_exist() {
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b"))
         );
 
         let preload = vec![eb];
@@ -657,7 +606,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -670,25 +619,18 @@ mod tests {
     // we fail.
     #[test]
     fn test_modify_uuid_reference_partial_not_exist() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b"))
         );
 
         let preload = vec![ea, eb];
@@ -704,10 +646,10 @@ mod tests {
             )),
             ModifyList::new_list(vec![
                 Modify::Present(
-                    Attribute::Member.into(),
+                    Attribute::Member,
                     Value::Refer(Uuid::parse_str(TEST_TESTGROUP_A_UUID).unwrap())
                 ),
-                Modify::Present(Attribute::Member.into(), Value::Refer(UUID_DOES_NOT_EXIST)),
+                Modify::Present(Attribute::Member, Value::Refer(UUID_DOES_NOT_EXIST)),
             ]),
             None,
             |_| {},
@@ -718,26 +660,22 @@ mod tests {
     // Modify removes the reference to an entry
     #[test]
     fn test_modify_remove_referee() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"],
-                "member": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b")),
+            (
+                Attribute::Member,
+                Value::Refer(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
         let preload = vec![ea, eb];
@@ -749,7 +687,7 @@ mod tests {
                 Attribute::Name,
                 PartialValue::new_iname("testgroup_b")
             )),
-            ModifyList::new_list(vec![Modify::Purged(Attribute::Member.into())]),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Member)]),
             None,
             |_| {},
             |_| {}
@@ -759,15 +697,13 @@ mod tests {
     // Modify adds reference to self - allow
     #[test]
     fn test_modify_uuid_reference_self() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
         let preload = vec![ea];
@@ -780,7 +716,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_a")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -792,25 +728,18 @@ mod tests {
     // Test that deleted entries can not be referenced
     #[test]
     fn test_modify_reference_deleted() {
-        let ea: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_a"],
-                "description": ["testgroup"],
-                "uuid": ["d2b496bd-8493-47b7-8142-f568b5cf47ee"]
-            }
-        }"#,
+        let ea = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_a")),
+            (
+                Attribute::Uuid,
+                Value::Uuid(uuid::uuid!(TEST_TESTGROUP_A_UUID))
+            )
         );
 
-        let eb: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
-            r#"{
-            "attrs": {
-                "class": ["group"],
-                "name": ["testgroup_b"],
-                "description": ["testgroup"]
-            }
-        }"#,
+        let eb = entry_init!(
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup_b"))
         );
 
         let preload = vec![ea, eb];
@@ -825,7 +754,7 @@ mod tests {
                 PartialValue::new_iname("testgroup_b")
             )),
             ModifyList::new_list(vec![Modify::Present(
-                Attribute::Member.into(),
+                Attribute::Member,
                 Value::new_refer_s(TEST_TESTGROUP_A_UUID).unwrap()
             )]),
             None,
@@ -927,7 +856,7 @@ mod tests {
 
         run_delete_test!(
             Err(OperationError::SchemaViolation(
-                SchemaError::MissingMustAttribute(vec!["acp_receiver_group".to_string()])
+                SchemaError::MissingMustAttribute(vec![Attribute::AcpReceiverGroup])
             )),
             preload,
             filter!(f_eq(
@@ -1143,7 +1072,7 @@ mod tests {
         // Mod the user
         let modlist = modlist!([
             Modify::Present(
-                Attribute::OAuth2Session.into(),
+                Attribute::OAuth2Session,
                 Value::Oauth2Session(
                     session_id,
                     Oauth2Session {
@@ -1156,7 +1085,7 @@ mod tests {
                 )
             ),
             Modify::Present(
-                Attribute::UserAuthTokenSession.into(),
+                Attribute::UserAuthTokenSession,
                 Value::Session(
                     parent_id,
                     Session {
