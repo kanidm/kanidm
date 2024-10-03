@@ -63,8 +63,9 @@ jobs:
           CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
       - name: Install deb build dependencies
         run: |
-            platform/debian/install_deb_build_dependencies.sh \
-              "${{ matrix.image.name }}" \
+            # Since we use ubuntu-latest as the workflow image, the build OS is always ubuntu regardless of the matrix
+            platform/debian/install_ci_build_dependencies.sh \
+              "ubuntu" \
               "${{ matrix.target.debian-name }}"
             cargo install cargo-deb
       # Step 2. deb build
