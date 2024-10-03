@@ -47,11 +47,18 @@ jobs:
             libudev-dev \
             libpam0g-dev
       # Step 1. crossbuild
-      - name: Build packages (cross)
+      - name: Build packages (cross bins)
         uses: houseabsolute/actions-rust-cross@v0
         with:
           target: ${{ matrix.target.name }}
-          args: "--locked --release"
+          args: "--locked --release --bin kanidm_ssh_authorizedkeys --bin kanidm_unixd --bin kanidm_unixd_tasks --bin kanidm-unix"
+        env:
+          CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
+      - name: Build packages (cross sdylibs)
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          target: ${{ matrix.target.name }}
+          args: "--locked --release -p pam_kanidm -p nss_kanidm"
         env:
           CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
       - name: Install deb build dependencies
