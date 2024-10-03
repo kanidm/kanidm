@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::convert::TryFrom;
 use std::fs;
 use std::net::IpAddr;
@@ -5,9 +6,7 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use kanidm_proto::internal::{
-    ApiToken, AppLink, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus,
-    IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken,
-    SearchRequest, SearchResponse, UserAuthToken,
+    ApiToken, AppLink, BackupCodesView, CURequest, CUSessionToken, CUStatus, CredentialStatus, IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken, SearchRequest, SearchResponse, SshPublicKey, UserAuthToken
 };
 use kanidm_proto::v1::{
     AuthIssueSession, AuthRequest, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
@@ -763,7 +762,6 @@ impl QueryServerReadV1 {
         idms_prox_read.get_unixgrouptoken(&rate)
     }
 
-    //TODO: Do we really want to turn this into only a string?
     #[instrument(
         level = "info",
         skip_all,
@@ -774,7 +772,7 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         uuid_or_name: String,
         eventid: Uuid,
-    ) -> Result<Vec<String>, OperationError> {
+    ) -> Result<BTreeMap<String, SshPublicKey>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
@@ -812,12 +810,11 @@ impl QueryServerReadV1 {
                     // get the first entry
                     .and_then(|e| {
                         // From the entry, turn it into the value
-                        e.get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
-                            .map(|i| i.map(|(_, key)| key.to_string()).collect())
+                        e.get_ava_sshpubkey_map(Attribute::SshPublicKey)
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.
-                        Vec::new()
+                        BTreeMap::new()
                     });
                 Ok(r)
             }

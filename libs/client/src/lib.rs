@@ -27,6 +27,7 @@ use std::time::Duration;
 
 use compact_jwt::Jwk;
 
+use http::HeaderMap;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
@@ -999,6 +1000,15 @@ impl KanidmClient {
         &self,
         dest: &str,
     ) -> Result<T, ClientError> {
+        self.perform_get_request_with_header(dest, HeaderMap::new()).await   
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub async fn perform_get_request_with_header<T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        headers: HeaderMap,
+    ) -> Result<T, ClientError> {
         let response = self.client.get(self.make_url(dest));
         let response = {
             let tguard = self.bearer_token.read().await;
@@ -1008,6 +1018,8 @@ impl KanidmClient {
                 response
             }
         };
+
+        let response = response.headers(headers);
 
         let response = response
             .send()

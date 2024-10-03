@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 
-use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME};
+use http::header::ACCEPT;
+use http::HeaderMap;
+use kanidm_proto::constants::{ATTR_DISPLAYNAME, ATTR_ENTRY_MANAGED_BY, ATTR_MAIL, ATTR_NAME, CONTENT_TYPE_KANIDM_PUBKEY_JSON};
 use kanidm_proto::internal::{ApiToken, CredentialStatus};
 use kanidm_proto::v1::{AccountUnixExtend, ApiTokenGenerate, Entry};
 use time::OffsetDateTime;
@@ -134,6 +136,21 @@ impl KanidmClient {
     ) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/service_account/{}/_attr/{}", id, attr).as_str())
             .await
+    }
+
+    pub async fn idm_service_account_get_ssh_pubkey(
+        &self,
+        id: &str,
+    ) -> Result<BTreeMap<String, String>, ClientError> {
+        let mut headers = HeaderMap::new();
+
+        headers.insert(ACCEPT, CONTENT_TYPE_KANIDM_PUBKEY_JSON.parse().unwrap());
+
+        self.perform_get_request_with_header(
+            format!("/v1/service_account/{}/_ssh_pubkeys", id).as_str(),
+            headers,
+        )
+        .await
     }
 
     pub async fn idm_service_account_post_ssh_pubkey(

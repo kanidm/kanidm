@@ -2554,6 +2554,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.as_sshkey_map().map(|v| v.iter()))
     }
 
+    pub fn get_ava_sshpubkey_map<A: AsRef<Attribute>>(
+        &self,
+        attr: A,
+    ) -> Option<BTreeMap<String, PublicKey>> {
+        self.get_ava_set(attr)
+            .and_then(|vs| vs.as_sshkey_map().cloned())
+    }
+
     // These are special types to allow returning typed values from
     // an entry, if we "know" what we expect to receive.
 

@@ -7,8 +7,11 @@ use axum::response::{IntoResponse, Response};
 use axum::routing::{delete, get, post, put};
 use axum::{Extension, Json, Router};
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+// use axum_extra::TypedHeader;
 use compact_jwt::{Jwk, Jws, JwsSigner};
+use hyper::header::CONTENT_TYPE;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
+use std::collections::BTreeMap;
 use std::net::IpAddr;
 use uuid::Uuid;
 
@@ -1528,11 +1531,73 @@ pub async fn person_get_id_credential_status(
     }
 }
 
+async fn internal_handle_sshkey_request(
+    content_type: &str,
+    client_auth_info: ClientAuthInfo,
+    id: String,
+    kopid: Uuid,
+    state: &ServerState,
+) -> Result<Response, WebError> {
+    // This is a secret tool to help us later ;)
+    let Ok(header) = HeaderValue::from_str(content_type) else {
+        return Err(WebError::InternalServerError("Unable to create response header".to_string()));
+    };
+
+    let mut response = match content_type {
+        // Backwards compatible Vec<String>
+        CONTENT_TYPE_JSON => state
+            .qe_r_ref
+            .handle_internalsshkeyread(client_auth_info, id, kopid)
+            .await
+            .map(|keys| {
+                keys.values()
+                    .map(|key| key.to_string())
+                    .collect::<Vec<String>>()
+            })
+            .map(Json::from)
+            .map_err(WebError::from)
+            .map(|v| v.into_response()),
+        // New json BTreeMap<String, String>
+        CONTENT_TYPE_KANIDM_PUBKEY_JSON => state
+            .qe_r_ref
+            .handle_internalsshkeyread(client_auth_info, id, kopid)
+            .await
+            .map(|keys| {
+                keys.into_iter()
+                    .map(|(k, v)| (k, v.to_string()))
+                    .collect::<BTreeMap<String, String>>()
+            })
+            .map(Json::from)
+            .map_err(WebError::from)
+            .map(|v| v.into_response()),
+        // authorized_keys format to simplify creating authorized_keys files
+        CONTENT_TYPE_KANIDM_PUBKEY_AUTHORIZED_KEYS => state
+            .qe_r_ref
+            .handle_internalsshkeyread(client_auth_info, id, kopid)
+            .await
+            .map(|keys| {
+                keys.values()
+                    .map(|key| key.to_string())
+                    .collect::<Vec<String>>()
+                    .join("\n")
+            })
+            .map_err(WebError::from)
+            .map(|v| v.into_response()),
+        _ => Err(WebError::BadRequest("Invalid content type".to_string())),
+    }?;
+
+    response
+        .headers_mut()
+        .insert(CONTENT_TYPE, header);
+
+    Ok(response)
+}
+
 #[utoipa::path(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type=["application/json", "application/vnd.kanidm.pubkeys+json", "application/vnd.kanidm.pubkeys.authorized_keys"]),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1540,17 +1605,18 @@ pub async fn person_get_id_credential_status(
     operation_id = "person_id_ssh_pubkeys_get",
 )]
 pub async fn person_id_ssh_pubkeys_get(
+    headers: HeaderMap,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
-) -> Result<Json<Vec<String>>, WebError> {
-    state
-        .qe_r_ref
-        .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
-        .await
-        .map(Json::from)
-        .map_err(WebError::from)
+) -> Result<Response, WebError> {
+    let content_type = headers
+        .get("accept")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/json");
+
+    internal_handle_sshkey_request(content_type, client_auth_info, id, kopid.eventid, &state).await
 }
 
 #[utoipa::path(
@@ -1575,6 +1641,11 @@ pub async fn account_id_ssh_pubkeys_get(
         .qe_r_ref
         .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
         .await
+        .map(|keys| {
+            keys.values()
+                .map(|key| key.to_string())
+                .collect::<Vec<String>>()
+        })
         .map(Json::from)
         .map_err(WebError::from)
 }
@@ -1583,7 +1654,7 @@ pub async fn account_id_ssh_pubkeys_get(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type=["application/json", "application/vnd.kanidm.pubkeys+json", "application/vnd.kanidm.pubkeys.authorized_keys"]),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1591,17 +1662,18 @@ pub async fn account_id_ssh_pubkeys_get(
     operation_id = "service_account_id_ssh_pubkeys_get",
 )]
 pub async fn service_account_id_ssh_pubkeys_get(
+    headers: HeaderMap,
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Path(id): Path<String>,
-) -> Result<Json<Vec<String>>, WebError> {
-    state
-        .qe_r_ref
-        .handle_internalsshkeyread(client_auth_info, id, kopid.eventid)
-        .await
-        .map(Json::from)
-        .map_err(WebError::from)
+) -> Result<Response, WebError> {
+    let content_type = headers
+        .get("accept")
+        .and_then(|v| v.to_str().ok())
+        .unwrap_or("application/json");
+
+    internal_handle_sshkey_request(content_type, client_auth_info, id, kopid.eventid, &state).await
 }
 
 #[utoipa::path(
@@ -1663,7 +1735,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200), // TODO: define response
+        (status=200,content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1683,11 +1755,13 @@ pub async fn person_id_ssh_pubkeys_tag_get(
         .map(Json::from)
         .map_err(WebError::from)
 }
+
+// Should we depricate this one too? since we now have person & service account?
 #[utoipa::path(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -2823,6 +2897,7 @@ pub async fn applinks_get(
     post,
     path = "/v1/reauth",
     responses(
+        // Is this comment still needed?
         (status=200, content_type="application/json"), // TODO: define response
         ApiResponseWithout200,
     ),
@@ -2830,6 +2905,7 @@ pub async fn applinks_get(
     security(("token_jwt" = [])),
     tag = "v1/auth",
     operation_id = "reauth_post",
+    // Is this comment still needed?
 )] // TODO: post body stuff
 pub async fn reauth(
     State(state): State<ServerState>,
@@ -2851,6 +2927,7 @@ pub async fn reauth(
     post,
     path = "/v1/auth",
     responses(
+    // Is this comment still needed?
         (status=200, content_type="application/json"), // TODO: define response
         ApiResponseWithout200,
     ),

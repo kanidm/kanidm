@@ -38,7 +38,7 @@ pub async fn are_we_json_yet(request: Request<Body>, next: Next) -> Response {
         assert!(
             headers.get(axum::http::header::CONTENT_TYPE)
                 == Some(&HeaderValue::from_static(
-                    kanidm_proto::constants::APPLICATION_JSON
+                    kanidm_proto::constants::CONTENT_TYPE_JSON
                 ))
         );
     }

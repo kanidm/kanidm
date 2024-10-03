@@ -14,6 +14,7 @@ pub enum WebError {
     /// Something went wrong when doing things.
     OperationError(OperationError),
     InternalServerError(String),
+    BadRequest(String),
 }
 
 impl From<OperationError> for WebError {
@@ -67,7 +68,8 @@ impl IntoResponse for WebError {
                     Some(headers) => (code, headers, body).into_response(),
                     None => (code, body).into_response(),
                 }
-            }
+            },
+            WebError::BadRequest(inner) => (StatusCode::BAD_REQUEST, inner).into_response(),
         }
     }
 }

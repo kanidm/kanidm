@@ -2,9 +2,12 @@
 use std::path::Path;
 use std::time::SystemTime;
 
+use http::header::ACCEPT;
+use http::HeaderMap;
 use kanidm_proto::constants::{ATTR_GIDNUMBER, KSESSIONID};
 use kanidm_proto::internal::{
-    ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, UatPurpose, UserAuthToken,
+    ApiToken, CURegState, Filter, ImageValue, Modify, ModifyList, SshPublicKey, UatPurpose,
+    UserAuthToken,
 };
 use kanidm_proto::v1::{
     AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthResponse, AuthState, AuthStep,
@@ -13,6 +16,7 @@ use kanidm_proto::v1::{
 use kanidmd_lib::credential::totp::Totp;
 use kanidmd_lib::prelude::{
     Attribute, BUILTIN_GROUP_IDM_ADMINS_V1, BUILTIN_GROUP_SYSTEM_ADMINS_V1,
+    CONTENT_TYPE_KANIDM_PUBKEY_AUTHORIZED_KEYS,
 };
 use tracing::{debug, trace};
 
@@ -1924,6 +1928,77 @@ async fn test_server_user_auth_privileged_shortcut(rsclient: KanidmClient) {
             assert!(expiry.is_some())
         }
     }
+}
+
+// We can retrieve multiple keys using the new API
+#[kanidmd_testkit::test]
+async fn test_server_rest_person_sshkey_read(rsclient: KanidmClient) {
+    let key = "Stuff";
+    let key_two = "Stuff Electric Boogaloo";
+    let pubkey = SshPublicKey::from_string("ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDTcXpclurQpyOHZBM/cDY9EvInSYkYSGe51by/wJP0NjgiGZUJ3HTaPqoGWux0PKd7KJki+onLYt4IwDV1RhV/GtMML2U9v94+pA8RIK4khCxvpUxlM7Kt/svjOzzzqiZfKdV37/OUXmM7bwVGOvm3EerDOwmO/QdzNGfkca12aWLoz97YrleXnCoAzr3IN7j3rwmfJGDyuUtGTdmyS/QWhK9FPr8Ic3eMQK1JSAQqVfGhA8lLbJHmnQ/b/KMl2lzzp7SXej0wPUfvI/IP3NGb8irLzq8+JssAzXGJ+HMql+mNHiSuPaktbFzZ6yikMR6Rx/psU07nAkxKZDEYpNVv william@amethyst").expect("Public key failed to parse");
+
+    let res = rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    let result = rsclient
+        .idm_person_account_post_ssh_pubkey(ADMIN_TEST_USER, key, &pubkey.to_string())
+        .await;
+    assert!(result.is_ok());
+
+    let result = rsclient
+        .idm_person_account_get_ssh_pubkeys(ADMIN_TEST_USER)
+        .await;
+
+    println!("{:?}", result);
+
+    assert!(result.is_ok());
+    let keys = result.unwrap();
+    assert_eq!(keys.len(), 1);
+    assert_eq!(keys[key], pubkey.to_string());
+
+    let result = rsclient
+        .idm_person_account_post_ssh_pubkey(ADMIN_TEST_USER, key_two, &pubkey.to_string())
+        .await;
+    assert!(result.is_ok());
+
+    let result = rsclient
+        .idm_person_account_get_ssh_pubkeys(ADMIN_TEST_USER)
+        .await;
+
+    assert!(result.is_ok());
+    let keys = result.unwrap();
+    assert_eq!(keys.len(), 2);
+    assert_eq!(keys[key], pubkey.to_string());
+    assert_eq!(keys[key_two], pubkey.to_string());
+
+    let result = rsclient
+        .idm_person_account_get_ssh_pubkey(ADMIN_TEST_USER, key)
+        .await;
+
+    assert!(result.is_ok());
+    assert_eq!(result.unwrap(), Some(pubkey.to_string()));
+
+    // Sanity check that the authorized_keys request works as expected
+    let mut headers = HeaderMap::new();
+
+    headers.insert(
+        ACCEPT,
+        CONTENT_TYPE_KANIDM_PUBKEY_AUTHORIZED_KEYS.parse().unwrap(),
+    );
+
+    let result: Result<String, _> = rsclient
+        .perform_get_request_with_header(
+            format!("/v1/person/{}/_ssh_pubkeys", ADMIN_TEST_USER).as_str(),
+            headers,
+        )
+        .await;
+
+    println!("{:?}", result);
+
+    assert!(result.is_ok());
+    assert!(result.unwrap() == format!("{}\n{}", pubkey.to_string(), pubkey.to_string()));
 }
 
 // wanna test how long it takes for testkit to start up? here's your biz.

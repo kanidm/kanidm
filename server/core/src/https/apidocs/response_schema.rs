@@ -2,7 +2,7 @@
 //!
 //! These are used to generate the OpenAPI schema definitions.
 //!
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::CONTENT_TYPE_JSON;
 use std::collections::BTreeMap;
 use utoipa::{
     openapi::{Content, RefOr, Response, ResponseBuilder, ResponsesBuilder},
@@ -24,7 +24,7 @@ impl IntoResponses for DefaultApiResponse {
             .response(
                 "200",
                 ResponseBuilder::new()
-                    .content(APPLICATION_JSON, Content::default())
+                    .content(CONTENT_TYPE_JSON, Content::default())
                     .description("Ok"),
             )
             .response("400", ResponseBuilder::new().description("Invalid Request"))

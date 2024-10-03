@@ -1,6 +1,6 @@
 use gloo::console;
 use kanidm_proto::constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT};
-use kanidm_proto::constants::{APPLICATION_JSON, KOPID};
+use kanidm_proto::constants::{CONTENT_TYPE_JSON, KOPID};
 pub use kanidm_proto::oauth2::{AuthorisationRequest, AuthorisationResponse};
 use kanidmd_web_ui_shared::constants::{CONTENT_TYPE, CSS_ALERT_DANGER, URL_OAUTH2};
 use kanidmd_web_ui_shared::utils::{do_alert_error, do_footer, window};
@@ -164,7 +164,7 @@ impl Oauth2App {
 
         request
             .headers()
-            .set(CONTENT_TYPE, APPLICATION_JSON)
+            .set(CONTENT_TYPE, CONTENT_TYPE_JSON)
             .expect_throw("failed to set header");
 
         /*

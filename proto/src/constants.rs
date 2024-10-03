@@ -7,6 +7,8 @@ use std::time::Duration;
 /// The default location for the `kanidm` CLI tool's token cache.
 pub const CLIENT_TOKEN_CACHE: &str = "~/.cache/kanidm_tokens";
 
+/// Content type string for json
+pub const CONTENT_TYPE_JSON: &str = "application/json";
 /// Content type string for jpeg
 pub const CONTENT_TYPE_JPG: &str = "image/jpeg";
 /// Content type string for png
@@ -18,6 +20,11 @@ pub const CONTENT_TYPE_SVG: &str = "image/svg+xml";
 /// Content type string for webp
 pub const CONTENT_TYPE_WEBP: &str = "image/webp";
 
+/// Kanidm specific json content type
+pub const CONTENT_TYPE_KANIDM_PUBKEY_JSON: &str = "application/vnd.kanidm.pubkeys+json";
+/// Kanidm specific authorized_keys content type
+pub const CONTENT_TYPE_KANIDM_PUBKEY_AUTHORIZED_KEYS: &str = "application/vnd.kanidm.pubkeys+authorized_keys";
+
 // For when the user uploads things to the various image endpoints, these are the valid content-types.
 pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
     CONTENT_TYPE_JPG,
@@ -26,8 +33,6 @@ pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
     CONTENT_TYPE_SVG,
     CONTENT_TYPE_WEBP,
 ];
-
-pub const APPLICATION_JSON: &str = "application/json";
 
 /// The "system" path for Kanidm client config
 pub const DEFAULT_CLIENT_CONFIG_PATH: &str = "/etc/kanidm/config";

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use http::header::ACCEPT;
+use http::HeaderMap;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::{CredentialStatus, IdentifyUserRequest, IdentifyUserResponse};
 use kanidm_proto::v1::{AccountUnixExtend, Entry, SingleStringRequest, UatStatus};
@@ -154,6 +156,37 @@ impl KanidmClient {
 
         self.idm_account_credential_update_commit(&session_tok)
             .await
+    }
+
+    pub async fn idm_person_account_get_ssh_pubkey(
+        &self,
+        id: &str,
+        tag: &str,
+    ) -> Result<Option<String>, ClientError> {
+        let mut headers = HeaderMap::new();
+
+        headers.insert(ACCEPT, CONTENT_TYPE_KANIDM_PUBKEY_JSON.parse().unwrap());
+
+        self.perform_get_request_with_header(
+            format!("/v1/person/{}/_ssh_pubkeys/{}", id, tag).as_str(),
+            headers,
+        )
+        .await
+    }
+
+    pub async fn idm_person_account_get_ssh_pubkeys(
+        &self,
+        id: &str,
+    ) -> Result<BTreeMap<String, String>, ClientError> {
+        let mut headers = HeaderMap::new();
+
+        headers.insert(ACCEPT, CONTENT_TYPE_KANIDM_PUBKEY_JSON.parse().unwrap());
+
+        self.perform_get_request_with_header(
+            format!("/v1/person/{}/_ssh_pubkeys", id).as_str(),
+            headers,
+        )
+        .await
     }
 
     pub async fn idm_person_account_post_ssh_pubkey(

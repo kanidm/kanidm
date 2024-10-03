@@ -20,7 +20,7 @@ use compact_jwt::{JwkKeySet, OidcToken};
 use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
 };
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::CONTENT_TYPE_JSON;
 use kanidm_proto::oauth2::AuthorisationResponse;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
@@ -633,7 +633,7 @@ pub async fn oauth2_token_introspect_post(
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .header(ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-                .header(CONTENT_TYPE, APPLICATION_JSON)
+                .header(CONTENT_TYPE, CONTENT_TYPE_JSON)
                 .body(Body::from(body))
                 .unwrap()
         }

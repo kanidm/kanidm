@@ -343,7 +343,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     assert!(cors_header.eq("*"));
 
     assert!(
-        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(CONTENT_TYPE_JSON))
     );
     assert_no_cache!(response);
 
@@ -371,7 +371,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     assert_eq!(response.status(), reqwest::StatusCode::OK);
     tracing::trace!("{:?}", response.headers());
     assert!(
-        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(CONTENT_TYPE_JSON))
     );
     assert_no_cache!(response);
 
@@ -422,7 +422,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     tracing::trace!("{:?}", response.headers());
     assert!(
-        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(CONTENT_TYPE_JSON))
     );
     let userinfo = response
         .json::<OidcToken>()

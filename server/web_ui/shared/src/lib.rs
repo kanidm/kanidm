@@ -5,7 +5,7 @@ use error::FetchError;
 use gloo::console;
 
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
-use kanidm_proto::constants::APPLICATION_JSON;
+use kanidm_proto::constants::CONTENT_TYPE_JSON;
 use kanidm_proto::constants::KOPID;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
@@ -49,7 +49,7 @@ pub async fn do_request<JV: AsRef<JsValue>>(
     let request = Request::new_with_str_and_init(uri, &opts)?;
     request
         .headers()
-        .set(CONTENT_TYPE, APPLICATION_JSON)
+        .set(CONTENT_TYPE, CONTENT_TYPE_JSON)
         .expect_throw("failed to set content-type header");
 
     let window = utils::window();
