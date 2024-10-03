@@ -292,6 +292,8 @@ pub trait IdProvider {
         _tpm: &mut tpm::BoxedDynTpm,
     ) -> Result<AuthResult, IdpError>;
 
+    async fn unix_user_authorise(&self, _token: &UserToken) -> Result<Option<bool>, IdpError>;
+
     async fn unix_group_get(
         &self,
         id: &Id,

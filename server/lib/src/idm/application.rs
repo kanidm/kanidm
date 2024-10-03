@@ -23,9 +23,7 @@ impl Application {
         _qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(Attribute::Class, &EntryClass::Application.to_partialvalue()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: application".to_string(),
-            ));
+            return Err(OperationError::MissingClass(ENTRYCLASS_APPLICATION.into()));
         }
 
         let uuid = value.get_uuid();
@@ -33,21 +31,11 @@ impl Application {
         let name = value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Name
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Name))?;
 
         let linked_group = value
             .get_ava_single_refer(Attribute::LinkedGroup)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::LinkedGroup
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::LinkedGroup))?;
 
         Ok(Application {
             name,

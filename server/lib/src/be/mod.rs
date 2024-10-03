@@ -1914,7 +1914,9 @@ impl<'a> BackendWriteTransaction<'a> {
         if vr.is_empty() {
             Ok(())
         } else {
-            Err(OperationError::ConsistencyError(vr))
+            Err(OperationError::ConsistencyError(
+                vr.into_iter().filter_map(|v| v.err()).collect(),
+            ))
         }
     }
 

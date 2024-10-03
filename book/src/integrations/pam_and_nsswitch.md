@@ -6,15 +6,16 @@ Kanidm into accounts that can be used on the machine for various interactive tas
 
 ## The UNIX Daemon
 
-Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch
-integration. The daemon can cache the accounts for users who have unreliable networks, or who leave
-the site where Kanidm is hosted. The daemon is also able to cache missing-entry responses to reduce
-network traffic and Kanidm server load.
+Kanidm provides a UNIX daemon that runs on any client that wants to support PAM and nsswitch. This
+service has many features which are useful even without Kanidm as a network authentication service.
 
-Additionally, running the daemon means that the PAM and nsswitch integration libraries can be small,
-helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can
-create home directories on first login and supports several features related to aliases and links to
-these home directories.
+The Kanidm UNIX Daemon:
+
+* Caches Kanidm users and groups for users with unreliable networks, or for roaming users.
+* Securely caches user credentials with optional TPM backed cryptographic operations.
+* Automatically creates home directories for users.
+* Caches and resolves the content of `/etc/passwd` and `/etc/group` improving system performance.
+* Has a small set of hardened libraries to reduce attack surface.
 
 We recommend you install the client daemon from your system package manager:
 
@@ -41,16 +42,10 @@ systemctl status kanidm-unixd-tasks
 >
 > The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality. If disabled,
 > your system will function as usual. It is however strongly recommended due to the features it
-> provides supporting Kanidm's capabilities.
+> provides.
 
-Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-[client_tools](../client_tools.md#kanidm-configuration).
 
-You can also configure some unixd-specific options with the file /etc/kanidm/unixd:
-
-```toml
-{{#rustdoc_include ../../../examples/unixd}}
-```
+You can also configure unixd with the file /etc/kanidm/unixd:
 
 > [!NOTE]
 >
@@ -62,9 +57,17 @@ You can also configure some unixd-specific options with the file /etc/kanidm/uni
 > Ubuntu users please see:
 > [Why aren't snaps launching with home_alias set?](../frequently_asked_questions.md#why-arent-snaps-launching-with-home_alias-set)
 
-You can then check the communication status of the daemon:
+```toml
+{{#rustdoc_include ../../../examples/unixd}}
+```
+
+If you are using the Kanidm provider features, you also need to configure
+`/etc/kanidm/config`. This is the covered in [client_tools](../client_tools.md#kanidm-configuration).
+
+You can start, and then check the status of the daemon with the following commands:
 
 ```bash
+systemctl enable --now kanidm-unixd
 kanidm-unix status
 ```
 
@@ -88,14 +91,17 @@ For more information, see the [Troubleshooting](pam_and_nsswitch/troubleshooting
 When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf
 
 ```text
-passwd: compat kanidm
-group: compat kanidm
+passwd: kanidm compat
+group:  kanidm compat
 ```
 
-You can [create a user](../accounts/intro.md) then
+> NOTE: Unlike other nsswitch modules, Kanidm should be before compat or files. This is because
+> Kanidm caches and provides the content from `/etc/passwd` and `/etc/group`.
+
+Then [create a user](../accounts/intro.md) and
 [enable POSIX feature on the user](../accounts/posix_accounts_and_groups.md#enabling-posix-attributes-on-accounts).
 
-You can then test that the POSIX extended user is able to be resolved with:
+Test that the POSIX extended user is able to be resolved with:
 
 ```bash
 getent passwd <account name>

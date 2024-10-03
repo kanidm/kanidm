@@ -235,6 +235,16 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+    /// Sets whether during login the primary password can be used
+    /// as a fallback if no posix password has been defined
+    #[clap(name = "allow-primary-cred-fallback")]
+    AllowPrimaryCredFallback {
+        name: String,
+        #[clap(name = "allow", action = clap::ArgAction::Set)]
+        allow: bool,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
 }
 
 #[derive(Debug, Subcommand)]
