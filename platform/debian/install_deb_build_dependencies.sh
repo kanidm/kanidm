@@ -15,10 +15,10 @@ DEB_ARCH="${2?}" # Expecting "amd64" or "arm64" etc
 if [[ "$DEB_OS" == "ubuntu" ]]; then
     2>&1 echo "Patching Ubuntu apt sources for multiarch"
     # Default entries do not pin an arch, fix that
-    sed 's/^deb http/deb [arch=amd64] http/' -i '/etc/apt/sources.list'
+    sudo sed 's/^deb http/deb [arch=amd64] http/' -i '/etc/apt/sources.list'
     # arm64 is on a completely different mirror structure, add that pinned to arm64
-    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted' > /etc/apt/sources.list.d/arm64.list
-    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted' >> /etc/apt/sources.list.d/arm64.list
+    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted' | sudo tee /etc/apt/sources.list.d/arm64.list
+    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted' | sudo tee -a /etc/apt/sources.list.d/arm64.list
 fi
 
 # From here on normal Debian multiarch logic applies
