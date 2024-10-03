@@ -22,7 +22,7 @@ fn repl_initialise(
     // eprintln!("{:#?}", refresh_context);
 
     // Apply it to the server
-    to.consumer_apply_refresh(&refresh_context)?;
+    to.consumer_apply_refresh(refresh_context)?;
 
     // Need same d_uuid
     assert_eq!(from.get_domain_uuid(), to.get_domain_uuid());
@@ -79,7 +79,7 @@ fn repl_incremental(
     trace!(?changes, "supplying changes");
 
     // Check the changes = should be empty.
-    to.consumer_apply_changes(&changes)
+    to.consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     // RUV should be consistent again.
@@ -221,7 +221,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     // Do a ruv check - should still be the same.
@@ -304,7 +304,7 @@ async fn test_repl_increment_basic_entry_add(server_a: &QueryServer, server_b: &
     let mut server_a_txn = server_a.write(duration_from_epoch_now()).await.unwrap();
 
     server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     // RUV should be consistent again.
@@ -554,7 +554,7 @@ async fn test_repl_increment_consumer_lagging_tombstone(
     assert!(matches!(changes, ReplIncrementalContext::RefreshRequired));
 
     let result = server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::RefreshRequired));
@@ -1800,7 +1800,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     assert!(matches!(changes, ReplIncrementalContext::RefreshRequired));
 
     let result = server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::RefreshRequired));
@@ -1823,7 +1823,7 @@ async fn test_repl_increment_consumer_lagging_attributes(
     assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
 
     let result = server_b_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::Ok));
@@ -1928,7 +1928,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
 
     let result = server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::Ok));
@@ -1955,7 +1955,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     assert!(matches!(changes, ReplIncrementalContext::UnwillingToSupply));
 
     let result = server_b_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::Ok));
@@ -2061,7 +2061,7 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
         assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
 
         let result = server_a_txn
-            .consumer_apply_changes(&changes)
+            .consumer_apply_changes(changes)
             .expect("Unable to apply changes to consumer.");
 
         assert!(matches!(result, ConsumerState::Ok));
@@ -2088,7 +2088,7 @@ async fn test_repl_increment_consumer_ruv_trim_idle_servers(
         assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
 
         let result = server_b_txn
-            .consumer_apply_changes(&changes)
+            .consumer_apply_changes(changes)
             .expect("Unable to apply changes to consumer.");
 
         assert!(matches!(result, ConsumerState::Ok));
@@ -3211,7 +3211,7 @@ async fn test_repl_initial_consumer_join(server_a: &QueryServer, server_b: &Quer
     assert!(matches!(changes, ReplIncrementalContext::DomainMismatch));
 
     let result = server_a_txn
-        .consumer_apply_changes(&changes)
+        .consumer_apply_changes(changes)
         .expect("Unable to apply changes to consumer.");
 
     assert!(matches!(result, ConsumerState::RefreshRequired));
@@ -3570,7 +3570,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
 
     // Apply it to the server
     server_a_txn
-        .consumer_apply_refresh(&refresh_context)
+        .consumer_apply_refresh(refresh_context)
         .expect("Unable to apply refresh");
 
     // Need same d_uuid
@@ -3697,7 +3697,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
         assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
 
         let result = server_a_txn
-            .consumer_apply_changes(&changes)
+            .consumer_apply_changes(changes)
             .expect("Unable to apply changes to consumer.");
 
         assert!(matches!(result, ConsumerState::Ok));
@@ -3724,7 +3724,7 @@ async fn test_repl_increment_consumer_lagging_refresh(
         assert!(matches!(changes, ReplIncrementalContext::V1 { .. }));
 
         let result = server_b_txn
-            .consumer_apply_changes(&changes)
+            .consumer_apply_changes(changes)
             .expect("Unable to apply changes to consumer.");
 
         assert!(matches!(result, ConsumerState::Ok));

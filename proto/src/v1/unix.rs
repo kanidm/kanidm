@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::fmt;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -42,7 +43,7 @@ pub struct UnixUserToken {
     pub uuid: Uuid,
     pub shell: Option<String>,
     pub groups: Vec<UnixGroupToken>,
-    pub sshkeys: Vec<String>,
+    pub sshkeys: Vec<SshPublicKey>,
     // The default value of bool is false.
     #[serde(default)]
     pub valid: bool,

@@ -268,7 +268,11 @@ body {
   height: fit-content;
 }
 
-
-
-
-
+#cred-update-commit-bar {
+  display: block;
+  position: fixed;
+  bottom: 5%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+}

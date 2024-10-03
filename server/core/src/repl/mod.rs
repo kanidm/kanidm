@@ -218,7 +218,7 @@ async fn repl_run_consumer_refresh(
             .and_then(|mut write_txn| {
                 write_txn
                     .qs_write
-                    .consumer_apply_refresh(&refresh)
+                    .consumer_apply_refresh(refresh)
                     .and_then(|cs| write_txn.commit().map(|()| cs))
             })
             .map_err(|err| error!(?err, "Consumer was not able to apply refresh."))?;
@@ -301,7 +301,7 @@ async fn repl_run_consumer(
         match idms.proxy_write(ct).await.and_then(|mut write_txn| {
             write_txn
                 .qs_write
-                .consumer_apply_changes(&changes)
+                .consumer_apply_changes(changes)
                 .and_then(|cs| write_txn.commit().map(|()| cs))
         }) {
             Ok(state) => state,
@@ -358,7 +358,7 @@ async fn repl_run_consumer(
     if let Err(err) = idms.proxy_write(ct).await.and_then(|mut write_txn| {
         write_txn
             .qs_write
-            .consumer_apply_refresh(&refresh)
+            .consumer_apply_refresh(refresh)
             .and_then(|cs| write_txn.commit().map(|()| cs))
     }) {
         error!(?err, "consumer was not able to apply refresh.");

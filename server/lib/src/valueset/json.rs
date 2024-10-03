@@ -2,7 +2,6 @@ use kanidm_proto::internal::Filter as ProtoFilter;
 use smolset::SmolSet;
 
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -23,14 +22,6 @@ impl ValueSetJsonFilter {
     }
 
     pub fn from_dbvs2(data: &[String]) -> Result<ValueSet, OperationError> {
-        let set = data
-            .iter()
-            .map(|s| serde_json::from_str(s).map_err(|_| OperationError::SerdeJsonError))
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetJsonFilter { set }))
-    }
-
-    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
         let set = data
             .iter()
             .map(|s| serde_json::from_str(s).map_err(|_| OperationError::SerdeJsonError))
@@ -158,22 +149,6 @@ impl ValueSetT for ValueSetJsonFilter {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::JsonFilter {
-            set: self
-                .set
-                .iter()
-                .filter_map(|s| {
-                    serde_json::to_string(s)
-                        .inspect_err(|err| {
-                            error!(?err, "A json filter value was corrupted during run-time")
-                        })
-                        .ok()
-                })
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

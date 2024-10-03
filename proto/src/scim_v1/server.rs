@@ -2,6 +2,7 @@ use crate::attribute::Attribute;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -78,7 +79,7 @@ pub struct ScimAuditString {
 #[serde(rename_all = "camelCase")]
 pub struct ScimSshPublicKey {
     pub label: String,
-    pub value: String,
+    pub value: SshPublicKey,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]

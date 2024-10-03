@@ -20,7 +20,7 @@ use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
-use crate::repl::{cid::Cid, proto::ReplAttrV1};
+use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
@@ -147,8 +147,6 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     fn to_scim_value(&self) -> Option<ScimValueKanidm>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
-
-    fn to_repl_v1(&self) -> ReplAttrV1;
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_>;
 
@@ -874,60 +872,6 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
         DbValueSetV2::HexString(set) => ValueSetHexString::from_dbvs2(set),
         DbValueSetV2::Certificate(set) => ValueSetCertificate::from_dbvs2(set),
         DbValueSetV2::ApplicationPassword(set) => ValueSetApplicationPassword::from_dbvs2(set),
-    }
-}
-
-pub fn from_repl_v1(rv1: &ReplAttrV1) -> Result<ValueSet, OperationError> {
-    match rv1 {
-        ReplAttrV1::Iutf8 { set } => ValueSetIutf8::from_repl_v1(set),
-        ReplAttrV1::Utf8 { set } => ValueSetUtf8::from_repl_v1(set),
-        ReplAttrV1::IndexType { set } => ValueSetIndex::from_repl_v1(set),
-        ReplAttrV1::SyntaxType { set } => ValueSetSyntax::from_repl_v1(set),
-        ReplAttrV1::Cid { set } => ValueSetCid::from_repl_v1(set),
-        ReplAttrV1::Bool { set } => ValueSetBool::from_repl_v1(set),
-        ReplAttrV1::Uuid { set } => ValueSetUuid::from_repl_v1(set),
-        ReplAttrV1::Uint32 { set } => ValueSetUint32::from_repl_v1(set),
-        ReplAttrV1::Iname { set } => ValueSetIname::from_repl_v1(set),
-        ReplAttrV1::PrivateBinary { set } => ValueSetPrivateBinary::from_repl_v1(set),
-        ReplAttrV1::SecretValue { set } => ValueSetSecret::from_repl_v1(set),
-        ReplAttrV1::Reference { set } => ValueSetRefer::from_repl_v1(set),
-        ReplAttrV1::JwsKeyEs256 { set } => ValueSetJwsKeyEs256::from_repl_v1(set),
-        ReplAttrV1::JwsKeyRs256 { set } => ValueSetJwsKeyRs256::from_repl_v1(set),
-        ReplAttrV1::Spn { set } => ValueSetSpn::from_repl_v1(set),
-        ReplAttrV1::JsonFilter { set } => ValueSetJsonFilter::from_repl_v1(set),
-        ReplAttrV1::UiHint { set } => ValueSetUiHint::from_repl_v1(set),
-        ReplAttrV1::Address { set } => ValueSetAddress::from_repl_v1(set),
-        ReplAttrV1::EmailAddress { primary, set } => {
-            ValueSetEmailAddress::from_repl_v1(primary, set)
-        }
-        ReplAttrV1::PublicBinary { set } => ValueSetPublicBinary::from_repl_v1(set),
-        ReplAttrV1::Credential { set } => ValueSetCredential::from_repl_v1(set),
-        ReplAttrV1::IntentToken { set } => ValueSetIntentToken::from_repl_v1(set),
-        ReplAttrV1::Passkey { set } => ValueSetPasskey::from_repl_v1(set),
-        ReplAttrV1::AttestedPasskey { set } => ValueSetAttestedPasskey::from_repl_v1(set),
-        ReplAttrV1::DateTime { set } => ValueSetDateTime::from_repl_v1(set),
-        ReplAttrV1::Url { set } => ValueSetUrl::from_repl_v1(set),
-        ReplAttrV1::NsUniqueId { set } => ValueSetNsUniqueId::from_repl_v1(set),
-        ReplAttrV1::RestrictedString { set } => ValueSetRestricted::from_repl_v1(set),
-        ReplAttrV1::SshKey { set } => ValueSetSshKey::from_repl_v1(set),
-        ReplAttrV1::OauthScope { set } => ValueSetOauthScope::from_repl_v1(set),
-        ReplAttrV1::OauthScopeMap { set } => ValueSetOauthScopeMap::from_repl_v1(set),
-        ReplAttrV1::Oauth2Session { set } => ValueSetOauth2Session::from_repl_v1(set),
-        ReplAttrV1::Session { set } => ValueSetSession::from_repl_v1(set),
-        ReplAttrV1::ApiToken { set } => ValueSetApiToken::from_repl_v1(set),
-        ReplAttrV1::TotpSecret { set } => ValueSetTotpSecret::from_repl_v1(set),
-        ReplAttrV1::AuditLogString { map } => ValueSetAuditLogString::from_repl_v1(map),
-        ReplAttrV1::EcKeyPrivate { key } => ValueSetEcKeyPrivate::from_repl_v1(key),
-        ReplAttrV1::Image { set } => ValueSetImage::from_repl_v1(set),
-        ReplAttrV1::CredentialType { set } => ValueSetCredentialType::from_repl_v1(set),
-        ReplAttrV1::WebauthnAttestationCaList { ca_list } => {
-            ValueSetWebauthnAttestationCaList::from_repl_v1(ca_list)
-        }
-        ReplAttrV1::OauthClaimMap { set } => ValueSetOauthClaimMap::from_repl_v1(set),
-        ReplAttrV1::KeyInternal { set } => ValueSetKeyInternal::from_repl_v1(set),
-        ReplAttrV1::HexString { set } => ValueSetHexString::from_repl_v1(set),
-        ReplAttrV1::Certificate { set } => ValueSetCertificate::from_repl_v1(set),
-        ReplAttrV1::ApplicationPassword { set } => ValueSetApplicationPassword::from_repl_v1(set),
     }
 }
 

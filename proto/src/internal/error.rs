@@ -69,6 +69,8 @@ pub enum ConsistencyError {
 pub enum OperationError {
     // Logic errors, or "soft" errors.
     SessionExpired,
+    DuplicateKey,
+    DuplicateLabel,
     EmptyRequest,
     Backend,
     NoMatchingEntries,
@@ -84,6 +86,7 @@ pub enum OperationError {
     FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
+    InvalidLabel,
     InvalidDbState,
     InvalidCacheState,
     InvalidValueState,
@@ -161,6 +164,7 @@ pub enum OperationError {
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
     DB0003FilterResolveCacheBuild,
+    DB0004DatabaseTooOld,
 
     // SCIM
     SC0001IncomingSshPublicKey,
@@ -272,6 +276,9 @@ impl OperationError {
             Self::FilterUuidResolution => None,
             Self::InvalidAttributeName(_) => None,
             Self::InvalidAttribute(_) => None,
+            Self::InvalidLabel => Some("The submitted label for this item is invalid.".into()),
+            Self::DuplicateLabel => Some("The submitted label for this item is already in use.".into()),
+            Self::DuplicateKey => Some("The submitted key already exists.".into()),
             Self::InvalidDbState => None,
             Self::InvalidCacheState => None,
             Self::InvalidValueState => None,
@@ -334,6 +341,7 @@ impl OperationError {
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,
+            Self::DB0004DatabaseTooOld => Some("The database is too old to be migrated.".into()),
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),

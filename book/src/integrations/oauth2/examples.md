@@ -78,8 +78,8 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
     configure the redirect URL, and scope access to the `gitlab_users` group:
 
     ```sh
-    kanidm system oauth2 create gitlab GitLab https://gitlab.example.com
-    kanidm system oauth2 add-redirect-url gitlab https://gitlab.example.com/users/auth/oauth2_generic/callback
+    kanidm system oauth2 create gitlab GitLab https://gitlab.example.com/users/sign_in
+    kanidm system oauth2 add-redirect-url gitlab https://gitlab.example.com/users/auth/openid_connect/callback
     kanidm system oauth2 update-scope-map gitlab gitlab_users email openid profile groups
     ```
 
@@ -155,6 +155,16 @@ To set up a self-managed GitLab instance to authenticate with Kanidm:
 
 Once GitLab is up and running, you should now see a "Kanidm" option on your
 GitLab sign-in page below the normal login form.
+
+Once you've got everything working, you may wish configure GitLab to:
+
+*   [Automatically redirect to the `openid_connect` provider at the login form](https://docs.gitlab.com/ee/integration/omniauth.html#sign-in-with-a-provider-automatically)
+
+*   [Disable password authentication in GitLab](https://docs.gitlab.com/ee/administration/settings/sign_in_restrictions.html#password-authentication-enabled)
+
+*   [Disable new sign-ups in GitLab](https://docs.gitlab.com/ee/administration/settings/sign_up_restrictions.html)
+
+More information about these features is available in GitLab's documentation.
 
 ## JetBrains Hub and YouTrack
 
@@ -448,6 +458,147 @@ php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
 
 You can login directly by appending `?direct=1` to your login page. You can re-enable other backends
 by setting the value to `1`
+
+## Outline
+
+> These instructions were tested with self-hosted Outline 0.80.2.
+
+Outline is a wiki / knowledge base which [can be self-hosted][outline-self].
+
+Self-hosted [Outline supports authentication with OpenID Connect][outline-oidc],
+with some limitations:
+
+*   [Outline does not support PKCE][outline-pkce],
+    [which is a security issue][pkce-disable-security].
+
+*   Outline does not support group or ACL delegation.
+
+    On a new Outline installation, the first user who authenticates to Outline
+    will be granted administrative rights.
+
+*   Outline *only* automatically updates the user's email address on log in.
+
+    It will set the user's preferred name on *first* log in *only*.
+
+To set up a *new* self-hosted Outline instance to authenicate with Kanidm:
+
+1.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update your_username -m your_username@example.com
+    ```
+
+2.  Create a new Kanidm group for your Outline users (`outline_users`), and
+    **only** add your regular account to it:
+
+    ```sh
+    kanidm group create outline
+    kanidm group add-members outline_users your_username
+    ```
+
+    **Warning:** don't add any other users when first setting up Outline. The
+    first user who logs in will gain administrative rights.
+
+3.  Create a new OAuth2 application configuration in Kanidm (`outline`),
+    disable the PKCE requirement ([this is insecure][pkce-disable-security], but
+    [Outline doesn't support it][outline-pkce]), configure the redirect URL, and
+    scope access to the `outline_users` group:
+
+    ```sh
+    kanidm system oauth2 create outline Outline https://outline.example.com
+    kanidm system oauth2 warning-insecure-client-disable-pkce outline
+    kanidm system oauth2 add-redirect-url outline https://outline.example.com/auth/oidc.callback
+    kanidm system oauth2 update-scope-map outline outline_users email openid profile groups
+    ```
+
+4.  Get the `outline` OAuth2 client secret from Kanidm:
+
+    ```sh
+    kanidm system oauth2 show-basic-secret outline
+    ```
+
+5.  Configure Outline to authenticate to Kanidm with OpenID Connect in
+    Outline's environment file (`docker.env` / `.env`):
+
+    ```
+    OIDC_CLIENT_ID=outline
+    OIDC_CLIENT_SECRET=YOUR KANIDM BASIC SECRET HERE
+    OIDC_AUTH_URI=https://kanidm.example.com/ui/oauth2
+    OIDC_TOKEN_URI=https://kanidm.example.com/oauth2/token
+    OIDC_USERINFO_URI=https://kanidm.example.com/oauth2/openid/outline/userinfo
+    OIDC_LOGOUT_URI=
+    # Prevent redirect loop on logout
+    OIDC_DISABLE_REDIRECT=true
+    # Outline doesn't seem to actually use this.
+    OIDC_USERNAME_CLAIM=preferred_username
+    OIDC_DISPLAY_NAME=Kanidm
+    OIDC_SCOPES=openid profile email
+    ```
+
+6.  Restart Outline and wait for it to come back up again.
+
+Outline's login form should now show a <kbd>Continue with Kanidm</kbd> button,
+which can be used to sign in.
+
+### Migrating between Outline authentication providers
+
+> [!WARNING]
+>
+> While Outline supports multiple authentication providers, we'd recommend
+> running Outline with a *single* authentication provider (once you've tested
+> it works correctly).
+>
+> When *migrating* from one authentication provider to another, Outline will
+> attempt to match based on email address. This can be vulnerable to account
+> take-over if email addresses are *not* validated in *all* providers and
+> Outline is configured with multiple authentication providers.
+
+Each Outline user only has a single credential associated with it (provider +
+`sub`), even if Outline is configured to use multiple identity providers. This
+is set to the last-used credential on login (detailed below).
+
+When using Kanidm, `sub` is the user's UUID, and is stable even if their Kanidm
+account is renamed or changes email address – but Outline will only update the
+email address automatically.
+
+When a user authenticates to Outline, it will attempt to match the credential
+with an Outline user:
+
+1.  Find a matching user by credential (provider + `sub`).
+
+2.  If there is a matching user, the user is logged in.
+
+3.  Find a matching user by email address.
+
+4.  If there's no matching Outline user with that email address, Outline will
+    create a new user account (if allowed by <kbd>Security</kbd> →
+    <kbd>Access</kbd> → <kbd>Allowed domains</kbd>), and the user is logged in.
+
+    If a user account is not allowed to be created, the login will be rejected.
+
+5.  If the matching user's credential *is* associated with *this* provider,
+    [Outline will (currently) reject the login attempt](https://github.com/outline/outline/blob/ce987d23edbb7be940d26e2cc7df8c1e51aabc3c/server/commands/userProvisioner.ts#L86-L94).
+
+6.  At this point, the matching user's credential must be associated with a
+    different provider, and it is treated as a migration.
+
+    Outline replaces the matching user's credential with the one currently used,
+    and logs them in.
+
+As long as all email addresses are verified *and* unique to a single account in
+each provider, this should allow you to easily and securely migrate from one
+identity provider to another.
+
+However, if emails are not verified in even a *single* provider, this could make
+Outline vulnerable to account take-over.
+
+Outline has *no UI* for managing or displaying external credentials, so it's
+difficult to troubleshoot.
+
+[outline-oidc]: https://docs.getoutline.com/s/hosting/doc/oidc-8CPBm6uC0I
+[outline-pkce]: https://github.com/outline/outline/discussions/7706
+[outline-self]: https://docs.getoutline.com/s/hosting
 
 ## ownCloud
 
