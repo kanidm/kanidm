@@ -10,7 +10,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     fn consumer_incremental_apply_entries(
         &mut self,
-        ctx_entries: &[ReplIncrementalEntryV1],
+        ctx_entries: Vec<ReplIncrementalEntryV1>,
     ) -> Result<bool, OperationError> {
         // trace!(?ctx_entries);
 
@@ -30,7 +30,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // I think we need to rehydrate all the repl content to a partial
         // entry. This way all the types are consistent and ready.
-        let ctx_entries: Vec<_> = ctx_entries.iter().map(
+        let ctx_entries: Vec<_> = ctx_entries.into_iter().map(
             EntryIncrementalNew::rehydrate
         )
         .collect::<Result<Vec<_>, _>>()
@@ -283,7 +283,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn consumer_apply_changes(
         &mut self,
-        ctx: &ReplIncrementalContext,
+        ctx: ReplIncrementalContext,
     ) -> Result<ConsumerState, OperationError> {
         match ctx {
             ReplIncrementalContext::DomainMismatch => {
@@ -314,9 +314,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 meta_entries,
                 entries,
             } => self.consumer_apply_changes_v1(
-                *domain_version,
-                *domain_patch_level,
-                *domain_uuid,
+                domain_version,
+                domain_patch_level,
+                domain_uuid,
                 ranges,
                 schema_entries,
                 meta_entries,
@@ -331,10 +331,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx_domain_version: DomainVersion,
         ctx_domain_patch_level: u32,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
-        ctx_schema_entries: &[ReplIncrementalEntryV1],
-        ctx_meta_entries: &[ReplIncrementalEntryV1],
-        ctx_entries: &[ReplIncrementalEntryV1],
+        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_schema_entries: Vec<ReplIncrementalEntryV1>,
+        ctx_meta_entries: Vec<ReplIncrementalEntryV1>,
+        ctx_entries: Vec<ReplIncrementalEntryV1>,
     ) -> Result<ConsumerState, OperationError> {
         if ctx_domain_version < DOMAIN_MIN_LEVEL {
             error!("Unable to proceed with consumer incremental - incoming domain level is lower than our minimum supported level. {} < {}", ctx_domain_version, DOMAIN_MIN_LEVEL);
@@ -367,7 +367,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let txn_cid = self.get_cid().clone();
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.incremental_preflight_validate_ruv(ctx_ranges, &txn_cid)
+        ruv.incremental_preflight_validate_ruv(&ctx_ranges, &txn_cid)
             .inspect_err(|err| {
                 error!(
                     ?err,
@@ -439,11 +439,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 
@@ -452,7 +452,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn consumer_apply_refresh(
         &mut self,
-        ctx: &ReplRefreshContext,
+        ctx: ReplRefreshContext,
     ) -> Result<(), OperationError> {
         match ctx {
             ReplRefreshContext::V1 {
@@ -464,9 +464,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 meta_entries,
                 entries,
             } => self.consumer_apply_refresh_v1(
-                *domain_version,
-                *domain_devel,
-                *domain_uuid,
+                domain_version,
+                domain_devel,
+                domain_uuid,
                 ranges,
                 schema_entries,
                 meta_entries,
@@ -477,10 +477,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     fn consumer_refresh_create_entries(
         &mut self,
-        ctx_entries: &[ReplEntryV1],
+        ctx_entries: Vec<ReplEntryV1>,
     ) -> Result<(), OperationError> {
         let candidates = ctx_entries
-            .iter()
+            .into_iter()
             .map(EntryRefreshNew::from_repl_entry_v1)
             .collect::<Result<Vec<EntryRefreshNew>, _>>()
             .inspect_err(|err| {
@@ -536,10 +536,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         ctx_domain_version: DomainVersion,
         ctx_domain_devel: bool,
         ctx_domain_uuid: Uuid,
-        ctx_ranges: &BTreeMap<Uuid, ReplAnchoredCidRange>,
-        ctx_schema_entries: &[ReplEntryV1],
-        ctx_meta_entries: &[ReplEntryV1],
-        ctx_entries: &[ReplEntryV1],
+        ctx_ranges: BTreeMap<Uuid, ReplAnchoredCidRange>,
+        ctx_schema_entries: Vec<ReplEntryV1>,
+        ctx_meta_entries: Vec<ReplEntryV1>,
+        ctx_entries: Vec<ReplEntryV1>,
     ) -> Result<(), OperationError> {
         // Can we apply the domain version validly?
         // if domain_version >= min_support ...
@@ -646,11 +646,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // context. Note that we get this in a writeable form!
         let ruv = self.be_txn.get_ruv_write();
 
-        ruv.refresh_validate_ruv(ctx_ranges).inspect_err(|err| {
+        ruv.refresh_validate_ruv(&ctx_ranges).inspect_err(|err| {
             error!(?err, "RUV ranges were not rebuilt correctly.");
         })?;
 
-        ruv.refresh_update_ruv(ctx_ranges).inspect_err(|err| {
+        ruv.refresh_update_ruv(&ctx_ranges).inspect_err(|err| {
             error!(?err, "Unable to update RUV with supplier ranges.");
         })?;
 

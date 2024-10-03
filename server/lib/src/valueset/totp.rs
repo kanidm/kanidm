@@ -5,7 +5,6 @@ use crate::credential::totp::Totp;
 use crate::prelude::*;
 
 use crate::be::dbvalue::DbTotpV1;
-use crate::repl::proto::{ReplAttrV1, ReplTotpV1};
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -32,18 +31,6 @@ impl ValueSetTotpSecret {
                 Totp::try_from(data)
                     .map_err(|()| OperationError::InvalidValueState)
                     .map(|t| (l, t))
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetTotpSecret { map }))
-    }
-
-    pub fn from_repl_v1(data: &[(String, ReplTotpV1)]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(|(l, data)| {
-                Totp::try_from(data)
-                    .map_err(|()| OperationError::InvalidValueState)
-                    .map(|t| (l.clone(), t))
             })
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetTotpSecret { map }))
@@ -141,16 +128,6 @@ impl ValueSetT for ValueSetTotpSecret {
                 .map(|(label, totp)| (label.clone(), totp.to_dbtotpv1()))
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::TotpSecret {
-            set: self
-                .map
-                .iter()
-                .map(|(label, totp)| (label.clone(), totp.to_repl_v1()))
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

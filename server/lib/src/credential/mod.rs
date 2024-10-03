@@ -9,7 +9,6 @@ use webauthn_rs::prelude::{AuthenticationResult, Passkey, SecurityKey};
 use webauthn_rs_core::proto::{Credential as WebauthnCredential, CredentialV3};
 
 use crate::be::dbvalue::{DbBackupCodeV1, DbCred};
-use crate::repl::proto::{ReplBackupCodeV1, ReplCredV1, ReplPasskeyV4V1, ReplSecurityKeyV4V1};
 
 pub mod apppwd;
 pub mod softlock;
@@ -50,16 +49,6 @@ impl TryFrom<DbBackupCodeV1> for BackupCodes {
     }
 }
 
-impl TryFrom<&ReplBackupCodeV1> for BackupCodes {
-    type Error = ();
-
-    fn try_from(value: &ReplBackupCodeV1) -> Result<Self, Self::Error> {
-        Ok(BackupCodes {
-            code_set: value.codes.iter().cloned().collect(),
-        })
-    }
-}
-
 impl BackupCodes {
     pub fn new(code_set: HashSet<String>) -> Self {
         BackupCodes { code_set }
@@ -76,12 +65,6 @@ impl BackupCodes {
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
         DbBackupCodeV1 {
             code_set: self.code_set.clone(),
-        }
-    }
-
-    pub fn to_repl_v1(&self) -> ReplBackupCodeV1 {
-        ReplBackupCodeV1 {
-            codes: self.code_set.iter().cloned().collect(),
         }
     }
 }
@@ -372,92 +355,6 @@ impl TryFrom<DbCred> for Credential {
 }
 
 impl Credential {
-    pub fn try_from_repl_v1(rc: &ReplCredV1) -> Result<(String, Self), OperationError> {
-        match rc {
-            ReplCredV1::TmpWn { tag, set } => {
-                let m_uuid: Option<Uuid> = set.first().map(|v| v.uuid);
-
-                let v_webauthn = set
-                    .iter()
-                    .map(|passkey| (passkey.tag.clone(), passkey.key.clone()))
-                    .collect();
-                let type_ = CredentialType::Webauthn(v_webauthn);
-
-                match (m_uuid, type_.is_valid()) {
-                    (Some(uuid), true) => Ok((tag.clone(), Credential { type_, uuid })),
-                    _ => Err(OperationError::InvalidValueState),
-                }
-            }
-            ReplCredV1::Password {
-                tag,
-                password,
-                uuid,
-            } => {
-                let v_password =
-                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
-                let type_ = CredentialType::Password(v_password);
-                if type_.is_valid() {
-                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
-                } else {
-                    Err(OperationError::InvalidValueState)
-                }
-            }
-            ReplCredV1::GenPassword {
-                tag,
-                password,
-                uuid,
-            } => {
-                let v_password =
-                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
-                let type_ = CredentialType::GeneratedPassword(v_password);
-                if type_.is_valid() {
-                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
-                } else {
-                    Err(OperationError::InvalidValueState)
-                }
-            }
-            ReplCredV1::PasswordMfa {
-                tag,
-                password,
-                totp,
-                backup_code,
-                webauthn,
-                uuid,
-            } => {
-                let v_password =
-                    Password::try_from(password).map_err(|()| OperationError::InvalidValueState)?;
-
-                let v_totp = totp
-                    .iter()
-                    .map(|(l, dbt)| Totp::try_from(dbt).map(|t| (l.clone(), t)))
-                    .collect::<Result<Map<_, _>, _>>()
-                    .map_err(|()| OperationError::InvalidValueState)?;
-
-                let v_backup_code = match backup_code {
-                    Some(rbc) => Some(
-                        BackupCodes::try_from(rbc)
-                            .map_err(|()| OperationError::InvalidValueState)?,
-                    ),
-                    None => None,
-                };
-
-                let v_webauthn = webauthn
-                    .iter()
-                    .map(|sk| (sk.tag.clone(), sk.key.clone()))
-                    .collect();
-
-                let type_ =
-                    CredentialType::PasswordMfa(v_password, v_totp, v_webauthn, v_backup_code);
-
-                if type_.is_valid() {
-                    Ok((tag.clone(), Credential { type_, uuid: *uuid }))
-                } else {
-                    Err(OperationError::InvalidValueState)
-                }
-            }
-        }
-    }
-
     /// Create a new credential that contains a CredentialType::Password
     pub fn new_password_only(
         policy: &CryptoPolicy,
@@ -730,51 +627,6 @@ impl Credential {
             CredentialType::Webauthn(map) => DbCred::TmpWn {
                 webauthn: map.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
                 uuid,
-            },
-        }
-    }
-
-    /// Extract this credential into it's Serialisable Replication form
-    pub fn to_repl_v1(&self, tag: String) -> ReplCredV1 {
-        let uuid = self.uuid;
-        match &self.type_ {
-            CredentialType::Password(pw) => ReplCredV1::Password {
-                tag,
-                password: pw.to_repl_v1(),
-                uuid,
-            },
-            CredentialType::GeneratedPassword(pw) => ReplCredV1::GenPassword {
-                tag,
-                password: pw.to_repl_v1(),
-                uuid,
-            },
-            CredentialType::PasswordMfa(pw, totp, map, backup_code) => ReplCredV1::PasswordMfa {
-                tag,
-                password: pw.to_repl_v1(),
-                totp: totp
-                    .iter()
-                    .map(|(l, t)| (l.clone(), t.to_repl_v1()))
-                    .collect(),
-                backup_code: backup_code.as_ref().map(|b| b.to_repl_v1()),
-                webauthn: map
-                    .iter()
-                    .map(|(k, v)| ReplSecurityKeyV4V1 {
-                        tag: k.clone(),
-                        key: v.clone(),
-                    })
-                    .collect(),
-                uuid,
-            },
-            CredentialType::Webauthn(map) => ReplCredV1::TmpWn {
-                tag,
-                set: map
-                    .iter()
-                    .map(|(k, v)| ReplPasskeyV4V1 {
-                        uuid,
-                        tag: k.clone(),
-                        key: v.clone(),
-                    })
-                    .collect(),
             },
         }
     }

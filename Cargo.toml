@@ -244,11 +244,11 @@ reqwest = { version = "0.12.8", default-features = false, features = [
     "http2",
     "json",
     "gzip",
-    "native-tls",
-    "native-tls-alpn",
+    "rustls-tls-native-roots",
 ] }
 rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
+rustls = { version = "0.23.13", default-features = false, features = ["aws_lc_rs"] }
 
 sd-notify = "^0.4.2"
 selinux = "^0.4.6"

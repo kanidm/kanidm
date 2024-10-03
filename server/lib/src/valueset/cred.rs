@@ -12,9 +12,6 @@ use crate::be::dbvalue::{
 };
 use crate::credential::Credential;
 use crate::prelude::*;
-use crate::repl::proto::{
-    ReplAttestedPasskeyV4V1, ReplAttrV1, ReplCredV1, ReplIntentTokenV1, ReplPasskeyV4V1,
-};
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
@@ -47,14 +44,6 @@ impl ValueSetCredential {
                     .map_err(|()| OperationError::InvalidValueState)
                     .map(|c| (t, c))
             })
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetCredential { map }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplCredV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(Credential::try_from_repl_v1)
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetCredential { map }))
     }
@@ -168,16 +157,6 @@ impl ValueSetT for ValueSetCredential {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Credential {
-            set: self
-                .map
-                .iter()
-                .map(|(tag, cred)| cred.to_repl_v1(tag.clone()))
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -294,69 +273,6 @@ impl ValueSetIntentToken {
                     }
                 };
                 (s, ts)
-            })
-            .collect();
-        Ok(Box::new(ValueSetIntentToken { map }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplIntentTokenV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(|dits| match dits {
-                ReplIntentTokenV1::Valid {
-                    token_id,
-                    max_ttl,
-                    ext_cred_portal_can_view,
-                    primary_can_edit,
-                    passkeys_can_edit,
-                    attested_passkeys_can_edit,
-                    unixcred_can_edit,
-                    sshpubkey_can_edit,
-                } => (
-                    token_id.clone(),
-                    IntentTokenState::Valid {
-                        max_ttl: *max_ttl,
-                        perms: CredUpdateSessionPerms {
-                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
-                            primary_can_edit: *primary_can_edit,
-                            passkeys_can_edit: *passkeys_can_edit,
-                            attested_passkeys_can_edit: *attested_passkeys_can_edit,
-                            unixcred_can_edit: *unixcred_can_edit,
-                            sshpubkey_can_edit: *sshpubkey_can_edit,
-                        },
-                    },
-                ),
-                ReplIntentTokenV1::InProgress {
-                    token_id,
-                    max_ttl,
-                    session_id,
-                    session_ttl,
-                    ext_cred_portal_can_view,
-                    primary_can_edit,
-                    passkeys_can_edit,
-                    attested_passkeys_can_edit,
-                    unixcred_can_edit,
-                    sshpubkey_can_edit,
-                } => (
-                    token_id.clone(),
-                    IntentTokenState::InProgress {
-                        max_ttl: *max_ttl,
-                        session_id: *session_id,
-                        session_ttl: *session_ttl,
-                        perms: CredUpdateSessionPerms {
-                            ext_cred_portal_can_view: *ext_cred_portal_can_view,
-                            primary_can_edit: *primary_can_edit,
-                            passkeys_can_edit: *passkeys_can_edit,
-                            attested_passkeys_can_edit: *attested_passkeys_can_edit,
-                            unixcred_can_edit: *unixcred_can_edit,
-                            sshpubkey_can_edit: *sshpubkey_can_edit,
-                        },
-                    },
-                ),
-                ReplIntentTokenV1::Consumed { token_id, max_ttl } => (
-                    token_id.clone(),
-                    IntentTokenState::Consumed { max_ttl: *max_ttl },
-                ),
             })
             .collect();
         Ok(Box::new(ValueSetIntentToken { map }))
@@ -541,67 +457,6 @@ impl ValueSetT for ValueSetIntentToken {
         )
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::IntentToken {
-            set: self
-                .map
-                .iter()
-                .map(|(u, s)| match s {
-                    IntentTokenState::Valid {
-                        max_ttl,
-                        perms:
-                            CredUpdateSessionPerms {
-                                ext_cred_portal_can_view,
-                                primary_can_edit,
-                                passkeys_can_edit,
-                                attested_passkeys_can_edit,
-                                unixcred_can_edit,
-                                sshpubkey_can_edit,
-                            },
-                    } => ReplIntentTokenV1::Valid {
-                        token_id: u.clone(),
-                        max_ttl: *max_ttl,
-                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
-                        primary_can_edit: *primary_can_edit,
-                        passkeys_can_edit: *passkeys_can_edit,
-                        attested_passkeys_can_edit: *attested_passkeys_can_edit,
-                        unixcred_can_edit: *unixcred_can_edit,
-                        sshpubkey_can_edit: *sshpubkey_can_edit,
-                    },
-                    IntentTokenState::InProgress {
-                        max_ttl,
-                        session_id,
-                        session_ttl,
-                        perms:
-                            CredUpdateSessionPerms {
-                                ext_cred_portal_can_view,
-                                primary_can_edit,
-                                passkeys_can_edit,
-                                attested_passkeys_can_edit,
-                                unixcred_can_edit,
-                                sshpubkey_can_edit,
-                            },
-                    } => ReplIntentTokenV1::InProgress {
-                        token_id: u.clone(),
-                        max_ttl: *max_ttl,
-                        session_id: *session_id,
-                        session_ttl: *session_ttl,
-                        ext_cred_portal_can_view: *ext_cred_portal_can_view,
-                        primary_can_edit: *primary_can_edit,
-                        passkeys_can_edit: *passkeys_can_edit,
-                        attested_passkeys_can_edit: *attested_passkeys_can_edit,
-                        unixcred_can_edit: *unixcred_can_edit,
-                        sshpubkey_can_edit: *sshpubkey_can_edit,
-                    },
-                    IntentTokenState::Consumed { max_ttl } => ReplIntentTokenV1::Consumed {
-                        token_id: u.clone(),
-                        max_ttl: *max_ttl,
-                    },
-                })
-                .collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().cloned().map(PartialValue::IntentToken))
     }
@@ -664,15 +519,6 @@ impl ValueSetPasskey {
             .map(|k| match k {
                 DbValuePasskeyV1::V4 { u, t, k } => Ok((u, (t, k))),
             })
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetPasskey { map }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplPasskeyV4V1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .cloned()
-            .map(|ReplPasskeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetPasskey { map }))
     }
@@ -780,20 +626,6 @@ impl ValueSetT for ValueSetPasskey {
         )
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Passkey {
-            set: self
-                .map
-                .iter()
-                .map(|(u, (t, k))| ReplPasskeyV4V1 {
-                    uuid: *u,
-                    tag: t.clone(),
-                    key: k.clone(),
-                })
-                .collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().cloned().map(PartialValue::Passkey))
     }
@@ -860,15 +692,6 @@ impl ValueSetAttestedPasskey {
             .map(|k| match k {
                 DbValueAttestedPasskeyV1::V4 { u, t, k } => Ok((u, (t, k))),
             })
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetAttestedPasskey { map }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplAttestedPasskeyV4V1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .cloned()
-            .map(|ReplAttestedPasskeyV4V1 { uuid, tag, key }| Ok((uuid, (tag, key))))
             .collect::<Result<_, _>>()?;
         Ok(Box::new(ValueSetAttestedPasskey { map }))
     }
@@ -976,20 +799,6 @@ impl ValueSetT for ValueSetAttestedPasskey {
         )
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::AttestedPasskey {
-            set: self
-                .map
-                .iter()
-                .map(|(u, (t, k))| ReplAttestedPasskeyV4V1 {
-                    uuid: *u,
-                    tag: t.clone(),
-                    key: k.clone(),
-                })
-                .collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().copied().map(PartialValue::AttestedPasskey))
     }
@@ -1054,12 +863,6 @@ impl ValueSetCredentialType {
 
     pub fn from_dbvs2(data: Vec<u16>) -> Result<ValueSet, OperationError> {
         let set: Result<_, _> = data.into_iter().map(CredentialType::try_from).collect();
-        let set = set.map_err(|_| OperationError::InvalidValueState)?;
-        Ok(Box::new(ValueSetCredentialType { set }))
-    }
-
-    pub fn from_repl_v1(data: &[u16]) -> Result<ValueSet, OperationError> {
-        let set: Result<_, _> = data.iter().copied().map(CredentialType::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetCredentialType { set }))
     }
@@ -1154,12 +957,6 @@ impl ValueSetT for ValueSetCredentialType {
         DbValueSetV2::CredentialType(self.set.iter().map(|s| *s as u16).collect())
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::CredentialType {
-            set: self.set.iter().map(|s| *s as u16).collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.set.iter().copied().map(PartialValue::CredentialType))
     }
@@ -1209,34 +1006,9 @@ impl ValueSetWebauthnAttestationCaList {
         Box::new(ValueSetWebauthnAttestationCaList { ca_list })
     }
 
-    /*
-    pub fn push(&mut self, u: CredentialType) -> bool {
-        self.set.insert(u)
-    }
-    */
-
     pub fn from_dbvs2(ca_list: AttestationCaList) -> Result<ValueSet, OperationError> {
         Ok(Box::new(ValueSetWebauthnAttestationCaList { ca_list }))
     }
-
-    pub fn from_repl_v1(ca_list: &AttestationCaList) -> Result<ValueSet, OperationError> {
-        Ok(Box::new(ValueSetWebauthnAttestationCaList {
-            ca_list: ca_list.clone(),
-        }))
-    }
-
-    /*
-    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
-    // types, and uuid is foreign.
-    #[allow(clippy::should_implement_trait)]
-    pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
-    where
-        T: IntoIterator<Item = CredentialType>,
-    {
-        let set = iter.into_iter().collect();
-        Some(Box::new(ValueSetCredentialType { set }))
-    }
-    */
 }
 
 impl ValueSetT for ValueSetWebauthnAttestationCaList {
@@ -1258,25 +1030,11 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
     }
 
     fn remove(&mut self, _pv: &PartialValue, _cid: &Cid) -> bool {
-        /*
-        match pv {
-            _ => {
-                debug_assert!(false);
-                true
-            }
-        }
-        */
         debug_assert!(false);
         true
     }
 
     fn contains(&self, _pv: &PartialValue) -> bool {
-        /*
-        match pv {
-            PartialValue::CredentialType(u) => self.set.contains(u),
-            _ => false,
-        }
-        */
         false
     }
 
@@ -1340,12 +1098,6 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
                 .map(|device| device.description_en().to_string())
                 .collect::<Vec<_>>(),
         ))
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::WebauthnAttestationCaList {
-            ca_list: self.ca_list.clone(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
