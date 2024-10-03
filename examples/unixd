@@ -151,3 +151,8 @@ pam_allowed_login_groups = ["posix_group"]
 # local = "libvirt"
 # with = "virt-admins"
 
+# [[kanidm.map_group]]
+# local = "admins"
+# with = "system-admins"
+
+
