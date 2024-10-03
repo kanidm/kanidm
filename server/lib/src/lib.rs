@@ -80,7 +80,6 @@ pub mod prelude {
     pub use url::Url;
     pub use uuid::{uuid, Uuid};
 
-    pub use crate::be::Limits;
     pub use crate::constants::*;
     pub use crate::entry::{
         Entry, EntryCommitted, EntryIncrementalCommitted, EntryIncrementalNew, EntryInit,
@@ -113,6 +112,11 @@ pub mod prelude {
         ApiTokenScope, IndexType, PartialValue, SessionScope, SyntaxType, Value,
     };
 
+    pub use time::format_description::well_known::Rfc3339;
+
+    #[cfg(test)]
+    pub use kanidmd_lib_macros::*;
+
     pub(crate) use crate::valueset::{
         ValueSet, ValueSetBool, ValueSetCid, ValueSetIndex, ValueSetIutf8, ValueSetRefer,
         ValueSetSyntax, ValueSetT, ValueSetUtf8, ValueSetUuid,
@@ -123,10 +127,5 @@ pub mod prelude {
         ScimEntryHeader,
     };
 
-    // pub(crate) use serde_json::Value as JsonValue;
-
-    #[cfg(test)]
-    pub use kanidmd_lib_macros::*;
-
-    pub use time::format_description::well_known::Rfc3339;
+    pub(crate) use crate::be::Limits;
 }

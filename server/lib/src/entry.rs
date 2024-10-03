@@ -482,7 +482,7 @@ impl Entry<EntryInit, EntryNew> {
 }
 
 impl Entry<EntryRefresh, EntryNew> {
-    pub fn from_repl_entry_v1(repl_entry: &ReplEntryV1) -> Result<Self, OperationError> {
+    pub fn from_repl_entry_v1(repl_entry: ReplEntryV1) -> Result<Self, OperationError> {
         // From the entry, we have to rebuild the ecstate and the attrs.
         let (ecstate, mut attrs) = repl_entry.rehydrate()?;
 
@@ -543,7 +543,7 @@ impl Entry<EntryIncremental, EntryNew> {
         self.valid.ecstate.stub()
     }
 
-    pub fn rehydrate(repl_inc_entry: &ReplIncrementalEntryV1) -> Result<Self, OperationError> {
+    pub fn rehydrate(repl_inc_entry: ReplIncrementalEntryV1) -> Result<Self, OperationError> {
         let (uuid, ecstate, attrs) = repl_inc_entry.rehydrate()?;
 
         Ok(Entry {
@@ -1719,48 +1719,6 @@ impl Entry<EntrySealed, EntryCommitted> {
         // Convert attrs from db format to value
 
         let (attrs, ecstate) = match db_e.ent {
-            DbEntryVers::V1(_) => {
-                error!("Db V1 entry should have been migrated!");
-                return None;
-            }
-            DbEntryVers::V2(v2) => {
-                let r_attrs = v2
-                    .attrs
-                    .into_iter()
-                    // Skip anything empty as new VS can't deal with it.
-                    .filter(|(_k, vs)| !vs.is_empty())
-                    .map(|(k, dbvs)| {
-                        valueset::from_db_valueset_v2(dbvs)
-                            .map(|vs: ValueSet| (k, vs))
-                            .map_err(|e| {
-                                error!(?e, "from_dbentry failed");
-                            })
-                    })
-                    .collect::<Result<Eattrs, ()>>()
-                    .ok()?;
-
-                /*
-                 * ⚠️  ==== The Hack Zoen ==== ⚠️
-                 *
-                 * For now to make replication work, we are synthesising an in-memory change
-                 * log, pinned to "the last time the entry was modified" as it's "create time".
-                 *
-                 * This should only be done *once* on entry load.
-                 */
-                let cid = r_attrs
-                    .get(&Attribute::LastModifiedCid)
-                    .and_then(|vs| vs.as_cid_set())
-                    .and_then(|set| set.iter().next().cloned())
-                    .or_else(|| {
-                        error!("Unable to access last modified cid of entry, unable to proceed");
-                        None
-                    })?;
-
-                let ecstate = EntryChangeState::new_without_schema(&cid, &r_attrs);
-
-                (r_attrs, ecstate)
-            }
-
             DbEntryVers::V3 { changestate, attrs } => {
                 let ecstate = EntryChangeState::from_db_changestate(changestate);
 

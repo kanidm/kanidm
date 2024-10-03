@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::scim_v1::server::ScimAuditString;
@@ -30,19 +29,8 @@ impl ValueSetAuditLogString {
         Box::new(ValueSetAuditLogString { map })
     }
 
-    /*
-    pub fn push(&mut self, (c, s): AuditLogStringType) -> bool {
-        self.map.insert(c, s).is_none()
-    }
-    */
-
     pub fn from_dbvs2(data: Vec<AuditLogStringType>) -> Result<ValueSet, OperationError> {
         let map = data.into_iter().collect();
-        Ok(Box::new(ValueSetAuditLogString { map }))
-    }
-
-    pub fn from_repl_v1(data: &[AuditLogStringType]) -> Result<ValueSet, OperationError> {
-        let map = data.iter().map(|e| (e.0.clone(), e.1.clone())).collect();
         Ok(Box::new(ValueSetAuditLogString { map }))
     }
 }
@@ -143,16 +131,6 @@ impl ValueSetT for ValueSetAuditLogString {
                 .map(|(c, s)| (c.clone(), s.clone()))
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::AuditLogString {
-            map: self
-                .map
-                .iter()
-                .map(|(c, s)| (c.clone(), s.clone()))
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

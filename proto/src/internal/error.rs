@@ -161,6 +161,7 @@ pub enum OperationError {
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
     DB0003FilterResolveCacheBuild,
+    DB0004DatabaseTooOld,
 
     // SCIM
     SC0001IncomingSshPublicKey,
@@ -334,6 +335,7 @@ impl OperationError {
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,
+            Self::DB0004DatabaseTooOld => Some("The database is too old to be migrated.".into()),
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),
