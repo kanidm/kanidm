@@ -763,6 +763,7 @@ impl QueryServerReadV1 {
         idms_prox_read.get_unixgrouptoken(&rate)
     }
 
+    //TODO: Do we really want to turn this into only a string?
     #[instrument(
         level = "info",
         skip_all,
@@ -812,7 +813,7 @@ impl QueryServerReadV1 {
                     .and_then(|e| {
                         // From the entry, turn it into the value
                         e.get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
-                            .map(|i| i.collect())
+                            .map(|i| i.map(|(_, key)| key.to_string()).collect())
                     })
                     .unwrap_or_else(|| {
                         // No matching entry? Return none.

@@ -39,6 +39,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
+use sshkey_attest::proto::PublicKey;
 use time::OffsetDateTime;
 use tracing::trace;
 use uuid::Uuid;
@@ -2548,9 +2549,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn get_ava_iter_sshpubkeys<A: AsRef<Attribute>>(
         &self,
         attr: A,
-    ) -> Option<impl Iterator<Item = String> + '_> {
+    ) -> Option<impl Iterator<Item = (&String, &PublicKey)> + '_> {
         self.get_ava_set(attr)
-            .and_then(|vs| vs.as_sshpubkey_string_iter())
+            .and_then(|vs| vs.as_sshkey_map().map(|v| v.into_iter()))
     }
 
     // These are special types to allow returning typed values from

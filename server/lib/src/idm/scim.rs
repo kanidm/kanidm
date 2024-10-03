@@ -1507,6 +1507,7 @@ mod tests {
     use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
     use kanidm_proto::internal::ApiTokenPurpose;
     use kanidm_proto::scim_v1::*;
+    use sshkey_attest::proto::PublicKey;
     use std::sync::Arc;
     use std::time::Duration;
 
@@ -2647,7 +2648,7 @@ mod tests {
             .get_ava_iter_sshpubkeys(Attribute::SshPublicKey)
             .expect("Failed to access ssh pubkeys");
 
-        assert_eq!(ssh_keyiter.next(), Some("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey".to_string()));
+        assert_eq!(ssh_keyiter.next(), Some((&"Key McKeyface".to_string(), &PublicKey::from_string("sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey").expect("PublicKey failed to parse"))));
         assert_eq!(ssh_keyiter.next(), None);
 
         // Check memberof works.
