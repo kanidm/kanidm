@@ -1650,7 +1650,6 @@ impl IdlSqliteWriteTransaction {
         }
         //   * if v4 -> migrate v1 to v2 entries.
         if dbv_id2entry == 4 {
-            // self.migrate_dbentryv1_to_dbentryv2()?;
             dbv_id2entry = 5;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
         }
@@ -1687,7 +1686,6 @@ impl IdlSqliteWriteTransaction {
         }
         //   * if v8 -> migrate all entries to have a change state
         if dbv_id2entry == 8 {
-            // self.migrate_dbentryv2_to_dbentryv3()?;
             dbv_id2entry = 9;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv2 -> dbentryv3)");
         }
