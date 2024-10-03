@@ -1,8 +1,10 @@
 use crate::db::KeyStoreTxn;
+use crate::unix_config::KanidmConfig;
 use async_trait::async_trait;
 use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
+use std::collections::BTreeSet;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{broadcast, Mutex};
 
@@ -34,6 +36,7 @@ struct KanidmProviderInternal {
     client: KanidmClient,
     hmac_key: HmacKey,
     crypto_policy: CryptoPolicy,
+    pam_allow_groups: BTreeSet<String>,
 }
 
 pub struct KanidmProvider {
@@ -43,6 +46,7 @@ pub struct KanidmProvider {
 impl KanidmProvider {
     pub fn new(
         client: KanidmClient,
+        config: &KanidmConfig,
         now: SystemTime,
         keystore: &mut KeyStoreTxn,
         tpm: &mut tpm::BoxedDynTpm,
@@ -85,12 +89,15 @@ impl KanidmProvider {
 
         let crypto_policy = CryptoPolicy::time_target(Duration::from_millis(250));
 
+        let pam_allow_groups = config.pam_allowed_login_groups.iter().cloned().collect();
+
         Ok(KanidmProvider {
             inner: Mutex::new(KanidmProviderInternal {
                 state: CacheState::OfflineNextCheck(now),
                 client,
                 hmac_key,
                 crypto_policy,
+                pam_allow_groups,
             }),
         })
     }
@@ -341,6 +348,16 @@ impl IdProvider for KanidmProvider {
                 opid,
             ))
             | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
                 StatusCode::BAD_REQUEST,
                 Some(OperationError::InvalidAccountState(_)),
                 opid,
@@ -451,6 +468,16 @@ impl IdProvider for KanidmProvider {
                     | Err(ClientError::Http(
                         StatusCode::NOT_FOUND,
                         Some(OperationError::NoMatchingEntries),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingAttribute(_)),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingClass(_)),
                         opid,
                     ))
                     | Err(ClientError::Http(
@@ -585,6 +612,16 @@ impl IdProvider for KanidmProvider {
                 opid,
             ))
             | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
                 StatusCode::BAD_REQUEST,
                 Some(OperationError::InvalidAccountState(_)),
                 opid,
@@ -600,6 +637,32 @@ impl IdProvider for KanidmProvider {
                 error!(?err, "client error");
                 Err(IdpError::BadRequest)
             }
+        }
+    }
+
+    async fn unix_user_authorise(&self, token: &UserToken) -> Result<Option<bool>, IdpError> {
+        let inner = self.inner.lock().await;
+
+        if inner.pam_allow_groups.is_empty() {
+            // can't allow anything if the group list is zero...
+            warn!("Cannot authenticate users, no allowed groups in configuration!");
+            Ok(Some(false))
+        } else {
+            let user_set: BTreeSet<_> = token
+                .groups
+                .iter()
+                .flat_map(|g| [g.name.clone(), g.uuid.hyphenated().to_string()])
+                .collect();
+
+            debug!(
+                "Checking if user is in allowed groups ({:?}) -> {:?}",
+                inner.pam_allow_groups, user_set,
+            );
+            let intersection_count = user_set.intersection(&inner.pam_allow_groups).count();
+            debug!("Number of intersecting groups: {}", intersection_count);
+            debug!("User token is valid: {}", token.valid);
+
+            Ok(Some(intersection_count > 0 && token.valid))
         }
     }
 }

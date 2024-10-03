@@ -18,8 +18,8 @@ macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: service account".to_string(),
+            return Err(OperationError::MissingClass(
+                ENTRYCLASS_SERVICE_ACCOUNT.into(),
             ));
         }
 

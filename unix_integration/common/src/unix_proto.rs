@@ -103,6 +103,13 @@ pub enum PamAuthRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct PamServiceInfo {
+    pub service: String,
+    pub tty: String,
+    pub rhost: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum ClientRequest {
     SshKey(String),
     NssAccounts,
@@ -111,7 +118,10 @@ pub enum ClientRequest {
     NssGroups,
     NssGroupByGid(u32),
     NssGroupByName(String),
-    PamAuthenticateInit(String),
+    PamAuthenticateInit {
+        account_id: String,
+        info: PamServiceInfo,
+    },
     PamAuthenticateStep(PamAuthRequest),
     PamAccountAllowed(String),
     PamAccountBeginSession(String),
@@ -131,7 +141,10 @@ impl ClientRequest {
             ClientRequest::NssGroups => "NssGroups".to_string(),
             ClientRequest::NssGroupByGid(id) => format!("NssGroupByGid({})", id),
             ClientRequest::NssGroupByName(id) => format!("NssGroupByName({})", id),
-            ClientRequest::PamAuthenticateInit(id) => format!("PamAuthenticateInit({})", id),
+            ClientRequest::PamAuthenticateInit { account_id, info } => format!(
+                "PamAuthenticateInit{{ account_id={} tty={} pam_secvice{} rhost={} }}",
+                account_id, info.service, info.tty, info.rhost
+            ),
             ClientRequest::PamAuthenticateStep(_) => "PamAuthenticateStep".to_string(),
             ClientRequest::PamAccountAllowed(id) => {
                 format!("PamAccountAllowed({})", id)
@@ -173,8 +186,9 @@ impl From<PamAuthResponse> for ClientResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq)]
 pub struct HomeDirectoryInfo {
+    pub uid: u32,
     pub gid: u32,
     pub name: String,
     pub aliases: Vec<String>,

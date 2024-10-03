@@ -584,6 +584,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
             SCHEMA_CLASS_PERSON_DL8.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
+            SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
+            SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
         ];
 
         idm_schema_classes
@@ -608,6 +610,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
             IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
             IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
         ];
 
         idm_data
