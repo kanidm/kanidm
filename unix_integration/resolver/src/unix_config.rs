@@ -58,7 +58,7 @@ struct ConfigV2 {
     kanidm: Option<KanidmConfigV2>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Clone, Debug, Deserialize)]
 pub struct GroupMap {
     pub local: String,
     pub with: String,
@@ -69,7 +69,7 @@ struct KanidmConfigV2 {
     conn_timeout: Option<u64>,
     request_timeout: Option<u64>,
     pam_allowed_login_groups: Option<Vec<String>>,
-    extend: Vec<GroupMap>,
+    map_group: Vec<GroupMap>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -145,7 +145,7 @@ pub struct KanidmConfig {
     pub conn_timeout: u64,
     pub request_timeout: u64,
     pub pam_allowed_login_groups: Vec<String>,
-    pub extend: Vec<GroupMap>,
+    pub map_group: Vec<GroupMap>,
 }
 
 impl Default for UnixdConfig {
@@ -287,7 +287,7 @@ impl UnixdConfig {
     }
 
     fn apply_from_config_legacy(self, config: ConfigInt) -> Result<Self, UnixIntegrationError> {
-        let extend = config
+        let map_group = config
             .allow_local_account_override
             .iter()
             .map(|name| GroupMap {
@@ -300,7 +300,7 @@ impl UnixdConfig {
             conn_timeout: config.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
             request_timeout: config.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
             pam_allowed_login_groups: config.pam_allowed_login_groups.unwrap_or_default(),
-            extend,
+            map_group,
         });
 
         // Now map the values into our config.
@@ -395,7 +395,7 @@ impl UnixdConfig {
                 conn_timeout: kconfig.conn_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT),
                 request_timeout: kconfig.request_timeout.unwrap_or(DEFAULT_CONN_TIMEOUT * 2),
                 pam_allowed_login_groups: kconfig.pam_allowed_login_groups.unwrap_or_default(),
-                extend: kconfig.extend,
+                map_group: kconfig.map_group,
             })
         } else {
             None
