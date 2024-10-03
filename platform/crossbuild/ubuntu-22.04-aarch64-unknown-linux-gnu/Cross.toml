@@ -2,16 +2,16 @@
 
 [target.aarch64-unknown-linux-gnu]
 dockerfile = "platform/crossbuild/ubuntu-22.04-aarch64-unknown-linux-gnu/Dockerfile"
+# The o
 pre-build = [
     "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
 
     "apt-get update && apt-get install --assume-yes rsync libssl-dev build-essential",
 
+    # All of these dirty hacks are needed because Ubuntu hates multiarch and doesn't do it properly on the same mirrors.
     "sed 's/^deb http/deb [arch=amd64] http/' -i '/etc/apt/sources.list'",
-    "echo 'deb [arch=arm64] http://au.archive.ubuntu.com/pub/ubuntu/ports jammy main restricted universe multiverse' >> /etc/apt/sources.list",
-    "echo 'deb [arch=arm64] http://au.archive.ubuntu.com/pub/ubuntu/ports jammy-updates main restricted universe multiverse' >> /etc/apt/sources.list",
-    "echo 'deb [arch=arm64] http://au.archive.ubuntu.com/pub/ubuntu/ports jammy-backports main restricted universe multiverse' >> /etc/apt/sources.list",
-
+    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted' >> /etc/apt/sources.list.d/arm64.list
+    echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted' >> /etc/apt/sources.list.d/arm64.list
     "dpkg --add-architecture $CROSS_DEB_ARCH",
     "apt-get update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH pkg-config",
 ]

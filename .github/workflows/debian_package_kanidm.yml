@@ -25,8 +25,10 @@ jobs:
             version: 12
         target:
           - name: x86_64-unknown-linux-gnu
+            debian-name: amd64
             features: native-deps  # crossbuilds take care of deps in their Dockerfile, native ignores Docker
           - name: aarch64-unknown-linux-gnu
+            debian-name: arm64
       fail-fast: false
     runs-on: ubuntu-latest
     steps:
@@ -52,11 +54,12 @@ jobs:
           args: "--locked --release"
         env:
           CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
-      - name: Install deb build dependencies  # TODO(jinnatar): This is a bit overkill and could be slimmer
+      - name: Install deb build dependencies
         run: |
-          scripts/install_ubuntu_dependencies.sh
-        env:
-          PACKAGING: 1
+          apt-get install -y \
+            "libpam0g:${{ matrix.target.debian-name }}" \
+            "libssl3:${{ matrix.target.debian-name }}"
+          cargo install cargo-deb
       # Step 2. deb build
       - name: Build packages (debs)
         run: platform/debian/build_debs.sh "${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
