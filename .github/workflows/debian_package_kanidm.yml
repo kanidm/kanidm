@@ -56,13 +56,14 @@ jobs:
           CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
       - name: Install deb build dependencies
         run: |
-          sudo apt-get install -y \
-            "libpam0g:${{ matrix.target.debian-name }}" \
-            "libssl3:${{ matrix.target.debian-name }}"
-          cargo install cargo-deb
+            platform/debian/install_deb_build_dependencies.sh \
+              "${{ matrix.image.name }}" \
+              "${{ matrix.target.debian-name }}"
+            cargo install cargo-deb
       # Step 2. deb build
       - name: Build packages (debs)
-        run: platform/debian/build_debs.sh "${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
+        run: |
+          platform/debian/build_debs.sh "${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
         env:
           SKIP_DEPS: 1  # Already done in separate step
 

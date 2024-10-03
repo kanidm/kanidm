@@ -28,10 +28,21 @@ fi
 
 if [ "${PACKAGING}" -eq 1 ]; then
     # Install packages needed for cargo-deb to build healthy debs for any supported target
+    # This works in Debian, but not in Ubuntu because they do multiarch weird.
+    # It would be too invasive to config a daily driver Ubuntu install for multiarch,
+    # so instead we don't, and just warn.
+    source /etc/os-release
+    if [[ "$ID" == "ubuntu" ]]; then
+      2>&1 echo "You're running Ubuntu, so we're skipping enabling multiarch for you because it would be too invasive. You won't be able to build valid debs for other than your native architecture."
+    ${SUDOCMD} apt-get install -y \
+    	libpam0g \
+    	libssl3
+    elif [[ "$ID" == "debian" ]]; then
     ${SUDOCMD} dpkg --add-architecture arm64 && ${SUDOCMD} apt-get update
     ${SUDOCMD} apt-get install -y \
     	libpam0g:{amd64,arm64} \
     	libssl3:{amd64,arm64}
+    fi
     export INSTALL_RUST=1
 fi
 
