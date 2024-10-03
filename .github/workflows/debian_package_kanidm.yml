@@ -40,8 +40,8 @@ jobs:
         # actions-rust-cross is a bit too "clever" and bypasses cross building when native, which then ignores our deps
         if: matrix.target.features == 'native-deps'
         run: |
-          apt-get update
-          apt-get install --y \
+          sudo apt-get update
+          sudo apt-get install --y \
             pkg-config \
             libssl3 libssl-dev \
             libudev-dev \
@@ -56,7 +56,7 @@ jobs:
           CROSS_CONFIG: "platform/crossbuild/${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}/Cross.toml"
       - name: Install deb build dependencies
         run: |
-          apt-get install -y \
+          sudo apt-get install -y \
             "libpam0g:${{ matrix.target.debian-name }}" \
             "libssl3:${{ matrix.target.debian-name }}"
           cargo install cargo-deb
