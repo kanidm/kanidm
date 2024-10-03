@@ -78,28 +78,19 @@ macro_rules! try_from_entry {
     ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::Account
-            )));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         // Now extract our needed attributes
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::Name
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
         let displayname = $value
             .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::DisplayName
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
 
         let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
@@ -117,9 +108,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let mail_primary = $value
             .get_ava_mail_primary(Attribute::Mail)
@@ -187,12 +178,7 @@ macro_rules! try_from_entry {
 
             let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
-                .ok_or_else(|| {
-                    OperationError::InvalidAccountState(format!(
-                        "Missing attribute: {}",
-                        Attribute::GidNumber
-                    ))
-                })?;
+                .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
 
             let groups = $unix_groups;
 
@@ -817,10 +803,9 @@ impl Account {
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
-                return Err(OperationError::InvalidAccountState(format!(
-                    "Missing class: {}",
-                    EntryClass::PosixAccount
-                )));
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
             }
         };
 
@@ -929,10 +914,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Invalid entry, {} attribute is not present or not iutf8",
                     Attribute::Class
                 );
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Class
-                ))
+                OperationError::MissingAttribute(Attribute::Class)
             })?
             .collect();
 

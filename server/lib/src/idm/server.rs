@@ -1468,12 +1468,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Token::ApiToken(apit, entry) => {
                 let spn = entry
                     .get_ava_single_proto_string(Attribute::Spn)
-                    .ok_or_else(|| {
-                        OperationError::InvalidAccountState(format!(
-                            "Missing attribute: {}",
-                            Attribute::Spn
-                        ))
-                    })?;
+                    .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
 
                 Ok(Some(LdapBoundToken {
                     session_id: apit.token_id,
@@ -1801,10 +1796,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Account is not a unix account
         if account.unix_extn().is_none() {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::PosixAccount
-            )));
+            return Err(OperationError::MissingClass(
+                ENTRYCLASS_POSIX_ACCOUNT.into(),
+            ));
         }
 
         // Deny the change if the account is anonymous!
@@ -1991,10 +1985,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let cred = match account.unix_extn() {
             Some(ue) => ue.ucred(),
             None => {
-                return Err(OperationError::InvalidAccountState(format!(
-                    "Missing class: {}",
-                    EntryClass::PosixAccount
-                )));
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
             }
         };
 

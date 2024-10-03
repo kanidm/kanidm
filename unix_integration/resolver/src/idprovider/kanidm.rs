@@ -348,6 +348,16 @@ impl IdProvider for KanidmProvider {
                 opid,
             ))
             | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
                 StatusCode::BAD_REQUEST,
                 Some(OperationError::InvalidAccountState(_)),
                 opid,
@@ -458,6 +468,16 @@ impl IdProvider for KanidmProvider {
                     | Err(ClientError::Http(
                         StatusCode::NOT_FOUND,
                         Some(OperationError::NoMatchingEntries),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingAttribute(_)),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingClass(_)),
                         opid,
                     ))
                     | Err(ClientError::Http(
@@ -589,6 +609,16 @@ impl IdProvider for KanidmProvider {
             | Err(ClientError::Http(
                 StatusCode::NOT_FOUND,
                 Some(OperationError::NoMatchingEntries),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
                 opid,
             ))
             | Err(ClientError::Http(
