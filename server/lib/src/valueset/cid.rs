@@ -3,7 +3,6 @@ use smolset::SmolSet;
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::{ReplAttrV1, ReplCidV1};
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -31,11 +30,6 @@ impl ValueSetCid {
                 ts: dc.timestamp,
             })
             .collect();
-        Ok(Box::new(ValueSetCid { set }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplCidV1]) -> Result<ValueSet, OperationError> {
-        let set = data.iter().map(|dc| dc.into()).collect();
         Ok(Box::new(ValueSetCid { set }))
     }
 }
@@ -142,12 +136,6 @@ impl ValueSetT for ValueSetCid {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Cid {
-            set: self.set.iter().map(|c| c.into()).collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

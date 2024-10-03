@@ -666,7 +666,7 @@ impl Filter<FilterInvalid> {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
-        let mut elems = ev.limits.filter_max_elements;
+        let mut elems = ev.limits().filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
                 inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
@@ -681,7 +681,7 @@ impl Filter<FilterInvalid> {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
-        let mut elems = ev.limits.filter_max_elements;
+        let mut elems = ev.limits().filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
                 inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
@@ -696,7 +696,7 @@ impl Filter<FilterInvalid> {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
-        let mut elems = ev.limits.filter_max_elements;
+        let mut elems = ev.limits().filter_max_elements;
         Ok(Filter {
             state: FilterInvalid {
                 inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
@@ -2174,7 +2174,7 @@ mod tests {
         );
 
         let mut ev = Identity::from_internal();
-        ev.limits.filter_max_elements = LIMIT;
+        ev.limits_mut().filter_max_elements = LIMIT;
 
         // Test proto + read
         let res = Filter::from_ro(&ev, &inv_proto, &mut r_txn);

@@ -174,7 +174,6 @@ fn decode_length_checked_json<T: DeserializeOwned>(
         });
 
     // Trim to length.
-
     if src.len() as u64 == req_len {
         src.clear();
     } else {

@@ -56,7 +56,7 @@ const FILTER_SUBSTR_TEST_THRESHOLD: usize = 4;
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
 /// as they are derived from the userAuthToken based on that individual session
-pub struct Limits {
+pub(crate) struct Limits {
     pub unindexed_allow: bool,
     pub search_max_results: usize,
     pub search_max_filter_test: usize,
@@ -1889,12 +1889,6 @@ impl<'a> BackendWriteTransaction<'a> {
         }
 
         info!("Restoring {} entries ...", dbentries.len());
-
-        // Migrate any v1 entries to v2 if needed.
-        let dbentries = dbentries
-            .into_iter()
-            .map(|dbe| dbe.convert_to_v2())
-            .collect::<Result<Vec<_>, _>>()?;
 
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;

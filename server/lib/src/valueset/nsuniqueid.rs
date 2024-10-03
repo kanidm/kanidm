@@ -1,7 +1,6 @@
 use smolset::SmolSet;
 
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::value::NSUNIQUEID_RE;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -24,11 +23,6 @@ impl ValueSetNsUniqueId {
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetNsUniqueId { set }))
-    }
-
-    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
-        let set = data.iter().cloned().collect();
         Ok(Box::new(ValueSetNsUniqueId { set }))
     }
 
@@ -125,12 +119,6 @@ impl ValueSetT for ValueSetNsUniqueId {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::NsUniqueId(self.set.iter().cloned().collect())
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::NsUniqueId {
-            set: self.set.iter().cloned().collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
