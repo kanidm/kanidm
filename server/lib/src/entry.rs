@@ -2551,7 +2551,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         attr: A,
     ) -> Option<impl Iterator<Item = (&String, &PublicKey)> + '_> {
         self.get_ava_set(attr)
-            .and_then(|vs| vs.as_sshkey_map().map(|v| v.into_iter()))
+            .and_then(|vs| vs.as_sshkey_map().map(|v| v.iter()))
     }
 
     // These are special types to allow returning typed values from
