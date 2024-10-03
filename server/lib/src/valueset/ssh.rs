@@ -141,9 +141,9 @@ impl ValueSetT for ValueSetSshKey {
         Some(ScimValueKanidm::from(
             self.map
                 .iter()
-                .map(|(label, pk)| ScimSshPublicKey {
+                .map(|(label, value)| ScimSshPublicKey {
                     label: label.clone(),
-                    value: pk.to_string(),
+                    value: value.clone(),
                 })
                 .collect::<Vec<_>>(),
         ))

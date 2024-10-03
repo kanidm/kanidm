@@ -117,6 +117,8 @@ impl From<UnixUserToken> for UserToken {
             valid,
         } = value;
 
+        let sshkeys = sshkeys.iter().map(|s| s.to_string()).collect();
+
         let groups = groups.into_iter().map(GroupToken::from).collect();
 
         UserToken {

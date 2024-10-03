@@ -799,7 +799,7 @@ impl Account {
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let (gidnumber, shell, sshkeys, groups) = match &self.unix_extn {
             Some(ue) => {
-                let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
+                let sshkeys: Vec<_> = self.sshkeys.values().cloned().collect();
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
