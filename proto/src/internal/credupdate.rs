@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fmt;
 use url::Url;
 use utoipa::ToSchema;
@@ -6,6 +7,8 @@ use uuid::Uuid;
 
 use webauthn_rs_proto::CreationChallengeResponse;
 use webauthn_rs_proto::RegisterPublicKeyCredential;
+
+pub use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]
 #[serde(rename_all = "lowercase")]
@@ -86,6 +89,10 @@ pub enum CURequest {
     AttestedPasskeyInit,
     AttestedPasskeyFinish(String, RegisterPublicKeyCredential),
     AttestedPasskeyRemove(Uuid),
+    UnixPasswordRemove,
+    UnixPassword(String),
+    SshPublicKey(String, SshPublicKey),
+    SshPublicKeyRemove(String),
 }
 
 impl fmt::Debug for CURequest {
@@ -106,6 +113,10 @@ impl fmt::Debug for CURequest {
             CURequest::AttestedPasskeyInit => "CURequest::AttestedPasskeyInit",
             CURequest::AttestedPasskeyFinish(_, _) => "CURequest::AttestedPasskeyFinish",
             CURequest::AttestedPasskeyRemove(_) => "CURequest::AttestedPasskeyRemove",
+            CURequest::UnixPassword(_) => "CURequest::UnixPassword",
+            CURequest::UnixPasswordRemove => "CURequest::UnixPasswordRemove",
+            CURequest::SshPublicKey(_, _) => "CURequest::SSHKeySubmit",
+            CURequest::SshPublicKeyRemove(_) => "CURequest::SSHKeyRemove",
         };
         writeln!(f, "{}", t)
     }
@@ -167,6 +178,12 @@ pub struct CUStatus {
     pub attested_passkeys: Vec<PasskeyDetail>,
     pub attested_passkeys_state: CUCredState,
     pub attested_passkeys_allowed_devices: Vec<String>,
+
+    pub unixcred: Option<CredentialDetail>,
+    pub unixcred_state: CUCredState,
+
+    pub sshkeys: BTreeMap<String, SshPublicKey>,
+    pub sshkeys_state: CUCredState,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]

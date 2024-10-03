@@ -1875,6 +1875,46 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_account_credential_update_set_unix_password(
+        &self,
+        session_token: &CUSessionToken,
+        pw: &str,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::UnixPassword(pw.to_string());
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_unix_remove(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::UnixPasswordRemove;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_sshkey_add(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+        key: SshPublicKey,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::SshPublicKey(label, key);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_sshkey_remove(
+        &self,
+        session_token: &CUSessionToken,
+        label: String,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::SshPublicKeyRemove(label);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
     pub async fn idm_account_credential_update_passkey_init(
         &self,
         session_token: &CUSessionToken,

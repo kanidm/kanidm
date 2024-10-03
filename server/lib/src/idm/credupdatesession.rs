@@ -25,7 +25,7 @@ use crate::idm::server::{IdmServerCredUpdateTransaction, IdmServerProxyWriteTran
 use crate::prelude::*;
 use crate::server::access::Access;
 use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
-use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
+use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState, LABEL_RE};
 use compact_jwt::compact::JweCompact;
 use compact_jwt::jwe::JweBuilder;
 
@@ -130,11 +130,11 @@ pub(crate) struct CredentialUpdateSession {
 
     // Unix / Sudo PW
     unixcred: Option<Credential>,
-    unixcred_can_edit: bool,
+    unixcred_state: CredentialState,
 
     // Ssh Keys
     sshkeys: BTreeMap<String, SshPublicKey>,
-    sshpubkey_can_edit: bool,
+    sshkeys_state: CredentialState,
 
     // Passkeys that have been configured.
     passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
@@ -325,6 +325,12 @@ pub struct CredentialUpdateSessionStatus {
     attested_passkeys: Vec<PasskeyDetail>,
     attested_passkeys_state: CredentialState,
     attested_passkeys_allowed_devices: Vec<String>,
+
+    unixcred: Option<CredentialDetail>,
+    unixcred_state: CredentialState,
+
+    sshkeys: BTreeMap<String, SshPublicKey>,
+    sshkeys_state: CredentialState,
 }
 
 impl CredentialUpdateSessionStatus {
@@ -366,6 +372,10 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
             attested_passkeys: self.attested_passkeys,
             attested_passkeys_state: self.attested_passkeys_state.into(),
             attested_passkeys_allowed_devices: self.attested_passkeys_allowed_devices,
+            unixcred: self.unixcred,
+            unixcred_state: self.unixcred_state.into(),
+            sshkeys: self.sshkeys,
+            sshkeys_state: self.sshkeys_state.into(),
         }
     }
 }
@@ -414,6 +424,13 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 .collect(),
             attested_passkeys_state: session.attested_passkeys_state,
             attested_passkeys_allowed_devices,
+
+            unixcred: session.unixcred.as_ref().map(|c| c.into()),
+            unixcred_state: session.unixcred_state,
+
+            sshkeys: session.sshkeys.clone(),
+            sshkeys_state: session.sshkeys_state,
+
             mfaregstate: match &session.mfaregstate {
                 MfaRegState::None => MfaRegStateStatus::None,
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
@@ -713,8 +730,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let ext_cred_portal_can_view = perms.ext_cred_portal_can_view;
-        let unixcred_can_edit = perms.unixcred_can_edit;
-        let sshpubkey_can_edit = perms.sshpubkey_can_edit;
 
         let cred_type_min = resolved_account_policy.credential_policy();
 
@@ -755,6 +770,20 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny
         };
 
+        let unixcred_state = if account.unix_extn().is_none() {
+            CredentialState::PolicyDeny
+        } else if perms.unixcred_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
+        let sshkeys_state = if perms.sshpubkey_can_edit {
+            CredentialState::Modifiable
+        } else {
+            CredentialState::AccessDeny
+        };
+
         // - stash the current state of all associated credentials
         let primary = if matches!(primary_state, CredentialState::Modifiable) {
             account.primary.clone()
@@ -768,17 +797,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             BTreeMap::default()
         };
 
-        let unixcred: Option<Credential> = if unixcred_can_edit {
+        let unixcred: Option<Credential> = if matches!(unixcred_state, CredentialState::Modifiable)
+        {
             account.unix_extn().and_then(|uext| uext.ucred()).cloned()
         } else {
             None
         };
 
-        let sshkeys = if sshpubkey_can_edit {
-            account
-                .unix_extn()
-                .map(|uext| uext.sshkeys().clone())
-                .unwrap_or_default()
+        let sshkeys = if matches!(sshkeys_state, CredentialState::Modifiable) {
+            account.sshkeys().clone()
         } else {
             BTreeMap::default()
         };
@@ -842,9 +869,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             primary,
             primary_state,
             unixcred,
-            unixcred_can_edit,
+            unixcred_state,
             sshkeys,
-            sshpubkey_can_edit,
+            sshkeys_state,
             passkeys,
             passkeys_state,
             attested_passkeys,
@@ -1371,21 +1398,33 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             CredentialState::AccessDeny => {}
         };
 
-        if session.unixcred_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
-            if let Some(ncred) = &session.unixcred {
-                let vcred = Value::new_credential("unix", ncred.clone());
-                modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
+        match session.unixcred_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+                if let Some(ncred) = &session.unixcred {
+                    let vcred = Value::new_credential("unix", ncred.clone());
+                    modlist.push_mod(Modify::Present(Attribute::UnixPassword, vcred));
+                }
             }
-        }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::UnixPassword));
+            }
+            CredentialState::AccessDeny => {}
+        };
 
-        if session.sshpubkey_can_edit {
-            modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
-            for (tag, pk) in &session.sshkeys {
-                let v_sk = Value::SshKey(tag.clone(), pk.clone());
-                modlist.push_mod(Modify::Present(Attribute::SshPublicKey, v_sk));
+        match session.sshkeys_state {
+            CredentialState::DeleteOnly | CredentialState::Modifiable => {
+                modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
+                for (tag, pk) in &session.sshkeys {
+                    let v_sk = Value::SshKey(tag.clone(), pk.clone());
+                    modlist.push_mod(Modify::Present(Attribute::SshPublicKey, v_sk));
+                }
             }
-        }
+            CredentialState::PolicyDeny => {
+                modlist.push_mod(Modify::Purged(Attribute::SshPublicKey));
+            }
+            CredentialState::AccessDeny => {}
+        };
 
         // Apply to the account!
         trace!(?modlist, "processing change");
@@ -2033,6 +2072,29 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    pub fn credential_primary_delete(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.primary_state, CredentialState::Modifiable)
+            || matches!(session.primary_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify primary credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        session.primary = None;
+        Ok(session.deref().into())
+    }
+
     pub fn credential_passkey_init(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -2282,6 +2344,150 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    #[instrument(level = "trace", skip(cust, self))]
+    pub fn credential_unix_set_password(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        pw: &str,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !matches!(session.unixcred_state, CredentialState::Modifiable) {
+            error!("Session does not have permission to modify unix credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        self.check_password_quality(
+            pw,
+            &session.resolved_account_policy,
+            session.account.related_inputs().as_slice(),
+            session.account.radius_secret.as_deref(),
+        )
+        .map_err(|e| match e {
+            PasswordQuality::TooShort(sz) => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(sz)])
+            }
+            PasswordQuality::BadListed => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::BadListed])
+            }
+            PasswordQuality::DontReusePasswords => {
+                OperationError::PasswordQuality(vec![PasswordFeedback::DontReusePasswords])
+            }
+            PasswordQuality::Feedback(feedback) => OperationError::PasswordQuality(feedback),
+        })?;
+
+        let ncred = match &session.unixcred {
+            Some(unixcred) => {
+                // Is there a need to update the uuid of the cred re softlocks?
+                unixcred.set_password(self.crypto_policy, pw)?
+            }
+            None => Credential::new_password_only(self.crypto_policy, pw)?,
+        };
+
+        session.unixcred = Some(ncred);
+        Ok(session.deref().into())
+    }
+
+    pub fn credential_unix_delete(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.unixcred_state, CredentialState::Modifiable)
+            || matches!(session.unixcred_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify unix credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        session.unixcred = None;
+        Ok(session.deref().into())
+    }
+
+    #[instrument(level = "trace", skip(cust, self))]
+    pub fn credential_sshkey_add(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        label: String,
+        sshpubkey: SshPublicKey,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !matches!(session.unixcred_state, CredentialState::Modifiable) {
+            error!("Session does not have permission to modify unix credential");
+            return Err(OperationError::AccessDenied);
+        };
+
+        // Check the label.
+        if !LABEL_RE.is_match(&label) {
+            error!("SSH Pubilc Key label invalid");
+            return Err(OperationError::InvalidLabel);
+        }
+
+        if session.sshkeys.contains_key(&label) {
+            error!("SSH Pubilc Key label duplicate");
+            return Err(OperationError::DuplicateLabel);
+        }
+
+        if session.sshkeys.values().any(|sk| *sk == sshpubkey) {
+            error!("SSH Pubilc Key duplicate");
+            return Err(OperationError::DuplicateKey);
+        }
+
+        session.sshkeys.insert(label, sshpubkey);
+
+        Ok(session.deref().into())
+    }
+
+    pub fn credential_sshkey_remove(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        label: &str,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+
+        if !(matches!(session.sshkeys_state, CredentialState::Modifiable)
+            || matches!(session.sshkeys_state, CredentialState::DeleteOnly))
+        {
+            error!("Session does not have permission to modify sshkeys");
+            return Err(OperationError::AccessDenied);
+        };
+
+        session.sshkeys.remove(label).ok_or_else(|| {
+            error!("No such key for label");
+            OperationError::NoMatchingEntries
+        })?;
+
+        // session.unixcred = None;
+
+        Ok(session.deref().into())
+    }
+
     pub fn credential_update_cancel_mfareg(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -2297,29 +2503,6 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub fn credential_primary_delete(
-        &self,
-        cust: &CredentialUpdateSessionToken,
-        ct: Duration,
-    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
-        let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.try_lock().map_err(|_| {
-            admin_error!("Session already locked, unable to proceed.");
-            OperationError::InvalidState
-        })?;
-        trace!(?session);
-
-        if !(matches!(session.primary_state, CredentialState::Modifiable)
-            || matches!(session.primary_state, CredentialState::DeleteOnly))
-        {
-            error!("Session does not have permission to modify primary credential");
-            return Err(OperationError::AccessDenied);
-        };
-
-        session.primary = None;
-        Ok(session.deref().into())
-    }
-
     // Generate password?
 }
 
@@ -2329,7 +2512,7 @@ mod tests {
     use std::time::Duration;
 
     use kanidm_proto::internal::{CUExtPortal, CredentialDetailType, PasswordFeedback};
-    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthIssueSession, AuthMech, UnixUserToken};
     use uuid::uuid;
     use webauthn_authenticator_rs::softpasskey::SoftPasskey;
     use webauthn_authenticator_rs::softtoken::{self, SoftToken};
@@ -2345,18 +2528,25 @@ mod tests {
     use crate::event::CreateEvent;
     use crate::idm::audit::AuditEvent;
     use crate::idm::delayed::DelayedAction;
-    use crate::idm::event::{AuthEvent, AuthResult, RegenerateRadiusSecretEvent};
+    use crate::idm::event::{
+        AuthEvent, AuthResult, RegenerateRadiusSecretEvent, UnixUserAuthEvent,
+    };
     use crate::idm::server::{IdmServer, IdmServerCredUpdateTransaction, IdmServerDelayed};
     use crate::idm::AuthState;
     use crate::prelude::*;
     use crate::utils::password_from_random_len;
     use crate::value::CredentialType;
+    use sshkey_attest::proto::PublicKey as SshPublicKey;
 
     const TEST_CURRENT_TIME: u64 = 6000;
     const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
 
+    const SSHKEY_VALID_1: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey";
+    const SSHKEY_VALID_2: &str = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBIbkSsdGCRoW6v0nO/3vNYPhG20YhWU0wQPY7x52EOb4dmYhC4IJfzVDpEPg313BxWRKQglb5RQ1PPkou7JFyCUAAAAEc3NoOg== testuser@fidokey";
+    const SSHKEY_INVALID: &str = "sk-ecrsa-sha9000-nistp@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBIbkSsdGCRoW6v0nO/3vNYPhG20YhWU0wQPY7x52EOb4dmYhC4IJfzVDpEPg313BxWRKQglb5RQ1PPkou7JFyCUAAAAEc3NoOg== badkey@rejectme";
+
     #[idm_test]
-    async fn test_idm_credential_update_session_init(
+    async fn credential_update_session_init(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -2378,6 +2568,7 @@ mod tests {
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
@@ -2490,6 +2681,7 @@ mod tests {
         let e2 = entry_init!(
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::Name, Value::new_iname("testperson")),
             (Attribute::Uuid, Value::Uuid(TESTPERSON_UUID)),
@@ -2607,6 +2799,22 @@ mod tests {
             }
             _ => None,
         }
+    }
+
+    async fn check_testperson_unix_password(
+        idms: &IdmServer,
+        // idms_delayed: &mut IdmServerDelayed,
+        pw: &str,
+        ct: Duration,
+    ) -> Option<UnixUserToken> {
+        let mut idms_auth = idms.auth().await.unwrap();
+
+        let auth_event = UnixUserAuthEvent::new_internal(TESTPERSON_UUID, pw);
+
+        idms_auth
+            .auth_unix(&auth_event, ct)
+            .await
+            .expect("Unable to perform unix authentication")
     }
 
     async fn check_testperson_password_totp(
@@ -2819,7 +3027,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_session_cleanup(
+    async fn credential_update_session_cleanup(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -2847,7 +3055,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_pw(
+    async fn credential_update_onboarding_create_new_pw(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -2911,7 +3119,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_password_quality_checks(
+    async fn credential_update_password_quality_checks(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3005,7 +3213,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_password_min_length_account_policy(
+    async fn credential_update_password_min_length_account_policy(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3081,7 +3289,7 @@ mod tests {
 
     // - setup TOTP
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_mfa_totp_basic(
+    async fn credential_update_onboarding_create_new_mfa_totp_basic(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3175,7 +3383,7 @@ mod tests {
 
     // Check sha1 totp.
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_mfa_totp_sha1(
+    async fn credential_update_onboarding_create_new_mfa_totp_sha1(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3249,7 +3457,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_mfa_totp_backup_codes(
+    async fn credential_update_onboarding_create_new_mfa_totp_backup_codes(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3386,7 +3594,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_cancel_inprogress_totp(
+    async fn credential_update_onboarding_cancel_inprogress_totp(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3479,7 +3687,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_onboarding_create_new_passkey(
+    async fn credential_update_onboarding_create_new_passkey(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3536,7 +3744,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_access_denied(
+    async fn credential_update_access_denied(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3564,6 +3772,7 @@ mod tests {
             (Attribute::Class, EntryClass::Object.to_value()),
             (Attribute::Class, EntryClass::SyncObject.to_value()),
             (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Class, EntryClass::PosixAccount.to_value()),
             (Attribute::Class, EntryClass::Person.to_value()),
             (Attribute::SyncParentUuid, Value::Refer(sync_uuid)),
             (Attribute::Name, Value::new_iname("testperson")),
@@ -3608,6 +3817,10 @@ mod tests {
             attested_passkeys: _,
             attested_passkeys_state,
             attested_passkeys_allowed_devices: _,
+            unixcred_state,
+            unixcred: _,
+            sshkeys: _,
+            sshkeys_state,
         } = custatus;
 
         assert!(matches!(ext_cred_portal, CUExtPortal::Hidden));
@@ -3617,6 +3830,8 @@ mod tests {
             attested_passkeys_state,
             CredentialState::AccessDeny
         ));
+        assert!(matches!(unixcred_state, CredentialState::AccessDeny));
+        assert!(matches!(sshkeys_state, CredentialState::AccessDeny));
 
         let cutxn = idms.cred_update_transaction().await.unwrap();
 
@@ -3627,6 +3842,18 @@ mod tests {
         // credential_primary_set_password
         let err = cutxn
             .credential_primary_set_password(&cust, ct, "password")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        let err = cutxn
+            .credential_unix_set_password(&cust, ct, "password")
+            .unwrap_err();
+        assert!(matches!(err, OperationError::AccessDenied));
+
+        let sshkey = SshPublicKey::from_string(SSHKEY_VALID_1).expect("Invalid SSHKEY_VALID_1");
+
+        let err = cutxn
+            .credential_sshkey_add(&cust, ct, "label".to_string(), sshkey)
             .unwrap_err();
         assert!(matches!(err, OperationError::AccessDenied));
 
@@ -3694,7 +3921,7 @@ mod tests {
 
     // Assert we can't create "just" a password when mfa is required.
     #[idm_test]
-    async fn test_idm_credential_update_account_policy_mfa_required(
+    async fn credential_update_account_policy_mfa_required(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3816,7 +4043,7 @@ mod tests {
     }
 
     #[idm_test]
-    async fn test_idm_credential_update_account_policy_passkey_required(
+    async fn credential_update_account_policy_passkey_required(
         idms: &IdmServer,
         _idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -3876,7 +4103,7 @@ mod tests {
     // Attested passkey types
 
     #[idm_test]
-    async fn test_idm_credential_update_account_policy_attested_passkey_required(
+    async fn credential_update_account_policy_attested_passkey_required(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -4070,7 +4297,7 @@ mod tests {
     }
 
     #[idm_test(audit = 1)]
-    async fn test_idm_credential_update_account_policy_attested_passkey_changed(
+    async fn credential_update_account_policy_attested_passkey_changed(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
         idms_audit: &mut IdmServerAudit,
@@ -4216,7 +4443,7 @@ mod tests {
 
     // Test that when attestation policy is removed, the apk downgrades to passkey and still works.
     #[idm_test]
-    async fn test_idm_credential_update_account_policy_attested_passkey_downgrade(
+    async fn credential_update_account_policy_attested_passkey_downgrade(
         idms: &IdmServer,
         idms_delayed: &mut IdmServerDelayed,
     ) {
@@ -4326,6 +4553,146 @@ mod tests {
             c_status.attested_passkeys_state,
             CredentialState::DeleteOnly
         ));
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+    }
+
+    #[idm_test]
+    async fn credential_update_unix_password(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+        let (cust, _) = setup_test_session(idms, ct).await;
+
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        // Get the credential status - this should tell
+        // us the details of the credentials, as well as
+        // if they are ready and valid to commit?
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.unixcred.is_none());
+
+        // Test initially creating a credential.
+        //   - pw first
+        let c_status = cutxn
+            .credential_unix_set_password(&cust, ct, test_pw)
+            .expect("Failed to update the unix cred password");
+
+        assert!(c_status.can_commit);
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Check it works!
+        assert!(check_testperson_unix_password(idms, test_pw, ct)
+            .await
+            .is_some());
+
+        // Test deleting the pw
+        let (cust, _) = renew_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+        trace!(?c_status);
+        assert!(c_status.unixcred.is_some());
+
+        let c_status = cutxn
+            .credential_unix_delete(&cust, ct)
+            .expect("Failed to delete the unix cred");
+        trace!(?c_status);
+        assert!(c_status.unixcred.is_none());
+
+        drop(cutxn);
+        commit_session(idms, ct, cust).await;
+
+        // Must fail now!
+        assert!(check_testperson_unix_password(idms, test_pw, ct)
+            .await
+            .is_none());
+    }
+
+    #[idm_test]
+    async fn credential_update_sshkeys(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let sshkey_valid_1 =
+            SshPublicKey::from_string(SSHKEY_VALID_1).expect("Invalid SSHKEY_VALID_1");
+        let sshkey_valid_2 =
+            SshPublicKey::from_string(SSHKEY_VALID_2).expect("Invalid SSHKEY_VALID_2");
+
+        assert!(SshPublicKey::from_string(SSHKEY_INVALID).is_err());
+
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (cust, _) = setup_test_session(idms, ct).await;
+        let cutxn = idms.cred_update_transaction().await.unwrap();
+
+        let c_status = cutxn
+            .credential_update_status(&cust, ct)
+            .expect("Failed to get the current session status.");
+
+        trace!(?c_status);
+
+        assert!(c_status.sshkeys.is_empty());
+
+        // Reject empty str key label
+        let result = cutxn.credential_sshkey_add(&cust, ct, "".to_string(), sshkey_valid_1.clone());
+        assert!(matches!(result, Err(OperationError::InvalidLabel)));
+
+        // Reject invalid name label.
+        let result =
+            cutxn.credential_sshkey_add(&cust, ct, "🚛".to_string(), sshkey_valid_1.clone());
+        assert!(matches!(result, Err(OperationError::InvalidLabel)));
+
+        // Remove non-existante
+        let result = cutxn.credential_sshkey_remove(&cust, ct, "key1");
+        assert!(matches!(result, Err(OperationError::NoMatchingEntries)));
+
+        // Add a valid key.
+        let c_status = cutxn
+            .credential_sshkey_add(&cust, ct, "key1".to_string(), sshkey_valid_1.clone())
+            .expect("Failed to add sshkey_valid_1");
+
+        trace!(?c_status);
+        assert_eq!(c_status.sshkeys.len(), 1);
+        assert!(c_status.sshkeys.contains_key("key1"));
+
+        // Add a second valid key.
+        let c_status = cutxn
+            .credential_sshkey_add(&cust, ct, "key2".to_string(), sshkey_valid_2.clone())
+            .expect("Failed to add sshkey_valid_2");
+
+        trace!(?c_status);
+        assert_eq!(c_status.sshkeys.len(), 2);
+        assert!(c_status.sshkeys.contains_key("key1"));
+        assert!(c_status.sshkeys.contains_key("key2"));
+
+        // Remove a key (check second key untouched)
+        let c_status = cutxn
+            .credential_sshkey_remove(&cust, ct, "key2")
+            .expect("Failed to remove sshkey_valid_2");
+
+        trace!(?c_status);
+        assert_eq!(c_status.sshkeys.len(), 1);
+        assert!(c_status.sshkeys.contains_key("key1"));
+
+        // Reject duplicate key label
+        let result =
+            cutxn.credential_sshkey_add(&cust, ct, "key1".to_string(), sshkey_valid_2.clone());
+        assert!(matches!(result, Err(OperationError::DuplicateLabel)));
+
+        // Reject duplicate key
+        let result =
+            cutxn.credential_sshkey_add(&cust, ct, "key2".to_string(), sshkey_valid_1.clone());
+        assert!(matches!(result, Err(OperationError::DuplicateKey)));
 
         drop(cutxn);
         commit_session(idms, ct, cust).await;
