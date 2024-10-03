@@ -70,7 +70,7 @@ jobs:
       # Step 2. deb build
       - name: Build packages (debs)
         run: |
-          platform/debian/build_debs.sh "${{ matrix.image.name }}-${{ matrix.image.version }}-${{ matrix.target.name }}"
+          platform/debian/build_debs.sh "${{ matrix.target.name }}"
         env:
           SKIP_DEPS: 1  # Already done in separate step
 
