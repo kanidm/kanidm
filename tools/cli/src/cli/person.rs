@@ -6,9 +6,8 @@ use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Input, Password, Select};
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_client::KanidmClient;
-use kanidm_proto::constants::{
-    ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
-};
+use kanidm_proto::attribute::Attribute;
+use kanidm_proto::constants::{ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER};
 use kanidm_proto::internal::OperationError::{
     DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
 };
@@ -18,6 +17,7 @@ use kanidm_proto::internal::{
 };
 use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
+use kanidm_proto::scim_v1::{client::ScimSshPublicKeys, ScimEntryGetQuery};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::format_description::well_known::Rfc3339;
@@ -233,15 +233,31 @@ impl PersonOpt {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client(OpType::Read).await;
 
-                    match client
-                        .idm_person_account_get_attr(
+                    let mut entry = match client
+                        .scim_v1_person_get(
                             aopt.aopts.account_id.as_str(),
-                            ATTR_SSH_PUBLICKEY,
+                            Some(ScimEntryGetQuery {
+                                attributes: Some(vec![Attribute::SshPublicKey]),
+                            }),
                         )
                         .await
                     {
-                        Ok(pkeys) => pkeys.iter().flatten().for_each(|pkey| println!("{}", pkey)),
-                        Err(e) => handle_client_error(e, aopt.copt.output_mode),
+                        Ok(entry) => entry,
+                        Err(e) => return handle_client_error(e, aopt.copt.output_mode),
+                    };
+
+                    let Some(pkeys) = entry.attrs.remove(&Attribute::SshPublicKey) else {
+                        println!("No ssh public keys");
+                        return;
+                    };
+
+                    let Ok(keys) = serde_json::from_value::<ScimSshPublicKeys>(pkeys) else {
+                        eprintln!("Invalid ssh public key format");
+                        return;
+                    };
+
+                    for key in keys {
+                        println!("{}: {}", key.label, key.value);
                     }
                 }
                 AccountSsh::Add(aopt) => {

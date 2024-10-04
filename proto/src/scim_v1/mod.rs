@@ -28,7 +28,7 @@ use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
 pub use self::synch::*;
 pub use scim_proto::prelude::*;
 
-mod client;
+pub mod client;
 pub mod server;
 mod synch;
 
@@ -46,7 +46,7 @@ pub struct ScimEntryGeneric {
 /// SCIM Query Parameters used during the get of a single entry
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Default)]
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
     pub attributes: Option<Vec<Attribute>>,
