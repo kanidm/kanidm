@@ -3,7 +3,9 @@ use utoipa::ToSchema;
 
 use crate::constants::*;
 use crate::internal::OperationError;
+use std::convert::Infallible;
 use std::fmt;
+use std::str::FromStr;
 
 pub use smartstring::alias::String as AttrString;
 
@@ -205,13 +207,13 @@ impl TryFrom<&AttrString> for Attribute {
     type Error = OperationError;
 
     fn try_from(value: &AttrString) -> Result<Self, Self::Error> {
-        Ok(Attribute::from_str(value.as_str()))
+        Ok(Attribute::inner_from_str(value.as_str()))
     }
 }
 
 impl From<&str> for Attribute {
     fn from(value: &str) -> Self {
-        Self::from_str(value)
+        Self::inner_from_str(value)
     }
 }
 
@@ -224,6 +226,14 @@ impl<'a> From<&'a Attribute> for &'a str {
 impl From<Attribute> for AttrString {
     fn from(val: Attribute) -> Self {
         AttrString::from(val.as_str())
+    }
+}
+
+impl FromStr for Attribute {
+    type Err = Infallible;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(Self::inner_from_str(value))
     }
 }
 
@@ -406,7 +416,7 @@ impl Attribute {
 
     // We allow this because the standard lib from_str is fallible, and we want an infallible version.
     #[allow(clippy::should_implement_trait)]
-    pub fn from_str(value: &str) -> Self {
+    fn inner_from_str(value: &str) -> Self {
         // Could this be something like heapless to save allocations? Also gives a way
         // to limit length of str?
         match value.to_lowercase().as_str() {
@@ -603,9 +613,9 @@ mod test {
 
     #[test]
     fn test_valueattribute_from_str() {
-        assert_eq!(Attribute::Uuid, Attribute::from_str("UUID"));
-        assert_eq!(Attribute::Uuid, Attribute::from_str("UuiD"));
-        assert_eq!(Attribute::Uuid, Attribute::from_str("uuid"));
+        assert_eq!(Attribute::Uuid, Attribute::from("UUID"));
+        assert_eq!(Attribute::Uuid, Attribute::from("UuiD"));
+        assert_eq!(Attribute::Uuid, Attribute::from("uuid"));
     }
 
     #[test]

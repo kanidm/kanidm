@@ -7,11 +7,13 @@ use super::v1::{
 };
 use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
-use kanidm_proto::scim_v1::{server::ScimEntryKanidm, ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{
+    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
 
@@ -320,10 +322,49 @@ async fn scim_entry_id_get(
     Path(id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
 ) -> Result<Json<ScimEntryKanidm>, WebError> {
     state
         .qe_r_ref
-        .scim_entry_id_get(client_auth_info, kopid.eventid, id)
+        .scim_entry_id_get(
+            client_auth_info,
+            kopid.eventid,
+            id,
+            EntryClass::Object,
+            scim_entry_get_query,
+        )
+        .await
+        .map(Json::from)
+        .map_err(WebError::from)
+}
+
+#[utoipa::path(
+    get,
+    path = "/scim/v1/Person/{id}",
+    responses(
+        (status = 200, content_type="application/json", body=ScimEntry),
+        ApiResponseWithout200,
+    ),
+    security(("token_jwt" = [])),
+    tag = "scim",
+    operation_id = "scim_entry_id_get"
+)]
+async fn scim_person_id_get(
+    State(state): State<ServerState>,
+    Path(id): Path<String>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Query(scim_entry_get_query): Query<ScimEntryGetQuery>,
+) -> Result<Json<ScimEntryKanidm>, WebError> {
+    state
+        .qe_r_ref
+        .scim_entry_id_get(
+            client_auth_info,
+            kopid.eventid,
+            id,
+            EntryClass::Person,
+            scim_entry_get_query,
+        )
         .await
         .map(Json::from)
         .map_err(WebError::from)
@@ -420,6 +461,10 @@ pub fn route_setup() -> Router<ServerState> {
         //                                                   of any kind from the database.
         //                                                   {id} is any unique id.
         .route("/scim/v1/Entry/:id", get(scim_entry_id_get))
+        //  Person   /Person/{id}     GET                    Retrieve a a person from the
+        //                                                   database.
+        //                                                   {id} is any unique id.
+        .route("/scim/v1/Person/:id", get(scim_person_id_get))
         //
         //  Sync     /Sync            GET                    Retrieve the current
         //                                                   sync state associated

@@ -1,6 +1,7 @@
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier};
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use reqwest::header::HeaderValue;
@@ -180,7 +181,10 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
 
     // This will be as raw json, not the strongly typed version the server sees
     // internally.
-    let scim_entry = rsclient.scim_v1_entry_get("demo_account").await.unwrap();
+    let scim_entry = rsclient
+        .scim_v1_entry_get("demo_account", None)
+        .await
+        .unwrap();
 
     tracing::info!("{:#?}", scim_entry);
 
@@ -194,4 +198,56 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
             .unwrap(),
         "demo_account".to_string()
     );
+
+    // Limit the attributes we want.
+    let query = ScimEntryGetQuery {
+        attributes: Some(vec![Attribute::Name]),
+    };
+
+    let scim_entry = rsclient
+        .scim_v1_entry_get("demo_account", Some(query))
+        .await
+        .unwrap();
+
+    tracing::info!("{:#?}", scim_entry);
+
+    // Should not be present now.
+    assert!(!scim_entry.attrs.contains_key(&Attribute::Class));
+    assert!(scim_entry.attrs.contains_key(&Attribute::Name));
+
+    // ==========================================
+    // Same, but via the Person API
+    let scim_entry = rsclient
+        .scim_v1_person_get("demo_account", None)
+        .await
+        .unwrap();
+
+    tracing::info!("{:#?}", scim_entry);
+
+    assert!(scim_entry.attrs.contains_key(&Attribute::Class));
+    assert!(scim_entry.attrs.contains_key(&Attribute::Name));
+    assert_eq!(
+        scim_entry
+            .attrs
+            .get(&Attribute::Name)
+            .and_then(|v| v.as_str())
+            .unwrap(),
+        "demo_account".to_string()
+    );
+
+    // Limit the attributes we want.
+    let query = ScimEntryGetQuery {
+        attributes: Some(vec![Attribute::Name]),
+    };
+
+    let scim_entry = rsclient
+        .scim_v1_person_get("demo_account", Some(query))
+        .await
+        .unwrap();
+
+    tracing::info!("{:#?}", scim_entry);
+
+    // Should not be present now.
+    assert!(!scim_entry.attrs.contains_key(&Attribute::Class));
+    assert!(scim_entry.attrs.contains_key(&Attribute::Name));
 }

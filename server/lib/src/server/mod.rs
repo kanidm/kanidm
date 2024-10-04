@@ -1,19 +1,17 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-use std::str::FromStr;
-use std::sync::Arc;
-
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use std::collections::BTreeSet;
+use std::str::FromStr;
+use std::sync::Arc;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
-
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
 use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
@@ -610,6 +608,50 @@ pub trait QueryServerTransaction<'a> {
         match vs.pop() {
             Some(entry) if vs.is_empty() => Ok(entry),
             _ => Err(OperationError::NoMatchingEntries),
+        }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    fn scim_entry_id_get_ext(
+        &mut self,
+        uuid: Uuid,
+        class: EntryClass,
+        query: ScimEntryGetQuery,
+        ident: Identity,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let filter_intent = filter!(f_and!([
+            f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)),
+            f_eq(Attribute::Class, class.into())
+        ]));
+
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let r_attrs = query
+            .attributes
+            .map(|attr_set| attr_set.into_iter().collect());
+
+        let se = SearchEvent {
+            ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+            attrs: r_attrs,
+        };
+
+        let mut vs = self.search_ext(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => entry.to_scim_kanidm(),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
         }
     }
 
