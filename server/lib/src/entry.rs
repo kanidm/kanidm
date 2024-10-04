@@ -2230,14 +2230,22 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_kanidm(&self) -> Result<ScimEntryKanidm, OperationError> {
-        let attrs = self
+    pub fn to_scim_kanidm(&self, mut read_txn: QueryServerReadTransaction) -> Result<ScimEntryKanidm, OperationError> {
+        let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
             .iter()
             // We want to skip some attributes as they are already in the header.
             .filter(|(k, _vs)| **k != Attribute::Uuid)
-            .filter_map(|(k, vs)| vs.to_scim_value().map(|scim_value| (k.clone(), scim_value)))
+            .filter_map(|(k, vs)| {
+                match vs.to_scim_value(&mut read_txn) {
+                    Err(op_err) => Some(Err(op_err)),
+                    Ok(Some(v)) => Some(Ok((k.clone(), v))),
+                    Ok(None) => None
+                }
+            })
             .collect();
+
+        let attrs = result?;
 
         let id = self.get_uuid();
 

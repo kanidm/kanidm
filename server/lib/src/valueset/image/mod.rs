@@ -388,7 +388,7 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
         // TODO: This should be a reference to the image URL, not the image itself!
         // Does this mean we need to pass in the domain / origin so we can render
         // these URL's correctly?
@@ -398,12 +398,12 @@ impl ValueSetT for ValueSetImage {
         //
         // TODO: Scim supports a "type" field here, but do we care?
 
-        Some(ScimValueKanidm::from(
+        Ok(Some(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|image| image.hash_imagevalue())
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

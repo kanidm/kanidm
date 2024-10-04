@@ -183,8 +183,8 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .values()
                 .flatten()
@@ -194,7 +194,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                     label: app_pwd.label.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

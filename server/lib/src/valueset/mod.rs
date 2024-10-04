@@ -144,7 +144,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm>;
+    fn to_scim_value(&self, server_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 
@@ -887,4 +887,5 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
     let expect: serde_json::Value = serde_json::from_str(data).unwrap();
 
     assert_eq!(json_value, expect);
+    assert!(false);
 }

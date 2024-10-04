@@ -137,8 +137,8 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(label, value)| ScimSshPublicKey {
@@ -146,7 +146,7 @@ impl ValueSetT for ValueSetSshKey {
                     value: value.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

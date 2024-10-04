@@ -191,7 +191,7 @@ impl ValueSetT for ValueSetCertificate {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
         let vals: Vec<ScimCertificate> = self
             .map
             .iter()
@@ -214,9 +214,9 @@ impl ValueSetT for ValueSetCertificate {
             .collect::<Vec<_>>();
 
         if vals.is_empty() {
-            None
+            Ok(None)
         } else {
-            Some(ScimValueKanidm::from(vals))
+            Ok(Some(ScimValueKanidm::from(vals)))
         }
     }
 
@@ -275,6 +275,8 @@ mod tests {
     use crate::prelude::{ScimValueKanidm, ValueSet};
     use kanidm_lib_crypto::x509_cert::der::DecodePem;
     use kanidm_lib_crypto::x509_cert::Certificate;
+    use kanidmd_lib_macros::qs_test;
+    use crate::server::QueryServer;
 
     // Generated with:
     //
@@ -294,13 +296,15 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 2jS0
 -----END CERTIFICATE-----"#;
 
-    #[test]
-    fn test_scim_certificate() {
+    #[qs_test]
+    async fn test_scim_certificate(server: &QueryServer) {
+        let mut read_txn = server.read().await.unwrap();
+
         let cert = Certificate::from_pem(PEM_DATA).unwrap();
 
         let vs: ValueSet = ValueSetCertificate::new(Box::new(cert)).unwrap();
 
-        let scim_value = vs.to_scim_value().unwrap();
+        let scim_value = vs.to_scim_value(&mut read_txn).unwrap().unwrap();
 
         let cert = match scim_value {
             ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),

@@ -96,8 +96,8 @@ impl ValueSetT for ValueSetSecret {
         Box::new(self.set.iter().map(|_| "hidden".to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        None
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(None)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -145,13 +145,15 @@ impl ValueSetT for ValueSetSecret {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetSecret;
-    use crate::prelude::ValueSet;
+    use kanidmd_lib_macros::qs_test;
+    use crate::server::QueryServer;
+    use crate::valueset::{ValueSet, ValueSetSecret};
 
-    #[test]
-    fn test_scim_secret() {
+    #[qs_test]
+    async fn test_scim_secret(query_server: &QueryServer) {
         let vs: ValueSet = ValueSetSecret::new("super secret special awesome value".to_string());
 
-        assert!(vs.to_scim_value().is_none());
+        let mut read_txn = query_server.read().await.unwrap();
+        assert!(vs.to_scim_value(&mut read_txn).unwrap().is_none());
     }
 }

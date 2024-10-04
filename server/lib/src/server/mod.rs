@@ -2624,7 +2624,7 @@ mod tests {
 
         // Convert entry into scim
         let reduced = entry.as_ref().clone().into_reduced();
-        let scim_entry = reduced.to_scim_kanidm().unwrap();
+        let scim_entry = reduced.to_scim_kanidm(read_txn).unwrap();
 
         // Assert scim entry attributes are as expected
         assert_eq!(scim_entry.header.id, UUID_IDM_PEOPLE_SELF_NAME_WRITE);

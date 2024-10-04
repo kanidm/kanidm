@@ -354,8 +354,8 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -381,7 +381,7 @@ impl ValueSetT for ValueSetSession {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -855,8 +855,8 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -879,7 +879,7 @@ impl ValueSetT for ValueSetOauth2Session {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1196,8 +1196,8 @@ impl ValueSetT for ValueSetApiToken {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(token_id, token)| ScimApiToken {
@@ -1209,7 +1209,7 @@ impl ValueSetT for ValueSetApiToken {
                     scope: token.scope.to_string(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1218,8 +1218,7 @@ impl ValueSetT for ValueSetApiToken {
                 .iter()
                 .map(|(u, m)| DbValueApiToken::V1 {
                     refer: *u,
-                    label: m.label.clone(),
-                    expiry: m.expiry.map(|odt| {
+                    label: m.label.clone(), expiry: m.expiry.map(|odt| {
                         debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&Rfc3339)

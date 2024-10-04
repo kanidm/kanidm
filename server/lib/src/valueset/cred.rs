@@ -141,10 +141,10 @@ impl ValueSetT for ValueSetCredential {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
         // Currently I think we don't need to yield cred info as that's part of the
         // cred update session instead.
-        None
+        Ok(None)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -366,8 +366,8 @@ impl ValueSetT for ValueSetIntentToken {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(token_id, intent_token_state)| {
@@ -392,7 +392,7 @@ impl ValueSetT for ValueSetIntentToken {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -609,8 +609,8 @@ impl ValueSetT for ValueSetPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        None
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(None)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -782,8 +782,8 @@ impl ValueSetT for ValueSetAttestedPasskey {
         Box::new(self.map.values().map(|(t, _)| t).cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        None
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(None)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -947,10 +947,10 @@ impl ValueSetT for ValueSetCredentialType {
         Box::new(self.set.iter().map(|ct| ct.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.set.iter().map(|ct| ct.to_string()).collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1089,15 +1089,15 @@ impl ValueSetT for ValueSetWebauthnAttestationCaList {
         }
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.ca_list
                 .cas()
                 .values()
                 .flat_map(|att_ca| att_ca.aaguids().values())
                 .map(|device| device.description_en().to_string())
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

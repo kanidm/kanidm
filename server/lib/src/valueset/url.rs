@@ -102,14 +102,14 @@ impl ValueSetT for ValueSetUrl {
         Box::new(self.set.iter().map(|i| i.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
         let mut iter = self.set.iter().map(|url| url.to_string());
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
-            Some(v.into())
+            Ok(Some(v.into()))
         } else {
             let arr = iter.collect::<Vec<_>>();
-            Some(arr.into())
+            Ok(Some(arr.into()))
         }
     }
 

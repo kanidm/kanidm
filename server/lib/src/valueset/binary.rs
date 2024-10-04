@@ -107,8 +107,8 @@ impl ValueSetT for ValueSetPrivateBinary {
         Box::new(self.set.iter().map(|_| "private_binary".to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        None
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(None)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -277,8 +277,8 @@ impl ValueSetT for ValueSetPublicBinary {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(tag, bin)| ScimBinary {
@@ -286,7 +286,7 @@ impl ValueSetT for ValueSetPublicBinary {
                     value: bin.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -335,13 +335,16 @@ impl ValueSetT for ValueSetPublicBinary {
 
 #[cfg(test)]
 mod tests {
+    use kanidmd_lib_macros::qs_test;
     use super::ValueSetPrivateBinary;
     use crate::prelude::ValueSet;
+    use crate::server::QueryServer;
 
-    #[test]
-    fn test_scim_private_binary() {
+    #[qs_test]
+    async fn test_scim_private_binary(query_server: &QueryServer) {
         let vs: ValueSet = ValueSetPrivateBinary::new(vec![0x00]);
 
-        assert!(vs.to_scim_value().is_none());
+        let mut read_txn = query_server.read().await.unwrap();
+        assert!(vs.to_scim_value(&mut read_txn).unwrap().is_none());
     }
 }

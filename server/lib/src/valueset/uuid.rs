@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimReference;
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {
@@ -32,7 +32,7 @@ impl ValueSetUuid {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = Uuid>,
+        T: IntoIterator<Item=Uuid>,
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUuid { set }))
@@ -109,12 +109,25 @@ impl ValueSetT for ValueSetUuid {
         true
     }
 
-    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item=String> + '_> {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        self.set.iter().next().copied().map(ScimValueKanidm::Uuid)
+    fn to_scim_value(&self, server_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError> {
+        if let Some(uuid) = self.set.iter().next().copied() {
+            // TODO: try using name over spn as value.
+            if let Some(option) = server_txn.uuid_to_spn(uuid)? {
+                Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
+                    uuid,
+                    value: option.to_proto_string_clone(),
+                })))
+            } else {
+                // TODO: didn't have spn, fallback to uuid.to_string ?
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -125,7 +138,7 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(PartialValue::Uuid))
     }
 
-    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item=Value> + '_> {
         Box::new(self.set.iter().copied().map(Value::Uuid))
     }
 
@@ -197,7 +210,7 @@ impl ValueSetRefer {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = Uuid>,
+        T: IntoIterator<Item=Uuid>,
     {
         let set: BTreeSet<_> = iter.into_iter().collect();
         if set.is_empty() {
@@ -278,12 +291,12 @@ impl ValueSetT for ValueSetRefer {
         true
     }
 
-    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item=String> + '_> {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(self.set.iter().copied().collect::<Vec<_>>().into())
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(self.set.iter().copied().collect::<Vec<_>>().into()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -294,7 +307,7 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(PartialValue::Refer))
     }
 
-    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item=Value> + '_> {
         Box::new(self.set.iter().copied().map(Value::Refer))
     }
 
@@ -332,7 +345,7 @@ impl ValueSetT for ValueSetRefer {
         Some(&mut self.set)
     }
 
-    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
+    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item=Uuid> + '_>> {
         Some(Box::new(self.set.iter().copied()))
     }
 }

@@ -137,8 +137,8 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|a| ScimAddress {
@@ -150,7 +150,7 @@ impl ValueSetT for ValueSetAddress {
                     country: a.country.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -427,8 +427,8 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+        Ok(Some(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|mail| {
@@ -439,7 +439,7 @@ impl ValueSetT for ValueSetEmailAddress {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

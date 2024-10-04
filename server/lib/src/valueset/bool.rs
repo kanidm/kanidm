@@ -105,15 +105,15 @@ impl ValueSetT for ValueSetBool {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
         if self.len() == 1 {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
 
-            Some(b.into())
+            Ok(Some(b.into()))
         } else {
             // Makes no sense for more than 1 value.
-            None
+            Ok(None)
         }
     }
 
