@@ -46,7 +46,7 @@ use crate::idm::event::{
     RegenerateRadiusSecretEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
     UnixUserTokenEvent,
 };
-use crate::idm::group::UnixGroup;
+use crate::idm::group::{Group, Unix};
 use crate::idm::oauth2::{
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
@@ -1575,7 +1575,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let group = self
             .qs_read
             .impersonate_search_ext_uuid(uute.target, &uute.ident)
-            .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
+            .and_then(|e| Group::<Unix>::try_from_entry(&e))
             .map_err(|e| {
                 admin_error!("Failed to start unix group token {:?}", e);
                 e

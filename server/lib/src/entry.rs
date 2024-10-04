@@ -166,6 +166,15 @@ pub struct EntryReduced {
 // Today is that day - @firstyear
 pub type Eattrs = Map<Attribute, ValueSet>;
 
+pub trait GetUuid {
+    fn get_uuid(&self) -> Uuid;
+}
+
+pub trait Committed {}
+
+impl Committed for EntrySealed {}
+impl Committed for EntryReduced {}
+
 pub(crate) fn compare_attrs(left: &Eattrs, right: &Eattrs) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
@@ -260,7 +269,7 @@ where
     STATE: Clone,
 {
     /// Get the uuid of this entry.
-    pub(crate) fn get_uuid(&self) -> Option<Uuid> {
+    pub fn get_uuid(&self) -> Option<Uuid> {
         self.attrs
             .get(&Attribute::Uuid)
             .and_then(|vs| vs.to_uuid_single())
@@ -2127,6 +2136,15 @@ impl<STATE> Entry<EntryValid, STATE> {
     }
 }
 
+impl<STATE> GetUuid for Entry<EntrySealed, STATE>
+where
+    STATE: Clone,
+{
+    fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
+    }
+}
+
 impl<STATE> Entry<EntrySealed, STATE>
 where
     STATE: Clone,
@@ -2210,6 +2228,12 @@ where
             state: self.state,
             attrs: self.attrs,
         }
+    }
+}
+
+impl GetUuid for Entry<EntryReduced, EntryCommitted> {
+    fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
     }
 }
 

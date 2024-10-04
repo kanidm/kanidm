@@ -13,8 +13,7 @@ use webauthn_rs::prelude::{
 
 use super::accountpolicy::ResolvedAccountPolicy;
 use super::group::{
-    load_all_groups_from_account_entry, load_all_groups_from_account_entry_reduced,
-    load_all_groups_from_account_entry_with_policy, Group, UnixGroup,
+    Group, Unix, load_account_policy
 };
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
@@ -36,7 +35,7 @@ pub struct UnixExtensions {
     ucred: Option<Credential>,
     shell: Option<String>,
     gidnumber: u32,
-    groups: Vec<UnixGroup>,
+    groups: Vec<Group<Unix>>,
 }
 
 impl UnixExtensions {
@@ -54,7 +53,7 @@ pub struct Account {
     pub displayname: String,
     pub uuid: Uuid,
     pub sync_parent_uuid: Option<Uuid>,
-    pub groups: Vec<Group>,
+    pub groups: Vec<Group<()>>,
     pub primary: Option<Credential>,
     pub passkeys: BTreeMap<Uuid, (String, PasskeyV4)>,
     pub attested_passkeys: BTreeMap<Uuid, (String, AttestedPasskeyV4)>,
@@ -138,7 +137,7 @@ macro_rules! try_from_entry {
         // Provide hints from groups.
         let mut ui_hints: BTreeSet<_> = groups
             .iter()
-            .map(|group: &Group| group.ui_hints.iter())
+            .map(|group: &Group<()>| group.ui_hints().iter())
             .flatten()
             .copied()
             .collect();
@@ -235,8 +234,9 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
-
+        let groups = Group::<()>::try_from_account(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account(value, qs)?;
+        
         try_from_entry!(value, groups, unix_groups)
     }
 
@@ -246,10 +246,11 @@ impl Account {
         qs: &mut TXN,
     ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
     where
-        TXN: QueryServerTransaction<'a>,
+    TXN: QueryServerTransaction<'a>,
     {
-        let ((groups, unix_groups), rap) =
-            load_all_groups_from_account_entry_with_policy(value, qs)?;
+        let groups = Group::<()>::try_from_account(value, qs)?;
+        let unix_groups: Vec<Group<Unix>> = Group::<Unix>::try_from_account(value, qs)?;
+        let rap = load_account_policy(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
     }
@@ -259,7 +260,8 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let (groups, unix_groups) = load_all_groups_from_account_entry(value, qs)?;
+        let groups = Group::<()>::try_from_account(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -269,7 +271,8 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let (groups, unix_groups) = load_all_groups_from_account_entry_reduced(value, qs)?;
+        let groups = Group::<()>::try_from_account_reduced(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account_reduced(value, qs)?;
         try_from_entry!(value, groups, unix_groups)
     }
 
