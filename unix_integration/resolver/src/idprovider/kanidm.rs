@@ -1,6 +1,7 @@
 use crate::db::KeyStoreTxn;
-use crate::unix_config::KanidmConfig;
+use crate::unix_config::{GroupMap, KanidmConfig};
 use async_trait::async_trait;
+use hashbrown::HashMap;
 use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
@@ -41,6 +42,9 @@ struct KanidmProviderInternal {
 
 pub struct KanidmProvider {
     inner: Mutex<KanidmProviderInternal>,
+    // Because this value doesn't change, to support fast
+    // lookup we store the extension map here.
+    map_group: HashMap<String, Id>,
 }
 
 impl KanidmProvider {
@@ -91,6 +95,13 @@ impl KanidmProvider {
 
         let pam_allow_groups = config.pam_allowed_login_groups.iter().cloned().collect();
 
+        let map_group = config
+            .map_group
+            .iter()
+            .cloned()
+            .map(|GroupMap { local, with }| (local, Id::Name(with)))
+            .collect();
+
         Ok(KanidmProvider {
             inner: Mutex::new(KanidmProviderInternal {
                 state: CacheState::OfflineNextCheck(now),
@@ -99,6 +110,7 @@ impl KanidmProvider {
                 crypto_policy,
                 pam_allow_groups,
             }),
+            map_group,
         })
     }
 }
@@ -116,6 +128,8 @@ impl From<UnixUserToken> for UserToken {
             sshkeys,
             valid,
         } = value;
+
+        let sshkeys = sshkeys.iter().map(|s| s.to_string()).collect();
 
         let groups = groups.into_iter().map(GroupToken::from).collect();
 
@@ -277,6 +291,10 @@ impl IdProvider for KanidmProvider {
         inner.state = CacheState::OfflineNextCheck(now);
     }
 
+    fn has_map_group(&self, local: &str) -> Option<&Id> {
+        self.map_group.get(local)
+    }
+
     async fn mark_offline(&self) {
         let mut inner = self.inner.lock().await;
         inner.state = CacheState::Offline;
@@ -345,6 +363,16 @@ impl IdProvider for KanidmProvider {
             | Err(ClientError::Http(
                 StatusCode::NOT_FOUND,
                 Some(OperationError::NoMatchingEntries),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
                 opid,
             ))
             | Err(ClientError::Http(
@@ -458,6 +486,16 @@ impl IdProvider for KanidmProvider {
                     | Err(ClientError::Http(
                         StatusCode::NOT_FOUND,
                         Some(OperationError::NoMatchingEntries),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingAttribute(_)),
+                        opid,
+                    ))
+                    | Err(ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::MissingClass(_)),
                         opid,
                     ))
                     | Err(ClientError::Http(
@@ -589,6 +627,16 @@ impl IdProvider for KanidmProvider {
             | Err(ClientError::Http(
                 StatusCode::NOT_FOUND,
                 Some(OperationError::NoMatchingEntries),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingAttribute(_)),
+                opid,
+            ))
+            | Err(ClientError::Http(
+                StatusCode::NOT_FOUND,
+                Some(OperationError::MissingClass(_)),
                 opid,
             ))
             | Err(ClientError::Http(

@@ -290,6 +290,7 @@ pub struct Oauth2RS {
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
     jws_signer: Oauth2JwsSigner,
+
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.

@@ -3,7 +3,6 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
-use crate::repl::proto::{ReplAttrV1, ReplOauthClaimMapV1, ReplOauthScopeMapV1};
 use crate::schema::SchemaAttribute;
 use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
@@ -30,11 +29,6 @@ impl ValueSetOauthScope {
 
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
-        Ok(Box::new(ValueSetOauthScope { set }))
-    }
-
-    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
-        let set = data.iter().cloned().collect();
         Ok(Box::new(ValueSetOauthScope { set }))
     }
 
@@ -126,12 +120,6 @@ impl ValueSetT for ValueSetOauthScope {
         DbValueSetV2::OauthScope(self.set.iter().cloned().collect())
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::OauthScope {
-            set: self.set.iter().cloned().collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.set.iter().cloned().map(PartialValue::OauthScope))
     }
@@ -197,14 +185,6 @@ impl ValueSetOauthScopeMap {
         let map = data
             .into_iter()
             .map(|DbValueOauthScopeMapV1 { refer, data }| (refer, data.into_iter().collect()))
-            .collect();
-        Ok(Box::new(ValueSetOauthScopeMap { map }))
-    }
-
-    pub fn from_repl_v1(data: &[ReplOauthScopeMapV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(|ReplOauthScopeMapV1 { refer, data }| (*refer, data.clone()))
             .collect();
         Ok(Box::new(ValueSetOauthScopeMap { map }))
     }
@@ -336,19 +316,6 @@ impl ValueSetT for ValueSetOauthScopeMap {
         )
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::OauthScopeMap {
-            set: self
-                .map
-                .iter()
-                .map(|(u, m)| ReplOauthScopeMapV1 {
-                    refer: *u,
-                    data: m.iter().cloned().collect(),
-                })
-                .collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().cloned().map(PartialValue::Refer))
     }
@@ -436,12 +403,6 @@ impl ValueSetOauthClaimMap {
         Box::new(ValueSetOauthClaimMap { map })
     }
 
-    /*
-    pub(crate) fn push(&mut self, claim: String, mapping: OauthClaimMapping) -> bool {
-        self.map.insert(claim, mapping).is_none()
-    }
-    */
-
     pub(crate) fn from_dbvs2(data: Vec<DbValueOauthClaimMap>) -> Result<ValueSet, OperationError> {
         let map = data
             .into_iter()
@@ -457,35 +418,6 @@ impl ValueSetOauthClaimMap {
             .collect();
         Ok(Box::new(ValueSetOauthClaimMap { map }))
     }
-
-    pub(crate) fn from_repl_v1(data: &[ReplOauthClaimMapV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .map(|ReplOauthClaimMapV1 { name, join, values }| {
-                (
-                    name.clone(),
-                    OauthClaimMapping {
-                        join: (*join).into(),
-                        values: values.clone(),
-                    },
-                )
-            })
-            .collect();
-        Ok(Box::new(ValueSetOauthClaimMap { map }))
-    }
-
-    /*
-    // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
-    // types, and tuples are always foreign.
-    #[allow(clippy::should_implement_trait)]
-    pub(crate) fn from_iter<T>(iter: T) -> Option<Box<Self>>
-    where
-        T: IntoIterator<Item = (String, OauthClaimMapping)>,
-    {
-        let map = iter.into_iter().collect();
-        Some(Box::new(ValueSetOauthClaimMap { map }))
-    }
-    */
 
     fn trim(&mut self) {
         self.map
@@ -718,20 +650,6 @@ impl ValueSetT for ValueSetOauthClaimMap {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::OauthClaimMap {
-            set: self
-                .map
-                .iter()
-                .map(|(name, mapping)| ReplOauthClaimMapV1 {
-                    name: name.clone(),
-                    join: mapping.join.into(),
-                    values: mapping.values.clone(),
-                })
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

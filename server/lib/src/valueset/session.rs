@@ -9,10 +9,6 @@ use crate::be::dbvalue::{
 };
 use crate::prelude::*;
 use crate::repl::cid::Cid;
-use crate::repl::proto::{
-    ReplApiTokenScopeV1, ReplApiTokenV1, ReplAttrV1, ReplIdentityIdV1, ReplOauth2SessionV1,
-    ReplSessionStateV1,
-};
 use crate::schema::SchemaAttribute;
 use crate::value::{
     ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionScope, SessionState,
@@ -196,10 +192,6 @@ impl ValueSetSession {
     }
 
     pub fn from_dbvs2(data: &[DbValueSession]) -> Result<ValueSet, OperationError> {
-        Self::from_dbv_iter(data.iter())
-    }
-
-    pub fn from_repl_v1(data: &[DbValueSession]) -> Result<ValueSet, OperationError> {
         Self::from_dbv_iter(data.iter())
     }
 
@@ -394,12 +386,6 @@ impl ValueSetT for ValueSetSession {
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         DbValueSetV2::Session(self.to_vec_dbvs())
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Session {
-            set: self.to_vec_dbvs(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
@@ -685,69 +671,6 @@ impl ValueSetOauth2Session {
         Ok(Box::new(ValueSetOauth2Session { map, rs_filter }))
     }
 
-    pub fn from_repl_v1(data: &[ReplOauth2SessionV1]) -> Result<ValueSet, OperationError> {
-        let mut rs_filter = u128::MIN;
-        let map = data
-            .iter()
-            .filter_map(
-                |ReplOauth2SessionV1 {
-                     refer,
-                     parent,
-                     state,
-                     issued_at,
-                     rs_uuid,
-                 }| {
-                    // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
-                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid issued_at timestamp",
-                                refer
-                            )
-                        })
-                        .ok()?;
-
-                    // This is a bit annoying. In the case we can't parse the optional
-                    // expiry, we need to NOT return the session so that it's immediately
-                    // invalidated. To do this we have to invert some of the options involved
-                    // here.
-                    let state = match state {
-                        ReplSessionStateV1::ExpiresAt(e_inner) => {
-                            OffsetDateTime::parse(e_inner, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                                .map(SessionState::ExpiresAt)
-                                .map_err(|e| {
-                                    admin_error!(
-                                        ?e,
-                                        "Invalidating session {} due to invalid expiry timestamp",
-                                        refer
-                                    )
-                                })
-                                .ok()?
-                        }
-                        ReplSessionStateV1::Never => SessionState::NeverExpires,
-                        ReplSessionStateV1::RevokedAt(rc) => SessionState::RevokedAt(rc.into()),
-                    };
-
-                    rs_filter |= rs_uuid.as_u128();
-
-                    Some((
-                        *refer,
-                        Oauth2Session {
-                            parent: *parent,
-                            state,
-                            issued_at,
-                            rs_uuid: *rs_uuid,
-                        },
-                    ))
-                },
-            )
-            .collect();
-        Ok(Box::new(ValueSetOauth2Session { rs_filter, map }))
-    }
-
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]
@@ -993,38 +916,6 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Oauth2Session {
-            set: self
-                .map
-                .iter()
-                .map(|(u, m)| ReplOauth2SessionV1 {
-                    refer: *u,
-                    parent: m.parent,
-                    state: match &m.state {
-                        SessionState::ExpiresAt(odt) => {
-                            debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
-                            #[allow(clippy::expect_used)]
-                            odt.format(&Rfc3339)
-                                .map(ReplSessionStateV1::ExpiresAt)
-                                .expect("Failed to format timestamp into RFC3339!")
-                        }
-                        SessionState::NeverExpires => ReplSessionStateV1::Never,
-                        SessionState::RevokedAt(c) => ReplSessionStateV1::RevokedAt(c.into()),
-                    },
-                    issued_at: {
-                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        m.issued_at
-                            .format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339")
-                    },
-                    rs_uuid: m.rs_uuid,
-                })
-                .collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(self.map.keys().cloned().map(PartialValue::Refer))
     }
@@ -1210,82 +1101,6 @@ impl ValueSetApiToken {
         Ok(Box::new(ValueSetApiToken { map }))
     }
 
-    pub fn from_repl_v1(data: &[ReplApiTokenV1]) -> Result<ValueSet, OperationError> {
-        let map = data
-            .iter()
-            .filter_map(
-                |ReplApiTokenV1 {
-                     refer,
-                     label,
-                     expiry,
-                     issued_at,
-                     issued_by,
-                     scope,
-                 }| {
-                    // Convert things.
-                    let issued_at = OffsetDateTime::parse(issued_at, &Rfc3339)
-                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid issued_at timestamp",
-                                refer
-                            )
-                        })
-                        .ok()?;
-
-                    // This is a bit annoying. In the case we can't parse the optional
-                    // expiry, we need to NOT return the session so that it's immediately
-                    // invalidated. To do this we have to invert some of the options involved
-                    // here.
-                    let expiry = expiry
-                        .as_ref()
-                        .map(|e_inner| {
-                            OffsetDateTime::parse(e_inner, &Rfc3339)
-                                .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                            // We now have an
-                            // Option<Result<ODT, _>>
-                        })
-                        .transpose()
-                        // Result<Option<ODT>, _>
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "Invalidating session {} due to invalid expiry timestamp",
-                                refer
-                            )
-                        })
-                        // Option<Option<ODT>>
-                        .ok()?;
-
-                    let issued_by = match issued_by {
-                        ReplIdentityIdV1::Internal => IdentityId::Internal,
-                        ReplIdentityIdV1::Uuid(u) => IdentityId::User(*u),
-                        ReplIdentityIdV1::Synch(u) => IdentityId::Synch(*u),
-                    };
-
-                    let scope = match scope {
-                        ReplApiTokenScopeV1::ReadOnly => ApiTokenScope::ReadOnly,
-                        ReplApiTokenScopeV1::ReadWrite => ApiTokenScope::ReadWrite,
-                        ReplApiTokenScopeV1::Synchronise => ApiTokenScope::Synchronise,
-                    };
-
-                    Some((
-                        *refer,
-                        ApiToken {
-                            label: label.to_string(),
-                            expiry,
-                            issued_at,
-                            issued_by,
-                            scope,
-                        },
-                    ))
-                },
-            )
-            .collect();
-        Ok(Box::new(ValueSetApiToken { map }))
-    }
-
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and tuples are always foreign.
     #[allow(clippy::should_implement_trait)]
@@ -1430,43 +1245,6 @@ impl ValueSetT for ValueSetApiToken {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::ApiToken {
-            set: self
-                .map
-                .iter()
-                .map(|(u, m)| ReplApiTokenV1 {
-                    refer: *u,
-                    label: m.label.clone(),
-                    expiry: m.expiry.map(|odt| {
-                        debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
-                        #[allow(clippy::expect_used)]
-                        odt.format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339")
-                    }),
-                    issued_at: {
-                        debug_assert_eq!(m.issued_at.offset(), time::UtcOffset::UTC);
-
-                        #[allow(clippy::expect_used)]
-                        m.issued_at
-                            .format(&Rfc3339)
-                            .expect("Failed to format timestamp into RFC3339")
-                    },
-                    issued_by: match m.issued_by {
-                        IdentityId::Internal => ReplIdentityIdV1::Internal,
-                        IdentityId::User(u) => ReplIdentityIdV1::Uuid(u),
-                        IdentityId::Synch(u) => ReplIdentityIdV1::Synch(u),
-                    },
-                    scope: match m.scope {
-                        ApiTokenScope::ReadOnly => ReplApiTokenScopeV1::ReadOnly,
-                        ApiTokenScope::ReadWrite => ReplApiTokenScopeV1::ReadWrite,
-                        ApiTokenScope::Synchronise => ReplApiTokenScopeV1::Synchronise,
-                    },
-                })
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

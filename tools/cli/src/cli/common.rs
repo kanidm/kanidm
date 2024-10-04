@@ -1,6 +1,5 @@
 use std::env;
 
-use async_recursion::async_recursion;
 use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifier, JwtError};
 use dialoguer::theme::ColorfulTheme;
 use dialoguer::{Confirm, Select};
@@ -22,7 +21,7 @@ pub enum OpType {
 #[derive(Debug)]
 pub enum ToClientError {
     NeedLogin(String),
-    NeedReauth(String),
+    NeedReauth(String, KanidmClient),
     Other,
 }
 
@@ -98,7 +97,10 @@ impl CommonOpt {
         })
     }
 
-    async fn try_to_client(&self, optype: OpType) -> Result<KanidmClient, ToClientError> {
+    pub(crate) async fn try_to_client(
+        &self,
+        optype: OpType,
+    ) -> Result<KanidmClient, ToClientError> {
         let client = self.to_unauth_client();
 
         // Read the token file.
@@ -247,6 +249,9 @@ impl CommonOpt {
                     }
                 }
 
+                // It's probably valid, set into the client
+                client.set_token(jwsc.to_string()).await;
+
                 // Check what we are doing based on op.
                 match optype {
                     OpType::Read => {}
@@ -256,7 +261,7 @@ impl CommonOpt {
                                 "Privileges have expired for {} - you need to re-authenticate again.",
                                 uat.spn
                             );
-                            return Err(ToClientError::NeedReauth(spn));
+                            return Err(ToClientError::NeedReauth(spn, client));
                         }
                     }
                 }
@@ -268,63 +273,55 @@ impl CommonOpt {
             }
         };
 
-        // Set it into the client
-        client.set_token(jwsc.to_string()).await;
-
         Ok(client)
     }
 
-    #[async_recursion]
     pub async fn to_client(&self, optype: OpType) -> KanidmClient {
-        match self.try_to_client(optype.clone()).await {
-            Ok(c) => c,
-            Err(e) => {
-                match e {
-                    ToClientError::NeedLogin(username) => {
-                        if !Confirm::new()
-                            .with_prompt("Would you like to login again?")
-                            .default(true)
-                            .interact()
-                            .expect("Failed to interact with interactive session")
-                        {
-                            std::process::exit(1);
-                        }
-                        let mut copt = self.clone();
-                        copt.username = Some(username);
-                        let login_opt = LoginOpt {
-                            copt,
-                            password: env::var("KANIDM_PASSWORD").ok(),
-                        };
-                        login_opt.exec().await;
-                        // we still use `to_client` instead of `try_to_client` because we may need to prompt user to re-auth again.
-                        // since reauth_opt will call `to_client`, this function is recursive anyway.
-                        // we use copt since it's username is updated.
-                        return login_opt.copt.to_client(optype).await;
-                    }
-                    ToClientError::NeedReauth(username) => {
-                        if !Confirm::new()
-                            .with_prompt("Would you like to re-authenticate?")
-                            .default(true)
-                            .interact()
-                            .expect("Failed to interact with interactive session")
-                        {
-                            std::process::exit(1);
-                        }
-                        let mut copt = self.clone();
-                        copt.username = Some(username);
-                        let reauth_opt = ReauthOpt { copt };
-                        // calls `to_client` recursively
-                        // but should not goes into `NeedLogin` branch again
-                        reauth_opt.exec().await;
-                        if let Ok(c) = reauth_opt.copt.try_to_client(optype).await {
-                            return c;
-                        }
-                    }
-                    ToClientError::Other => {
+        let mut copt_mut = self.clone();
+        loop {
+            match self.try_to_client(optype.clone()).await {
+                Ok(c) => break c,
+                Err(ToClientError::NeedLogin(username)) => {
+                    if !Confirm::new()
+                        .with_prompt("Would you like to login again?")
+                        .default(true)
+                        .interact()
+                        .expect("Failed to interact with interactive session")
+                    {
                         std::process::exit(1);
                     }
+
+                    copt_mut.username = Some(username);
+                    let copt = copt_mut.clone();
+                    let login_opt = LoginOpt {
+                        copt,
+                        password: env::var("KANIDM_PASSWORD").ok(),
+                    };
+
+                    login_opt.exec().await;
+                    // Okay, try again ...
+                    continue;
                 }
-                std::process::exit(1);
+                Err(ToClientError::NeedReauth(username, client)) => {
+                    if !Confirm::new()
+                        .with_prompt("Would you like to re-authenticate?")
+                        .default(true)
+                        .interact()
+                        .expect("Failed to interact with interactive session")
+                    {
+                        std::process::exit(1);
+                    }
+                    copt_mut.username = Some(username);
+                    let copt = copt_mut.clone();
+                    let reauth_opt = ReauthOpt { copt };
+                    reauth_opt.inner(client).await;
+
+                    // Okay, re-auth should have passed, lets loop
+                    continue;
+                }
+                Err(ToClientError::Other) => {
+                    std::process::exit(1);
+                }
             }
         }
     }

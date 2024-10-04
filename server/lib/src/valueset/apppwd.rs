@@ -1,7 +1,6 @@
 use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
 use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use std::collections::BTreeMap;
 
@@ -54,10 +53,6 @@ impl ValueSetApplicationPassword {
 
     pub fn from_dbvs2(data: Vec<DbValueApplicationPassword>) -> Result<ValueSet, OperationError> {
         Self::from_dbv_iter(data.into_iter())
-    }
-
-    pub fn from_repl_v1(data: &[DbValueApplicationPassword]) -> Result<ValueSet, OperationError> {
-        Self::from_dbv_iter(data.iter().cloned())
     }
 
     fn to_vec_dbvs(&self) -> Vec<DbValueApplicationPassword> {
@@ -205,11 +200,6 @@ impl ValueSetT for ValueSetApplicationPassword {
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         let data = self.to_vec_dbvs();
         DbValueSetV2::ApplicationPassword(data)
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        let set = self.to_vec_dbvs();
-        ReplAttrV1::ApplicationPassword { set }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

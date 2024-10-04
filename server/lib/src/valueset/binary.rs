@@ -5,7 +5,6 @@ use std::collections::BTreeMap;
 use smolset::SmolSet;
 
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -116,12 +115,6 @@ impl ValueSetT for ValueSetPrivateBinary {
         DbValueSetV2::PrivateBinary(self.set.iter().cloned().collect())
     }
 
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::PrivateBinary {
-            set: self.set.iter().cloned().map(|b| b.into()).collect(),
-        }
-    }
-
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {
         Box::new(
             self.set
@@ -184,11 +177,6 @@ impl ValueSetPublicBinary {
 
     pub fn from_dbvs2(data: Vec<(String, Vec<u8>)>) -> Result<ValueSet, OperationError> {
         let map = data.into_iter().collect();
-        Ok(Box::new(ValueSetPublicBinary { map }))
-    }
-
-    pub fn from_repl_v1(data: &[(String, Base64UrlSafeData)]) -> Result<ValueSet, OperationError> {
-        let map = data.iter().map(|(k, v)| (k.clone(), v.to_vec())).collect();
         Ok(Box::new(ValueSetPublicBinary { map }))
     }
 
@@ -308,16 +296,6 @@ impl ValueSetT for ValueSetPublicBinary {
                 .map(|(tag, bin)| (tag.clone(), bin.clone()))
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::PublicBinary {
-            set: self
-                .map
-                .iter()
-                .map(|(tag, bin)| (tag.clone(), bin.clone().into()))
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

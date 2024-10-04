@@ -35,7 +35,6 @@ use sshkey_attest::proto::PublicKey as SshPublicKey;
 pub struct UnixExtensions {
     ucred: Option<Credential>,
     shell: Option<String>,
-    sshkeys: BTreeMap<String, SshPublicKey>,
     gidnumber: u32,
     groups: Vec<UnixGroup>,
 }
@@ -43,10 +42,6 @@ pub struct UnixExtensions {
 impl UnixExtensions {
     pub(crate) fn ucred(&self) -> Option<&Credential> {
         self.ucred.as_ref()
-    }
-
-    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
-        &self.sshkeys
     }
 }
 
@@ -71,6 +66,7 @@ pub struct Account {
     pub mail: Vec<String>,
     pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
     pub(crate) unix_extn: Option<UnixExtensions>,
+    pub(crate) sshkeys: BTreeMap<String, SshPublicKey>,
     pub apps_pwds: BTreeMap<Uuid, Vec<ApplicationPassword>>,
 }
 
@@ -78,28 +74,19 @@ macro_rules! try_from_entry {
     ($value:expr, $groups:expr, $unix_groups:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::Account
-            )));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         // Now extract our needed attributes
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::Name
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
         let displayname = $value
             .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(format!(
-                "Missing attribute: {}",
-                Attribute::DisplayName
-            )))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::DisplayName))?;
 
         let sync_parent_uuid = $value.get_ava_single_refer(Attribute::SyncParentUuid);
 
@@ -117,9 +104,9 @@ macro_rules! try_from_entry {
             .cloned()
             .unwrap_or_default();
 
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let mail_primary = $value
             .get_ava_mail_primary(Attribute::Mail)
@@ -165,17 +152,17 @@ macro_rules! try_from_entry {
             ui_hints.insert(UiHint::SynchronisedAccount);
         }
 
+        let sshkeys = $value
+            .get_ava_set(Attribute::SshPublicKey)
+            .and_then(|vs| vs.as_sshkey_map())
+            .cloned()
+            .unwrap_or_default();
+
         let unix_extn = if $value.attribute_equality(
             Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
             ui_hints.insert(UiHint::PosixAccount);
-
-            let sshkeys = $value
-                .get_ava_set(Attribute::SshPublicKey)
-                .and_then(|vs| vs.as_sshkey_map())
-                .cloned()
-                .unwrap_or_default();
 
             let ucred = $value
                 .get_ava_single_credential(Attribute::UnixPassword)
@@ -187,19 +174,13 @@ macro_rules! try_from_entry {
 
             let gidnumber = $value
                 .get_ava_single_uint32(Attribute::GidNumber)
-                .ok_or_else(|| {
-                    OperationError::InvalidAccountState(format!(
-                        "Missing attribute: {}",
-                        Attribute::GidNumber
-                    ))
-                })?;
+                .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
 
             let groups = $unix_groups;
 
             Some(UnixExtensions {
                 ucred,
                 shell,
-                sshkeys,
                 gidnumber,
                 groups,
             })
@@ -230,6 +211,7 @@ macro_rules! try_from_entry {
             mail,
             credential_update_intent_tokens,
             unix_extn,
+            sshkeys,
             apps_pwds,
         })
     }};
@@ -242,6 +224,10 @@ impl Account {
 
     pub(crate) fn primary(&self) -> Option<&Credential> {
         self.primary.as_ref()
+    }
+
+    pub(crate) fn sshkeys(&self) -> &BTreeMap<String, SshPublicKey> {
+        &self.sshkeys
     }
 
     #[instrument(level = "trace", skip_all)]
@@ -813,14 +799,13 @@ impl Account {
     pub(crate) fn to_unixusertoken(&self, ct: Duration) -> Result<UnixUserToken, OperationError> {
         let (gidnumber, shell, sshkeys, groups) = match &self.unix_extn {
             Some(ue) => {
-                let sshkeys: Vec<String> = ue.sshkeys.keys().cloned().collect();
+                let sshkeys: Vec<_> = self.sshkeys.values().cloned().collect();
                 (ue.gidnumber, ue.shell.clone(), sshkeys, ue.groups.clone())
             }
             None => {
-                return Err(OperationError::InvalidAccountState(format!(
-                    "Missing class: {}",
-                    EntryClass::PosixAccount
-                )));
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
             }
         };
 
@@ -929,10 +914,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     "Invalid entry, {} attribute is not present or not iutf8",
                     Attribute::Class
                 );
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Class
-                ))
+                OperationError::MissingAttribute(Attribute::Class)
             })?
             .collect();
 

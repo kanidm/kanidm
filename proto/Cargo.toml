@@ -35,6 +35,7 @@ urlencoding = { workspace = true }
 utoipa = { workspace = true }
 uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
+sshkey-attest = { workspace = true }
 
 [dev-dependencies]
 enum-iterator = { workspace = true }

@@ -215,6 +215,10 @@ pub trait IdProvider {
     /// Force this provider offline immediately.
     async fn mark_offline(&self);
 
+    /// Determine if this provider has a configured extension of a local system group
+    /// with remote members.
+    fn has_map_group(&self, local: &str) -> Option<&Id>;
+
     /// This is similar to a "domain join" process. What do we actually need to pass here
     /// for this to work for kanidm or himmelblau? Should we make it take a generic?
     /*

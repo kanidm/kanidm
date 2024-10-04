@@ -1,6 +1,5 @@
 use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::scim_v1::server::ScimCertificate;
@@ -35,10 +34,6 @@ impl ValueSetCertificate {
 
     pub fn from_dbvs2(data: Vec<DbValueCertificate>) -> Result<ValueSet, OperationError> {
         Self::from_dbv_iter(data.into_iter())
-    }
-
-    pub fn from_repl_v1(data: &[DbValueCertificate]) -> Result<ValueSet, OperationError> {
-        Self::from_dbv_iter(data.iter().cloned())
     }
 
     fn from_dbv_iter(
@@ -228,11 +223,6 @@ impl ValueSetT for ValueSetCertificate {
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         let data = self.to_vec_dbvs();
         DbValueSetV2::Certificate(data)
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        let set = self.to_vec_dbvs();
-        ReplAttrV1::Certificate { set }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

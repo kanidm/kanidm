@@ -1,6 +1,5 @@
 use crate::prelude::*;
 
-use crate::repl::proto::ReplAttrV1;
 use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
 
@@ -116,10 +115,6 @@ impl ValueSetKeyInternal {
 
     pub fn from_dbvs2(keys: Vec<DbValueKeyInternal>) -> Result<ValueSet, OperationError> {
         Self::from_dbv_iter(keys.into_iter())
-    }
-
-    pub fn from_repl_v1(keys: &[DbValueKeyInternal]) -> Result<ValueSet, OperationError> {
-        Self::from_dbv_iter(keys.iter().cloned())
     }
 
     fn to_vec_dbvs(&self) -> Vec<DbValueKeyInternal> {
@@ -309,11 +304,6 @@ impl ValueSetT for ValueSetKeyInternal {
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
         let keys = self.to_vec_dbvs();
         DbValueSetV2::KeyInternal(keys)
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        let set = self.to_vec_dbvs();
-        ReplAttrV1::KeyInternal { set }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = crate::value::PartialValue> + '_> {

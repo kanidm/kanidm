@@ -25,42 +25,25 @@ impl RadiusAccount {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(Attribute::Class, &EntryClass::Account.into()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: account".to_string(),
-            ));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         let radius_secret = value
             .get_ava_single_secret(Attribute::RadiusSecret)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::RadiusSecret
-                ))
-            })?
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::RadiusSecret))?
             .to_string();
 
         let name = value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Name
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Name))?;
 
         let uuid = value.get_uuid();
 
         let displayname = value
             .get_ava_single_utf8(Attribute::DisplayName)
             .map(|s| s.to_string())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::DisplayName
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::DisplayName))?;
 
         let groups = Group::try_from_account_entry_reduced(value, qs)?;
 

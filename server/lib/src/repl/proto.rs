@@ -1,29 +1,14 @@
 use super::cid::Cid;
 use super::entry::EntryChangeState;
 use super::entry::State;
-use crate::be::dbvalue::DbValueApplicationPassword;
-use crate::be::dbvalue::DbValueCertificate;
-use crate::be::dbvalue::DbValueImage;
-use crate::be::dbvalue::DbValueKeyInternal;
-use crate::be::dbvalue::DbValueOauthClaimMapJoinV1;
-use crate::be::dbvalue::DbValueSession;
+use crate::be::dbvalue::DbValueSetV2;
 use crate::entry::Eattrs;
 use crate::prelude::*;
 use crate::schema::{SchemaReadTransaction, SchemaTransaction};
 use crate::valueset;
-use base64urlsafedata::Base64UrlSafeData;
 use serde::{Deserialize, Serialize};
-use serde_with::skip_serializing_none;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeMap;
 use std::fmt;
-
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-    SecurityKey as SecurityKeyV4,
-};
-
-// Re-export this for our own usage.
-pub use kanidm_lib_crypto::ReplPasswordV1;
 
 pub enum ConsumerState {
     Ok,
@@ -129,354 +114,10 @@ impl ReplRuvRange {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
-pub struct ReplAddressV1 {
-    #[serde(rename = "f")]
-    pub formatted: String,
-    #[serde(rename = "s")]
-    pub street_address: String,
-    #[serde(rename = "l")]
-    pub locality: String,
-    #[serde(rename = "r")]
-    pub region: String,
-    #[serde(rename = "p")]
-    pub postal_code: String,
-    #[serde(rename = "c")]
-    pub country: String,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplTotpAlgoV1 {
-    S1,
-    S256,
-    S512,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplTotpV1 {
-    pub key: Base64UrlSafeData,
-    pub step: u64,
-    pub algo: ReplTotpAlgoV1,
-    pub digits: u8,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplBackupCodeV1 {
-    pub codes: BTreeSet<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplCredV1 {
-    TmpWn {
-        tag: String,
-        set: Vec<ReplPasskeyV4V1>,
-    },
-    Password {
-        tag: String,
-        password: ReplPasswordV1,
-        uuid: Uuid,
-    },
-    GenPassword {
-        tag: String,
-        password: ReplPasswordV1,
-        uuid: Uuid,
-    },
-    PasswordMfa {
-        tag: String,
-        password: ReplPasswordV1,
-        totp: Vec<(String, ReplTotpV1)>,
-        backup_code: Option<ReplBackupCodeV1>,
-        webauthn: Vec<ReplSecurityKeyV4V1>,
-        uuid: Uuid,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplIntentTokenV1 {
-    Valid {
-        token_id: String,
-        max_ttl: Duration,
-        #[serde(default)]
-        ext_cred_portal_can_view: bool,
-        #[serde(default)]
-        primary_can_edit: bool,
-        #[serde(default)]
-        passkeys_can_edit: bool,
-        #[serde(default)]
-        attested_passkeys_can_edit: bool,
-        #[serde(default)]
-        unixcred_can_edit: bool,
-        #[serde(default)]
-        sshpubkey_can_edit: bool,
-    },
-    InProgress {
-        token_id: String,
-        max_ttl: Duration,
-        session_id: Uuid,
-        session_ttl: Duration,
-        #[serde(default)]
-        ext_cred_portal_can_view: bool,
-        #[serde(default)]
-        primary_can_edit: bool,
-        #[serde(default)]
-        passkeys_can_edit: bool,
-        #[serde(default)]
-        attested_passkeys_can_edit: bool,
-        #[serde(default)]
-        unixcred_can_edit: bool,
-        #[serde(default)]
-        sshpubkey_can_edit: bool,
-    },
-    Consumed {
-        token_id: String,
-        max_ttl: Duration,
-    },
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct ReplSecurityKeyV4V1 {
-    pub tag: String,
-    pub key: SecurityKeyV4,
-}
-
-impl Eq for ReplSecurityKeyV4V1 {}
-
-impl PartialEq for ReplSecurityKeyV4V1 {
-    fn eq(&self, other: &Self) -> bool {
-        self.key.cred_id() == other.key.cred_id()
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReplPasskeyV4V1 {
-    pub uuid: Uuid,
-    pub tag: String,
-    pub key: PasskeyV4,
-}
-
-impl Eq for ReplPasskeyV4V1 {}
-
-impl PartialEq for ReplPasskeyV4V1 {
-    fn eq(&self, other: &Self) -> bool {
-        self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ReplAttestedPasskeyV4V1 {
-    pub uuid: Uuid,
-    pub tag: String,
-    pub key: AttestedPasskeyV4,
-}
-
-impl Eq for ReplAttestedPasskeyV4V1 {}
-
-impl PartialEq for ReplAttestedPasskeyV4V1 {
-    fn eq(&self, other: &Self) -> bool {
-        self.uuid == other.uuid && self.key.cred_id() == other.key.cred_id()
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplOauthScopeMapV1 {
-    pub refer: Uuid,
-    pub data: BTreeSet<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplOauthClaimMapV1 {
-    pub name: String,
-    pub join: DbValueOauthClaimMapJoinV1,
-    pub values: BTreeMap<Uuid, BTreeSet<String>>,
-}
-
-#[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplOauth2SessionV1 {
-    pub refer: Uuid,
-    pub parent: Option<Uuid>,
-    pub state: ReplSessionStateV1,
-    // pub expiry: Option<String>,
-    pub issued_at: String,
-    pub rs_uuid: Uuid,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Default)]
-pub enum ReplApiTokenScopeV1 {
-    #[default]
-    ReadOnly,
-    ReadWrite,
-    Synchronise,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplIdentityIdV1 {
-    Internal,
-    Uuid(Uuid),
-    Synch(Uuid),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplSessionStateV1 {
-    ExpiresAt(String),
-    Never,
-    RevokedAt(ReplCidV1),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub struct ReplApiTokenV1 {
-    pub refer: Uuid,
-    pub label: String,
-    pub expiry: Option<String>,
-    pub issued_at: String,
-    pub issued_by: ReplIdentityIdV1,
-    pub scope: ReplApiTokenScopeV1,
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-pub enum ReplAttrV1 {
-    Address {
-        set: Vec<ReplAddressV1>,
-    },
-    EmailAddress {
-        primary: String,
-        set: Vec<String>,
-    },
-    PublicBinary {
-        set: Vec<(String, Base64UrlSafeData)>,
-    },
-    PrivateBinary {
-        set: Vec<Base64UrlSafeData>,
-    },
-    Bool {
-        set: Vec<bool>,
-    },
-    Cid {
-        set: Vec<ReplCidV1>,
-    },
-    Credential {
-        set: Vec<ReplCredV1>,
-    },
-    IntentToken {
-        set: Vec<ReplIntentTokenV1>,
-    },
-    Passkey {
-        set: Vec<ReplPasskeyV4V1>,
-    },
-    AttestedPasskey {
-        set: Vec<ReplAttestedPasskeyV4V1>,
-    },
-    DateTime {
-        set: Vec<String>,
-    },
-    Iname {
-        set: Vec<String>,
-    },
-    IndexType {
-        set: Vec<u16>,
-    },
-    Iutf8 {
-        set: Vec<String>,
-    },
-    JsonFilter {
-        set: Vec<String>,
-    },
-    JwsKeyEs256 {
-        set: Vec<Base64UrlSafeData>,
-    },
-    JwsKeyRs256 {
-        set: Vec<Base64UrlSafeData>,
-    },
-    NsUniqueId {
-        set: Vec<String>,
-    },
-    SecretValue {
-        set: Vec<String>,
-    },
-    RestrictedString {
-        set: Vec<String>,
-    },
-    Uint32 {
-        set: Vec<u32>,
-    },
-    Url {
-        set: Vec<Url>,
-    },
-    Utf8 {
-        set: Vec<String>,
-    },
-    Uuid {
-        set: Vec<Uuid>,
-    },
-    Reference {
-        set: Vec<Uuid>,
-    },
-    SyntaxType {
-        set: Vec<u16>,
-    },
-    Spn {
-        set: Vec<(String, String)>,
-    },
-    UiHint {
-        set: Vec<u16>,
-    },
-    SshKey {
-        set: Vec<(String, String)>,
-    },
-    OauthScope {
-        set: Vec<String>,
-    },
-    OauthScopeMap {
-        set: Vec<ReplOauthScopeMapV1>,
-    },
-    OauthClaimMap {
-        set: Vec<ReplOauthClaimMapV1>,
-    },
-    Oauth2Session {
-        set: Vec<ReplOauth2SessionV1>,
-    },
-    Session {
-        set: Vec<DbValueSession>,
-    },
-    ApiToken {
-        set: Vec<ReplApiTokenV1>,
-    },
-    TotpSecret {
-        set: Vec<(String, ReplTotpV1)>,
-    },
-    AuditLogString {
-        map: Vec<(Cid, String)>,
-    },
-    EcKeyPrivate {
-        key: Vec<u8>,
-    },
-    Image {
-        set: Vec<DbValueImage>,
-    },
-    CredentialType {
-        set: Vec<u16>,
-    },
-    WebauthnAttestationCaList {
-        ca_list: AttestationCaList,
-    },
-    KeyInternal {
-        set: Vec<DbValueKeyInternal>,
-    },
-    HexString {
-        set: Vec<String>,
-    },
-    Certificate {
-        set: Vec<DbValueCertificate>,
-    },
-    ApplicationPassword {
-        set: Vec<DbValueApplicationPassword>,
-    },
-}
-
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
 pub struct ReplAttrStateV1 {
     cid: ReplCidV1,
-    attr: Option<ReplAttrV1>,
+    attr: Option<DbValueSetV2>,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
@@ -525,7 +166,7 @@ impl ReplEntryV1 {
                                 // to None and just send the Cid since they have the same result
                                 // on how the entry/attr state looks at each end.
                                 if maybe.len() > 0 {
-                                    Some(maybe.to_repl_v1())
+                                    Some(maybe.to_db_valueset_v2())
                                 } else {
                                     None
                                 }
@@ -549,8 +190,8 @@ impl ReplEntryV1 {
         ReplEntryV1 { uuid, st }
     }
 
-    pub fn rehydrate(&self) -> Result<(EntryChangeState, Eattrs), OperationError> {
-        match &self.st {
+    pub fn rehydrate(self) -> Result<(EntryChangeState, Eattrs), OperationError> {
+        match self.st {
             ReplStateV1::Live { at, attrs } => {
                 trace!("{:?} {:#?}", at, attrs);
                 // We need to build two sets, one for the Entry Change States, and one for the
@@ -558,11 +199,11 @@ impl ReplEntryV1 {
                 let mut changes = BTreeMap::default();
                 let mut eattrs = Eattrs::default();
 
-                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
+                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.into_iter() {
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                        let v = valueset::from_db_valueset_v2(attr_value).inspect_err(|err| {
                             error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
                         if eattrs.insert(attr_name.clone(), v).is_some() {
@@ -658,7 +299,7 @@ impl ReplIncrementalEntryV1 {
                             let cid = cid.into();
                             let attr = live_attr.and_then(|maybe| {
                                 if maybe.len() > 0 {
-                                    Some(maybe.to_repl_v1())
+                                    Some(maybe.to_db_valueset_v2())
                                 } else {
                                     None
                                 }
@@ -683,18 +324,18 @@ impl ReplIncrementalEntryV1 {
         ReplIncrementalEntryV1 { uuid, st }
     }
 
-    pub fn rehydrate(&self) -> Result<(Uuid, EntryChangeState, Eattrs), OperationError> {
-        match &self.st {
+    pub fn rehydrate(self) -> Result<(Uuid, EntryChangeState, Eattrs), OperationError> {
+        match self.st {
             ReplStateV1::Live { at, attrs } => {
                 trace!("{:?} {:#?}", at, attrs);
                 let mut changes = BTreeMap::default();
                 let mut eattrs = Eattrs::default();
 
-                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.iter() {
+                for (attr_name, ReplAttrStateV1 { cid, attr }) in attrs.into_iter() {
                     let cid: Cid = cid.into();
 
                     if let Some(attr_value) = attr {
-                        let v = valueset::from_repl_v1(attr_value).inspect_err(|err| {
+                        let v = valueset::from_db_valueset_v2(attr_value).inspect_err(|err| {
                             error!(?err, "Unable to restore valueset for {}", attr_name);
                         })?;
                         if eattrs.insert(attr_name.clone(), v).is_some() {

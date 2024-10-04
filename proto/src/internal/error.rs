@@ -69,6 +69,8 @@ pub enum ConsistencyError {
 pub enum OperationError {
     // Logic errors, or "soft" errors.
     SessionExpired,
+    DuplicateKey,
+    DuplicateLabel,
     EmptyRequest,
     Backend,
     NoMatchingEntries,
@@ -76,8 +78,7 @@ pub enum OperationError {
     UniqueConstraintViolation,
     CorruptedEntry(u64),
     CorruptedIndex(String),
-    // TODO: this should just be a vec of the ConsistencyErrors, surely?
-    ConsistencyError(Vec<Result<(), ConsistencyError>>),
+    ConsistencyError(Vec<ConsistencyError>),
     SchemaViolation(SchemaError),
     Plugin(PluginError),
     FilterGeneration,
@@ -85,6 +86,7 @@ pub enum OperationError {
     FilterUuidResolution,
     InvalidAttributeName(String),
     InvalidAttribute(String),
+    InvalidLabel,
     InvalidDbState,
     InvalidCacheState,
     InvalidValueState,
@@ -98,6 +100,11 @@ pub enum OperationError {
     InvalidAcpState(String),
     InvalidSchemaState(String),
     InvalidAccountState(String),
+    // This really oughta be EntryClass but its not in proto...
+    // It should at least be &'static str but we
+    // Serialize & Deserialize this enum...
+    MissingClass(String),
+    MissingAttribute(Attribute),
     MissingEntries,
     ModifyAssertionFailed,
     BackendEngine,
@@ -157,6 +164,7 @@ pub enum OperationError {
     DB0001MismatchedRestoreVersion,
     DB0002MismatchedRestoreVersion,
     DB0003FilterResolveCacheBuild,
+    DB0004DatabaseTooOld,
 
     // SCIM
     SC0001IncomingSshPublicKey,
@@ -250,14 +258,14 @@ impl Display for OperationError {
 
 impl OperationError {
     /// Return the message associated with the error if there is one.
-    fn message(&self) -> Option<&'static str> {
+    fn message(&self) -> Option<String> {
         match self {
             Self::SessionExpired => None,
             Self::EmptyRequest => None,
             Self::Backend => None,
             Self::NoMatchingEntries => None,
             Self::NoMatchingAttributes => None,
-            Self::UniqueConstraintViolation => Some("A unique constraint was violated resulting in multiple conflicting results."),
+            Self::UniqueConstraintViolation => Some("A unique constraint was violated resulting in multiple conflicting results.".into()),
             Self::CorruptedEntry(_) => None,
             Self::CorruptedIndex(_) => None,
             Self::ConsistencyError(_) => None,
@@ -268,6 +276,9 @@ impl OperationError {
             Self::FilterUuidResolution => None,
             Self::InvalidAttributeName(_) => None,
             Self::InvalidAttribute(_) => None,
+            Self::InvalidLabel => Some("The submitted label for this item is invalid.".into()),
+            Self::DuplicateLabel => Some("The submitted label for this item is already in use.".into()),
+            Self::DuplicateKey => Some("The submitted key already exists.".into()),
             Self::InvalidDbState => None,
             Self::InvalidCacheState => None,
             Self::InvalidValueState => None,
@@ -280,7 +291,9 @@ impl OperationError {
             Self::InvalidReplChangeId => None,
             Self::InvalidAcpState(_) => None,
             Self::InvalidSchemaState(_) => None,
-            Self::InvalidAccountState(_) => None,
+            Self::InvalidAccountState(val) => Some(format!("Invalid account state: {}", val)),
+            Self::MissingClass(val) => Some(format!("Missing class: {}", val)),
+            Self::MissingAttribute(val) => Some(format!("Missing attribute: {}", val)),
             Self::MissingEntries => None,
             Self::ModifyAssertionFailed => None,
             Self::BackendEngine => None,
@@ -301,7 +314,7 @@ impl OperationError {
             Self::QueueDisconnected => None,
             Self::Webauthn => None,
             Self::Wait(_) => None,
-            Self::CannotStartMFADuringOngoingMFASession => Some("Cannot start a new MFA authentication flow when there already is one active."),
+            Self::CannotStartMFADuringOngoingMFASession => Some("Cannot start a new MFA authentication flow when there already is one active.".into()),
             Self::ReplReplayFailure => None,
             Self::ReplEntryNotChanged => None,
             Self::ReplInvalidRUVState => None,
@@ -310,17 +323,17 @@ impl OperationError {
             Self::ReplServerUuidSplitDataState => None,
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
-            Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later."),
+            Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
             Self::CU0002WebauthnRegistrationError => None,
-            Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device."),
+            Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::VS0001IncomingReplSshPublicKey => None,
-            Self::VS0003CertificateDerDecode => Some("Decoding the stored certificate from DER failed."),
+            Self::VS0003CertificateDerDecode => Some("Decoding the stored certificate from DER failed.".into()),
             Self::VS0002CertificatePublicKeyDigest |
             Self::VS0004CertificatePublicKeyDigest |
-            Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested."),
+            Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
-            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method."),
+            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method.".into()),
             Self::SC0001IncomingSshPublicKey => None,
             Self::MG0001InvalidReMigrationLevel => None,
             Self::MG0002RaiseDomainLevelExceedsMaximum => None,
@@ -328,11 +341,12 @@ impl OperationError {
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,
+            Self::DB0004DatabaseTooOld => Some("The database is too old to be migrated.".into()),
             Self::MG0004DomainLevelInDevelopment => None,
             Self::MG0005GidConstraintsNotMet => None,
-            Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present."),
-            Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled."),
-            Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted."),
+            Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),
+            Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
+            Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -379,8 +393,8 @@ impl OperationError {
             Self::KP0043KeyObjectJweA128GCMEncryption => None,
             Self::KP0044KeyObjectJwsPublicJwk => None,
             Self::PL0001GidOverlapsSystemRange => None,
-            Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised."),
-            Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition."),
+            Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
+            Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
         }
     }
 }

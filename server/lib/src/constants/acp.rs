@@ -1291,6 +1291,8 @@ lazy_static! {
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
             Attribute::ApplicationPassword,
+            Attribute::SshPublicKey,
+            Attribute::UnixPassword,
         ],
         ..Default::default()
     };
@@ -1397,7 +1399,6 @@ lazy_static! {
             Attribute::UnixPassword,
             Attribute::PassKeys,
             Attribute::AttestedPasskeys,
-            Attribute::ApplicationPassword,
             Attribute::ApplicationPassword,
         ],
         ..Default::default()

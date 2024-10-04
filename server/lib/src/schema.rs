@@ -2210,7 +2210,9 @@ impl<'a> SchemaWriteTransaction<'a> {
             Ok(())
         } else {
             admin_error!(err = ?r, "schema validate -> errors");
-            Err(OperationError::ConsistencyError(r))
+            Err(OperationError::ConsistencyError(
+                r.into_iter().filter_map(|v| v.err()).collect(),
+            ))
         }
     }
 }

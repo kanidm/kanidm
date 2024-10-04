@@ -36,7 +36,6 @@ doctest = false
 
 [dependencies]
 anyhow = { workspace = true }
-async-recursion = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 compact_jwt = { workspace = true, features = ["openssl"] }
 dialoguer = { workspace = true }

@@ -691,11 +691,22 @@ impl Resolver {
     pub async fn get_nssgroups(&self) -> Result<Vec<NssGroup>, ()> {
         let mut r = self.system_provider.get_nssgroups().await;
 
-        // Get all the system -> extension maps.
-
-        // For each sysgroup.
-        //    if there is an extension.
-        //    locate it, and resolve + extend.
+        // Extend all the local groups if maps exist.
+        for nss_group in r.iter_mut() {
+            for client in self.clients.iter() {
+                if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
+                    let (_, token) = self.get_cached_grouptoken(extend_group_id).await?;
+                    if let Some(token) = token {
+                        let members = self.get_groupmembers(token.uuid).await;
+                        nss_group.members.extend(members);
+                        debug!(
+                            "extended group {} with members from {}",
+                            nss_group.name, token.name
+                        );
+                    }
+                }
+            }
+        }
 
         let l = self.get_cached_grouptokens().await?;
         r.reserve(l.len());
@@ -711,8 +722,26 @@ impl Resolver {
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
-        if let Some(nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
+        if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
+
+            for client in self.clients.iter() {
+                if let Some(extend_group_id) = client.has_map_group(&nss_group.name) {
+                    let token = self.get_grouptoken(extend_group_id.clone()).await?;
+                    if let Some(token) = token {
+                        let members = self.get_groupmembers(token.uuid).await;
+                        nss_group.members.extend(members);
+                        debug!(
+                            "extended group {} with members from {}",
+                            nss_group.name, token.name
+                        );
+                    }
+                }
+            }
+
+            nss_group.members.sort_unstable();
+            nss_group.members.dedup();
+
             return Ok(Some(nss_group));
         }
 

@@ -45,9 +45,9 @@ macro_rules! load_all_groups_from_iter {
         );
 
         // Setup the user private group
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let uuid = $value.get_uuid();
 
@@ -61,19 +61,13 @@ macro_rules! load_all_groups_from_iter {
         });
 
         if is_unix_account {
-            let name = $value.get_ava_single_proto_string(Attribute::Name).ok_or(
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Name
-                )),
-            )?;
+            let name = $value
+                .get_ava_single_proto_string(Attribute::Name)
+                .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
-            let gidnumber = $value.get_ava_single_uint32(Attribute::GidNumber).ok_or(
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::GidNumber
-                )),
-            )?;
+            let gidnumber = $value
+                .get_ava_single_uint32(Attribute::GidNumber)
+                .ok_or(OperationError::MissingAttribute(Attribute::GidNumber))?;
 
             unix_groups.push(UnixGroup {
                 name,
@@ -150,9 +144,9 @@ pub struct Group {
 macro_rules! upg_from_account_e {
     ($value:expr, $groups:expr) => {{
         // Setup the user private group
-        let spn = $value.get_ava_single_proto_string(Attribute::Spn).ok_or(
-            OperationError::InvalidAccountState(format!("Missing attribute: {}", Attribute::Spn)),
-        )?;
+        let spn = $value
+            .get_ava_single_proto_string(Attribute::Spn)
+            .ok_or(OperationError::MissingAttribute(Attribute::Spn))?;
 
         let uuid = $value.get_uuid();
 
@@ -210,9 +204,7 @@ impl Group {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: group".to_string(),
-            ));
+            return Err(OperationError::MissingAttribute(Attribute::Group));
         }
 
         // Now extract our needed attributes
@@ -221,14 +213,12 @@ impl Group {
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: name".to_string())
+                OperationError::MissingAttribute(Attribute::Name)
             })?;
         */
         let spn = value
             .get_ava_single_proto_string(Attribute::Spn)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
 
         let uuid = value.get_uuid();
 
@@ -288,32 +278,17 @@ macro_rules! try_from_group_e {
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Name
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Name))?;
 
         let spn = $value
             .get_ava_single_proto_string(Attribute::Spn)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Spn
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
 
         let uuid = $value.get_uuid();
 
         let gidnumber = $value
             .get_ava_single_uint32(Attribute::GidNumber)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::GidNumber
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
 
         Ok(UnixGroup {
             name,
@@ -330,51 +305,32 @@ macro_rules! try_from_account_group_e {
         // We have already checked these, but paranoia is better than
         // complacency.
         if !$value.attribute_equality(Attribute::Class, &EntryClass::Account.to_partialvalue()) {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::Account
-            )));
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
         }
 
         if !$value.attribute_equality(
             Attribute::Class,
             &EntryClass::PosixAccount.to_partialvalue(),
         ) {
-            return Err(OperationError::InvalidAccountState(format!(
-                "Missing class: {}",
-                EntryClass::PosixAccount
-            )));
+            return Err(OperationError::MissingClass(
+                ENTRYCLASS_POSIX_ACCOUNT.into(),
+            ));
         }
 
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Name
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Name))?;
 
         let spn = $value
             .get_ava_single_proto_string(Attribute::Spn)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::Spn
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
 
         let uuid = $value.get_uuid();
 
         let gidnumber = $value
             .get_ava_single_uint32(Attribute::GidNumber)
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState(format!(
-                    "Missing attribute: {}",
-                    Attribute::GidNumber
-                ))
-            })?;
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
 
         // This is the user private group.
         let upg = UnixGroup {

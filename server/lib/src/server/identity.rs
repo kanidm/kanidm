@@ -111,12 +111,11 @@ impl From<&IdentType> for IdentityId {
 /// and other info that can assist with server decision making.
 pub struct Identity {
     pub origin: IdentType,
-    pub(crate) source: Source,
-    // pub(crate) impersonate: bool,
-    // In a way I guess these are session claims?
+    #[allow(dead_code)]
+    source: Source,
     pub(crate) session_id: Uuid,
     pub(crate) scope: AccessScope,
-    pub(crate) limits: Limits,
+    limits: Limits,
 }
 
 impl std::fmt::Display for Identity {
@@ -140,15 +139,37 @@ impl std::fmt::Display for Identity {
 }
 
 impl Identity {
-    pub fn source(&self) -> &Source {
+    pub(crate) fn new(
+        origin: IdentType,
+        source: Source,
+        session_id: Uuid,
+        scope: AccessScope,
+        limits: Limits,
+    ) -> Self {
+        Self {
+            origin,
+            source,
+            session_id,
+            scope,
+            limits,
+        }
+    }
+
+    #[allow(dead_code)]
+    pub(crate) fn source(&self) -> &Source {
         &self.source
     }
 
-    pub fn limits(&self) -> &Limits {
+    pub(crate) fn limits(&self) -> &Limits {
         &self.limits
     }
 
-    pub fn from_internal() -> Self {
+    #[cfg(test)]
+    pub(crate) fn limits_mut(&mut self) -> &mut Limits {
+        &mut self.limits
+    }
+
+    pub(crate) fn from_internal() -> Self {
         Identity {
             origin: IdentType::Internal,
             source: Source::Internal,
@@ -159,7 +180,9 @@ impl Identity {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry_readonly(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
+    pub(crate) fn from_impersonate_entry_readonly(
+        entry: Arc<Entry<EntrySealed, EntryCommitted>>,
+    ) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             source: Source::Internal,

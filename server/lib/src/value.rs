@@ -64,7 +64,13 @@ lazy_static! {
     /// Only lowercase+numbers, with limited chars.
     pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^[a-z][a-z0-9-_\\.]*$").expect("Invalid Iname regex found")
+        Regex::new("^[a-z][a-z0-9-_\\.]{0,63}$").expect("Invalid Iname regex found")
+    };
+
+    /// Only alpha-numeric with limited special chars and space
+    pub static ref LABEL_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[a-zA-Z0-9][ a-zA-Z0-9-_\\.@]{0,63}$").expect("Invalid Iname regex found")
     };
 
     /// Only lowercase+numbers, with limited chars.

@@ -2,7 +2,6 @@ use smolset::SmolSet;
 use time::OffsetDateTime;
 
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -27,18 +26,6 @@ impl ValueSetDateTime {
             .into_iter()
             .map(|s| {
                 OffsetDateTime::parse(&s, &Rfc3339)
-                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
-                    .map_err(|_| OperationError::InvalidValueState)
-            })
-            .collect::<Result<_, _>>()?;
-        Ok(Box::new(ValueSetDateTime { set }))
-    }
-
-    pub fn from_repl_v1(data: &[String]) -> Result<ValueSet, OperationError> {
-        let set = data
-            .iter()
-            .map(|s| {
-                OffsetDateTime::parse(s, &Rfc3339)
                     .map(|odt| odt.to_offset(time::UtcOffset::UTC))
                     .map_err(|_| OperationError::InvalidValueState)
             })
@@ -159,21 +146,6 @@ impl ValueSetT for ValueSetDateTime {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::DateTime {
-            set: self
-                .set
-                .iter()
-                .map(|odt| {
-                    debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
-                    #[allow(clippy::expect_used)]
-                    odt.format(&Rfc3339)
-                        .expect("Failed to format timestamp into RFC3339")
-                })
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

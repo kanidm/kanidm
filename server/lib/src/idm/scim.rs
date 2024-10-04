@@ -29,17 +29,13 @@ macro_rules! try_from_entry {
     ($value:expr) => {{
         // Check the classes
         if !$value.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into()) {
-            return Err(OperationError::InvalidAccountState(
-                "Missing class: sync account".to_string(),
-            ));
+            return Err(OperationError::MissingClass(ENTRYCLASS_SYNC_ACCOUNT.into()));
         }
 
         let name = $value
             .get_ava_single_iname(Attribute::Name)
             .map(|s| s.to_string())
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: name".to_string(),
-            ))?;
+            .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
         let jws_key = $value
             .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)

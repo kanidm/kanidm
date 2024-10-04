@@ -9,10 +9,12 @@ use kanidm_client::KanidmClient;
 use kanidm_proto::constants::{
     ATTR_ACCOUNT_EXPIRE, ATTR_ACCOUNT_VALID_FROM, ATTR_GIDNUMBER, ATTR_SSH_PUBLICKEY,
 };
-use kanidm_proto::internal::OperationError::PasswordQuality;
+use kanidm_proto::internal::OperationError::{
+    DuplicateKey, DuplicateLabel, InvalidLabel, NoMatchingEntries, PasswordQuality,
+};
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CUSessionToken, CUStatus,
-    TotpSecret,
+    SshPublicKey, TotpSecret,
 };
 use kanidm_proto::internal::{CredentialDetail, CredentialDetailType};
 use kanidm_proto::messages::{AccountChangeMessage, ConsoleOutputMode, MessageStatus};
@@ -708,6 +710,10 @@ enum CUAction {
     PasskeyRemove,
     AttestedPasskey,
     AttestedPasskeyRemove,
+    UnixPassword,
+    UnixPasswordRemove,
+    SshPublicKey,
+    SshPublicKeyRemove,
     End,
     Commit,
 }
@@ -732,7 +738,13 @@ passkey (pk) - Add a new Passkey
 passkey remove (passkey rm, pkrm) - Remove a Passkey
 -- Attested Passkeys
 attested-passkey (apk) - Add a new Attested Passkey
-attested-passkey-remove (attested-passkey rm, apkrm) - Remove an Attested Passkey
+attested-passkey remove (attested-passkey rm, apkrm) - Remove an Attested Passkey
+-- Unix (sudo) Password
+unix-password (upasswd, upass, upw) - Set a new unix/sudo password
+unix-password remove (upassrm upwrm) - Remove the accounts unix password
+-- SSH Public Keys
+ssh-pub-key (ssh, spk) - Add a new ssh public key
+ssh-pub-key remove (sshrm, spkrm) - Remove an ssh public key
 "#
         )
     }
@@ -759,6 +771,12 @@ impl FromStr for CUAction {
             "attested-passkey remove" | "attested-passkey rm" | "apkrm" => {
                 Ok(CUAction::AttestedPasskeyRemove)
             }
+            "unix-password" | "upasswd" | "upass" | "upw" => Ok(CUAction::UnixPassword),
+            "unix-password remove" | "upassrm" | "upwrm" => Ok(CUAction::UnixPasswordRemove),
+
+            "ssh-pub-key" | "ssh" | "spk" => Ok(CUAction::SshPublicKey),
+            "ssh-pub-key remove" | "sshrm" | "spkrm" => Ok(CUAction::SshPublicKeyRemove),
+
             _ => Err(()),
         }
     }
@@ -1119,6 +1137,100 @@ async fn passkey_remove_prompt(
     }
 }
 
+async fn sshkey_add_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+    // Get the key.
+    let ssh_pub_key_str: String = Input::new()
+        .with_prompt("\nEnter the SSH Public Key (blank to stop) # ")
+        .validate_with(|input: &String| -> Result<(), &str> {
+            if input.is_empty() || SshPublicKey::from_string(input).is_ok() {
+                Ok(())
+            } else {
+                Err("This is not a valid SSH Public Key")
+            }
+        })
+        .allow_empty(true)
+        .interact_text()
+        .expect("Failed to interact with interactive session");
+
+    if ssh_pub_key_str.is_empty() {
+        println!("SSH Public Key was not added");
+        return;
+    }
+
+    let ssh_pub_key = match SshPublicKey::from_string(&ssh_pub_key_str) {
+        Ok(spk) => spk,
+        Err(_err) => {
+            eprintln!("Failed to parse ssh public key that previously parsed correctly.");
+            return;
+        }
+    };
+
+    let default_label = ssh_pub_key
+        .comment
+        .clone()
+        .unwrap_or_else(|| ssh_pub_key.fingerprint().hash);
+
+    loop {
+        // Get the label
+        let label: String = Input::new()
+            .with_prompt("\nEnter the label of the new SSH Public Key")
+            .default(default_label.clone())
+            .interact_text()
+            .expect("Failed to interact with interactive session");
+
+        if let Err(err) = client
+            .idm_account_credential_update_sshkey_add(session_token, label, ssh_pub_key.clone())
+            .await
+        {
+            match err {
+                ClientErrorHttp(_, Some(InvalidLabel), _) => {
+                    eprintln!("Invalid SSH Public Key label - must only contain letters, numbers, and the characters '@' or '.'");
+                    continue;
+                }
+                ClientErrorHttp(_, Some(DuplicateLabel), _) => {
+                    eprintln!("SSH Public Key label already exists - choose another");
+                    continue;
+                }
+                ClientErrorHttp(_, Some(DuplicateKey), _) => {
+                    eprintln!("SSH Public Key already exists in this account");
+                }
+                _ => eprintln!("An error occured -> {:?}", err),
+            }
+            break;
+        } else {
+            println!("Successfully added SSH Public Key");
+            break;
+        }
+    }
+}
+
+async fn sshkey_remove_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+    let label: String = Input::new()
+        .with_prompt("\nEnter the label of the new SSH Public Key (blank to stop) # ")
+        .allow_empty(true)
+        .interact_text()
+        .expect("Failed to interact with interactive session");
+
+    if label.is_empty() {
+        println!("SSH Public Key was NOT removed");
+        return;
+    }
+
+    if let Err(err) = client
+        .idm_account_credential_update_sshkey_remove(session_token, label)
+        .await
+    {
+        match err {
+            ClientErrorHttp(_, Some(NoMatchingEntries), _) => {
+                eprintln!("SSH Public Key does not exist. Keys were NOT removed.");
+            }
+            _ => eprintln!("An error occured -> {:?}", err),
+        }
+    } else {
+        println!("Successfully removed SSH Public Key");
+    }
+}
+
 fn display_warnings(warnings: &[CURegWarning]) {
     if !warnings.is_empty() {
         println!("Warnings:");
@@ -1163,6 +1275,10 @@ fn display_status(status: CUStatus) {
         attested_passkeys,
         attested_passkeys_state,
         attested_passkeys_allowed_devices,
+        unixcred,
+        unixcred_state,
+        sshkeys,
+        sshkeys_state,
     } = status;
 
     println!("spn: {}", spn);
@@ -1264,6 +1380,58 @@ fn display_status(status: CUStatus) {
         }
         CUCredState::PolicyDeny => {
             println!("  unable to modify - attestation policy not configured");
+        }
+    }
+
+    println!("Unix (sudo) Password:");
+    match unixcred_state {
+        CUCredState::Modifiable => {
+            if let Some(cred_detail) = &unixcred {
+                print!("{}", cred_detail);
+            } else {
+                println!("  not set");
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if let Some(cred_detail) = &unixcred {
+                print!("{}", cred_detail);
+            } else {
+                println!("  unable to modify - access denied");
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account does not have posix attributes");
+        }
+    }
+
+    println!("SSH Public Keys:");
+    match sshkeys_state {
+        CUCredState::Modifiable => {
+            if sshkeys.is_empty() {
+                println!("  not set");
+            } else {
+                for (label, sk) in sshkeys {
+                    println!("  {}: {}", label, sk);
+                }
+            }
+        }
+        CUCredState::DeleteOnly => {
+            if sshkeys.is_empty() {
+                println!("  unable to modify - access denied");
+            } else {
+                for (label, sk) in sshkeys {
+                    println!("  {}: {}", label, sk);
+                }
+            }
+        }
+        CUCredState::AccessDeny => {
+            println!("  unable to modify - access denied");
+        }
+        CUCredState::PolicyDeny => {
+            println!("  unable to modify - account policy denied");
         }
     }
 
@@ -1458,6 +1626,57 @@ async fn credential_update_exec(
             CUAction::AttestedPasskeyRemove => {
                 passkey_remove_prompt(&session_token, &client, PasskeyClass::Attested).await
             }
+
+            CUAction::UnixPassword => {
+                let password_a = Password::new()
+                    .with_prompt("New Unix Password")
+                    .interact()
+                    .expect("Failed to interact with interactive session");
+                let password_b = Password::new()
+                    .with_prompt("Confirm password")
+                    .interact()
+                    .expect("Failed to interact with interactive session");
+
+                if password_a != password_b {
+                    eprintln!("Passwords do not match");
+                } else if let Err(e) = client
+                    .idm_account_credential_update_set_unix_password(&session_token, &password_a)
+                    .await
+                {
+                    match e {
+                        ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                            eprintln!("Password was not secure enough, please consider the following suggestions:");
+                            for fb_item in feedback.iter() {
+                                eprintln!(" - {}", fb_item)
+                            }
+                        }
+                        _ => eprintln!("An error occurred -> {:?}", e),
+                    }
+                } else {
+                    println!("Successfully reset unix password.");
+                }
+            }
+
+            CUAction::UnixPasswordRemove => {
+                if Confirm::new()
+                    .with_prompt("Do you want to remove your unix password?")
+                    .interact()
+                    .expect("Failed to interact with interactive session")
+                {
+                    if let Err(e) = client
+                        .idm_account_credential_update_unix_remove(&session_token)
+                        .await
+                    {
+                        eprintln!("An error occurred -> {:?}", e);
+                    } else {
+                        println!("success");
+                    }
+                } else {
+                    println!("unix password was NOT removed");
+                }
+            }
+            CUAction::SshPublicKey => sshkey_add_prompt(&session_token, &client).await,
+            CUAction::SshPublicKeyRemove => sshkey_remove_prompt(&session_token, &client).await,
             CUAction::End => {
                 println!("Changes were NOT saved.");
                 break;

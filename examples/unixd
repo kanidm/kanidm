@@ -140,3 +140,19 @@ version = '2'
 
 pam_allowed_login_groups = ["posix_group"]
 
+# Allow extension (mapping) of a local system groups members with members from a
+# kanidm provided group. An example of this is that the local group
+# `libvirt` can has it's membership extended with the members from
+# `virt-admins`. This section can be repeated many times.
+#
+# Default: empty set (no group maps)
+
+# [[kanidm.map_group]]
+# local = "libvirt"
+# with = "virt-admins"
+
+# [[kanidm.map_group]]
+# local = "admins"
+# with = "system-admins"
+
+

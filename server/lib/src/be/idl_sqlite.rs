@@ -14,7 +14,7 @@ use rusqlite::vtab::array::Array;
 use rusqlite::{Connection, OpenFlags, OptionalExtension};
 use uuid::Uuid;
 
-use crate::be::dbentry::{DbEntry, DbIdentSpn};
+use crate::be::dbentry::DbIdentSpn;
 use crate::be::dbvalue::DbCidV1;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
@@ -1003,43 +1003,6 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
-        let allids = self.get_identry_raw(&IdList::AllIds)?;
-        let raw_entries: Result<Vec<IdRawEntry>, _> = allids
-            .into_iter()
-            .map(|raw| {
-                serde_cbor::from_slice(raw.data.as_slice())
-                    .map_err(|e| {
-                        admin_error!(?e, "Serde CBOR Error");
-                        OperationError::SerdeCborError
-                    })
-                    .and_then(|dbe: DbEntry| dbe.convert_to_v2())
-                    .and_then(|dbe| {
-                        serde_json::to_vec(&dbe)
-                            .map(|data| IdRawEntry { id: raw.id, data })
-                            .map_err(|e| {
-                                admin_error!(?e, "Serde Json Error");
-                                OperationError::SerdeJsonError
-                            })
-                    })
-            })
-            .collect();
-
-        self.write_identries_raw(raw_entries?.into_iter())
-    }
-
-    fn migrate_dbentryv2_to_dbentryv3(&self) -> Result<(), OperationError> {
-        // To perform this migration we have to load everything to a valid entry, then
-        // write them all back down once their change states are created.
-        let all_entries = self.get_identry(&IdList::AllIds)?;
-
-        for entry in all_entries {
-            self.write_identry(&entry)?;
-        }
-
-        Ok(())
-    }
-
     pub fn write_uuid2spn(&self, uuid: Uuid, k: Option<&Value>) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
         match k {
@@ -1597,6 +1560,14 @@ impl IdlSqliteWriteTransaction {
 
         trace!(%dbv_id2entry);
 
+        if dbv_id2entry != 0 && dbv_id2entry < 9 {
+            error!(
+                ?dbv_id2entry,
+                "Unable to perform database migrations. This instance is too old."
+            );
+            return Err(OperationError::DB0004DatabaseTooOld);
+        }
+
         // Check db_version here.
         //   * if 0 -> create v1.
         if dbv_id2entry == 0 {
@@ -1679,7 +1650,6 @@ impl IdlSqliteWriteTransaction {
         }
         //   * if v4 -> migrate v1 to v2 entries.
         if dbv_id2entry == 4 {
-            self.migrate_dbentryv1_to_dbentryv2()?;
             dbv_id2entry = 5;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
         }
@@ -1716,7 +1686,6 @@ impl IdlSqliteWriteTransaction {
         }
         //   * if v8 -> migrate all entries to have a change state
         if dbv_id2entry == 8 {
-            self.migrate_dbentryv2_to_dbentryv3()?;
             dbv_id2entry = 9;
             info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv2 -> dbentryv3)");
         }

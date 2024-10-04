@@ -2,7 +2,6 @@ use std::iter::{self};
 
 use crate::be::dbvalue::DbValueSetV2;
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::value::{PartialValue, SyntaxType, Value};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
@@ -63,10 +62,6 @@ impl ValueSetEcKeyPrivate {
     }
 
     pub fn from_dbvs2(key_der: &[u8]) -> Result<ValueSet, OperationError> {
-        Self::valueset_from_key_der(key_der)
-    }
-
-    pub fn from_repl_v1(key_der: &[u8]) -> Result<ValueSet, OperationError> {
         Self::valueset_from_key_der(key_der)
     }
 }
@@ -149,20 +144,6 @@ impl ValueSetT for ValueSetEcKeyPrivate {
             })
             .unwrap_or_default();
         DbValueSetV2::EcKeyPrivate(key_der)
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        #[allow(clippy::expect_used)]
-        let key_der = self
-            .set
-            .as_ref()
-            .map(|key| {
-                key.priv_key.private_key_to_der().expect(
-        "Unable to process eckey to der, likely corrupted. You must restore from backup.",
-    )
-            })
-            .unwrap_or_default();
-        ReplAttrV1::EcKeyPrivate { key: key_der }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = crate::value::PartialValue> + '_> {

@@ -12,7 +12,7 @@ Kanidm currently is packaged for the following systems:
 
 - OpenSUSE Tumbleweed
 - OpenSUSE Leap 15.4/15.5/15.6
-- MacOS
+- macOS
 - Arch Linux
 - CentOS Stream 9
 - Debian
@@ -47,15 +47,34 @@ zypper ref
 zypper in kanidm-clients
 ```
 
-### MacOS - Brew
+### macOS - Homebrew
 
-[Homebrew](https://brew.sh/) allows addition of third party repositories for installing tools. On
-MacOS you can use this to install the Kanidm tools.
+[Kanidm provides a Homebrew cask](https://github.com/kanidm/homebrew-kanidm),
+which lets [Homebrew](https://brew.sh/) build and install the CLI client tools
+from source:
 
 ```bash
 brew tap kanidm/kanidm
 brew install kanidm
 ```
+
+> [!TIP]
+>
+> **Rust developers:** this formula will install a Rust toolchain with Homebrew,
+> and add it to your `PATH`. *This may interfere with any Rust toolchain
+> you've installed with [`rustup`](https://rustup.rs/).*
+>
+> You can unlink Homebrew's Rust toolchain (removing it from your `PATH`) with:
+>
+> ```sh
+> brew unlink rust
+> ```
+>
+> Homebrew will always use its version of Rust when building Rust packages, even
+> when it is unlinked.
+>
+> Alternatively, you may wish to [install the Kanidm CLI with `cargo`](#cargo)
+> instead – this will use whatever Rust toochain you've already installed.
 
 ### Arch Linux
 

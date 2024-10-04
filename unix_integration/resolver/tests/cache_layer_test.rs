@@ -131,8 +131,8 @@ async fn setup_test(fix_fn: Fixture) -> (Resolver, KanidmClient) {
             conn_timeout: 1,
             request_timeout: 1,
             pam_allowed_login_groups: vec!["allowed_group".to_string()],
-            extend: vec![GroupMap {
-                local: "extensible".to_string(),
+            map_group: vec![GroupMap {
+                local: "extensible_group".to_string(),
                 with: "testgroup1".to_string(),
             }],
         },
@@ -1087,4 +1087,155 @@ async fn test_cache_group_fk_deferred() {
     assert!(gt.is_some());
     // And check we have members in the group, since we came from a userlook up
     assert_eq!(gt.unwrap().members.len(), 1);
+}
+
+#[tokio::test]
+/// Test group extension. Groups extension is not the same as "overriding". Extension
+/// only allows the *members* of a remote group to supplement the members of the local
+/// group. This prevents a remote group changing the gidnumber of the local group and
+/// causing breakages.
+async fn test_cache_extend_group_members() {
+    let (cachelayer, _adminclient) = setup_test(fixture(test_fixture)).await;
+
+    cachelayer
+        .reload_system_identities(
+            vec![EtcUser {
+                name: "local_account".to_string(),
+                uid: 30000,
+                gid: 30000,
+                password: Default::default(),
+                gecos: Default::default(),
+                homedir: Default::default(),
+                shell: Default::default(),
+            }],
+            None,
+            vec![EtcGroup {
+                // This group is configured to allow extension from
+                // the group "testgroup1"
+                name: "extensible_group".to_string(),
+                gid: 30001,
+                password: Default::default(),
+                // We have the local account as a member, it should NOT be stomped.
+                members: vec!["local_account".to_string()],
+            }],
+        )
+        .await;
+
+    // Force offline. Show we have no groups.
+    cachelayer.mark_offline().await;
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(gt.is_none());
+
+    // While offline, extensible_group has only local_account as a member.
+    let gt = cachelayer
+        .get_nssgroup_name("extensible_group")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 30001);
+    assert_eq!(gt.members.as_slice(), &["local_account".to_string()]);
+
+    // Go online. Group now exists, extensible_group has group members.
+    // Need to resolve test-account first so that the membership is linked.
+    cachelayer.mark_next_check_now(SystemTime::now()).await;
+    assert!(cachelayer.test_connection().await);
+
+    let ut = cachelayer
+        .get_nssaccount_name("testaccount1")
+        .await
+        .expect("Failed to get from cache");
+    assert!(ut.is_some());
+
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 20001);
+    assert_eq!(
+        gt.members.as_slice(),
+        &["testaccount1@idm.example.com".to_string()]
+    );
+
+    let gt = cachelayer
+        .get_nssgroup_name("extensible_group")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    // Even though it's extended, still needs to be the local uid/gid
+    assert_eq!(gt.gid, 30001);
+    assert_eq!(
+        gt.members.as_slice(),
+        &[
+            "local_account".to_string(),
+            "testaccount1@idm.example.com".to_string()
+        ]
+    );
+
+    let groups = cachelayer
+        .get_nssgroups()
+        .await
+        .expect("Failed to get from cache");
+
+    assert!(groups.iter().any(|group| {
+        group.name == "extensible_group"
+            && group.members.as_slice()
+                == &[
+                    "local_account".to_string(),
+                    "testaccount1@idm.example.com".to_string(),
+                ]
+    }));
+
+    // Go offline. Group cached, extensible_group has members.
+    cachelayer.mark_offline().await;
+
+    let gt = cachelayer
+        .get_nssgroup_name("testgroup1")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 20001);
+    assert_eq!(
+        gt.members.as_slice(),
+        &["testaccount1@idm.example.com".to_string()]
+    );
+
+    let gt = cachelayer
+        .get_nssgroup_name("extensible_group")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    // Even though it's extended, still needs to be the local uid/gid
+    assert_eq!(gt.gid, 30001);
+    assert_eq!(
+        gt.members.as_slice(),
+        &[
+            "local_account".to_string(),
+            "testaccount1@idm.example.com".to_string()
+        ]
+    );
+
+    // clear cache
+    cachelayer
+        .clear_cache()
+        .await
+        .expect("failed to clear cache");
+
+    // No longer has testaccount.
+    let gt = cachelayer
+        .get_nssgroup_name("extensible_group")
+        .await
+        .expect("Failed to get from cache");
+
+    let gt = gt.unwrap();
+    assert_eq!(gt.gid, 30001);
+    assert_eq!(gt.members.as_slice(), &["local_account".to_string()]);
 }

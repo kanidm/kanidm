@@ -9,7 +9,6 @@ use kanidm_proto::internal::{ImageType, ImageValue};
 
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
@@ -268,33 +267,6 @@ impl ValueSetImage {
         }))
     }
 
-    pub fn from_repl_v1(data: &[DbValueImage]) -> Result<ValueSet, OperationError> {
-        let mut set: HashSet<ImageValue> = HashSet::new();
-        for image in data {
-            let image = match image.clone() {
-                DbValueImage::V1 {
-                    filename,
-                    filetype,
-                    contents,
-                } => ImageValue::new(filename, filetype, contents),
-            };
-            match image.validate_image() {
-                Ok(_) => {
-                    set.insert(image.clone());
-                }
-                Err(err) => {
-                    admin_error!(
-                        "Image didn't pass validation, not adding to value! Error: {:?}",
-                        err
-                    );
-                    return Err(OperationError::InvalidValueState);
-                }
-            }
-        }
-
-        Ok(Box::new(ValueSetImage { set }))
-    }
-
     // We need to allow this, because rust doesn't allow us to impl FromIterator on foreign
     // types, and `ImageValue` is foreign.
     #[allow(clippy::should_implement_trait)]
@@ -446,21 +418,6 @@ impl ValueSetT for ValueSetImage {
                 })
                 .collect(),
         )
-    }
-
-    fn to_repl_v1(&self) -> ReplAttrV1 {
-        ReplAttrV1::Image {
-            set: self
-                .set
-                .iter()
-                .cloned()
-                .map(|e| DbValueImage::V1 {
-                    filename: e.filename,
-                    filetype: e.filetype,
-                    contents: e.contents,
-                })
-                .collect(),
-        }
     }
 
     fn to_partialvalue_iter(&self) -> Box<dyn Iterator<Item = PartialValue> + '_> {

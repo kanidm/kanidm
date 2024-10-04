@@ -2061,9 +2061,9 @@ pub async fn account_id_unix_token(
         .await
         .map(Json::from);
 
-    if let Err(OperationError::InvalidAccountState(val)) = &res {
-        // if they're not a posix user we should just hide them
-        if *val == format!("Missing class: {}", "posixaccount") {
+    // if they're not a posix user we should just hide them
+    if let Err(OperationError::MissingClass(class)) = &res {
+        if class == ENTRYCLASS_POSIX_ACCOUNT {
             return Err(OperationError::NoMatchingEntries.into());
         }
     };
