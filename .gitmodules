@@ -1,0 +1,3 @@
+[submodule "kanidm_deb_packaging"]
+	path = platform/debian/kanidm_deb_packaging
+	url = https://github.com/jinnatar/kanidm_deb_packaging

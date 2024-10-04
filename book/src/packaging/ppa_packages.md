@@ -1,11 +1,12 @@
 # PPA Packages
 
-This pulls the packages from the Kanidm
-[debs releases](https://github.com/kanidm/kanidm/releases/tag/debs) and makes a package archive for
-“nightly” packages. Packages are distributed for the latest LTS versions, Ubuntu 22.04 & Debian 12.
+- This builds packages from the [main Kanidm repository](https://github.com/kanidm/kanidm) and makes a package archive for “nightly” packages.
+Stable packages are intended to be introduced soon which will require repeating updated instructions
+here.
+- Packages are distributed for the latest LTS versions, Ubuntu 22.04 & Debian 12.
 
-Please note that while the commands below should also work on other Ubuntu-based distributions, we
-cannot ensure their compatibility with PPA. Pop OS, for example, would require an altered setup in
+- Please note that while the commands below should also work on other Ubuntu-based distributions, we
+cannot ensure their compatibility. Pop OS, for example, would require an altered setup in
 line with their [instructions](https://support.system76.com/articles/ppa-third-party/).
 
 ## Adding it to your system
@@ -46,8 +47,8 @@ sudo apt update
 
 ## Listing Packages
 
-Use `apt-cache` to list the packages available:
+Use `apt search` to list the packages available:
 
 ```bash
-apt-cache search kanidm
+apt search kanidm
 ```
