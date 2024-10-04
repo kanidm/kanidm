@@ -1,5 +1,5 @@
 use crate::{ClientError, KanidmClient};
-use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimSyncRequest, ScimSyncState};
+use kanidm_proto::scim_v1::{ScimEntryGeneric, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState};
 
 impl KanidmClient {
     // TODO: testing for this
@@ -21,8 +21,19 @@ impl KanidmClient {
     pub async fn scim_v1_entry_get(
         &self,
         name_or_uuid: &str,
+        query: Option<ScimEntryGetQuery>,
     ) -> Result<ScimEntryGeneric, ClientError> {
-        self.perform_get_request(format!("/scim/v1/Entry/{}", name_or_uuid).as_str())
+        self.perform_get_request_query(format!("/scim/v1/Entry/{}", name_or_uuid).as_str(), query)
+            .await
+    }
+
+    /// Retrieve a Person as a SCIM JSON Value.
+    pub async fn scim_v1_person_get(
+        &self,
+        name_or_uuid: &str,
+        query: Option<ScimEntryGetQuery>,
+    ) -> Result<ScimEntryGeneric, ClientError> {
+        self.perform_get_request_query(format!("/scim/v1/Person/{}", name_or_uuid).as_str(), query)
             .await
     }
 }

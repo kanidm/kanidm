@@ -94,8 +94,6 @@ Stable APIs are:
 - LDAP protocol operations
 - JSON HTTP end points which use elements from
   [`proto/src/v1`](https://github.com/kanidm/kanidm/blob/master/proto/src/v1)
-- SCIM operations from
-  [`proto/src/scim_v1`](https://github.com/kanidm/kanidm/blob/master/proto/src/scim_v1)
 
 All other APIs and interactions are not considered stable. Changes will be minimised if possible.
 This includes but is not limited to:
@@ -107,6 +105,8 @@ This includes but is not limited to:
 - CLI interface of any command provided by kanidm unless otherwise noted above
 - JSON HTTP end points which use elements from
   [`proto/src/internal.rs`](https://github.com/kanidm/kanidm/blob/master/proto/src/internal.rs)
+- SCIM operations from
+  [`proto/src/scim_v1`](https://github.com/kanidm/kanidm/blob/master/proto/src/scim_v1)
 
 ### Deprecation Policy
 

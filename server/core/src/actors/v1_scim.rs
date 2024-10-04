@@ -1,13 +1,12 @@
-use kanidmd_lib::prelude::*;
-
+use super::{QueryServerReadV1, QueryServerWriteV1};
+use kanidm_proto::scim_v1::{
+    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+};
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
 };
 use kanidmd_lib::idm::server::IdmServerTransaction;
-
-use kanidm_proto::scim_v1::{server::ScimEntryKanidm, ScimSyncRequest, ScimSyncState};
-
-use super::{QueryServerReadV1, QueryServerWriteV1};
+use kanidmd_lib::prelude::*;
 
 impl QueryServerWriteV1 {
     #[instrument(
@@ -208,6 +207,8 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         eventid: Uuid,
         uuid_or_name: String,
+        class: EntryClass,
+        query: ScimEntryGetQuery,
     ) -> Result<ScimEntryKanidm, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
@@ -226,7 +227,6 @@ impl QueryServerReadV1 {
 
         idms_prox_read
             .qs_read
-            .impersonate_search_ext_uuid(target_uuid, &ident)
-            .and_then(|entry| entry.to_scim_kanidm(idms_prox_read.qs_read))
+            .scim_entry_id_get_ext(target_uuid, class, query, ident)
     }
 }
