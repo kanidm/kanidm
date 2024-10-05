@@ -170,15 +170,16 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
-            Ok(dc) => dc,
-            Err(e) => {
-                error!(err = ?e, "Error DaemonClientBlocking::new()");
-                return PamResultCode::PAM_SERVICE_ERR;
-            }
-        };
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
+                    return PamResultCode::PAM_SERVICE_ERR;
+                }
+            };
 
-        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
+        match daemon_client.call_and_wait(&req, None) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     debug!("PamResultCode::PAM_SUCCESS");
@@ -242,13 +243,14 @@ impl PamHooks for PamKanidm {
         };
 
         let mut timeout = cfg.unix_sock_timeout;
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
-            Ok(dc) => dc,
-            Err(e) => {
-                error!(err = ?e, "Error DaemonClientBlocking::new()");
-                return PamResultCode::PAM_SERVICE_ERR;
-            }
-        };
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
+                    return PamResultCode::PAM_SERVICE_ERR;
+                }
+            };
 
         // Later we may need to move this to a function and call it as a oneshot for auth methods
         // that don't require any authtoks at all. For example, imagine a user authed and they
@@ -280,7 +282,7 @@ impl PamHooks for PamKanidm {
         let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
         loop {
-            match_sm_auth_client_response!(daemon_client.call_and_wait(&req, timeout), opts,
+            match_sm_auth_client_response!(daemon_client.call_and_wait(&req, Some(timeout)), opts,
                 ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
                     let mut consume_authtok = None;
                     // Swap the authtok out with a None, so it can only be consumed once.
@@ -391,7 +393,7 @@ impl PamHooks for PamKanidm {
                         // will shutdown. This allows the resolver to dynamically extend the
                         // timeout if needed, and removes logic from the front end.
                         match_sm_auth_client_response!(
-                            daemon_client.call_and_wait(&req, timeout), opts,
+                            daemon_client.call_and_wait(&req, Some(timeout)), opts,
                             ClientResponse::PamAuthenticateStepResponse(
                                     PamAuthResponse::MFAPollWait,
                             ) => {
@@ -551,15 +553,16 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        let mut daemon_client = match DaemonClientBlocking::new(cfg.sock_path.as_str()) {
-            Ok(dc) => dc,
-            Err(e) => {
-                error!(err = ?e, "Error DaemonClientBlocking::new()");
-                return PamResultCode::PAM_SERVICE_ERR;
-            }
-        };
+        let mut daemon_client =
+            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
+                Ok(dc) => dc,
+                Err(e) => {
+                    error!(err = ?e, "Error DaemonClientBlocking::new()");
+                    return PamResultCode::PAM_SERVICE_ERR;
+                }
+            };
 
-        match daemon_client.call_and_wait(&req, cfg.unix_sock_timeout) {
+        match daemon_client.call_and_wait(&req, None) {
             Ok(ClientResponse::Ok) => {
                 // println!("PAM_SUCCESS");
                 PamResultCode::PAM_SUCCESS

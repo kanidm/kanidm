@@ -1,7 +1,9 @@
 use serde::{Deserialize, Serialize};
-
 use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, DefaultOnNull, StringWithSeparator};
+use std::fs::File;
+use std::io::Read;
+use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EtcUser {
@@ -23,6 +25,16 @@ pub fn parse_etc_passwd(bytes: &[u8]) -> Result<Vec<EtcUser>, UnixIntegrationErr
     rdr.deserialize()
         .map(|result| result.map_err(|_e| UnixIntegrationError))
         .collect::<Result<Vec<EtcUser>, UnixIntegrationError>>()
+}
+
+pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, UnixIntegrationError> {
+    let mut file = File::open(path.as_ref()).map_err(|_| UnixIntegrationError)?;
+
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)
+        .map_err(|_| UnixIntegrationError)?;
+
+    parse_etc_passwd(contents.as_slice()).map_err(|_| UnixIntegrationError)
 }
 
 #[serde_as]
@@ -63,6 +75,18 @@ pub fn parse_etc_shadow(bytes: &[u8]) -> Result<Vec<EtcShadow>, UnixIntegrationE
         .collect::<Result<Vec<EtcShadow>, UnixIntegrationError>>()
 }
 
+pub fn read_etc_shadow_file<P: AsRef<Path>>(
+    path: P,
+) -> Result<Vec<EtcShadow>, UnixIntegrationError> {
+    let mut file = File::open(path.as_ref()).map_err(|_| UnixIntegrationError)?;
+
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)
+        .map_err(|_| UnixIntegrationError)?;
+
+    parse_etc_shadow(contents.as_slice()).map_err(|_| UnixIntegrationError)
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EtcGroup {
@@ -85,6 +109,16 @@ pub fn parse_etc_group(bytes: &[u8]) -> Result<Vec<EtcGroup>, UnixIntegrationErr
     rdr.deserialize()
         .map(|result| result.map_err(|_e| UnixIntegrationError))
         .collect::<Result<Vec<EtcGroup>, UnixIntegrationError>>()
+}
+
+pub fn read_etc_group_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcGroup>, UnixIntegrationError> {
+    let mut file = File::open(path.as_ref()).map_err(|_| UnixIntegrationError)?;
+
+    let mut contents = vec![];
+    file.read_to_end(&mut contents)
+        .map_err(|_| UnixIntegrationError)?;
+
+    parse_etc_group(contents.as_slice()).map_err(|_| UnixIntegrationError)
 }
 
 #[cfg(test)]
