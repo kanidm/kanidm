@@ -42,6 +42,7 @@ use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
 };
 
+use crate::core::{self, RequestOptions};
 use crate::pam::constants::*;
 use crate::pam::conv::PamConv;
 use crate::pam::module::{PamHandle, PamHooks};
@@ -77,14 +78,14 @@ fn install_subscriber(debug: bool) {
         .try_init();
 }
 
-#[derive(Debug)]
-struct Options {
+#[derive(Debug, Default)]
+pub struct ModuleOptions {
     debug: bool,
     use_first_pass: bool,
     ignore_unknown_user: bool,
 }
 
-impl TryFrom<&Vec<&CStr>> for Options {
+impl TryFrom<&Vec<&CStr>> for ModuleOptions {
     type Error = ();
 
     fn try_from(args: &Vec<&CStr>) -> Result<Self, Self::Error> {
@@ -97,7 +98,7 @@ impl TryFrom<&Vec<&CStr>> for Options {
             }
         };
 
-        Ok(Options {
+        Ok(ModuleOptions {
             debug: gopts.contains("debug"),
             use_first_pass: gopts.contains("use_first_pass"),
             ignore_unknown_user: gopts.contains("ignore_unknown_user"),
@@ -143,7 +144,7 @@ macro_rules! match_sm_auth_client_response {
 
 impl PamHooks for PamKanidm {
     fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
+        let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
@@ -212,7 +213,7 @@ impl PamHooks for PamKanidm {
     }
 
     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
+        let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
@@ -503,34 +504,8 @@ impl PamHooks for PamKanidm {
         } // while true, continue calling PamAuthenticateStep until we get a decision.
     }
 
-    fn sm_chauthtok(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
-            Ok(o) => o,
-            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
-        };
-
-        install_subscriber(opts.debug);
-
-        debug!(?args, ?opts, "sm_chauthtok");
-
-        PamResultCode::PAM_IGNORE
-    }
-
-    fn sm_close_session(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
-            Ok(o) => o,
-            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
-        };
-
-        install_subscriber(opts.debug);
-
-        debug!(?args, ?opts, "sm_close_session");
-
-        PamResultCode::PAM_SUCCESS
-    }
-
     fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
+        let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
@@ -539,43 +514,41 @@ impl PamHooks for PamKanidm {
 
         debug!(?args, ?opts, "sm_open_session");
 
-        let account_id = match pamh.get_user(None) {
-            Ok(aid) => aid,
-            Err(err) => {
-                error!(?err, "get_user");
-                return err;
-            }
+        let req_opt = RequestOptions::Main {
+            config_path: DEFAULT_CONFIG_PATH,
         };
 
-        let cfg = match get_cfg() {
-            Ok(cfg) => cfg,
-            Err(e) => return e,
-        };
-        let req = ClientRequest::PamAccountBeginSession(account_id);
-
-        let mut daemon_client =
-            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-                Ok(dc) => dc,
-                Err(e) => {
-                    error!(err = ?e, "Error DaemonClientBlocking::new()");
-                    return PamResultCode::PAM_SERVICE_ERR;
-                }
-            };
-
-        match daemon_client.call_and_wait(&req, None) {
-            Ok(ClientResponse::Ok) => {
-                // println!("PAM_SUCCESS");
-                PamResultCode::PAM_SUCCESS
-            }
-            other => {
-                debug!(err = ?other, "PAM_IGNORE");
-                PamResultCode::PAM_IGNORE
-            }
-        }
+        core::sm_open_session(pamh, &opts, req_opt)
     }
 
-    fn sm_setcred(_pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match Options::try_from(&args) {
+    fn sm_close_session(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match ModuleOptions::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_close_session");
+
+        core::sm_close_session(pamh, &opts)
+    }
+
+    fn sm_chauthtok(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match ModuleOptions::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "sm_chauthtok");
+
+        core::sm_chauthtok(pamh, &opts)
+    }
+
+    fn sm_setcred(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,
             Err(_) => return PamResultCode::PAM_SERVICE_ERR,
         };
@@ -584,6 +557,6 @@ impl PamHooks for PamKanidm {
 
         debug!(?args, ?opts, "sm_setcred");
 
-        PamResultCode::PAM_SUCCESS
+        core::sm_setcred(pamh, &opts)
     }
 }
