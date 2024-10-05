@@ -285,7 +285,8 @@ impl ValueSetT for ValueSetRefer {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(self.set.iter().copied().collect::<Vec<_>>().into())
+        let uuids = self.set.iter().copied().collect::<Vec<_>>();
+        Some(ScimResolveStatus::NeedsResolution(ScimValueIntermediate::ReferMany { uuids }))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

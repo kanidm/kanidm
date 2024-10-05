@@ -190,6 +190,7 @@ pub struct ScimReference {
 
 pub enum ScimValueIntermediate {
     Refer { uuid: Uuid },
+    ReferMany { uuids: Vec<Uuid> },
 }
 
 pub enum ScimResolveStatus {

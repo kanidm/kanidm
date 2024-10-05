@@ -2384,6 +2384,18 @@ fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mu
                 Ok(None)
             }
         }
+        ScimValueIntermediate::ReferMany { uuids } => {
+            let mut scim_references = vec![];
+            for uuid in uuids {
+                if let Some(option) = read_txn.uuid_to_spn(uuid)? {
+                   scim_references.push(ScimReference {
+                       uuid,
+                       value: option.to_proto_string_clone(),
+                   })
+                }
+            }
+            Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
+        }
     }
 }
 
