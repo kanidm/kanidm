@@ -1,5 +1,6 @@
 [package]
 name = "pam_kanidm"
+description = "Kanidm PAM module"
 links = "pam"
 
 version = { workspace = true }

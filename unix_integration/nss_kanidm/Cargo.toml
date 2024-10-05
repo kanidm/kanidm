@@ -1,5 +1,6 @@
 [package]
 name = "nss_kanidm"
+description = "Kanidm NSS module"
 
 version = { workspace = true }
 authors = { workspace = true }
