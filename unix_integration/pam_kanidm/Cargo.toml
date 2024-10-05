@@ -39,11 +39,11 @@ assets = [
 [package.metadata.deb.variants.aarch64-unknown-linux-gnu]
 merge-assets.append = [
     [ "target/release/libpam_kanidm.so", "usr/lib/aarch64-linux-gnu/security/pam_kanidm.so", "644"],
-    [ "../../platform/debian/kanidm-unixd/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
 ]
 
 [package.metadata.deb.variants.x86_64-unknown-linux-gnu]
 merge-assets.append = [
     [ "target/release/libpam_kanidm.so", "usr/lib/x86_64-linux-gnu/security/pam_kanidm.so", "644"],
-    [ "../../platform/debian/kanidm-unixd/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
 ]
