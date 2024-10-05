@@ -3,7 +3,7 @@
 ## Building packages
 
 - Debian packaging is complex enough that it lives in a separate repository:
-[kanidm/kanidm_deb_packaging](https://github.com/kanidm/kanidm_deb_packaging).
+[kanidm/kanidm_ppa_automation](https://github.com/kanidm/kanidm_ppa_automation).
 - While official packages are available at https://kanidm.github.io/kanidm_ppa/ these instructions will guide you
 through replicating the same process locally, using cross & Docker to isolate the build process
 from your normal computer and allow building packages for multiple architectures.
@@ -17,16 +17,16 @@ the same process works for `x86_64-unknown-linux-gnu` aka `amd64` as well.
    ```
 1. Pull in the separate deb packaging submodule:
    ```shell
-   git submodule update platform/debian/kanidm_deb_packaging
+   git submodule update platform/debian/kanidm_ppa_automation
    ```
 1. Launch your desired crossbuild target. Do note the script assumes you use rustup!
    ```shell
    # See valid targets:
-   platform/debian/kanidm_deb_packaging/scripts/crossbuild.sh
+   platform/debian/kanidm_ppa_automation/scripts/crossbuild.sh
    # Launch a target:
-   platform/debian/kanidm_deb_packaging/scripts/crossbuild.sh debian-12-aarch64-unknown-linux-gnu
+   platform/debian/kanidm_ppa_automation/scripts/crossbuild.sh debian-12-aarch64-unknown-linux-gnu
    # You can also specify multiple targets within the same distribution:
-   platform/debian/kanidm_deb_packaging/scripts/crossbuild.sh debian-12-{aarch64,x86_64}-unknown-linux-gnu
+   platform/debian/kanidm_ppa_automation/scripts/crossbuild.sh debian-12-{aarch64,x86_64}-unknown-linux-gnu
    ```
 1. Go get a drink of your choice while the build completes.
 1. Create a sacrificial deb builder container to avoid changing your own system:
@@ -37,13 +37,13 @@ the same process works for `x86_64-unknown-linux-gnu` aka `amd64` as well.
    ```shell
    # First param debian matches the container you're running, second the target debian architecture (amd64, arm64, etc.)
    # If your native platform is amd64, running with arm64 is enough to cover both archs.
-   platform/debian/kanidm_deb_packaging/scripts/install_ci_build_dependencies.sh debian arm64
+   platform/debian/kanidm_ppa_automation/scripts/install_ci_build_dependencies.sh debian arm64
    ```
 1. In the container launch the deb build:
    ```shell
-   platform/debian/kanidm_deb_packaging/scripts/build_debs.sh aarch64-unknown-linux-gnu
+   platform/debian/kanidm_ppa_automation/scripts/build_debs.sh aarch64-unknown-linux-gnu
    # Again, multiple targets also work:
-   platform/debian/kanidm_deb_packaging/scripts/build_debs.sh {aarch64,x86_64}-unknown-linux-gnu
+   platform/debian/kanidm_ppa_automation/scripts/build_debs.sh {aarch64,x86_64}-unknown-linux-gnu
    ```
 1. You can now exit the container, the package paths displayed at the end under `target` will
    persist.
@@ -66,8 +66,8 @@ an example, see `unix_integration/resolver/Cargo.toml`
 - The debian folder may house needed `postinst`, `prerm` etc hook definitions. They must include the `#DEBHELPER#` comment after any custom actions.
 - The package debian folder is also used for any systemd unit files. The file naming pattern is very specific, refer to `cargo-deb` documentation for details.
 
-### Configuration in the kanidm_deb_packaging repo
-- The repo is: [kanidm/kanidm_deb_packaging](https://github.com/kanidm/kanidm_deb_packaging)
+### Configuration in the kanidm_ppa_automation repo
+- The repo is: [kanidm/kanidm_ppa_automation](https://github.com/kanidm/kanidm_ppa_automation)
 - Needed if a new binary / package is added, or if build time dependencies change.
 - Amend `scripts/crossbuild.sh` build rules to include new binaries or packages with shared
 libraries. Search for the lines starting with `cross build`.
@@ -78,8 +78,8 @@ libraries. Search for the lines starting with `cross build`.
 - Add any new packages to `scripts/build_debs.sh`, search for the line starting with `for package in`.
 - Finally, once your changes have been approved go back to the main `kanidm/kanidm` repo and update the submodule reference and PR the reference update. This is not needed for official builds but helps anyone doing dev builds themselves.
   ```shell
-  cd platform/debian/kanidm_deb_packaging
+  cd platform/debian/kanidm_ppa_automation
   git pull
   cd -
-  git add platform/debian/kanidm_deb_packaging
+  git add platform/debian/kanidm_ppa_automation
   ```
