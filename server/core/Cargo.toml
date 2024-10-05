@@ -94,5 +94,4 @@ walkdir = { workspace = true }
 tempfile = { workspace = true }
 
 [build-dependencies]
-gix = { workspace = true }
 kanidm_build_profiles = { workspace = true }
