@@ -888,3 +888,17 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
 
     assert_eq!(json_value, expect);
 }
+
+#[cfg(test)]
+pub(crate) fn scim_json_reflexive_unresolved(vs: ValueSet, data: &str) {
+    let scim_value = vs.to_scim_value().unwrap().assume_unresolved();
+
+    let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+    eprintln!("{}", strout);
+
+    let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
+
+    let expect: serde_json::Value = serde_json::from_str(data).unwrap();
+
+    assert_eq!(json_value, expect);
+}

@@ -115,7 +115,7 @@ impl ValueSetT for ValueSetUuid {
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         self.set.iter().next().copied().map(|uuid| {
-            ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer { uuid })
+            ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer(uuid))
         })
     }
 
@@ -286,7 +286,7 @@ impl ValueSetT for ValueSetRefer {
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let uuids = self.set.iter().copied().collect::<Vec<_>>();
-        Some(ScimResolveStatus::NeedsResolution(ScimValueIntermediate::ReferMany { uuids }))
+        Some(ScimResolveStatus::NeedsResolution(ScimValueIntermediate::ReferMany(uuids)))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -349,17 +349,17 @@ mod tests {
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
+        let data = r#"{"Refer": "4d21d04a-dc0e-42eb-b850-34dd180b107f"}"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
     }
 
     #[test]
     fn test_scim_refer() {
         let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
+        let data = r#"{"ReferMany": ["4d21d04a-dc0e-42eb-b850-34dd180b107f"]}"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
     }
 }

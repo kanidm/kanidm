@@ -188,9 +188,11 @@ pub struct ScimReference {
     pub value: String,
 }
 
+#[serde_as]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ScimValueIntermediate {
-    Refer { uuid: Uuid },
-    ReferMany { uuids: Vec<Uuid> },
+    Refer(Uuid),
+    ReferMany(Vec<Uuid>),
 }
 
 pub enum ScimResolveStatus {
@@ -342,6 +344,13 @@ impl ScimResolveStatus {
         match self {
             ScimResolveStatus::Resolved(v) => v,
             ScimResolveStatus::NeedsResolution(_) => panic!("assume_resolved called on NeedsResolution"),
+        }
+    }
+
+    pub fn assume_unresolved(self) -> ScimValueIntermediate {
+        match self {
+            ScimResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
+            ScimResolveStatus::NeedsResolution(svi) => svi,
         }
     }
 }

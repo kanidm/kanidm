@@ -2373,7 +2373,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError> {
     match scim_value_intermediate {
-        ScimValueIntermediate::Refer { uuid } => {
+        ScimValueIntermediate::Refer(uuid) => {
             if let Some(option) = read_txn.uuid_to_spn(uuid)? {
                 Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
                     uuid,
@@ -2384,7 +2384,7 @@ fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mu
                 Ok(None)
             }
         }
-        ScimValueIntermediate::ReferMany { uuids } => {
+        ScimValueIntermediate::ReferMany(uuids) => {
             let mut scim_references = vec![];
             for uuid in uuids {
                 if let Some(option) = read_txn.uuid_to_spn(uuid)? {
