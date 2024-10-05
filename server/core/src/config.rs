@@ -256,8 +256,13 @@ impl ServerConfig {
 
             let ignorable_build_fields = [
                 "KANIDM_CPU_FLAGS",
+                "KANIDM_CPU_FLAGS",
+                "KANIDM_DEFAULT_CONFIG_PATH",
                 "KANIDM_DEFAULT_CONFIG_PATH",
                 "KANIDM_DEFAULT_UNIX_SHELL_PATH",
+                "KANIDM_DEFAULT_UNIX_SHELL_PATH",
+                "KANIDM_HTMX_UI_PKG_PATH",
+                "KANIDM_PKG_VERSION_HASH",
                 "KANIDM_PKG_VERSION",
                 "KANIDM_PRE_RELEASE",
                 "KANIDM_PROFILE_NAME",

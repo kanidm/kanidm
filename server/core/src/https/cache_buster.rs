@@ -5,8 +5,7 @@
 /// Gets the git rev from the KANIDM_PKG_COMMIT_REV variable else drops back to the version, to allow for cache-busting parameters in URLs
 #[inline]
 pub fn get_cache_buster_key() -> String {
-    match option_env!("KANIDM_PKG_COMMIT_REV") {
-        Some(rev) => rev.to_string(),
-        None => env!("CARGO_PKG_VERSION").to_string(),
-    }
+    option_env!("KANIDM_PKG_VERSION_HASH") // this comes from the profiles crate at build time
+        .unwrap_or(env!("CARGO_PKG_VERSION"))
+        .to_string()
 }
