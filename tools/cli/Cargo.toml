@@ -81,6 +81,7 @@ features = ["u2fhid"]
 ## Debian packaging
 [package.metadata.deb]
 name = "kanidm"
+maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 # Can't use $auto depends because the name of libssl3 varies by distro and version
 depends = ["libc6", "libudev1", "libssl3 | libssl3t64"]
 section = "admin"

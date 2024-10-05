@@ -29,6 +29,7 @@ lazy_static = { workspace = true }
 # A target specific variant must be used to get the right multiarch path.
 [package.metadata.deb]
 name = "kanidm-nss"
+maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = "$auto"
 section = "network"
 priority = "optional"
