@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use std::collections::BTreeMap;
 
-use kanidm_proto::scim_v1::server::ScimApplicationPassword;
+use kanidm_proto::scim_v1::server::{ScimApplicationPassword, ScimResolveStatus};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetApplicationPassword {
@@ -183,8 +183,8 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .values()
                 .flatten()

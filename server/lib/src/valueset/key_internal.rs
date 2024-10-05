@@ -10,7 +10,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use time::OffsetDateTime;
 
-use kanidm_proto::scim_v1::server::ScimKeyInternal;
+use kanidm_proto::scim_v1::server::{ScimKeyInternal, ScimResolveStatus};
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {
@@ -282,8 +282,8 @@ impl ValueSetT for ValueSetKeyInternal {
         }))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(kid, key_object)| {

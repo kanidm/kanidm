@@ -2,7 +2,7 @@ use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimCertificate;
+use kanidm_proto::scim_v1::server::{ScimCertificate, ScimResolveStatus};
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
@@ -191,7 +191,7 @@ impl ValueSetT for ValueSetCertificate {
         }))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let vals: Vec<ScimCertificate> = self
             .map
             .iter()
@@ -214,9 +214,9 @@ impl ValueSetT for ValueSetCertificate {
             .collect::<Vec<_>>();
 
         if vals.is_empty() {
-            Ok(None)
+            None
         } else {
-            Ok(Some(ScimValueKanidm::from(vals)))
+            Some(ScimValueKanidm::from(vals).into())
         }
     }
 
@@ -275,8 +275,6 @@ mod tests {
     use crate::prelude::{ScimValueKanidm, ValueSet};
     use kanidm_lib_crypto::x509_cert::der::DecodePem;
     use kanidm_lib_crypto::x509_cert::Certificate;
-    use kanidmd_lib_macros::qs_test;
-    use crate::server::QueryServer;
 
     // Generated with:
     //
@@ -296,15 +294,13 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 2jS0
 -----END CERTIFICATE-----"#;
 
-    #[qs_test]
-    async fn test_scim_certificate(server: &QueryServer) {
-        let mut read_txn = server.read().await.unwrap();
-
+    #[test]
+    fn test_scim_certificate() {
         let cert = Certificate::from_pem(PEM_DATA).unwrap();
 
         let vs: ValueSet = ValueSetCertificate::new(Box::new(cert)).unwrap();
 
-        let scim_value = vs.to_scim_value(&mut read_txn).unwrap().unwrap();
+        let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
         let cert = match scim_value {
             ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),

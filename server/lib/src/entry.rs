@@ -45,7 +45,7 @@ use uuid::Uuid;
 use webauthn_rs::prelude::{
     AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
 };
-
+use kanidm_proto::scim_v1::server::{ScimReference, ScimResolveStatus, ScimValueIntermediate};
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
@@ -2237,7 +2237,17 @@ impl Entry<EntryReduced, EntryCommitted> {
             // We want to skip some attributes as they are already in the header.
             .filter(|(k, _vs)| **k != Attribute::Uuid)
             .filter_map(|(k, vs)| {
-                match vs.to_scim_value(&mut read_txn) {
+                let opt_resolve_status = vs.to_scim_value();
+                let res_opt_scim_value = match opt_resolve_status {
+                    None => Ok(None),
+                    Some(ScimResolveStatus::Resolved(scim_value_kani)) => {
+                        Ok(Some(scim_value_kani))
+                    }
+                    Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
+                        resolve_interim(scim_value_interim, &mut read_txn)
+                    }
+                };
+                match res_opt_scim_value {
                     Err(op_err) => Some(Err(op_err)),
                     Ok(Some(v)) => Some(Ok((k.clone(), v))),
                     Ok(None) => None
@@ -2358,6 +2368,22 @@ impl Entry<EntryReduced, EntryCommitted> {
             .collect();
 
         Ok(LdapSearchResultEntry { dn, attributes })
+    }
+}
+
+fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError> {
+    match scim_value_intermediate {
+        ScimValueIntermediate::Refer { uuid } => {
+            if let Some(option) = read_txn.uuid_to_spn(uuid)? {
+                Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
+                    uuid,
+                    value: option.to_proto_string_clone(),
+                })))
+            } else {
+                // TODO: didn't have spn, fallback to uuid.to_string ?
+                Ok(None)
+            }
+        }
     }
 }
 

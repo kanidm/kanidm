@@ -15,7 +15,7 @@ use crate::value::{
 };
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
-use kanidm_proto::scim_v1::server::ScimApiToken;
+use kanidm_proto::scim_v1::server::{ScimApiToken, ScimResolveStatus};
 use kanidm_proto::scim_v1::server::ScimAuthSession;
 use kanidm_proto::scim_v1::server::ScimOAuth2Session;
 
@@ -354,8 +354,8 @@ impl ValueSetT for ValueSetSession {
         )
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -855,8 +855,8 @@ impl ValueSetT for ValueSetOauth2Session {
         )
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(session_id, session)| {
@@ -1196,8 +1196,8 @@ impl ValueSetT for ValueSetApiToken {
         )
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(token_id, token)| ScimApiToken {

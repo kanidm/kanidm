@@ -1,7 +1,7 @@
 use base64urlsafedata::Base64UrlSafeData;
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer, JwsSigner};
 use hashbrown::HashSet;
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -129,8 +129,8 @@ impl ValueSetT for ValueSetJwsKeyEs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(None)
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -294,8 +294,8 @@ impl ValueSetT for ValueSetJwsKeyRs256 {
         Box::new(self.set.iter().map(|k| k.get_kid().to_string()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(None)
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

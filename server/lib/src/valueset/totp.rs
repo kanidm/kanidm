@@ -1,6 +1,6 @@
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::credential::totp::Totp;
 use crate::prelude::*;
 
@@ -117,8 +117,8 @@ impl ValueSetT for ValueSetTotpSecret {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(None)
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

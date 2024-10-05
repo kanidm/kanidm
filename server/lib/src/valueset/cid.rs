@@ -1,5 +1,5 @@
 use smolset::SmolSet;
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
@@ -115,14 +115,14 @@ impl ValueSetT for ValueSetCid {
         Box::new(self.set.iter().map(|c| c.to_string()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let mut iter = self.set.iter().map(|cid| cid.to_string());
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();
-            Ok(Some(v.into()))
+            Some(v.into())
         } else {
             let arr = iter.collect::<Vec<_>>();
-            Ok(Some(arr.into()))
+            Some(arr.into())
         }
     }
 

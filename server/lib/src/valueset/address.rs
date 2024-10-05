@@ -9,7 +9,7 @@ use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
-use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
+use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail, ScimResolveStatus};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {
@@ -137,8 +137,8 @@ impl ValueSetT for ValueSetAddress {
         Box::new(self.set.iter().map(|a| a.formatted.clone()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|a| ScimAddress {
@@ -427,8 +427,8 @@ impl ValueSetT for ValueSetEmailAddress {
         }
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|mail| {

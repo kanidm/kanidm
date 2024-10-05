@@ -1,5 +1,5 @@
 use smolset::SmolSet;
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
@@ -108,14 +108,14 @@ impl ValueSetT for ValueSetUint32 {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         if self.len() == 1 {
             // Because self.len == 1 we know this has to yield a value.
             let b = self.set.iter().copied().next().unwrap_or_default();
-            Ok(Some(b.into()))
+            Some(b.into())
         } else {
             // Nothing is MV for this today
-            Ok(None)
+            None
         }
     }
 

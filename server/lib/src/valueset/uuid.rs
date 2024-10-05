@@ -3,7 +3,7 @@ use std::collections::BTreeSet;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimReference;
+use kanidm_proto::scim_v1::server::{ScimResolveStatus, ScimValueIntermediate};
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
@@ -113,21 +113,10 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self, server_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError> {
-        if let Some(uuid) = self.set.iter().next().copied() {
-            // TODO: try using name over spn as value.
-            if let Some(option) = server_txn.uuid_to_spn(uuid)? {
-                Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
-                    uuid,
-                    value: option.to_proto_string_clone(),
-                })))
-            } else {
-                // TODO: didn't have spn, fallback to uuid.to_string ?
-                Ok(None)
-            }
-        } else {
-            Ok(None)
-        }
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        self.set.iter().next().copied().map(|uuid| {
+            ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer { uuid })
+        })
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -295,8 +284,8 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(self.set.iter().copied().collect::<Vec<_>>().into()))
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(self.set.iter().copied().collect::<Vec<_>>().into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

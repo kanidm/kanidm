@@ -9,7 +9,7 @@ use crate::valueset::{DbValueSetV2, ValueSet};
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
-use kanidm_proto::scim_v1::server::ScimSshPublicKey;
+use kanidm_proto::scim_v1::server::{ScimResolveStatus, ScimSshPublicKey};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
@@ -137,8 +137,8 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(label, value)| ScimSshPublicKey {

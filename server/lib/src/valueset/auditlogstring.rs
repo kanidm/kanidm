@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimAuditString;
+use kanidm_proto::scim_v1::server::{ScimAuditString, ScimResolveStatus};
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 
@@ -109,8 +109,8 @@ impl ValueSetT for ValueSetAuditLogString {
         Box::new(self.map.iter().map(|(d, s)| format!("{d}-{s}")))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(cid, strdata)| {

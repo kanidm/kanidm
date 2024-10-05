@@ -5,7 +5,7 @@ use crate::prelude::*;
 use crate::value::{PartialValue, SyntaxType, Value};
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use super::ValueSet;
 
 #[derive(Debug, Clone)]
@@ -128,8 +128,8 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         Box::new(iter::once(String::from("hidden")))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(None)
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        None
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

@@ -227,6 +227,6 @@ impl QueryServerReadV1 {
         idms_prox_read
             .qs_read
             .impersonate_search_ext_uuid(target_uuid, &ident)
-            .and_then(|entry| entry.to_scim_kanidm())
+            .and_then(|entry| entry.to_scim_kanidm(idms_prox_read.qs_read))
     }
 }

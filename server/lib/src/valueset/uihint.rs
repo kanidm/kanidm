@@ -5,6 +5,7 @@ use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
 
 use kanidm_proto::internal::UiHint;
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUiHint {
@@ -94,8 +95,8 @@ impl ValueSetT for ValueSetUiHint {
         Box::new(self.set.iter().map(|u| u.to_string()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
-        Ok(Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
         )))
     }

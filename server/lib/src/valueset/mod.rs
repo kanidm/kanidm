@@ -16,7 +16,7 @@ use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
@@ -144,7 +144,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
-    fn to_scim_value(&self, server_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError>;
+    fn to_scim_value(&self) -> Option<ScimResolveStatus>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 
@@ -877,7 +877,7 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
 
 #[cfg(test)]
 pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
-    let scim_value = vs.to_scim_value().unwrap();
+    let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
     eprintln!("{}", strout);
@@ -887,5 +887,4 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
     let expect: serde_json::Value = serde_json::from_str(data).unwrap();
 
     assert_eq!(json_value, expect);
-    assert!(false);
 }

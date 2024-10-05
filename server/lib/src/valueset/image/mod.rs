@@ -6,7 +6,7 @@ use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
-
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
@@ -388,7 +388,7 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
-    fn to_scim_value(&self, _server_txn: &mut QueryServerReadTransaction<'_>) -> Result<Option<ScimValueKanidm>, OperationError> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         // TODO: This should be a reference to the image URL, not the image itself!
         // Does this mean we need to pass in the domain / origin so we can render
         // these URL's correctly?
@@ -398,7 +398,7 @@ impl ValueSetT for ValueSetImage {
         //
         // TODO: Scim supports a "type" field here, but do we care?
 
-        Ok(Some(ScimValueKanidm::from(
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|image| image.hash_imagevalue())

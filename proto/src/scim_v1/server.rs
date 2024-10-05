@@ -188,6 +188,163 @@ pub struct ScimReference {
     pub value: String,
 }
 
+pub enum ScimValueIntermediate {
+    Refer { uuid: Uuid },
+}
+
+pub enum ScimResolveStatus {
+    Resolved(ScimValueKanidm),
+    NeedsResolution(ScimValueIntermediate),
+}
+
+impl From<bool> for ScimResolveStatus {
+    fn from(b: bool) -> Self {
+        Self::Resolved(b.into())
+    }
+}
+
+impl From<ScimValueKanidm> for ScimResolveStatus {
+    fn from(sv: ScimValueKanidm) -> Self {
+        Self::Resolved(sv)
+    }
+}
+
+impl From<OffsetDateTime> for ScimResolveStatus {
+    fn from(odt: OffsetDateTime) -> Self {
+        Self::Resolved(odt.into())
+    }
+}
+
+impl From<Vec<OffsetDateTime>> for ScimResolveStatus {
+    fn from(set: Vec<OffsetDateTime>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<String> for ScimResolveStatus {
+    fn from(s: String) -> Self {
+        Self::Resolved(s.into())
+    }
+}
+
+impl From<Vec<String>> for ScimResolveStatus {
+    fn from(set: Vec<String>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Uuid> for ScimResolveStatus {
+    fn from(u: Uuid) -> Self {
+        Self::Resolved(u.into())
+    }
+}
+
+impl From<Vec<Uuid>> for ScimResolveStatus {
+    fn from(set: Vec<Uuid>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<u32> for ScimResolveStatus {
+    fn from(u: u32) -> Self {
+        Self::Resolved(u.into())
+    }
+}
+
+impl From<Vec<ScimAddress>> for ScimResolveStatus {
+    fn from(set: Vec<ScimAddress>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimMail>> for ScimResolveStatus {
+    fn from(set: Vec<ScimMail>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimApplicationPassword>> for ScimResolveStatus {
+    fn from(set: Vec<ScimApplicationPassword>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimAuditString>> for ScimResolveStatus {
+    fn from(set: Vec<ScimAuditString>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimBinary>> for ScimResolveStatus {
+    fn from(set: Vec<ScimBinary>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimCertificate>> for ScimResolveStatus {
+    fn from(set: Vec<ScimCertificate>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimSshPublicKey>> for ScimResolveStatus {
+    fn from(set: Vec<ScimSshPublicKey>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimAuthSession>> for ScimResolveStatus {
+    fn from(set: Vec<ScimAuthSession>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimOAuth2Session>> for ScimResolveStatus {
+    fn from(set: Vec<ScimOAuth2Session>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimApiToken>> for ScimResolveStatus {
+    fn from(set: Vec<ScimApiToken>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimIntentToken>> for ScimResolveStatus {
+    fn from(set: Vec<ScimIntentToken>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimOAuth2ScopeMap>> for ScimResolveStatus {
+    fn from(set: Vec<ScimOAuth2ScopeMap>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimOAuth2ClaimMap>> for ScimResolveStatus {
+    fn from(set: Vec<ScimOAuth2ClaimMap>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl From<Vec<ScimKeyInternal>> for ScimResolveStatus {
+    fn from(set: Vec<ScimKeyInternal>) -> Self {
+        Self::Resolved(set.into())
+    }
+}
+
+impl ScimResolveStatus {
+
+    pub fn assume_resolved(self) -> ScimValueKanidm {
+        match self {
+            ScimResolveStatus::Resolved(v) => v,
+            ScimResolveStatus::NeedsResolution(_) => panic!("assume_resolved called on NeedsResolution"),
+        }
+    }
+}
+
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only
 /// since on a deserialisation path we can not know the intent of the sender
 /// to how we deserialise strings. Additionally during deserialisation we need
