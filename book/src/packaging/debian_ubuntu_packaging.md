@@ -35,9 +35,9 @@ the same process works for `x86_64-unknown-linux-gnu` aka `amd64` as well.
    ```
 1. In the container install dependencies with:
    ```shell
-   # First param debian matches the container you're running, second the target debian architecture (amd64, arm64, etc.)
+   # The parameter given is which additional target debian architecture to enable (amd64, arm64, etc.)
    # If your native platform is amd64, running with arm64 is enough to cover both archs.
-   platform/debian/kanidm_ppa_automation/scripts/install_ci_build_dependencies.sh debian arm64
+   platform/debian/kanidm_ppa_automation/scripts/install_ci_build_dependencies.sh arm64
    ```
 1. In the container launch the deb build:
    ```shell
@@ -68,18 +68,17 @@ an example, see `unix_integration/resolver/Cargo.toml`
 
 ### Configuration in the kanidm_ppa_automation repo
 - The repo is: [kanidm/kanidm_ppa_automation](https://github.com/kanidm/kanidm_ppa_automation)
-- Needed if a new binary / package is added, or if build time dependencies change.
+- Changes are needed if a new binary and/or package is added, or if build time dependencies change.
 - Amend `scripts/crossbuild.sh` build rules to include new binaries or packages with shared
 libraries. Search for the lines starting with `cross build`.
-- Make the same changes in `.github/workflows/create-apt-repo.yml`, search for "Step 1. Crossbuild"
-  and amend the `args` values as needed for both crossbuild steps.
 - Add any new build time system dependencies to `scripts/install_ci_build_dependencies.sh`, be aware
   of any difference in package names between Debian & Ubuntu.
 - Add any new packages to `scripts/build_debs.sh`, search for the line starting with `for package in`.
-- Finally, once your changes have been approved go back to the main `kanidm/kanidm` repo and update the submodule reference and PR the reference update. This is not needed for official builds but helps anyone doing dev builds themselves.
+- Finally, once your changes have been approved go back to the main `kanidm/kanidm` repo and update the submodule reference and PR the reference update. This is not needed for official builds but helps anyone doing dev builds themselves:
   ```shell
   cd platform/debian/kanidm_ppa_automation
   git pull
   cd -
   git add platform/debian/kanidm_ppa_automation
+  git commit -m "Update kanidm_ppa_automation reference to latest"
   ```
