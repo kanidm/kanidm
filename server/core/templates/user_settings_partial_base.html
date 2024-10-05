@@ -1,19 +1,26 @@
 (% macro side_menu_item(label, href, menu_item, icon_name) %)
-<a hx-select="main" hx-target="main" hx-swap="outerHTML show:false" href="(( href ))"
+<a hx-select="main" hx-target="main" hx-swap="outerHTML show:false"
+    href="(( href ))"
     class="list-group-item list-group-item-action d-flex (% if menu_active_item == menu_item %) active(% endif %)">
-    <img class="me-3" src="/pkg/img/icons/(( icon_name )).svg" alt="">(( label ))
+    <img class="me-3"
+        src="/pkg/img/icons/(( icon_name )).svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+        alt>(( label ))
 </a>
 (% endmacro %)
 
 <main class="container-xxl pb-5">
     <div class="d-flex flex-sm-row flex-column">
         <div class="list-group side-menu flex-shrink-0">
-            (% call side_menu_item("Profile", "/ui/profile", ProfileMenuItems::UserProfile, "person") %)
-            (% call side_menu_item("SSH Keys", "/ui/ssh_keys", ProfileMenuItems::SshKeys, "key") %)
+            (% call side_menu_item("Profile", "/ui/profile",
+            ProfileMenuItems::UserProfile, "person") %)
+            (% call side_menu_item("SSH Keys", "/ui/ssh_keys",
+            ProfileMenuItems::SshKeys, "key") %)
             (% if posix_enabled %)
-                (% call side_menu_item("UNIX Password", "/ui/update_credentials", ProfileMenuItems::UnixPassword, "building-lock") %)
+            (% call side_menu_item("UNIX Password", "/ui/update_credentials",
+            ProfileMenuItems::UnixPassword, "building-lock") %)
             (% endif %)
-            (% call side_menu_item("Credentials", "/ui/update_credentials", ProfileMenuItems::Credentials, "shield-lock") %)
+            (% call side_menu_item("Credentials", "/ui/update_credentials",
+            ProfileMenuItems::Credentials, "shield-lock") %)
         </div>
         <div id="settings-window" class="flex-grow-1 ps-sm-4 pt-sm-0 pt-4">
             <div class="(( crate::https::ui::CSS_PAGE_HEADER ))">

@@ -3426,6 +3426,7 @@ dependencies = [
  "filetime",
  "futures",
  "futures-util",
+ "gix",
  "hashbrown 0.14.5",
  "hyper 1.4.1",
  "hyper-util",

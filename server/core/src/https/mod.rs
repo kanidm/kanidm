@@ -1,6 +1,6 @@
 mod apidocs;
+pub(crate) mod cache_buster;
 pub(crate) mod errors;
-
 mod extractors;
 mod generic;
 mod javascript;
@@ -243,7 +243,8 @@ pub async fn create_https_server(
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
-            "script-src 'self' 'unsafe-eval'{};"
+            "script-src 'self' 'unsafe-eval'{};",
+            "style-src 'self'",
         ),
         js_checksums
     );

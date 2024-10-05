@@ -1,8 +1,12 @@
-<div class="modal" tabindex="-1" role="dialog" id="errorModal" data-backdrop="static" data-keyboard="false" data-show="true">
+<div class="modal" tabindex="-1" role="dialog" id="errorModal"
+    data-backdrop="static" data-keyboard="false" data-show="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title"><img src="/pkg/img/kani-warning.svg" alt="Kani holding warning sign" /> An error occurred</h5>
+                <h5 class="modal-title"><img
+                        src="/pkg/img/kani-warning.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+                        alt="Kani holding a warning sign" /> An error
+                    occurred</h5>
             </div>
             <div class="modal-body text-center">
                 <p>Error Code: (( error_message ))</p>
@@ -11,7 +15,7 @@
             <div class="modal-footer">
                 <a href="(( recovery_path ))" hx-boost="(( recovery_boosted ))">
                     <button type="button" class="btn btn-secondary"
-                            data-bs-dismiss="modal">Continue</button>
+                        data-bs-dismiss="modal">Continue</button>
                 </a>
             </div>
         </div>
