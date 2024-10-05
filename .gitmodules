@@ -1,3 +1,3 @@
-[submodule "kanidm_deb_packaging"]
-	path = platform/debian/kanidm_deb_packaging
-	url = https://github.com/jinnatar/kanidm_deb_packaging
+[submodule "platform/debian/kanidm_ppa_automation"]
+	path = platform/debian/kanidm_ppa_automation
+	url = https://github.com/jinnatar/kanidm_ppa_automation
