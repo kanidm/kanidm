@@ -244,7 +244,6 @@ pub async fn create_https_server(
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
             "script-src 'self' 'unsafe-eval'{};",
-            "style-src 'self'",
         ),
         js_checksums
     );
