@@ -2267,8 +2267,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
 #[cfg(test)]
 mod tests {
-    use kanidm_proto::scim_v1::server::ScimReference;
     use crate::prelude::*;
+    use kanidm_proto::scim_v1::server::ScimReference;
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -2620,7 +2620,9 @@ mod tests {
         let mut read_txn = server.read().await.unwrap();
 
         // Query entry (A buitin one ?)
-        let entry = read_txn.internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE).unwrap();
+        let entry = read_txn
+            .internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE)
+            .unwrap();
 
         // Convert entry into scim
         let reduced = entry.as_ref().clone().into_reduced();
@@ -2638,28 +2640,40 @@ mod tests {
             }
         }
 
-
         // such as returning a new struct type for `members` attributes or `managed_by`
         let entry_managed_by_scim = scim_entry.attrs.get(&Attribute::EntryManagedBy).unwrap();
         match entry_managed_by_scim {
             ScimValueKanidm::EntryReferences(managed_by) => {
-                assert_eq!(managed_by.first().unwrap().clone(), ScimReference { uuid: UUID_IDM_ADMINS, value: "idm_admins@example.com".to_string() })
+                assert_eq!(
+                    managed_by.first().unwrap().clone(),
+                    ScimReference {
+                        uuid: UUID_IDM_ADMINS,
+                        value: "idm_admins@example.com".to_string()
+                    }
+                )
             }
             _ => {
-                panic!("expected EntryReference, actual {:?}", entry_managed_by_scim);
+                panic!(
+                    "expected EntryReference, actual {:?}",
+                    entry_managed_by_scim
+                );
             }
         }
 
         let members_scim = scim_entry.attrs.get(&Attribute::Member).unwrap();
         match members_scim {
             ScimValueKanidm::EntryReferences(members) => {
-                assert_eq!(members.first().unwrap().clone(), ScimReference { uuid: UUID_IDM_ALL_PERSONS, value: "idm_all_persons@example.com".to_string() })
+                assert_eq!(
+                    members.first().unwrap().clone(),
+                    ScimReference {
+                        uuid: UUID_IDM_ALL_PERSONS,
+                        value: "idm_all_persons@example.com".to_string()
+                    }
+                )
             }
             _ => {
                 panic!("expected EntryReferences, actual {:?}", members_scim);
             }
         }
-
     }
-
 }

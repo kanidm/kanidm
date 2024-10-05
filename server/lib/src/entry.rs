@@ -29,23 +29,6 @@ pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use compact_jwt::JwsEs256Signer;
-use hashbrown::{HashMap, HashSet};
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{
-    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
-};
-use kanidm_proto::v1::Entry as ProtoEntry;
-use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use openssl::ec::EcKey;
-use openssl::pkey::{Private, Public};
-use time::OffsetDateTime;
-use tracing::trace;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-};
-use kanidm_proto::scim_v1::server::{ScimReference, ScimResolveStatus, ScimValueIntermediate};
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
@@ -58,6 +41,23 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangeState;
 use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
+use compact_jwt::JwsEs256Signer;
+use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::ImageValue;
+use kanidm_proto::internal::{
+    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
+};
+use kanidm_proto::scim_v1::server::{ScimReference, ScimResolveStatus, ScimValueIntermediate};
+use kanidm_proto::v1::Entry as ProtoEntry;
+use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use openssl::ec::EcKey;
+use openssl::pkey::{Private, Public};
+use time::OffsetDateTime;
+use tracing::trace;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
@@ -2230,7 +2230,10 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_kanidm(&self, mut read_txn: QueryServerReadTransaction) -> Result<ScimEntryKanidm, OperationError> {
+    pub fn to_scim_kanidm(
+        &self,
+        mut read_txn: QueryServerReadTransaction,
+    ) -> Result<ScimEntryKanidm, OperationError> {
         let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
             .iter()
@@ -2240,9 +2243,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 let opt_resolve_status = vs.to_scim_value();
                 let res_opt_scim_value = match opt_resolve_status {
                     None => Ok(None),
-                    Some(ScimResolveStatus::Resolved(scim_value_kani)) => {
-                        Ok(Some(scim_value_kani))
-                    }
+                    Some(ScimResolveStatus::Resolved(scim_value_kani)) => Ok(Some(scim_value_kani)),
                     Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
                         resolve_interim(scim_value_interim, &mut read_txn)
                     }
@@ -2250,7 +2251,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 match res_opt_scim_value {
                     Err(op_err) => Some(Err(op_err)),
                     Ok(Some(v)) => Some(Ok((k.clone(), v))),
-                    Ok(None) => None
+                    Ok(None) => None,
                 }
             })
             .collect();
@@ -2371,7 +2372,10 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 }
 
-fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mut QueryServerReadTransaction) -> Result<Option<ScimValueKanidm>, OperationError> {
+fn resolve_interim(
+    scim_value_intermediate: ScimValueIntermediate,
+    read_txn: &mut QueryServerReadTransaction,
+) -> Result<Option<ScimValueKanidm>, OperationError> {
     match scim_value_intermediate {
         ScimValueIntermediate::Refer(uuid) => {
             if let Some(option) = read_txn.uuid_to_spn(uuid)? {
@@ -2388,10 +2392,10 @@ fn resolve_interim(scim_value_intermediate: ScimValueIntermediate, read_txn: &mu
             let mut scim_references = vec![];
             for uuid in uuids {
                 if let Some(option) = read_txn.uuid_to_spn(uuid)? {
-                   scim_references.push(ScimReference {
-                       uuid,
-                       value: option.to_proto_string_clone(),
-                   })
+                    scim_references.push(ScimReference {
+                        uuid,
+                        value: option.to_proto_string_clone(),
+                    })
                 }
             }
             Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))

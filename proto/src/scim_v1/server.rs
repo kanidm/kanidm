@@ -339,11 +339,12 @@ impl From<Vec<ScimKeyInternal>> for ScimResolveStatus {
 }
 
 impl ScimResolveStatus {
-
     pub fn assume_resolved(self) -> ScimValueKanidm {
         match self {
             ScimResolveStatus::Resolved(v) => v,
-            ScimResolveStatus::NeedsResolution(_) => panic!("assume_resolved called on NeedsResolution"),
+            ScimResolveStatus::NeedsResolution(_) => {
+                panic!("assume_resolved called on NeedsResolution")
+            }
         }
     }
 

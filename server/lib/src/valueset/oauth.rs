@@ -8,8 +8,8 @@ use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
-use kanidm_proto::scim_v1::server::{ScimOAuth2ClaimMap, ScimResolveStatus};
 use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
+use kanidm_proto::scim_v1::server::{ScimOAuth2ClaimMap, ScimResolveStatus};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {

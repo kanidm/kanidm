@@ -1,8 +1,8 @@
-use std::collections::BTreeSet;
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetHexString {

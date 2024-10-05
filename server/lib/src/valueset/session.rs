@@ -15,9 +15,9 @@ use crate::value::{
 };
 use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
-use kanidm_proto::scim_v1::server::{ScimApiToken, ScimResolveStatus};
 use kanidm_proto::scim_v1::server::ScimAuthSession;
 use kanidm_proto::scim_v1::server::ScimOAuth2Session;
+use kanidm_proto::scim_v1::server::{ScimApiToken, ScimResolveStatus};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSession {
@@ -1218,7 +1218,8 @@ impl ValueSetT for ValueSetApiToken {
                 .iter()
                 .map(|(u, m)| DbValueApiToken::V1 {
                     refer: *u,
-                    label: m.label.clone(), expiry: m.expiry.map(|odt| {
+                    label: m.label.clone(),
+                    expiry: m.expiry.map(|odt| {
                         debug_assert_eq!(odt.offset(), time::UtcOffset::UTC);
                         #[allow(clippy::expect_used)]
                         odt.format(&Rfc3339)

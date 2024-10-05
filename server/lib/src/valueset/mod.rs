@@ -15,8 +15,6 @@ use webauthn_rs::prelude::AttestationCaList;
 use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
 
-use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
@@ -24,6 +22,8 @@ use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
+use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 use self::apppwd::ValueSetApplicationPassword;

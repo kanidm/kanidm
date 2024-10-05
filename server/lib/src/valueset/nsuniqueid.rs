@@ -1,9 +1,9 @@
-use smolset::SmolSet;
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::NSUNIQUEID_RE;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetNsUniqueId {

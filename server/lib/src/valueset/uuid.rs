@@ -32,7 +32,7 @@ impl ValueSetUuid {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item=Uuid>,
+        T: IntoIterator<Item = Uuid>,
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUuid { set }))
@@ -109,14 +109,16 @@ impl ValueSetT for ValueSetUuid {
         true
     }
 
-    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item=String> + '_> {
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        self.set.iter().next().copied().map(|uuid| {
-            ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer(uuid))
-        })
+        self.set
+            .iter()
+            .next()
+            .copied()
+            .map(|uuid| ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer(uuid)))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -127,7 +129,7 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(PartialValue::Uuid))
     }
 
-    fn to_value_iter(&self) -> Box<dyn Iterator<Item=Value> + '_> {
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(self.set.iter().copied().map(Value::Uuid))
     }
 
@@ -199,7 +201,7 @@ impl ValueSetRefer {
     #[allow(clippy::should_implement_trait)]
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item=Uuid>,
+        T: IntoIterator<Item = Uuid>,
     {
         let set: BTreeSet<_> = iter.into_iter().collect();
         if set.is_empty() {
@@ -280,13 +282,15 @@ impl ValueSetT for ValueSetRefer {
         true
     }
 
-    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item=String> + '_> {
+    fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let uuids = self.set.iter().copied().collect::<Vec<_>>();
-        Some(ScimResolveStatus::NeedsResolution(ScimValueIntermediate::ReferMany(uuids)))
+        Some(ScimResolveStatus::NeedsResolution(
+            ScimValueIntermediate::ReferMany(uuids),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -297,7 +301,7 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(PartialValue::Refer))
     }
 
-    fn to_value_iter(&self) -> Box<dyn Iterator<Item=Value> + '_> {
+    fn to_value_iter(&self) -> Box<dyn Iterator<Item = Value> + '_> {
         Box::new(self.set.iter().copied().map(Value::Refer))
     }
 
@@ -335,7 +339,7 @@ impl ValueSetT for ValueSetRefer {
         Some(&mut self.set)
     }
 
-    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item=Uuid> + '_>> {
+    fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         Some(Box::new(self.set.iter().copied()))
     }
 }

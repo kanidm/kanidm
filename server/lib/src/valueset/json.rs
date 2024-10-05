@@ -1,9 +1,9 @@
-use kanidm_proto::internal::Filter as ProtoFilter;
-use smolset::SmolSet;
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::internal::Filter as ProtoFilter;
+use kanidm_proto::scim_v1::server::ScimResolveStatus;
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJsonFilter {
