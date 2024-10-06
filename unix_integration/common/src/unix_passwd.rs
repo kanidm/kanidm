@@ -38,7 +38,7 @@ pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, Uni
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct EtcShadow {
     pub name: String,
     pub password: String,

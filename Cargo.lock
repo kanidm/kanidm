@@ -4530,6 +4530,7 @@ dependencies = [
  "kanidm_unix_common",
  "libc",
  "pkg-config",
+ "time",
  "tracing",
  "tracing-subscriber",
 ]

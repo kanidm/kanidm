@@ -48,6 +48,7 @@ use crate::pam::conv::PamConv;
 use crate::pam::module::{PamHandle, PamHooks};
 use crate::pam_hooks;
 use constants::PamResultCode;
+use time::OffsetDateTime;
 
 use tracing::{debug, error};
 use tracing_subscriber::filter::LevelFilter;
@@ -80,9 +81,10 @@ fn install_subscriber(debug: bool) {
 
 #[derive(Debug, Default)]
 pub struct ModuleOptions {
-    debug: bool,
-    use_first_pass: bool,
-    ignore_unknown_user: bool,
+    pub debug: bool,
+    pub use_first_pass: bool,
+    pub ignore_unknown_user: bool,
+    pub fallback_allow_local_accounts: bool,
 }
 
 impl TryFrom<&Vec<&CStr>> for ModuleOptions {
@@ -102,6 +104,7 @@ impl TryFrom<&Vec<&CStr>> for ModuleOptions {
             debug: gopts.contains("debug"),
             use_first_pass: gopts.contains("use_first_pass"),
             ignore_unknown_user: gopts.contains("ignore_unknown_user"),
+            fallback_allow_local_accounts: gopts.contains("fallback_allow_local_accounts"),
         })
     }
 }
@@ -143,75 +146,6 @@ macro_rules! match_sm_auth_client_response {
 }
 
 impl PamHooks for PamKanidm {
-    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
-        let opts = match ModuleOptions::try_from(&args) {
-            Ok(o) => o,
-            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
-        };
-
-        install_subscriber(opts.debug);
-
-        let tty = pamh.get_tty();
-        let rhost = pamh.get_rhost();
-
-        debug!(?args, ?opts, ?tty, ?rhost, "acct_mgmt");
-
-        let account_id = match pamh.get_user(None) {
-            Ok(aid) => aid,
-            Err(e) => {
-                error!(err = ?e, "get_user");
-                return e;
-            }
-        };
-
-        let cfg = match get_cfg() {
-            Ok(cfg) => cfg,
-            Err(e) => return e,
-        };
-        let req = ClientRequest::PamAccountAllowed(account_id);
-        // PamResultCode::PAM_IGNORE
-
-        let mut daemon_client =
-            match DaemonClientBlocking::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout) {
-                Ok(dc) => dc,
-                Err(e) => {
-                    error!(err = ?e, "Error DaemonClientBlocking::new()");
-                    return PamResultCode::PAM_SERVICE_ERR;
-                }
-            };
-
-        match daemon_client.call_and_wait(&req, None) {
-            Ok(r) => match r {
-                ClientResponse::PamStatus(Some(true)) => {
-                    debug!("PamResultCode::PAM_SUCCESS");
-                    PamResultCode::PAM_SUCCESS
-                }
-                ClientResponse::PamStatus(Some(false)) => {
-                    debug!("PamResultCode::PAM_AUTH_ERR");
-                    PamResultCode::PAM_AUTH_ERR
-                }
-                ClientResponse::PamStatus(None) => {
-                    if opts.ignore_unknown_user {
-                        debug!("PamResultCode::PAM_IGNORE");
-                        PamResultCode::PAM_IGNORE
-                    } else {
-                        debug!("PamResultCode::PAM_USER_UNKNOWN");
-                        PamResultCode::PAM_USER_UNKNOWN
-                    }
-                }
-                _ => {
-                    // unexpected response.
-                    error!(err = ?r, "PAM_IGNORE, unexpected resolver response");
-                    PamResultCode::PAM_IGNORE
-                }
-            },
-            Err(e) => {
-                error!(err = ?e, "PamResultCode::PAM_IGNORE");
-                PamResultCode::PAM_IGNORE
-            }
-        }
-    }
-
     fn sm_authenticate(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
         let opts = match ModuleOptions::try_from(&args) {
             Ok(o) => o,
@@ -502,6 +436,25 @@ impl PamHooks for PamKanidm {
                 }
             );
         } // while true, continue calling PamAuthenticateStep until we get a decision.
+    }
+
+    fn acct_mgmt(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
+        let opts = match ModuleOptions::try_from(&args) {
+            Ok(o) => o,
+            Err(_) => return PamResultCode::PAM_SERVICE_ERR,
+        };
+
+        install_subscriber(opts.debug);
+
+        debug!(?args, ?opts, "acct_mgmt");
+
+        let current_time = OffsetDateTime::now_utc();
+
+        let req_opt = RequestOptions::Main {
+            config_path: DEFAULT_CONFIG_PATH,
+        };
+
+        core::acct_mgmt(pamh, &opts, req_opt, current_time)
     }
 
     fn sm_open_session(pamh: &PamHandle, args: Vec<&CStr>, _flags: PamFlag) -> PamResultCode {
