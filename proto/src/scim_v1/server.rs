@@ -200,7 +200,10 @@ pub enum ScimResolveStatus {
     NeedsResolution(ScimValueIntermediate),
 }
 
-impl<T> From<T> for ScimResolveStatus where T : Into<ScimValueKanidm> {
+impl<T> From<T> for ScimResolveStatus
+where
+    T: Into<ScimValueKanidm>,
+{
     fn from(v: T) -> Self {
         Self::Resolved(v.into())
     }
