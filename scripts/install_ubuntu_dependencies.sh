@@ -80,7 +80,7 @@ if [ $ERROR -eq 0 ] && [ -z "$(which wasm-bindgen)" ]; then
     cargo install -f wasm-bindgen-cli
 fi
 if [ $ERROR -eq 0 ] && [ -z "$(which cross)" ]; then
-    echo "You don't have cargo-deb installed! Installing it now..."
+    echo "You don't have cross installed! Installing it now..."
     cargo install -f cross
 fi
 if [ $ERROR -eq 0 ] && [ -z "$(which cargo-deb)" ]; then
