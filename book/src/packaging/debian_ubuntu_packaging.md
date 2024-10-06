@@ -5,7 +5,7 @@
 - Debian packaging is complex enough that it lives in a separate repository:
 [kanidm/kanidm_ppa_automation](https://github.com/kanidm/kanidm_ppa_automation).
 - While official packages are available at https://kanidm.github.io/kanidm_ppa/ these instructions will guide you
-through replicating the same process locally, using cross & Docker to isolate the build process
+through replicating the same process locally, using [cross](https://github.com/cross-rs/cross) & Docker to isolate the build process
 from your normal computer and allow building packages for multiple architectures.
 - While the examples below will use `aarch64-unknown-linux-gnu` aka `arm64`,
 the same process works for `x86_64-unknown-linux-gnu` aka `amd64` as well.
