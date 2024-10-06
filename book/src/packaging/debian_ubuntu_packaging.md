@@ -31,7 +31,10 @@ the same process works for `x86_64-unknown-linux-gnu` aka `amd64` as well.
 1. Go get a drink of your choice while the build completes.
 1. Create a sacrificial deb builder container to avoid changing your own system:
    ```shell
-   docker run --rm -it -e CI=true -v $PWD:/src --workdir /src rust:bookworm
+   docker run --rm -it -e CI=true \
+       --mount "type=bind,src=$PWD,target=/src" \
+       --workdir /src \
+       rust:bookworm
    ```
 1. In the container install dependencies with:
    ```shell
