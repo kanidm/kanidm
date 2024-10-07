@@ -1,7 +1,7 @@
 use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
 use axum::response::IntoResponse;
-use axum::Extension;
+use axum::{Extension, Json};
 use kanidmd_lib::status::StatusRequestEvent;
 
 use super::middleware::KOpId;
@@ -11,7 +11,7 @@ use super::ServerState;
     get,
     path = "/status",
     responses(
-        (status = 200, description = "Ok"),
+        (status = 200, description = "Ok", content_type = "application/json"),
     ),
     tag = "system",
 
@@ -20,14 +20,14 @@ use super::ServerState;
 pub async fn status(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-) -> String {
-    let r = state
+) -> Json<bool> {
+    state
         .status_ref
         .handle_request(StatusRequestEvent {
             eventid: kopid.eventid,
         })
-        .await;
-    format!("{}", r)
+        .await
+        .into()
 }
 
 #[utoipa::path(
