@@ -73,16 +73,66 @@ impl PamHandler for TestHandler {
     fn account_id(&self) -> PamResult<String> {
         Ok(self.account_id.clone())
     }
-
-    fn tty(&self) -> PamResult<Option<String>> {
-        Ok(None)
-    }
-
-    fn rhost(&self) -> PamResult<Option<String>> {
-        Ok(None)
-    }
 }
 
+/// Show that a user can authenticate with the correct password
+#[test]
+fn pam_fallback_sm_authenticate_default() {
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let pamh = TestHandler::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_SUCCESS
+    );
+}
+
+/// Show that incorrect pw fails
+#[test]
+fn pam_fallback_sm_authenticate_incorrect_pw() {
+    todo!();
+}
+
+/// Show that root can authenticate with the correct password
+#[test]
+fn pam_fallback_sm_authenticate_root() {
+    todo!();
+}
+
+/// Show that incorrect root pw fails
+#[test]
+fn pam_fallback_sm_authenticate_root_incorrect_pw() {
+    todo!();
+}
+
+/// Show that an expired account does not prompt for pw at all.
+#[test]
+fn pam_fallback_sm_authenticate_expired() {
+    todo!();
+}
+
+/// Show that unknown users are denied
+#[test]
+fn pam_fallback_sm_authenticate_unknown_denied() {
+    todo!();
+}
+
+/// Show that unknown users are ignored when the setting is enabled.
+#[test]
+fn pam_fallback_sm_authenticate_unknown_ignore() {
+    todo!();
+}
+
+/// If there is no stacked credential in pam, then one is prompted for
+#[test]
+fn pam_fallback_sm_authenticate_no_stacked_cred() {
+    todo!();
+}
+
+/// Show that by default, the account "tobias" can login during
+/// fallback mode (matching the behaviour of the daemon)
 #[test]
 fn pam_fallback_acct_mgmt_default() {
     let req_opt = RequestOptions::fallback_fixture();
@@ -92,15 +142,30 @@ fn pam_fallback_acct_mgmt_default() {
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
-        PamResultCode::PAM_PERM_DENIED
+        PamResultCode::PAM_SUCCESS
     );
 }
 
+/// Test that root can always access the system
+#[test]
+fn pam_fallback_acct_mgmt_root() {
+    let req_opt = RequestOptions::fallback_fixture();
+    let mut mod_opts = ModuleOptions::default();
+    let mut pamh = TestHandler::default();
+    pamh.set_account_id("root".to_string());
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    assert_eq!(
+        core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_SUCCESS
+    );
+}
+
+/// Unknown accounts are denied access
 #[test]
 fn pam_fallback_acct_mgmt_deny_unknown() {
     let req_opt = RequestOptions::fallback_fixture();
     let mut mod_opts = ModuleOptions::default();
-    mod_opts.fallback_allow_local_accounts = true;
     let mut pamh = TestHandler::default();
     pamh.set_account_id("nonexist".to_string());
     let test_time = OffsetDateTime::UNIX_EPOCH;
@@ -111,11 +176,11 @@ fn pam_fallback_acct_mgmt_deny_unknown() {
     );
 }
 
+/// Unknown account returns 'ignore' when this option is set
 #[test]
 fn pam_fallback_acct_mgmt_ignore_unknown() {
     let req_opt = RequestOptions::fallback_fixture();
     let mut mod_opts = ModuleOptions::default();
-    mod_opts.fallback_allow_local_accounts = true;
     mod_opts.ignore_unknown_user = true;
     let mut pamh = TestHandler::default();
     pamh.set_account_id("nonexist".to_string());
@@ -127,47 +192,18 @@ fn pam_fallback_acct_mgmt_ignore_unknown() {
     );
 }
 
-#[test]
-fn pam_fallback_acct_mgmt_compat() {
-    let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    mod_opts.fallback_allow_local_accounts = true;
-    let pamh = TestHandler::default();
-    let test_time = OffsetDateTime::UNIX_EPOCH;
-
-    assert_eq!(
-        core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
-        PamResultCode::PAM_SUCCESS
-    );
-}
-
+/// Exipired accounts are denied
 #[test]
 fn pam_fallback_acct_mgmt_expired() {
+    // Show that an expired account is unable to login.
     let req_opt = RequestOptions::fallback_fixture();
     let mut mod_opts = ModuleOptions::default();
-    mod_opts.fallback_allow_local_accounts = true;
     let pamh = TestHandler::default();
     let test_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(16);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
         PamResultCode::PAM_ACCT_EXPIRED
-    );
-}
-
-#[test]
-fn pam_fallback_acct_mgmt_root() {
-    // Test that root can always access the system even if local
-    // users are denied in fallback mode.
-    let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    let mut pamh = TestHandler::default();
-    pamh.set_account_id("root".to_string());
-    let test_time = OffsetDateTime::UNIX_EPOCH;
-
-    assert_eq!(
-        core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
-        PamResultCode::PAM_SUCCESS
     );
 }
 
