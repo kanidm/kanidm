@@ -271,26 +271,8 @@ impl PamHandler for PamHandle {
         self.get_pam_info()
     }
 
-    fn consume_authtok(&self) -> PamResult<Option<String>> {
-        todo!();
-        /*
-        let mut consume_authtok = None;
-        std::mem::swap(&mut authtok, &mut consume_authtok);
-        match pamh.get_authtok() {
-            Ok(Some(v)) => Some(v),
-            Ok(None) => {
-                if opts.use_first_pass {
-                    debug!("Don't have an authtok, returning PAM_AUTH_ERR");
-                    return PamResultCode::PAM_AUTH_ERR;
-                }
-                None
-            }
-            Err(e) => {
-                error!(err = ?e, "get_authtok");
-                return e;
-            }
-        };
-        */
+    fn authtok(&self) -> PamResult<Option<String>> {
+        self.get_authtok()
     }
 
     fn message(&self, prompt: &str) -> PamResult<()> {

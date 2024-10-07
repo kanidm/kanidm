@@ -124,6 +124,16 @@ pub fn sm_authenticate_connected<P: PamHandler>(
     let mut timeout: Option<u64> = None;
     let mut active_polling_interval = Duration::from_secs(1);
 
+    let mut stacked_authtok = 
+                if opts.use_first_pass {
+                    match pamh.authtok() {
+                        Ok(authtok) => authtok,
+                        Err(err) => return err,
+                    }
+                } else {
+                    None
+                };
+
     let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
     loop {
@@ -151,14 +161,8 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 }
             }
             ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
-                let authtok = if opts.use_first_pass {
-                    match pamh.consume_authtok() {
-                        Ok(authtok) => authtok,
-                        Err(err) => return err,
-                    }
-                } else {
-                    None
-                };
+                let mut authtok = None;
+                std::mem::swap(&mut authtok, &mut stacked_authtok);
 
                 let cred = if let Some(cred) = authtok {
                     cred
@@ -297,14 +301,8 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 todo!();
             }
             ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Pin) => {
-                let authtok = if opts.use_first_pass {
-                    match pamh.consume_authtok() {
-                        Ok(authtok) => authtok,
-                        Err(err) => return err,
-                    }
-                } else {
-                    None
-                };
+                let mut authtok = None;
+                std::mem::swap(&mut authtok, &mut stacked_authtok);
 
                 let cred = if let Some(cred) = authtok {
                     cred
