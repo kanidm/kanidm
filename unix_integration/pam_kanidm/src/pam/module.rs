@@ -9,6 +9,7 @@ use crate::pam::constants::{PamFlag, PamItemType, PamResultCode};
 use crate::pam::items::{PamAuthTok, PamRHost, PamService, PamTty};
 
 use kanidm_unix_common::unix_proto::PamServiceInfo;
+use crate::core::PamHandler;
 
 /// Opaque type, used as a pointer when making pam API calls.
 ///
@@ -94,7 +95,7 @@ impl PamHandle {
     ///
     /// See `pam_get_data` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
-    pub unsafe fn get_data<'a, T>(&'a self, key: &str) -> PamResult<&'a T> {
+    unsafe fn get_data<'a, T>(&'a self, key: &str) -> PamResult<&'a T> {
         let c_key = CString::new(key).unwrap();
         let mut ptr: *const PamDataT = ptr::null();
         let res = pam_get_data(self, c_key.as_ptr(), &mut ptr);
@@ -112,7 +113,7 @@ impl PamHandle {
     ///
     /// See `pam_set_data` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
-    pub fn set_data<T>(&self, key: &str, data: Box<T>) -> PamResult<()> {
+    fn set_data<T>(&self, key: &str, data: Box<T>) -> PamResult<()> {
         let c_key = CString::new(key).unwrap();
         let res = unsafe {
             let c_data: Box<PamDataT> = mem::transmute(data);
@@ -131,7 +132,7 @@ impl PamHandle {
     ///
     /// See `pam_get_item` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
-    pub fn get_item<'a, T: PamItem>(&self) -> PamResult<&'a T> {
+    fn get_item<'a, T: PamItem>(&self) -> PamResult<&'a T> {
         let mut ptr: *const PamItemT = ptr::null();
         let (res, item) = unsafe {
             let r = pam_get_item(self, T::item_type(), &mut ptr);
@@ -146,7 +147,7 @@ impl PamHandle {
         }
     }
 
-    pub fn get_item_string<T: PamItem>(&self) -> PamResult<Option<String>> {
+    fn get_item_string<T: PamItem>(&self) -> PamResult<Option<String>> {
         let mut ptr: *const PamItemT = ptr::null();
         let (res, item) = unsafe {
             let r = pam_get_item(self, T::item_type(), &mut ptr);
@@ -172,7 +173,7 @@ impl PamHandle {
     ///
     /// See `pam_set_item` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
-    pub fn set_item_str<T: PamItem>(&mut self, item: &str) -> PamResult<()> {
+    fn set_item_str<T: PamItem>(&mut self, item: &str) -> PamResult<()> {
         let c_item = CString::new(item).unwrap();
 
         let res = unsafe {
@@ -197,7 +198,7 @@ impl PamHandle {
     ///
     /// See `pam_get_user` in
     /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
-    pub fn get_user(&self, prompt: Option<&str>) -> PamResult<String> {
+    fn get_user(&self, prompt: Option<&str>) -> PamResult<String> {
         let mut ptr: *const c_char = ptr::null_mut();
         let res = match prompt {
             Some(p) => {
@@ -219,23 +220,23 @@ impl PamHandle {
         }
     }
 
-    pub fn get_authtok(&self) -> PamResult<Option<String>> {
+    fn get_authtok(&self) -> PamResult<Option<String>> {
         self.get_item_string::<PamAuthTok>()
     }
 
-    pub fn get_tty(&self) -> PamResult<Option<String>> {
+    fn get_tty(&self) -> PamResult<Option<String>> {
         self.get_item_string::<PamTty>()
     }
 
-    pub fn get_rhost(&self) -> PamResult<Option<String>> {
+    fn get_rhost(&self) -> PamResult<Option<String>> {
         self.get_item_string::<PamRHost>()
     }
 
-    pub fn get_service(&self) -> PamResult<Option<String>> {
+    fn get_service(&self) -> PamResult<Option<String>> {
         self.get_item_string::<PamService>()
     }
 
-    pub fn get_pam_info(&self) -> PamResult<PamServiceInfo> {
+    fn get_pam_info(&self) -> PamResult<PamServiceInfo> {
         let maybe_tty = self.get_tty()?;
         let maybe_rhost = self.get_rhost()?;
         let maybe_service = self.get_service()?;
@@ -252,6 +253,83 @@ impl PamHandle {
         }
     }
 }
+
+impl PamHandler for PamHandle {
+    fn account_id(&self) -> PamResult<String> {
+        self.get_user(None)
+    }
+
+    fn service_info(&self) -> PamResult<PamServiceInfo> {
+        self.get_pam_info()
+    }
+
+    fn consume_authtok(&self) -> PamResult<Option<String>> {
+        todo!();
+        /*
+        let mut consume_authtok = None;
+        std::mem::swap(&mut authtok, &mut consume_authtok);
+        match pamh.get_authtok() {
+            Ok(Some(v)) => Some(v),
+            Ok(None) => {
+                if opts.use_first_pass {
+                    debug!("Don't have an authtok, returning PAM_AUTH_ERR");
+                    return PamResultCode::PAM_AUTH_ERR;
+                }
+                None
+            }
+            Err(e) => {
+                error!(err = ?e, "get_authtok");
+                return e;
+            }
+        };
+        */
+    }
+
+    fn message(&self, prompt: &str) -> PamResult<()> {
+        todo!();
+    }
+
+    fn prompt_for_password(&self) -> PamResult<Option<String>> {
+        /*
+        let conv = match pamh.get_item::<PamConv>() {
+            Ok(conv) => conv,
+            Err(err) => {
+                error!(?err, "pam_conv");
+                return err;
+            }
+        };
+        conv.send(PAM_PROMPT_ECHO_OFF, "Password: ")
+        */
+        todo!();
+    }
+
+    fn prompt_for_mfacode(&self) -> PamResult<Option<String>> {
+        /*
+        conv.send(PAM_PROMPT_ECHO_OFF, "Code: ")
+        */
+        todo!();
+    }
+
+    fn prompt_for_pin(&self) -> PamResult<Option<String>> {
+        /*
+        conv.send(PAM_PROMPT_ECHO_OFF, "PIN: ")
+        */
+        todo!();
+    }
+
+    fn message_device_grant(&self, data: &DeviceAuthorizationResponse) -> PamResult<()> {
+        /*
+        let msg = match &data.message {
+            Some(msg) => msg.clone(),
+            None => format!("Using a browser on another device, visit:\n{}\nAnd enter the code:\n{}",
+                            data.verification_uri, data.user_code)
+        };
+        conv.send(PAM_TEXT_INFO, &msg)
+        */
+        todo!();
+    }
+}
+
 
 /// Provides functions that are invoked by the entrypoints generated by the
 /// [`pam_hooks!` macro](../macro.pam_hooks.html).
