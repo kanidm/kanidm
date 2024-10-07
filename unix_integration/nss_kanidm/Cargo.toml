@@ -30,7 +30,7 @@ lazy_static = { workspace = true }
 [package.metadata.deb]
 name = "kanidm-nss"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
-depends = "$auto"
+depends = ""
 section = "network"
 priority = "optional"
 assets = [

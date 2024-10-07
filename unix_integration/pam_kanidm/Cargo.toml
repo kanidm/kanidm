@@ -31,7 +31,7 @@ pkg-config = { workspace = true }
 [package.metadata.deb]
 name = "kanidm-pam"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
-depends = "$auto"
+depends = ["libc6", "libpam0g"]
 section = "network"
 priority = "optional"
 assets = [
