@@ -23,7 +23,6 @@ use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 use self::apppwd::ValueSetApplicationPassword;
