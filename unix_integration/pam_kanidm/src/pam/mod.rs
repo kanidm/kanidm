@@ -44,7 +44,6 @@ use kanidm_unix_common::unix_proto::{
 
 use crate::core::{self, RequestOptions};
 use crate::pam::constants::*;
-use crate::pam::conv::PamConv;
 use crate::pam::module::{PamHandle, PamHooks};
 use crate::pam_hooks;
 use constants::PamResultCode;
