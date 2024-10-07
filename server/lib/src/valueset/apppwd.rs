@@ -2,9 +2,10 @@ use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
 use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use std::collections::BTreeMap;
 
-use kanidm_proto::scim_v1::server::{ScimApplicationPassword, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::ScimApplicationPassword;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetApplicationPassword {

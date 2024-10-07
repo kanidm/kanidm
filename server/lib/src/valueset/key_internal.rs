@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::valueset::ScimResolveStatus;
 
 use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
@@ -10,7 +11,7 @@ use std::collections::BTreeMap;
 use std::fmt;
 use time::OffsetDateTime;
 
-use kanidm_proto::scim_v1::server::{ScimKeyInternal, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::ScimKeyInternal;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {

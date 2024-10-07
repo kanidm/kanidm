@@ -13,11 +13,11 @@ use crate::schema::SchemaAttribute;
 use crate::value::{
     ApiToken, ApiTokenScope, AuthType, Oauth2Session, Session, SessionScope, SessionState,
 };
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet};
 
+use kanidm_proto::scim_v1::server::ScimApiToken;
 use kanidm_proto::scim_v1::server::ScimAuthSession;
 use kanidm_proto::scim_v1::server::ScimOAuth2Session;
-use kanidm_proto::scim_v1::server::{ScimApiToken, ScimResolveStatus};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSession {

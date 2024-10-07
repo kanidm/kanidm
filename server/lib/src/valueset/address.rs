@@ -7,9 +7,9 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
-use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {

@@ -1,4 +1,5 @@
 #![allow(dead_code)]
+use crate::valueset::ScimResolveStatus;
 use std::fmt::Display;
 
 use crate::be::dbvalue::DbValueImage;
@@ -11,7 +12,6 @@ use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {

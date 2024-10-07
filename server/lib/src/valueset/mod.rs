@@ -62,6 +62,7 @@ pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
+use kanidm_proto::scim_v1::server::ScimValueIntermediate;
 
 mod address;
 mod apppwd;
@@ -663,6 +664,39 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 impl PartialEq for ValueSet {
     fn eq(&self, other: &ValueSet) -> bool {
         self.equal(other)
+    }
+}
+
+pub enum ScimResolveStatus {
+    Resolved(ScimValueKanidm),
+    NeedsResolution(ScimValueIntermediate),
+}
+
+impl<T> From<T> for ScimResolveStatus
+where
+    T: Into<ScimValueKanidm>,
+{
+    fn from(v: T) -> Self {
+        Self::Resolved(v.into())
+    }
+}
+
+#[cfg(test)]
+impl ScimResolveStatus {
+    pub fn assume_resolved(self) -> ScimValueKanidm {
+        match self {
+            ScimResolveStatus::Resolved(v) => v,
+            ScimResolveStatus::NeedsResolution(_) => {
+                panic!("assume_resolved called on NeedsResolution")
+            }
+        }
+    }
+
+    pub fn assume_unresolved(self) -> ScimValueIntermediate {
+        match self {
+            ScimResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
+            ScimResolveStatus::NeedsResolution(svi) => svi,
+        }
     }
 }
 

@@ -2,8 +2,8 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::{ScimResolveStatus, ScimValueIntermediate};
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ValueSet};
+use kanidm_proto::scim_v1::server::ScimValueIntermediate;
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]

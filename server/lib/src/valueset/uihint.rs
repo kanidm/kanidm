@@ -2,10 +2,9 @@ use std::collections::BTreeSet;
 
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
 use kanidm_proto::internal::UiHint;
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUiHint {

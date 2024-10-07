@@ -7,12 +7,12 @@ SCRIPT_DIR="$(dirname "$(readlink -f "$0")")"
 # This script based on the developer readme and allows you to run a test server.
 
 if [ -z "$KANI_CARGO_OPTS" ]; then
-    KANI_CARGO_OPTS=""
+    KANI_CARGO_OPTS="--features=kanidmd_core/ui_htmx"
 fi
 
 # also where the files are stored
 if [ -z "$KANI_TMP" ]; then
-    KANI_TMP=/tmp/kanidm/
+    KANI_TMP=/home/merlijn/kanidm_temp/
 fi
 
 if [ ! -d "${KANI_TMP}" ]; then

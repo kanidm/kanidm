@@ -1,8 +1,9 @@
 use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::{ScimCertificate, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::ScimCertificate;
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{

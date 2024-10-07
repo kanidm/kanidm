@@ -1,3 +1,4 @@
+use crate::valueset::ScimResolveStatus;
 use base64urlsafedata::Base64UrlSafeData;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -8,7 +9,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::{ScimBinary, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::ScimBinary;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetPrivateBinary {

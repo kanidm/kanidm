@@ -2,8 +2,9 @@ use super::iname::ValueSetIname;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
+
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]

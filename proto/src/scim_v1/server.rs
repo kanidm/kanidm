@@ -195,39 +195,6 @@ pub enum ScimValueIntermediate {
     ReferMany(Vec<Uuid>),
 }
 
-pub enum ScimResolveStatus {
-    Resolved(ScimValueKanidm),
-    NeedsResolution(ScimValueIntermediate),
-}
-
-impl<T> From<T> for ScimResolveStatus
-where
-    T: Into<ScimValueKanidm>,
-{
-    fn from(v: T) -> Self {
-        Self::Resolved(v.into())
-    }
-}
-
-#[cfg(feature = "test")]
-impl ScimResolveStatus {
-    pub fn assume_resolved(self) -> ScimValueKanidm {
-        match self {
-            ScimResolveStatus::Resolved(v) => v,
-            ScimResolveStatus::NeedsResolution(_) => {
-                panic!("assume_resolved called on NeedsResolution")
-            }
-        }
-    }
-
-    pub fn assume_unresolved(self) -> ScimValueIntermediate {
-        match self {
-            ScimResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
-            ScimResolveStatus::NeedsResolution(svi) => svi,
-        }
-    }
-}
-
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only
 /// since on a deserialisation path we can not know the intent of the sender
 /// to how we deserialise strings. Additionally during deserialisation we need

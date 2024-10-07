@@ -5,11 +5,11 @@ use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
-use kanidm_proto::scim_v1::server::{ScimResolveStatus, ScimSshPublicKey};
+use kanidm_proto::scim_v1::server::ScimSshPublicKey;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {

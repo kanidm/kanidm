@@ -1,3 +1,4 @@
+use crate::valueset::ScimResolveStatus;
 use smolset::SmolSet;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -17,7 +18,7 @@ use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
 use crate::valueset::{DbValueSetV2, ValueSet};
 
-use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {

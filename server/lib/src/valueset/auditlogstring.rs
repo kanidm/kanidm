@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::{ScimAuditString, ScimResolveStatus};
+use kanidm_proto::scim_v1::server::ScimAuditString;
 use std::collections::BTreeMap;
 use time::OffsetDateTime;
 

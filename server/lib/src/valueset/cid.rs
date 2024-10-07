@@ -2,8 +2,8 @@ use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]

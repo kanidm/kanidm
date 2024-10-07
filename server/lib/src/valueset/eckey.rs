@@ -1,10 +1,11 @@
+use crate::valueset::ScimResolveStatus;
 use std::iter::{self};
 
 use super::ValueSet;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::prelude::*;
 use crate::value::{PartialValue, SyntaxType, Value};
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
+
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
 

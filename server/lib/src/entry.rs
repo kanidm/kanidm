@@ -47,7 +47,7 @@ use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
     ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
 };
-use kanidm_proto::scim_v1::server::{ScimReference, ScimResolveStatus, ScimValueIntermediate};
+use kanidm_proto::scim_v1::server::{ScimReference, ScimValueIntermediate};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
@@ -64,7 +64,7 @@ use crate::value::{
     ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
     SyntaxType, Value,
 };
-use crate::valueset::{self, ValueSet};
+use crate::valueset::{self, ScimResolveStatus, ValueSet};
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;

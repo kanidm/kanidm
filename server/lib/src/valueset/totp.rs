@@ -1,12 +1,12 @@
 use crate::credential::totp::Totp;
 use crate::prelude::*;
-use kanidm_proto::scim_v1::server::ScimResolveStatus;
+
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
 
 use crate::be::dbvalue::DbTotpV1;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetTotpSecret {
