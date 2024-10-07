@@ -86,7 +86,7 @@ pub trait PamHandler {
 
     fn service_info(&self) -> PamResult<PamServiceInfo>;
 
-    fn consume_authtok(&self) -> PamResult<Option<String>>;
+    fn authtok(&self) -> PamResult<Option<String>>;
 
     /// Display a message to the user.
     fn message(&self, prompt: &str) -> PamResult<()>;
@@ -124,15 +124,14 @@ pub fn sm_authenticate_connected<P: PamHandler>(
     let mut timeout: Option<u64> = None;
     let mut active_polling_interval = Duration::from_secs(1);
 
-    let mut stacked_authtok = 
-                if opts.use_first_pass {
-                    match pamh.authtok() {
-                        Ok(authtok) => authtok,
-                        Err(err) => return err,
-                    }
-                } else {
-                    None
-                };
+    let mut stacked_authtok = if opts.use_first_pass {
+        match pamh.authtok() {
+            Ok(authtok) => authtok,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
 
     let mut req = ClientRequest::PamAuthenticateInit { account_id, info };
 
@@ -234,6 +233,9 @@ pub fn sm_authenticate_connected<P: PamHandler>(
             }
 
             ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::SetupPin { msg: _ }) => {
+                // TODO: CHECK if this can be in sm_setcred
+                todo!();
+
                 /*
                 match conv.send(PAM_TEXT_INFO, &msg) {
                     Ok(_) => {}
@@ -298,7 +300,6 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 });
                 continue;
                 */
-                todo!();
             }
             ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Pin) => {
                 let mut authtok = None;

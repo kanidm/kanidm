@@ -4,7 +4,9 @@ use crate::core::{self, RequestOptions};
 use crate::module::PamResult;
 use crate::pam::ModuleOptions;
 use kanidm_unix_common::unix_passwd::{EtcShadow, EtcUser};
+use kanidm_unix_common::unix_proto::{DeviceAuthorizationResponse, PamServiceInfo};
 use std::collections::VecDeque;
+use std::sync::Mutex;
 use time::OffsetDateTime;
 
 impl RequestOptions {
@@ -49,16 +51,29 @@ impl RequestOptions {
     }
 }
 
+enum TestEvent {
+    ServiceInfo(PamServiceInfo),
+}
+
 struct TestHandler {
     account_id: String,
-    response_queue: VecDeque<()>,
+    response_queue: Mutex<VecDeque<TestEvent>>,
 }
 
 impl Default for TestHandler {
     fn default() -> Self {
         TestHandler {
             account_id: "tobias".to_string(),
-            response_queue: VecDeque::default(),
+            response_queue: Default::default(),
+        }
+    }
+}
+
+impl From<Vec<TestEvent>> for TestHandler {
+    fn from(v: Vec<TestEvent>) -> Self {
+        TestHandler {
+            account_id: "tobias".to_string(),
+            response_queue: Mutex::new(v.into_iter().collect()),
         }
     }
 }
@@ -72,6 +87,59 @@ impl TestHandler {
 impl PamHandler for TestHandler {
     fn account_id(&self) -> PamResult<String> {
         Ok(self.account_id.clone())
+    }
+
+    fn service_info(&self) -> PamResult<PamServiceInfo> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            Some(TestEvent::ServiceInfo(info)) => Ok(info),
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    fn authtok(&self) -> PamResult<Option<String>> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    /// Display a message to the user.
+    fn message(&self, prompt: &str) -> PamResult<()> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    /// Display a device grant request to the user.
+    fn message_device_grant(&self, data: &DeviceAuthorizationResponse) -> PamResult<()> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    /// Request a password from the user.
+    fn prompt_for_password(&self) -> PamResult<Option<String>> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    fn prompt_for_pin(&self) -> PamResult<Option<String>> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
+    }
+
+    fn prompt_for_mfacode(&self) -> PamResult<Option<String>> {
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            _ => panic!("Invalid event transition"),
+        }
     }
 }
 

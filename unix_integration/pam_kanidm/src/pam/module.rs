@@ -275,8 +275,9 @@ impl PamHandler for PamHandle {
         self.get_authtok()
     }
 
-    fn message(&self, prompt: &str) -> PamResult<()> {
-        todo!();
+    fn message(&self, msg: &str) -> PamResult<()> {
+        let conv = self.get_conv()?;
+        conv.send(PAM_TEXT_INFO, &msg).map(|_| ())
     }
 
     fn prompt_for_password(&self) -> PamResult<Option<String>> {
