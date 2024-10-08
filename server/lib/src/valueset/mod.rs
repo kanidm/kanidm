@@ -8,6 +8,8 @@ use kanidm_proto::internal::ImageValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
+use serde::Serialize;
+use serde_with::serde_as;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
@@ -61,7 +63,6 @@ pub use self::uint32::ValueSetUint32;
 pub use self::url::ValueSetUrl;
 pub use self::utf8::ValueSetUtf8;
 pub use self::uuid::{ValueSetRefer, ValueSetUuid};
-use kanidm_proto::scim_v1::server::ScimValueIntermediate;
 
 mod address;
 mod apppwd;
@@ -664,6 +665,13 @@ impl PartialEq for ValueSet {
     fn eq(&self, other: &ValueSet) -> bool {
         self.equal(other)
     }
+}
+
+#[serde_as]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub enum ScimValueIntermediate {
+    Refer(Uuid),
+    ReferMany(Vec<Uuid>),
 }
 
 pub enum ScimResolveStatus {

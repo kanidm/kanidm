@@ -188,13 +188,6 @@ pub struct ScimReference {
     pub value: String,
 }
 
-#[serde_as]
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
-pub enum ScimValueIntermediate {
-    Refer(Uuid),
-    ReferMany(Vec<Uuid>),
-}
-
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only
 /// since on a deserialisation path we can not know the intent of the sender
 /// to how we deserialise strings. Additionally during deserialisation we need

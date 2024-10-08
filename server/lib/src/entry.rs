@@ -64,7 +64,7 @@ use crate::value::{
     ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
     SyntaxType, Value,
 };
-use crate::valueset::{self, ScimResolveStatus, ValueSet};
+use crate::valueset::{self, ScimResolveStatus, ScimValueIntermediate, ValueSet};
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
@@ -2245,14 +2245,12 @@ impl Entry<EntryReduced, EntryCommitted> {
                     None => Ok(None),
                     Some(ScimResolveStatus::Resolved(scim_value_kani)) => Ok(Some(scim_value_kani)),
                     Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
-                        resolve_interim(scim_value_interim, &mut read_txn)
+                        resolve_scim_interim(scim_value_interim, &mut read_txn)
                     }
                 };
-                match res_opt_scim_value {
-                    Err(op_err) => Some(Err(op_err)),
-                    Ok(Some(v)) => Some(Ok((k.clone(), v))),
-                    Ok(None) => None,
-                }
+                res_opt_scim_value
+                    .transpose()
+                    .map(|scim_res| scim_res.map(|scim_value| (k.clone(), scim_value)))
             })
             .collect();
 
@@ -2372,7 +2370,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 }
 
-fn resolve_interim(
+fn resolve_scim_interim(
     scim_value_intermediate: ScimValueIntermediate,
     read_txn: &mut QueryServerReadTransaction,
 ) -> Result<Option<ScimValueKanidm>, OperationError> {
