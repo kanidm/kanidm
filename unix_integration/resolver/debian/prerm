@@ -1,3 +1,5 @@
 if [ "$1" = remove ]; then
     pam-auth-update --package --remove kanidm
 fi
+
+#DEBHELPER#

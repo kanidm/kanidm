@@ -1,8 +1,0 @@
-Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
-Upstream-Name: kanidm
-Upstream-Contact: James Hodgkinson <james@terminaloutcomes.com>
-Source: https://github.com/kanidm/kanidm
-
-Files: *
-Copyright: 2018- William Brown <william@blackhats.net.au>
-License: Mozilla Public License Version 2.0

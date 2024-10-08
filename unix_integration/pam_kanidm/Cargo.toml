@@ -1,5 +1,6 @@
 [package]
 name = "pam_kanidm"
+description = "Kanidm PAM module"
 links = "pam"
 
 version = { workspace = true }
@@ -23,3 +24,28 @@ tracing = { workspace = true }
 
 [build-dependencies]
 pkg-config = { workspace = true }
+
+## Debian packaging
+# The base metadata does **not** work to build a functioning package!
+# A target specific variant must be used to get the right multiarch path.
+[package.metadata.deb]
+name = "kanidm-pam"
+maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
+depends = ["libc6", "libpam0g"]
+section = "network"
+priority = "optional"
+assets = [
+	# Empty on purpose
+]
+
+[package.metadata.deb.variants.aarch64-unknown-linux-gnu]
+merge-assets.append = [
+    [ "target/release/libpam_kanidm.so", "usr/lib/aarch64-linux-gnu/security/pam_kanidm.so", "644"],
+    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+]
+
+[package.metadata.deb.variants.x86_64-unknown-linux-gnu]
+merge-assets.append = [
+    [ "target/release/libpam_kanidm.so", "usr/lib/x86_64-linux-gnu/security/pam_kanidm.so", "644"],
+    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+]
