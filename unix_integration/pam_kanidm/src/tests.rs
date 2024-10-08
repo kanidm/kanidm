@@ -159,7 +159,7 @@ impl PamHandler for TestHandler {
         }
     }
 
-    fn prompt_for_pin(&self) -> PamResult<Option<String>> {
+    fn prompt_for_pin(&self, _msg: Option<&str>) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
             e => {

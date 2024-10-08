@@ -298,9 +298,10 @@ impl PamHandler for PamHandle {
         conv.send(PAM_PROMPT_ECHO_OFF, "Code: ")
     }
 
-    fn prompt_for_pin(&self) -> PamResult<Option<String>> {
+    fn prompt_for_pin(&self, msg: Option<&str>) -> PamResult<Option<String>> {
         let conv = self.get_conv()?;
-        conv.send(PAM_PROMPT_ECHO_OFF, "PIN: ")
+        let msg = msg.unwrap_or("PIN: ");
+        conv.send(PAM_PROMPT_ECHO_OFF, msg)
     }
 
     fn message_device_grant(&self, data: &DeviceAuthorizationResponse) -> PamResult<()> {

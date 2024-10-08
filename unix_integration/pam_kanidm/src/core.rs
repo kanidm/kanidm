@@ -98,7 +98,7 @@ pub trait PamHandler {
     /// Request a password from the user.
     fn prompt_for_password(&self) -> PamResult<Option<String>>;
 
-    fn prompt_for_pin(&self) -> PamResult<Option<String>>;
+    fn prompt_for_pin(&self, msg: Option<&str>) -> PamResult<Option<String>>;
 
     fn prompt_for_mfacode(&self) -> PamResult<Option<String>>;
 }
@@ -233,74 +233,50 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 req = ClientRequest::PamAuthenticateStep(PamAuthRequest::MFAPoll);
             }
 
-            ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::SetupPin { msg: _ }) => {
-                // TODO: CHECK if this can be in sm_setcred
-                todo!();
-
-                /*
-                match conv.send(PAM_TEXT_INFO, &msg) {
-                    Ok(_) => {}
-                    Err(err) => {
-                        if opts.debug {
-                            println!("Message prompt failed");
-                        }
-                        return err;
-                    }
+            ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::SetupPin { msg }) => {
+                if let Err(err) = pamh.message(msg.as_str()) {
+                    return err;
                 }
 
                 let mut pin;
                 let mut confirm;
+
                 loop {
-                    pin = match conv.send(PAM_PROMPT_ECHO_OFF, "New PIN: ") {
-                        Ok(password) => match password {
-                            Some(cred) => cred,
-                            None => {
-                                debug!("no pin");
-                                return PamResultCode::PAM_CRED_INSUFFICIENT;
-                            }
-                        },
+                    pin = match pamh.prompt_for_pin(Some("New PIN: ")) {
+                        Ok(Some(p)) => p,
+                        Ok(None) => {
+                            debug!("no pin");
+                            return PamResultCode::PAM_CRED_INSUFFICIENT;
+                        }
                         Err(err) => {
                             debug!("unable to get pin");
                             return err;
                         }
                     };
 
-                    confirm = match conv.send(PAM_PROMPT_ECHO_OFF, "Confirm PIN: ") {
-                        Ok(password) => match password {
-                            Some(cred) => cred,
-                            None => {
-                                debug!("no confirmation pin");
-                                return PamResultCode::PAM_CRED_INSUFFICIENT;
-                            }
-                        },
+                    confirm = match pamh.prompt_for_pin(Some("Confirm PIN: ")) {
+                        Ok(Some(p)) => p,
+                        Ok(None) => {
+                            debug!("no pin");
+                            return PamResultCode::PAM_CRED_INSUFFICIENT;
+                        }
                         Err(err) => {
-                            debug!("unable to get confirmation pin");
+                            debug!("unable to get pin");
                             return err;
                         }
                     };
 
                     if pin == confirm {
                         break;
-                    } else {
-                        match conv.send(PAM_TEXT_INFO, "Inputs did not match. Try again.") {
-                            Ok(_) => {}
-                            Err(err) => {
-                                if opts.debug {
-                                    println!("Message prompt failed");
-                                }
-                                return err;
-                            }
-                        }
+                    } else if let Err(err) = pamh.message("Inputs did not match. Try again.") {
+                        return err;
                     }
                 }
 
                 // Now setup the request for the next loop.
                 timeout = None;
-                req = ClientRequest::PamAuthenticateStep(PamAuthRequest::SetupPin {
-                    pin,
-                });
+                req = ClientRequest::PamAuthenticateStep(PamAuthRequest::SetupPin { pin });
                 continue;
-                */
             }
             ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Pin) => {
                 let mut authtok = None;
@@ -309,7 +285,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                 let cred = if let Some(cred) = authtok {
                     cred
                 } else {
-                    match pamh.prompt_for_pin() {
+                    match pamh.prompt_for_pin(None) {
                         Ok(Some(cred)) => cred,
                         Ok(None) => return PamResultCode::PAM_CRED_INSUFFICIENT,
                         Err(err) => return err,
