@@ -15,4 +15,10 @@
 extern crate libnss;
 
 #[cfg(target_family = "unix")]
-mod implementation;
+mod hooks;
+
+#[cfg(target_family = "unix")]
+pub(crate) mod core;
+
+#[cfg(test)]
+mod tests;

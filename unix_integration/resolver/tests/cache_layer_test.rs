@@ -12,7 +12,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
+use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_resolver::db::{Cache, Db};
 use kanidm_unix_resolver::idprovider::interface::Id;
 use kanidm_unix_resolver::idprovider::kanidm::KanidmProvider;
@@ -941,7 +941,7 @@ async fn test_cache_authenticate_system_account() {
                 EtcShadow {
                     name: "testaccount1".to_string(),
                     // The very secure password, "a".
-                    password: "$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string(),
+                    password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
                     epoch_change_days: None,
                     days_min_password_age: 0,
                     days_max_password_age: Some(1),
@@ -953,7 +953,7 @@ async fn test_cache_authenticate_system_account() {
                 EtcShadow {
                     name: "testaccount2".to_string(),
                     // The very secure password, "a".
-                    password: "$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string(),
+                    password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
     epoch_change_days: Some(364),
                     days_min_password_age: 0,
                     days_max_password_age: Some(2),
