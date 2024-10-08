@@ -47,7 +47,7 @@ use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
     ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
 };
-use kanidm_proto::scim_v1::server::{ScimReference, ScimValueIntermediate};
+use kanidm_proto::scim_v1::server::ScimReference;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
