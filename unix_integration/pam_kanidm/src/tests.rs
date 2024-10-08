@@ -3,9 +3,10 @@ use crate::core::PamHandler;
 use crate::core::{self, RequestOptions};
 use crate::module::PamResult;
 use crate::pam::ModuleOptions;
-use kanidm_unix_common::unix_passwd::{EtcShadow, EtcUser};
+use kanidm_unix_common::unix_passwd::{CryptPw, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{DeviceAuthorizationResponse, PamServiceInfo};
 use std::collections::VecDeque;
+use std::str::FromStr;
 use std::sync::Mutex;
 use time::OffsetDateTime;
 
@@ -16,7 +17,7 @@ impl RequestOptions {
             users: vec![
                 EtcUser {
                     name: "root".to_string(),
-                    password: "a".to_string(),
+                    password: "x".to_string(),
                     uid: 0,
                     gid: 0,
                     gecos: "Root".to_string(),
@@ -25,7 +26,7 @@ impl RequestOptions {
                 },
                 EtcUser {
                     name: "tobias".to_string(),
-                    password: "a".to_string(),
+                    password: "x".to_string(),
                     uid: 1000,
                     gid: 1000,
                     gecos: "Tobias".to_string(),
@@ -37,12 +38,14 @@ impl RequestOptions {
             shadow: vec![
                 EtcShadow {
                     name: "root".to_string(),
-                    password: "x".to_string(),
+                    // The very secure password, 'a'
+                    password: CryptPw::from_str("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//").unwrap(),
                     ..Default::default()
                 },
                 EtcShadow {
                     name: "tobias".to_string(),
-                    password: "x".to_string(),
+                    // The very secure password, 'a'
+                    password: CryptPw::from_str("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//").unwrap(),
                     epoch_expire_date: Some(10),
                     ..Default::default()
                 },
@@ -51,72 +54,96 @@ impl RequestOptions {
     }
 }
 
-enum TestEvent {
+#[allow(dead_code)]
+#[derive(Debug)]
+enum Event {
+    Account(&'static str),
     ServiceInfo(PamServiceInfo),
+    PromptPassword(&'static str),
+    StackedAuthtok(Option<&'static str>),
 }
 
 struct TestHandler {
-    account_id: String,
-    response_queue: Mutex<VecDeque<TestEvent>>,
+    response_queue: Mutex<VecDeque<Event>>,
 }
 
 impl Default for TestHandler {
     fn default() -> Self {
         TestHandler {
-            account_id: "tobias".to_string(),
             response_queue: Default::default(),
         }
     }
 }
 
-impl From<Vec<TestEvent>> for TestHandler {
-    fn from(v: Vec<TestEvent>) -> Self {
+impl From<Vec<Event>> for TestHandler {
+    fn from(v: Vec<Event>) -> Self {
         TestHandler {
-            account_id: "tobias".to_string(),
             response_queue: Mutex::new(v.into_iter().collect()),
         }
     }
 }
 
-impl TestHandler {
-    fn set_account_id(&mut self, account_id: String) {
-        self.account_id = account_id
+impl Drop for TestHandler {
+    fn drop(&mut self) {
+        let q = self.response_queue.lock().unwrap();
+        assert!(q.is_empty());
     }
 }
 
 impl PamHandler for TestHandler {
     fn account_id(&self) -> PamResult<String> {
-        Ok(self.account_id.clone())
+        let mut q = self.response_queue.lock().unwrap();
+        match q.pop_front() {
+            Some(Event::Account(name)) => Ok(name.to_string()),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
+        }
     }
 
     fn service_info(&self) -> PamResult<PamServiceInfo> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            Some(TestEvent::ServiceInfo(info)) => Ok(info),
-            _ => panic!("Invalid event transition"),
+            Some(Event::ServiceInfo(info)) => Ok(info),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
     fn authtok(&self) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            Some(Event::StackedAuthtok(Some(v))) => Ok(Some(v.to_string())),
+            Some(Event::StackedAuthtok(None)) => Ok(None),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
     /// Display a message to the user.
-    fn message(&self, prompt: &str) -> PamResult<()> {
+    fn message(&self, _prompt: &str) -> PamResult<()> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
     /// Display a device grant request to the user.
-    fn message_device_grant(&self, data: &DeviceAuthorizationResponse) -> PamResult<()> {
+    fn message_device_grant(&self, _data: &DeviceAuthorizationResponse) -> PamResult<()> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
@@ -124,21 +151,31 @@ impl PamHandler for TestHandler {
     fn prompt_for_password(&self) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            Some(Event::PromptPassword(value)) => Ok(Some(value.to_string())),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
     fn prompt_for_pin(&self) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 
     fn prompt_for_mfacode(&self) -> PamResult<Option<String>> {
         let mut q = self.response_queue.lock().unwrap();
         match q.pop_front() {
-            _ => panic!("Invalid event transition"),
+            e => {
+                eprintln!("{:?}", e);
+                panic!("Invalid event transition");
+            }
         }
     }
 }
@@ -148,8 +185,9 @@ impl PamHandler for TestHandler {
 fn pam_fallback_sm_authenticate_default() {
     let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
-    let pamh = TestHandler::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("tobias"), Event::PromptPassword("a")]);
 
     assert_eq!(
         core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
@@ -160,43 +198,140 @@ fn pam_fallback_sm_authenticate_default() {
 /// Show that incorrect pw fails
 #[test]
 fn pam_fallback_sm_authenticate_incorrect_pw() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![
+        Event::Account("tobias"),
+        Event::PromptPassword("wrong"),
+    ]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_AUTH_ERR
+    );
 }
 
 /// Show that root can authenticate with the correct password
 #[test]
 fn pam_fallback_sm_authenticate_root() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("root"), Event::PromptPassword("a")]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_SUCCESS
+    );
 }
 
 /// Show that incorrect root pw fails
 #[test]
 fn pam_fallback_sm_authenticate_root_incorrect_pw() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("root"), Event::PromptPassword("wrong")]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_AUTH_ERR
+    );
 }
 
 /// Show that an expired account does not prompt for pw at all.
 #[test]
 fn pam_fallback_sm_authenticate_expired() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(16);
+
+    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_ACCT_EXPIRED
+    );
 }
 
 /// Show that unknown users are denied
 #[test]
 fn pam_fallback_sm_authenticate_unknown_denied() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions::default();
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_USER_UNKNOWN
+    );
 }
 
 /// Show that unknown users are ignored when the setting is enabled.
 #[test]
 fn pam_fallback_sm_authenticate_unknown_ignore() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions {
+        ignore_unknown_user: true,
+        ..Default::default()
+    };
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_IGNORE
+    );
+}
+
+/// If there is a stacked cred and use_first_pass is set, it is consumed.
+#[test]
+fn pam_fallback_sm_authenticate_stacked_cred() {
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions {
+        use_first_pass: true,
+        ..Default::default()
+    };
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![
+        Event::Account("tobias"),
+        Event::StackedAuthtok(Some("a")),
+    ]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_SUCCESS
+    );
 }
 
 /// If there is no stacked credential in pam, then one is prompted for
 #[test]
 fn pam_fallback_sm_authenticate_no_stacked_cred() {
-    todo!();
+    let req_opt = RequestOptions::fallback_fixture();
+    let mod_opts = ModuleOptions {
+        use_first_pass: true,
+        ..Default::default()
+    };
+    let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![
+        Event::Account("tobias"),
+        Event::StackedAuthtok(None),
+        Event::PromptPassword("a"),
+    ]);
+
+    assert_eq!(
+        core::sm_authenticate(&pamh, &mod_opts, req_opt, test_time),
+        PamResultCode::PAM_SUCCESS
+    );
 }
 
 /// Show that by default, the account "tobias" can login during
@@ -205,8 +340,9 @@ fn pam_fallback_sm_authenticate_no_stacked_cred() {
 fn pam_fallback_acct_mgmt_default() {
     let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
-    let pamh = TestHandler::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -218,10 +354,10 @@ fn pam_fallback_acct_mgmt_default() {
 #[test]
 fn pam_fallback_acct_mgmt_root() {
     let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    let mut pamh = TestHandler::default();
-    pamh.set_account_id("root".to_string());
+    let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("root")]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -233,10 +369,10 @@ fn pam_fallback_acct_mgmt_root() {
 #[test]
 fn pam_fallback_acct_mgmt_deny_unknown() {
     let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    let mut pamh = TestHandler::default();
-    pamh.set_account_id("nonexist".to_string());
+    let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -248,11 +384,13 @@ fn pam_fallback_acct_mgmt_deny_unknown() {
 #[test]
 fn pam_fallback_acct_mgmt_ignore_unknown() {
     let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    mod_opts.ignore_unknown_user = true;
-    let mut pamh = TestHandler::default();
-    pamh.set_account_id("nonexist".to_string());
+    let mod_opts = ModuleOptions {
+        ignore_unknown_user: true,
+        ..Default::default()
+    };
     let test_time = OffsetDateTime::UNIX_EPOCH;
+
+    let pamh = TestHandler::from(vec![Event::Account("nonexist")]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -265,9 +403,10 @@ fn pam_fallback_acct_mgmt_ignore_unknown() {
 fn pam_fallback_acct_mgmt_expired() {
     // Show that an expired account is unable to login.
     let req_opt = RequestOptions::fallback_fixture();
-    let mut mod_opts = ModuleOptions::default();
-    let pamh = TestHandler::default();
+    let mod_opts = ModuleOptions::default();
     let test_time = OffsetDateTime::UNIX_EPOCH + time::Duration::days(16);
+
+    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
 
     assert_eq!(
         core::acct_mgmt(&pamh, &mod_opts, req_opt, test_time),
@@ -279,7 +418,8 @@ fn pam_fallback_acct_mgmt_expired() {
 fn pam_fallback_sm_open_session() {
     let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
-    let pamh = TestHandler::default();
+
+    let pamh = TestHandler::from(vec![Event::Account("tobias")]);
 
     assert_eq!(
         core::sm_open_session(&pamh, &mod_opts, req_opt),
@@ -291,6 +431,7 @@ fn pam_fallback_sm_open_session() {
 fn pam_fallback_sm_close_session() {
     // let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
+
     let pamh = TestHandler::default();
 
     assert_eq!(
@@ -303,6 +444,7 @@ fn pam_fallback_sm_close_session() {
 fn pam_fallback_sm_chauthtok() {
     // let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
+
     let pamh = TestHandler::default();
 
     assert_eq!(
@@ -315,6 +457,7 @@ fn pam_fallback_sm_chauthtok() {
 fn pam_fallback_sm_setcred() {
     // let req_opt = RequestOptions::fallback_fixture();
     let mod_opts = ModuleOptions::default();
+
     let pamh = TestHandler::default();
 
     assert_eq!(

@@ -35,12 +35,8 @@ use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::ffi::CStr;
 
-use kanidm_unix_common::client_sync::DaemonClientBlocking;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{
-    ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse,
-};
 
 use crate::core::{self, RequestOptions};
 use crate::pam::constants::*;
@@ -49,13 +45,10 @@ use crate::pam_hooks;
 use constants::PamResultCode;
 use time::OffsetDateTime;
 
-use tracing::{debug, error};
+use tracing::debug;
 use tracing_subscriber::filter::LevelFilter;
 use tracing_subscriber::fmt;
 use tracing_subscriber::prelude::*;
-
-use std::thread;
-use std::time::Duration;
 
 pub fn get_cfg() -> Result<KanidmUnixdConfig, PamResultCode> {
     KanidmUnixdConfig::new()

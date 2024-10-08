@@ -1,9 +1,11 @@
 use serde::{Deserialize, Serialize};
 use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, DefaultOnNull, StringWithSeparator};
+use std::fmt;
 use std::fs::File;
 use std::io::Read;
 use std::path::Path;
+use std::str::FromStr;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct EtcUser {
@@ -37,11 +39,57 @@ pub fn read_etc_passwd_file<P: AsRef<Path>>(path: P) -> Result<Vec<EtcUser>, Uni
     parse_etc_passwd(contents.as_slice()).map_err(|_| UnixIntegrationError)
 }
 
+#[derive(Debug, PartialEq, Default)]
+pub enum CryptPw {
+    Sha256(String),
+    Sha512(String),
+    #[default]
+    Invalid,
+}
+
+impl fmt::Display for CryptPw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CryptPw::Invalid => write!(f, "x"),
+            CryptPw::Sha256(s) | CryptPw::Sha512(s) => write!(f, "{}", s),
+        }
+    }
+}
+
+impl FromStr for CryptPw {
+    type Err = &'static str;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        if value.starts_with("$6$") {
+            Ok(CryptPw::Sha512(value.to_string()))
+        } else if value.starts_with("$5$") {
+            Ok(CryptPw::Sha256(value.to_string()))
+        } else {
+            Ok(CryptPw::Invalid)
+        }
+    }
+}
+
+impl CryptPw {
+    pub fn is_valid(&self) -> bool {
+        !matches!(self, CryptPw::Invalid)
+    }
+
+    pub fn check_pw(&self, cred: &str) -> bool {
+        match &self {
+            CryptPw::Sha256(crypt) => sha_crypt::sha256_check(cred, crypt.as_str()).is_ok(),
+            CryptPw::Sha512(crypt) => sha_crypt::sha512_check(cred, crypt.as_str()).is_ok(),
+            CryptPw::Invalid => false,
+        }
+    }
+}
+
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq, Default)]
 pub struct EtcShadow {
     pub name: String,
-    pub password: String,
+    #[serde_as(as = "serde_with::DisplayFromStr")]
+    pub password: CryptPw,
     // 0 means must change next login.
     // None means all other aging features are disabled
     pub epoch_change_days: Option<i64>,
@@ -190,7 +238,7 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
             shadow[0],
             EtcShadow {
                 name: "sshd".to_string(),
-                password: "!".to_string(),
+                password: CryptPw::Invalid,
                 epoch_change_days: Some(19978),
                 days_min_password_age: 0,
                 days_max_password_age: None,
@@ -205,7 +253,7 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
             shadow[1],
             EtcShadow {
                 name: "tss".to_string(),
-                password: "!".to_string(),
+                password: CryptPw::Invalid,
                 epoch_change_days: Some(19980),
                 days_min_password_age: 0,
                 days_max_password_age: None,
@@ -218,7 +266,7 @@ admin:$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePME
 
         assert_eq!(shadow[2], EtcShadow {
             name: "admin".to_string(),
-            password: "$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string(),
+            password: CryptPw::Sha512("$6$5.bXZTIXuVv.xI3.$sAubscCJPwnBWwaLt2JR33lo539UyiDku.aH5WVSX0Tct9nGL2ePMEmrqT3POEdBlgNQ12HJBwskewGu2dpF//".to_string()),
             epoch_change_days: Some(19980),
             days_min_password_age: 0,
             days_max_password_age: Some(99999),

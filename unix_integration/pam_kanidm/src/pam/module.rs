@@ -6,7 +6,7 @@ use std::{mem, ptr};
 use libc::c_char;
 
 use crate::pam::constants::{
-    PamFlag, PamItemType, PamResultCode, PAM_PROMPT_ECHO_OFF, PAM_PROMPT_ECHO_ON, PAM_TEXT_INFO,
+    PamFlag, PamItemType, PamResultCode, PAM_PROMPT_ECHO_OFF, PAM_TEXT_INFO,
 };
 use crate::pam::conv::PamConv;
 use crate::pam::items::{PamAuthTok, PamRHost, PamService, PamTty};
@@ -31,6 +31,7 @@ pub enum PamDataT {}
 
 #[link(name = "pam")]
 extern "C" {
+    /*
     fn pam_get_data(
         pamh: *const PamHandle,
         module_data_name: *const c_char,
@@ -47,6 +48,7 @@ extern "C" {
             error_status: PamResultCode,
         ),
     ) -> PamResultCode;
+    */
 
     fn pam_get_item(
         pamh: *const PamHandle,
@@ -54,8 +56,10 @@ extern "C" {
         item: &mut *const PamItemT,
     ) -> PamResultCode;
 
+    /*
     fn pam_set_item(pamh: *mut PamHandle, item_type: PamItemType, item: &PamItemT)
         -> PamResultCode;
+    */
 
     fn pam_get_user(
         pamh: *const PamHandle,
@@ -92,6 +96,7 @@ pub trait PamItem {
 }
 
 impl PamHandle {
+    /*
     /// # Safety
     ///
     /// Gets some value, identified by `key`, that has been set by the module
@@ -130,6 +135,7 @@ impl PamHandle {
             Err(res)
         }
     }
+    */
 
     /// Retrieves a value that has been set, possibly by the pam client.  This is
     /// particularly useful for getting a `PamConv` reference.
@@ -170,6 +176,7 @@ impl PamHandle {
         }
     }
 
+    /*
     /// Sets a value in the pam context. The value can be retrieved using
     /// `get_item`.
     ///
@@ -195,6 +202,7 @@ impl PamHandle {
             Err(res)
         }
     }
+    */
 
     /// Retrieves the name of the user who is authenticating or logging in.
     ///
@@ -206,7 +214,7 @@ impl PamHandle {
         let mut ptr: *const c_char = ptr::null_mut();
         let res = match prompt {
             Some(p) => {
-                let c_prompt = CString::new(p).unwrap();
+                let c_prompt = CString::new(p).map_err(|_| PamResultCode::PAM_CONV_ERR)?;
                 unsafe { pam_get_user(self, &mut ptr, c_prompt.as_ptr()) }
             }
             None => unsafe { pam_get_user(self, &mut ptr, ptr::null()) },
@@ -277,7 +285,7 @@ impl PamHandler for PamHandle {
 
     fn message(&self, msg: &str) -> PamResult<()> {
         let conv = self.get_conv()?;
-        conv.send(PAM_TEXT_INFO, &msg).map(|_| ())
+        conv.send(PAM_TEXT_INFO, msg).map(|_| ())
     }
 
     fn prompt_for_password(&self) -> PamResult<Option<String>> {

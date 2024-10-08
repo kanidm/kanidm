@@ -1,9 +1,7 @@
 use crate::constants::PamResultCode;
 use crate::module::PamResult;
-use crate::pam::module::PamHandle;
 use crate::pam::ModuleOptions;
 use kanidm_unix_common::client_sync::DaemonClientBlocking;
-use kanidm_unix_common::client_sync::UnixStream;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_passwd::{
     read_etc_passwd_file, read_etc_shadow_file, EtcShadow, EtcUser,
@@ -16,6 +14,9 @@ use std::time::Duration;
 use time::OffsetDateTime;
 
 use tracing::{debug, error};
+
+#[cfg(test)]
+use kanidm_unix_common::client_sync::UnixStream;
 
 pub enum RequestOptions {
     Main {
@@ -105,7 +106,7 @@ pub trait PamHandler {
 pub fn sm_authenticate_connected<P: PamHandler>(
     pamh: &P,
     opts: &ModuleOptions,
-    current_time: OffsetDateTime,
+    _current_time: OffsetDateTime,
     mut daemon_client: DaemonClientBlocking,
 ) -> PamResultCode {
     let info = match pamh.service_info() {
@@ -192,7 +193,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
                     });
                 continue;
             }
-            ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFACode { msg }) => {
+            ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::MFACode { msg: _ }) => {
                 let cred = match pamh.prompt_for_mfacode() {
                     Ok(Some(cred)) => cred,
                     Ok(None) => return PamResultCode::PAM_CRED_INSUFFICIENT,
@@ -329,7 +330,6 @@ pub fn sm_authenticate_connected<P: PamHandler>(
             | ClientResponse::NssGroups(_)
             | ClientResponse::PamStatus(_)
             | ClientResponse::ProviderStatus(_)
-            | ClientResponse::PamStatus(_)
             | ClientResponse::NssGroup(_) => {
                 debug!("PamResultCode::PAM_AUTH_ERR");
                 return PamResultCode::PAM_AUTH_ERR;
@@ -345,7 +345,69 @@ pub fn sm_authenticate_fallback<P: PamHandler>(
     users: Vec<EtcUser>,
     shadow: Vec<EtcShadow>,
 ) -> PamResultCode {
-    todo!();
+    let account_id = match pamh.account_id() {
+        Ok(acc) => acc,
+        Err(err) => return err,
+    };
+
+    let user = users.into_iter().find(|etcuser| etcuser.name == account_id);
+
+    let shadow = shadow
+        .into_iter()
+        .find(|etcshadow| etcshadow.name == account_id);
+
+    let (_user, shadow) = match (user, shadow) {
+        (Some(user), Some(shadow)) => (user, shadow),
+        _ => {
+            if opts.ignore_unknown_user {
+                debug!("PamResultCode::PAM_IGNORE");
+                return PamResultCode::PAM_IGNORE;
+            } else {
+                debug!("PamResultCode::PAM_USER_UNKNOWN");
+                return PamResultCode::PAM_USER_UNKNOWN;
+            }
+        }
+    };
+
+    let expiration_date = shadow
+        .epoch_expire_date
+        .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
+
+    if let Some(expire) = expiration_date {
+        if current_time >= expire {
+            debug!("PamResultCode::PAM_ACCT_EXPIRED");
+            return PamResultCode::PAM_ACCT_EXPIRED;
+        }
+    };
+
+    // All checks passed! We can now proceed to authenticate the account.
+    let mut stacked_authtok = if opts.use_first_pass {
+        match pamh.authtok() {
+            Ok(authtok) => authtok,
+            Err(err) => return err,
+        }
+    } else {
+        None
+    };
+
+    let mut authtok = None;
+    std::mem::swap(&mut authtok, &mut stacked_authtok);
+
+    let cred = if let Some(cred) = authtok {
+        cred
+    } else {
+        match pamh.prompt_for_password() {
+            Ok(Some(cred)) => cred,
+            Ok(None) => return PamResultCode::PAM_CRED_INSUFFICIENT,
+            Err(err) => return err,
+        }
+    };
+
+    if shadow.password.check_pw(cred.as_str()) {
+        PamResultCode::PAM_SUCCESS
+    } else {
+        PamResultCode::PAM_AUTH_ERR
+    }
 }
 
 pub fn sm_authenticate<P: PamHandler>(
@@ -355,7 +417,7 @@ pub fn sm_authenticate<P: PamHandler>(
     current_time: OffsetDateTime,
 ) -> PamResultCode {
     match req_opt.connect_to_daemon() {
-        Source::Daemon(mut daemon_client) => {
+        Source::Daemon(daemon_client) => {
             sm_authenticate_connected(pamh, opts, current_time, daemon_client)
         }
         Source::Fallback { users, shadow } => {
@@ -410,17 +472,13 @@ pub fn acct_mgmt<P: PamHandler>(
             }
         }
         Source::Fallback { users, shadow } => {
-            let user = users
-                .into_iter()
-                .filter(|etcuser| etcuser.name == account_id)
-                .next();
+            let user = users.into_iter().find(|etcuser| etcuser.name == account_id);
 
             let shadow = shadow
                 .into_iter()
-                .filter(|etcshadow| etcshadow.name == account_id)
-                .next();
+                .find(|etcshadow| etcshadow.name == account_id);
 
-            let (user, shadow) = match (user, shadow) {
+            let (_user, shadow) = match (user, shadow) {
                 (Some(user), Some(shadow)) => (user, shadow),
                 _ => {
                     if opts.ignore_unknown_user {
