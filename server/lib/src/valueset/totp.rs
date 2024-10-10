@@ -1,12 +1,12 @@
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
-
 use crate::credential::totp::Totp;
 use crate::prelude::*;
 
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::BTreeMap;
+
 use crate::be::dbvalue::DbTotpV1;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetTotpSecret {
@@ -117,7 +117,7 @@ impl ValueSetT for ValueSetTotpSecret {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         None
     }
 

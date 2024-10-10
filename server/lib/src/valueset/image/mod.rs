@@ -1,16 +1,16 @@
 #![allow(dead_code)]
+use crate::valueset::ScimResolveStatus;
 use std::fmt::Display;
-
-use hashbrown::HashSet;
-use image::codecs::gif::GifDecoder;
-use image::codecs::webp::WebPDecoder;
-use image::ImageDecoder;
-use kanidm_proto::internal::{ImageType, ImageValue};
 
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use hashbrown::HashSet;
+use image::codecs::gif::GifDecoder;
+use image::codecs::webp::WebPDecoder;
+use image::ImageDecoder;
+use kanidm_proto::internal::{ImageType, ImageValue};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {
@@ -388,7 +388,7 @@ impl ValueSetT for ValueSetImage {
         Box::new(self.set.iter().map(|image| image.hash_imagevalue()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         // TODO: This should be a reference to the image URL, not the image itself!
         // Does this mean we need to pass in the domain / origin so we can render
         // these URL's correctly?
@@ -398,12 +398,12 @@ impl ValueSetT for ValueSetImage {
         //
         // TODO: Scim supports a "type" field here, but do we care?
 
-        Some(ScimValueKanidm::from(
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set
                 .iter()
                 .map(|image| image.hash_imagevalue())
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

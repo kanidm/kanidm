@@ -1,12 +1,13 @@
+use crate::valueset::ScimResolveStatus;
 use std::iter::{self};
 
+use super::ValueSet;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::prelude::*;
 use crate::value::{PartialValue, SyntaxType, Value};
+
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
-
-use super::ValueSet;
 
 #[derive(Debug, Clone)]
 struct EcKeyPrivate {
@@ -128,7 +129,7 @@ impl ValueSetT for ValueSetEcKeyPrivate {
         Box::new(iter::once(String::from("hidden")))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         None
     }
 

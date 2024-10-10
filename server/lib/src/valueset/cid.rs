@@ -1,10 +1,10 @@
-use smolset::SmolSet;
-
 use crate::be::dbvalue::DbCidV1;
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCid {
@@ -115,7 +115,7 @@ impl ValueSetT for ValueSetCid {
         Box::new(self.set.iter().map(|c| c.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let mut iter = self.set.iter().map(|cid| cid.to_string());
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();

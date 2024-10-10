@@ -1,3 +1,4 @@
+use crate::valueset::ScimResolveStatus;
 use base64urlsafedata::Base64UrlSafeData;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -107,7 +108,7 @@ impl ValueSetT for ValueSetPrivateBinary {
         Box::new(self.set.iter().map(|_| "private_binary".to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         None
     }
 
@@ -277,8 +278,8 @@ impl ValueSetT for ValueSetPublicBinary {
         Box::new(self.map.keys().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(tag, bin)| ScimBinary {
@@ -286,7 +287,7 @@ impl ValueSetT for ValueSetPublicBinary {
                     value: bin.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

@@ -1,6 +1,7 @@
 use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::scim_v1::server::ScimAuditString;
 use std::collections::BTreeMap;
@@ -109,8 +110,8 @@ impl ValueSetT for ValueSetAuditLogString {
         Box::new(self.map.iter().map(|(d, s)| format!("{d}-{s}")))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(cid, strdata)| {
@@ -121,7 +122,7 @@ impl ValueSetT for ValueSetAuditLogString {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

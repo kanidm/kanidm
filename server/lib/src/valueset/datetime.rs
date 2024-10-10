@@ -1,9 +1,10 @@
-use smolset::SmolSet;
-use time::OffsetDateTime;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+
+use smolset::SmolSet;
+use time::OffsetDateTime;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetDateTime {
@@ -123,7 +124,7 @@ impl ValueSetT for ValueSetDateTime {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let mut iter = self.set.iter().copied();
         if self.len() == 1 {
             let v = iter.next().unwrap_or(OffsetDateTime::UNIX_EPOCH);

@@ -1,9 +1,10 @@
-use kanidm_proto::internal::Filter as ProtoFilter;
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+use kanidm_proto::internal::Filter as ProtoFilter;
+
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetJsonFilter {
@@ -121,8 +122,8 @@ impl ValueSetT for ValueSetJsonFilter {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set
                 .iter()
                 .filter_map(|s| {
@@ -133,7 +134,7 @@ impl ValueSetT for ValueSetJsonFilter {
                         .ok()
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
