@@ -43,7 +43,7 @@ pub struct JavaScriptFile {
 }
 
 impl JavaScriptFile {
-    /// returns a `<script>` or `<meta>` HTML tag
+    /// returns a `<script>` or `<meta>` HTML tag, includes the hash as a query value as a cache-busting mechanism
     pub fn as_tag(&self) -> String {
         let filetype = match &self.filetype {
             Some(val) => {

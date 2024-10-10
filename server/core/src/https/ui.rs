@@ -76,12 +76,11 @@ pub(crate) async fn ui_handler_generic(
         jsfiles.push(jsfile.clone().as_tag())
     };
 
-    let jstags = jsfiles.join("\n");
-
-    let body = format!(
+    let body: String = format!(
         include_str!("ui_html.html"),
-        domain_info.display_name(),
-        jstags,
+        jstags = jsfiles.join("\n"),
+        cache_buster_key = crate::https::cache_buster::get_cache_buster_key(),
+        display_name = domain_info.display_name()
     );
 
     let mut res = Response::new(body);

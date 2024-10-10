@@ -3232,6 +3232,7 @@ dependencies = [
  "base64 0.22.1",
  "gix",
  "serde",
+ "sha2",
  "toml",
 ]
 

@@ -1,4 +1,4 @@
-use jsonschema::JSONSchema;
+use jsonschema::Validator;
 use serde::{Deserialize, Serialize};
 use tracing::info;
 
@@ -29,7 +29,7 @@ async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient)
         .unwrap();
 
     let instance = serde_json::json!("foo");
-    let compiled = JSONSchema::compile(&schema).expect("A valid schema");
+    let compiled = Validator::new(&schema).expect("A valid schema");
     assert!(jsonschema::is_valid(&schema, &instance));
     let result = compiled.validate(&instance);
     if let Err(errors) = result {

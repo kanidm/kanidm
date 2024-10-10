@@ -870,7 +870,7 @@ async fn repl_acceptor(
                 // Handle *reloads*
                 /*
                 _ = reload.recv() => {
-                    info!("initiate tls reload");
+                    info!("Initiating TLS reload");
                     continue
                 }
                 */
