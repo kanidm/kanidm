@@ -24,7 +24,7 @@ use kanidm_proto::internal::{
     UserAuthToken, COOKIE_CU_SESSION_TOKEN,
 };
 
-use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
+use crate::https::extractors::{AccessInfo, DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
@@ -35,6 +35,7 @@ use super::{HtmlTemplate, UnrecoverableErrorView};
 #[derive(Template)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
+    access_info: AccessInfo,
     profile_partial: CredStatusView,
 }
 
@@ -780,6 +781,7 @@ fn get_cu_response(
             posix_enabled: false,
         };
         let profile_view = ProfileView {
+            access_info: AccessInfo::new(),
             profile_partial: cred_status_view,
         };
 

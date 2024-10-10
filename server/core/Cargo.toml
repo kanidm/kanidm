@@ -17,6 +17,7 @@ doctest = false
 
 [features]
 ui_htmx = []
+ui_admin = []
 
 [dependencies]
 async-trait = { workspace = true }

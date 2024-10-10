@@ -1,4 +1,4 @@
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
+use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::HtmlTemplate;
@@ -18,6 +18,7 @@ use super::constants::ProfileMenuItems;
 #[derive(Template)]
 #[template(path = "user_settings.html")]
 struct ProfileView {
+    access_info: AccessInfo,
     profile_partial: ProfilePartialView,
 }
 
@@ -59,6 +60,7 @@ pub(crate) async fn view_profile_get(
         posix_enabled: false,
     };
     let profile_view = ProfileView {
+        access_info: AccessInfo::new(),
         profile_partial: profile_partial_view.clone(),
     };
 

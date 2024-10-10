@@ -1,0 +1,14 @@
+<li id="groupMember(( member.uuid ))" class="list-group-item d-flex flex-row justify-content-between">
+    <div class="d-flex align-items-center">
+        <a href="/ui/admin/group/(( member.uuid ))/view" hx-target="#main">(( member.spn ))</a>
+    </div>
+    <div class="buttons float-end">
+        (% if can_edit %)
+        <button hx-target="#groupMember(( member.uuid ))"
+                hx-swap="delete"
+                hx-delete="/ui/admin/group/(( group_uuid ))/member/(( member.uuid ))"
+                hx-confirm="Are you sure you want to remove (( member.name )) from the group ?"
+                type="button" class="btn btn-danger">Remove</button>
+        (% endif %)
+    </div>
+</li>

@@ -1,0 +1,16 @@
+<li id="groupMail(( mail|hash ))" class="list-group-item d-flex flex-row justify-content-between">
+    <div class="d-flex align-items-center">
+        <input id="mailValue(( mail|hash ))" value="(( mail ))" hidden="hidden">
+        (( mail ))
+    </div>
+    <div class="buttons float-end">
+        (% if can_edit %)
+        <button hx-target="#groupMail(( mail|hash ))"
+                hx-swap="delete"
+                hx-delete="/ui/admin/group/(( group_uuid ))/mail"
+                hx-include="mailValue(( mail|hash ))"
+                hx-confirm="Are you sure you want to remove (( mail )) from the group ?"
+                type="button" class="btn btn-danger">Remove</button>
+        (% endif %)
+    </div>
+</li>

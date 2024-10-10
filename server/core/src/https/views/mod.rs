@@ -11,11 +11,13 @@ use axum_htmx::HxRequestGuardLayer;
 
 use kanidmd_lib::prelude::{OperationError, Uuid};
 
+use crate::https::views::admin::admin_router;
 use crate::https::{
     // extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId,
     ServerState,
 };
 
+mod admin;
 mod apps;
 mod constants;
 mod cookies;
@@ -94,7 +96,11 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 
-    Router::new().merge(unguarded_router).merge(guarded_router)
+    let admin_router = admin_router();
+    Router::new()
+        .merge(unguarded_router)
+        .merge(guarded_router)
+        .nest("/admin", admin_router)
 }
 
 struct HtmlTemplate<T>(T);

@@ -183,6 +183,19 @@ impl FromRequestParts<ServerState> for VerifiedClientInformation {
     }
 }
 
+// Mockup for accessInfo, should probably be its own non-conflicting transaction type thing like domaininforead in https://github.com/kanidm/kanidm/pull/3016/files
+pub struct AccessInfo {
+    pub has_any_admin_access: bool,
+}
+
+impl AccessInfo {
+    pub fn new() -> Self {
+        AccessInfo {
+            has_any_admin_access: cfg!(feature = "ui_admin"),
+        }
+    }
+}
+
 pub struct DomainInfo(pub DomainInfoRead);
 
 #[async_trait]
