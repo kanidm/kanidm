@@ -23,7 +23,7 @@ bindaddress = "[::]:443"
 #   The path to the kanidm database.
 db_path = "/var/lib/private/kanidm/kanidm.db"
 #
-#   If you have a known filesystem, kanidm can tune the 
+#   If you have a known filesystem, kanidm can tune the
 #   database page size to match. Valid choices are:
 #   [zfs, other]
 #   If you are unsure about this leave it as the default
@@ -80,6 +80,10 @@ domain = "idm.example.com"
 #   not consistent, the server WILL refuse to start!
 #   origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
+#
+# Allowed CORS origins. This allows access to the Kanidm
+# endpoints from additional domains. Default is empty
+# cors_allow_origins = ["https://some.example.com", "https://other.example.com"]
 #
 [online_backup]
 #   The path to the output folder for online backups

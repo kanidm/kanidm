@@ -29,6 +29,8 @@ pub const IDM_ADMIN_TEST_PASSWORD: &str = "integration idm admin password";
 pub const NOT_ADMIN_TEST_USERNAME: &str = "krab_test_user";
 pub const NOT_ADMIN_TEST_PASSWORD: &str = "eicieY7ahchaoCh0eeTa";
 
+pub const TEST_CORS_ORIGIN: &str = "https://test.cors.origin";
+
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 pub use testkit_macros::test;

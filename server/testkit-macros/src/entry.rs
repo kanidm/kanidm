@@ -11,6 +11,7 @@ const ALLOWED_ATTRIBUTES: &[&str] = &[
     "db_path",
     "maximum_request",
     "trust_x_forward_for",
+    "cors_allowed_origins",
     "role",
     "output_mode",
     "log_level",

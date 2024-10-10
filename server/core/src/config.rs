@@ -489,6 +489,7 @@ pub struct Configuration {
     pub online_backup: Option<OnlineBackup>,
     pub domain: String,
     pub origin: String,
+    pub cors_allowed_origins: Option<Vec<String>>,
     pub role: ServerRole,
     pub output_mode: ConsoleOutputMode,
     pub log_level: LogLevel,
@@ -519,6 +520,9 @@ impl fmt::Display for Configuration {
         }?;
         write!(f, "max request size: {}b, ", self.maximum_request)?;
         write!(f, "trust X-Forwarded-For: {}, ", self.trust_x_forward_for)?;
+        if let Some(cao) = &self.cors_allowed_origins {
+            write!(f, "CORS allowed origins: [{}], ", cao.join(", "))?;
+        }
         write!(f, "with TLS: {}, ", self.tls_config.is_some())?;
         match &self.online_backup {
             Some(bck) => write!(
@@ -587,6 +591,7 @@ impl Configuration {
             online_backup: None,
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
+            cors_allowed_origins: None,
             output_mode: ConsoleOutputMode::default(),
             log_level: Default::default(),
             role: ServerRole::WriteReplica,
