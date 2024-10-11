@@ -1,4 +1,4 @@
-use hyper::StatusCode;
+use axum::http::StatusCode;
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
