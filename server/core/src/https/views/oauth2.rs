@@ -262,6 +262,7 @@ pub async fn view_device_get(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     Query(user_code): Query<QueryUserCode>,
 ) -> Result<Oauth2DeviceLoginView, (StatusCode, String)> {
+    // TODO: if we have a valid auth session and the user code is valid, prompt the user to allow the session to start
     Ok(Oauth2DeviceLoginView {
         domain_custom_image: state.qe_r_ref.domain_info_read().has_custom_image(),
         title: "Device Login".to_string(),
@@ -272,6 +273,7 @@ pub async fn view_device_get(
 #[derive(Deserialize)]
 pub struct Oauth2DeviceLoginForm {
     user_code: String,
+    confirm_login: bool,
 }
 
 #[axum::debug_handler]
@@ -279,8 +281,12 @@ pub async fn view_device_post(
     State(_state): State<ServerState>,
     Extension(_kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
-    Form(user_code): Form<Oauth2DeviceLoginForm>,
+    Form(form): Form<Oauth2DeviceLoginForm>,
 ) -> impl IntoResponse {
-    debug!("User code: {}", user_code.user_code);
+    debug!("User code: {}", form.user_code);
+    debug!("User confirmed: {}", form.confirm_login);
+
+    // TODO: when the user POST's this form we need to check the user code and see if it's valid
+    // then start a login flow which ends up authorizing the token at the end.
     (StatusCode::NOT_IMPLEMENTED, "Not implemented yet").into_response()
 }
