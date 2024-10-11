@@ -16,6 +16,7 @@ use kanidmd_lib::prelude::{Attribute, IDM_ALL_ACCOUNTS};
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
+use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::Url;
 
 use kanidm_client::KanidmClient;
@@ -205,7 +206,10 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         rsclient.make_url("/ui/oauth2")
     );
 
-    assert_eq!(discovery.token_endpoint, rsclient.make_url("/oauth2/token"));
+    assert_eq!(
+        discovery.token_endpoint,
+        rsclient.make_url(OAUTH2_TOKEN_ENDPOINT)
+    );
 
     assert!(
         discovery.userinfo_endpoint
@@ -325,7 +329,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     .into();
 
     let response = client
-        .post(rsclient.make_url("/oauth2/token"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
         .basic_auth("test_integration", Some(client_secret.clone()))
         .form(&form_req)
         .send()
@@ -361,7 +365,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     };
 
     let response = client
-        .post(rsclient.make_url("/oauth2/token/introspect"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
         .basic_auth("test_integration", Some(client_secret.clone()))
         .form(&intr_request)
         .send()
@@ -446,7 +450,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     .into();
 
     let response = client
-        .post(rsclient.make_url("/oauth2/token"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
         .basic_auth("test_integration", Some(client_secret.clone()))
         .form(&form_req)
         .send()
@@ -466,8 +470,9 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         token_type_hint: None,
     };
 
+    let make_url = rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT);
     let response = client
-        .post(rsclient.make_url("/oauth2/token/introspect"))
+        .post(make_url)
         .basic_auth("test_integration", Some(client_secret))
         .form(&intr_request)
         .send()
@@ -718,7 +723,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     };
 
     let response = client
-        .post(rsclient.make_url("/oauth2/token"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
         .form(&form_req)
         .send()
         .await
@@ -821,7 +826,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(rsclient.make_url("/oauth2/token"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
         .form(&serde_json::json!({}))
         // .bearer_auth(atr.access_token.clone())
         .send()
@@ -832,7 +837,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 
     // test for a bad-auth request
     let response = client
-        .post(rsclient.make_url("/oauth2/token/introspect"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
         .form(&serde_json::json!({ "token": "lol" }))
         .send()
         .await
@@ -856,7 +861,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(rsclient.make_url("/oauth2/token/revoke"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_REVOKE_ENDPOINT))
         .form(&serde_json::json!({}))
         .bearer_auth("lolol")
         .send()
@@ -867,7 +872,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a invalid format request on token
     let response = client
-        .post(rsclient.make_url("/oauth2/token/revoke"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_REVOKE_ENDPOINT))
         .json("")
         .bearer_auth("lolol")
         .send()
@@ -879,7 +884,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(rsclient.make_url("/oauth2/token/revoke"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_REVOKE_ENDPOINT))
         .form(&serde_json::json!({}))
         .bearer_auth("Basic lolol")
         .send()
@@ -890,7 +895,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     // test for a bad-body request on token
     let response = client
-        .post(rsclient.make_url("/oauth2/token/revoke"))
+        .post(rsclient.make_url(OAUTH2_TOKEN_REVOKE_ENDPOINT))
         .body(serde_json::json!({}).to_string())
         .bearer_auth("Basic lolol")
         .send()
