@@ -1,24 +1,35 @@
 (% extends "base.html" %)
 
 (% block body %)
-<label for="user_code" class="form-label">Please enter the code provided</label>
-<form id="login" action="/ui/oauth2/device" method="post">
-    <div class="input-group mb-3">
-        <input
-            autofocus=true
-            class="autofocus form-control"
-            id="user_code"
-            name="user_code"
-            type="text"
-            autocomplete
-            value="(( user_code ))"
-            required=true />
+<main id="main" class="flex-shrink-0 form-signin">
+    <center>
+        (% if domain_custom_image %)
+        <img src="/ui/images/domain" alt="Kanidm" class="kanidm_logo" />
+        (% else %)
+        <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo" />
+        (% endif %)
+        <br />
+        <label for="user_code" class="form-label">Please enter the code
+            provided to log in!</label>
+        <form id="login" action="/ui/oauth2/device" method="post">
+            <div class="input-group mb-3">
+                <input
+                    autofocus=true
+                    class="autofocus form-control"
+                    id="user_code"
+                    name="user_code"
+                    type="text"
+                    autocomplete
+                    value="(( user_code ))"
+                    required=true />
 
-    </div>
-    <div class="input-group mb-3 justify-content-md-center">
-        <button
-            type="submit"
-            class="btn btn-dark">Continue</button>
-    </div>
-</form>
+            </div>
+            <div class="input-group mb-3 justify-content-md-center">
+                <button
+                    type="submit"
+                    class="btn btn-dark">Continue</button>
+            </div>
+        </form>
+    </center>
+</main>
 (% endblock %)

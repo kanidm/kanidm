@@ -245,6 +245,7 @@ pub async fn view_consent_post(
 #[derive(Template, Debug, Clone)]
 #[template(path = "oauth2_device_login.html")]
 pub struct Oauth2DeviceLoginView {
+    domain_custom_image: bool,
     title: String,
     user_code: String,
 }
@@ -256,12 +257,13 @@ pub(crate) struct QueryUserCode {
 
 #[axum::debug_handler]
 pub async fn view_device_get(
-    State(_state): State<ServerState>,
+    State(state): State<ServerState>,
     Extension(_kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     Query(user_code): Query<QueryUserCode>,
 ) -> Result<Oauth2DeviceLoginView, (StatusCode, String)> {
     Ok(Oauth2DeviceLoginView {
+        domain_custom_image: state.qe_r_ref.domain_info_read().has_custom_image(),
         title: "Device Login".to_string(),
         user_code: user_code.user_code.unwrap_or("".to_string()),
     })
