@@ -3,13 +3,11 @@ use axum::routing::{get, post};
 use axum::Router;
 use axum_htmx::HxRequestGuardLayer;
 
-mod admin;
 mod accounts;
 mod groups;
 
 pub fn admin_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
-        .route("/", get(admin::view_admin_get))
         .route("/accounts", get(accounts::view_accounts_get))
         .route("/groups", get(groups::view_groups_get))
         .route("/groups/unlock", get(groups::view_groups_unlock_get))
