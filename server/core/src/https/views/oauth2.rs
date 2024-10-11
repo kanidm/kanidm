@@ -300,11 +300,11 @@ pub async fn view_device_post(
     Extension(_kopid): Extension<KOpId>,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     Form(form): Form<Oauth2DeviceLoginForm>,
-) -> impl IntoResponse {
+) -> Result<String, (StatusCode, &'static str)> {
     debug!("User code: {}", form.user_code);
     debug!("User confirmed: {}", form.confirm_login);
 
     // TODO: when the user POST's this form we need to check the user code and see if it's valid
     // then start a login flow which ends up authorizing the token at the end.
-    (StatusCode::NOT_IMPLEMENTED, "Not implemented yet").into_response()
+    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented yet"))
 }
