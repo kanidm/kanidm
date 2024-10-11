@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::ServerState;
@@ -5,11 +7,13 @@ use crate::https::extractors::VerifiedClientInformation;
 use axum::{
     body::Body,
     extract::{Path, Query, State},
-    http::header::{
-        ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
-        WWW_AUTHENTICATE,
+    http::{
+        header::{
+            ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
+            WWW_AUTHENTICATE,
+        },
+        HeaderValue, StatusCode,
     },
-    http::{HeaderValue, StatusCode},
     middleware::from_fn,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -17,11 +21,13 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use compact_jwt::{JwkKeySet, OidcToken};
-use kanidm_proto::constants::uri::{
-    OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
-};
+use hashbrown::HashMap;
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::AuthorisationResponse;
+use kanidm_proto::{
+    constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT},
+    oauth2::DeviceAuthorizationResponse,
+};
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -30,6 +36,9 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+use serde_with::formats::CommaSeparator;
+use serde_with::{serde_as, StringWithSeparator};
+
 use uri::{
     OAUTH2_AUTHORISE_DEVICE, OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
     OAUTH2_TOKEN_REVOKE_ENDPOINT,
@@ -728,36 +737,36 @@ pub async fn oauth2_preflight_options() -> Response {
         .into_response()
 }
 
+#[serde_as]
 #[derive(Deserialize, Debug, Serialize)]
 pub(crate) struct DeviceFlowForm {
     client_id: String,
-    scope: Option<String>,
+    #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
+    scope: Option<BTreeSet<String>>,
+    #[serde(flatten)]
+    extra: HashMap<String, String>,
 }
 
-/// Device flow! RFC8628.
+#[axum::debug_handler]
+/// Device flow! [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)
+#[instrument(level = "info", skip(state, kopid, client_auth_info))]
 pub(crate) async fn oauth2_authorise_device_post(
-    State(_state): State<ServerState>,
-    Extension(_kopid): Extension<KOpId>,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Form(form): Form<DeviceFlowForm>,
-) -> impl IntoResponse {
-    debug!("TODO: Device Flow");
-    debug!("form: {:?}", form);
-    (StatusCode::NOT_IMPLEMENTED, "Not yet!").into_response()
-    // let res = state
-    //     .qe_w_ref
-    //     .handle_oauth2_device_authorise(form.client_id, form.scope)
-    //     .await;
-
-    // match res {
-    //     Ok(device_res) => (
-    //         StatusCode::OK,
-    //         [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
-    //         Json(device_res),
-    //     )
-    //         .into_response(),
-    //     Err(e) => HTTPOauth2Error(e).into_response(),
-    // }
+) -> Result<Json<DeviceAuthorizationResponse>, HTTPOauth2Error> {
+    state
+        .qe_w_ref
+        .handle_oauth2_device_flow_start(
+            client_auth_info,
+            &form.client_id,
+            &form.scope,
+            kopid.eventid,
+        )
+        .await
+        .map(Json::from)
+        .map_err(HTTPOauth2Error)
 }
 
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
