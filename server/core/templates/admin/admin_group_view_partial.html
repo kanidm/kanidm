@@ -30,7 +30,7 @@ Groups Management
 <label class="mt-3 fw-bold">Emails</label>
 <form hx-validate="true" hx-ext="bs-validation">
 (% if group.mails.len() == 0 %)
-    <p>none</p>
+    <p>There are no email addresses associated with this group.</p>
 (% else %)
     <ol class="list-group col-12 col-md-8 col-lg-6">
         (% for mail in group.mails %)
@@ -61,7 +61,7 @@ Groups Management
                     </button>
                 </div>
                 <div class="invalid-feedback">
-                    Please choose a valid email.
+                    Please enter a valid email address.
                 </div>
             </li>
         (% endif %)
@@ -72,11 +72,12 @@ Groups Management
 <label class="mt-3 fw-bold">Account Policy (ACP)</label>
 <div>
 (% if group.acp.enabled %)
+<!-- TODO: implement ACP view for groups -->
     Nothing here yet 🙈🙈
 (% else %)
     Currently disabled.
     (% if can_edit %)
-        <button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Currently no known way to disable again, ok to continue." class="btn btn-success d-block">Enable</button>
+        <button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Kanidm does not currently support removing these policies, are you sure you want to continue?" class="btn btn-success d-block">Enable</button>
     (% endif %)
 (% endif %)
 </div>

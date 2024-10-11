@@ -25,7 +25,7 @@ Groups Management
             <div class="buttons float-end">
                 (% if can_rw %)
                     <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/edit" type="button" class="btn btn-outline-secondary">Edit</button>
-                    <button hx-target="#main" hx-post="/ui/admin/group/(( group.uuid ))/delete" hx-confirm="Are you sure you want to delete group (( group.name )) ?" type="button" class="btn btn-danger">Delete</button>
+                    <button hx-target="#main" hx-post="/ui/admin/group/(( group.uuid ))/delete" hx-confirm="Are you sure you want to delete group (( group.name ))?" type="button" class="btn btn-danger">Delete</button>
                 (% endif %)
             </div>
         </li>
