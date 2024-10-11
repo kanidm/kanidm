@@ -1033,7 +1033,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             hasher.update(user_code.as_bytes());
             hasher.update(expiry.as_secs().to_be_bytes());
             let hash = hasher.finalize();
-            Ok(general_purpose::STANDARD_NO_PAD.encode(&hash))
+            Ok(general_purpose::STANDARD_NO_PAD.encode(hash))
         }
 
         fn gen_user_code() -> Result<String, Oauth2Error> {
