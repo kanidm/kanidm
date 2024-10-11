@@ -32,6 +32,7 @@ struct ConsentRequestView {
     // scopes: BTreeSet<String>,
     pii_scopes: BTreeSet<String>,
     consent_token: String,
+    redirect: Option<String>,
 }
 
 #[derive(Template)]
@@ -55,19 +56,18 @@ pub async fn view_resume_get(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
-) -> Response {
+) -> Result<Response, UnrecoverableErrorView> {
     let maybe_auth_req =
         cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
     if let Some(auth_req) = maybe_auth_req {
-        oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
+        Ok(oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await)
     } else {
         error!("unable to resume session, no auth_req was found in the cookie");
-        UnrecoverableErrorView {
+        Err(UnrecoverableErrorView {
             err_code: OperationError::InvalidState,
             operation_id: kopid.eventid,
-        }
-        .into_response()
+        })
     }
 }
 
@@ -129,6 +129,7 @@ async fn oauth2_auth_req(
                 // scopes,
                 pii_scopes,
                 consent_token,
+                redirect: None,
             }
             .into_response()
         }
@@ -186,6 +187,9 @@ async fn oauth2_auth_req(
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConsentForm {
     consent_token: String,
+    #[serde(default)]
+    #[allow(dead_code)] // TODO: do smoething with this
+    redirect: Option<String>,
 }
 
 pub async fn view_consent_post(
@@ -194,7 +198,7 @@ pub async fn view_consent_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(consent_form): Form<ConsentForm>,
-) -> Response {
+) -> Result<Response, UnrecoverableErrorView> {
     let res = state
         .qe_w_ref
         .handle_oauth2_authorise_permit(client_auth_info, consent_form.consent_token, kopid.eventid)
@@ -208,23 +212,38 @@ pub async fn view_consent_post(
         }) => {
             let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
-            (
-                jar,
-                [
-                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
-                    (
-                        ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                        redirect_uri.origin().ascii_serialization(),
-                    ),
-                ],
-                Redirect::to(redirect_uri.as_str()),
-            )
-                .into_response()
+            if let Some(redirect) = consent_form.redirect {
+                Ok((
+                    jar,
+                    [
+                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (
+                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            redirect_uri.origin().ascii_serialization(),
+                        ),
+                    ],
+                    Redirect::to(&redirect),
+                )
+                    .into_response())
+            } else {
+                redirect_uri
+                    .query_pairs_mut()
+                    .clear()
+                    .append_pair("state", &state)
+                    .append_pair("code", &code);
+                Ok((
+                    jar,
+                    [
+                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (
+                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            redirect_uri.origin().ascii_serialization(),
+                        ),
+                    ],
+                    Redirect::to(redirect_uri.as_str()),
+                )
+                    .into_response())
+            }
         }
         Err(err_code) => {
             error!(
@@ -233,11 +252,10 @@ pub async fn view_consent_post(
                 &err_code.to_string()
             );
 
-            UnrecoverableErrorView {
+            Err(UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
-            }
-            .into_response()
+            })
         }
     }
 }
