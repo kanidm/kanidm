@@ -30,3 +30,4 @@ tokio = { workspace = true, features = ["full"] }
 url = { workspace = true }
 tracing = { workspace = true }
 sketching = { workspace = true }
+base64.workspace = true

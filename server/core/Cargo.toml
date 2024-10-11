@@ -20,7 +20,7 @@ ui_htmx = []
 
 [dependencies]
 async-trait = { workspace = true }
-askama = { workspace = true }
+askama = { workspace = true, features = ["with-axum"] }
 askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }

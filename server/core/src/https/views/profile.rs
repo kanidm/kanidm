@@ -56,7 +56,6 @@ pub(crate) async fn view_profile_get(
     })
 }
 
-// #[axum::debug_handler]
 pub(crate) async fn view_profile_unlock_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,

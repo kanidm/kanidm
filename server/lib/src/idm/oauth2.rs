@@ -12,9 +12,8 @@ use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use base64::{engine::general_purpose, Engine as _};
 use hashbrown::HashSet;
-
-use ::base64::{engine::general_purpose, Engine as _};
 
 pub use compact_jwt::{compact::JwkKeySet, OidcToken};
 use compact_jwt::{
@@ -41,7 +40,7 @@ use kanidm_proto::oauth2::{
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
-use serde_with::{base64, formats, serde_as};
+use serde_with::{formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
@@ -134,7 +133,9 @@ struct ConsentToken {
     // CSRF
     pub state: String,
     // The S256 code challenge.
-    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    #[serde_as(
+        as = "Option<serde_with::base64::Base64<serde_with::base64::UrlSafe, formats::Unpadded>>"
+    )]
     pub code_challenge: Option<Vec<u8>>,
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
@@ -154,7 +155,9 @@ struct TokenExchangeCode {
     pub session_id: Uuid,
 
     // The S256 code challenge.
-    #[serde_as(as = "Option<base64::Base64<base64::UrlSafe, formats::Unpadded>>")]
+    #[serde_as(
+        as = "Option<serde_with::base64::Base64<serde_with::base64::UrlSafe, formats::Unpadded>>"
+    )]
     pub code_challenge: Option<Vec<u8>>,
     // The original redirect uri
     pub redirect_uri: Url,
@@ -1022,7 +1025,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         );
 
         let mut verification_uri = self.oauth2rs.inner.origin.clone();
-        verification_uri.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
+        verification_uri.set_path(uri::OAUTH2_DEVICE_LOGIN);
 
         // device code is a combination of the inputs
         fn gen_device_code(user_code: &str, expiry: &Duration) -> Result<String, Oauth2Error> {
@@ -1030,13 +1033,33 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             hasher.update(user_code.as_bytes());
             hasher.update(expiry.as_secs().to_be_bytes());
             let hash = hasher.finalize();
-            String::from_utf8(hash.to_vec())
-                .map_err(|_err| Oauth2Error::ServerError(OperationError::CryptographyError))
+            Ok(general_purpose::STANDARD_NO_PAD.encode(&hash))
         }
 
-        let user_code = "hello-world".to_string();
+        fn gen_user_code() -> Result<String, Oauth2Error> {
+            use rand::Rng;
+            let mut rng = rand::thread_rng();
+            let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+                .chars()
+                .collect();
+
+            let mut result = String::new();
+            for _ in 0..4 {
+                result.push(chars[rng.gen_range(0..chars.len())]);
+            }
+            result.push('-');
+            for _ in 0..4 {
+                result.push(chars[rng.gen_range(0..chars.len())]);
+            }
+
+            Ok(result)
+        }
+
+        let user_code = gen_user_code()
+            .inspect_err(|err| error!("Failed to generate a user code! {:?}", err))?;
         let expiry = Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY) + duration_from_epoch_now();
-        let device_code = gen_device_code(&user_code, &expiry)?;
+        let device_code = gen_device_code(&user_code, &expiry)
+            .inspect_err(|err| error!("Failed to generate a device code! {:?}", err))?;
 
         info!(
             "verification_origin={} expiry={:?}",

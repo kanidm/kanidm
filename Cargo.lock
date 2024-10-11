@@ -3294,6 +3294,7 @@ name = "kanidm_device_flow"
 version = "1.4.0-dev"
 dependencies = [
  "anyhow",
+ "base64 0.22.1",
  "kanidm_proto",
  "oauth2",
  "reqwest 0.12.8",

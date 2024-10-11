@@ -1,3 +1,4 @@
+use hyper::StatusCode;
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
@@ -239,4 +240,45 @@ pub async fn view_consent_post(
             .into_response()
         }
     }
+}
+
+#[derive(Template, Debug, Clone)]
+#[template(path = "oauth2_device_login.html")]
+pub struct Oauth2DeviceLoginView {
+    title: String,
+    user_code: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub(crate) struct QueryUserCode {
+    pub user_code: Option<String>,
+}
+
+#[axum::debug_handler]
+pub async fn view_device_get(
+    State(_state): State<ServerState>,
+    Extension(_kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Query(user_code): Query<QueryUserCode>,
+) -> Result<Oauth2DeviceLoginView, (StatusCode, String)> {
+    Ok(Oauth2DeviceLoginView {
+        title: "Device Login".to_string(),
+        user_code: user_code.user_code.unwrap_or("".to_string()),
+    })
+}
+
+#[derive(Deserialize)]
+pub struct Oauth2DeviceLoginForm {
+    user_code: String,
+}
+
+#[axum::debug_handler]
+pub async fn view_device_post(
+    State(_state): State<ServerState>,
+    Extension(_kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Form(user_code): Form<Oauth2DeviceLoginForm>,
+) -> impl IntoResponse {
+    debug!("User code: {}", user_code.user_code);
+    (StatusCode::NOT_IMPLEMENTED, "Not implemented yet").into_response()
 }

@@ -95,6 +95,10 @@ impl DomainInfo {
     pub fn image(&self) -> Option<&ImageValue> {
         self.d_image.as_ref()
     }
+
+    pub fn has_custom_image(&self) -> bool {
+        self.d_image.is_some()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
