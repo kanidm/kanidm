@@ -1,0 +1,25 @@
+[package]
+name = "kanidm_device_flow"
+default-run = "kanidm_device_flow"
+description = "Kanidm Device Flow Client"
+documentation = "https://kanidm.github.io/kanidm/stable/"
+version = { workspace = true }
+authors = { workspace = true }
+rust-version = { workspace = true }
+edition = { workspace = true }
+license = { workspace = true }
+homepage = { workspace = true }
+repository = { workspace = true }
+
+[features]
+
+[[bin]]
+name = "kanidm_device_flow"
+path = "src/main.rs"
+
+[dependencies]
+kanidm_proto = { workspace = true }
+anyhow = { workspace = true }
+oauth2 = "4.4.2"
+tokio = { workspace = true, features = ["full"] }
+url = { workspace = true }

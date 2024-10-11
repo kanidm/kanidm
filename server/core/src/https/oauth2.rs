@@ -30,6 +30,10 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+use uri::{
+    OAUTH2_AUTHORISE_DEVICE, OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
+    OAUTH2_TOKEN_REVOKE_ENDPOINT,
+};
 
 // TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -724,6 +728,38 @@ pub async fn oauth2_preflight_options() -> Response {
         .into_response()
 }
 
+#[derive(Deserialize, Debug, Serialize)]
+pub(crate) struct DeviceFlowForm {
+    client_id: String,
+    scope: Option<String>,
+}
+
+/// Device flow! RFC8628.
+pub(crate) async fn oauth2_authorise_device_post(
+    State(_state): State<ServerState>,
+    Extension(_kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Form(form): Form<DeviceFlowForm>,
+) -> impl IntoResponse {
+    debug!("TODO: Device Flow");
+    debug!("form: {:?}", form);
+    (StatusCode::NOT_IMPLEMENTED, "Not yet!").into_response()
+    // let res = state
+    //     .qe_w_ref
+    //     .handle_oauth2_device_authorise(form.client_id, form.scope)
+    //     .await;
+
+    // match res {
+    //     Ok(device_res) => (
+    //         StatusCode::OK,
+    //         [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+    //         Json(device_res),
+    //     )
+    //         .into_response(),
+    //     Err(e) => HTTPOauth2Error(e).into_response(),
+    // }
+}
+
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
     let openid_router = Router::new()
@@ -775,17 +811,20 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        .route(OAUTH2_AUTHORISE_DEVICE, post(oauth2_authorise_device_post))
+        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/token",
+            OAUTH2_TOKEN_ENDPOINT,
             post(oauth2_token_post).options(oauth2_preflight_options),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/token/introspect",
+            OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
             post(oauth2_token_introspect_post),
         )
-        .route("/oauth2/token/revoke", post(oauth2_token_revoke_post))
+        .route(OAUTH2_TOKEN_REVOKE_ENDPOINT, post(oauth2_token_revoke_post))
         .merge(openid_router)
         .with_state(state)
         .layer(from_fn(super::middleware::caching::dont_cache_me))

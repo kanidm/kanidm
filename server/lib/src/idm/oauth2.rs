@@ -41,6 +41,7 @@ use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
+use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{Origin, Url};
 
 use crate::idm::account::Account;
@@ -628,13 +629,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                 authorization_endpoint.set_path("/ui/oauth2");
 
                 let mut token_endpoint = self.inner.origin.clone();
-                token_endpoint.set_path("/oauth2/token");
+                token_endpoint.set_path(uri::OAUTH2_TOKEN_ENDPOINT);
 
                 let mut revocation_endpoint = self.inner.origin.clone();
-                revocation_endpoint.set_path("/oauth2/token/revoke");
+                revocation_endpoint.set_path(OAUTH2_TOKEN_REVOKE_ENDPOINT);
 
                 let mut introspection_endpoint = self.inner.origin.clone();
-                introspection_endpoint.set_path("/oauth2/token/introspect");
+                introspection_endpoint.set_path(OAUTH2_TOKEN_INTROSPECT_ENDPOINT);
 
                 let mut userinfo_endpoint = self.inner.origin.clone();
                 userinfo_endpoint.set_path(&format!("/oauth2/openid/{name}/userinfo"));
@@ -2707,6 +2708,7 @@ mod tests {
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
+    use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
     use compact_jwt::{
         compact::JwkUse, crypto::JwsRs256Verifier, dangernoverify::JwsDangerReleaseWithoutVerify,
@@ -4271,7 +4273,12 @@ mod tests {
         );
 
         assert!(
-            discovery.token_endpoint == Url::parse("https://idm.example.com/oauth2/token").unwrap()
+            discovery.token_endpoint
+                == Url::parse(&format!(
+                    "https://idm.example.com{}",
+                    uri::OAUTH2_TOKEN_ENDPOINT
+                ))
+                .unwrap()
         );
 
         assert!(
@@ -4319,7 +4326,13 @@ mod tests {
 
         assert!(
             discovery.revocation_endpoint
-                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+                == Some(
+                    Url::parse(&format!(
+                        "https://idm.example.com{}",
+                        OAUTH2_TOKEN_REVOKE_ENDPOINT
+                    ))
+                    .unwrap()
+                )
         );
         assert!(
             discovery.revocation_endpoint_auth_methods_supported
@@ -4331,7 +4344,13 @@ mod tests {
 
         assert!(
             discovery.introspection_endpoint
-                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+                == Some(
+                    Url::parse(&format!(
+                        "https://idm.example.com{}",
+                        kanidm_proto::constants::uri::OAUTH2_TOKEN_INTROSPECT_ENDPOINT
+                    ))
+                    .unwrap()
+                )
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
@@ -4507,7 +4526,13 @@ mod tests {
         // Extensions
         assert!(
             discovery.revocation_endpoint
-                == Some(Url::parse("https://idm.example.com/oauth2/token/revoke").unwrap())
+                == Some(
+                    Url::parse(&format!(
+                        "https://idm.example.com{}",
+                        OAUTH2_TOKEN_REVOKE_ENDPOINT
+                    ))
+                    .unwrap()
+                )
         );
         assert!(
             discovery.revocation_endpoint_auth_methods_supported
@@ -4519,7 +4544,13 @@ mod tests {
 
         assert!(
             discovery.introspection_endpoint
-                == Some(Url::parse("https://idm.example.com/oauth2/token/introspect").unwrap())
+                == Some(
+                    Url::parse(&format!(
+                        "https://idm.example.com{}",
+                        OAUTH2_TOKEN_INTROSPECT_ENDPOINT
+                    ))
+                    .unwrap()
+                )
         );
         assert!(
             discovery.introspection_endpoint_auth_methods_supported
