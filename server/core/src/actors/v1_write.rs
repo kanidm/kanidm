@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use std::iter;
 
 use compact_jwt::JweCompact;
@@ -1700,5 +1701,26 @@ impl QueryServerWriteV1 {
         idms_prox_write
             .oauth2_token_revoke(&client_auth_info, &intr_req, ct)
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
+    }
+
+    pub async fn handle_oauth2_device_flow_start(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        client_id: &str,
+        scope: &Option<BTreeSet<String>>,
+        eventid: Uuid,
+    ) -> Result<kanidm_proto::oauth2::DeviceAuthorizationResponse, Oauth2Error> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self
+            .idms
+            .proxy_write(ct)
+            .await
+            .map_err(Oauth2Error::ServerError)?;
+        idms_prox_write
+            .handle_oauth2_start_device_flow(client_auth_info, client_id, scope, eventid)
+            .and_then(|res| {
+                idms_prox_write.commit().map_err(Oauth2Error::ServerError)?;
+                Ok(res)
+            })
     }
 }

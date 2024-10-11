@@ -258,6 +258,7 @@ pub const KVERSION: &str = "X-KANIDM-VERSION";
 pub const X_FORWARDED_FOR: &str = "x-forwarded-for";
 
 // OAuth
+pub const OAUTH2_DEVICE_CODE_SESSION: &str = "oauth2_device_code_session";
 pub const OAUTH2_RESOURCE_SERVER: &str = "oauth2_resource_server";
 pub const OAUTH2_RESOURCE_SERVER_BASIC: &str = "oauth2_resource_server_basic";
 pub const OAUTH2_RESOURCE_SERVER_PUBLIC: &str = "oauth2_resource_server_public";

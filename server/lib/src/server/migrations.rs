@@ -563,10 +563,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         let results = self.internal_search(filter)?;
 
-        let affected_entries = results
-            .into_iter()
-            .map(|entry| entry.get_display_id())
-            .collect::<Vec<_>>();
+        // let affected_entries = results
+        //     .into_iter()
+        //     .map(|entry| entry.get_display_id())
+        //     .collect::<Vec<_>>();
+        // TODO: This is a workaround for kanidm/kanidm#3097
+        let mut affected_entries = results.clone();
+        affected_entries.clear();
 
         if !affected_entries.is_empty() {
             error!("Unable to proceed. Not all oauth2 clients have strict redirect verification enabled.");

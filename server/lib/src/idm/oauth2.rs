@@ -24,6 +24,8 @@ use compact_jwt::{
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
+use itertools::Itertools;
+use kanidm_lib_crypto::sha2::{Digest, Sha256};
 use kanidm_proto::constants::*;
 
 pub use kanidm_proto::oauth2::{
@@ -33,8 +35,9 @@ pub use kanidm_proto::oauth2::{
     OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
 };
 use kanidm_proto::oauth2::{
-    AccessTokenType, ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode,
-    ResponseType, SubjectType, TokenEndpointAuthMethod,
+    AccessTokenType, ClaimType, DeviceAuthorizationResponse, DisplayValue, GrantType,
+    IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
+    OAUTH2_DEVICE_CODE_EXPIRY,
 };
 use openssl::sha;
 use serde::{Deserialize, Serialize};
@@ -73,6 +76,25 @@ pub enum Oauth2Error {
     InsufficientScope,
     // from https://datatracker.ietf.org/doc/html/rfc7009#section-2.2.1
     UnsupportedTokenType,
+    /// <https://datatracker.ietf.org/doc/html/rfc8628#section-3.5>  A variant of "authorization_pending", the authorization request is
+    ///   still pending and polling should continue, but the interval MUST
+    ///   be increased by 5 seconds for this and all subsequent requests.
+    SlowDown,
+    /// The authorization request is still pending as the end user hasn't
+    ///   yet completed the user-interaction steps (Section 3.3).  The
+    ///   client SHOULD repeat the access token request to the token
+    ///   endpoint (a process known as polling).  Before each new request,
+    ///   the client MUST wait at least the number of seconds specified by
+    ///   the "interval" parameter of the device authorization response (see
+    ///   Section 3.2), or 5 seconds if none was provided, and respect any
+    ///   increase in the polling interval required by the "slow_down"
+    ///   error.
+    AuthorizationPending,
+    /// The "device_code" has expired, and the device authorization
+    ///   session has concluded.  The client MAY commence a new device
+    ///   authorization request but SHOULD wait for user interaction before
+    ///   restarting to avoid unnecessary polling.
+    ExpiredToken,
 }
 
 impl std::fmt::Display for Oauth2Error {
@@ -92,6 +114,9 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::InvalidToken => "invalid_token",
             Oauth2Error::InsufficientScope => "insufficient_scope",
             Oauth2Error::UnsupportedTokenType => "unsupported_token_type",
+            Oauth2Error::SlowDown => "slow_down",
+            Oauth2Error::AuthorizationPending => "authorization_pending",
+            Oauth2Error::ExpiredToken => "expired_token",
         })
     }
 }
@@ -306,6 +331,30 @@ pub struct Oauth2RS {
     type_: OauthRSType,
     /// Does the RS have a custom image set? If not, we use the default.
     has_custom_image: bool,
+}
+
+impl Oauth2RS {
+    pub fn is_basic(&self) -> bool {
+        match self.type_ {
+            OauthRSType::Basic { .. } => true,
+            OauthRSType::Public { .. } => false,
+        }
+    }
+
+    pub fn is_pkce(&self) -> bool {
+        match self.type_ {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public { .. } => true,
+        }
+    }
+
+    /// Does this RS require PKCE?
+    pub fn require_pkce(&self) -> bool {
+        match &self.type_ {
+            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
+            OauthRSType::Public { .. } => true,
+        }
+    }
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -820,7 +869,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // submit the Modify::Remove. This way it's inserted into the entry changelog
         // and when replication converges the session is actually removed.
 
-        let modlist = ModifyList::new_list(vec![Modify::Removed(
+        let modlist: ModifyList<ModifyInvalid> = ModifyList::new_list(vec![Modify::Removed(
             Attribute::OAuth2Session,
             PartialValue::Refer(session_id),
         )]);
@@ -927,7 +976,99 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 refresh_token,
                 scope,
             } => self.check_oauth2_token_refresh(o2rs, refresh_token, scope.as_ref(), ct),
+            GrantTypeReq::DeviceCode { device_code, scope } => {
+                self.check_oauth2_device_code_status(device_code, scope)
+            }
         }
+    }
+
+    #[instrument(level = "info", skip(self))]
+    pub fn handle_oauth2_start_device_flow(
+        &mut self,
+        client_auth_info: ClientAuthInfo,
+        client_id: &str,
+        scope: &Option<BTreeSet<String>>,
+        eventid: Uuid,
+    ) -> Result<DeviceAuthorizationResponse, Oauth2Error> {
+        // DANGER: Why do we have to do this? During the use of qs for internal search
+        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
+        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
+        // safe however because no element of the search or write process calls the oauth2rs
+        // excepting for this idm layer within a single thread, meaning that stripping the
+        // lifetime here is safe since we are the sole accessor.
+        let o2rs: &Oauth2RS = unsafe {
+            let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+                admin_warn!("Invalid OAuth2 client_id {}", client_id);
+                Oauth2Error::AuthenticationRequired
+            })?;
+            &*(s as *const _)
+        };
+
+        info!("Got Client: {:?}", o2rs);
+
+        if !o2rs.require_pkce() {
+            security_info!("Device flow is only available for PKCE-enabled clients");
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        info!(
+            "Starting device flow for client_id={} scopes={} source={:?}",
+            client_id,
+            scope
+                .as_ref()
+                .map(|s| s.iter().cloned().collect::<Vec<_>>().into_iter().join(","))
+                .unwrap_or("[]".to_string()),
+            client_auth_info.source
+        );
+
+        let mut verification_uri = self.oauth2rs.inner.origin.clone();
+        verification_uri.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
+
+        // device code is a combination of the inputs
+        fn gen_device_code(user_code: &str, expiry: &Duration) -> Result<String, Oauth2Error> {
+            let mut hasher = Sha256::new();
+            hasher.update(user_code.as_bytes());
+            hasher.update(expiry.as_secs().to_be_bytes());
+            let hash = hasher.finalize();
+            String::from_utf8(hash.to_vec())
+                .map_err(|_err| Oauth2Error::ServerError(OperationError::CryptographyError))
+        }
+
+        let user_code = "hello-world".to_string();
+        let expiry = Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY) + duration_from_epoch_now();
+        let device_code = gen_device_code(&user_code, &expiry)?;
+
+        info!(
+            "verification_origin={} expiry={:?}",
+            verification_uri.to_string(),
+            expiry
+        );
+
+        // TODO: store user_code / expiry / client_id / device_code in the backend, needs to be checked on the token exchange.
+
+        Ok(DeviceAuthorizationResponse::new(
+            verification_uri.to_string(),
+            device_code,
+            user_code,
+        ))
+    }
+
+    #[instrument(level = "info", skip(self))]
+    fn check_oauth2_device_code_status(
+        &mut self,
+        device_code: &str,
+        scope: &Option<BTreeSet<String>>,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        // TODO: check the device code is valid, do the needful
+
+        error!(
+            "haven't done the device grant yet! Got device_code={} scope={:?}",
+            device_code, scope
+        );
+        Err(Oauth2Error::AuthorizationPending)
+
+        // if it's an expired code, then just delete it from the db and return an error.
+        // Err(Oauth2Error::ExpiredToken)
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -1054,11 +1195,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })
             })?;
 
-        let require_pkce = match &o2rs.type_ {
-            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public { .. } => true,
-        };
-
         // If we have a verifier present, we MUST assert that a code challenge is present!
         // It is worth noting here that code_xchg is *server issued* and encrypted, with
         // a short validity period. The client controlled value is in token_req.code_verifier
@@ -1079,7 +1215,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 );
                 return Err(Oauth2Error::InvalidRequest);
             }
-        } else if require_pkce {
+        } else if o2rs.require_pkce() {
             security_info!(
                 "PKCE code verification failed - no code challenge present in PKCE enforced mode"
             );
@@ -1608,16 +1744,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         })?;
 
         // check the secret.
-        match &o2rs.type_ {
-            OauthRSType::Basic { authz_secret, .. } => {
-                if authz_secret != &secret {
-                    security_info!("Invalid OAuth2 client_id secret");
-                    return Err(OperationError::InvalidSessionState);
-                }
+        if let OauthRSType::Basic { authz_secret, .. } = &o2rs.type_ {
+            if o2rs.is_basic() && authz_secret != &secret {
+                security_info!("Invalid OAuth2 secret for client_id={}", client_id);
+                return Err(OperationError::InvalidSessionState);
             }
-            // Relies on the token to be valid.
-            OauthRSType::Public { .. } => {}
-        };
+        }
 
         o2rs.token_fernet
             .decrypt(token)
@@ -1734,13 +1866,8 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             return Err(Oauth2Error::InvalidOrigin);
         }
 
-        let require_pkce = match &o2rs.type_ {
-            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public { .. } => true,
-        };
-
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
-            if !require_pkce {
+            if !o2rs.require_pkce() {
                 security_info!(?o2rs.name, "Insecure rs configuration - pkce is not enforced, but rs is requesting it!");
             }
             // CodeChallengeMethod must be S256
@@ -1749,7 +1876,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 return Err(Oauth2Error::InvalidRequest);
             }
             Some(pkce_request.code_challenge.clone())
-        } else if require_pkce {
+        } else if o2rs.require_pkce() {
             security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
             return Err(Oauth2Error::InvalidRequest);
         } else {
@@ -2388,12 +2515,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
-        let require_pkce = match &o2rs.type_ {
-            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public { .. } => true,
-        };
-
-        let code_challenge_methods_supported = if require_pkce {
+        let code_challenge_methods_supported = if o2rs.require_pkce() {
             vec![PkceAlg::S256]
         } else {
             Vec::with_capacity(0)
@@ -2464,12 +2586,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let claims_supported = None;
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
-        let require_pkce = match &o2rs.type_ {
-            OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
-            OauthRSType::Public { .. } => true,
-        };
-
-        let code_challenge_methods_supported = if require_pkce {
+        let code_challenge_methods_supported = if o2rs.require_pkce() {
             vec![PkceAlg::S256]
         } else {
             Vec::with_capacity(0)

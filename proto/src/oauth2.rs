@@ -8,6 +8,11 @@ use serde_with::{base64, formats, serde_as, skip_serializing_none, StringWithSep
 use url::Url;
 use uuid::Uuid;
 
+/// How long a device code is valid for.
+pub const OAUTH2_DEVICE_CODE_EXPIRY: u64 = 300;
+/// How often a client device can query the status of the token
+pub const OAUTH2_DEVICE_CODE_INTERVAL: u64 = 5;
+
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeChallengeMethod {
     // default to plain if not requested as S256. Reject the auth?
@@ -100,6 +105,12 @@ pub enum GrantTypeReq {
     RefreshToken {
         refresh_token: String,
         #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
+        scope: Option<BTreeSet<String>>,
+    },
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:device_code")]
+    DeviceCode {
+        device_code: String,
+        // #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
         scope: Option<BTreeSet<String>>,
     },
 }
@@ -502,6 +513,32 @@ pub struct ErrorResponse {
     pub error: String,
     pub error_description: Option<String>,
     pub error_uri: Option<Url>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DeviceAuthorizationResponse {
+    device_code: String,
+    user_code: String,
+    verification_uri: String,
+    verification_uri_complete: Option<String>,
+    expires_in: u64,
+    interval: u64,
+}
+
+impl DeviceAuthorizationResponse {
+    pub fn new(verification_uri: String, device_code: String, user_code: String) -> Self {
+        Self {
+            verification_uri_complete: Some(format!(
+                "{}/?user_code={}",
+                verification_uri, user_code
+            )),
+            device_code,
+            user_code,
+            verification_uri,
+            expires_in: OAUTH2_DEVICE_CODE_EXPIRY,
+            interval: OAUTH2_DEVICE_CODE_INTERVAL,
+        }
+    }
 }
 
 #[cfg(test)]
