@@ -20,7 +20,7 @@ use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
-use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimMail};
+use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimMail, ScimReference};
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -44,20 +44,12 @@ struct GroupInfo {
     entry_manager: Option<String>,
     acp: GroupACP,
     mails: Vec<ScimMail>,
-    members: Vec<MemberInfo>,
+    members: Vec<ScimReference>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct GroupACP {
     enabled: bool,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-struct MemberInfo {
-    uuid: Uuid,
-    name: String,
-    spn: String,
-    displayname: String,
 }
 
 #[derive(Template)]
@@ -397,9 +389,8 @@ fn scimentry_into_groupinfo(scim_entry: &ScimEntryKanidm) -> Option<GroupInfo> {
     let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
     let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
     let entry_manager = scim_entry.attr_str(&Attribute::EntryManagedBy).map(|t| { t.to_string() });
-    let mails = scim_entry.attr_mails().unwrap_or_default().clone();
-    let members_ids: Vec<_> = scim_entry.attr_uuids(&Attribute::Member).unwrap_or_default();
-    // TODO: new pr for resolving uuids into names
+    let mails = scim_entry.attr_mails().cloned().unwrap_or_default();
+    let members = scim_entry.attr_references(&Attribute::Member).cloned().unwrap_or_default();
 
     Some(GroupInfo {
         uuid: scim_entry.header.id,
@@ -409,18 +400,5 @@ fn scimentry_into_groupinfo(scim_entry: &ScimEntryKanidm) -> Option<GroupInfo> {
         acp: GroupACP { enabled: false },
         mails,
         members,
-    })
-}
-
-fn scimentry_into_memberinfo(scim_entry: &ScimEntryKanidm) -> Option<MemberInfo> {
-    let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
-    let displayname = scim_entry.attr_str(&Attribute::DisplayName)?.to_string();
-    let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
-
-    Some(MemberInfo {
-        uuid: scim_entry.header.id,
-        displayname,
-        name,
-        spn,
     })
 }

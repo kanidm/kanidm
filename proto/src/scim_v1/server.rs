@@ -182,7 +182,7 @@ pub struct ScimOAuth2ClaimMap {
 }
 
 #[serde_as]
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
@@ -257,11 +257,11 @@ impl ScimEntryKanidm{
     }
 
 
-    pub fn attr_uuids(&self, attr: &Attribute) -> Option<&Vec<Uuid>> {
+    pub fn attr_references(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
         match self.attrs.get(attr) {
-            Some(ScimValueKanidm::ArrayUuid(uuids)) => Some(uuids),
+            Some(ScimValueKanidm::EntryReferences(refs)) => Some(refs),
             Some(sv) => {
-                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::ArrayUuid type, actual: {:?}", attr, sv);
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
                 None
             }
             None => {

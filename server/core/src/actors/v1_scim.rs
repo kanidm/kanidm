@@ -227,7 +227,7 @@ impl QueryServerReadV1 {
         idms_prox_read
             .qs_read
             .impersonate_search_ext_uuid(target_uuid, &ident)
-            .and_then(|entry| entry.to_scim_kanidm(idms_prox_read.qs_read))
+            .and_then(|entry| entry.to_scim_kanidm(&mut idms_prox_read.qs_read))
     }
 
     #[instrument(
@@ -254,11 +254,11 @@ impl QueryServerReadV1 {
             EntryClass::Account.into()
         )]));
 
-        idms_prox_read
+         idms_prox_read
             .qs_read
             .impersonate_search_ext(filter_intent, filter, &ident)?
             .into_iter()
-            .map(|entry| entry.to_scim_kanidm())
+            .map(|entry| entry.to_scim_kanidm(&mut idms_prox_read.qs_read))
             .collect()
     }
 }
