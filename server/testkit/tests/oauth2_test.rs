@@ -470,9 +470,8 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         token_type_hint: None,
     };
 
-    let make_url = rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT);
     let response = client
-        .post(make_url)
+        .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
         .basic_auth("test_integration", Some(client_secret))
         .form(&intr_request)
         .send()
