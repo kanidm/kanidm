@@ -21,4 +21,7 @@ pub const OAUTH2_TOKEN_INTROSPECT_ENDPOINT: &str = "/oauth2/token/introspect";
 /// ⚠️  ⚠️   WARNING DO NOT CHANGE THIS  ⚠️  ⚠️
 pub const OAUTH2_TOKEN_REVOKE_ENDPOINT: &str = "/oauth2/token/revoke";
 
+/// ⚠️  ⚠️   WARNING DO NOT CHANGE THIS  ⚠️  ⚠️
+pub const OAUTH2_DEVICE_LOGIN: &str = "/oauth2/device"; // starts with /ui
+
 pub const V1_AUTH_VALID: &str = "/v1/auth/valid";

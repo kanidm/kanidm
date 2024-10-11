@@ -121,10 +121,14 @@ fn main() -> anyhow::Result<()> {
         .request(http_client)?;
 
     println!(
-        "Open this URL in your browser:\n{}\nand enter the code: {}",
-        details.verification_uri().as_str(),
-        details.user_code().secret()
+        "Open this URL in your browser: {}",
+        match details.verification_uri_complete() {
+            Some(uri) => uri.secret().as_str(),
+            None => details.verification_uri().as_str(),
+        }
     );
+
+    println!("the code is {}", details.user_code().secret());
 
     let token_result = client.exchange_device_access_token(&details).request(
         http_client,

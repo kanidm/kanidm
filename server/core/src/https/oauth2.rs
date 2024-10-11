@@ -747,7 +747,6 @@ pub(crate) struct DeviceFlowForm {
     extra: HashMap<String, String>,
 }
 
-#[axum::debug_handler]
 /// Device flow! [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)
 #[instrument(level = "info", skip(state, kopid, client_auth_info))]
 pub(crate) async fn oauth2_authorise_device_post(
