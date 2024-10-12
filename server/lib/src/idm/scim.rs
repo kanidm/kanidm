@@ -1215,6 +1215,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // For each attr in the scim entry, see if it's in the sync_owned set. If so, proceed.
         for (scim_attr_name, scim_attr) in scim_ent.attrs.iter() {
+            let scim_attr_name = Attribute::from(scim_attr_name.as_str());
+
             if !sync_owned_attrs.contains(&scim_attr_name) {
                 error!(
                     "Rejecting attribute {} for entry {} which is not sync owned",
@@ -1225,7 +1227,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             // Convert each scim_attr to a set of values.
             let values = self
-                .scim_attr_to_values(scim_attr_name, scim_attr)
+                .scim_attr_to_values(&scim_attr_name, scim_attr)
                 .inspect_err(|err| {
                     error!(
                         ?err,
