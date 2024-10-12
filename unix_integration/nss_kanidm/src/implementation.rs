@@ -5,6 +5,7 @@ use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, NssGroup, Ns
 use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};
+use libnss::initgroups::{InitgroupsHooks};
 
 struct KanidmPasswd;
 libnss_passwd_hooks!(kanidm, KanidmPasswd);
@@ -179,6 +180,22 @@ impl GroupHooks for KanidmGroup {
                 _ => Response::NotFound,
             })
             .unwrap_or_else(|_| Response::NotFound)
+    }
+}
+
+struct KanidmInitgroups;
+libnss_initgroups_hooks!(kanidm, KanidmInitgroups);
+
+impl InitgroupsHooks for KanidmInitgroups {
+    fn get_entries_by_user(user: String) -> Response<Vec<Group>> {
+        return match KanidmGroup::get_all_entries() {
+            Response::Success(g) => Response::Success(
+                g.into_iter()
+                    .filter(|g| g.members.contains(&user))
+                    .collect(),
+            ),
+            res => res,
+        };
     }
 }
 
