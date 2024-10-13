@@ -29,7 +29,7 @@ pkg-config = { workspace = true }
 # The base metadata does **not** work to build a functioning package!
 # A target specific variant must be used to get the right multiarch path.
 [package.metadata.deb]
-name = "kanidm-pam"
+name = "libpam-kanidm"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = ["libc6", "libpam0g"]
 section = "network"

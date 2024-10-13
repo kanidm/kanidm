@@ -121,8 +121,8 @@ depends = [
 	"libc6",
 	"tpm-udev",
 	"libssl3 | libssl3t64",
-	"kanidm-pam",
-	"kanidm-nss"
+	"libpam-kanidm",
+	"libnss-kanidm"
 ]
 section = "network"
 priority = "optional"

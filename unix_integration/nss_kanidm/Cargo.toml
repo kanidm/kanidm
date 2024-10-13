@@ -28,7 +28,7 @@ lazy_static = { workspace = true }
 # The base metadata does **not** work to build a functioning package!
 # A target specific variant must be used to get the right multiarch path.
 [package.metadata.deb]
-name = "kanidm-nss"
+name = "libnss-kanidm"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = ""
 section = "network"
