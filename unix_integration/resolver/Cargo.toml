@@ -132,8 +132,8 @@ assets = [
     [ "target/release/kanidm_unixd_tasks", "usr/sbin/", "755" ],
     [ "target/release/kanidm_unixd", "usr/sbin/", "755" ],
     [ "target/release/kanidm-unix", "usr/sbin/", "755" ],
-    [ "../../examples/unixd-safe-default", "etc/kanidm/unixd", "640" ],
-    [ "../../examples/kanidm-safe-default", "etc/kanidm/config", "640" ],
+    [ "../../examples/unixd-safe-default", "etc/kanidm/unixd", "644" ],
+    [ "../../examples/kanidm-safe-default", "etc/kanidm/config", "644" ],
     [ "../../examples/kanidm", "usr/share/kanidm-unixd/", "444" ],
     [ "../../examples/unixd", "usr/share/kanidm-unixd/", "444" ],
 ]

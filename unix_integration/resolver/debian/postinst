@@ -9,14 +9,12 @@ set -e
 case "$1" in
     configure)
         pam-auth-update --package
-        if [ ! -f /etc/kanidm/config ]; then
-            echo "============================="
-            echo "Thanks for installing Kanidm!"
-            echo "============================="
-            echo "Please ensure you create configuration files at /etc/kanidm/unixd and /etc/kanidm/config"
-            echo "Examples are in /usr/share/kanidm-unixd/"
-            echo "To configure nsswitch, please follow instructions in https://kanidm.github.io/kanidm/master/integrations/pam_and_nsswitch.html"
-        fi
+        echo "============================="
+        echo "Thanks for installing Kanidm!"
+        echo "============================="
+        echo "Please ensure you modify the configuration files at /etc/kanidm/unixd and /etc/kanidm/config"
+        echo "Full examples are in /usr/share/kanidm-unixd/"
+        echo "To configure nsswitch, please follow instructions in https://kanidm.github.io/kanidm/master/integrations/pam_and_nsswitch.html"
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)
