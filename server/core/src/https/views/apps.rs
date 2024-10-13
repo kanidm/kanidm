@@ -10,12 +10,14 @@ use axum_htmx::HxPushUrl;
 use kanidm_proto::internal::AppLink;
 
 use super::HtmlTemplate;
+use crate::https::extractors::AccessInfo;
 use crate::https::views::errors::HtmxError;
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
 #[derive(Template)]
 #[template(path = "apps.html")]
 struct AppsView {
+    access_info: AccessInfo,
     apps_partial: AppsPartialView,
 }
 
@@ -43,7 +45,10 @@ pub(crate) async fn view_apps_get(
     let apps_partial = AppsPartialView { apps: app_links };
 
     Ok({
-        let apps_view = AppsView { apps_partial };
+        let apps_view = AppsView {
+            access_info: AccessInfo::new(),
+            apps_partial,
+        };
         (
             HxPushUrl(Uri::from_static("/ui/apps")),
             HtmlTemplate(apps_view).into_response(),

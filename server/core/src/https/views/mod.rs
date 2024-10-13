@@ -11,11 +11,13 @@ use axum_htmx::HxRequestGuardLayer;
 
 use kanidmd_lib::prelude::{OperationError, Uuid};
 
+use crate::https::views::admin::admin_router;
 use crate::https::{
     // extractors::VerifiedClientInformation, middleware::KOpId, v1::SessionId,
     ServerState,
 };
 
+mod admin;
 mod apps;
 mod constants;
 mod cookies;
@@ -28,6 +30,13 @@ mod reset;
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
 struct UnrecoverableErrorView {
+    err_code: OperationError,
+    operation_id: Uuid,
+}
+
+#[derive(Template)]
+#[template(path = "admin/error_toast.html")]
+struct ErrorToastPartial {
     err_code: OperationError,
     operation_id: Uuid,
 }
@@ -94,7 +103,11 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 
-    Router::new().merge(unguarded_router).merge(guarded_router)
+    let admin_router = admin_router();
+    Router::new()
+        .merge(unguarded_router)
+        .merge(guarded_router)
+        .nest("/admin", admin_router)
 }
 
 struct HtmlTemplate<T>(T);

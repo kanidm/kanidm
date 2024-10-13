@@ -2232,7 +2232,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 
     pub fn to_scim_kanidm(
         &self,
-        mut read_txn: QueryServerReadTransaction,
+        read_txn: &mut QueryServerReadTransaction,
     ) -> Result<ScimEntryKanidm, OperationError> {
         let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
@@ -2245,7 +2245,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                     None => Ok(None),
                     Some(ScimResolveStatus::Resolved(scim_value_kani)) => Ok(Some(scim_value_kani)),
                     Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
-                        resolve_scim_interim(scim_value_interim, &mut read_txn)
+                        resolve_scim_interim(scim_value_interim, read_txn)
                     }
                 };
                 res_opt_scim_value
