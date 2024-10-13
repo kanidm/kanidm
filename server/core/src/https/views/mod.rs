@@ -34,6 +34,13 @@ struct UnrecoverableErrorView {
     operation_id: Uuid,
 }
 
+#[derive(Template)]
+#[template(path = "admin/error_toast.html")]
+struct ErrorToastPartial {
+    err_code: OperationError,
+    operation_id: Uuid,
+}
+
 pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
         .route("/", get(|| async { Redirect::permanent("/ui/login") }))
