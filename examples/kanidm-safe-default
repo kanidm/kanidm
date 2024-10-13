@@ -1,0 +1,14 @@
+## Kanidm minimal Service Configuration - /etc/kanidm/config
+# For a full example and documentation, see /usr/share/kanidm/kanidm
+# or `example/kanidm` in the source repository.
+
+
+# Replace this with your kanidmd URI and uncomment the line
+#uri = "https://idm.example.com"
+
+# Secure defaults
+verify_ca = true
+verify_certificate = true
+verify_hostnames = true
+
+connect_timeout = 30
