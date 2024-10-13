@@ -11,14 +11,7 @@ version = '2'
 # use_etc_skel = false
 
 
-[kanidm]
-
 # Defines a set of POSIX groups where membership of any of these groups
-# will be allowed to login via PAM. All POSIX users and groups can be
-# resolved by NSS regardless of PAM login status. You may specify a
-# group's name, SPN or UUID
-#
-# Default: empty set (no access allowed)
-
+# will be allowed to login via PAM.
 # Replace your group below and uncomment this line:
-#pam_allowed_login_groups = [your_posix_login_group]
+#pam_allowed_login_groups = ["your_posix_login_group"]
