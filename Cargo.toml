@@ -159,8 +159,8 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
 bytes = "^1.7.2"
-clap = { version = "^4.5.19", features = ["derive", "env"] }
-clap_complete = "^4.5.29"
+clap = { version = "^4.5.20", features = ["derive", "env"] }
+clap_complete = "^4.5.33"
 # Forced by saffron/cron
 chrono = "^0.4.35"
 compact_jwt = { version = "^0.4.2", default-features = false }
@@ -175,7 +175,7 @@ dyn-clone = "^1.0.17"
 fernet = "^0.2.1"
 filetime = "^0.2.24"
 fs4 = "^0.8.3"
-futures = "^0.3.30"
+futures = "^0.3.31"
 futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.64.0", default-features = false }
@@ -208,7 +208,7 @@ libc = "^0.2.159"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.10.7"
-lru = "^0.12.4"
+lru = "^0.12.5"
 mathru = "^0.13.0"
 mimalloc = "0.1.43"
 notify-debouncer-full = { version = "0.1" }
@@ -233,7 +233,7 @@ paste = "^1.0.14"
 peg = "0.8"
 pkg-config = "^0.3.31"
 prctl = "1.0.0"
-proc-macro2 = "1.0.86"
+proc-macro2 = "1.0.87"
 qrcode = "^0.12.0"
 quote = "1"
 rand = "^0.8.5"
@@ -250,13 +250,13 @@ rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 rustls = { version = "0.23.13", default-features = false, features = ["aws_lc_rs"] }
 
-sd-notify = "^0.4.2"
+sd-notify = "^0.4.3"
 selinux = "^0.4.6"
 serde = "^1.0.210"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.128"
 serde-wasm-bindgen = "0.5"
-serde_with = "3.10.0"
+serde_with = "3.11.0"
 sha-crypt = "0.5.0"
 sha2 = "0.10.8"
 shellexpand = "^2.1.2"
@@ -288,7 +288,7 @@ utoipa = { version = "4.2.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = "6.0.0"
 uuid = "^1.10.0"
 
-wasm-bindgen = "^0.2.92"
+wasm-bindgen = "^0.2.95"
 wasm-bindgen-futures = "^0.4.43"
 wasm-bindgen-test = "0.3.43"
 
@@ -301,7 +301,7 @@ webauthn-rs = { version = "0.5.0", features = ["preview-features"] }
 webauthn-rs-core = "0.5.0"
 webauthn-rs-proto = "0.5.0"
 
-web-sys = "^0.3.70"
+web-sys = "^0.3.72"
 whoami = "^1.5.2"
 walkdir = "2"
 
