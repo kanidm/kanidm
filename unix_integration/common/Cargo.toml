@@ -32,6 +32,7 @@ toml = { workspace = true }
 tokio = { workspace = true, features = ["time","net","macros"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
+sha-crypt = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

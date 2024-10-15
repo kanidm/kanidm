@@ -1,16 +1,27 @@
+use crate::constants::DEFAULT_CONN_TIMEOUT;
+use crate::unix_proto::{ClientRequest, ClientResponse};
 use std::error::Error;
 use std::io::{Error as IoError, ErrorKind, Read, Write};
-use std::os::unix::net::UnixStream;
 use std::time::{Duration, SystemTime};
 
-use crate::unix_proto::{ClientRequest, ClientResponse};
+pub use std::os::unix::net::UnixStream;
 
 pub struct DaemonClientBlocking {
     stream: UnixStream,
+    default_timeout: u64,
+}
+
+impl From<UnixStream> for DaemonClientBlocking {
+    fn from(stream: UnixStream) -> Self {
+        DaemonClientBlocking {
+            stream,
+            default_timeout: DEFAULT_CONN_TIMEOUT,
+        }
+    }
 }
 
 impl DaemonClientBlocking {
-    pub fn new(path: &str) -> Result<DaemonClientBlocking, Box<dyn Error>> {
+    pub fn new(path: &str, default_timeout: u64) -> Result<DaemonClientBlocking, Box<dyn Error>> {
         debug!(%path);
 
         let stream = UnixStream::connect(path)
@@ -23,15 +34,18 @@ impl DaemonClientBlocking {
             })
             .map_err(Box::new)?;
 
-        Ok(DaemonClientBlocking { stream })
+        Ok(DaemonClientBlocking {
+            stream,
+            default_timeout,
+        })
     }
 
     pub fn call_and_wait(
         &mut self,
         req: &ClientRequest,
-        timeout: u64,
+        timeout: Option<u64>,
     ) -> Result<ClientResponse, Box<dyn Error>> {
-        let timeout = Duration::from_secs(timeout);
+        let timeout = Duration::from_secs(timeout.unwrap_or(self.default_timeout));
 
         let data = serde_json::to_vec(&req).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
