@@ -14,7 +14,7 @@
 extern crate tracing;
 
 use std::collections::{BTreeMap, BTreeSet as Set};
-use std::fmt::{Display, Formatter};
+use std::fmt::{Debug, Display, Formatter};
 use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::fs::{metadata, Metadata};
@@ -41,6 +41,7 @@ pub use reqwest::StatusCode;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::error::Error as SerdeJsonError;
+use serde_urlencoded::ser::Error as UrlEncodeError;
 use tokio::sync::{Mutex, RwLock};
 use url::Url;
 use uuid::Uuid;
@@ -72,6 +73,7 @@ pub enum ClientError {
     JsonDecode(reqwest::Error, String),
     InvalidResponseFormat(String),
     JsonEncode(SerdeJsonError),
+    UrlEncode(UrlEncodeError),
     SystemError,
     ConfigParseIssue(String),
     CertParseIssue(String),
@@ -1003,7 +1005,27 @@ impl KanidmClient {
         &self,
         dest: &str,
     ) -> Result<T, ClientError> {
-        let response = self.client.get(self.make_url(dest));
+        let query: Option<()> = None;
+        self.perform_get_request_query(dest, query).await
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub async fn perform_get_request_query<T: DeserializeOwned, Q: Serialize + Debug>(
+        &self,
+        dest: &str,
+        query: Option<Q>,
+    ) -> Result<T, ClientError> {
+        let mut dest_url = self.make_url(dest);
+
+        if let Some(query) = query {
+            let txt = serde_urlencoded::to_string(&query).map_err(ClientError::UrlEncode)?;
+
+            if !txt.is_empty() {
+                dest_url.set_query(Some(txt.as_str()));
+            }
+        }
+
+        let response = self.client.get(dest_url);
         let response = {
             let tguard = self.bearer_token.read().await;
             if let Some(token) = &(*tguard) {

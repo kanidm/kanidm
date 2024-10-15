@@ -1,20 +1,30 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-use std::str::FromStr;
-use std::sync::Arc;
-
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
+use kanidm_proto::scim_v1::server::ScimReference;
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use std::collections::BTreeSet;
+use std::str::FromStr;
+use std::sync::Arc;
 use tokio::sync::{Semaphore, SemaphorePermit};
 use tracing::trace;
-
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 // We use so many, we just import them all ...
+use self::access::{
+    profiles::{
+        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
+    },
+    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
+    AccessControlsWriteTransaction,
+};
+use self::keys::{
+    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
+    KeyProvidersWriteTransaction,
+};
 use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
     ResolveFilterCacheReadTxn,
@@ -31,19 +41,7 @@ use crate::schema::{
 };
 use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::uuid_to_proto_string;
-
-use self::access::{
-    profiles::{
-        AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
-    },
-    AccessControls, AccessControlsReadTransaction, AccessControlsTransaction,
-    AccessControlsWriteTransaction,
-};
-
-use self::keys::{
-    KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
-    KeyProvidersWriteTransaction,
-};
+use crate::valueset::ScimValueIntermediate;
 
 pub(crate) mod access;
 pub mod batch_modify;
@@ -838,6 +836,37 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    fn resolve_scim_interim(
+        &mut self,
+        scim_value_intermediate: ScimValueIntermediate,
+    ) -> Result<Option<ScimValueKanidm>, OperationError> {
+        match scim_value_intermediate {
+            ScimValueIntermediate::Refer(uuid) => {
+                if let Some(option) = self.uuid_to_spn(uuid)? {
+                    Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
+                        uuid,
+                        value: option.to_proto_string_clone(),
+                    })))
+                } else {
+                    // TODO: didn't have spn, fallback to uuid.to_string ?
+                    Ok(None)
+                }
+            }
+            ScimValueIntermediate::ReferMany(uuids) => {
+                let mut scim_references = vec![];
+                for uuid in uuids {
+                    if let Some(option) = self.uuid_to_spn(uuid)? {
+                        scim_references.push(ScimReference {
+                            uuid,
+                            value: option.to_proto_string_clone(),
+                        })
+                    }
+                }
+                Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
+            }
+        }
+    }
+
     // In the opposite direction, we can resolve values for presentation
     fn resolve_valueset(&mut self, value: &ValueSet) -> Result<Vec<String>, OperationError> {
         if let Some(r_set) = value.as_refer_set() {
@@ -1205,6 +1234,50 @@ impl<'a> QueryServerReadTransaction<'a> {
         // Finished
 
         results
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn scim_entry_id_get_ext(
+        &mut self,
+        uuid: Uuid,
+        class: EntryClass,
+        query: ScimEntryGetQuery,
+        ident: Identity,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let filter_intent = filter!(f_and!([
+            f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)),
+            f_eq(Attribute::Class, class.into())
+        ]));
+
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let r_attrs = query
+            .attributes
+            .map(|attr_set| attr_set.into_iter().collect());
+
+        let se = SearchEvent {
+            ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+            attrs: r_attrs,
+        };
+
+        let mut vs = self.search_ext(&se)?;
+        match vs.pop() {
+            Some(entry) if vs.is_empty() => entry.to_scim_kanidm(self),
+            _ => {
+                if vs.is_empty() {
+                    Err(OperationError::NoMatchingEntries)
+                } else {
+                    // Multiple entries matched, should not be possible!
+                    Err(OperationError::UniqueConstraintViolation)
+                }
+            }
+        }
     }
 }
 
@@ -2626,7 +2699,7 @@ mod tests {
 
         // Convert entry into scim
         let reduced = entry.as_ref().clone().into_reduced();
-        let scim_entry = reduced.to_scim_kanidm(read_txn).unwrap();
+        let scim_entry = reduced.to_scim_kanidm(&mut read_txn).unwrap();
 
         // Assert scim entry attributes are as expected
         assert_eq!(scim_entry.header.id, UUID_IDM_PEOPLE_SELF_NAME_WRITE);

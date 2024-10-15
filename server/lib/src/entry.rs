@@ -47,7 +47,6 @@ use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
     ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
 };
-use kanidm_proto::scim_v1::server::ScimReference;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
@@ -64,7 +63,7 @@ use crate::value::{
     ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
     SyntaxType, Value,
 };
-use crate::valueset::{self, ScimResolveStatus, ScimValueIntermediate, ValueSet};
+use crate::valueset::{self, ScimResolveStatus, ValueSet};
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
@@ -2232,7 +2231,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 
     pub fn to_scim_kanidm(
         &self,
-        mut read_txn: QueryServerReadTransaction,
+        read_txn: &mut QueryServerReadTransaction,
     ) -> Result<ScimEntryKanidm, OperationError> {
         let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
@@ -2245,7 +2244,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                     None => Ok(None),
                     Some(ScimResolveStatus::Resolved(scim_value_kani)) => Ok(Some(scim_value_kani)),
                     Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
-                        resolve_scim_interim(scim_value_interim, &mut read_txn)
+                        read_txn.resolve_scim_interim(scim_value_interim)
                     }
                 };
                 res_opt_scim_value
@@ -2367,37 +2366,6 @@ impl Entry<EntryReduced, EntryCommitted> {
             .collect();
 
         Ok(LdapSearchResultEntry { dn, attributes })
-    }
-}
-
-fn resolve_scim_interim(
-    scim_value_intermediate: ScimValueIntermediate,
-    read_txn: &mut QueryServerReadTransaction,
-) -> Result<Option<ScimValueKanidm>, OperationError> {
-    match scim_value_intermediate {
-        ScimValueIntermediate::Refer(uuid) => {
-            if let Some(option) = read_txn.uuid_to_spn(uuid)? {
-                Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
-                    uuid,
-                    value: option.to_proto_string_clone(),
-                })))
-            } else {
-                // TODO: didn't have spn, fallback to uuid.to_string ?
-                Ok(None)
-            }
-        }
-        ScimValueIntermediate::ReferMany(uuids) => {
-            let mut scim_references = vec![];
-            for uuid in uuids {
-                if let Some(option) = read_txn.uuid_to_spn(uuid)? {
-                    scim_references.push(ScimReference {
-                        uuid,
-                        value: option.to_proto_string_clone(),
-                    })
-                }
-            }
-            Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
-        }
     }
 }
 

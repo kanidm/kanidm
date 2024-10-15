@@ -22,10 +22,13 @@ use serde_json::Value as JsonValue;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
+use serde_with::formats::CommaSeparator;
+use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
+
 pub use self::synch::*;
 pub use scim_proto::prelude::*;
 
-mod client;
+pub mod client;
 pub mod server;
 mod synch;
 
@@ -40,28 +43,37 @@ pub struct ScimEntryGeneric {
     pub attrs: BTreeMap<Attribute, JsonValue>,
 }
 
+/// SCIM Query Parameters used during the get of a single entry
+#[serde_as]
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct ScimEntryGetQuery {
+    #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
+    pub attributes: Option<Vec<Attribute>>,
+}
+
 #[cfg(test)]
 mod tests {
     // use super::*;
 
     #[test]
-    fn test_scim_rfc_to_generic() {
+    fn scim_rfc_to_generic() {
         // Assert that we can transition from the rfc generic entries to the
         // kanidm types.
     }
 
     #[test]
-    fn test_scim_kani_to_generic() {
+    fn scim_kani_to_generic() {
         // Assert that a kanidm strong entry can convert to generic.
     }
 
     #[test]
-    fn test_scim_kani_to_rfc() {
+    fn scim_kani_to_rfc() {
         // Assert that a kanidm strong entry can convert to rfc.
     }
 
     #[test]
-    fn test_scim_sync_kani_to_rfc() {
+    fn scim_sync_kani_to_rfc() {
         use super::*;
 
         // Group
@@ -113,5 +125,30 @@ mod tests {
         let entry: Result<ScimEntry, _> = person.try_into();
 
         assert!(entry.is_ok());
+    }
+
+    #[test]
+    fn scim_entry_get_query() {
+        use super::*;
+
+        let q = ScimEntryGetQuery { attributes: None };
+
+        let txt = serde_urlencoded::to_string(&q).unwrap();
+
+        assert_eq!(txt, "");
+
+        let q = ScimEntryGetQuery {
+            attributes: Some(vec![Attribute::Name]),
+        };
+
+        let txt = serde_urlencoded::to_string(&q).unwrap();
+        assert_eq!(txt, "attributes=name");
+
+        let q = ScimEntryGetQuery {
+            attributes: Some(vec![Attribute::Name, Attribute::Spn]),
+        };
+
+        let txt = serde_urlencoded::to_string(&q).unwrap();
+        assert_eq!(txt, "attributes=name%2Cspn");
     }
 }
