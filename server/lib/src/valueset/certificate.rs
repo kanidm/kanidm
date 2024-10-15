@@ -1,6 +1,7 @@
 use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::scim_v1::server::ScimCertificate;
 use std::collections::BTreeMap;
@@ -191,7 +192,7 @@ impl ValueSetT for ValueSetCertificate {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let vals: Vec<ScimCertificate> = self
             .map
             .iter()
@@ -216,7 +217,7 @@ impl ValueSetT for ValueSetCertificate {
         if vals.is_empty() {
             None
         } else {
-            Some(ScimValueKanidm::from(vals))
+            Some(ScimValueKanidm::from(vals).into())
         }
     }
 
@@ -300,7 +301,7 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
 
         let vs: ValueSet = ValueSetCertificate::new(Box::new(cert)).unwrap();
 
-        let scim_value = vs.to_scim_value().unwrap();
+        let scim_value = vs.to_scim_value().unwrap().assume_resolved();
 
         let cert = match scim_value {
             ScimValueKanidm::ArrayCertificate(mut set) => set.pop().unwrap(),

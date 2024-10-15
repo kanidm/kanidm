@@ -1,8 +1,9 @@
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetIndex {
@@ -105,10 +106,10 @@ impl ValueSetT for ValueSetIndex {
         Box::new(self.set.iter().map(|b| b.to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

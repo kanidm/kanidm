@@ -5,7 +5,7 @@ use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 
@@ -137,8 +137,8 @@ impl ValueSetT for ValueSetSshKey {
         Box::new(self.map.iter().map(|(tag, pk)| format!("{}: {}", tag, pk)))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(label, value)| ScimSshPublicKey {
@@ -146,7 +146,7 @@ impl ValueSetT for ValueSetSshKey {
                     value: value.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

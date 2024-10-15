@@ -1,4 +1,5 @@
 use crate::prelude::*;
+use crate::valueset::ScimResolveStatus;
 
 use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
@@ -282,8 +283,8 @@ impl ValueSetT for ValueSetKeyInternal {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(kid, key_object)| {
@@ -298,7 +299,7 @@ impl ValueSetT for ValueSetKeyInternal {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

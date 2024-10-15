@@ -8,14 +8,14 @@ use kanidm_proto::internal::ImageValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
+use serde::Serialize;
+use serde_with::serde_as;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use time::OffsetDateTime;
 use webauthn_rs::prelude::AttestationCaList;
 use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
 use webauthn_rs::prelude::Passkey as PasskeyV4;
-
-use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
@@ -24,6 +24,7 @@ use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
+use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 
 pub use self::address::{ValueSetAddress, ValueSetEmailAddress};
 use self::apppwd::ValueSetApplicationPassword;
@@ -144,7 +145,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_>;
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm>;
+    fn to_scim_value(&self) -> Option<ScimResolveStatus>;
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2;
 
@@ -666,6 +667,46 @@ impl PartialEq for ValueSet {
     }
 }
 
+#[serde_as]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
+pub enum ScimValueIntermediate {
+    Refer(Uuid),
+    ReferMany(Vec<Uuid>),
+}
+
+pub enum ScimResolveStatus {
+    Resolved(ScimValueKanidm),
+    NeedsResolution(ScimValueIntermediate),
+}
+
+impl<T> From<T> for ScimResolveStatus
+where
+    T: Into<ScimValueKanidm>,
+{
+    fn from(v: T) -> Self {
+        Self::Resolved(v.into())
+    }
+}
+
+#[cfg(test)]
+impl ScimResolveStatus {
+    pub fn assume_resolved(self) -> ScimValueKanidm {
+        match self {
+            ScimResolveStatus::Resolved(v) => v,
+            ScimResolveStatus::NeedsResolution(_) => {
+                panic!("assume_resolved called on NeedsResolution")
+            }
+        }
+    }
+
+    pub fn assume_unresolved(self) -> ScimValueIntermediate {
+        match self {
+            ScimResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
+            ScimResolveStatus::NeedsResolution(svi) => svi,
+        }
+    }
+}
+
 pub fn uuid_to_proto_string(u: Uuid) -> String {
     u.as_hyphenated().to_string()
 }
@@ -877,7 +918,21 @@ pub fn from_db_valueset_v2(dbvs: DbValueSetV2) -> Result<ValueSet, OperationErro
 
 #[cfg(test)]
 pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
-    let scim_value = vs.to_scim_value().unwrap();
+    let scim_value = vs.to_scim_value().unwrap().assume_resolved();
+
+    let strout = serde_json::to_string_pretty(&scim_value).unwrap();
+    eprintln!("{}", strout);
+
+    let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
+
+    let expect: serde_json::Value = serde_json::from_str(data).unwrap();
+
+    assert_eq!(json_value, expect);
+}
+
+#[cfg(test)]
+pub(crate) fn scim_json_reflexive_unresolved(vs: ValueSet, data: &str) {
+    let scim_value = vs.to_scim_value().unwrap().assume_unresolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
     eprintln!("{}", strout);

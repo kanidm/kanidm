@@ -1,10 +1,11 @@
 use std::collections::BTreeSet;
 
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
+use crate::valueset::{
+    uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
+};
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {
@@ -113,8 +114,12 @@ impl ValueSetT for ValueSetUuid {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        self.set.iter().next().copied().map(ScimValueKanidm::Uuid)
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        self.set
+            .iter()
+            .next()
+            .copied()
+            .map(|uuid| ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer(uuid)))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -282,8 +287,11 @@ impl ValueSetT for ValueSetRefer {
         Box::new(self.set.iter().copied().map(uuid_to_proto_string))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(self.set.iter().copied().collect::<Vec<_>>().into())
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        let uuids = self.set.iter().copied().collect::<Vec<_>>();
+        Some(ScimResolveStatus::NeedsResolution(
+            ScimValueIntermediate::ReferMany(uuids),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -346,17 +354,17 @@ mod tests {
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
+        let data = r#"{"Refer": "4d21d04a-dc0e-42eb-b850-34dd180b107f"}"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
     }
 
     #[test]
     fn test_scim_refer() {
         let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#"["4d21d04a-dc0e-42eb-b850-34dd180b107f"]"#;
+        let data = r#"{"ReferMany": ["4d21d04a-dc0e-42eb-b850-34dd180b107f"]}"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
     }
 }

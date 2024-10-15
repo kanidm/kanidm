@@ -2,6 +2,7 @@ use crate::be::dbvalue::{DbValueApplicationPassword, DbValueSetV2};
 use crate::credential::{apppwd::ApplicationPassword, Password};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use std::collections::BTreeMap;
 
 use kanidm_proto::scim_v1::server::ScimApplicationPassword;
@@ -183,8 +184,8 @@ impl ValueSetT for ValueSetApplicationPassword {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .values()
                 .flatten()
@@ -194,7 +195,7 @@ impl ValueSetT for ValueSetApplicationPassword {
                     label: app_pwd.label.clone(),
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

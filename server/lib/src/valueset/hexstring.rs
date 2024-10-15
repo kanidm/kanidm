@@ -1,8 +1,9 @@
-use std::collections::BTreeSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetHexString {
@@ -127,7 +128,7 @@ impl ValueSetT for ValueSetHexString {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let mut iter = self.set.iter().cloned();
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();

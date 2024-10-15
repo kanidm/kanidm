@@ -180,6 +180,14 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
+#[serde_as]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimReference {
+    pub uuid: Uuid,
+    pub value: String,
+}
+
 /// This is a strongly typed ScimValue for Kanidm. It is for serialisation only
 /// since on a deserialisation path we can not know the intent of the sender
 /// to how we deserialise strings. Additionally during deserialisation we need
@@ -196,6 +204,9 @@ pub enum ScimValueKanidm {
     DateTime(#[serde_as(as = "Rfc3339")] OffsetDateTime),
     Reference(Url),
     Uuid(Uuid),
+    EntryReference(ScimReference),
+    EntryReferences(Vec<ScimReference>),
+
     // Other strong outbound types.
     ArrayString(Vec<String>),
     ArrayDateTime(#[serde_as(as = "Vec<Rfc3339>")] Vec<OffsetDateTime>),

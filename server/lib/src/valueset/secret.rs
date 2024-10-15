@@ -1,8 +1,8 @@
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSecret {
@@ -96,7 +96,7 @@ impl ValueSetT for ValueSetSecret {
         Box::new(self.set.iter().map(|_| "hidden".to_string()))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         None
     }
 
@@ -145,8 +145,7 @@ impl ValueSetT for ValueSetSecret {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetSecret;
-    use crate::prelude::ValueSet;
+    use crate::valueset::{ValueSet, ValueSetSecret};
 
     #[test]
     fn test_scim_secret() {
