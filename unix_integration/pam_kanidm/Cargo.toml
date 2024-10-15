@@ -21,6 +21,7 @@ kanidm_unix_common = { workspace = true }
 libc = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing = { workspace = true }
+time = { workspace = true }
 
 [build-dependencies]
 pkg-config = { workspace = true }

@@ -3370,6 +3370,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_with",
+ "sha-crypt",
  "tokio",
  "tokio-util",
  "toml",
@@ -3407,7 +3408,6 @@ dependencies = [
  "selinux",
  "serde",
  "serde_json",
- "sha-crypt",
  "sketching",
  "time",
  "tokio",
@@ -4548,6 +4548,7 @@ dependencies = [
  "kanidm_unix_common",
  "libc",
  "pkg-config",
+ "time",
  "tracing",
  "tracing-subscriber",
 ]

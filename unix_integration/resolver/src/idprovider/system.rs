@@ -4,7 +4,7 @@ use time::OffsetDateTime;
 use tokio::sync::Mutex;
 
 use super::interface::{AuthCredHandler, AuthRequest, Id, IdpError};
-use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
+use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::PamAuthRequest;
 use kanidm_unix_common::unix_proto::{NssGroup, NssUser};
 
@@ -41,25 +41,6 @@ pub enum SystemAuthResult {
     Denied,
     Success,
     Next(AuthRequest),
-}
-
-pub enum CryptPw {
-    Sha256(String),
-    Sha512(String),
-}
-
-impl TryFrom<String> for CryptPw {
-    type Error = ();
-
-    fn try_from(value: String) -> Result<Self, Self::Error> {
-        if value.starts_with("$6$") {
-            Ok(CryptPw::Sha512(value))
-        } else if value.starts_with("$5$") {
-            Ok(CryptPw::Sha256(value))
-        } else {
-            Err(())
-        }
-    }
 }
 
 #[allow(dead_code)]
@@ -134,12 +115,7 @@ impl Shadow {
     ) -> SystemAuthResult {
         match (cred_handler, pam_next_req) {
             (AuthCredHandler::Password, PamAuthRequest::Password { cred }) => {
-                let is_valid = match &self.crypt_pw {
-                    CryptPw::Sha256(crypt) => sha_crypt::sha256_check(&cred, crypt).is_ok(),
-                    CryptPw::Sha512(crypt) => sha_crypt::sha512_check(&cred, crypt).is_ok(),
-                };
-
-                if is_valid {
+                if self.crypt_pw.check_pw(&cred) {
                     SystemAuthResult::Success
                 } else {
                     SystemAuthResult::Denied
@@ -197,33 +173,31 @@ impl SystemProvider {
                     flag_reserved: _,
                 } = shadow_entry;
 
-                match CryptPw::try_from(password) {
-                    Ok(crypt_pw) => {
-                        let aging_policy = epoch_change_days.map(|change_days| {
-                            AgingPolicy::new(
-                                change_days,
-                                days_min_password_age,
-                                days_max_password_age,
-                                days_warning_period,
-                                days_inactivity_period,
-                            )
-                        });
+                if password.is_valid() {
+                    let aging_policy = epoch_change_days.map(|change_days| {
+                        AgingPolicy::new(
+                            change_days,
+                            days_min_password_age,
+                            days_max_password_age,
+                            days_warning_period,
+                            days_inactivity_period,
+                        )
+                    });
 
-                        let expiration_date = epoch_expire_date.map(|expire| {
-                            OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire)
-                        });
+                    let expiration_date = epoch_expire_date
+                        .map(|expire| OffsetDateTime::UNIX_EPOCH + time::Duration::days(expire));
 
-                        Some((
-                            name,
-                            Arc::new(Shadow {
-                                crypt_pw,
-                                aging_policy,
-                                expiration_date,
-                            }),
-                        ))
-                    }
-                    // No valid pw, don't care.
-                    Err(()) => None,
+                    Some((
+                        name,
+                        Arc::new(Shadow {
+                            crypt_pw: password,
+                            aging_policy,
+                            expiration_date,
+                        }),
+                    ))
+                } else {
+                    // Invalid password, skip the account
+                    None
                 }
             });
 

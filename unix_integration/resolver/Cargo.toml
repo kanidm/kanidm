@@ -75,7 +75,6 @@ selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 sketching = { workspace = true }
-sha-crypt = { workspace = true }
 time = { workspace = true, features = ["std"] }
 toml = { workspace = true }
 tokio = { workspace = true, features = [
