@@ -5,13 +5,19 @@
 (( chal|safe ))
 </script>
 
-<script src="/pkg/external/base64.js" async></script>
-<script src="/pkg/pkhtml.js" defer></script>
+<script
+    src="/pkg/external/base64.js?v=((crate::https::cache_buster::get_cache_buster_key()))"
+    async></script>
+<script
+    src="/pkg/pkhtml.js?v=((crate::https::cache_buster::get_cache_buster_key()))"
+    defer></script>
 
 (% if passkey %)
-<button hx-disable type="button" class="btn btn-dark" id="start-passkey-button">Use Passkey</button>
+<button hx-disable type="button" class="btn btn-dark"
+    id="start-passkey-button">Use Passkey</button>
 (% else %)
-<button type="button" class="btn btn-dark" id="start-seckey-button">Use Security Key</button>
+<button type="button" class="btn btn-dark" id="start-seckey-button">Use Security
+    Key</button>
 (% endif %)
 
 (% endblock %)

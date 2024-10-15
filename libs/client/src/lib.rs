@@ -98,6 +98,9 @@ pub struct KanidmClientConfigInstance {
     ///
     /// Environment variable is `KANIDM_CA_PATH`.
     pub ca_path: Option<String>,
+
+    /// Connection Timeout for the client, in seconds.
+    pub connect_timeout: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -300,6 +303,7 @@ impl KanidmClientBuilder {
             Some(ca_path) => Some(Self::parse_certificate(&ca_path)?),
             None => ca,
         };
+        let connect_timeout = kcc.connect_timeout.or(connect_timeout);
 
         Ok(KanidmClientBuilder {
             address,

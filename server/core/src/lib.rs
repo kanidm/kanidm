@@ -641,14 +641,14 @@ pub fn cert_generate_core(config: &Configuration) {
     let (tls_key_path, tls_chain_path) = match &config.tls_config {
         Some(tls_config) => (tls_config.key.as_path(), tls_config.chain.as_path()),
         None => {
-            error!("Unable to find tls configuration");
+            error!("Unable to find TLS configuration");
             std::process::exit(1);
         }
     };
 
     if tls_key_path.exists() && tls_chain_path.exists() {
         info!(
-            "tls key and chain already exist - remove them first if you intend to regenerate these"
+            "TLS key and chain already exist - remove them first if you intend to regenerate these"
         );
         return;
     }

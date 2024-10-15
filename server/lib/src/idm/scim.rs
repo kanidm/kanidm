@@ -540,7 +540,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
         changes: &'b ScimSyncRequest,
-    ) -> Result<(Uuid, BTreeSet<String>, BTreeMap<Uuid, &'b ScimEntry>, bool), OperationError> {
+    ) -> Result<
+        (
+            Uuid,
+            BTreeSet<Attribute>,
+            BTreeMap<Uuid, &'b ScimEntry>,
+            bool,
+        ),
+        OperationError,
+    > {
         // Assert the token is valid.
         let sync_uuid = match &sse.ident.origin {
             IdentType::User(_) | IdentType::Internal => {
@@ -607,9 +615,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sync_refresh = matches!(&changes.from_state, ScimSyncState::Refresh);
 
         // Get the sync authority set from the entry.
-        let sync_authority_set = sync_entry
+        let sync_authority_set: BTreeSet<Attribute> = sync_entry
             .get_ava_as_iutf8(Attribute::SyncYieldAuthority)
-            .cloned()
+            .map(|set| set.iter().map(|s| Attribute::from(s.as_str())).collect())
             .unwrap_or_default();
 
         // Transform the changes into something that supports lookups.
@@ -1114,8 +1122,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         scim_ent: &ScimEntry,
         sync_uuid: Uuid,
         sync_allow_class_set: &BTreeMap<String, SchemaClass>,
-        sync_allow_attr_set: &BTreeSet<String>,
-        phantom_attr_set: &BTreeSet<String>,
+        sync_allow_attr_set: &BTreeSet<Attribute>,
+        phantom_attr_set: &BTreeSet<Attribute>,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         // What classes did they request for this entry to sync?
         let requested_classes = scim_ent.schemas.iter()
@@ -1179,7 +1187,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         //
         // - either we nominate phantom attrs on the classes they can import with
         //   or we need to always allow them?
-        let sync_owned_attrs: BTreeSet<_> = requested_classes
+        let sync_owned_attrs: BTreeSet<Attribute> = requested_classes
             .values()
             .flat_map(|cls| {
                 cls.systemmay
@@ -1188,35 +1196,34 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .chain(cls.systemmust.iter())
                     .chain(cls.must.iter())
             })
-            .map(|s| s.as_str())
             // Finally, establish if the attribute is syncable. Technically this could probe some attrs
             // multiple times due to how the loop is established, but in reality there are few attr overlaps.
             .filter(|a| sync_allow_attr_set.contains(*a))
             // Add in the set of phantom syncable attrs.
-            .chain(phantom_attr_set.iter().map(|s| s.as_str()))
+            .chain(phantom_attr_set.iter())
+            .cloned()
             .collect();
 
         debug!(?sync_owned_attrs);
 
-        for attr in sync_owned_attrs.iter().copied() {
+        for attr in sync_owned_attrs.iter() {
             if !phantom_attr_set.contains(attr) {
                 // These are the attrs that are "real" and need to be cleaned out first.
-                mods.push(Modify::Purged(attr.into()));
+                mods.push(Modify::Purged(attr.clone()));
             }
         }
 
         // For each attr in the scim entry, see if it's in the sync_owned set. If so, proceed.
         for (scim_attr_name, scim_attr) in scim_ent.attrs.iter() {
-            if !sync_owned_attrs.contains(scim_attr_name.as_str()) {
+            let scim_attr_name = Attribute::from(scim_attr_name.as_str());
+
+            if !sync_owned_attrs.contains(&scim_attr_name) {
                 error!(
                     "Rejecting attribute {} for entry {} which is not sync owned",
                     scim_attr_name, scim_ent.id
                 );
                 return Err(OperationError::InvalidEntryState);
             }
-
-            // Make it a native attribute name.
-            let scim_attr_name = Attribute::from(scim_attr_name.as_str());
 
             // Convert each scim_attr to a set of values.
             let values = self
@@ -1245,7 +1252,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         change_entries: &BTreeMap<Uuid, &ScimEntry>,
         sync_uuid: Uuid,
-        sync_authority_set: &BTreeSet<String>,
+        sync_authority_set: &BTreeSet<Attribute>,
     ) -> Result<(), OperationError> {
         if change_entries.is_empty() {
             info!("No change_entries requested");
@@ -1279,23 +1286,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
             .collect();
 
-        let sync_allow_attr_set: BTreeSet<String> = attr_snapshot
+        let sync_allow_attr_set: BTreeSet<Attribute> = attr_snapshot
             .values()
             // Only add attrs to this if they are both sync allowed AND authority granted.
             .filter_map(|attr| {
-                if attr.sync_allowed && !sync_authority_set.contains(attr.name.as_str()) {
-                    Some(attr.name.to_string())
+                if attr.sync_allowed && !sync_authority_set.contains(&attr.name) {
+                    Some(attr.name.clone())
                 } else {
                     None
                 }
             })
             .collect();
 
-        let phantom_attr_set: BTreeSet<String> = attr_snapshot
+        let phantom_attr_set: BTreeSet<Attribute> = attr_snapshot
             .values()
             .filter_map(|attr| {
                 if attr.phantom && attr.sync_allowed {
-                    Some(attr.name.to_string())
+                    Some(attr.name.clone())
                 } else {
                     None
                 }

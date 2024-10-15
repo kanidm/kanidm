@@ -1,3 +1,4 @@
+use crate::valueset::ScimResolveStatus;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -112,8 +113,8 @@ impl ValueSetT for ValueSetOauthScope {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(str_join(&self.set).into())
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(str_join(&self.set).into()))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -289,8 +290,8 @@ impl ValueSetT for ValueSetOauthScopeMap {
         )
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .map(|(uuid, scopes)| {
@@ -301,7 +302,7 @@ impl ValueSetT for ValueSetOauthScopeMap {
                     }
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -620,8 +621,8 @@ impl ValueSetT for ValueSetOauthClaimMap {
         }))
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
-        Some(ScimValueKanidm::from(
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
             self.map
                 .iter()
                 .flat_map(|(claim_name, mappings)| {
@@ -636,7 +637,7 @@ impl ValueSetT for ValueSetOauthClaimMap {
                         })
                 })
                 .collect::<Vec<_>>(),
-        ))
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

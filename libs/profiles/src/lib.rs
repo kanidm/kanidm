@@ -1,5 +1,7 @@
+use base64::prelude::BASE64_STANDARD;
 use base64::{engine::general_purpose, Engine as _};
 use serde::Deserialize;
+use sha2::Digest;
 use std::env;
 
 // To debug why a rebuild is requested.
@@ -83,15 +85,21 @@ pub fn apply_profile() {
     println!("cargo:rerun-if-env-changed=CARGO_PKG_VERSION");
     println!("cargo:rerun-if-env-changed=KANIDM_PKG_COMMIT_REV");
 
-    let version = env!("CARGO_PKG_VERSION");
-    if let Some(commit_rev) = option_env!("KANIDM_PKG_COMMIT_REV") {
-        println!(
-            "cargo:rustc-env=KANIDM_PKG_VERSION={} {}",
-            version, commit_rev
-        );
-    } else {
-        println!("cargo:rustc-env=KANIDM_PKG_VERSION={}", version);
+    let kanidm_pkg_version = match option_env!("KANIDM_PKG_COMMIT_REV") {
+        Some(commit_rev) => format!("{} {}", env!("CARGO_PKG_VERSION"), commit_rev),
+        None => env!("CARGO_PKG_VERSION").to_string(),
     };
+
+    println!("cargo:rustc-env=KANIDM_PKG_VERSION={}", kanidm_pkg_version);
+
+    // KANIDM_PKG_VERSION_HASH is used for cache busting in the web UI
+    let mut kanidm_pkg_version_hash = sha2::Sha256::new();
+    kanidm_pkg_version_hash.update(kanidm_pkg_version.as_bytes());
+    let kanidm_pkg_version_hash = &BASE64_STANDARD.encode(kanidm_pkg_version_hash.finalize())[..8];
+    println!(
+        "cargo:rustc-env=KANIDM_PKG_VERSION_HASH={}",
+        kanidm_pkg_version_hash
+    );
 
     let version_pre = env!("CARGO_PKG_VERSION_PRE");
     if version_pre == "dev" {

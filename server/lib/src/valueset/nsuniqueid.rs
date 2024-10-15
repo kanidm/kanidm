@@ -1,9 +1,10 @@
-use smolset::SmolSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::NSUNIQUEID_RE;
+use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
+
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetNsUniqueId {
@@ -106,7 +107,7 @@ impl ValueSetT for ValueSetNsUniqueId {
         Box::new(self.set.iter().cloned())
     }
 
-    fn to_scim_value(&self) -> Option<ScimValueKanidm> {
+    fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let mut iter = self.set.iter().cloned();
         if self.len() == 1 {
             let v = iter.next().unwrap_or_default();

@@ -1,0 +1,17 @@
+## Kanidm Unixd minimal Service Configuration - /etc/kanidm/unixd
+# For a full example and documentation, see /usr/share/kanidm-unixd/unixd
+# or `example/unixd` in the source repository.
+
+version = '2'
+
+# default_shell = "/bin/sh"
+
+# home_attr = "uuid"
+# home_alias = "spn"
+# use_etc_skel = false
+
+
+# Defines a set of POSIX groups where membership of any of these groups
+# will be allowed to login via PAM.
+# Replace your group below and uncomment this line:
+#pam_allowed_login_groups = ["your_posix_login_group"]

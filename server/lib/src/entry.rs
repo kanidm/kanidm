@@ -29,23 +29,6 @@ pub use std::collections::BTreeSet as Set;
 use std::collections::{BTreeMap as Map, BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use compact_jwt::JwsEs256Signer;
-use hashbrown::{HashMap, HashSet};
-use kanidm_proto::internal::ImageValue;
-use kanidm_proto::internal::{
-    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
-};
-use kanidm_proto::v1::Entry as ProtoEntry;
-use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
-use openssl::ec::EcKey;
-use openssl::pkey::{Private, Public};
-use time::OffsetDateTime;
-use tracing::trace;
-use uuid::Uuid;
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-};
-
 use crate::be::dbentry::{DbEntry, DbEntryVers};
 use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
@@ -58,13 +41,30 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangeState;
 use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
+use compact_jwt::JwsEs256Signer;
+use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::ImageValue;
+use kanidm_proto::internal::{
+    ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
+};
+use kanidm_proto::scim_v1::server::ScimReference;
+use kanidm_proto::v1::Entry as ProtoEntry;
+use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use openssl::ec::EcKey;
+use openssl::pkey::{Private, Public};
+use time::OffsetDateTime;
+use tracing::trace;
+use uuid::Uuid;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{
     ApiToken, CredentialType, IndexType, IntentTokenState, Oauth2Session, PartialValue, Session,
     SyntaxType, Value,
 };
-use crate::valueset::{self, ValueSet};
+use crate::valueset::{self, ScimResolveStatus, ScimValueIntermediate, ValueSet};
 
 pub type EntryInitNew = Entry<EntryInit, EntryNew>;
 pub type EntryInvalidNew = Entry<EntryInvalid, EntryNew>;
@@ -2230,14 +2230,31 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_kanidm(&self) -> Result<ScimEntryKanidm, OperationError> {
-        let attrs = self
+    pub fn to_scim_kanidm(
+        &self,
+        mut read_txn: QueryServerReadTransaction,
+    ) -> Result<ScimEntryKanidm, OperationError> {
+        let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
             .iter()
             // We want to skip some attributes as they are already in the header.
             .filter(|(k, _vs)| **k != Attribute::Uuid)
-            .filter_map(|(k, vs)| vs.to_scim_value().map(|scim_value| (k.clone(), scim_value)))
+            .filter_map(|(k, vs)| {
+                let opt_resolve_status = vs.to_scim_value();
+                let res_opt_scim_value = match opt_resolve_status {
+                    None => Ok(None),
+                    Some(ScimResolveStatus::Resolved(scim_value_kani)) => Ok(Some(scim_value_kani)),
+                    Some(ScimResolveStatus::NeedsResolution(scim_value_interim)) => {
+                        resolve_scim_interim(scim_value_interim, &mut read_txn)
+                    }
+                };
+                res_opt_scim_value
+                    .transpose()
+                    .map(|scim_res| scim_res.map(|scim_value| (k.clone(), scim_value)))
+            })
             .collect();
+
+        let attrs = result?;
 
         let id = self.get_uuid();
 
@@ -2350,6 +2367,37 @@ impl Entry<EntryReduced, EntryCommitted> {
             .collect();
 
         Ok(LdapSearchResultEntry { dn, attributes })
+    }
+}
+
+fn resolve_scim_interim(
+    scim_value_intermediate: ScimValueIntermediate,
+    read_txn: &mut QueryServerReadTransaction,
+) -> Result<Option<ScimValueKanidm>, OperationError> {
+    match scim_value_intermediate {
+        ScimValueIntermediate::Refer(uuid) => {
+            if let Some(option) = read_txn.uuid_to_spn(uuid)? {
+                Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
+                    uuid,
+                    value: option.to_proto_string_clone(),
+                })))
+            } else {
+                // TODO: didn't have spn, fallback to uuid.to_string ?
+                Ok(None)
+            }
+        }
+        ScimValueIntermediate::ReferMany(uuids) => {
+            let mut scim_references = vec![];
+            for uuid in uuids {
+                if let Some(option) = read_txn.uuid_to_spn(uuid)? {
+                    scim_references.push(ScimReference {
+                        uuid,
+                        value: option.to_proto_string_clone(),
+                    })
+                }
+            }
+            Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
+        }
     }
 }
 
