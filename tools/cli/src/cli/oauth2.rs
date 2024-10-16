@@ -49,13 +49,27 @@ impl Oauth2Opt {
 
     pub async fn exec(&self) {
         match self {
-            Oauth2Opt::DeviceFlowDisable(_nopt) => {
+            Oauth2Opt::DeviceFlowDisable(nopt) => {
                 // TODO: finish the CLI bits for DeviceFlowDisable
-                unimplemented!("{:?}", self)
+                let client = nopt.copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_client_device_flow_update(&nopt.name, true)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
             }
-            Oauth2Opt::DeviceFlowEnable(_nopt) => {
+            Oauth2Opt::DeviceFlowEnable(nopt) => {
                 // TODO: finish the CLI bits for DeviceFlowEnable
-                unimplemented!("{:?}", self)
+                let client = nopt.copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_client_device_flow_update(&nopt.name, true)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
             }
             Oauth2Opt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;

@@ -334,6 +334,8 @@ pub struct Oauth2RS {
     type_: OauthRSType,
     /// Does the RS have a custom image set? If not, we use the default.
     has_custom_image: bool,
+
+    device_authorization_endpoint: Url,
 }
 
 impl Oauth2RS {
@@ -712,6 +714,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .collect();
 
+                let mut device_authorization_endpoint = self.inner.origin.clone();
+                device_authorization_endpoint.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
+
                 let client_id = name.clone();
                 let rscfg = Oauth2RS {
                     name,
@@ -740,6 +745,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     prefer_short_username,
                     type_,
                     has_custom_image,
+                    device_authorization_endpoint,
                 };
 
                 Ok((client_id, rscfg))
@@ -2552,7 +2558,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
         let response_modes_supported = vec![ResponseMode::Query];
+
+        // TODO: add device code if the rs supports it per <https://www.rfc-editor.org/rfc/rfc8628#section-4>
+        // `urn:ietf:params:oauth:grant-type:device_code`
         let grant_types_supported = vec![GrantType::AuthorisationCode];
+
         let subject_types_supported = vec![SubjectType::Public];
 
         let id_token_signing_alg_values_supported = match &o2rs.jws_signer {
@@ -2637,6 +2647,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             introspection_endpoint,
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
+            device_authorization_endpoint: Some(o2rs.device_authorization_endpoint.clone()),
         })
     }
 
