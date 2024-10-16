@@ -110,6 +110,7 @@ pub enum Attribute {
     OAuth2AllowInsecureClientDisablePkce,
     OAuth2AllowLocalhostRedirect,
     OAuth2ConsentScopeMap,
+    OAuth2DeviceFlowEnable,
     OAuth2JwtLegacyCryptoEnable,
     OAuth2PreferShortUsername,
     OAuth2RsBasicSecret,
@@ -327,6 +328,7 @@ impl Attribute {
             }
             Attribute::OAuth2AllowLocalhostRedirect => ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
             Attribute::OAuth2ConsentScopeMap => ATTR_OAUTH2_CONSENT_SCOPE_MAP,
+            Attribute::OAuth2DeviceFlowEnable => ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
             Attribute::OAuth2JwtLegacyCryptoEnable => ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
             Attribute::OAuth2PreferShortUsername => ATTR_OAUTH2_PREFER_SHORT_USERNAME,
             Attribute::OAuth2RsBasicSecret => ATTR_OAUTH2_RS_BASIC_SECRET,
@@ -507,6 +509,7 @@ impl Attribute {
             }
             ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT => Attribute::OAuth2AllowLocalhostRedirect,
             ATTR_OAUTH2_CONSENT_SCOPE_MAP => Attribute::OAuth2ConsentScopeMap,
+            ATTR_OAUTH2_DEVICE_FLOW_ENABLE => Attribute::OAuth2DeviceFlowEnable,
             ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE => Attribute::OAuth2JwtLegacyCryptoEnable,
             ATTR_OAUTH2_PREFER_SHORT_USERNAME => Attribute::OAuth2PreferShortUsername,
             ATTR_OAUTH2_RS_BASIC_SECRET => Attribute::OAuth2RsBasicSecret,
@@ -585,7 +588,10 @@ impl Attribute {
             #[allow(clippy::unreachable)]
             #[cfg(test)]
             _ => {
-                unreachable!()
+                unreachable!(
+                    "Check that you've implemented the Attribute conversion for {:?}",
+                    value
+                );
             }
         }
     }
@@ -594,6 +600,12 @@ impl Attribute {
 impl fmt::Display for Attribute {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.as_str())
+    }
+}
+
+impl From<Attribute> for String {
+    fn from(attr: Attribute) -> String {
+        attr.to_string()
     }
 }
 
@@ -621,7 +633,12 @@ mod test {
         let the_list = all::<Attribute>().collect::<Vec<_>>();
         for attr in the_list {
             let attr2 = Attribute::from(attr.as_str());
-            assert!(attr == attr2);
+            assert!(
+                attr == attr2,
+                "Round-trip failed for {} <=> {} check you've implemented a from and to string",
+                attr,
+                attr2
+            );
         }
     }
 }
