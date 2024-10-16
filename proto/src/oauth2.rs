@@ -8,8 +8,8 @@ use serde_with::{base64, formats, serde_as, skip_serializing_none, StringWithSep
 use url::Url;
 use uuid::Uuid;
 
-/// How long a device code is valid for.
-pub const OAUTH2_DEVICE_CODE_EXPIRY: u64 = 300;
+/// How many seconds a device code is valid for.
+pub const OAUTH2_DEVICE_CODE_EXPIRY_SECONDS: u64 = 300;
 /// How often a client device can query the status of the token
 pub const OAUTH2_DEVICE_CODE_INTERVAL: u64 = 5;
 
@@ -107,6 +107,7 @@ pub enum GrantTypeReq {
         #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
         scope: Option<BTreeSet<String>>,
     },
+    /// ref <https://www.rfc-editor.org/rfc/rfc8628#section-3.4>
     #[serde(rename = "urn:ietf:params:oauth:grant-type:device_code")]
     DeviceCode {
         device_code: String,
@@ -516,26 +517,29 @@ pub struct ErrorResponse {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+/// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-3.2>
 pub struct DeviceAuthorizationResponse {
-    device_code: String,
+    device_code: [u8; 16],
     user_code: String,
-    verification_uri: String,
-    verification_uri_complete: Option<String>,
+    verification_uri: Url,
+    verification_uri_complete: Option<Url>,
     expires_in: u64,
     interval: u64,
 }
 
 impl DeviceAuthorizationResponse {
-    pub fn new(verification_uri: String, device_code: String, user_code: String) -> Self {
+    pub fn new(verification_uri: Url, device_code: [u8; 16], user_code: String) -> Self {
+        let mut verification_uri_complete = verification_uri.clone();
+        verification_uri_complete
+            .query_pairs_mut()
+            .append_pair("user_code", &user_code);
+
         Self {
-            verification_uri_complete: Some(format!(
-                "{}/?user_code={}",
-                verification_uri, user_code
-            )),
+            verification_uri_complete: Some(verification_uri_complete),
             device_code,
             user_code,
             verification_uri,
-            expires_in: OAUTH2_DEVICE_CODE_EXPIRY,
+            expires_in: OAUTH2_DEVICE_CODE_EXPIRY_SECONDS,
             interval: OAUTH2_DEVICE_CODE_INTERVAL,
         }
     }

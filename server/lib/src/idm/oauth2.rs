@@ -24,7 +24,6 @@ use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
 use itertools::Itertools;
-use kanidm_lib_crypto::sha2::{Digest, Sha256};
 use kanidm_proto::constants::*;
 
 pub use kanidm_proto::oauth2::{
@@ -36,9 +35,10 @@ pub use kanidm_proto::oauth2::{
 use kanidm_proto::oauth2::{
     AccessTokenType, ClaimType, DeviceAuthorizationResponse, DisplayValue, GrantType,
     IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
-    OAUTH2_DEVICE_CODE_EXPIRY,
+    OAUTH2_DEVICE_CODE_EXPIRY_SECONDS,
 };
 use openssl::sha;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use time::OffsetDateTime;
@@ -913,19 +913,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             }
         };
 
-        // DANGER: Why do we have to do this? During the use of qs for internal search
-        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
-        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
-        // safe however because no element of the search or write process calls the oauth2rs
-        // excepting for this idm layer within a single thread, meaning that stripping the
-        // lifetime here is safe since we are the sole accessor.
-        let o2rs: &Oauth2RS = unsafe {
-            let s = self.oauth2rs.inner.rs_set.get(&client_id).ok_or_else(|| {
-                admin_warn!("Invalid OAuth2 client_id");
-                Oauth2Error::AuthenticationRequired
-            })?;
-            &*(s as *const _)
-        };
+        let o2rs = self.get_client(&client_id)?;
 
         // check the secret.
         let client_authentication_valid = match &o2rs.type_ {
@@ -959,7 +947,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 redirect_uri,
                 code_verifier,
             } => self.check_oauth2_token_exchange_authorization_code(
-                o2rs,
+                &o2rs,
                 code,
                 redirect_uri,
                 code_verifier.as_deref(),
@@ -967,7 +955,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             ),
             GrantTypeReq::ClientCredentials { scope } => {
                 if client_authentication_valid {
-                    self.check_oauth2_token_client_credentials(o2rs, scope.as_ref(), ct)
+                    self.check_oauth2_token_client_credentials(&o2rs, scope.as_ref(), ct)
                 } else {
                     security_info!(
                         "Unable to proceed with client credentials grant unless client authentication is provided and valid"
@@ -978,11 +966,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             GrantTypeReq::RefreshToken {
                 refresh_token,
                 scope,
-            } => self.check_oauth2_token_refresh(o2rs, refresh_token, scope.as_ref(), ct),
+            } => self.check_oauth2_token_refresh(&o2rs, refresh_token, scope.as_ref(), ct),
             GrantTypeReq::DeviceCode { device_code, scope } => {
                 self.check_oauth2_device_code_status(device_code, scope)
             }
         }
+    }
+
+    fn get_client(&self, client_id: &str) -> Result<Oauth2RS, Oauth2Error> {
+        let s = self
+            .oauth2rs
+            .inner
+            .rs_set
+            .get(client_id)
+            .ok_or_else(|| {
+                admin_warn!("Invalid OAuth2 client_id {}", client_id);
+                Oauth2Error::AuthenticationRequired
+            })?
+            .clone();
+        Ok(s)
     }
 
     #[instrument(level = "info", skip(self))]
@@ -993,19 +995,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         scope: &Option<BTreeSet<String>>,
         eventid: Uuid,
     ) -> Result<DeviceAuthorizationResponse, Oauth2Error> {
-        // DANGER: Why do we have to do this? During the use of qs for internal search
-        // and other operations we need qs to be mut. But when we borrow oauth2rs here we
-        // cause multiple borrows to occur on struct members that freaks rust out. This *IS*
-        // safe however because no element of the search or write process calls the oauth2rs
-        // excepting for this idm layer within a single thread, meaning that stripping the
-        // lifetime here is safe since we are the sole accessor.
-        let o2rs: &Oauth2RS = unsafe {
-            let s = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
-                admin_warn!("Invalid OAuth2 client_id {}", client_id);
-                Oauth2Error::AuthenticationRequired
-            })?;
-            &*(s as *const _)
-        };
+        let o2rs = self.get_client(client_id)?;
 
         info!("Got Client: {:?}", o2rs);
 
@@ -1027,38 +1017,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mut verification_uri = self.oauth2rs.inner.origin.clone();
         verification_uri.set_path(uri::OAUTH2_DEVICE_LOGIN);
 
-        // device code is a combination of the inputs
-        fn gen_device_code(user_code: &str, expiry: &Duration) -> Result<String, Oauth2Error> {
-            let mut hasher = Sha256::new();
-            hasher.update(user_code.as_bytes());
-            hasher.update(expiry.as_secs().to_be_bytes());
-            let hash = hasher.finalize();
-            Ok(general_purpose::STANDARD_NO_PAD.encode(hash))
-        }
-
-        fn gen_user_code() -> Result<String, Oauth2Error> {
-            use rand::Rng;
-            let mut rng = rand::thread_rng();
-            let chars: Vec<char> = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-                .chars()
-                .collect();
-
-            let mut result = String::new();
-            for _ in 0..4 {
-                result.push(chars[rng.gen_range(0..chars.len())]);
-            }
-            result.push('-');
-            for _ in 0..4 {
-                result.push(chars[rng.gen_range(0..chars.len())]);
-            }
-
-            Ok(result)
-        }
-
-        let user_code = gen_user_code()
-            .inspect_err(|err| error!("Failed to generate a user code! {:?}", err))?;
-        let expiry = Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY) + duration_from_epoch_now();
-        let device_code = gen_device_code(&user_code, &expiry)
+        let (user_code_string, _user_code) = gen_user_code();
+        let expiry =
+            Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY_SECONDS) + duration_from_epoch_now();
+        let device_code = gen_device_code()
             .inspect_err(|err| error!("Failed to generate a device code! {:?}", err))?;
 
         info!(
@@ -1070,9 +1032,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // TODO: store user_code / expiry / client_id / device_code in the backend, needs to be checked on the token exchange.
 
         Ok(DeviceAuthorizationResponse::new(
-            verification_uri.to_string(),
+            verification_uri,
             device_code,
-            user_code,
+            user_code_string,
         ))
     }
 
@@ -2840,6 +2802,31 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
         return Err(Oauth2Error::InvalidScope);
     }
     Ok(())
+}
+
+/// device code is a random bucket of bytes used in the device flow
+#[inline]
+fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
+    let mut rng = rand::thread_rng();
+    let mut result = [0u8; 16];
+    if let Err(err) = rng.try_fill(&mut result) {
+        error!("Failed to generate device code! {:?}", err);
+        return Err(Oauth2Error::ServerError(OperationError::Backend));
+    }
+    Ok(result)
+}
+
+#[inline]
+/// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
+fn gen_user_code() -> (String, u32) {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    let num: u32 = rng.gen_range(0..=999999999);
+    let result = format!("{:09}", num);
+    (
+        format!("{}-{}-{}", &result[0..3], &result[3..6], &result[6..9]),
+        num,
+    )
 }
 
 #[cfg(test)]

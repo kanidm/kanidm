@@ -31,6 +31,8 @@ impl Oauth2Opt {
             Oauth2Opt::DisableLegacyCrypto(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferShortUsername(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferSPNUsername(nopt) => nopt.copt.debug,
+            Oauth2Opt::DeviceFlowDisable(nopt) => nopt.copt.debug,
+            Oauth2Opt::DeviceFlowEnable(nopt) => nopt.copt.debug,
             Oauth2Opt::CreateBasic { copt, .. }
             | Oauth2Opt::CreatePublic { copt, .. }
             | Oauth2Opt::UpdateClaimMap { copt, .. }
@@ -47,6 +49,14 @@ impl Oauth2Opt {
 
     pub async fn exec(&self) {
         match self {
+            Oauth2Opt::DeviceFlowDisable(_nopt) => {
+                // TODO: finish the CLI bits for DeviceFlowDisable
+                unimplemented!("{:?}", self)
+            }
+            Oauth2Opt::DeviceFlowEnable(_nopt) => {
+                // TODO: finish the CLI bits for DeviceFlowEnable
+                unimplemented!("{:?}", self)
+            }
             Oauth2Opt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_oauth2_rs_list().await {
