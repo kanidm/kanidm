@@ -36,6 +36,10 @@ impl KanidmClient {
             ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
             vec![origin.to_string()],
         );
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
+            vec!["true".to_string()],
+        );
         self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
             .await
     }
@@ -56,6 +60,10 @@ impl KanidmClient {
         new_oauth2_rs.attrs.insert(
             ATTR_OAUTH2_RS_ORIGIN_LANDING.to_string(),
             vec![origin.to_string()],
+        );
+        new_oauth2_rs.attrs.insert(
+            ATTR_OAUTH2_STRICT_REDIRECT_URI.to_string(),
+            vec!["true".to_string()],
         );
         self.perform_post_request("/v1/oauth2/_public", new_oauth2_rs)
             .await
