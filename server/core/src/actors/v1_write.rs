@@ -17,8 +17,8 @@ use kanidmd_lib::{
     filter::{Filter, FilterInvalid},
     idm::account::DestroySessionTokenEvent,
     idm::credupdatesession::{
-        CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
-        InitCredentialUpdateIntentEvent,
+        CredentialUpdateIntentTokenExchange, CredentialUpdateSessionToken,
+        InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
     },
     idm::event::{GeneratePasswordEvent, RegenerateRadiusSecretEvent, UnixPasswordChangeEvent},
     idm::oauth2::{
@@ -669,6 +669,7 @@ impl QueryServerWriteV1 {
             })
             .map(|tok| CUIntentToken {
                 token: tok.intent_id,
+                expiry_time: tok.expiry_time,
             })
     }
 
@@ -679,14 +680,12 @@ impl QueryServerWriteV1 {
     )]
     pub async fn handle_idmcredentialexchangeintent(
         &self,
-        intent_token: CUIntentToken,
+        intent_id: String,
         eventid: Uuid,
     ) -> Result<(CUSessionToken, CUStatus), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write(ct).await?;
-        let intent_token = CredentialUpdateIntentToken {
-            intent_id: intent_token.token,
-        };
+        let intent_token = CredentialUpdateIntentTokenExchange { intent_id };
         // TODO: this is throwing a 500 error when a session is already in use, that seems bad?
         idms_prox_write
             .exchange_intent_credential_update(intent_token, ct)

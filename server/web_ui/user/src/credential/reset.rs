@@ -816,7 +816,7 @@ impl CredentialResetApp {
     }
 
     async fn exchange_intent_token(token: String) -> Result<Msg, FetchError> {
-        let request = CUIntentToken { token };
+        let request = token;
         let req_jsvalue = request
             .serialize(&serde_wasm_bindgen::Serializer::json_compatible())
             .expect("Failed to serialise request");

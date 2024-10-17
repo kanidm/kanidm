@@ -1069,7 +1069,7 @@ async fn test_server_credential_update_session_pw(rsclient: KanidmClient) {
     let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _status) = rsclient
-        .idm_account_credential_update_exchange(intent_token)
+        .idm_account_credential_update_exchange(intent_token.token)
         .await
         .unwrap();
 
@@ -1144,7 +1144,7 @@ async fn test_server_credential_update_session_totp_pw(rsclient: KanidmClient) {
     let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _statu) = rsclient
-        .idm_account_credential_update_exchange(intent_token)
+        .idm_account_credential_update_exchange(intent_token.token)
         .await
         .unwrap();
 
@@ -1273,7 +1273,7 @@ async fn setup_demo_account_passkey(rsclient: &KanidmClient) -> WebauthnAuthenti
     let _ = rsclient.logout().await;
     // Exchange the intent token
     let (session_token, _status) = rsclient
-        .idm_account_credential_update_exchange(intent_token)
+        .idm_account_credential_update_exchange(intent_token.token)
         .await
         .unwrap();
 
@@ -1359,7 +1359,7 @@ async fn setup_demo_account_password(
 
     // Exchange the intent token
     let (session_token, _status) = rsclient
-        .idm_account_credential_update_exchange(intent_token)
+        .idm_account_credential_update_exchange(intent_token.token)
         .await
         .expect("Failed to exchange intent token");
 
@@ -1611,7 +1611,7 @@ async fn test_server_user_auth_token_lifecycle(rsclient: KanidmClient) {
         let _ = rsclient.logout().await;
         // Exchange the intent token
         let (session_token, _status) = rsclient
-            .idm_account_credential_update_exchange(intent_token)
+            .idm_account_credential_update_exchange(intent_token.token)
             .await
             .unwrap();
 
