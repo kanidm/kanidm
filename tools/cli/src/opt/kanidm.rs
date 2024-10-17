@@ -1188,8 +1188,10 @@ pub enum Oauth2Opt {
     /// Use the 'spn' attribute instead of 'name' for the preferred_username
     #[clap(name = "prefer-spn-username")]
     PreferSPNUsername(Named),
+    #[cfg(feature = "dev-oauth2-device-flow")]
     /// Enable OAuth2 Device Flow authentication
     DeviceFlowEnable(Named),
+    #[cfg(feature = "dev-oauth2-device-flow")]
     /// Disable OAuth2 Device Flow authentication
     DeviceFlowDisable(Named),
 }

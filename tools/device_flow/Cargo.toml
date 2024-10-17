@@ -1,6 +1,5 @@
 [package]
 name = "kanidm_device_flow"
-default-run = "kanidm_device_flow"
 description = "Kanidm Device Flow Client"
 documentation = "https://kanidm.github.io/kanidm/stable/"
 version = { workspace = true }
@@ -11,18 +10,18 @@ license = { workspace = true }
 homepage = { workspace = true }
 repository = { workspace = true }
 
-[features]
 
-[[bin]]
-name = "kanidm_device_flow"
-path = "src/main.rs"
+[lib]
+test = false
+doctest = false
+
+[features]
 
 [dependencies]
 kanidm_proto = { workspace = true }
 anyhow = { workspace = true }
 oauth2 = "4.4.2"
 reqwest = { version = "0.12.8", default-features = false, features = [
-    "blocking",
     "rustls-tls",
 ] }
 

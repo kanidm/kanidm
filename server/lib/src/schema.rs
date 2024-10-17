@@ -83,12 +83,20 @@ pub struct SchemaAttribute {
     pub uuid: Uuid,
     // Perhaps later add aliases?
     pub description: String,
+    /// This is a vec, not a single value
     pub multivalue: bool,
+    /// If the attribute must be unique amongst all other values of this attribute? Maybe?
     pub unique: bool,
+    /// TODO: What does this do?
     pub phantom: bool,
+    /// TODO: What does this do?
     pub sync_allowed: bool,
+
+    /// If the value of this attribute get replicated to other servers
     pub replicated: bool,
+    /// TODO: What does this do?
     pub index: Vec<IndexType>,
+    /// THe type of data that this attribute may hold.
     pub syntax: SyntaxType,
 }
 
@@ -1931,6 +1939,22 @@ impl<'a> SchemaWriteTransaction<'a> {
                 replicated: true,
                 index: vec![],
                 syntax: SyntaxType::Image,
+            },
+        );
+
+        self.attributes.insert(
+            Attribute::OAuth2DeviceFlowEnable,
+            SchemaAttribute {
+                name: Attribute::OAuth2DeviceFlowEnable,
+                uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
+                description: String::from("Enable the OAuth2 Device Flow for this client."),
+                multivalue: false,
+                unique: true,
+                phantom: false,
+                sync_allowed: false,
+                replicated: true,
+                index: vec![],
+                syntax: SyntaxType::Boolean,
             },
         );
 
