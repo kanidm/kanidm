@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD025 MD042 -->
 # Kanidm
 
 - [Introduction to Kanidm](introduction_to_kanidm.md)
