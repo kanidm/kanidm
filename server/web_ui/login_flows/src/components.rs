@@ -490,7 +490,7 @@ impl LoginApp {
                             disabled={ state==&TotpState::Disabled }
                             id="totp"
                             name="totp"
-                            type="text"
+                            type="number"
                             autocomplete="off"
                             value=""
                             />
