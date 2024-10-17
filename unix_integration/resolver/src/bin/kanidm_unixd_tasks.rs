@@ -97,6 +97,8 @@ fn create_home_directory(
     // be possible, but we assert this to be sure.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
+    debug!(?home_prefix_path, ?home_mount_prefix_path, ?info);
+
     // This is where the users home dir "is" and aliases from here go to the true storage
     // mounts
     let home_prefix_path = home_prefix_path
