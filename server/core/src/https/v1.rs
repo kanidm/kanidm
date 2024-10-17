@@ -1340,7 +1340,7 @@ pub async fn account_user_auth_token_delete(
 pub async fn credential_update_exchange_intent(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    Json(intent_token): Json<CUIntentToken>,
+    Json(intent_token): Json<String>,
 ) -> Result<Json<(CUSessionToken, CUStatus)>, WebError> {
     state
         .qe_w_ref

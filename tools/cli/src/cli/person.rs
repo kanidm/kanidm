@@ -21,7 +21,7 @@ use kanidm_proto::scim_v1::{client::ScimSshPublicKeys, ScimEntryGetQuery};
 use qrcode::render::unicode;
 use qrcode::QrCode;
 use time::format_description::well_known::Rfc3339;
-use time::OffsetDateTime;
+use time::{OffsetDateTime, UtcOffset};
 use uuid::Uuid;
 
 use crate::webauthn::get_authenticator;
@@ -637,9 +637,7 @@ impl AccountCredential {
             // The account credential use_reset_token CLI
             AccountCredential::UseResetToken(aopt) => {
                 let client = aopt.copt.to_unauth_client();
-                let cuintent_token = CUIntentToken {
-                    token: aopt.token.clone(),
-                };
+                let cuintent_token = aopt.token.clone();
 
                 match client
                     .idm_account_credential_update_exchange(cuintent_token)
@@ -669,14 +667,13 @@ impl AccountCredential {
                     .idm_person_account_credential_update_intent(aopts.account_id.as_str(), *ttl)
                     .await
                 {
-                    Ok(cuintent_token) => {
+                    Ok(CUIntentToken { token, expiry_time }) => {
                         let mut url = client.make_url("/ui/reset");
-                        url.query_pairs_mut()
-                            .append_pair("token", cuintent_token.token.as_str());
+                        url.query_pairs_mut().append_pair("token", token.as_str());
 
                         debug!(
                             "Successfully created credential reset token for {}: {}",
-                            aopts.account_id, cuintent_token.token
+                            aopts.account_id, token
                         );
                         println!(
                             "The person can use one of the following to allow the credential reset"
@@ -700,7 +697,19 @@ impl AccountCredential {
                         println!("This link: {}", url.as_str());
                         println!(
                             "Or run this command: kanidm person credential use-reset-token {}",
-                            cuintent_token.token
+                            token
+                        );
+
+                        // Now get the abs time
+                        let local_offset =
+                            UtcOffset::current_local_offset().unwrap_or(UtcOffset::UTC);
+                        let expiry_time = expiry_time.to_offset(local_offset);
+
+                        println!(
+                            "This token will expire at: {}",
+                            expiry_time
+                                .format(&Rfc3339)
+                                .expect("Failed to format date time!!!")
                         );
                         println!();
                     }

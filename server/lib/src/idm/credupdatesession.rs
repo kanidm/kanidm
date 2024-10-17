@@ -32,12 +32,12 @@ use compact_jwt::jwe::JweBuilder;
 use super::accountpolicy::ResolvedAccountPolicy;
 
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
+// Minimum 5 minutes.
+const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
 // Default 1 hour.
 const DEFAULT_INTENT_TTL: Duration = Duration::from_secs(3600);
 // Default 1 day.
 const MAXIMUM_INTENT_TTL: Duration = Duration::from_secs(86400);
-// Minimum 5 minutes.
-const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
 
 #[derive(Debug)]
 pub enum PasswordQuality {
@@ -50,6 +50,20 @@ pub enum PasswordQuality {
 #[derive(Clone, Debug)]
 pub struct CredentialUpdateIntentToken {
     pub intent_id: String,
+    pub expiry_time: OffsetDateTime,
+}
+
+#[derive(Clone, Debug)]
+pub struct CredentialUpdateIntentTokenExchange {
+    pub intent_id: String,
+}
+
+impl From<CredentialUpdateIntentToken> for CredentialUpdateIntentTokenExchange {
+    fn from(tok: CredentialUpdateIntentToken) -> Self {
+        CredentialUpdateIntentTokenExchange {
+            intent_id: tok.intent_id,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -932,7 +946,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let mttl = event.max_ttl.unwrap_or(DEFAULT_INTENT_TTL);
         let clamped_mttl = mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
         debug!(?clamped_mttl, "clamped update intent validity");
+        // Absolute expiry of the intent token in epoch seconds
         let max_ttl = ct + clamped_mttl;
+
+        // Get the expiry of the intent token as an odt.
+        let expiry_time = OffsetDateTime::UNIX_EPOCH + max_ttl;
 
         let intent_id = readable_password_from_random();
 
@@ -984,15 +1002,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        Ok(CredentialUpdateIntentToken { intent_id })
+        Ok(CredentialUpdateIntentToken {
+            intent_id,
+            expiry_time,
+        })
     }
 
     pub fn exchange_intent_credential_update(
         &mut self,
-        token: CredentialUpdateIntentToken,
+        token: CredentialUpdateIntentTokenExchange,
         current_time: Duration,
     ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
-        let CredentialUpdateIntentToken { intent_id } = token;
+        let CredentialUpdateIntentTokenExchange { intent_id } = token;
 
         /*
             let entry = self.qs_write.internal_search_uuid(&token.target)?;
@@ -2633,24 +2654,24 @@ mod tests {
         // exchange intent token - invalid - fail
         // Expired
         let cur = idms_prox_write
-            .exchange_intent_credential_update(intent_tok.clone(), ct + MINIMUM_INTENT_TTL);
+            .exchange_intent_credential_update(intent_tok.clone().into(), ct + MINIMUM_INTENT_TTL);
 
         assert!(matches!(cur, Err(OperationError::SessionExpired)));
 
         let cur = idms_prox_write
-            .exchange_intent_credential_update(intent_tok.clone(), ct + MAXIMUM_INTENT_TTL);
+            .exchange_intent_credential_update(intent_tok.clone().into(), ct + MAXIMUM_INTENT_TTL);
 
         assert!(matches!(cur, Err(OperationError::SessionExpired)));
 
         // exchange intent token - success
         let (cust_a, _c_status) = idms_prox_write
-            .exchange_intent_credential_update(intent_tok.clone(), ct)
+            .exchange_intent_credential_update(intent_tok.clone().into(), ct)
             .unwrap();
 
         // Session in progress - This will succeed and then block the former success from
         // committing.
         let (cust_b, _c_status) = idms_prox_write
-            .exchange_intent_credential_update(intent_tok, ct + Duration::from_secs(1))
+            .exchange_intent_credential_update(intent_tok.into(), ct + Duration::from_secs(1))
             .unwrap();
 
         let cur = idms_prox_write.commit_credential_update(&cust_a, ct);
