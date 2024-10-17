@@ -441,6 +441,8 @@ pub const UUID_IDM_ACP_APPLICATION_ENTRY_MANAGER: Uuid =
     uuid!("00000000-0000-0000-0000-ffffff000072");
 pub const UUID_IDM_ACP_APPLICATION_MANAGE: Uuid = uuid!("00000000-0000-0000-0000-ffffff000073");
 pub const UUID_IDM_ACP_MAIL_SERVERS: Uuid = uuid!("00000000-0000-0000-0000-ffffff000074");
+pub const UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE: Uuid =
+    uuid!("00000000-0000-0000-0000-ffffff000075");
 
 // End of system ranges
 pub const UUID_DOES_NOT_EXIST: Uuid = uuid!("00000000-0000-0000-0000-fffffffffffe");

@@ -20,42 +20,17 @@ use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_
 use url::Url;
 
 use kanidm_client::KanidmClient;
-use kanidmd_testkit::ADMIN_TEST_PASSWORD;
-
-macro_rules! assert_no_cache {
-    ($response:expr) => {{
-        // Check we have correct nocache headers.
-        let cache_header: &str = $response
-            .headers()
-            .get(http::header::CACHE_CONTROL)
-            .expect("missing cache-control header")
-            .to_str()
-            .expect("invalid cache-control header");
-
-        assert!(cache_header.contains("no-store"));
-        assert!(cache_header.contains("max-age=0"));
-
-        let pragma_header: &str = $response
-            .headers()
-            .get("pragma")
-            .expect("missing cache-control header")
-            .to_str()
-            .expect("invalid cache-control header");
-
-        assert!(pragma_header.contains("no-cache"));
-    }};
-}
-
-const TEST_INTEGRATION_RS_ID: &str = "test_integration";
-const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
-const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
-const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
-const TEST_INTEGRATION_REDIRECT_URL: &str = "https://demo.example.com/oauth2/flow";
+use kanidmd_testkit::{
+    assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
+    NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME, TEST_INTEGRATION_RS_DISPLAY,
+    TEST_INTEGRATION_RS_GROUP_ALL, TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_REDIRECT_URL,
+    TEST_INTEGRATION_RS_URL,
+};
 
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
@@ -72,39 +47,42 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_client_add_origin(
             TEST_INTEGRATION_RS_ID,
-            &Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+            &Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
         )
         .await
         .expect("Failed to update oauth2 config");
 
     // Extend the admin account with extended details for openid claims.
     rsclient
-        .idm_person_account_create("oauth_test", "oauth_test")
+        .idm_person_account_create(NOT_ADMIN_TEST_USERNAME, NOT_ADMIN_TEST_USERNAME)
         .await
         .expect("Failed to create account details");
 
     rsclient
         .idm_person_account_set_attr(
-            "oauth_test",
+            NOT_ADMIN_TEST_USERNAME,
             Attribute::Mail.as_ref(),
-            &["oauth_test@localhost"],
+            &[NOT_ADMIN_TEST_EMAIL],
         )
         .await
         .expect("Failed to create account mail");
 
     rsclient
-        .idm_person_account_primary_credential_set_password("oauth_test", ADMIN_TEST_PASSWORD)
+        .idm_person_account_primary_credential_set_password(
+            NOT_ADMIN_TEST_USERNAME,
+            NOT_ADMIN_TEST_PASSWORD,
+        )
         .await
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update("test_integration", None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
         .await
         .expect("Failed to update oauth2 config");
 
     rsclient
         .idm_oauth2_rs_update_scope_map(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
@@ -113,15 +91,15 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             IDM_ALL_ACCOUNTS.name,
-            vec!["admin"],
+            vec![ADMIN_TEST_USER],
         )
         .await
         .expect("Failed to update oauth2 scopes");
 
     let client_secret = rsclient
-        .idm_oauth2_rs_get_basic_secret("test_integration")
+        .idm_oauth2_rs_get_basic_secret(TEST_INTEGRATION_RS_ID)
         .await
         .ok()
         .flatten()
@@ -130,7 +108,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     // Get our admin's auth token for our new client.
     // We have to re-auth to update the mail field.
     let res = rsclient
-        .auth_simple_password("oauth_test", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(NOT_ADMIN_TEST_USERNAME, NOT_ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
     let oauth_test_uat = rsclient
@@ -252,11 +230,11 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
-            ("client_id", "test_integration"),
+            ("client_id", TEST_INTEGRATION_RS_ID),
             ("state", "YWJjZGVm"),
             ("code_challenge", pkce_code_challenge.as_str()),
             ("code_challenge_method", "S256"),
-            ("redirect_uri", TEST_INTEGRATION_REDIRECT_URL),
+            ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
             ("scope", "email read openid"),
         ])
         .send()
@@ -278,6 +256,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
     } = consent_req
     {
         // Note the supplemental scope here (admin)
+        dbg!(&scopes);
         assert!(scopes.contains("admin"));
         consent_token
     } else {
@@ -323,14 +302,14 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let form_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
         code: code.to_string(),
-        redirect_uri: Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+        redirect_uri: Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
         code_verifier: Some(pkce_code_verifier.secret().clone()),
     }
     .into();
 
     let response = client
         .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
-        .basic_auth("test_integration", Some(client_secret.clone()))
+        .basic_auth(TEST_INTEGRATION_RS_ID, Some(client_secret.clone()))
         .form(&form_req)
         .send()
         .await
@@ -366,7 +345,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let response = client
         .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
-        .basic_auth("test_integration", Some(client_secret.clone()))
+        .basic_auth(TEST_INTEGRATION_RS_ID, Some(client_secret.clone()))
         .form(&intr_request)
         .send()
         .await
@@ -386,14 +365,17 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     assert!(tir.active);
     assert!(tir.scope.is_some());
-    assert_eq!(tir.client_id.as_deref(), Some("test_integration"));
-    assert_eq!(tir.username.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
+    assert_eq!(
+        tir.username.as_deref(),
+        Some(format!("{}@localhost", NOT_ADMIN_TEST_USERNAME).as_str())
+    );
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
     assert!(tir.exp.is_some());
     assert!(tir.iat.is_some());
     assert!(tir.nbf.is_some());
     assert!(tir.sub.is_some());
-    assert_eq!(tir.aud.as_deref(), Some("test_integration"));
+    assert_eq!(tir.aud.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert!(tir.iss.is_none());
     assert!(tir.jti.is_none());
 
@@ -414,7 +396,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         rsclient.make_url("/oauth2/openid/test_integration")
     );
     eprintln!("{:?}", oidc.s_claims.email);
-    assert_eq!(oidc.s_claims.email.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(oidc.s_claims.email.as_deref(), Some(NOT_ADMIN_TEST_EMAIL));
     assert_eq!(oidc.s_claims.email_verified, Some(true));
 
     let response = client
@@ -451,7 +433,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let response = client
         .post(rsclient.make_url(OAUTH2_TOKEN_ENDPOINT))
-        .basic_auth("test_integration", Some(client_secret.clone()))
+        .basic_auth(TEST_INTEGRATION_RS_ID, Some(client_secret.clone()))
         .form(&form_req)
         .send()
         .await
@@ -472,7 +454,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let response = client
         .post(rsclient.make_url(OAUTH2_TOKEN_INTROSPECT_ENDPOINT))
-        .basic_auth("test_integration", Some(client_secret))
+        .basic_auth(TEST_INTEGRATION_RS_ID, Some(client_secret))
         .form(&intr_request)
         .send()
         .await
@@ -487,17 +469,17 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     assert!(tir.active);
     assert!(tir.scope.is_some());
-    assert_eq!(tir.client_id.as_deref(), Some("test_integration"));
+    assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert_eq!(tir.username.as_deref(), Some("test_integration@localhost"));
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));
 
     // auth back with admin so we can test deleting things
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
     rsclient
-        .idm_oauth2_rs_delete_sup_scope_map("test_integration", TEST_INTEGRATION_RS_GROUP_ALL)
+        .idm_oauth2_rs_delete_sup_scope_map(TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_GROUP_ALL)
         .await
         .expect("Failed to update oauth2 scopes");
 }
@@ -505,7 +487,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
@@ -522,39 +504,42 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_client_add_origin(
             TEST_INTEGRATION_RS_ID,
-            &Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+            &Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
         )
         .await
         .expect("Failed to update oauth2 config");
 
     // Extend the admin account with extended details for openid claims.
     rsclient
-        .idm_person_account_create("oauth_test", "oauth_test")
+        .idm_person_account_create(NOT_ADMIN_TEST_USERNAME, NOT_ADMIN_TEST_USERNAME)
         .await
         .expect("Failed to create account details");
 
     rsclient
         .idm_person_account_set_attr(
-            "oauth_test",
+            NOT_ADMIN_TEST_USERNAME,
             Attribute::Mail.as_ref(),
-            &["oauth_test@localhost"],
+            &[NOT_ADMIN_TEST_EMAIL],
         )
         .await
         .expect("Failed to create account mail");
 
     rsclient
-        .idm_person_account_primary_credential_set_password("oauth_test", ADMIN_TEST_PASSWORD)
+        .idm_person_account_primary_credential_set_password(
+            NOT_ADMIN_TEST_USERNAME,
+            ADMIN_TEST_PASSWORD,
+        )
         .await
         .expect("Failed to configure account password");
 
     rsclient
-        .idm_oauth2_rs_update("test_integration", None, None, None, true, true, true)
+        .idm_oauth2_rs_update(TEST_INTEGRATION_RS_ID, None, None, None, true, true, true)
         .await
         .expect("Failed to update oauth2 config");
 
     rsclient
         .idm_oauth2_rs_update_scope_map(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             IDM_ALL_ACCOUNTS.name,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
@@ -563,9 +548,9 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             IDM_ALL_ACCOUNTS.name,
-            vec!["admin"],
+            vec![ADMIN_TEST_USER],
         )
         .await
         .expect("Failed to update oauth2 scopes");
@@ -573,7 +558,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Add a custom claim map.
     rsclient
         .idm_oauth2_rs_update_claim_map(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             "test_claim",
             IDM_ALL_ACCOUNTS.name,
             &["claim_a".to_string(), "claim_b".to_string()],
@@ -584,7 +569,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Set an alternate join
     rsclient
         .idm_oauth2_rs_update_claim_map_join(
-            "test_integration",
+            TEST_INTEGRATION_RS_ID,
             "test_claim",
             Oauth2ClaimMapJoin::Ssv,
         )
@@ -594,7 +579,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Get our admin's auth token for our new client.
     // We have to re-auth to update the mail field.
     let res = rsclient
-        .auth_simple_password("oauth_test", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(NOT_ADMIN_TEST_USERNAME, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
     let oauth_test_uat = rsclient
@@ -643,11 +628,11 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .bearer_auth(oauth_test_uat.clone())
         .query(&[
             ("response_type", "code"),
-            ("client_id", "test_integration"),
+            ("client_id", TEST_INTEGRATION_RS_ID),
             ("state", "YWJjZGVm"),
             ("code_challenge", pkce_code_challenge.as_str()),
             ("code_challenge_method", "S256"),
-            ("redirect_uri", TEST_INTEGRATION_REDIRECT_URL),
+            ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
             ("scope", "email read openid"),
         ])
         .send()
@@ -669,7 +654,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     } = consent_req
     {
         // Note the supplemental scope here (admin)
-        assert!(scopes.contains("admin"));
+        assert!(scopes.contains(ADMIN_TEST_USER));
         consent_token
     } else {
         unreachable!();
@@ -714,10 +699,10 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     let form_req = AccessTokenRequest {
         grant_type: GrantTypeReq::AuthorizationCode {
             code: code.to_string(),
-            redirect_uri: Url::parse(TEST_INTEGRATION_REDIRECT_URL).expect("Invalid URL"),
+            redirect_uri: Url::parse(TEST_INTEGRATION_RS_REDIRECT_URL).expect("Invalid URL"),
             code_verifier: Some(pkce_code_verifier.secret().clone()),
         },
-        client_id: Some("test_integration".to_string()),
+        client_id: Some(TEST_INTEGRATION_RS_ID.to_string()),
         client_secret: None,
     };
 
@@ -754,7 +739,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         rsclient.make_url("/oauth2/openid/test_integration")
     );
     eprintln!("{:?}", oidc.s_claims.email);
-    assert_eq!(oidc.s_claims.email.as_deref(), Some("oauth_test@localhost"));
+    assert_eq!(oidc.s_claims.email.as_deref(), Some(NOT_ADMIN_TEST_EMAIL));
     assert_eq!(oidc.s_claims.email_verified, Some(true));
 
     eprintln!("{:?}", oidc.claims);
@@ -801,11 +786,11 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 
     // auth back with admin so we can test deleting things
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
     rsclient
-        .idm_oauth2_rs_delete_sup_scope_map("test_integration", TEST_INTEGRATION_RS_GROUP_ALL)
+        .idm_oauth2_rs_delete_sup_scope_map(TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_GROUP_ALL)
         .await
         .expect("Failed to update oauth2 scopes");
 }
@@ -813,7 +798,7 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 
@@ -848,7 +833,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 #[kanidmd_testkit::test]
 async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
     let res = rsclient
-        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
     assert!(res.is_ok());
 

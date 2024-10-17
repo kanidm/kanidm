@@ -29,6 +29,7 @@ harness = false
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
+dev-oauth2-device-flow = [] # still-in-development oauth2 device flow support
 
 [dependencies]
 base64 = { workspace = true }
@@ -105,7 +106,11 @@ svg = { workspace = true }
 whoami = { workspace = true }
 
 [dev-dependencies]
-compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_release_without_verify"] }
+compact_jwt = { workspace = true, features = [
+    "openssl",
+    "hsm-crypto",
+    "unsafe_release_without_verify",
+] }
 criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }

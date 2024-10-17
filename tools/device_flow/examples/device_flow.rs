@@ -9,26 +9,20 @@ use oauth2::http::StatusCode;
 use oauth2::{
     AuthUrl, ClientId, DeviceAuthorizationUrl, HttpRequest, HttpResponse, Scope, TokenUrl,
 };
-use reqwest::blocking::Client;
+use reqwest::Client;
 use sketching::tracing_subscriber::layer::SubscriberExt;
 use sketching::tracing_subscriber::util::SubscriberInitExt;
 use sketching::tracing_subscriber::{fmt, EnvFilter};
 use tracing::level_filters::LevelFilter;
 use tracing::{debug, error, info};
 
-fn http_client(
+async fn http_client(
     request: HttpRequest,
 ) -> Result<HttpResponse, oauth2::reqwest::Error<reqwest::Error>> {
-    // let ca_contents = std::fs::read("/tmp/kanidm/ca.pem")
-    //     .map_err(|err| oauth2::reqwest::Error::Other(err.to_string()))?;
-
     let client = Client::builder()
         .danger_accept_invalid_certs(true)
         // Following redirects opens the client up to SSRF vulnerabilities.
         .redirect(reqwest::redirect::Policy::none())
-        // reqwest::Certificate::from_der(&ca_contents)
-        // .map_err(oauth2::reqwest::Error::Reqwest)?,
-        // )
         .build()
         .map_err(oauth2::reqwest::Error::Reqwest)?;
 
@@ -48,6 +42,7 @@ fn http_client(
             error!("Failed to build request... {:?}", err);
             oauth2::reqwest::Error::Reqwest(err)
         })?)
+        .await
         .map_err(|err| {
             error!("Failed to query url {} error={:?}", request.url, err);
             oauth2::reqwest::Error::Reqwest(err)
@@ -70,7 +65,7 @@ fn http_client(
         })
         .collect();
 
-    let body = response.bytes().map_err(|err| {
+    let body = response.bytes().await.map_err(|err| {
         error!("Failed to parse body...? {:?}", err);
         oauth2::reqwest::Error::Reqwest(err)
     })?;
@@ -83,7 +78,8 @@ fn http_client(
     })
 }
 
-fn main() -> anyhow::Result<()> {
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
     let filter_layer = EnvFilter::builder()
@@ -118,7 +114,8 @@ fn main() -> anyhow::Result<()> {
         .exchange_device_code()
         .inspect_err(|err| error!("configuration error: {:?}", err))?
         .add_scope(Scope::new("read".to_string()))
-        .request(http_client)?;
+        .request_async(http_client)
+        .await?;
 
     println!(
         "Open this URL in your browser: {}",
@@ -130,11 +127,10 @@ fn main() -> anyhow::Result<()> {
 
     println!("the code is {}", details.user_code().secret());
 
-    let token_result = client.exchange_device_access_token(&details).request(
-        http_client,
-        std::thread::sleep,
-        None,
-    )?;
+    let token_result = client
+        .exchange_device_access_token(&details)
+        .request_async(http_client, tokio::time::sleep, None)
+        .await?;
     println!("Result: {:?}", token_result);
     Ok(())
 }

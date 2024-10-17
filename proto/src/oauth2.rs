@@ -2,9 +2,11 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
+use serde_with::base64::{Base64, UrlSafe};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{base64, formats, serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{formats, serde_as, skip_serializing_none, StringWithSeparator};
 use url::Url;
 use uuid::Uuid;
 
@@ -24,7 +26,7 @@ pub enum CodeChallengeMethod {
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkceRequest {
-    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    #[serde_as(as = "Base64<UrlSafe, formats::Unpadded>")]
     pub code_challenge: Vec<u8>,
     pub code_challenge_method: CodeChallengeMethod,
 }
@@ -522,10 +524,12 @@ pub struct ErrorResponse {
 #[derive(Debug, Serialize, Deserialize)]
 /// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-3.2>
 pub struct DeviceAuthorizationResponse {
-    device_code: [u8; 16],
+    /// Base64-encoded bundle of 16 bytes
+    device_code: String,
+    /// xxx-yyy-zzz where x/y/z are digits. Stored internally as a u32 because we'll drop the dashes and parse as a number.
     user_code: String,
     verification_uri: Url,
-    verification_uri_complete: Option<Url>,
+    verification_uri_complete: Url,
     expires_in: u64,
     interval: u64,
 }
@@ -537,8 +541,10 @@ impl DeviceAuthorizationResponse {
             .query_pairs_mut()
             .append_pair("user_code", &user_code);
 
+        let device_code = STANDARD.encode(device_code);
+
         Self {
-            verification_uri_complete: Some(verification_uri_complete),
+            verification_uri_complete,
             device_code,
             user_code,
             verification_uri,
