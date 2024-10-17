@@ -18,7 +18,7 @@ test = true
 doctest = false
 
 [features]
-default = []
+# default = ["dev-oauth2-device-flow"]
 # Enables webdriver tests, you need to be running a webdriver server
 webdriver = []
 
