@@ -132,10 +132,7 @@ fn create_home_directory(
 
     if let Some(pp) = hd_mount_path.parent() {
         if pp != home_mount_prefix_path {
-            return Err(
-                "Invalid home directory name - not within home_mount_prefix"
-                    .to_string(),
-            );
+            return Err("Invalid home directory name - not within home_mount_prefix".to_string());
         }
     } else {
         return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
