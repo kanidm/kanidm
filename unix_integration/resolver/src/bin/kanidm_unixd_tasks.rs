@@ -246,7 +246,7 @@ fn create_home_directory(
                 }
 
                 debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-                if let Err(e) = symlink(&hd_mount_path, &alias_path) {
+                if let Err(e) = symlink(&alias_path, &hd_mount_path) {
                     error!(err = ?e, ?alias_path, "Unable to update alias path");
                     return Err(format!("{:?}", e));
                 }
@@ -260,8 +260,7 @@ fn create_home_directory(
         } else {
             // Does not exist. Create.
             debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-            // This is (original, link)
-            if let Err(e) = symlink(&hd_mount_path, &alias_path) {
+            if let Err(e) = symlink(&alias_path, &hd_mount_path) {
                 error!(err = ?e, ?alias_path, "Unable to create alias path");
                 return Err(format!("{:?}", e));
             }
