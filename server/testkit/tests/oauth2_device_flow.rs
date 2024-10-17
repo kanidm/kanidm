@@ -220,6 +220,11 @@ async fn oauth2_device_flow(rsclient: KanidmClient) {
     );
 
     rsclient
+        .idm_oauth2_client_device_flow_update(TEST_INTEGRATION_RS_ID, false)
+        .await
+        .expect("Failed to update oauth2 config to disable device flow");
+
+    rsclient
         .idm_oauth2_client_device_flow_update(TEST_INTEGRATION_RS_ID, true)
         .await
         .expect("Failed to update oauth2 config to enable device flow");

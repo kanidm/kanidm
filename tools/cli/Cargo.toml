@@ -12,7 +12,10 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [features]
-default = ["unix"]
+default = [
+    "unix",
+    # "dev-oauth2-device-flow"
+]
 unix = []
 dev-oauth2-device-flow = []
 
