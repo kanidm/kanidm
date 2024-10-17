@@ -871,80 +871,75 @@ pub async fn create_server_core(
     };
 
     // Any pre-start tasks here.
-    match &config.integration_test_config {
-        Some(itc) => {
-            let Ok(mut idms_prox_write) = idms.proxy_write(duration_from_epoch_now()).await else {
-                error!("Unable to acquire write transaction");
+    if let Some(itc) = &config.integration_test_config {
+        let Ok(mut idms_prox_write) = idms.proxy_write(duration_from_epoch_now()).await else {
+            error!("Unable to acquire write transaction");
+            return Err(());
+        };
+        // We need to set the admin pw.
+        match idms_prox_write.recover_account(&itc.admin_user, Some(&itc.admin_password)) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                    &itc.admin_user, e
+                );
                 return Err(());
-            };
-            // We need to set the admin pw.
-            match idms_prox_write.recover_account(&itc.admin_user, Some(&itc.admin_password)) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!(
-                        "Unable to configure INTEGRATION TEST {} account -> {:?}",
-                        &itc.admin_user, e
-                    );
-                    return Err(());
-                }
-            };
-            // set the idm_admin account password
-            match idms_prox_write
-                .recover_account(&itc.idm_admin_user, Some(&itc.idm_admin_password))
-            {
-                Ok(_) => {}
-                Err(e) => {
-                    error!(
-                        "Unable to configure INTEGRATION TEST {} account -> {:?}",
-                        &itc.idm_admin_user, e
-                    );
-                    return Err(());
-                }
-            };
+            }
+        };
+        // set the idm_admin account password
+        match idms_prox_write.recover_account(&itc.idm_admin_user, Some(&itc.idm_admin_password)) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST {} account -> {:?}",
+                    &itc.idm_admin_user, e
+                );
+                return Err(());
+            }
+        };
 
-            // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
-            // This way our default access controls can be stricter to prevent lateral
-            // movement.
-            match idms_prox_write.qs_write.internal_modify_uuid(
-                UUID_IDM_ADMINS,
-                &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
-            ) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!(
-                        "Unable to configure INTEGRATION TEST admin as member of idm_admins -> {:?}",
-                        e
-                    );
-                    return Err(());
-                }
-            };
+        // Add admin to idm_admins to allow tests more flexibility wrt to permissions.
+        // This way our default access controls can be stricter to prevent lateral
+        // movement.
+        match idms_prox_write.qs_write.internal_modify_uuid(
+            UUID_IDM_ADMINS,
+            &ModifyList::new_append(Attribute::Member, Value::Refer(UUID_ADMIN)),
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST admin as member of idm_admins -> {:?}",
+                    e
+                );
+                return Err(());
+            }
+        };
 
-            match idms_prox_write.qs_write.internal_modify_uuid(
-                UUID_IDM_ALL_PERSONS,
-                &ModifyList::new_purge_and_set(
-                    Attribute::CredentialTypeMinimum,
-                    CredentialType::Any.into(),
-                ),
-            ) {
-                Ok(_) => {}
-                Err(e) => {
-                    error!(
-                        "Unable to configure INTEGRATION TEST default credential policy -> {:?}",
-                        e
-                    );
-                    return Err(());
-                }
-            };
+        match idms_prox_write.qs_write.internal_modify_uuid(
+            UUID_IDM_ALL_PERSONS,
+            &ModifyList::new_purge_and_set(
+                Attribute::CredentialTypeMinimum,
+                CredentialType::Any.into(),
+            ),
+        ) {
+            Ok(_) => {}
+            Err(e) => {
+                error!(
+                    "Unable to configure INTEGRATION TEST default credential policy -> {:?}",
+                    e
+                );
+                return Err(());
+            }
+        };
 
-            match idms_prox_write.commit() {
-                Ok(_) => {}
-                Err(e) => {
-                    error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
-                    return Err(());
-                }
+        match idms_prox_write.commit() {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Unable to commit INTEGRATION TEST setup -> {:?}", e);
+                return Err(());
             }
         }
-        None => {}
     }
 
     let ldap = match LdapServer::new(&idms).await {
