@@ -97,13 +97,13 @@ fn create_home_directory(
     // be possible, but we assert this to be sure.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
-    // This is where the storage is *mounted*
-    let home_mount_prefix_path_is_set = home_mount_prefix_path.is_some();
-
+    // This is where the users home dir "is" and aliases from here go to the true storage
+    // mounts
     let home_prefix_path = home_prefix_path
         .canonicalize()
         .map_err(|e| format!("{:?}", e))?;
 
+    // This is where the storage is *mounted*. If not set, falls back to the home_prefix.
     let home_mount_prefix_path = home_mount_prefix_path
         .unwrap_or(&home_prefix_path)
         .canonicalize()
@@ -261,7 +261,7 @@ fn create_home_directory(
             // Does not exist. Create.
             debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
             // This is (original, link)
-            if let Err(e) = symlink(&hd_mount_path, alias_path) {
+            if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                 error!(err = ?e, ?alias_path, "Unable to create alias path");
                 return Err(format!("{:?}", e));
             }
