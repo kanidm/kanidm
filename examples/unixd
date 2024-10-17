@@ -54,7 +54,7 @@ version = '2'
 
 # home_attr = "uuid"
 
-# Controls the prefix that will be appended to the home alias when mounting home directories. Must
+# Controls the prefix that will be prepended to the home alias when mounting home directories. Must
 # end with a trailing `/`. If unset, defaults to the value of the `home_prefix`.
 #
 # This is option is useful when implementing a networked home directory layout. A common implementation
@@ -64,12 +64,12 @@ version = '2'
 #
 # > home_attr = "uuid"
 # > home_alias = "name"
-# > home_prefix = "/u/"
-# > home_mount_prefix = "/home/"
+# > home_prefix = "/home/"
+# > home_mount_prefix = "/u/"
 #
 # Default: unset
 #
-# home_mount_prefix = "/home/"
+# home_mount_prefix = "/u/"
 #
 
 # The default token attribute used for generating symlinks pointing to the user's home

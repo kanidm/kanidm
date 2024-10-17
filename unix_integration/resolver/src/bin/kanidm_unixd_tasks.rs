@@ -97,6 +97,7 @@ fn create_home_directory(
     // be possible, but we assert this to be sure.
     let name = info.name.trim_start_matches('.').replace(['/', '\\'], "");
 
+    // This is where the storage is *mounted*
     let home_mount_prefix_path_is_set = home_mount_prefix_path.is_some();
 
     let home_prefix_path = home_prefix_path
@@ -120,25 +121,17 @@ fn create_home_directory(
         return Err("Invalid home_mount_prefix from configuration - home_prefix path must exist, must be a directory, and must be absolute (not relative)".to_string());
     }
 
-    // Actually process the request here.
-    let hd_path = Path::join(&home_prefix_path, &name);
-
-    // Assert the resulting named home path is consistent and correct. This is to ensure that
-    // the complete home path is not a path traversal outside of the home_prefixes.
-    if let Some(pp) = hd_path.parent() {
-        if pp != home_prefix_path {
-            return Err("Invalid home directory name - not within home_prefix".to_string());
-        }
-    } else {
-        return Err("Invalid/Corrupt home directory path - no prefix found".to_string());
-    }
-
+    // This is now creating the actual home directory in the home_mount path.
+    // First we want to validate that the path is legitimate and hasn't tried
+    // to escape the home_mount prefix.
     let hd_mount_path = Path::join(&home_mount_prefix_path, &name);
+
+    debug!(?hd_mount_path);
 
     if let Some(pp) = hd_mount_path.parent() {
         if pp != home_mount_prefix_path {
             return Err(
-                "Invalid home directory name - not within home_prefix/home_mount_prefix"
+                "Invalid home directory name - not within home_mount_prefix"
                     .to_string(),
             );
         }
@@ -167,6 +160,7 @@ fn create_home_directory(
         // Create the dir
         if let Err(e) = fs::create_dir_all(&hd_mount_path) {
             let _ = unsafe { umask(before) };
+            error!(err = ?e, ?hd_mount_path, "Unable to create directory");
             return Err(format!("{:?}", e));
         }
         let _ = unsafe { umask(before) };
@@ -195,9 +189,15 @@ fn create_home_directory(
                 }
 
                 if entry.path().is_dir() {
-                    fs::create_dir_all(dest).map_err(|e| e.to_string())?;
+                    fs::create_dir_all(dest).map_err(|e| {
+                        error!(err = ?e, ?dest, "Unable to create directory from /etc/skel");
+                        e.to_string()
+                    })?;
                 } else {
-                    fs::copy(entry.path(), dest).map_err(|e| e.to_string())?;
+                    fs::copy(entry.path(), dest).map_err(|e| {
+                        error!(err = ?e, ?dest, "Unable to copy from /etc/skel");
+                        e.to_string()
+                    })?;
                 }
                 chown(dest, info.gid)?;
 
@@ -211,15 +211,6 @@ fn create_home_directory(
     // Reset object creation SELinux context to default
     #[cfg(all(target_family = "unix", feature = "selinux"))]
     labeler.set_default_context_for_fs_objects()?;
-
-    // If there is a mount prefix we use it, otherwise we use a relative path
-    // within the same directory.
-    let name_rel_path = if home_mount_prefix_path_is_set {
-        // Use the absolute path.
-        hd_mount_path.as_ref()
-    } else {
-        Path::new(&name)
-    };
 
     // Do the aliases exist?
     for alias in info.aliases.iter() {
@@ -242,6 +233,7 @@ fn create_home_directory(
             let attr = match fs::symlink_metadata(&alias_path) {
                 Ok(a) => a,
                 Err(e) => {
+                    error!(err = ?e, ?alias_path, "Unable to read alias path metadata");
                     return Err(format!("{:?}", e));
                 }
             };
@@ -249,22 +241,28 @@ fn create_home_directory(
             if attr.file_type().is_symlink() {
                 // Probably need to update it.
                 if let Err(e) = fs::remove_file(&alias_path) {
+                    error!(err = ?e, ?alias_path, "Unable to remove existing alias path");
                     return Err(format!("{:?}", e));
                 }
-                if let Err(e) = symlink(name_rel_path, &alias_path) {
+
+                debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
+                if let Err(e) = symlink(&hd_mount_path, &alias_path) {
+                    error!(err = ?e, ?alias_path, "Unable to update alias path");
                     return Err(format!("{:?}", e));
                 }
             } else {
                 warn!(
                     ?alias_path,
-                    ?alias,
-                    ?name,
-                    "home directory alias is not a symlink, unable to update"
+                    ?hd_mount_path,
+                    "home directory alias path is not a symlink, unable to update"
                 );
             }
         } else {
             // Does not exist. Create.
-            if let Err(e) = symlink(name_rel_path, alias_path) {
+            debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
+            // This is (original, link)
+            if let Err(e) = symlink(&hd_mount_path, alias_path) {
+                error!(err = ?e, ?alias_path, "Unable to create alias path");
                 return Err(format!("{:?}", e));
             }
         }
