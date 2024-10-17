@@ -232,6 +232,7 @@ fn create_home_directory(
         }
 
         if alias_path.exists() {
+            debug!("checking symlink {:?} -> {:?}", alias_path, hd_mount_path);
             let attr = match fs::symlink_metadata(&alias_path) {
                 Ok(a) => a,
                 Err(e) => {
@@ -248,7 +249,7 @@ fn create_home_directory(
                 }
 
                 debug!("updating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-                if let Err(e) = symlink(&alias_path, &hd_mount_path) {
+                if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                     error!(err = ?e, ?alias_path, "Unable to update alias path");
                     return Err(format!("{:?}", e));
                 }
@@ -262,7 +263,7 @@ fn create_home_directory(
         } else {
             // Does not exist. Create.
             debug!("creating symlink {:?} -> {:?}", alias_path, hd_mount_path);
-            if let Err(e) = symlink(&alias_path, &hd_mount_path) {
+            if let Err(e) = symlink(&hd_mount_path, &alias_path) {
                 error!(err = ?e, ?alias_path, "Unable to create alias path");
                 return Err(format!("{:?}", e));
             }
