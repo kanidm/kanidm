@@ -143,6 +143,11 @@ pub enum OperationError {
 
     // Specific internal errors.
 
+    // Kanidm Generic Errors
+    KG001TaskTimeout,
+    KG002TaskCommFailure,
+    KG003CacheClearFailed,
+
     // What about something like this for unique errors?
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
@@ -230,6 +235,14 @@ pub enum OperationError {
     // Web UI
     UI0001ChallengeSerialisation,
     UI0002InvalidState,
+
+    // Unixd Things
+    KU001InitWhileSessionActive,
+    KU002ContinueWhileSessionInActive,
+    KU003PamAuthFailed,
+    KU004PamInitFailed,
+    KU005ErrorCheckingAccount,
+    KU006OnlyRootAllowed,
 }
 
 impl PartialEq for OperationError {
@@ -324,29 +337,16 @@ impl OperationError {
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
             Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
+            Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
-            Self::CU0001WebauthnAttestationNotTrusted => None,
-            Self::VS0001IncomingReplSshPublicKey => None,
-            Self::VS0003CertificateDerDecode => Some("Decoding the stored certificate from DER failed.".into()),
-            Self::VS0002CertificatePublicKeyDigest |
-            Self::VS0004CertificatePublicKeyDigest |
-            Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested.".into()),
-            Self::VL0001ValueSshPublicKeyString => None,
-            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method.".into()),
-            Self::SC0001IncomingSshPublicKey => None,
-            Self::MG0001InvalidReMigrationLevel => None,
-            Self::MG0002RaiseDomainLevelExceedsMaximum => None,
-            Self::MG0003ServerPhaseInvalidForMigration => None,
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,
             Self::DB0004DatabaseTooOld => Some("The database is too old to be migrated.".into()),
-            Self::MG0004DomainLevelInDevelopment => None,
-            Self::MG0005GidConstraintsNotMet => None,
-            Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),
-            Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
-            Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
+            Self::KG001TaskTimeout => Some("Task timed out".into()),
+            Self::KG002TaskCommFailure => Some("Inter-Task communication failure".into()),
+            Self::KG003CacheClearFailed => Some("Failed to clear cache".into()),
             Self::KP0001KeyProviderNotLoaded => None,
             Self::KP0002KeyProviderInvalidClass => None,
             Self::KP0003KeyProviderInvalidType => None,
@@ -392,9 +392,31 @@ impl OperationError {
             Self::KP0042KeyObjectNoActiveEncryptionKeys => None,
             Self::KP0043KeyObjectJweA128GCMEncryption => None,
             Self::KP0044KeyObjectJwsPublicJwk => None,
+            Self::KU001InitWhileSessionActive => Some("The session was active when the init function was called.".into()),
+            Self::KU002ContinueWhileSessionInActive => Some("Attempted to continue auth session while current session is inactive".into()),
+            Self::KU003PamAuthFailed => Some("Failed PAM account authentication step".into()),
+            Self::KU004PamInitFailed => Some("Failed to initialise PAM authentication".into()),
+            Self::KU005ErrorCheckingAccount => Some("Error checking account".into()),
+            Self::KU006OnlyRootAllowed => Some("Only root is allowed to perform this operation".into()),
+            Self::LD0001AnonymousNotAllowed => Some("Anonymous is not allowed to access LDAP with this method.".into()),
+            Self::MG0001InvalidReMigrationLevel => None,
+            Self::MG0002RaiseDomainLevelExceedsMaximum => None,
+            Self::MG0003ServerPhaseInvalidForMigration => None,
+            Self::MG0004DomainLevelInDevelopment => None,
+            Self::MG0005GidConstraintsNotMet => None,
+            Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),
+            Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
+            Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
             Self::PL0001GidOverlapsSystemRange => None,
+            Self::SC0001IncomingSshPublicKey => None,
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
+            Self::VL0001ValueSshPublicKeyString => None,
+            Self::VS0001IncomingReplSshPublicKey => None,
+            Self::VS0002CertificatePublicKeyDigest |
+            Self::VS0003CertificateDerDecode => Some("Decoding the stored certificate from DER failed.".into()),
+            Self::VS0004CertificatePublicKeyDigest |
+            Self::VS0005CertificatePublicKeyDigest => Some("The certificates public key is unabled to be digested.".into()),
         }
     }
 }

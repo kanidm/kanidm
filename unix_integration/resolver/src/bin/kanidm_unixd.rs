@@ -26,6 +26,7 @@ use clap::{Arg, ArgAction, Command};
 use futures::{SinkExt, StreamExt};
 use kanidm_client::KanidmClientBuilder;
 use kanidm_proto::constants::DEFAULT_CLIENT_CONFIG_PATH;
+use kanidm_proto::internal::OperationError;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_passwd::{parse_etc_group, parse_etc_passwd, parse_etc_shadow};
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
@@ -281,7 +282,7 @@ async fn handle_client(
                         warn!("Attempt to init auth session while current session is active");
                         // Clean the former session, something is wrong.
                         pam_auth_session_state = None;
-                        ClientResponse::Error
+                        ClientResponse::Error(OperationError::KU001InitWhileSessionActive)
                     }
                     None => {
                         let current_time = OffsetDateTime::now_utc();
@@ -299,7 +300,7 @@ async fn handle_client(
                                 pam_auth_session_state = Some(auth_session);
                                 pam_auth_response.into()
                             }
-                            Err(_) => ClientResponse::Error,
+                            Err(_) => ClientResponse::Error(OperationError::KU004PamInitFailed),
                         }
                     }
                 }
@@ -309,17 +310,19 @@ async fn handle_client(
                     .pam_account_authenticate_step(auth_session, pam_next_req)
                     .await
                     .map(|pam_auth_response| pam_auth_response.into())
-                    .unwrap_or(ClientResponse::Error),
+                    .unwrap_or(ClientResponse::Error(OperationError::KU003PamAuthFailed)),
                 None => {
                     warn!("Attempt to continue auth session while current session is inactive");
-                    ClientResponse::Error
+                    ClientResponse::Error(OperationError::KU002ContinueWhileSessionInActive)
                 }
             },
             ClientRequest::PamAccountAllowed(account_id) => cachelayer
                 .pam_account_allowed(account_id.as_str())
                 .await
                 .map(ClientResponse::PamStatus)
-                .unwrap_or(ClientResponse::Error),
+                .unwrap_or(ClientResponse::Error(
+                    OperationError::KU005ErrorCheckingAccount,
+                )),
             ClientRequest::PamAccountBeginSession(account_id) => {
                 match cachelayer
                     .pam_account_beginsession(account_id.as_str())
@@ -349,13 +352,13 @@ async fn handle_client(
                                     }
                                     _ => {
                                         // Timeout or other error.
-                                        ClientResponse::Error
+                                        ClientResponse::Error(OperationError::KG001TaskTimeout)
                                     }
                                 }
                             }
                             Err(_) => {
                                 // We could not submit the req. Move on!
-                                ClientResponse::Error
+                                ClientResponse::Error(OperationError::KG002TaskCommFailure)
                             }
                         }
                     }
@@ -363,24 +366,24 @@ async fn handle_client(
                         // The session can begin, but we do not need to create the home dir.
                         ClientResponse::Ok
                     }
-                    _ => ClientResponse::Error,
+                    Err(_) => ClientResponse::Error(OperationError::KU005ErrorCheckingAccount),
                 }
             }
             ClientRequest::InvalidateCache => cachelayer
                 .invalidate()
                 .await
                 .map(|_| ClientResponse::Ok)
-                .unwrap_or(ClientResponse::Error),
+                .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed)),
             ClientRequest::ClearCache => {
                 if ucred.uid() == 0 {
                     cachelayer
                         .clear_cache()
                         .await
                         .map(|_| ClientResponse::Ok)
-                        .unwrap_or(ClientResponse::Error)
+                        .unwrap_or(ClientResponse::Error(OperationError::KG003CacheClearFailed))
                 } else {
-                    error!("Only root may clear the cache");
-                    ClientResponse::Error
+                    error!("{}", OperationError::KU006OnlyRootAllowed);
+                    ClientResponse::Error(OperationError::KU006OnlyRootAllowed)
                 }
             }
             ClientRequest::Status => {
