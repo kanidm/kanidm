@@ -13,7 +13,7 @@ use uuid::Uuid;
 /// How many seconds a device code is valid for.
 pub const OAUTH2_DEVICE_CODE_EXPIRY_SECONDS: u64 = 300;
 /// How often a client device can query the status of the token
-pub const OAUTH2_DEVICE_CODE_INTERVAL: u64 = 5;
+pub const OAUTH2_DEVICE_CODE_INTERVAL_SECONDS: u64 = 5;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeChallengeMethod {
@@ -549,7 +549,7 @@ impl DeviceAuthorizationResponse {
             user_code,
             verification_uri,
             expires_in: OAUTH2_DEVICE_CODE_EXPIRY_SECONDS,
-            interval: OAUTH2_DEVICE_CODE_INTERVAL,
+            interval: OAUTH2_DEVICE_CODE_INTERVAL_SECONDS,
         }
     }
 }

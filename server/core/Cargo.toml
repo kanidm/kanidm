@@ -17,6 +17,7 @@ doctest = false
 
 [features]
 ui_htmx = []
+dev-oauth2-device-flow = []
 
 [dependencies]
 async-trait = { workspace = true }
