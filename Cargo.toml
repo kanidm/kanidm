@@ -15,6 +15,7 @@ resolver = "2"
 members = [
     "proto",
     "tools/cli",
+    "tools/device_flow",
     "tools/iam_migrations/freeipa",
     "tools/iam_migrations/ldap",
     "tools/orca",
@@ -40,6 +41,7 @@ members = [
     "libs/sketching",
     "libs/users",
 ]
+features = ["dev-oauth2-device-flow"]
 
 # Below follows some guides/estimates to system resources consumed during a build.
 # Most of these values are over-estimates and are just rough observations.
@@ -248,7 +250,9 @@ reqwest = { version = "0.12.8", default-features = false, features = [
 ] }
 rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.13", default-features = false, features = ["aws_lc_rs"] }
+rustls = { version = "0.23.13", default-features = false, features = [
+    "aws_lc_rs",
+] }
 
 sd-notify = "^0.4.3"
 selinux = "^0.4.6"

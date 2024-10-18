@@ -17,10 +17,12 @@ doctest = false
 
 [features]
 ui_htmx = []
+dev-oauth2-device-flow = []
 
 [dependencies]
 async-trait = { workspace = true }
-askama = { workspace = true }
+askama = { workspace = true, features = ["with-axum"] }
+askama_axum = "0.4.0"
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-auth = "0.7.0"
