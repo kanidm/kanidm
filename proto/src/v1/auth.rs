@@ -9,7 +9,7 @@ use webauthn_rs_proto::RequestChallengeResponse;
 
 /// Authentication to Kanidm is a stepped process.
 ///
-/// The session is fist initialised with the requested username.
+/// The session is first initialised with the requested username.
 ///
 /// In response the list of supported authentication mechanisms is provided.
 ///
