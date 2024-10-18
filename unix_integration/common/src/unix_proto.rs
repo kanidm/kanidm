@@ -177,7 +177,7 @@ pub enum ClientResponse {
     ProviderStatus(Vec<ProviderStatus>),
 
     Ok,
-    Error,
+    Error(String),
 }
 
 impl From<PamAuthResponse> for ClientResponse {

@@ -281,7 +281,10 @@ async fn handle_client(
                         warn!("Attempt to init auth session while current session is active");
                         // Clean the former session, something is wrong.
                         pam_auth_session_state = None;
-                        ClientResponse::Error
+                        ClientResponse::Error(
+                            "Attempted to init auth session while current session is active"
+                                .to_string(),
+                        )
                     }
                     None => {
                         let current_time = OffsetDateTime::now_utc();
@@ -299,7 +302,9 @@ async fn handle_client(
                                 pam_auth_session_state = Some(auth_session);
                                 pam_auth_response.into()
                             }
-                            Err(_) => ClientResponse::Error,
+                            Err(_) => ClientResponse::Error(
+                                "Failed to initialise PAM authentication".to_string(),
+                            ),
                         }
                     }
                 }
@@ -309,17 +314,22 @@ async fn handle_client(
                     .pam_account_authenticate_step(auth_session, pam_next_req)
                     .await
                     .map(|pam_auth_response| pam_auth_response.into())
-                    .unwrap_or(ClientResponse::Error),
+                    .unwrap_or(ClientResponse::Error(
+                        "Failed PAM account authentication step".to_string(),
+                    )),
                 None => {
                     warn!("Attempt to continue auth session while current session is inactive");
-                    ClientResponse::Error
+                    ClientResponse::Error(
+                        "Attempted to continue auth session while current session is inactive"
+                            .to_string(),
+                    )
                 }
             },
             ClientRequest::PamAccountAllowed(account_id) => cachelayer
                 .pam_account_allowed(account_id.as_str())
                 .await
                 .map(ClientResponse::PamStatus)
-                .unwrap_or(ClientResponse::Error),
+                .unwrap_or(ClientResponse::Error("Error checking account".to_string())),
             ClientRequest::PamAccountBeginSession(account_id) => {
                 match cachelayer
                     .pam_account_beginsession(account_id.as_str())
@@ -349,13 +359,16 @@ async fn handle_client(
                                     }
                                     _ => {
                                         // Timeout or other error.
-                                        ClientResponse::Error
+                                        ClientResponse::Error(
+                                            "Task timed out or failed for another reason"
+                                                .to_string(),
+                                        )
                                     }
                                 }
                             }
                             Err(_) => {
                                 // We could not submit the req. Move on!
-                                ClientResponse::Error
+                                ClientResponse::Error("Task timed out".to_string())
                             }
                         }
                     }
@@ -363,24 +376,26 @@ async fn handle_client(
                         // The session can begin, but we do not need to create the home dir.
                         ClientResponse::Ok
                     }
-                    _ => ClientResponse::Error,
+                    Err(_) => ClientResponse::Error("Error checking account".to_string()),
                 }
             }
             ClientRequest::InvalidateCache => cachelayer
                 .invalidate()
                 .await
                 .map(|_| ClientResponse::Ok)
-                .unwrap_or(ClientResponse::Error),
+                .unwrap_or(ClientResponse::Error(
+                    "Failed to invalidate cache".to_string(),
+                )),
             ClientRequest::ClearCache => {
                 if ucred.uid() == 0 {
                     cachelayer
                         .clear_cache()
                         .await
                         .map(|_| ClientResponse::Ok)
-                        .unwrap_or(ClientResponse::Error)
+                        .unwrap_or(ClientResponse::Error("Failed to clear cache".to_string()))
                 } else {
                     error!("Only root may clear the cache");
-                    ClientResponse::Error
+                    ClientResponse::Error("Only root may clear the cache".to_string())
                 }
             }
             ClientRequest::Status => {
