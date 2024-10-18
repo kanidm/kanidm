@@ -103,6 +103,10 @@ async fn main() -> ExitCode {
                             });
                             continue;
                         }
+                        ClientResponse::Error(err) => {
+                            error!("Error from kanidm-unixd: {}", err);
+                            break;
+                        }
                         ClientResponse::PamAuthenticateStepResponse(_)
                         | ClientResponse::SshKeys(_)
                         | ClientResponse::NssAccounts(_)
@@ -111,7 +115,6 @@ async fn main() -> ExitCode {
                         | ClientResponse::NssGroups(_)
                         | ClientResponse::ProviderStatus(_)
                         | ClientResponse::Ok
-                        | ClientResponse::Error
                         | ClientResponse::PamStatus(_) => {
                             // unexpected response.
                             error!("Error: unexpected response -> {:?}", r);
