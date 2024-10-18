@@ -299,7 +299,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
             }
 
             ClientResponse::Error(err) => {
-                error!("Error from kanidm-unixd: {:?}", err);
+                error!("Error from kanidm-unixd: {}", err);
                 return PamResultCode::PAM_AUTH_ERR;
             }
             ClientResponse::Ok

@@ -3369,6 +3369,7 @@ dependencies = [
  "csv",
  "futures",
  "kanidm_build_profiles",
+ "kanidm_proto",
  "serde",
  "serde_json",
  "serde_with",

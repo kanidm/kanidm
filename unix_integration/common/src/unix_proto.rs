@@ -1,4 +1,5 @@
 use crate::unix_passwd::{EtcGroup, EtcUser};
+use kanidm_proto::internal::OperationError;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -177,7 +178,7 @@ pub enum ClientResponse {
     ProviderStatus(Vec<ProviderStatus>),
 
     Ok,
-    Error(String),
+    Error(OperationError),
 }
 
 impl From<PamAuthResponse> for ClientResponse {

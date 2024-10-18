@@ -25,14 +25,15 @@ doctest = false
 bytes = { workspace = true }
 csv = { workspace = true }
 futures = { workspace = true }
+kanidm_proto = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
-toml = { workspace = true }
-tokio = { workspace = true, features = ["time","net","macros"] }
-tokio-util = { workspace = true, features = ["codec"] }
-tracing = { workspace = true }
 sha-crypt = { workspace = true }
+tokio = { workspace = true, features = ["time", "net", "macros"] }
+tokio-util = { workspace = true, features = ["codec"] }
+toml = { workspace = true }
+tracing = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
