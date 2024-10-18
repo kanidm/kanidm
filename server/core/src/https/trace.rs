@@ -1,6 +1,6 @@
 //! Reimplementation of tower-http's DefaultMakeSpan that only runs at "INFO" level for our own needs.
 
-use axum::http::Request;
+use axum::http::{Request, StatusCode};
 use kanidm_proto::constants::KOPID;
 use sketching::event_dynamic_lvl;
 use tower_http::LatencyUnit;
@@ -83,7 +83,11 @@ impl<B> tower_http::trace::OnResponse<B> for DefaultOnResponseKanidmd {
                     if response.status().is_redirection() {
                         (Level::INFO, "client redirection sent")
                     } else if response.status().is_client_error() {
-                        (Level::WARN, "client error") // it worked, but there was an input error
+                        if response.status() == StatusCode::NOT_FOUND {
+                            (Level::INFO, "client error")
+                        } else {
+                            (Level::WARN, "client error") // it worked, but there was an input error
+                        }
                     } else {
                         (Level::ERROR, "error handling request") // oh no the server failed
                     }
