@@ -64,6 +64,8 @@ impl TotpSecret {
 #[derive(Debug, Serialize, Deserialize, ToSchema)]
 pub struct CUIntentToken {
     pub token: String,
+    #[serde(with = "time::serde::timestamp")]
+    pub expiry_time: time::OffsetDateTime,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, ToSchema)]

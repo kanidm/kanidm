@@ -19,9 +19,9 @@ use std::fmt::{Display, Formatter};
 use uuid::Uuid;
 
 use kanidm_proto::internal::{
-    CUCredState, CUExtPortal, CUIntentToken, CURegState, CURegWarning, CURequest, CUSessionToken,
-    CUStatus, CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo,
-    UserAuthToken, COOKIE_CU_SESSION_TOKEN,
+    CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
+    CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UserAuthToken,
+    COOKIE_CU_SESSION_TOKEN,
 };
 
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
@@ -690,7 +690,7 @@ pub(crate) async fn view_reset_get(
         // We have a reset token and want to create a new session
         match state
             .qe_w_ref
-            .handle_idmcredentialexchangeintent(CUIntentToken { token }, kopid.eventid)
+            .handle_idmcredentialexchangeintent(token, kopid.eventid)
             .await
         {
             Ok((cu_session_token, cu_status)) => {
