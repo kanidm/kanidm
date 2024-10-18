@@ -41,6 +41,7 @@ members = [
     "libs/sketching",
     "libs/users",
 ]
+features = ["dev-oauth2-device-flow"]
 
 # Below follows some guides/estimates to system resources consumed during a build.
 # Most of these values are over-estimates and are just rough observations.

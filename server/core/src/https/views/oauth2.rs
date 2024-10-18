@@ -1,10 +1,8 @@
-use axum::http::StatusCode;
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
 use kanidmd_lib::prelude::*;
-
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
 use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
 
@@ -12,6 +10,8 @@ use std::collections::BTreeSet;
 
 use askama::Template;
 
+#[cfg(feature = "dev-oauth2-device-flow")]
+use axum::http::StatusCode;
 use axum::{
     extract::{Query, State},
     http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -261,6 +261,7 @@ pub async fn view_consent_post(
 }
 
 #[derive(Template, Debug, Clone)]
+#[cfg(feature = "dev-oauth2-device-flow")]
 #[template(path = "oauth2_device_login.html")]
 pub struct Oauth2DeviceLoginView {
     domain_custom_image: bool,
@@ -269,11 +270,13 @@ pub struct Oauth2DeviceLoginView {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[cfg(feature = "dev-oauth2-device-flow")]
 pub(crate) struct QueryUserCode {
     pub user_code: Option<String>,
 }
 
 #[axum::debug_handler]
+#[cfg(feature = "dev-oauth2-device-flow")]
 pub async fn view_device_get(
     State(state): State<ServerState>,
     Extension(_kopid): Extension<KOpId>,
@@ -289,11 +292,13 @@ pub async fn view_device_get(
 }
 
 #[derive(Deserialize)]
+#[cfg(feature = "dev-oauth2-device-flow")]
 pub struct Oauth2DeviceLoginForm {
     user_code: String,
     confirm_login: bool,
 }
 
+#[cfg(feature = "dev-oauth2-device-flow")]
 #[axum::debug_handler]
 pub async fn view_device_post(
     State(_state): State<ServerState>,

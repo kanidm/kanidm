@@ -8,8 +8,7 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
-use constants::Urls;
-use kanidmd_lib::prelude::{uri::OAUTH2_DEVICE_LOGIN, OperationError, Uuid};
+use kanidmd_lib::prelude::{OperationError, Uuid};
 
 use crate::https::ServerState;
 
@@ -41,11 +40,16 @@ pub fn view_router() -> Router<ServerState> {
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
         .route("/logout", get(login::view_logout_get))
-        .route("/oauth2", get(oauth2::view_index_get))
-        .route(
-            OAUTH2_DEVICE_LOGIN,
+        .route("/oauth2", get(oauth2::view_index_get));
+
+    #[cfg(feature = "dev-oauth2-device-flow")]
+    {
+        unguarded_router = unguarded_router.route(
+            kanidmd_lib::prelude::uri::OAUTH2_DEVICE_LOGIN,
             get(oauth2::view_device_get).post(oauth2::view_device_post),
-        )
+        );
+    }
+    unguarded_router = unguarded_router
         .route("/oauth2/resume", get(oauth2::view_resume_get))
         .route("/oauth2/consent", post(oauth2::view_consent_post))
         // The login routes are htmx-free to make them simpler, which means
