@@ -2844,6 +2844,17 @@ fn gen_user_code() -> (String, u32) {
     )
 }
 
+/// Take the supplied user code and check it's a valid u32
+#[allow(dead_code)]
+fn parse_user_code(val: &str) -> Result<u32, Oauth2Error> {
+    let mut val = val.to_string();
+    val.retain(|c| c.is_ascii_digit());
+    val.parse().map_err(|err| {
+        debug!("Failed to parse value={} as u32: {:?}", val, err);
+        Oauth2Error::InvalidRequest
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
@@ -6743,5 +6754,25 @@ mod tests {
         );
 
         assert!(idms_prox_write.commit().is_ok());
+    }
+
+    #[test]
+    fn test_get_code() {
+        use super::{gen_user_code, parse_user_code};
+
+        let (res_string, res_value) = gen_user_code();
+
+        assert!(res_string.split('-').count() == 3);
+
+        let res_string_clean = res_string.replace("-", "");
+        let res_string_as_num = res_string_clean
+            .parse::<u32>()
+            .expect("Failed to parse as number");
+        assert_eq!(res_string_as_num, res_value);
+
+        assert_eq!(
+            parse_user_code(&res_string).expect("Failed to parse code"),
+            res_value
+        );
     }
 }
