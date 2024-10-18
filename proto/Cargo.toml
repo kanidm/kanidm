@@ -19,6 +19,8 @@ doctest = true
 wasm = ["webauthn-rs-proto/wasm"]
 test = []
 
+dev-oauth2-device-flow = []
+
 [dependencies]
 base32 = { workspace = true }
 base64 = { workspace = true }

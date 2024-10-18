@@ -335,6 +335,7 @@ pub struct Oauth2RS {
     /// Does the RS have a custom image set? If not, we use the default.
     has_custom_image: bool,
 
+    #[cfg(feature = "dev-oauth2-device-flow")]
     device_authorization_endpoint: Url,
 }
 
@@ -714,9 +715,10 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .collect();
 
+    #[cfg(feature = "dev-oauth2-device-flow")]{
                 let mut device_authorization_endpoint = self.inner.origin.clone();
                 device_authorization_endpoint.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
-
+}
                 let client_id = name.clone();
                 let rscfg = Oauth2RS {
                     name,
@@ -745,6 +747,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     prefer_short_username,
                     type_,
                     has_custom_image,
+                    #[cfg(feature = "dev-oauth2-device-flow")]
                     device_authorization_endpoint,
                 };
 
@@ -2647,6 +2650,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             introspection_endpoint,
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
+            #[cfg(feature = "dev-oauth2-device-flow")]
             device_authorization_endpoint: Some(o2rs.device_authorization_endpoint.clone()),
         })
     }
