@@ -54,8 +54,9 @@ version = '2'
 
 # home_attr = "uuid"
 
-# Controls the prefix that will be appended to the home alias when mounting home directories. Must
-# end with a trailing `/`. If unset, defaults to the value of the `home_prefix`.
+# Controls the prefix that will be prepended to the home name when using mounted home directories from
+# a location that is outside of them `home_prefix`. Must end with a trailing `/`. If unset then home
+# directories will be created in `home_prefix`.
 #
 # This is option is useful when implementing a networked home directory layout. A common implementation
 # is to configure a networked filesystem that contains user directories mounted at `/u/` (eg /u/$user_uuid)
@@ -64,12 +65,19 @@ version = '2'
 #
 # > home_attr = "uuid"
 # > home_alias = "name"
-# > home_prefix = "/u/"
-# > home_mount_prefix = "/home/"
+# > home_prefix = "/home/"
+# > home_mount_prefix = "/u/"
+#
+# ⚠️  If you expect directories to be created by kanidm unixd tasks in an alternate mount prefix, then
+# you need to run `systemctl edit kanidm-unixd-tasks` to allow the daemon to write to these locations.
+#
+# > [Service]
+# > ReadWritePaths=/home /var/run/kanidm-unixd /u
+#
 #
 # Default: unset
 #
-# home_mount_prefix = "/home/"
+# home_mount_prefix = "/u/"
 #
 
 # The default token attribute used for generating symlinks pointing to the user's home
