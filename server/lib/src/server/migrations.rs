@@ -634,6 +634,34 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // =========== Apply changes ==============
 
+        // Now update schema
+        let idm_schema_changes = [
+            SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
+        ];
+
+        idm_schema_changes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_8_to_9 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        let idm_data = [IDM_ACP_OAUTH2_MANAGE_DL9.clone().into()];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_8_to_9 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
         Ok(())
     }
 

@@ -1,4 +1,5 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::{
     ATTR_DISPLAYNAME, ATTR_ES256_PRIVATE_KEY_DER, ATTR_NAME,
     ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE, ATTR_OAUTH2_ALLOW_LOCALHOST_REDIRECT,
@@ -452,5 +453,33 @@ impl KanidmClient {
             url_to_remove,
         )
         .await
+    }
+
+    pub async fn idm_oauth2_client_device_flow_update(
+        &self,
+        id: &str,
+        value: bool,
+    ) -> Result<(), ClientError> {
+        match value {
+            true => {
+                let mut update_oauth2_rs = Entry {
+                    attrs: BTreeMap::new(),
+                };
+                update_oauth2_rs.attrs.insert(
+                    Attribute::OAuth2DeviceFlowEnable.into(),
+                    vec![value.to_string()],
+                );
+                self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+                    .await
+            }
+            false => {
+                self.perform_delete_request(&format!(
+                    "/v1/oauth2/{}/_attr/{}",
+                    id,
+                    Attribute::OAuth2DeviceFlowEnable.as_str()
+                ))
+                .await
+            }
+        }
     }
 }
