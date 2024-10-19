@@ -1,10 +1,9 @@
-use std::collections::BTreeSet;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::internal::UiHint;
 use kanidm_proto::scim_v1::JsonValue;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUiHint {

@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use smolset::SmolSet;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
+use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUrl {

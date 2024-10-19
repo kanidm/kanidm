@@ -1,9 +1,9 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use std::collections::BTreeSet;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUtf8 {

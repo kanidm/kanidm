@@ -1,11 +1,10 @@
 //! These are types that a client will send to the server.
 use crate::attribute::Attribute;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
 use uuid::Uuid;
-use serde::{Deserialize, Serialize};
-use sshkey_attest::proto::PublicKey as SshPublicKey;
 
 pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
 

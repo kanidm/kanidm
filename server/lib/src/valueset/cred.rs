@@ -6,7 +6,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
