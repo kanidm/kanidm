@@ -37,16 +37,16 @@ graph LR;
 
 	kanidm@{ shape: lin-cyl, label: "Kanidm" };
 
-	device<-- Trusts OAuth -->website;
-	website<-- Reads User Data -->kanidm;
+	device-- Trusts OAuth -->website;
+	website-- Reads User Data -->kanidm;
 	device-- OAuth -->kanidm;
 
 	device-- SSH -->ssh;
-	ssh<-- Retrieve SSH Keys -->kanidm;
+	ssh-- Retrieve SSH Keys -->kanidm;
 
 	device-- Login to -->wifi;
 	wifi-- RADIUS Credentials -->radius;
-	radius<-- Verifies Credentials -->kanidm;
+	radius-- Verifies Credentials -->kanidm;
 
 ```
 
