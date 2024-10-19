@@ -30,19 +30,6 @@ Versions follow semver using `major.minor.patch` with an optional `-tag`.
 Release branches will be created and tagged 7 days prior to a release. The version will be set to
 the pre-release version.
 
-<!-- ```
-  /- tag 1.2.0-dev
-  |          tag 1.3.0-dev
-  v          v
---o ... --o--o--o--o ...  <- branch master
-           \
-            \-o--o--o--o--o--o--o  <- branch 1.2.0
-              ^        ^  ^
-              |        |   tag v1.2.1
-              |        \- tag v1.2.0
-              \- tag v1.2.0-pre
-``` -->
-
 ```mermaid
 %%{init: { "gitGraph": { "mainBranchName": "master", "parallelCommits": true, "showCommitLabel": false }}}%%
 gitGraph
