@@ -31,7 +31,17 @@ impl ValueSetSyntax {
 
 impl ValueSetScimPut for ValueSetSyntax {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let value: SyntaxType = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM SyntaxType syntax invalid");
+            OperationError::SC0008SyntaxTypeSyntaxInvalid
+        })?;
+
+        let mut set = SmolSet::new();
+        set.insert(value);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetSyntax {
+            set,
+        })))
     }
 }
 
@@ -114,9 +124,10 @@ impl ValueSetT for ValueSetSyntax {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
-            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
-        )))
+        self.set
+            .iter()
+            .next()
+            .map(|u| ScimResolveStatus::Resolved(ScimValueKanidm::from(u.to_string())))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -170,7 +181,7 @@ mod tests {
     #[test]
     fn test_scim_syntax() {
         let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#"["UUID"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""UUID""#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetSyntax>(vs, &[])
