@@ -13,11 +13,19 @@
     defer></script>
 
 (% if passkey %)
-<button hx-disable type="button" class="btn btn-dark"
-    id="start-passkey-button">Use Passkey</button>
+<form id="cred-form" action="/ui/login/passkey" method="POST">
+    <input hidden="hidden" name="cred" id="cred">
+
+    <button hx-disable type="button" class="btn btn-dark"
+        id="start-passkey-button">Use Passkey</button>
+</form>
 (% else %)
-<button type="button" class="btn btn-dark" id="start-seckey-button">Use Security
-    Key</button>
+<form id="cred-form" action="/ui/login/seckey" method="POST">
+    <input hidden="hidden" name="cred" id="cred">
+
+    <button type="button" class="btn btn-dark" id="start-seckey-button"
+        >Use Security Key</button>
+</form>
 (% endif %)
 
 (% endblock %)
