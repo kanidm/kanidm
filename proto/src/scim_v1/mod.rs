@@ -66,6 +66,15 @@ pub enum ScimSchema {
     SyncV1PosixGroupV1,
 }
 
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ScimMail {
+    #[serde(default)]
+    pub primary: bool,
+    pub value: String,
+}
+
 #[cfg(test)]
 mod tests {
     // use super::*;

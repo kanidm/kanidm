@@ -5,7 +5,7 @@ use std::fmt::Display;
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
 use hashbrown::HashSet;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
@@ -293,7 +293,7 @@ impl ValueSetImage {
 }
 
 impl ValueSetScimPut for ValueSetImage {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         todo!();
     }
 }
