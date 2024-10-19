@@ -1003,9 +1003,6 @@ async fn main() -> ExitCode {
                 }
             };
 
-            if !shadow_is_accessible {
-            };
-
             // Pre-process /etc/passwd and /etc/group for nxset
             if let Err(err) = process_etc_passwd_group(&cachelayer, shadow_is_accessible).await {
                 error!(?err, "Failed to process system id providers");
