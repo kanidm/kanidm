@@ -30,7 +30,7 @@ Versions follow semver using `major.minor.patch` with an optional `-tag`.
 Release branches will be created and tagged 7 days prior to a release. The version will be set to
 the pre-release version.
 
-```
+<!-- ```
   /- tag 1.2.0-dev
   |          tag 1.3.0-dev
   v          v
@@ -41,6 +41,51 @@ the pre-release version.
               |        |   tag v1.2.1
               |        \- tag v1.2.0
               \- tag v1.2.0-pre
+``` -->
+
+```mermaid
+%%{init: { "gitGraph": { "mainBranchName": "master", "parallelCommits": true, "showCommitLabel": false }}}%%
+gitGraph
+  commit tag: "1.2.0-dev"
+  commit
+
+  branch 1.2.0
+  commit tag: "1.2.0-pre"
+  commit
+  commit tag: "1.2.0"
+  commit
+  commit tag: "1.2.1"
+  commit
+  commit tag: "1.2.2"
+  commit
+  commit tag: "1.2.3"
+  commit
+  commit type: HIGHLIGHT tag: "Final 1.2.x Release"
+
+  checkout master
+  commit tag: "1.3.0-dev"
+  commit
+  commit
+  commit
+  commit
+
+  branch 1.3.0
+  commit tag: "1.3.0-pre"
+  commit
+  commit tag: "1.3.0"
+  commit
+  commit tag: "1.3.1"
+  commit
+  commit tag: "1.3.2"
+
+  checkout master
+  commit tag: "1.4.0-dev"
+  commit
+  commit
+  commit
+  commit
+  commit
+  commit
 ```
 
 The first stable release is version 1.2.0. All releases prior are release candidate, beta or alpha
