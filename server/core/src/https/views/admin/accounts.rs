@@ -43,27 +43,27 @@ pub(crate) async fn view_accounts_get(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
-    let filter = filter_all!(f_and!([f_eq(
-        Attribute::Class,
-        EntryClass::Account.into()
-    )]));
+    let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Account.into())]));
     let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
         .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid)
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    let accounts = base.into_iter().filter_map(|entry: ScimEntryKanidm| {
-        let uuid = entry.header.id;
-        let name = entry.attr_str(&Attribute::Name)?.to_string();
-        let displayname = entry.attr_str(&Attribute::DisplayName)?.to_string();
+    let accounts = base
+        .into_iter()
+        .filter_map(|entry: ScimEntryKanidm| {
+            let uuid = entry.header.id;
+            let name = entry.attr_str(&Attribute::Name)?.to_string();
+            let displayname = entry.attr_str(&Attribute::DisplayName)?.to_string();
 
-        Some(AccountInfo {
-            uuid,
-            name,
-            displayname,
+            Some(AccountInfo {
+                uuid,
+                name,
+                displayname,
+            })
         })
-    }).collect();
+        .collect();
     let accounts_partial = AccountsPartialView { accounts };
 
     let push_url = HxPushUrl(Uri::from_static("/ui/admin/accounts"));
@@ -76,6 +76,7 @@ pub(crate) async fn view_accounts_get(
                 access_info: AccessInfo::new(),
                 partial: accounts_partial,
             }),
-        ).into_response()
+        )
+            .into_response()
     })
 }

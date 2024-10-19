@@ -12,7 +12,10 @@ pub fn admin_router() -> Router<ServerState> {
         .route("/groups", get(groups::view_groups_get))
         .route("/groups/unlock", get(groups::view_groups_unlock_get))
         .route("/group/create", get(groups::view_group_create_get))
-        .route("/group/:group_uuid/delete", post(groups::view_group_delete_post))
+        .route(
+            "/group/:group_uuid/delete",
+            post(groups::view_group_delete_post),
+        )
         .route("/group/:group_uuid/edit", get(groups::view_group_edit_get))
         .route("/group/:group_uuid/view", get(groups::view_group_view_get))
         .route("/group/create", post(groups::view_group_create_post));
@@ -20,8 +23,14 @@ pub fn admin_router() -> Router<ServerState> {
     let guarded_router = Router::new()
         .layer(HxRequestGuardLayer::new("/ui"))
         .route("/api/group/:group_uuid", post(groups::view_group_save_post))
-        .route("/api/group/:group_uuid/member", post(groups::view_group_new_member_post))
-        .route("/api/group/:group_uuid/mail", post(groups::view_group_new_mail_post));
+        .route(
+            "/api/group/:group_uuid/member",
+            post(groups::view_group_new_member_post),
+        )
+        .route(
+            "/api/group/:group_uuid/mail",
+            post(groups::view_group_new_mail_post),
+        );
 
     Router::new().merge(unguarded_router).merge(guarded_router)
 }

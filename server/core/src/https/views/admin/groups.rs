@@ -14,13 +14,13 @@ use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 
 use kanidm_proto::internal::{OperationError, UserAuthToken};
+use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimMail, ScimReference};
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use kanidmd_lib::idm::ClientAuthInfo;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 use uuid::Uuid;
-use kanidm_proto::scim_v1::server::{ScimEntryKanidm, ScimMail, ScimReference};
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -388,9 +388,14 @@ async fn get_groups_info(
 fn scimentry_into_groupinfo(scim_entry: &ScimEntryKanidm) -> Option<GroupInfo> {
     let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
     let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
-    let entry_manager = scim_entry.attr_str(&Attribute::EntryManagedBy).map(|t| { t.to_string() });
+    let entry_manager = scim_entry
+        .attr_str(&Attribute::EntryManagedBy)
+        .map(|t| t.to_string());
     let mails = scim_entry.attr_mails().cloned().unwrap_or_default();
-    let members = scim_entry.attr_references(&Attribute::Member).cloned().unwrap_or_default();
+    let members = scim_entry
+        .attr_references(&Attribute::Member)
+        .cloned()
+        .unwrap_or_default();
 
     Some(GroupInfo {
         uuid: scim_entry.header.id,

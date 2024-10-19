@@ -51,7 +51,7 @@ impl IntoResponse for HtmxError {
                                 StatusCode::FORBIDDEN,
                                 HtmlTemplate(ErrorToastPartial {
                                     err_code: inner,
-                                    operation_id: kopid
+                                    operation_id: kopid,
                                 }),
                             )
                                 .into_response(),
