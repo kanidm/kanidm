@@ -409,29 +409,25 @@ async fn handle_client(
     Ok(())
 }
 
-async fn process_etc_passwd_group(cachelayer: &Resolver) -> Result<(), Box<dyn Error>> {
+async fn process_etc_passwd_group(
+    cachelayer: &Resolver,
+    shadow_is_accessible: bool,
+) -> Result<(), Box<dyn Error>> {
     let mut file = File::open("/etc/passwd").await?;
     let mut contents = vec![];
     file.read_to_end(&mut contents).await?;
 
     let users = parse_etc_passwd(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
 
-    let maybe_shadow = match File::open("/etc/shadow").await {
-        Ok(mut file) => {
-            let mut contents = vec![];
-            file.read_to_end(&mut contents).await?;
+    let maybe_shadow = if shadow_is_accessible {
+        let mut file = File::open("/etc/shadow").await?;
+        let mut contents = vec![];
+        file.read_to_end(&mut contents).await?;
 
-            let shadow =
-                parse_etc_shadow(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
-            Some(shadow)
-        }
-        Err(io_err) => {
-            warn!(
-                ?io_err,
-                "Unable to read /etc/shadow, some features will be disabled."
-            );
-            None
-        }
+        let shadow = parse_etc_shadow(contents.as_slice()).map_err(|_| "Invalid passwd content")?;
+        Some(shadow)
+    } else {
+        None
     };
 
     let mut file = File::open("/etc/group").await?;
@@ -999,9 +995,20 @@ async fn main() -> ExitCode {
             // Undo umask changes.
             let _ = unsafe { umask(before) };
 
+            // We pre-check if we can read /etc/shadow, and we flag that for the process so that
+            // we don't attempt to read it again as we proceed.
+            let shadow_is_accessible = {
+                if let Err(err) = File::open("/etc/shadow").await {
+                    warn!(?err, "Unable to read /etc/shadow, some features will be disabled.");
+                    false
+                } else {
+                    true
+                }
+            };
+
             // Pre-process /etc/passwd and /etc/group for nxset
-            if process_etc_passwd_group(&cachelayer).await.is_err() {
-                error!("Failed to process system id providers");
+            if let Err(err) = process_etc_passwd_group(&cachelayer, shadow_is_accessible).await {
+                error!(?err, "Failed to process system id providers");
                 return ExitCode::FAILURE
             }
 
@@ -1077,8 +1084,12 @@ async fn main() -> ExitCode {
                 .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/group"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
                 )
-                .and_then(|mut debouncer| debouncer.watcher().watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
+                .and_then(|mut debouncer| if shadow_is_accessible {
+                    debouncer.watcher().watch(Path::new("/etc/shadow"), RecursiveMode::NonRecursive)
                         .map(|()| debouncer)
+                    } else {
+                        Ok(debouncer)
+                    }
                 );
             let watcher =
             match watcher {
@@ -1101,8 +1112,8 @@ async fn main() -> ExitCode {
                             break;
                         }
                         _ = inotify_rx.recv() => {
-                            if process_etc_passwd_group(&inotify_cachelayer).await.is_err() {
-                                error!("Failed to process system id providers");
+                            if let Err(err) = process_etc_passwd_group(&inotify_cachelayer, shadow_is_accessible).await {
+                                error!(?err, "Failed to process system id providers");
                             }
                         }
                     }
