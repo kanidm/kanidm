@@ -848,18 +848,7 @@ pub trait QueryServerTransaction<'a> {
         scim_value_intermediate: ScimValueIntermediate,
     ) -> Result<Option<ScimValueKanidm>, OperationError> {
         match scim_value_intermediate {
-            ScimValueIntermediate::Refer(uuid) => {
-                if let Some(option) = self.uuid_to_spn(uuid)? {
-                    Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
-                        uuid,
-                        value: option.to_proto_string_clone(),
-                    })))
-                } else {
-                    // TODO: didn't have spn, fallback to uuid.to_string ?
-                    Ok(None)
-                }
-            }
-            ScimValueIntermediate::ReferMany(uuids) => {
+            ScimValueIntermediate::References(uuids) => {
                 let mut scim_references = vec![];
                 for uuid in uuids {
                     if let Some(option) = self.uuid_to_spn(uuid)? {
@@ -893,7 +882,7 @@ pub trait QueryServerTransaction<'a> {
             return Ok(None);
         };
 
-        match schema_a.syntax {
+        let resolve_status = match schema_a.syntax {
             SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
             SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
             SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
@@ -976,8 +965,42 @@ pub trait QueryServerTransaction<'a> {
             SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute(
                 "Application Passwords are not able to be set.".to_string(),
             )),
+        }?;
+
+        match resolve_status {
+            ValueSetResolveStatus::Resolved(vs) => Ok(vs),
+            ValueSetResolveStatus::NeedsResolution(vs_inter) => {
+                self.resolve_valueset_intermediate(vs_inter)
+            }
         }
-        .map(|valueset| Some(valueset))
+        .map(Some)
+    }
+
+    fn resolve_valueset_intermediate(
+        &mut self,
+        vs_inter: ValueSetIntermediate,
+    ) -> Result<ValueSet, OperationError> {
+        match vs_inter {
+            ValueSetIntermediate::References {
+                mut resolved,
+                unresolved,
+            } => {
+                for value in unresolved {
+                    let un = self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                        warn!(
+                            ?value,
+                            "Value can not be resolved to a uuid - assuming it does not exist."
+                        );
+                        UUID_DOES_NOT_EXIST
+                    });
+
+                    resolved.insert(un);
+                }
+
+                let vs = ValueSetRefer::from_set(resolved);
+                Ok(vs)
+            }
+        }
     }
 
     // In the opposite direction, we can resolve values for presentation

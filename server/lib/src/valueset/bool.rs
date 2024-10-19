@@ -1,7 +1,7 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 
@@ -39,7 +39,7 @@ impl ValueSetBool {
 }
 
 impl ValueSetScimPut for ValueSetBool {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         todo!();
     }
 }
