@@ -1,4 +1,3 @@
-use super::client::ScimEntryPutGeneric;
 use super::ScimMail;
 use crate::attribute::Attribute;
 use scim_proto::ScimEntryHeader;
@@ -21,32 +20,6 @@ pub struct ScimEntryKanidm {
     pub header: ScimEntryHeader,
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct ScimEntryPutKanidm {
-    pub id: Uuid,
-    #[serde(flatten)]
-    pub attrs: BTreeMap<Attribute, Option<ScimValueKanidm>>,
-}
-
-impl ScimEntryPutKanidm {
-    pub fn to_generic(self) -> Result<ScimEntryPutGeneric, serde_json::Error> {
-        let ScimEntryPutKanidm { id, attrs } = self;
-
-        let attrs = attrs
-            .into_iter()
-            .map(|(attr, value)| {
-                if let Some(v) = value {
-                    serde_json::to_value(v).map(|json_value| (attr, Some(json_value)))
-                } else {
-                    Ok((attr, None))
-                }
-            })
-            .collect::<Result<_, _>>()?;
-
-        Ok(ScimEntryPutGeneric { id, attrs })
-    }
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]

@@ -2,8 +2,10 @@
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
+use serde_with::formats::PreferMany;
 use serde_with::serde_as;
 use serde_with::skip_serializing_none;
+use serde_with::OneOrMany;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -34,6 +36,10 @@ pub struct ScimEntryPutKanidm {
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, Option<super::server::ScimValueKanidm>>,
 }
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ScimEntryPutGeneric {

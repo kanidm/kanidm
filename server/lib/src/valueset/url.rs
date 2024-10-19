@@ -41,7 +41,17 @@ impl ValueSetUrl {
 
 impl ValueSetScimPut for ValueSetUrl {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let value: Url = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM URL syntax invalid");
+            OperationError::SC0007UrlSyntaxInvalid
+        })?;
+
+        let mut set = SmolSet::new();
+        set.insert(value);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUrl {
+            set,
+        })))
     }
 }
 

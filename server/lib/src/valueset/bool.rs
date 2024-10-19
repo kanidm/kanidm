@@ -40,20 +40,17 @@ impl ValueSetBool {
 
 impl ValueSetScimPut for ValueSetBool {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: bool = serde_json::from_value(value)
-            .map_err(|err| {
-                error!(?err, "SCIM boolean syntax invalid");
-                OperationError::SC0005BoolSyntaxInvalid
-            })?;
+        let value: bool = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM boolean syntax invalid");
+            OperationError::SC0005BoolSyntaxInvalid
+        })?;
 
         let mut set = SmolSet::new();
         set.insert(value);
 
-        Ok(
-            ValueSetResolveStatus::Resolved(
-                Box::new(ValueSetBool { set })
-            )
-        )
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetBool {
+            set,
+        })))
     }
 }
 
