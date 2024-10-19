@@ -1,5 +1,5 @@
 
-function asskey_login(target) {
+function asskey_login() {
     let credentialRequestOptions = JSON.parse(document.getElementById('data').textContent);
     credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
     credentialRequestOptions.publicKey.allowCredentials?.forEach(function (listItem) {
@@ -8,46 +8,32 @@ function asskey_login(target) {
 
     navigator.credentials.get({ publicKey: credentialRequestOptions.publicKey })
     .then((assertion) => {
-        const myRequest = new Request(target, {
-            method: 'POST',
-            redirect: 'follow',
-            headers: {
-                'Content-Type': 'application/json'
+        document.getElementById("cred").value = JSON.stringify({
+            id: assertion.id,
+            rawId: Base64.fromUint8Array(new Uint8Array(assertion.rawId), true),
+            type: assertion.type,
+            response: {
+                authenticatorData: Base64.fromUint8Array(new Uint8Array(assertion.response.authenticatorData), true),
+                clientDataJSON: Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON), true),
+                signature: Base64.fromUint8Array(new Uint8Array(assertion.response.signature), true),
+                userHandle: Base64.fromUint8Array(new Uint8Array(assertion.response.userHandle), true)
             },
-            body: JSON.stringify({
-                id: assertion.id,
-                rawId: Base64.fromUint8Array(new Uint8Array(assertion.rawId), true),
-                type: assertion.type,
-                response: {
-                    authenticatorData: Base64.fromUint8Array(new Uint8Array(assertion.response.authenticatorData), true),
-                    clientDataJSON: Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON), true),
-                    signature: Base64.fromUint8Array(new Uint8Array(assertion.response.signature), true),
-                    userHandle: Base64.fromUint8Array(new Uint8Array(assertion.response.userHandle), true)
-                },
-            }),
         });
-        fetch(myRequest).then((response) => {
-            if (response.redirected) {
-                window.location.replace(response.url);
-                return;
-            } else {
-                console.error("expected a redirect");
-            }
-        })
+        document.getElementById("cred-form").submit();
     })
 }
 
 try {
     const myButton = document.getElementById("start-passkey-button");
     myButton.addEventListener("click", () => {
-        asskey_login('/ui/login/passkey');
+        asskey_login();
     });
 } catch (_error) {};
 
 try {
     const myButton = document.getElementById("start-seckey-button");
     myButton.addEventListener("click", () => {
-        asskey_login('/ui/login/seckey');
+        asskey_login();
     });
 } catch (_error) {};
 

@@ -1,4 +1,5 @@
 use super::{cookies, empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
+use crate::https::views::errors::HtmxError;
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
     middleware::KOpId,
@@ -489,16 +490,30 @@ pub async fn view_login_backupcode_post(
     credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub struct JsonedPublicKeyCredential {
+    cred: String,
+}
+
 pub async fn view_login_passkey_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-    Json(assertion): Json<Box<PublicKeyCredential>>,
+    Form(assertion): Form<JsonedPublicKeyCredential>,
 ) -> Response {
-    let auth_cred = AuthCredential::Passkey(assertion);
-    credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
+    let result = serde_json::from_str::<Box<PublicKeyCredential>>(assertion.cred.as_str());
+    match result {
+        Ok(pkc) => {
+            let auth_cred = AuthCredential::Passkey(pkc);
+            credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
+        }
+        Err(e) => {
+            error!(err = ?e, "Unable to deserialize credential submission");
+            HtmxError::new(&kopid, OperationError::SerdeJsonError).into_response()
+        }
+    }
 }
 
 pub async fn view_login_seckey_post(
