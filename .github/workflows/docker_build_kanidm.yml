@@ -14,7 +14,7 @@ concurrency:
 jobs:
   set_tag_values:
     runs-on: ubuntu-latest
-    name: set lower case owner name
+    name: Set image tag values
     steps:
       - id: step1
         run: |
