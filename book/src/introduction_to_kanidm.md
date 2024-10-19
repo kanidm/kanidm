@@ -26,8 +26,29 @@ Kanidm solves this problem by acting as a central authority of accounts in your 
 allows each account to associate many devices and strong credentials with different privileges. An
 example of how this looks:
 
-<img src="images/KanidmUseCases-Light.png" alt="Kanidm Use Case Diagram" class="light-mode-only" />
-<img src="images/KanidmUseCases-Dark.png" alt="Kanidm Use Case Diagram" class="dark-mode-only" />
+```mermaid
+graph LR;
+	device@{ shape: circle, label: "Your Device" };
+
+	ssh@{ shape: processes, label: "SSH Servers" };
+	website@{ shape: processes, label: "Websites" };
+	wifi@{ shape: processes, label: "Wifi / VPN" };
+	radius@{ shape: div-rect, label: "RADIUS Server" };
+
+	kanidm@{ shape: lin-cyl, label: "Kanidm" };
+
+	device<-- Trusts OAuth -->website;
+	website<-- Reads User Data -->kanidm;
+	device-- OAuth -->kanidm;
+
+	device-- SSH -->ssh;
+	ssh<-- Retrieve SSH Keys -->kanidm;
+
+	device-- Login to -->wifi;
+	wifi-- RADIUS Credentials -->radius;
+	radius<-- Verifies Credentials -->kanidm;
+
+```
 
 A key design goal is that you authenticate with your device in some manner, and then your device
 will continue to authenticate you in the future. Each of these different types of credentials, from
