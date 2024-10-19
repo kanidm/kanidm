@@ -1,7 +1,6 @@
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 use time::OffsetDateTime;
