@@ -20,7 +20,10 @@ function asskey_login() {
             },
         });
         document.getElementById("cred-form").submit();
-    })
+    }).catch((error) => {
+        console.error(`Failed to complete passkey authentication: ${error}`);
+        throw error;
+    });
 }
 
 try {
