@@ -468,6 +468,16 @@ pub static ref SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7: SchemaAttribute = Sch
     ..Default::default()
 };
 
+
+pub static ref SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE,
+    name: Attribute::OAuth2DeviceFlowEnable,
+    description: "Represents if OAuth2 Device Flow is permitted on this client.".to_string(),
+
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
     name: Attribute::Es256PrivateKeyDer,
@@ -1271,6 +1281,33 @@ pub static ref SCHEMA_CLASS_OAUTH2_RS_DL7: SchemaClass = SchemaClass {
         Attribute::OAuth2Session,
         Attribute::OAuth2RsOrigin,
         Attribute::OAuth2StrictRedirectUri,
+    ],
+    systemmust: vec![
+        Attribute::OAuth2RsOriginLanding,
+        Attribute::OAuth2RsTokenKey,
+        Attribute::Es256PrivateKeyDer,
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_OAUTH2_RS_DL9: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_OAUTH2_RS,
+    name: EntryClass::OAuth2ResourceServer.into(),
+    description: "The class representing a configured OAuth2 Client".to_string(),
+
+    systemmay: vec![
+        Attribute::Description,
+        Attribute::OAuth2RsScopeMap,
+        Attribute::OAuth2RsSupScopeMap,
+        Attribute::Rs256PrivateKeyDer,
+        Attribute::OAuth2JwtLegacyCryptoEnable,
+        Attribute::OAuth2PreferShortUsername,
+        Attribute::Image,
+        Attribute::OAuth2RsClaimMap,
+        Attribute::OAuth2Session,
+        Attribute::OAuth2RsOrigin,
+        Attribute::OAuth2StrictRedirectUri,
+        Attribute::OAuth2DeviceFlowEnable,
     ],
     systemmust: vec![
         Attribute::OAuth2RsOriginLanding,
