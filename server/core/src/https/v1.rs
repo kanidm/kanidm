@@ -1002,7 +1002,6 @@ pub async fn service_account_api_token_delete(
     responses(
         (status=200, body=Option<Vec<String>>, content_type="application/json"),
         ApiResponseWithout200,
-        (status = 403, description = "Authorzation refused"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/attr",
@@ -1532,7 +1531,7 @@ pub async fn person_get_id_credential_status(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<String>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1557,7 +1556,7 @@ pub async fn person_id_ssh_pubkeys_get(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<String>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1583,7 +1582,7 @@ pub async fn account_id_ssh_pubkeys_get(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=Vec<String>, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1609,6 +1608,7 @@ pub async fn service_account_id_ssh_pubkeys_get(
     path = "/v1/person/{id}/_ssh_pubkeys",
     responses(
         DefaultApiResponse,
+        (status=422, description="Unprocessable Entity", body=String, content_type="text/plain"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/person/ssh_pubkeys",
@@ -1637,6 +1637,7 @@ pub async fn person_id_ssh_pubkeys_post(
     request_body = (String, String),
     responses(
         DefaultApiResponse,
+        (status=422, description="Unprocessable Entity", body=String, content_type="text/plain"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/service_account",
@@ -1663,7 +1664,7 @@ pub async fn service_account_id_ssh_pubkeys_post(
     get,
     path = "/v1/person/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=String, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1687,7 +1688,7 @@ pub async fn person_id_ssh_pubkeys_tag_get(
     get,
     path = "/v1/account/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=String, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
@@ -1712,7 +1713,7 @@ pub async fn account_id_ssh_pubkeys_tag_get(
     get,
     path = "/v1/service_account/{id}/_ssh_pubkeys/{tag}",
     responses(
-        (status=200), // TODO: define response
+        (status=200, body=String, content_type="application/json"),
         ApiResponseWithout200,
     ),
     security(("token_jwt" = [])),
