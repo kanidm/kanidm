@@ -336,7 +336,7 @@ pub struct Oauth2RS {
     has_custom_image: bool,
 
     #[cfg(feature = "dev-oauth2-device-flow")]
-    device_authorization_endpoint: Url,
+    device_authorization_endpoint: Option<Url>,
 }
 
 impl Oauth2RS {
@@ -360,6 +360,11 @@ impl Oauth2RS {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
             OauthRSType::Public { .. } => true,
         }
+    }
+
+    /// Does this RS have device flow enabled?
+    pub fn device_flow_enabled(&self) -> bool {
+        self.device_authorization_endpoint.is_some()
     }
 }
 
@@ -715,10 +720,20 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     .cloned()
                     .collect();
 
-    #[cfg(feature = "dev-oauth2-device-flow")]{
-                let mut device_authorization_endpoint = self.inner.origin.clone();
-                device_authorization_endpoint.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
-}
+
+                    let device_authorization_endpoint: Option<Url> = match cfg!(feature="dev-oauth2-device-flow") {
+                        true => {
+                            match ent.get_ava_single_bool(Attribute::OAuth2DeviceFlowEnable).unwrap_or(false) {
+                            true => {
+                                let mut device_authorization_endpoint = self.inner.origin.clone();
+                                device_authorization_endpoint.set_path(uri::OAUTH2_AUTHORISE_DEVICE);
+                                Some(device_authorization_endpoint)
+                            },
+                            false => None
+                            }
+                        },
+                        false => {None}
+                    };
                 let client_id = name.clone();
                 let rscfg = Oauth2RS {
                     name,
@@ -1008,6 +1023,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         info!("Got Client: {:?}", o2rs);
 
+        // TODO: change this to checking if it's got device flow enabled
         if !o2rs.require_pkce() {
             security_info!("Device flow is only available for PKCE-enabled clients");
             return Err(Oauth2Error::InvalidRequest);
@@ -2651,7 +2667,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
             #[cfg(feature = "dev-oauth2-device-flow")]
-            device_authorization_endpoint: Some(o2rs.device_authorization_endpoint.clone()),
+            device_authorization_endpoint: o2rs.device_authorization_endpoint.clone(),
         })
     }
 
@@ -6774,5 +6790,28 @@ mod tests {
             parse_user_code(&res_string).expect("Failed to parse code"),
             res_value
         );
+    }
+
+    #[idm_test]
+    async fn handle_oauth2_start_device_flow(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = duration_from_epoch_now();
+
+        let client_auth_info = ClientAuthInfo::from(Source::Https(
+            "127.0.0.1"
+                .parse()
+                .expect("Failed to parse 127.0.0.1 as an IP!"),
+        ));
+        let eventid = Uuid::new_v4();
+
+        let res = idms
+            .proxy_write(ct)
+            .await
+            .expect("Failed to get idmspwt")
+            .handle_oauth2_start_device_flow(client_auth_info, "test_rs_id", &None, eventid);
+        dbg!(&res);
+        assert!(res.is_err());
     }
 }
