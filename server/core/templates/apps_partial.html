@@ -1,9 +1,10 @@
-<main class="p-3 x-auto">
+<main class="container-lg">
 	<div class="(( crate::https::ui::CSS_PAGE_HEADER ))">
 		<h2>Applications list</h2>
 	</div>
+	<hr />
 	(% if apps.is_empty() %)
-	<h5>No linked applications available</h5>
+	<p>No linked applications available</p>
 	(% else %)
 	<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 g-3">
 		(% for app in apps %)
