@@ -264,6 +264,7 @@ shellexpand = "^2.1.2"
 smartstring = "^1.0.1"
 smolset = "^1.3.1"
 sshkey-attest = "^0.5.0"
+sshkeys = "0.3.3"
 svg = "0.13.1"
 syn = { version = "2.0.82", features = ["full"] }
 tempfile = "3.13.0"
