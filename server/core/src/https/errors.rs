@@ -55,8 +55,11 @@ impl IntoResponse for WebError {
                     OperationError::NoMatchingEntries => (StatusCode::NOT_FOUND, None),
                     OperationError::PasswordQuality(_)
                     | OperationError::EmptyRequest
+                    | OperationError::InvalidAttribute(_)
+                    | OperationError::InvalidAttributeName(_)
                     | OperationError::SchemaViolation(_)
-                    | OperationError::CU0003WebauthnUserNotVerified => {
+                    | OperationError::CU0003WebauthnUserNotVerified
+                    | OperationError::VL0001ValueSshPublicKeyString => {
                         (StatusCode::BAD_REQUEST, None)
                     }
                     _ => (StatusCode::INTERNAL_SERVER_ERROR, None),
