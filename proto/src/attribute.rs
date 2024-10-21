@@ -188,6 +188,7 @@ pub enum Attribute {
     TestNotAllowed,
 
     #[cfg(not(test))]
+    #[schema(value_type = String)]
     Custom(AttrString),
 }
 

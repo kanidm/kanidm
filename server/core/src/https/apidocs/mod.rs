@@ -1,5 +1,5 @@
 use axum::{middleware::from_fn, response::Redirect, routing::get, Router};
-use kanidm_proto::{internal, scim_v1, v1};
+use kanidm_proto::{attribute, internal, scim_v1, v1};
 use utoipa::{
     openapi::security::{HttpAuthScheme, HttpBuilder, SecurityScheme},
     Modify, OpenApi,
@@ -209,7 +209,7 @@ impl Modify for SecurityAddon {
     ),
     components(
         schemas(
-            // kanidm_proto::attribute::Attribute,
+            attribute::Attribute,
 
 
             scim_v1::ScimSyncState,
@@ -223,6 +223,7 @@ impl Modify for SecurityAddon {
             internal::ApiToken,
             internal::ApiTokenPurpose,
             internal::BackupCodesView,
+            internal::ConsistencyError,
             internal::CreateRequest,
             internal::CredentialDetail,
             internal::CredentialDetailType,
@@ -263,7 +264,11 @@ impl Modify for SecurityAddon {
             v1::AuthStep,
             v1::Entry,
             v1::GroupUnixExtend,
+            v1::PublicKeyKindSchema,
             v1::SingleStringRequest,
+            v1::SshPublicKeySchema,
+            v1::KeyTypeKindSchema,
+            v1::KeyTypeSchema,
             internal::UiHint,
             v1::UatPurposeStatus,
             v1::UatStatus,
