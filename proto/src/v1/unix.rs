@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+use sshkeys::{KeyType, KeyTypeKind, PublicKeyKind};
 use std::fmt;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -7,6 +8,35 @@ use uuid::Uuid;
 use serde_with::skip_serializing_none;
 
 use crate::constants::{ATTR_GROUP, ATTR_LDAP_SSHPUBLICKEY};
+
+#[allow(dead_code)]
+#[derive(ToSchema)]
+#[schema(as = KeyTypeKind)]
+pub struct KeyTypeKindSchema(KeyTypeKind);
+
+#[derive(ToSchema)]
+#[schema(as = KeyType)]
+pub struct KeyTypeSchema {
+    pub name: &'static str,
+    pub short_name: &'static str,
+    pub is_cert: bool,
+    pub is_sk: bool,
+    pub kind: KeyTypeKind,
+    pub plain: &'static str,
+}
+
+#[allow(dead_code)]
+#[derive(ToSchema)]
+#[schema(as = PublicKeyKind)]
+pub struct PublicKeyKindSchema(PublicKeyKind);
+
+#[derive(ToSchema)]
+#[schema(as = SshPublicKey)]
+pub struct SshPublicKeySchema {
+    pub key_type: KeyType,
+    pub kind: PublicKeyKind,
+    pub comment: Option<String>,
+}
 
 /// A token representing the details of a unix group
 #[derive(Debug, Serialize, Deserialize, Clone, ToSchema)]

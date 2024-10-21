@@ -3319,6 +3319,7 @@ dependencies = [
  "serde_with",
  "smartstring",
  "sshkey-attest",
+ "sshkeys",
  "time",
  "tracing",
  "url",
