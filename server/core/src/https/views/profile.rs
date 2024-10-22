@@ -66,7 +66,7 @@ pub(crate) async fn view_profile_unlock_get(
     DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
-) -> axum::response::Result<Response> {
+) -> Result<Response, HtmxError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
@@ -81,7 +81,7 @@ pub(crate) async fn view_profile_unlock_get(
         }),
     };
 
-    super::login::view_reauth_get(
+    Ok(super::login::view_reauth_get(
         state,
         client_auth_info,
         kopid,
@@ -89,7 +89,7 @@ pub(crate) async fn view_profile_unlock_get(
         Urls::Profile.as_ref(),
         display_ctx,
     )
-    .await
+    .await)
 }
 
 #[derive(Template)]

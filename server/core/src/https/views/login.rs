@@ -168,13 +168,13 @@ pub async fn view_reauth_get(
     jar: CookieJar,
     return_location: &str,
     display_ctx: LoginDisplayCtx,
-) -> axum::response::Result<Response> {
+) -> Response {
     let session_valid_result = state
         .qe_r_ref
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await;
 
-    let res = match session_valid_result {
+    match session_valid_result {
         Ok(()) => {
             let inter = state
                 .qe_r_ref
@@ -246,9 +246,7 @@ pub async fn view_reauth_get(
             operation_id: kopid.eventid,
         }
         .into_response(),
-    };
-
-    Ok(res)
+    }
 }
 
 pub async fn view_index_get(

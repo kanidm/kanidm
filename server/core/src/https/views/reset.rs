@@ -632,7 +632,7 @@ pub(crate) async fn view_self_reset_get(
             }),
         };
 
-        super::login::view_reauth_get(
+        Ok(super::login::view_reauth_get(
             state,
             client_auth_info,
             kopid,
@@ -640,7 +640,7 @@ pub(crate) async fn view_self_reset_get(
             Urls::UpdateCredentials.as_ref(),
             display_ctx,
         )
-        .await
+        .await)
     }
 }
 
