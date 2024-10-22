@@ -24,6 +24,7 @@ use kanidm_proto::internal::{
     COOKIE_CU_SESSION_TOKEN,
 };
 
+use super::constants::Urls;
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
@@ -226,7 +227,7 @@ pub(crate) async fn commit(
     Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
 }
 
-pub(crate) async fn cancel(
+pub(crate) async fn cancel_cred_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
@@ -241,7 +242,7 @@ pub(crate) async fn cancel(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
+    Ok((HxLocation::from(Uri::from_static("/ui/profile")), "").into_response())
 }
 
 pub(crate) async fn cancel_mfareg(
@@ -626,7 +627,7 @@ pub(crate) async fn view_self_reset_get(
             client_auth_info,
             kopid,
             jar,
-            "/ui/update_credentials",
+            Urls::UpdateCredentials.as_ref(),
             display_ctx,
         )
         .await
@@ -655,7 +656,7 @@ pub(crate) async fn view_reset_get(
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let push_url = HxPushUrl(Uri::from_static("/ui/reset"));
+    let push_url = HxPushUrl(Uri::from_static(Urls::CredReset.as_ref()));
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     let is_logged_in = state
         .qe_r_ref
@@ -684,10 +685,10 @@ pub(crate) async fn view_reset_get(
                 jar = jar.remove(Cookie::from(COOKIE_CU_SESSION_TOKEN));
 
                 if let Some(token) = params.token {
-                    let token_uri_string = format!("/ui/reset?token={token}");
-                    return Ok((jar, Redirect::to(token_uri_string.as_str())).into_response());
+                    let token_uri_string = format!("{}?token={}", Urls::CredReset, token);
+                    return Ok((jar, Redirect::to(&token_uri_string)).into_response());
                 }
-                return Ok((jar, Redirect::to("/ui/reset")).into_response());
+                return Ok((jar, Redirect::to(Urls::CredReset.as_ref())).into_response());
             }
             Err(op_err) => return Ok(HtmxError::new(&kopid, op_err).into_response()),
         };
@@ -759,7 +760,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
 fn get_cu_partial_response(cu_status: CUStatus) -> Response {
     let credentials_update_partial = get_cu_partial(cu_status);
     (
-        HxPushUrl(Uri::from_static("/ui/reset")),
+        HxPushUrl(Uri::from_static(Urls::CredReset.as_ref())),
         HxRetarget("#credentialUpdateDynamicSection".to_string()),
         HxReselect("#credentialUpdateDynamicSection".to_string()),
         HxReswap(SwapOption::OuterHtml),
@@ -793,13 +794,13 @@ fn get_cu_response(
         };
 
         (
-            HxPushUrl(Uri::from_static("/ui/update_credentials")),
+            HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
             HtmlTemplate(profile_view),
         )
             .into_response()
     } else {
         (
-            HxPushUrl(Uri::from_static("/ui/reset")),
+            HxPushUrl(Uri::from_static(Urls::CredReset.as_ref())),
             HtmlTemplate(CredResetView {
                 domain_info,
                 names,
@@ -819,6 +820,10 @@ async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
         };
         Ok(cu_session_token)
     } else {
-        Err((StatusCode::FORBIDDEN, Redirect::to("/ui/reset")).into_response())
+        Err((
+            StatusCode::FORBIDDEN,
+            Redirect::to(Urls::CredReset.as_ref()),
+        )
+            .into_response())
     }
 }

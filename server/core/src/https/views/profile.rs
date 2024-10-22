@@ -14,7 +14,7 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::internal::UserAuthToken;
 
-use super::constants::ProfileMenuItems;
+use super::constants::{ProfileMenuItems, Urls};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
@@ -65,7 +65,7 @@ pub(crate) async fn view_profile_get(
 
     Ok(if hx_request {
         (
-            HxPushUrl(Uri::from_static("/ui/profile")),
+            HxPushUrl(Uri::from_static(Urls::Profile.as_ref())),
             HtmlTemplate(profile_partial_view),
         )
             .into_response()
@@ -101,7 +101,7 @@ pub(crate) async fn view_profile_unlock_get(
         client_auth_info,
         kopid,
         jar,
-        "/ui/profile",
+        Urls::Profile.as_ref(),
         display_ctx,
     )
     .await

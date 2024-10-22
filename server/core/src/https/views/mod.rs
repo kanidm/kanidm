@@ -90,7 +90,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
-        .route("/api/cu_cancel", post(reset::cancel))
+        .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 

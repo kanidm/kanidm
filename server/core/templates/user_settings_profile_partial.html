@@ -13,7 +13,7 @@ Profile
             <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( account_name ))">
         </div>
     </div>
-    
+
     <div class="mb-2 row">
         <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
         <div class="col-12 col-md-6 col-lg-4">
@@ -27,7 +27,7 @@ Profile
             <input type="text" class="form-control" id="profileLegalName" value="(( legal_name ))">
         </div>
     </div>
-    
+
     <div class="mb-2 row">
         <label for="profileEmail" class="col-12 col-md-3 col-lg-2 col-form-label">Email</label>
         <div class="col-12 col-md-6 col-lg-4">
@@ -40,7 +40,7 @@ Profile
         (% if can_rw %)
             <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile">Edit</button>
         (% else %)
-            <a href="/ui/profile/unlock" hx-boost="false">
+            <a href="(Urls::ProfileUnlock)" hx-boost="false">
                 <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
             </a>
         (% endif %)

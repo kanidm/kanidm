@@ -18,9 +18,11 @@
 		(% endif %)
 		<h3>Kanidm</h3>
 		(% if let Some(reauth) = display_ctx.reauth %)
-			<h5>Reauthenticating as (( reauth.username )) to access (( reauth.purpose ))</h5>
+		<h5>Reauthenticating as (( reauth.username )) to access (( reauth.purpose
+			))</h5>
 		(% endif %)
 	</center>
+
 	<div id="login-form-container" class="container">
 		(% block logincontainer %)
 		(% endblock %)
