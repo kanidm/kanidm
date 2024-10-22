@@ -142,6 +142,7 @@ sketching = { path = "./libs/sketching", version = "=1.4.0-dev" }
 anyhow = { version = "1.0.90" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde", "with-axum"] }
+askama_axum = { version = "0.4.0" }
 async-trait = "^0.1.83"
 axum = { version = "0.7.7", features = [
     "form",
