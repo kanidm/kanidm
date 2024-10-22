@@ -32,7 +32,17 @@ impl ValueSetUiHint {
 
 impl ValueSetScimPut for ValueSetUiHint {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let value = serde_json::from_value::<Vec<UiHint>>(value).map_err(|err| {
+            error!(?err, "SCIM UiHint syntax invalid");
+            // OperationError::SC0009IndexTypeSyntaxInvalid
+            todo!();
+        })?;
+
+        let set = value.into_iter().collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUiHint {
+            set,
+        })))
     }
 }
 
@@ -103,7 +113,7 @@ impl ValueSetT for ValueSetUiHint {
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
-            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
+            self.set.iter().copied().collect::<Vec<_>>(),
         )))
     }
 
@@ -154,7 +164,7 @@ mod tests {
     #[test]
     fn test_scim_uihint() {
         let vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#"["PosixAccount"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#"["posixaccount"]"#);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetUiHint>(vs, &[])

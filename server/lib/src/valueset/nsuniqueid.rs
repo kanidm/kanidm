@@ -47,9 +47,9 @@ impl ValueSetScimPut for ValueSetNsUniqueId {
         let mut set = SmolSet::new();
         set.insert(value.to_lowercase());
 
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetNsUniqueId {
-            set,
-        })))
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetNsUniqueId { set },
+        )))
     }
 }
 
