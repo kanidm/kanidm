@@ -13,13 +13,13 @@
         <div class="list-group side-menu flex-shrink-0">
             (% call side_menu_item("Profile", (Urls::Profile),
             ProfileMenuItems::UserProfile, "person") %)
-            (% call side_menu_item("SSH Keys", "/ui/ssh_keys",
+            (% call side_menu_item("SSH Keys",(Urls::SshKeys),
             ProfileMenuItems::SshKeys, "key") %)
             (% if posix_enabled %)
-            (% call side_menu_item("UNIX Password", "/ui/update_credentials",
+            (% call side_menu_item("UNIX Password", (Urls::UpdateCredentials),
             ProfileMenuItems::UnixPassword, "building-lock") %)
             (% endif %)
-            (% call side_menu_item("Credentials", "/ui/update_credentials",
+            (% call side_menu_item("Credentials", (Urls::UpdateCredentials),
             ProfileMenuItems::Credentials, "shield-lock") %)
         </div>
         <div id="settings-window" class="flex-grow-1 ps-sm-4 pt-sm-0 pt-4">

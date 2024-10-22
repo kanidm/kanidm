@@ -15,9 +15,6 @@ pub(crate) enum Urls {
     CredReset,
     Profile,
     SshKeys,
-    ProfileUnlock,
-    Credentials,
-    UnixPassword,
     UpdateCredentials,
 }
 
@@ -27,10 +24,7 @@ impl AsRef<str> for Urls {
             Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
             Self::Profile => "/ui/profile",
-            Self::ProfileUnlock => "/ui/profile/unlock",
             Self::SshKeys => "/ui/profile/ssh_keys",
-            Self::Credentials => "/ui/profile/credentials",
-            Self::UnixPassword => "/ui/profile/unix_password",
             Self::UpdateCredentials => "/ui/update_credentials",
         }
     }

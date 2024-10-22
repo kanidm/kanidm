@@ -242,7 +242,11 @@ pub(crate) async fn cancel_cred_update(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok((HxLocation::from(Uri::from_static("/ui/profile")), "").into_response())
+    Ok((
+        HxLocation::from(Uri::from_static(Urls::Profile.as_ref())),
+        "",
+    )
+        .into_response())
 }
 
 pub(crate) async fn cancel_mfareg(
