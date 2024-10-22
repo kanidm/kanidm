@@ -21,7 +21,7 @@ use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
-use super::{cookies, HtmlTemplate, UnrecoverableErrorView};
+use super::{cookies, UnrecoverableErrorView};
 
 #[derive(Template)]
 #[template(path = "oauth2_consent_request.html")]
@@ -61,10 +61,10 @@ pub async fn view_resume_get(
         oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
     } else {
         error!("unable to resume session, no auth_req was found in the cookie");
-        HtmlTemplate(UnrecoverableErrorView {
+        UnrecoverableErrorView {
             err_code: OperationError::InvalidState,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response()
     }
 }
@@ -122,12 +122,12 @@ async fn oauth2_auth_req(
             consent_token,
         }) => {
             // We can just render the form now, the consent token has everything we need.
-            HtmlTemplate(ConsentRequestView {
+            ConsentRequestView {
                 client_name,
                 // scopes,
                 pii_scopes,
                 consent_token,
-            })
+            }
             .into_response()
         }
         Err(Oauth2Error::AuthenticationRequired) => {
@@ -141,18 +141,18 @@ async fn oauth2_auth_req(
 
             match maybe_jar {
                 Ok(jar) => (jar, Redirect::to("/ui/login")).into_response(),
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response(),
             }
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            HtmlTemplate(AccessDeniedView {
+            AccessDeniedView {
                 operation_id: kopid.eventid,
-            })
+            }
             .into_response()
         }
         /*
@@ -172,10 +172,10 @@ async fn oauth2_auth_req(
                 &err_code.to_string()
             );
 
-            HtmlTemplate(UnrecoverableErrorView {
+            UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
-            })
+            }
             .into_response()
         }
     }
@@ -231,10 +231,10 @@ pub async fn view_consent_post(
                 &err_code.to_string()
             );
 
-            HtmlTemplate(UnrecoverableErrorView {
+            UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
-            })
+            }
             .into_response()
         }
     }

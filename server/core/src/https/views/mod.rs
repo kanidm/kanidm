@@ -1,8 +1,7 @@
 use askama::Template;
 
 use axum::{
-    http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::Redirect,
     routing::{get, post},
     Router,
 };
@@ -96,28 +95,6 @@ pub fn view_router() -> Router<ServerState> {
         .layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
-}
-
-struct HtmlTemplate<T>(T);
-
-/// Allows us to convert Askama HTML templates into valid HTML for axum to serve in the response.
-impl<T> IntoResponse for HtmlTemplate<T>
-where
-    T: askama::Template,
-{
-    fn into_response(self) -> Response {
-        // Attempt to render the template with askama
-        match self.0.render() {
-            // If we're able to successfully parse and aggregate the template, serve it
-            Ok(html) => Html(html).into_response(),
-            // If we're not, return an error or some bit of fallback HTML
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template. Error: {}", err),
-            )
-                .into_response(),
-        }
-    }
 }
 
 /// Serde deserialization decorator to map empty Strings to None,

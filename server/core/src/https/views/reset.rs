@@ -32,7 +32,7 @@ use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::ServerState;
 
-use super::{HtmlTemplate, UnrecoverableErrorView};
+use super::UnrecoverableErrorView;
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
@@ -392,23 +392,23 @@ pub(crate) async fn view_new_passkey(
     let response = match cu_status.mfaregstate {
         CURegState::Passkey(chal) | CURegState::AttestedPasskey(chal) => {
             if let Ok(challenge) = serde_json::to_string(&chal) {
-                HtmlTemplate(AddPasskeyPartial {
+                AddPasskeyPartial {
                     challenge,
                     class: init_form.class,
-                })
+                }
                 .into_response()
             } else {
-                HtmlTemplate(UnrecoverableErrorView {
+                UnrecoverableErrorView {
                     err_code: OperationError::UI0001ChallengeSerialisation,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response()
             }
         }
-        _ => HtmlTemplate(UnrecoverableErrorView {
+        _ => UnrecoverableErrorView {
             err_code: OperationError::UI0002InvalidState,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     };
 
@@ -477,7 +477,7 @@ pub(crate) async fn view_new_totp(
                 )));
             };
 
-            return Ok((swapped_handler_trigger, push_url, HtmlTemplate(partial)).into_response());
+            return Ok((swapped_handler_trigger, push_url, partial).into_response());
         }
 
         // User has submitted a totp code
@@ -526,8 +526,12 @@ pub(crate) async fn view_new_totp(
         }
     };
 
-    let template = HtmlTemplate(AddTotpPartial { check_res });
-    Ok((swapped_handler_trigger, push_url, template).into_response())
+    Ok((
+        swapped_handler_trigger,
+        push_url,
+        AddTotpPartial { check_res },
+    )
+        .into_response())
 }
 
 pub(crate) async fn view_new_pwd(
@@ -544,10 +548,13 @@ pub(crate) async fn view_new_pwd(
 
     let new_passwords = match opt_form {
         None => {
-            let partial = AddPasswordPartial {
-                check_res: PwdCheckResult::Init,
-            };
-            return Ok((swapped_handler_trigger, HtmlTemplate(partial)).into_response());
+            return Ok((
+                swapped_handler_trigger,
+                AddPasswordPartial {
+                    check_res: PwdCheckResult::Init,
+                },
+            )
+                .into_response());
         }
         Some(Form(new_passwords)) => new_passwords,
     };
@@ -577,13 +584,12 @@ pub(crate) async fn view_new_pwd(
         pwd_equal,
         warnings,
     };
-    let template = HtmlTemplate(AddPasswordPartial { check_res });
 
     Ok((
         status,
         swapped_handler_trigger,
         HxPushUrl(Uri::from_static("/ui/reset/change_password")),
-        template,
+        AddPasswordPartial { check_res },
     )
         .into_response())
 }
@@ -714,25 +720,30 @@ pub(crate) async fn view_reset_get(
                 Ok((jar, cu_resp).into_response())
             }
             Err(OperationError::SessionExpired) | Err(OperationError::Wait(_)) => {
-                let cred_form_view = ResetCredFormView {
-                    domain_info,
-                    wrong_code: true,
-                };
-
                 // Reset code expired
-                Ok((push_url, HtmlTemplate(cred_form_view)).into_response())
+                Ok((
+                    push_url,
+                    ResetCredFormView {
+                        domain_info,
+                        wrong_code: true,
+                    },
+                )
+                    .into_response())
             }
             Err(op_err) => Err(ErrorResponse::from(
                 HtmxError::new(&kopid, op_err).into_response(),
             )),
         }
     } else {
-        let cred_form_view = ResetCredFormView {
-            domain_info,
-            wrong_code: false,
-        };
         // We don't have any credential, show reset token input form
-        Ok((push_url, HtmlTemplate(cred_form_view)).into_response())
+        Ok((
+            push_url,
+            ResetCredFormView {
+                domain_info,
+                wrong_code: false,
+            },
+        )
+            .into_response())
     }
 }
 
@@ -768,7 +779,7 @@ fn get_cu_partial_response(cu_status: CUStatus) -> Response {
         HxRetarget("#credentialUpdateDynamicSection".to_string()),
         HxReselect("#credentialUpdateDynamicSection".to_string()),
         HxReswap(SwapOption::OuterHtml),
-        HtmlTemplate(credentials_update_partial),
+        credentials_update_partial,
     )
         .into_response()
 }
@@ -793,23 +804,22 @@ fn get_cu_response(
             // TODO: fill in posix enabled
             posix_enabled: false,
         };
-        let profile_view = ProfileView {
-            profile_partial: cred_status_view,
-        };
 
         (
             HxPushUrl(Uri::from_static(Urls::UpdateCredentials.as_ref())),
-            HtmlTemplate(profile_view),
+            ProfileView {
+                profile_partial: cred_status_view,
+            },
         )
             .into_response()
     } else {
         (
             HxPushUrl(Uri::from_static(Urls::CredReset.as_ref())),
-            HtmlTemplate(CredResetView {
+            CredResetView {
                 domain_info,
                 names,
                 credentials_update_partial,
-            }),
+            },
         )
             .into_response()
     }

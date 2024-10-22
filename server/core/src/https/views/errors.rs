@@ -7,7 +7,7 @@ use uuid::Uuid;
 use kanidm_proto::internal::OperationError;
 
 use crate::https::middleware::KOpId;
-use crate::https::views::{HtmlTemplate, UnrecoverableErrorView};
+use crate::https::views::UnrecoverableErrorView;
 // #[derive(Template)]
 // #[template(path = "recoverable_error_partial.html")]
 // struct ErrorPartialView {
@@ -55,10 +55,10 @@ impl IntoResponse for HtmxError {
                         StatusCode::INTERNAL_SERVER_ERROR,
                         HxRetarget("body".to_string()),
                         HxReswap(SwapOption::OuterHtml),
-                        HtmlTemplate(UnrecoverableErrorView {
+                        UnrecoverableErrorView {
                             err_code: inner,
                             operation_id: kopid,
-                        }),
+                        },
                     )
                         .into_response(),
                 }

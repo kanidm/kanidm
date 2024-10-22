@@ -1,4 +1,4 @@
-use super::{cookies, empty_string_as_none, HtmlTemplate, UnrecoverableErrorView};
+use super::{cookies, empty_string_as_none, UnrecoverableErrorView};
 use crate::https::views::errors::HtmxError;
 use crate::https::{
     extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
@@ -146,10 +146,10 @@ pub async fn view_logout_get(
         .handle_logout(client_auth_info, kopid.eventid)
         .await
     {
-        HtmlTemplate(UnrecoverableErrorView {
+        UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response()
     } else {
         let response = Redirect::to("/ui/login").into_response();
@@ -209,18 +209,18 @@ pub async fn view_reauth_get(
                     {
                         Ok(r) => r,
                         // Okay, these errors are actually REALLY bad.
-                        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                        Err(err_code) => UnrecoverableErrorView {
                             err_code,
                             operation_id: kopid.eventid,
-                        })
+                        }
                         .into_response(),
                     }
                 }
                 // Probably needs to be way nicer on login, especially something like no matching users ...
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response(),
             }
         }
@@ -233,17 +233,17 @@ pub async fn view_reauth_get(
 
             let remember_me = !username.is_empty();
 
-            HtmlTemplate(LoginView {
+            LoginView {
                 display_ctx,
                 username,
                 remember_me,
-            })
+            }
             .into_response()
         }
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+        Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     };
 
@@ -282,17 +282,17 @@ pub async fn view_index_get(
                 reauth: None,
             };
 
-            HtmlTemplate(LoginView {
+            LoginView {
                 display_ctx,
                 username,
                 remember_me,
-            })
+            }
             .into_response()
         }
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+        Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     }
 }
@@ -374,18 +374,18 @@ pub async fn view_login_begin_post(
             {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response(),
             }
         }
         // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+        Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     }
 }
@@ -444,18 +444,18 @@ pub async fn view_login_mech_choose_post(
             {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response(),
             }
         }
         // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+        Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     }
 }
@@ -474,19 +474,21 @@ pub async fn view_login_totp_post(
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
     // trim leading and trailing white space.
-    let Ok(totp) = u32::from_str(login_totp_form.totp.trim()) else {
-        let display_ctx = LoginDisplayCtx {
-            domain_info,
-            reauth: None,
-        };
-
-        // If not an int, we need to re-render with an error
-        return HtmlTemplate(LoginTotpView {
-            display_ctx,
-            totp: String::default(),
-            errors: LoginTotpError::Syntax,
-        })
-        .into_response();
+    let totp = match u32::from_str(login_totp_form.totp.trim()) {
+        Ok(val) => val,
+        Err(_) => {
+            let display_ctx = LoginDisplayCtx {
+                domain_info,
+                reauth: None,
+            };
+            // If not an int, we need to re-render with an error
+            return LoginTotpView {
+                display_ctx,
+                totp: String::default(),
+                errors: LoginTotpError::Syntax,
+            }
+            .into_response();
+        }
     };
 
     let auth_cred = AuthCredential::Totp(totp);
@@ -612,18 +614,18 @@ async fn credential_step(
             {
                 Ok(r) => r,
                 // Okay, these errors are actually REALLY bad.
-                Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+                Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response(),
             }
         }
         // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => HtmlTemplate(UnrecoverableErrorView {
+        Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-        })
+        }
         .into_response(),
     }
 }
@@ -668,10 +670,10 @@ async fn view_login_step(
                     // Should never happen.
                     0 => {
                         error!("auth state choose allowed mechs is empty");
-                        HtmlTemplate(UnrecoverableErrorView {
+                        UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
-                        })
+                        }
                         .into_response()
                     }
                     1 => {
@@ -705,7 +707,7 @@ async fn view_login_step(
                                 name: m,
                             })
                             .collect();
-                        HtmlTemplate(LoginMechView { display_ctx, mechs }).into_response()
+                        LoginMechView { display_ctx, mechs }.into_response()
                     }
                 };
                 // break acts as return in a loop.
@@ -721,48 +723,48 @@ async fn view_login_step(
                     // Shouldn't be possible.
                     0 => {
                         error!("auth state continued allowed mechs is empty");
-                        HtmlTemplate(UnrecoverableErrorView {
+                        UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
-                        })
+                        }
                         .into_response()
                     }
                     1 => {
                         let auth_allowed = allowed[0].clone();
 
                         match auth_allowed {
-                            AuthAllowed::Totp => HtmlTemplate(LoginTotpView {
+                            AuthAllowed::Totp => LoginTotpView {
                                 display_ctx,
                                 totp: session_context.totp.clone().unwrap_or_default(),
                                 errors: LoginTotpError::default(),
-                            })
+                            }
                             .into_response(),
-                            AuthAllowed::Password => HtmlTemplate(LoginPasswordView {
+                            AuthAllowed::Password => LoginPasswordView {
                                 display_ctx,
                                 password: session_context.password.clone().unwrap_or_default(),
-                            })
+                            }
                             .into_response(),
                             AuthAllowed::BackupCode => {
-                                HtmlTemplate(LoginBackupCodeView { display_ctx }).into_response()
+                                LoginBackupCodeView { display_ctx }.into_response()
                             }
                             AuthAllowed::SecurityKey(chal) => {
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
-                                HtmlTemplate(LoginWebauthnView {
+                                LoginWebauthnView {
                                     display_ctx,
                                     passkey: false,
                                     chal: chal_json,
-                                })
+                                }
                                 .into_response()
                             }
                             AuthAllowed::Passkey(chal) => {
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
-                                HtmlTemplate(LoginWebauthnView {
+                                LoginWebauthnView {
                                     display_ctx,
                                     passkey: true,
                                     chal: chal_json,
-                                })
+                                }
                                 .into_response()
                             }
                             _ => return Err(OperationError::InvalidState),
@@ -836,11 +838,11 @@ async fn view_login_step(
                 debug!("🧩 -> AuthState::Denied");
                 jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
-                break HtmlTemplate(LoginDeniedView {
+                break LoginDeniedView {
                     display_ctx,
                     reason,
                     operation_id: kopid.eventid,
-                })
+                }
                 .into_response();
             }
         }
