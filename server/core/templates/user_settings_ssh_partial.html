@@ -8,11 +8,17 @@ SSH Keys
 
 <form>
 
+    (% if ssh_keys.is_empty() %)
+    <div class="alert alert-info" role="alert">
+        No SSH keys are currently associated with your account, or we haven't figured out how to display them yet...
+    </div>
+    (% else %)
     <ul>
         (% for key in ssh_keys %)
         <li>((key))</li>
         (% endfor %)
     </ul>
+    (% endif %)
 
     <!-- Edit button -->
     <div class="pt-4">
