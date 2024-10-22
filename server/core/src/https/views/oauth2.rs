@@ -21,6 +21,7 @@ use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
+use super::constants::Urls;
 use super::{cookies, UnrecoverableErrorView};
 
 #[derive(Template)]
@@ -140,7 +141,7 @@ async fn oauth2_auth_req(
                 .ok_or(OperationError::InvalidSessionState);
 
             match maybe_jar {
-                Ok(jar) => (jar, Redirect::to("/ui/login")).into_response(),
+                Ok(jar) => (jar, Redirect::to(Urls::Login.as_ref())).into_response(),
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,

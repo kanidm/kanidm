@@ -16,6 +16,8 @@ pub(crate) enum Urls {
     Profile,
     SshKeys,
     UpdateCredentials,
+    Oauth2Resume,
+    Login,
 }
 
 impl AsRef<str> for Urls {
@@ -26,6 +28,8 @@ impl AsRef<str> for Urls {
             Self::Profile => "/ui/profile",
             Self::SshKeys => "/ui/profile/ssh_keys",
             Self::UpdateCredentials => "/ui/update_credentials",
+            Self::Oauth2Resume => "/ui/oauth2/resume",
+            Self::Login => "/ui/login",
         }
     }
 }

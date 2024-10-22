@@ -1,3 +1,4 @@
+use super::constants::Urls;
 use super::{cookies, empty_string_as_none, UnrecoverableErrorView};
 use crate::https::views::errors::HtmxError;
 use crate::https::{
@@ -152,7 +153,7 @@ pub async fn view_logout_get(
         }
         .into_response()
     } else {
-        let response = Redirect::to("/ui/login").into_response();
+        let response = Redirect::to(Urls::Login.as_ref()).into_response();
 
         jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
 
@@ -266,7 +267,7 @@ pub async fn view_index_get(
     match session_valid_result {
         Ok(()) => {
             // Send the user to the landing.
-            Redirect::to("/ui/apps").into_response()
+            Redirect::to(Urls::Apps.as_ref()).into_response()
         }
         Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
             // cookie jar with remember me.
@@ -810,7 +811,7 @@ async fn view_login_step(
                                 &state,
                                 COOKIE_USERNAME,
                                 session_context.username.clone(),
-                                "/ui/login",
+                                Urls::Login.as_ref(),
                             );
                             jar.add(username_cookie)
                         } else {
@@ -823,11 +824,11 @@ async fn view_login_step(
 
                         // Now, we need to decided where to go.
                         let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
-                            Redirect::to("/ui/oauth2/resume").into_response()
+                            Redirect::to(Urls::Oauth2Resume.as_ref()).into_response()
                         } else if let Some(auth_loc) = session_context.after_auth_loc {
                             Redirect::to(auth_loc.as_str()).into_response()
                         } else {
-                            Redirect::to("/ui/apps").into_response()
+                            Redirect::to(Urls::Apps.as_ref()).into_response()
                         };
 
                         break res;
@@ -856,11 +857,16 @@ fn add_session_cookie(
     jar: CookieJar,
     session_context: &SessionContext,
 ) -> Result<CookieJar, OperationError> {
-    cookies::make_signed(state, COOKIE_AUTH_SESSION_ID, session_context, "/ui/login")
-        .map(|mut cookie| {
-            // Not needed when redirecting into this site
-            cookie.set_same_site(SameSite::Strict);
-            jar.add(cookie)
-        })
-        .ok_or(OperationError::InvalidSessionState)
+    cookies::make_signed(
+        state,
+        COOKIE_AUTH_SESSION_ID,
+        session_context,
+        Urls::Login.as_ref(),
+    )
+    .map(|mut cookie| {
+        // Not needed when redirecting into this site
+        cookie.set_same_site(SameSite::Strict);
+        jar.add(cookie)
+    })
+    .ok_or(OperationError::InvalidSessionState)
 }
