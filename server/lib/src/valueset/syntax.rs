@@ -31,10 +31,17 @@ impl ValueSetSyntax {
 
 impl ValueSetScimPut for ValueSetSyntax {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: SyntaxType = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM SyntaxType syntax invalid");
-            OperationError::SC0008SyntaxTypeSyntaxInvalid
-        })?;
+        let value = serde_json::from_value::<String>(value)
+            .map_err(|err| {
+                error!(?err, "SCIM SyntaxType syntax invalid");
+                OperationError::SC0008SyntaxTypeSyntaxInvalid
+            })
+            .and_then(|value| {
+                SyntaxType::try_from(value.as_str()).map_err(|()| {
+                    error!("SCIM SyntaxType syntax invalid - value");
+                    OperationError::SC0008SyntaxTypeSyntaxInvalid
+                })
+            })?;
 
         let mut set = SmolSet::new();
         set.insert(value);
