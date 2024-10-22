@@ -5,8 +5,8 @@ use crate::utils::trigraph_iter;
 use crate::valueset::{
     DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::server::ScimSshPublicKey;
 use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::ScimSshPublicKey;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
@@ -56,7 +56,20 @@ impl ValueSetSshKey {
 
 impl ValueSetScimPut for ValueSetSshKey {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let value: Vec<ScimSshPublicKey> = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Ssh Public Key syntax invalid");
+            // OperationError::SC0006Uint32SyntaxInvalid
+            todo!()
+        })?;
+
+        let map = value
+            .into_iter()
+            .map(|ScimSshPublicKey { label, value }| (label, value))
+            .collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetSshKey {
+            map,
+        })))
     }
 }
 
