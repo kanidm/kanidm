@@ -37,10 +37,6 @@ where
 
 macro_rules! try_from_entry {
     ($value:expr, $inner:expr) => {{
-        if !$value.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
-            return Err(OperationError::MissingAttribute(Attribute::Group));
-        }
-
         let spn = $value
             .get_ava_single_proto_string(Attribute::Spn)
             .ok_or_else(|| OperationError::MissingAttribute(Attribute::Spn))?;
@@ -113,10 +109,13 @@ impl Group<()> {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let user_group = Group::<()>::try_from_entry(value)?;
-        Ok(Self::try_from_account_reduced(value, qs)?
-            .into_iter()
-            .chain(std::iter::once(user_group))
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Account.into()) {
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
+        }
+
+        let user_group = try_from_entry!(value, ())?;
+        Ok(std::iter::once(user_group)
+            .chain(Self::try_from_account_reduced(value, qs)?.into_iter())
             .collect())
     }
 
@@ -136,6 +135,10 @@ impl Group<()> {
         E: Committed,
         Entry<E, EntryCommitted>: GetUuid,
     {
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+            return Err(OperationError::MissingAttribute(Attribute::Group));
+        }
+
         try_from_entry!(value, ())
     }
 }
@@ -148,10 +151,29 @@ impl Group<Unix> {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let user_group = Group::<Unix>::try_from_entry(value)?;
-        Ok(Self::try_from_account_reduced(value, qs)?
-            .into_iter()
-            .chain(std::iter::once(user_group))
+        if !value.attribute_equality(Attribute::Class, &EntryClass::Account.into()) {
+            return Err(OperationError::MissingClass(ENTRYCLASS_ACCOUNT.into()));
+        }
+
+        if !value.attribute_equality(Attribute::Class, &EntryClass::PosixAccount.into()) {
+            return Err(OperationError::MissingClass(
+                ENTRYCLASS_POSIX_ACCOUNT.into(),
+            ));
+        }
+
+        let name = value
+            .get_ava_single_iname(Attribute::Name)
+            .map(|s| s.to_string())
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::Name))?;
+
+        let gidnumber = value
+            .get_ava_single_uint32(Attribute::GidNumber)
+            .ok_or_else(|| OperationError::MissingAttribute(Attribute::GidNumber))?;
+
+        let user_group = try_from_entry!(value, Unix { name, gidnumber })?;
+
+        Ok(std::iter::once(user_group)
+            .chain(Self::try_from_account_reduced(value, qs)?.into_iter())
             .collect())
     }
 
@@ -166,14 +188,37 @@ impl Group<Unix> {
         try_from_account!(value, qs)
     }
 
+    fn check_entry_classes<E>(value: &Entry<E, EntryCommitted>) -> Result<(), OperationError>
+    where
+        E: Committed,
+        Entry<E, EntryCommitted>: GetUuid,
+    {
+        // If its an account, it must be a posix account
+        if value.attribute_equality(Attribute::Class, &EntryClass::Account.into()) {
+            if !value.attribute_equality(Attribute::Class, &EntryClass::PosixAccount.into()) {
+                return Err(OperationError::MissingClass(
+                    ENTRYCLASS_POSIX_ACCOUNT.into(),
+                ));
+            }
+        } else {
+            // Otherwise it must be both a group and a posix group
+            if !value.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into()) {
+                return Err(OperationError::MissingClass(ENTRYCLASS_POSIX_GROUP.into()));
+            }
+
+            if !value.attribute_equality(Attribute::Class, &EntryClass::Group.into()) {
+                return Err(OperationError::MissingAttribute(Attribute::Group));
+            }
+        }
+        Ok(())
+    }
+
     pub fn try_from_entry<E>(value: &Entry<E, EntryCommitted>) -> Result<Self, OperationError>
     where
         E: Committed,
         Entry<E, EntryCommitted>: GetUuid,
     {
-        if !value.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into()) {
-            return Err(OperationError::MissingClass(ENTRYCLASS_POSIX_GROUP.into()));
-        }
+        Self::check_entry_classes(value)?;
 
         let name = value
             .get_ava_single_iname(Attribute::Name)

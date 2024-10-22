@@ -235,7 +235,7 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
         
         try_from_entry!(value, groups, unix_groups)
     }
@@ -249,7 +249,7 @@ impl Account {
     TXN: QueryServerTransaction<'a>,
     {
         let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups: Vec<Group<Unix>> = Group::<Unix>::try_from_account(value, qs)?;
+        let unix_groups: Vec<Group<Unix>> = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
         let rap = load_account_policy(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
@@ -261,7 +261,7 @@ impl Account {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -272,7 +272,7 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         let groups = Group::<()>::try_from_account_reduced(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account_reduced(value, qs)?;
+        let unix_groups = Group::<Unix>::try_from_account_reduced(value, qs).unwrap_or_default();
         try_from_entry!(value, groups, unix_groups)
     }
 
