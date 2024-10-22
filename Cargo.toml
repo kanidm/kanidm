@@ -141,7 +141,7 @@ sketching = { path = "./libs/sketching", version = "=1.4.0-dev" }
 
 anyhow = { version = "1.0.90" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
-askama = { version = "0.12.1", features = ["serde"] }
+askama = { version = "0.12.1", features = ["serde", "with-axum"] }
 async-trait = "^0.1.83"
 axum = { version = "0.7.7", features = [
     "form",
@@ -248,7 +248,9 @@ reqwest = { version = "0.12.8", default-features = false, features = [
 ] }
 rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
-rustls = { version = "0.23.13", default-features = false, features = ["aws_lc_rs"] }
+rustls = { version = "0.23.13", default-features = false, features = [
+    "aws_lc_rs",
+] }
 
 sd-notify = "^0.4.3"
 selinux = "^0.4.6"

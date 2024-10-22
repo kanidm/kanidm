@@ -8,10 +8,10 @@
 </a>
 (% endmacro %)
 
-<main class="container-xxl pb-5">
+<main id="main" class="container-xxl pb-5">
     <div class="d-flex flex-sm-row flex-column">
         <div class="list-group side-menu flex-shrink-0">
-            (% call side_menu_item("Profile", "(Urls::Profile)",
+            (% call side_menu_item("Profile", (Urls::Profile),
             ProfileMenuItems::UserProfile, "person") %)
             (% call side_menu_item("SSH Keys", "/ui/ssh_keys",
             ProfileMenuItems::SshKeys, "key") %)

@@ -9,6 +9,7 @@ use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::AppLink;
 
+use super::constants::Urls;
 use super::HtmlTemplate;
 use crate::https::views::errors::HtmxError;
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};

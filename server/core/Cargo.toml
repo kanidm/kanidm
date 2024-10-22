@@ -88,6 +88,7 @@ webauthn-rs = { workspace = true, features = [
     "preview-features",
     "danger-credential-internals",
 ] }
+askama_axum = "0.4.0"
 
 [dev-dependencies]
 walkdir = { workspace = true }

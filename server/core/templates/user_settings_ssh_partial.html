@@ -1,0 +1,30 @@
+(% extends "user_settings_partial_base.html" %)
+
+(% block selected_setting_group %)
+SSH Keys
+(% endblock %)
+
+(% block settings_window %)
+
+<form>
+
+    <ul>
+        (% for key in ssh_keys %)
+        <li>((key))</li>
+        (% endfor %)
+    </ul>
+
+    <!-- Edit button -->
+    <div class="pt-4">
+        (% if can_rw %)
+            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile" disabled>Edit (Currently Not Working!)</button>
+        (% else %)
+            <a href=(Urls::ProfileUnlock) hx-boost="false">
+                <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+            </a>
+        (% endif %)
+    </div>
+</form>
+
+(% endblock %)
+

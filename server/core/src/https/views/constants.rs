@@ -11,6 +11,7 @@ pub(crate) enum ProfileMenuItems {
 
 #[allow(dead_code)]
 pub(crate) enum Urls {
+    Apps,
     CredReset,
     Profile,
     SshKeys,
@@ -23,6 +24,7 @@ pub(crate) enum Urls {
 impl AsRef<str> for Urls {
     fn as_ref(&self) -> &str {
         match self {
+            Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
             Self::Profile => "/ui/profile",
             Self::ProfileUnlock => "/ui/profile/unlock",

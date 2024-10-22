@@ -18,7 +18,7 @@ use super::constants::{ProfileMenuItems, Urls};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
-struct ProfileView {
+pub(crate) struct ProfileView {
     profile_partial: ProfilePartialView,
 }
 
@@ -34,43 +34,33 @@ struct ProfilePartialView {
     posix_enabled: bool,
 }
 
+#[axum::debug_handler]
 pub(crate) async fn view_profile_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> axum::response::Result<Response> {
+) -> Result<ProfileView, Response> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err).into_response())
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
     let can_rw = uat.purpose_readwrite_active(time);
 
-    let profile_partial_view = ProfilePartialView {
-        menu_active_item: ProfileMenuItems::UserProfile,
-        can_rw,
-        account_name: uat.name().to_string(),
-        display_name: uat.displayname.clone(),
-        legal_name: uat.name().to_string(),
-        email: uat.mail_primary.clone(),
-        posix_enabled: false,
-    };
-    let profile_view = ProfileView {
-        profile_partial: profile_partial_view.clone(),
-    };
-
-    Ok(if hx_request {
-        (
-            HxPushUrl(Uri::from_static(Urls::Profile.as_ref())),
-            HtmlTemplate(profile_partial_view),
-        )
-            .into_response()
-    } else {
-        HtmlTemplate(profile_view).into_response()
+    Ok(ProfileView {
+        profile_partial: ProfilePartialView {
+            menu_active_item: ProfileMenuItems::UserProfile,
+            can_rw,
+            account_name: uat.name().to_string(),
+            display_name: uat.displayname.clone(),
+            // TODO: this should be the legal name
+            legal_name: uat.name().to_string(),
+            email: uat.mail_primary.clone(),
+            posix_enabled: false,
+        },
     })
 }
 
@@ -105,4 +95,47 @@ pub(crate) async fn view_profile_unlock_get(
         display_ctx,
     )
     .await
+}
+
+#[derive(Template)]
+#[template(path = "user_settings_ssh_partial.html")]
+struct SshProfilePartialView {
+    menu_active_item: ProfileMenuItems,
+    can_rw: bool,
+    ssh_keys: Vec<String>,
+    posix_enabled: bool,
+}
+
+pub(crate) async fn ssh_keys(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(hx_request): HxRequest,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+) -> Result<Response, Response> {
+    let uat: UserAuthToken = state
+        .qe_r_ref
+        .handle_whoami_uat(client_auth_info, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err).into_response())
+        .await?;
+
+    let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
+
+    let can_rw = uat.purpose_readwrite_active(time);
+
+    Ok(if hx_request {
+        (
+            HxPushUrl(Uri::from_static(Urls::Profile.as_ref())),
+            HtmlTemplate(SshProfilePartialView {
+                menu_active_item: ProfileMenuItems::SshKeys,
+                can_rw,
+                ssh_keys: Vec::new(),
+                // TODO: fill in posix enabled
+                posix_enabled: false,
+            }),
+        )
+            .into_response()
+    } else {
+        // HtmlTemplate(profile_view).into_response()
+        todo!()
+    })
 }
