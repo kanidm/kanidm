@@ -1,20 +1,17 @@
+use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
-use crate::https::views::HtmlTemplate;
 use crate::https::ServerState;
 use askama::Template;
 use axum::extract::State;
-use axum::http::Uri;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum::Extension;
 use axum_extra::extract::cookie::CookieJar;
-use axum_htmx::{HxPushUrl, HxRequest};
-use futures_util::TryFutureExt;
 use kanidm_proto::internal::UserAuthToken;
 
 use super::constants::{ProfileMenuItems, Urls};
+use super::errors::HtmxError;
+use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
@@ -34,16 +31,14 @@ struct ProfilePartialView {
     posix_enabled: bool,
 }
 
-#[axum::debug_handler]
 pub(crate) async fn view_profile_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<ProfileView, Response> {
+) -> Result<ProfileView, WebError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err).into_response())
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
@@ -75,8 +70,8 @@ pub(crate) async fn view_profile_unlock_get(
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
-        .await?;
+        .await
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
@@ -98,8 +93,14 @@ pub(crate) async fn view_profile_unlock_get(
 }
 
 #[derive(Template)]
+#[template(path = "user_settings_ssh_keys.html")]
+pub(crate) struct SshProfileView {
+    ssh_profile_partial: SshProfilePartialView,
+}
+
+#[derive(Template)]
 #[template(path = "user_settings_ssh_partial.html")]
-struct SshProfilePartialView {
+pub(crate) struct SshProfilePartialView {
     menu_active_item: ProfileMenuItems,
     can_rw: bool,
     ssh_keys: Vec<String>,
@@ -109,33 +110,23 @@ struct SshProfilePartialView {
 pub(crate) async fn ssh_keys(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<Response, Response> {
+) -> Result<SshProfileView, WebError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err).into_response())
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
     let can_rw = uat.purpose_readwrite_active(time);
 
-    Ok(if hx_request {
-        (
-            HxPushUrl(Uri::from_static(Urls::Profile.as_ref())),
-            HtmlTemplate(SshProfilePartialView {
-                menu_active_item: ProfileMenuItems::SshKeys,
-                can_rw,
-                ssh_keys: Vec::new(),
-                // TODO: fill in posix enabled
-                posix_enabled: false,
-            }),
-        )
-            .into_response()
-    } else {
-        // HtmlTemplate(profile_view).into_response()
-        todo!()
+    Ok(SshProfileView {
+        ssh_profile_partial: SshProfilePartialView {
+            menu_active_item: ProfileMenuItems::SshKeys,
+            can_rw,
+            ssh_keys: vec![],
+            posix_enabled: false,
+        },
     })
 }
