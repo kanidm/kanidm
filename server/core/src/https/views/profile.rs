@@ -1,6 +1,7 @@
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
+use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::views::HtmlTemplate;
 use crate::https::ServerState;
 use askama::Template;
@@ -81,13 +82,27 @@ pub(crate) async fn view_profile_unlock_get(
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
+    let uat: UserAuthToken = state
+        .qe_r_ref
+        .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    let display_ctx = LoginDisplayCtx {
+        domain_info,
+        reauth: Some(Reauth {
+            username: uat.spn,
+            purpose: ReauthPurpose::ProfileSettings,
+        }),
+    };
+
     super::login::view_reauth_get(
         state,
         client_auth_info,
         kopid,
         jar,
         "/ui/profile",
-        domain_info,
+        display_ctx,
     )
     .await
 }

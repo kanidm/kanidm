@@ -8,7 +8,7 @@
 (% block body %)
 <main id="main" class="flex-shrink-0 form-signin">
 	<center>
-		(% if domain_custom_image %)
+		(% if display_ctx.domain_info.image().is_some() %)
 		<img src="/ui/images/domain"
 			alt="Kanidm" class="kanidm_logo" />
 		(% else %)
@@ -17,6 +17,11 @@
 			alt="Kanidm" class="kanidm_logo" />
 		(% endif %)
 		<h3>Kanidm</h3>
+		(% match display_ctx.reauth %)
+			(% when Some with (reauth) %)
+				<h5>Reauthenticating as (( reauth.username )) to access (( reauth.purpose ))</h5>
+			(% when None %)
+		(% endmatch %)
 	</center>
 	<div id="login-form-container" class="container">
 		(% block logincontainer %)
