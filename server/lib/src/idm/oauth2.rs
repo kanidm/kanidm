@@ -2635,7 +2635,7 @@ fn extra_claims_for_account(
     // for each group
     for group_uuid in account.groups.iter().map(|g| g.uuid()) {
         // Does this group have any custom claims?
-        if let Some(claim) = claim_map.get(&group_uuid) {
+        if let Some(claim) = claim_map.get(group_uuid) {
             // If so, iterate over the set of claims and values.
             for (claim_name, claim_value) in claim.iter() {
                 // Does this claim name already exist in our in-progress map?

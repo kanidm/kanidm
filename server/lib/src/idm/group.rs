@@ -115,7 +115,7 @@ impl Group<()> {
 
         let user_group = try_from_entry!(value, ())?;
         Ok(std::iter::once(user_group)
-            .chain(Self::try_from_account_reduced(value, qs)?.into_iter())
+            .chain(Self::try_from_account_reduced(value, qs)?)
             .collect())
     }
 
@@ -173,7 +173,7 @@ impl Group<Unix> {
         let user_group = try_from_entry!(value, Unix { name, gidnumber })?;
 
         Ok(std::iter::once(user_group)
-            .chain(Self::try_from_account_reduced(value, qs)?.into_iter())
+            .chain(Self::try_from_account_reduced(value, qs)?)
             .collect())
     }
 

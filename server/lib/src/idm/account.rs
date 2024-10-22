@@ -12,9 +12,7 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
-use super::group::{
-    Group, Unix, load_account_policy
-};
+use super::group::{load_account_policy, Group, Unix};
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
@@ -236,7 +234,7 @@ impl Account {
     ) -> Result<Self, OperationError> {
         let groups = Group::<()>::try_from_account(value, qs)?;
         let unix_groups = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
-        
+
         try_from_entry!(value, groups, unix_groups)
     }
 
@@ -246,10 +244,11 @@ impl Account {
         qs: &mut TXN,
     ) -> Result<(Self, ResolvedAccountPolicy), OperationError>
     where
-    TXN: QueryServerTransaction<'a>,
+        TXN: QueryServerTransaction<'a>,
     {
         let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups: Vec<Group<Unix>> = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
+        let unix_groups: Vec<Group<Unix>> =
+            Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
         let rap = load_account_policy(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
