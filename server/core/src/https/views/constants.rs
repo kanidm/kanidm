@@ -8,6 +8,18 @@ pub(crate) enum ProfileMenuItems {
     UnixPassword,
 }
 
+pub(crate) enum UiMessage {
+    UnlockEdit,
+}
+
+impl std::fmt::Display for UiMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UiMessage::UnlockEdit => write!(f, "Unlock Edit 🔒"),
+        }
+    }
+}
+
 #[allow(dead_code)]
 pub(crate) enum Urls {
     Apps,

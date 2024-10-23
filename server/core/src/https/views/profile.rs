@@ -9,7 +9,7 @@ use axum::Extension;
 use axum_extra::extract::cookie::CookieJar;
 use kanidm_proto::internal::UserAuthToken;
 
-use super::constants::{ProfileMenuItems, Urls};
+use super::constants::{ProfileMenuItems, UiMessage, Urls};
 use super::errors::HtmxError;
 use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 
@@ -26,7 +26,6 @@ struct ProfilePartialView {
     can_rw: bool,
     account_name: String,
     display_name: String,
-    legal_name: String,
     email: Option<String>,
     posix_enabled: bool,
 }
@@ -51,8 +50,6 @@ pub(crate) async fn view_profile_get(
             can_rw,
             account_name: uat.name().to_string(),
             display_name: uat.displayname.clone(),
-            // TODO: this should be the legal name
-            legal_name: uat.name().to_string(),
             email: uat.mail_primary.clone(),
             posix_enabled: false,
         },
