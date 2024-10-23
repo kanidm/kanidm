@@ -3038,7 +3038,7 @@ pub async fn auth_valid(
     get,
     path = "/v1/debug/ipinfo",
     responses(
-        (status = 200, description = "Ok", body=Vec<String>, content_type="application/json"),
+        (status = 200, description = "Ok", body=String, content_type="application/json"),
     ),
     security(("token_jwt" = [])),
     tag = "v1/debug",
@@ -3047,8 +3047,8 @@ pub async fn auth_valid(
 pub async fn debug_ipinfo(
     State(_state): State<ServerState>,
     TrustedClientIp(ip_addr): TrustedClientIp,
-) -> Result<Json<Vec<IpAddr>>, ()> {
-    Ok(Json::from(vec![ip_addr]))
+) -> Result<Json<IpAddr>, ()> {
+    Ok(Json::from(ip_addr))
 }
 
 #[utoipa::path(
