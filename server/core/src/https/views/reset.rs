@@ -75,6 +75,8 @@ struct CredResetPartialView {
     attested_passkeys: Vec<PasskeyDetail>,
     passkeys: Vec<PasskeyDetail>,
     primary: Option<CredentialDetail>,
+    unixcred_state: CUCredState,
+    unixcred: Option<CredentialDetail>,
 }
 
 #[skip_serializing_none]
@@ -87,6 +89,12 @@ pub(crate) struct ResetTokenParam {
 #[derive(Template)]
 #[template(path = "credential_update_add_password_partial.html")]
 struct AddPasswordPartial {
+    check_res: PwdCheckResult,
+}
+
+#[derive(Template)]
+#[template(path = "credential_update_set_unixcred_partial.html")]
+struct SetUnixCredPartial {
     check_res: PwdCheckResult,
 }
 
@@ -278,6 +286,28 @@ pub(crate) async fn remove_alt_creds(
     let cu_status = state
         .qe_r_ref
         .handle_idmcredentialupdate(cu_session_token, CURequest::PrimaryRemove, kopid.eventid)
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .await?;
+
+    Ok(get_cu_partial_response(cu_status))
+}
+
+pub(crate) async fn remove_unixcred(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::UnixPasswordRemove,
+            kopid.eventid,
+        )
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
@@ -657,6 +687,66 @@ fn add_cu_cookie(
     jar.add(token_cookie)
 }
 
+pub(crate) async fn view_set_unixcred(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    opt_form: Option<Form<NewPassword>>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+
+    let new_passwords = match opt_form {
+        None => {
+            return Ok((
+                swapped_handler_trigger,
+                SetUnixCredPartial {
+                    check_res: PwdCheckResult::Init,
+                },
+            )
+                .into_response());
+        }
+        Some(Form(new_passwords)) => new_passwords,
+    };
+
+    let pwd_equal = new_passwords.new_password == new_passwords.new_password_check;
+    let (warnings, status) = if pwd_equal {
+        let res = state
+            .qe_r_ref
+            .handle_idmcredentialupdate(
+                cu_session_token,
+                CURequest::UnixPassword(new_passwords.new_password),
+                kopid.eventid,
+            )
+            .await;
+        match res {
+            Ok(cu_status) => return Ok(get_cu_partial_response(cu_status)),
+            Err(OperationError::PasswordQuality(password_feedback)) => {
+                (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
+            }
+            Err(operr) => return Err(ErrorResponse::from(HtmxError::new(&kopid, operr))),
+        }
+    } else {
+        (vec![], StatusCode::UNPROCESSABLE_ENTITY)
+    };
+
+    let check_res = PwdCheckResult::Failure {
+        pwd_equal,
+        warnings,
+    };
+
+    Ok((
+        status,
+        swapped_handler_trigger,
+        HxPushUrl(Uri::from_static("/ui/reset/set_unixcred")),
+        AddPasswordPartial { check_res },
+    )
+        .into_response())
+}
+
 pub(crate) async fn view_reset_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -757,6 +847,8 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         passkeys,
         primary_state,
         primary,
+        unixcred_state,
+        unixcred,
         ..
     } = cu_status;
 
@@ -769,6 +861,8 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         passkeys,
         primary_state,
         primary,
+        unixcred_state,
+        unixcred,
     }
 }
 
