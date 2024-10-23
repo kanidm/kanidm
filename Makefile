@@ -39,6 +39,11 @@ run: ## Run the test/dev server
 run:
 	cd server/daemon && ./run_insecure_dev_server.sh
 
+.PHONY: run_htmx
+run_htmx: ## Run in HTMX mode
+run_htmx:
+	cd server/daemon && KANI_CARGO_OPTS="--features kanidmd_core/ui_htmx" ./run_insecure_dev_server.sh
+
 .PHONY: buildx/kanidmd
 buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:

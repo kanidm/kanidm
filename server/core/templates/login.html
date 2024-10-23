@@ -1,6 +1,13 @@
 (% extends "login_base.html" %)
 
 (% block logincontainer %)
+(% if let Some(error) = display_ctx.error %)
+	<div class="alert alert-danger" role="alert">
+		(( error ))
+	</div>
+(% endif %)
+
+
 <label for="username" class="form-label">Username</label>
 <form id="login" action="/ui/login/begin" method="post">
 	<div class="input-group mb-3">

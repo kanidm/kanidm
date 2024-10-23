@@ -21,6 +21,7 @@ ui_htmx = []
 [dependencies]
 async-trait = { workspace = true }
 askama = { workspace = true }
+askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-auth = "0.7.0"

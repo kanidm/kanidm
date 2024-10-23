@@ -1,24 +1,21 @@
+use crate::https::errors::WebError;
 use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
-use crate::https::views::errors::HtmxError;
-use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
-use crate::https::views::HtmlTemplate;
 use crate::https::ServerState;
 use askama::Template;
 use axum::extract::State;
-use axum::http::Uri;
-use axum::response::{IntoResponse, Response};
+use axum::response::Response;
 use axum::Extension;
 use axum_extra::extract::cookie::CookieJar;
-use axum_htmx::{HxPushUrl, HxRequest};
-use futures_util::TryFutureExt;
 use kanidm_proto::internal::UserAuthToken;
 
-use super::constants::ProfileMenuItems;
+use super::constants::{ProfileMenuItems, UiMessage, Urls};
+use super::errors::HtmxError;
+use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
-struct ProfileView {
+pub(crate) struct ProfileView {
     profile_partial: ProfilePartialView,
 }
 
@@ -29,7 +26,6 @@ struct ProfilePartialView {
     can_rw: bool,
     account_name: String,
     display_name: String,
-    legal_name: String,
     email: Option<String>,
     posix_enabled: bool,
 }
@@ -37,40 +33,26 @@ struct ProfilePartialView {
 pub(crate) async fn view_profile_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(hx_request): HxRequest,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> axum::response::Result<Response> {
+) -> Result<ProfileView, WebError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
 
     let can_rw = uat.purpose_readwrite_active(time);
 
-    let profile_partial_view = ProfilePartialView {
-        menu_active_item: ProfileMenuItems::UserProfile,
-        can_rw,
-        account_name: uat.name().to_string(),
-        display_name: uat.displayname.clone(),
-        legal_name: uat.name().to_string(),
-        email: uat.mail_primary.clone(),
-        posix_enabled: false,
-    };
-    let profile_view = ProfileView {
-        profile_partial: profile_partial_view.clone(),
-    };
-
-    Ok(if hx_request {
-        (
-            HxPushUrl(Uri::from_static("/ui/profile")),
-            HtmlTemplate(profile_partial_view),
-        )
-            .into_response()
-    } else {
-        HtmlTemplate(profile_view).into_response()
+    Ok(ProfileView {
+        profile_partial: ProfilePartialView {
+            menu_active_item: ProfileMenuItems::UserProfile,
+            can_rw,
+            account_name: uat.name().to_string(),
+            display_name: uat.displayname.clone(),
+            email: uat.mail_primary.clone(),
+            posix_enabled: false,
+        },
     })
 }
 
@@ -81,12 +63,12 @@ pub(crate) async fn view_profile_unlock_get(
     DomainInfo(domain_info): DomainInfo,
     Extension(kopid): Extension<KOpId>,
     jar: CookieJar,
-) -> axum::response::Result<Response> {
+) -> Result<Response, HtmxError> {
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
-        .await?;
+        .await
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
@@ -94,15 +76,16 @@ pub(crate) async fn view_profile_unlock_get(
             username: uat.spn,
             purpose: ReauthPurpose::ProfileSettings,
         }),
+        error: None,
     };
 
-    super::login::view_reauth_get(
+    Ok(super::login::view_reauth_get(
         state,
         client_auth_info,
         kopid,
         jar,
-        "/ui/profile",
+        Urls::Profile.as_ref(),
         display_ctx,
     )
-    .await
+    .await)
 }

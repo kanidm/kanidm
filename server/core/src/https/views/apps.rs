@@ -9,7 +9,7 @@ use axum_htmx::HxPushUrl;
 
 use kanidm_proto::internal::AppLink;
 
-use super::HtmlTemplate;
+use super::constants::Urls;
 use crate::https::views::errors::HtmxError;
 use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
@@ -40,13 +40,12 @@ pub(crate) async fn view_apps_get(
         .await
         .map_err(|old| HtmxError::new(&kopid, old))?;
 
-    let apps_partial = AppsPartialView { apps: app_links };
-
     Ok({
-        let apps_view = AppsView { apps_partial };
         (
-            HxPushUrl(Uri::from_static("/ui/apps")),
-            HtmlTemplate(apps_view).into_response(),
+            HxPushUrl(Uri::from_static(Urls::Apps.as_ref())),
+            AppsView {
+                apps_partial: AppsPartialView { apps: app_links },
+            },
         )
             .into_response()
     })

@@ -1,14 +1,14 @@
 use askama::Template;
 
 use axum::{
-    http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::Redirect,
     routing::{get, post},
     Router,
 };
 
 use axum_htmx::HxRequestGuardLayer;
 
+use constants::Urls;
 use kanidmd_lib::prelude::{OperationError, Uuid};
 
 use crate::https::{
@@ -34,7 +34,10 @@ struct UnrecoverableErrorView {
 
 pub fn view_router() -> Router<ServerState> {
     let unguarded_router = Router::new()
-        .route("/", get(|| async { Redirect::permanent("/ui/login") }))
+        .route(
+            "/",
+            get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
+        )
         .route("/apps", get(apps::view_apps_get))
         .route("/reset", get(reset::view_reset_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
@@ -90,33 +93,11 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
-        .route("/api/cu_cancel", post(reset::cancel))
+        .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 
     Router::new().merge(unguarded_router).merge(guarded_router)
-}
-
-struct HtmlTemplate<T>(T);
-
-/// Allows us to convert Askama HTML templates into valid HTML for axum to serve in the response.
-impl<T> IntoResponse for HtmlTemplate<T>
-where
-    T: askama::Template,
-{
-    fn into_response(self) -> Response {
-        // Attempt to render the template with askama
-        match self.0.render() {
-            // If we're able to successfully parse and aggregate the template, serve it
-            Ok(html) => Html(html).into_response(),
-            // If we're not, return an error or some bit of fallback HTML
-            Err(err) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                format!("Failed to render template. Error: {}", err),
-            )
-                .into_response(),
-        }
-    }
 }
 
 /// Serde deserialization decorator to map empty Strings to None,

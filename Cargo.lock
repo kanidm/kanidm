@@ -161,6 +161,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "askama_axum"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a41603f7cdbf5ac4af60760f17253eb6adf6ec5b6f14a7ed830cf687d375f163"
+dependencies = [
+ "askama",
+ "axum-core 0.4.5",
+ "http 1.1.0",
+]
+
+[[package]]
 name = "askama_derive"
 version = "0.12.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3434,6 +3445,7 @@ name = "kanidmd_core"
 version = "1.4.0-dev"
 dependencies = [
  "askama",
+ "askama_axum",
  "async-trait",
  "axum 0.7.7",
  "axum-auth",

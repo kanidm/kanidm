@@ -13,38 +13,31 @@ Profile
             <input type="text" readonly class="form-control-plaintext" id="profileUserName" value="(( account_name ))">
         </div>
     </div>
-    
+
     <div class="mb-2 row">
         <label for="profileDisplayName" class="col-12 col-md-3 col-lg-2 col-form-label">Display name</label>
         <div class="col-12 col-md-6 col-lg-4">
-            <input type="text" class="form-control" id="profileDisplayName" value="(( display_name ))">
+            <input type="text" class="form-control-plaintext" id="profileDisplayName" value="(( display_name ))" disabled>
         </div>
     </div>
 
     <div class="mb-2 row">
-        <label for="profileLegalName" class="col-12 col-md-3 col-lg-2 col-form-label">Legal name</label>
-        <div class="col-12 col-md-6 col-lg-4">
-            <input type="text" class="form-control" id="profileLegalName" value="(( legal_name ))">
-        </div>
-    </div>
-    
-    <div class="mb-2 row">
         <label for="profileEmail" class="col-12 col-md-3 col-lg-2 col-form-label">Email</label>
         <div class="col-12 col-md-6 col-lg-4">
-            <input type="email" class="form-control" id="profileEmail" (% if let Some(email) = email %)value="(( email ))"(% endif %)>
+            <input type="email" disabled class="form-control-plaintext" id="profileEmail" value="(( email.clone().unwrap_or("None configured".to_string())))" >
         </div>
     </div>
 
     <!-- Edit button -->
-    <div class="pt-4">
+    <!-- <div class="pt-4">
         (% if can_rw %)
-            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile">Edit</button>
+            <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/edit_profile" disabled>Edit (Currently Not Working!)</button>
         (% else %)
-            <a href="/ui/profile/unlock" hx-boost="false">
-                <button class="btn btn-primary" type="button">Unlock Edit 🔒</button>
+            <a href=(Urls::ProfileUnlock) hx-boost="false">
+                <button class="btn btn-primary" type="button">((UiMessage::UnlockEdit))</button>
             </a>
         (% endif %)
-    </div>
+    </div> -->
 </form>
 
 (% endblock %)
