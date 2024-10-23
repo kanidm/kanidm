@@ -23,6 +23,7 @@ use kanidmd_lib::idm::AuthState;
 use kanidmd_lib::prelude::OperationError;
 use kanidmd_lib::prelude::*;
 use serde::{Deserialize, Serialize};
+use std::fmt;
 use std::str::FromStr;
 use webauthn_rs::prelude::PublicKeyCredential;
 
@@ -45,10 +46,33 @@ struct SessionContext {
     after_auth_loc: Option<String>,
 }
 
+pub enum ReauthPurpose {
+    ProfileSettings,
+}
+
+impl fmt::Display for ReauthPurpose {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ReauthPurpose::ProfileSettings => write!(f, "Profile and Settings"),
+        }
+    }
+}
+
+pub struct Reauth {
+    pub username: String,
+    pub purpose: ReauthPurpose,
+}
+
+pub struct LoginDisplayCtx {
+    pub domain_info: DomainInfoRead,
+    // We only need this on the first re-auth screen to indicate what we are doing
+    pub reauth: Option<Reauth>,
+}
+
 #[derive(Template)]
 #[template(path = "login.html")]
 struct LoginView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     username: String,
     remember_me: bool,
 }
@@ -61,7 +85,7 @@ pub struct Mech<'a> {
 #[derive(Template)]
 #[template(path = "login_mech_choose.html")]
 struct LoginMechView<'a> {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     mechs: Vec<Mech<'a>>,
 }
 
@@ -72,10 +96,10 @@ enum LoginTotpError {
     Syntax,
 }
 
-#[derive(Template, Default)]
+#[derive(Template)]
 #[template(path = "login_totp.html")]
 struct LoginTotpView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     totp: String,
     errors: LoginTotpError,
 }
@@ -83,30 +107,30 @@ struct LoginTotpView {
 #[derive(Template)]
 #[template(path = "login_password.html")]
 struct LoginPasswordView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     password: String,
 }
 
 #[derive(Template)]
 #[template(path = "login_backupcode.html")]
 struct LoginBackupCodeView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
 }
 
 #[derive(Template)]
 #[template(path = "login_webauthn.html")]
 struct LoginWebauthnView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     // Control if we are rendering in security key or passkey mode.
     passkey: bool,
     // chal: RequestChallengeResponse,
     chal: String,
 }
 
-#[derive(Template, Default)]
+#[derive(Template)]
 #[template(path = "login_denied.html")]
 struct LoginDeniedView {
-    domain_custom_image: bool,
+    display_ctx: LoginDisplayCtx,
     reason: String,
     operation_id: Uuid,
 }
@@ -142,7 +166,7 @@ pub async fn view_reauth_get(
     kopid: KOpId,
     jar: CookieJar,
     return_location: &str,
-    domain_info: DomainInfoRead,
+    display_ctx: LoginDisplayCtx,
 ) -> axum::response::Result<Response> {
     let session_valid_result = state
         .qe_r_ref
@@ -179,7 +203,7 @@ pub async fn view_reauth_get(
                         ar,
                         client_auth_info,
                         session_context,
-                        domain_info,
+                        display_ctx,
                     )
                     .await
                     {
@@ -209,10 +233,8 @@ pub async fn view_reauth_get(
 
             let remember_me = !username.is_empty();
 
-            let domain_custom_image = domain_info.image().is_some();
-
             HtmlTemplate(LoginView {
-                domain_custom_image,
+                display_ctx,
                 username,
                 remember_me,
             })
@@ -255,10 +277,13 @@ pub async fn view_index_get(
 
             let remember_me = !username.is_empty();
 
-            let domain_custom_image = domain_info.image().is_some();
+            let display_ctx = LoginDisplayCtx {
+                domain_info,
+                reauth: None,
+            };
 
             HtmlTemplate(LoginView {
-                domain_custom_image,
+                display_ctx,
                 username,
                 remember_me,
             })
@@ -328,6 +353,11 @@ pub async fn view_login_begin_post(
         after_auth_loc: None,
     };
 
+    let display_ctx = LoginDisplayCtx {
+        domain_info,
+        reauth: None,
+    };
+
     // Now process the response if ok.
     match inter {
         Ok(ar) => {
@@ -338,7 +368,7 @@ pub async fn view_login_begin_post(
                 ar,
                 client_auth_info,
                 session_context,
-                domain_info,
+                display_ctx,
             )
             .await
             {
@@ -393,6 +423,11 @@ pub async fn view_login_mech_choose_post(
         )
         .await;
 
+    let display_ctx = LoginDisplayCtx {
+        domain_info,
+        reauth: None,
+    };
+
     // Now process the response if ok.
     match inter {
         Ok(ar) => {
@@ -403,7 +438,7 @@ pub async fn view_login_mech_choose_post(
                 ar,
                 client_auth_info,
                 session_context,
-                domain_info,
+                display_ctx,
             )
             .await
             {
@@ -440,10 +475,14 @@ pub async fn view_login_totp_post(
 ) -> Response {
     // trim leading and trailing white space.
     let Ok(totp) = u32::from_str(login_totp_form.totp.trim()) else {
-        let domain_custom_image = domain_info.image().is_some();
+        let display_ctx = LoginDisplayCtx {
+            domain_info,
+            reauth: None,
+        };
+
         // If not an int, we need to re-render with an error
         return HtmlTemplate(LoginTotpView {
-            domain_custom_image,
+            display_ctx,
             totp: String::default(),
             errors: LoginTotpError::Syntax,
         })
@@ -540,6 +579,11 @@ async fn credential_step(
         cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
             .unwrap_or_default();
 
+    let display_ctx = LoginDisplayCtx {
+        domain_info,
+        reauth: None,
+    };
+
     let inter = state // This may change in the future ...
         .qe_r_ref
         .handle_auth(
@@ -562,7 +606,7 @@ async fn credential_step(
                 ar,
                 client_auth_info,
                 session_context,
-                domain_info,
+                display_ctx,
             )
             .await
             {
@@ -591,7 +635,7 @@ async fn view_login_step(
     auth_result: AuthResult,
     client_auth_info: ClientAuthInfo,
     mut session_context: SessionContext,
-    domain_info: DomainInfoRead,
+    display_ctx: LoginDisplayCtx,
 ) -> Result<Response, OperationError> {
     trace!(?auth_result);
 
@@ -601,8 +645,7 @@ async fn view_login_step(
     } = auth_result;
     session_context.id = Some(sessionid);
 
-    let domain_custom_image = domain_info.image().is_some();
-
+    // This lets us break out the loop incase of a fault. Take that halting problem!
     let mut safety = 3;
 
     // Unlike the api version, only set the cookie.
@@ -662,11 +705,7 @@ async fn view_login_step(
                                 name: m,
                             })
                             .collect();
-                        HtmlTemplate(LoginMechView {
-                            domain_custom_image,
-                            mechs,
-                        })
-                        .into_response()
+                        HtmlTemplate(LoginMechView { display_ctx, mechs }).into_response()
                     }
                 };
                 // break acts as return in a loop.
@@ -693,24 +732,24 @@ async fn view_login_step(
 
                         match auth_allowed {
                             AuthAllowed::Totp => HtmlTemplate(LoginTotpView {
+                                display_ctx,
                                 totp: session_context.totp.clone().unwrap_or_default(),
-                                ..Default::default()
+                                errors: LoginTotpError::default(),
                             })
                             .into_response(),
                             AuthAllowed::Password => HtmlTemplate(LoginPasswordView {
-                                domain_custom_image,
+                                display_ctx,
                                 password: session_context.password.clone().unwrap_or_default(),
                             })
                             .into_response(),
-                            AuthAllowed::BackupCode => HtmlTemplate(LoginBackupCodeView {
-                                domain_custom_image,
-                            })
-                            .into_response(),
+                            AuthAllowed::BackupCode => {
+                                HtmlTemplate(LoginBackupCodeView { display_ctx }).into_response()
+                            }
                             AuthAllowed::SecurityKey(chal) => {
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
-                                    domain_custom_image,
+                                    display_ctx,
                                     passkey: false,
                                     chal: chal_json,
                                 })
@@ -720,7 +759,7 @@ async fn view_login_step(
                                 let chal_json = serde_json::to_string(&chal)
                                     .map_err(|_| OperationError::SerdeJsonError)?;
                                 HtmlTemplate(LoginWebauthnView {
-                                    domain_custom_image,
+                                    display_ctx,
                                     passkey: true,
                                     chal: chal_json,
                                 })
@@ -798,7 +837,7 @@ async fn view_login_step(
                 jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
 
                 break HtmlTemplate(LoginDeniedView {
-                    domain_custom_image,
+                    display_ctx,
                     reason,
                     operation_id: kopid.eventid,
                 })

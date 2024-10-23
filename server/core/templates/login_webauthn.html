@@ -12,6 +12,7 @@
     src="/pkg/pkhtml.js?v=((crate::https::cache_buster::get_cache_buster_key()))"
     defer></script>
 
+<div class="identity-verification-container">
 (% if passkey %)
 <form id="cred-form" action="/ui/login/passkey" method="POST">
     <input hidden="hidden" name="cred" id="cred">
@@ -27,5 +28,6 @@
         >Use Security Key</button>
 </form>
 (% endif %)
+</div>
 
 (% endblock %)

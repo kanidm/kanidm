@@ -28,6 +28,7 @@ use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInforma
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
+use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::ServerState;
 
 use super::{HtmlTemplate, UnrecoverableErrorView};
@@ -612,13 +613,21 @@ pub(crate) async fn view_self_reset_get(
         jar = add_cu_cookie(jar, &state, cu_session_token);
         Ok((jar, cu_resp).into_response())
     } else {
+        let display_ctx = LoginDisplayCtx {
+            domain_info,
+            reauth: Some(Reauth {
+                username: uat.spn,
+                purpose: ReauthPurpose::ProfileSettings,
+            }),
+        };
+
         super::login::view_reauth_get(
             state,
             client_auth_info,
             kopid,
             jar,
             "/ui/update_credentials",
-            domain_info,
+            display_ctx,
         )
         .await
     }
