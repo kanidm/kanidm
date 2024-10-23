@@ -261,6 +261,7 @@ body {
 .oauth2-img {
   max-width: 150px;
   max-height: 150px;
+  min-height: 150px;
 }
 
 #graph-container svg {
