@@ -25,12 +25,12 @@ async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
-        .expect("Failed to parse response as Vec<IpAddr>");
+        .expect("Failed to parse response as IpAddr");
 
-    assert_eq!(ip_res[0], DEFAULT_IP_ADDRESS);
+    assert_eq!(ip_res, DEFAULT_IP_ADDRESS);
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
@@ -49,14 +49,14 @@ async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
         .await
         .unwrap();
     let body = res.bytes().await.unwrap();
-    let ip_res: Vec<IpAddr> = serde_json::from_slice(&body).unwrap_or_else(|op| {
+    let ip_res: IpAddr = serde_json::from_slice(&body).unwrap_or_else(|op| {
         panic!(
-            "Failed to parse response as Vec<IpAddr>: {:?} body: {:?}",
+            "Failed to parse response as IpAddr: {:?} body: {:?}",
             op, body,
         )
     });
     eprintln!("Body: {:?}", body);
-    assert_eq!(ip_res[0], DEFAULT_IP_ADDRESS);
+    assert_eq!(ip_res, DEFAULT_IP_ADDRESS);
 }
 
 // *test where we trust the x-forwarded-for header
@@ -116,12 +116,12 @@ async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient)
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
         .expect("Failed to parse response as Vec<IpAddr>");
 
-    assert_eq!(ip_res[0], IpAddr::from_str(ip_addr).unwrap());
+    assert_eq!(ip_res, IpAddr::from_str(ip_addr).unwrap());
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
@@ -138,12 +138,12 @@ async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient)
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
         .expect("Failed to parse response as Vec<IpAddr>");
 
-    assert_eq!(ip_res[0], IpAddr::from_str(ip_addr).unwrap());
+    assert_eq!(ip_res, IpAddr::from_str(ip_addr).unwrap());
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
@@ -160,13 +160,13 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
         .expect("Failed to parse response as Vec<IpAddr>");
 
     assert_eq!(
-        ip_res[0],
+        ip_res,
         IpAddr::from_str(first_ip_addr.split(",").collect::<Vec<&str>>()[0]).unwrap()
     );
 
@@ -182,13 +182,13 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
         .expect("Failed to parse response as Vec<IpAddr>");
 
     assert_eq!(
-        ip_res[0],
+        ip_res,
         IpAddr::from_str(second_ip_addr.split(",").collect::<Vec<&str>>()[0]).unwrap()
     );
 }
@@ -204,10 +204,10 @@ async fn trust_xff_dont_send_header(rsclient: KanidmClient) {
         .send()
         .await
         .unwrap();
-    let ip_res: Vec<IpAddr> = res
+    let ip_res: IpAddr = res
         .json()
         .await
         .expect("Failed to parse response as Vec<IpAddr>");
 
-    assert_eq!(ip_res[0], DEFAULT_IP_ADDRESS);
+    assert_eq!(ip_res, DEFAULT_IP_ADDRESS);
 }
