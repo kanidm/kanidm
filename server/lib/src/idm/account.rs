@@ -12,7 +12,7 @@ use webauthn_rs::prelude::{
 };
 
 use super::accountpolicy::ResolvedAccountPolicy;
-use super::group::{load_account_policy, Group, Unix};
+use super::group::{load_account_policy, load_all_groups_from_account, Group, Unix};
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::softlock::CredSoftLockPolicy;
 use crate::credential::{apppwd::ApplicationPassword, Credential};
@@ -232,8 +232,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -246,9 +245,7 @@ impl Account {
     where
         TXN: QueryServerTransaction<'a>,
     {
-        let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups: Vec<Group<Unix>> =
-            Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account(value, qs)?;
         let rap = load_account_policy(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups).map(|acct| (acct, rap))
@@ -259,8 +256,7 @@ impl Account {
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::<()>::try_from_account(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account(value, qs)?;
 
         try_from_entry!(value, groups, unix_groups)
     }
@@ -270,8 +266,7 @@ impl Account {
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = Group::<()>::try_from_account_reduced(value, qs)?;
-        let unix_groups = Group::<Unix>::try_from_account_reduced(value, qs).unwrap_or_default();
+        let (groups, unix_groups) = load_all_groups_from_account(value, qs)?;
         try_from_entry!(value, groups, unix_groups)
     }
 
