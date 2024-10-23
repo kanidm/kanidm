@@ -4,7 +4,6 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "snake_case")]
 pub(crate) enum ProfileMenuItems {
     UserProfile,
-    SshKeys,
     Credentials,
     UnixPassword,
 }
@@ -14,7 +13,6 @@ pub(crate) enum Urls {
     Apps,
     CredReset,
     Profile,
-    SshKeys,
     UpdateCredentials,
     Oauth2Resume,
     Login,
@@ -26,7 +24,6 @@ impl AsRef<str> for Urls {
             Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
             Self::Profile => "/ui/profile",
-            Self::SshKeys => "/ui/profile/ssh_keys",
             Self::UpdateCredentials => "/ui/update_credentials",
             Self::Oauth2Resume => "/ui/oauth2/resume",
             Self::Login => "/ui/login",

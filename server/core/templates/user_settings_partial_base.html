@@ -13,8 +13,6 @@
         <div class="list-group side-menu flex-shrink-0">
             (% call side_menu_item("Profile", (Urls::Profile),
             ProfileMenuItems::UserProfile, "person") %)
-            (% call side_menu_item("SSH Keys",(Urls::SshKeys),
-            ProfileMenuItems::SshKeys, "key") %)
             (% if posix_enabled %)
             (% call side_menu_item("UNIX Password", (Urls::UpdateCredentials),
             ProfileMenuItems::UnixPassword, "building-lock") %)
