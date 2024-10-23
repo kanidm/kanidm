@@ -76,6 +76,7 @@ pub(crate) async fn view_profile_unlock_get(
             username: uat.spn,
             purpose: ReauthPurpose::ProfileSettings,
         }),
+        error: None,
     };
 
     Ok(super::login::view_reauth_get(

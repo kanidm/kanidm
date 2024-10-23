@@ -54,7 +54,19 @@ pub enum ReauthPurpose {
 impl fmt::Display for ReauthPurpose {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ReauthPurpose::ProfileSettings => write!(f, "Profile and Settings"),
+            Self::ProfileSettings => write!(f, "Profile and Settings"),
+        }
+    }
+}
+
+pub enum LoginError {
+    InvalidUsername,
+}
+
+impl fmt::Display for LoginError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::InvalidUsername => write!(f, "Invalid username"),
         }
     }
 }
@@ -68,6 +80,7 @@ pub struct LoginDisplayCtx {
     pub domain_info: DomainInfoRead,
     // We only need this on the first re-auth screen to indicate what we are doing
     pub reauth: Option<Reauth>,
+    pub error: Option<LoginError>,
 }
 
 #[derive(Template)]
@@ -279,6 +292,7 @@ pub async fn view_index_get(
             let display_ctx = LoginDisplayCtx {
                 domain_info,
                 reauth: None,
+                error: None,
             };
 
             LoginView {
@@ -345,16 +359,17 @@ pub async fn view_login_begin_post(
 
     let session_context = SessionContext {
         id: None,
-        username,
+        username: username.clone(),
         password,
         totp,
         remember_me,
         after_auth_loc: None,
     };
 
-    let display_ctx = LoginDisplayCtx {
+    let mut display_ctx = LoginDisplayCtx {
         domain_info,
         reauth: None,
+        error: None,
     };
 
     // Now process the response if ok.
@@ -381,11 +396,22 @@ pub async fn view_login_begin_post(
             }
         }
         // Probably needs to be way nicer on login, especially something like no matching users ...
-        Err(err_code) => UnrecoverableErrorView {
-            err_code,
-            operation_id: kopid.eventid,
-        }
-        .into_response(),
+        Err(err_code) => match err_code {
+            OperationError::NoMatchingEntries => {
+                display_ctx.error = Some(LoginError::InvalidUsername);
+                LoginView {
+                    display_ctx,
+                    username,
+                    remember_me,
+                }
+                .into_response()
+            }
+            _ => UnrecoverableErrorView {
+                err_code,
+                operation_id: kopid.eventid,
+            }
+            .into_response(),
+        },
     }
 }
 
@@ -425,6 +451,7 @@ pub async fn view_login_mech_choose_post(
     let display_ctx = LoginDisplayCtx {
         domain_info,
         reauth: None,
+        error: None,
     };
 
     // Now process the response if ok.
@@ -479,6 +506,7 @@ pub async fn view_login_totp_post(
             let display_ctx = LoginDisplayCtx {
                 domain_info,
                 reauth: None,
+                error: None,
             };
             // If not an int, we need to re-render with an error
             return LoginTotpView {
@@ -583,6 +611,7 @@ async fn credential_step(
     let display_ctx = LoginDisplayCtx {
         domain_info,
         reauth: None,
+        error: None,
     };
 
     let inter = state // This may change in the future ...

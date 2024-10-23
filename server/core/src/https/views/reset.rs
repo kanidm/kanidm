@@ -630,6 +630,7 @@ pub(crate) async fn view_self_reset_get(
                 username: uat.spn,
                 purpose: ReauthPurpose::ProfileSettings,
             }),
+            error: None,
         };
 
         Ok(super::login::view_reauth_get(
