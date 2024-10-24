@@ -153,6 +153,7 @@ body {
 #cred-update-commit-bar {
   display: block;
   position: fixed;
+  bottom: .5rem;
   left: 50%;
   transform: translateX(-50%);
   background: white;
