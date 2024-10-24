@@ -44,7 +44,9 @@ db_path = "/var/lib/private/kanidm/kanidm.db"
 #   memory pressure on your system.
 # db_arc_size = 2048
 #
-#   TLS chain and key in pem format. Both must be present
+#   TLS chain and key in pem format. Both must be present.
+#   If the server recieves a SIGHUP, these files will be
+#   re-read and reloaded if their content is valid.
 tls_chain = "/var/lib/private/kanidm/chain.pem"
 tls_key = "/var/lib/private/kanidm/key.pem"
 #
