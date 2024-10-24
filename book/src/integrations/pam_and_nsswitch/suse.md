@@ -38,14 +38,12 @@ The content should look like:
 # /etc/pam.d/common-account
 # Controls authorisation to this system (who may login)
 account    sufficient    pam_kanidm.so ignore_unknown_user
-account    sufficient    pam_unix.so
 account    required      pam_deny.so
 
 # /etc/pam.d/common-auth
 # Controls authentication to this system (verification of credentials)
 auth        required      pam_env.so
 auth        sufficient    pam_kanidm.so ignore_unknown_user
-auth        sufficient    pam_unix.so try_first_pass
 auth        required      pam_deny.so
 
 # /etc/pam.d/common-password
@@ -60,7 +58,6 @@ session optional    pam_systemd.so
 session required    pam_limits.so
 session optional    pam_umask.so
 session optional    pam_kanidm.so
-session optional    pam_unix.so try_first_pass
 session optional    pam_env.so
 ```
 

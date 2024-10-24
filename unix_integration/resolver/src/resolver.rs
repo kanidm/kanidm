@@ -165,17 +165,17 @@ impl Resolver {
 
     #[instrument(level = "debug", skip_all)]
     pub async fn clear_cache(&self) -> Result<(), ()> {
+        let mut dbtxn = self.db.write().await;
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        let mut dbtxn = self.db.write().await;
         dbtxn.clear().and_then(|_| dbtxn.commit()).map_err(|_| ())
     }
 
     #[instrument(level = "debug", skip_all)]
     pub async fn invalidate(&self) -> Result<(), ()> {
+        let mut dbtxn = self.db.write().await;
         let mut nxcache_txn = self.nxcache.lock().await;
         nxcache_txn.clear();
-        let mut dbtxn = self.db.write().await;
         dbtxn
             .invalidate()
             .and_then(|_| dbtxn.commit())
