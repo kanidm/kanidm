@@ -50,6 +50,7 @@ use std::fmt::Write;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::broadcast,
+    sync::mpsc,
     task,
 };
 use tokio_openssl::SslStream;
@@ -207,10 +208,12 @@ pub async fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
-    rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
     maybe_tls_acceptor: Option<SslAcceptor>,
+    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
 ) -> Result<task::JoinHandle<()>, ()> {
+    let rx = server_message_tx.subscribe();
+
     let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
@@ -398,6 +401,7 @@ pub async fn create_https_server(
                 app,
                 rx,
                 server_message_tx,
+                tls_acceptor_reload_rx,
             )))
         }
         None => Ok(task::spawn(server_loop_plaintext(addr, app, rx))),
@@ -405,11 +409,12 @@ pub async fn create_https_server(
 }
 
 async fn server_loop(
-    tls_acceptor: SslAcceptor,
+    mut tls_acceptor: SslAcceptor,
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
     mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
 ) {
     pin_mut!(listener);
 
@@ -435,6 +440,10 @@ async fn server_loop(
                         break;
                     }
                 }
+            }
+            Some(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
+                std::mem::swap(&mut tls_acceptor, &mut new_tls_acceptor);
+                info!("Reloaded http tls acceptor");
             }
         }
     }

@@ -17,7 +17,7 @@ use openssl::x509::{
 use openssl::{asn1, bn, hash, pkey};
 use sketching::*;
 
-use crate::config::Configuration;
+use crate::config::TlsConfiguration;
 
 use std::fs;
 use std::io::{ErrorKind, Read, Write};
@@ -93,8 +93,10 @@ pub fn check_privkey_minimums(privkey: &PKeyRef<Private>) -> Result<(), String> 
 
 /// From the server configuration, generate an OpenSSL acceptor that we can use
 /// to build our sockets for HTTPS/LDAPS.
-pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, std::io::Error> {
-    let Some(tls_param) = &config.tls_config else {
+pub fn setup_tls(
+    tls_config: &Option<TlsConfiguration>,
+) -> Result<Option<SslAcceptor>, std::io::Error> {
+    let Some(tls_param) = tls_config.as_ref() else {
         return Ok(None);
     };
 
@@ -236,7 +238,7 @@ pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, std::io:
     let privkey = tls_acceptor.context().private_key().ok_or_else(|| {
         std::io::Error::new(
             ErrorKind::Other,
-            format!("Failed to access tls_acceptor private key"),
+            "Failed to access tls_acceptor private key".to_string(),
         )
     })?;
 
