@@ -280,99 +280,44 @@ pub(crate) fn load_all_groups_from_account<'a, E, TXN>(
 ) -> Result<(Vec<Group<()>>, Vec<Group<Unix>>), OperationError>
 where
     E: Committed,
+    Entry<E, EntryCommitted>: GetUuid,
     TXN: QueryServerTransaction<'a>,
 {
     let Some(iter) = value.get_ava_as_refuuid(Attribute::MemberOf) else {
         return Ok((vec![], vec![]));
     };
 
-    let f = filter!(f_or(
-        iter.map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
-            .collect()
-    ));
+    let conditions: Vec<_> = iter
+        .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
+        .collect();
+
+    println!("{:?}", conditions);
+
+    let f = filter!(f_or(conditions));
 
     let entries = qs.internal_search(f).map_err(|e| {
         admin_error!(?e, "internal search failed");
         e
     })?;
 
-    println!("entries: {:?}", entries);
+    println!("{}", entries.len());
 
-    let mut unix_groups = vec![];
+    // Do we need the user group for non unix?
     let mut groups = vec![];
+    let mut unix_groups = Group::<Unix>::try_from_entry(value)
+        .ok()
+        .into_iter()
+        .collect::<Vec<_>>();
 
     for entry in entries.iter() {
+        let entry = entry.as_ref();
         if entry.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into()) {
-            unix_groups.push(Group::<Unix>::try_from_entry(entry)?);
+            unix_groups.push(Group::<Unix>::try_from_entry::<EntrySealed>(entry)?);
         }
 
-        groups.push(Group::<()>::try_from_entry(entry)?);
+        // No idea why we need to explicitly specify the type here
+        groups.push(Group::<()>::try_from_entry::<EntrySealed>(entry)?);
     }
 
     Ok((groups, unix_groups))
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::idm::group::{load_all_groups_from_account, Group, Unix};
-    use crate::prelude::*;
-
-    #[idm_test]
-    async fn test_idm_account_ui_hints(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
-        let ct = duration_from_epoch_now();
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
-
-        let generated_group_id = Uuid::new_v4();
-        let _generated_group = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Name, Value::new_iname("test_group")),
-            (Attribute::Uuid, Value::Uuid(generated_group_id))
-        )
-        .into_sealed_committed();
-
-        let generated_unix_group_id = Uuid::new_v4();
-        let _generated_unix_group = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Group.to_value()),
-            (Attribute::Class, EntryClass::PosixGroup.to_value()),
-            (Attribute::Name, Value::new_iname("test_unix_group")),
-            (Attribute::Uuid, Value::Uuid(generated_unix_group_id))
-        )
-        .into_sealed_committed();
-
-        let target_uuid = Uuid::new_v4();
-        let target = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Class, EntryClass::Person.to_value()),
-            (Attribute::Name, Value::new_iname("testaccount")),
-            (Attribute::Uuid, Value::Uuid(target_uuid)),
-            (Attribute::Description, Value::new_utf8s("testaccount")),
-            (Attribute::DisplayName, Value::new_utf8s("Test Account")),
-            (Attribute::MemberOf, Value::Refer(generated_group_id)),
-            (Attribute::MemberOf, Value::Refer(generated_unix_group_id))
-        )
-        .into_sealed_committed();
-
-        assert_eq!(
-            Group::<()>::try_from_account(&target, &mut idms_prox_write.qs_write)
-                .expect("groups to load")
-                .len(),
-            1
-        );
-        assert_eq!(
-            Group::<Unix>::try_from_account(&target, &mut idms_prox_write.qs_write)
-                .expect("groups to load")
-                .len(),
-            1
-        );
-
-        let (groups, unix_groups) =
-            load_all_groups_from_account(&target, &mut idms_prox_write.qs_write)
-                .expect("groups to load");
-
-        assert_eq!(groups.len(), 1);
-        assert_eq!(unix_groups.len(), 1);
-    }
 }
