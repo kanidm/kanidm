@@ -826,10 +826,10 @@ pub async fn create_server_core(
     let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
-    let _opt_tls_params = match crypto::setup_tls(&config) {
-        Ok(opt_tls_params) => opt_tls_params,
-        Err(()) => {
-            error!("Failed to configure TLS parameters");
+    let maybe_tls_acceptor = match crypto::setup_tls(&config) {
+        Ok(tls_acc) => tls_acc,
+        Err(err) => {
+            error!(?err, "Failed to configure TLS acceptor");
             return Err(());
         }
     };
@@ -1035,13 +1035,8 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_ssl_acceptor = match crypto::setup_tls(&config) {
-                Ok(t) => t,
-                Err(()) => {
-                    error!("Failed to configure LDAP TLS parameters");
-                    return Err(());
-                }
-            };
+            let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
+
             if !config_test {
                 // ⚠️  only start the sockets and listeners in non-config-test modes.
                 let h = ldaps::create_ldap_server(
@@ -1094,6 +1089,7 @@ pub async fn create_server_core(
             server_read_ref,
             broadcast_tx.subscribe(),
             broadcast_tx.clone(),
+            maybe_tls_acceptor,
         )
         .await
         {

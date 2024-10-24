@@ -6,7 +6,7 @@ use openssl::error::ErrorStack;
 use openssl::nid::Nid;
 use openssl::pkey::{PKeyRef, Private};
 use openssl::rsa::Rsa;
-use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod};
+use openssl::ssl::{SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
 use openssl::x509::{
     extension::{
         AuthorityKeyIdentifier, BasicConstraints, ExtendedKeyUsage, KeyUsage,
@@ -19,8 +19,8 @@ use sketching::*;
 
 use crate::config::Configuration;
 
-use std::fs::File;
-use std::io::{Read, Write};
+use std::fs;
+use std::io::{ErrorKind, Read, Write};
 use std::path::Path;
 
 const CA_VALID_DAYS: u32 = 30;
@@ -93,55 +93,161 @@ pub fn check_privkey_minimums(privkey: &PKeyRef<Private>) -> Result<(), String> 
 
 /// From the server configuration, generate an OpenSSL acceptor that we can use
 /// to build our sockets for HTTPS/LDAPS.
-pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, ()> {
-    match &config.tls_config {
-        Some(tls_config) => {
-            // Signing algorithm minimums are enforced by the SSLAcceptor - it won't start up with a sha1-signed cert.
-            // https://wiki.mozilla.org/Security/Server_Side_TLS
-            let mut ssl_builder =
-                SslAcceptor::mozilla_intermediate_v5(SslMethod::tls()).map_err(|openssl_err| {
-                    error!("Failed to start TLS builder");
-                    error!(?openssl_err);
+pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptor>, std::io::Error> {
+    let Some(tls_param) = &config.tls_config else {
+        return Ok(None);
+    };
+
+    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
+
+    tls_builder
+        .set_certificate_chain_file(tls_param.chain.clone())
+        .map_err(|err| {
+            std::io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to create TLS listener: {:?}", err),
+            )
+        })?;
+
+    tls_builder
+        .set_private_key_file(tls_param.key.clone(), SslFiletype::PEM)
+        .map_err(|err| {
+            std::io::Error::new(
+                ErrorKind::Other,
+                format!("Failed to create TLS listener: {:?}", err),
+            )
+        })?;
+
+    tls_builder.check_private_key().map_err(|err| {
+        std::io::Error::new(
+            ErrorKind::Other,
+            format!("Failed to create TLS listener: {:?}", err),
+        )
+    })?;
+
+    // If configured, setup TLS client authentication.
+    if let Some(client_ca) = tls_param.client_ca.as_ref() {
+        info!("Loading client certificates from {}", client_ca.display());
+
+        let verify = SslVerifyMode::PEER;
+        // In future we may add a "require mTLS option" which would necessitate this.
+        // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
+        tls_builder.set_verify(verify);
+
+        // When client certs are available, we disable the TLS session cache.
+        // This is so that when the smartcard is *removed* on the client, it forces
+        // the client session to immediately expire.
+        //
+        // https://stackoverflow.com/questions/12393711/session-disconnect-the-client-after-smart-card-is-removed
+        //
+        // Alternately, on logout we need to trigger https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.set_ssl_context
+        // with https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.ssl_context +
+        // https://docs.rs/openssl/latest/openssl/ssl/struct.SslContextRef.html#method.remove_session
+        //
+        // Or we lower session time outs etc.
+        tls_builder.set_session_cache_mode(SslSessionCacheMode::OFF);
+
+        let read_dir = fs::read_dir(client_ca).map_err(|err| {
+            std::io::Error::new(
+                ErrorKind::Other,
+                format!(
+                    "Failed to create TLS listener while loading client ca from {}: {:?}",
+                    client_ca.display(),
+                    err
+                ),
+            )
+        })?;
+
+        for cert_dir_ent in read_dir.filter_map(|item| item.ok()).filter(|item| {
+            item.file_name()
+                .to_str()
+                // Hashed certs end in .0
+                // Hashed crls are .r0
+                .map(|fname| fname.ends_with(".0"))
+                .unwrap_or_default()
+        }) {
+            let mut cert_pem = String::new();
+            fs::File::open(cert_dir_ent.path())
+                .and_then(|mut file| file.read_to_string(&mut cert_pem))
+                .map_err(|err| {
+                    std::io::Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to create TLS listener: {:?}", err),
+                    )
                 })?;
 
-            ssl_builder
-                .set_certificate_chain_file(&tls_config.chain)
-                .map_err(|openssl_err| {
-                    error!("Failed to access certificate chain file");
-                    error!(?openssl_err);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(&tls_config.chain);
-                    info!(%diag);
-                })?;
-
-            ssl_builder
-                .set_private_key_file(&tls_config.key, SslFiletype::PEM)
-                .map_err(|openssl_err| {
-                    error!("Failed to access private key file");
-                    error!(?openssl_err);
-                    let diag = kanidm_lib_file_permissions::diagnose_path(&tls_config.chain);
-                    info!(%diag);
-                })?;
-
-            ssl_builder.check_private_key().map_err(|openssl_err| {
-                error!("Failed to validate private key");
-                error!(?openssl_err);
+            let cert = X509::from_pem(cert_pem.as_bytes()).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to create TLS listener: {:?}", err),
+                )
             })?;
 
-            let acceptor = ssl_builder.build();
-
-            // let's enforce some TLS minimums!
-            let privkey = acceptor.context().private_key().ok_or_else(|| {
-                error!("Failed to access acceptor private key");
+            let cert_store = tls_builder.cert_store_mut();
+            cert_store.add_cert(cert.clone()).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!(
+                        "Failed to load cert store while creating TLS listener: {:?}",
+                        err
+                    ),
+                )
             })?;
-
-            check_privkey_minimums(privkey).map_err(|err| {
-                error!("{}", err);
+            // This tells the client what CA's they should use. It DOES NOT
+            // verify them. That's the job of the cert store above!
+            tls_builder.add_client_ca(&cert).map_err(|err| {
+                std::io::Error::new(
+                    ErrorKind::Other,
+                    format!("Failed to create TLS listener: {:?}", err),
+                )
             })?;
-
-            Ok(Some(acceptor))
         }
-        None => Ok(None),
+
+        // TODO: Build our own CRL map HERE!
+
+        // Allow dumping client cert chains for dev debugging
+        // In the case this is status=false, should we be dumping these anyway?
+        if enabled!(tracing::Level::TRACE) {
+            tls_builder.set_verify_callback(verify, |status, x509store| {
+                if let Some(current_cert) = x509store.current_cert() {
+                    let cert_text_bytes = current_cert.to_text().unwrap_or_default();
+                    let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
+                    tracing::warn!(client_cert = %cert_text);
+                };
+
+                if let Some(chain) = x509store.chain() {
+                    for cert in chain.iter() {
+                        let cert_text_bytes = cert.to_text().unwrap_or_default();
+                        let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
+                        tracing::warn!(chain_cert = %cert_text);
+                    }
+                }
+
+                status
+            });
+        }
+
+        // End tls_client setup
     }
+
+    let tls_acceptor = tls_builder.build();
+
+    // let's enforce some TLS minimums!
+    let privkey = tls_acceptor.context().private_key().ok_or_else(|| {
+        std::io::Error::new(
+            ErrorKind::Other,
+            format!("Failed to access tls_acceptor private key"),
+        )
+    })?;
+
+    check_privkey_minimums(privkey).map_err(|err| {
+        std::io::Error::new(
+            ErrorKind::Other,
+            format!("Private key minimums were not met: {:?}", err),
+        )
+    })?;
+
+    Ok(Some(tls_acceptor))
 }
 
 fn get_ec_group() -> Result<EcGroup, ErrorStack> {
@@ -170,13 +276,13 @@ pub(crate) fn write_ca(
         error!(err = ?e, "Failed to convert cert to PEM");
     })?;
 
-    File::create(key_path)
+    fs::File::create(key_path)
         .and_then(|mut file| file.write_all(&key_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", key_path);
         })?;
 
-    File::create(cert_path)
+    fs::File::create(cert_path)
         .and_then(|mut file| file.write_all(&cert_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", cert_path);
@@ -341,14 +447,14 @@ pub(crate) fn load_ca(
     let ca_cert_path: &Path = ca_cert_ar.as_ref();
 
     let mut ca_key_pem = vec![];
-    File::open(ca_key_path)
+    fs::File::open(ca_key_path)
         .and_then(|mut file| file.read_to_end(&mut ca_key_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to read {:?}", ca_key_path);
         })?;
 
     let mut ca_cert_pem = vec![];
-    File::open(ca_cert_path)
+    fs::File::open(ca_cert_path)
         .and_then(|mut file| file.read_to_end(&mut ca_cert_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to read {:?}", ca_cert_path);
@@ -413,19 +519,19 @@ pub(crate) fn write_cert(
         }
     }
 
-    File::create(key_path)
+    fs::File::create(key_path)
         .and_then(|mut file| file.write_all(&key_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", key_path);
         })?;
 
-    File::create(chain_path)
+    fs::File::create(chain_path)
         .and_then(|mut file| file.write_all(&chain_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", chain_path);
         })?;
 
-    File::create(cert_path)
+    fs::File::create(cert_path)
         .and_then(|mut file| file.write_all(&cert_pem))
         .map_err(|e| {
             error!(err = ?e, "Failed to create {:?}", cert_path);
