@@ -9,9 +9,6 @@ use super::ServerState;
 
 use crate::https::extractors::{DomainInfo, DomainInfoRead};
 
-// when you want to put big text at the top of the page
-pub const CSS_PAGE_HEADER: &str = "";
-
 pub const CSS_NAVBAR_NAV: &str = "navbar navbar-expand-md navbar-dark bg-dark mb-4";
 pub const CSS_NAVBAR_BRAND: &str = "navbar-brand d-flex align-items-center";
 pub const CSS_NAVBAR_LINKS_UL: &str = "navbar-nav";
