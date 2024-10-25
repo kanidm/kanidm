@@ -8,6 +8,7 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
+use constants::Urls;
 use kanidmd_lib::prelude::{OperationError, Uuid};
 
 use crate::https::ServerState;
@@ -29,7 +30,7 @@ struct UnrecoverableErrorView {
 }
 
 pub fn view_router() -> Router<ServerState> {
-    let unguarded_router = Router::new()
+    let mut unguarded_router = Router::new()
         .route(
             "/",
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
