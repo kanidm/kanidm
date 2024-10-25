@@ -10,6 +10,7 @@ Wants=network-online.target
 Type=notify
 
 ExecStart=/usr/local/sbin/kanidmd server --config=/etc/kanidm/server.toml
+ExecReload=/bin/kill -HUP $MAINPID
 Restart=on-failure
 RestartSec=15s
 WorkingDirectory=/var/lib/kanidm
