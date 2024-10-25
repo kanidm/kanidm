@@ -1,7 +1,14 @@
 <nav class="(( crate::https::ui::CSS_NAVBAR_NAV ))">
     <div class="container-lg">
         <a class="(( crate::https::ui::CSS_NAVBAR_BRAND ))" href="/ui/apps">
-            <img src="/pkg/img/logo.svg?v=((crate::https::cache_buster::get_cache_buster_key()))" alt="Kanidm brand logo" width="auto" height="40" class="navbar-toggler-img" />
+            (% if navbar_ctx.domain_info.image().is_some() %)
+            <img src="/ui/images/domain"
+                alt="Kanidm" width="auto" height="40" class="navbar-toggler-img" />
+            (% else %)
+            <img
+                src="/pkg/img/logo.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+                alt="Kanidm" width="auto" height="40" class="navbar-toggler-img" />
+            (% endif %)
             <div class="ps-2">Kanidm</div>
         </a>
 

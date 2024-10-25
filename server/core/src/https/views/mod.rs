@@ -21,6 +21,7 @@ mod constants;
 mod cookies;
 mod errors;
 mod login;
+mod navbar;
 mod oauth2;
 mod profile;
 mod reset;
@@ -91,6 +92,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset/set_unixcred", post(reset::view_set_unixcred))
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
+        .route("/api/add_totp", post(reset::add_totp))
         .route("/api/remove_totp", post(reset::remove_totp))
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
