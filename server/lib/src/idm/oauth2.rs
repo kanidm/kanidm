@@ -23,21 +23,25 @@ use compact_jwt::{
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
+#[cfg(feature = "dev-oauth2-device-flow")]
 use itertools::Itertools;
 use kanidm_proto::constants::*;
 
+#[cfg(feature = "dev-oauth2-device-flow")]
+use kanidm_proto::oauth2::OAUTH2_DEVICE_CODE_EXPIRY_SECONDS;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
     OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
     OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
 };
+
 use kanidm_proto::oauth2::{
     AccessTokenType, ClaimType, DeviceAuthorizationResponse, DisplayValue, GrantType,
     IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
-    OAUTH2_DEVICE_CODE_EXPIRY_SECONDS,
 };
 use openssl::sha;
+#[cfg(feature = "dev-oauth2-device-flow")]
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
@@ -335,7 +339,6 @@ pub struct Oauth2RS {
     /// Does the RS have a custom image set? If not, we use the default.
     has_custom_image: bool,
 
-    #[cfg(feature = "dev-oauth2-device-flow")]
     device_authorization_endpoint: Option<Url>,
 }
 
@@ -354,7 +357,7 @@ impl Oauth2RS {
         }
     }
 
-    /// Does this RS require PKCE?
+    /// Does this client require PKCE?
     pub fn require_pkce(&self) -> bool {
         match &self.type_ {
             OauthRSType::Basic { enable_pkce, .. } => *enable_pkce,
@@ -762,7 +765,6 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     prefer_short_username,
                     type_,
                     has_custom_image,
-                    #[cfg(feature = "dev-oauth2-device-flow")]
                     device_authorization_endpoint,
                 };
 
@@ -1014,53 +1016,48 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     #[instrument(level = "info", skip(self))]
     pub fn handle_oauth2_start_device_flow(
         &mut self,
-        client_auth_info: ClientAuthInfo,
-        client_id: &str,
-        scope: &Option<BTreeSet<String>>,
-        eventid: Uuid,
+        _client_auth_info: ClientAuthInfo,
+        _client_id: &str,
+        _scope: &Option<BTreeSet<String>>,
+        _eventid: Uuid,
     ) -> Result<DeviceAuthorizationResponse, Oauth2Error> {
-        let o2rs = self.get_client(client_id)?;
+        // let o2rs = self.get_client(client_id)?;
 
-        info!("Got Client: {:?}", o2rs);
+        // info!("Got Client: {:?}", o2rs);
 
-        // TODO: change this to checking if it's got device flow enabled
-        if !o2rs.require_pkce() {
-            security_info!("Device flow is only available for PKCE-enabled clients");
-            return Err(Oauth2Error::InvalidRequest);
-        }
+        // // TODO: change this to checking if it's got device flow enabled
+        // if !o2rs.require_pkce() {
+        //     security_info!("Device flow is only available for PKCE-enabled clients");
+        //     return Err(Oauth2Error::InvalidRequest);
+        // }
 
-        info!(
-            "Starting device flow for client_id={} scopes={} source={:?}",
-            client_id,
-            scope
-                .as_ref()
-                .map(|s| s.iter().cloned().collect::<Vec<_>>().into_iter().join(","))
-                .unwrap_or("[]".to_string()),
-            client_auth_info.source
-        );
+        // info!(
+        //     "Starting device flow for client_id={} scopes={} source={:?}",
+        //     client_id,
+        //     scope
+        //         .as_ref()
+        //         .map(|s| s.iter().cloned().collect::<Vec<_>>().into_iter().join(","))
+        //         .unwrap_or("[]".to_string()),
+        //     client_auth_info.source
+        // );
 
-        let mut verification_uri = self.oauth2rs.inner.origin.clone();
-        verification_uri.set_path(uri::OAUTH2_DEVICE_LOGIN);
+        // let mut verification_uri = self.oauth2rs.inner.origin.clone();
+        // verification_uri.set_path(uri::OAUTH2_DEVICE_LOGIN);
 
-        let (user_code_string, _user_code) = gen_user_code();
-        let expiry =
-            Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY_SECONDS) + duration_from_epoch_now();
-        let device_code = gen_device_code()
-            .inspect_err(|err| error!("Failed to generate a device code! {:?}", err))?;
+        // let (user_code_string, _user_code) = gen_user_code();
+        // let expiry =
+        //     Duration::from_secs(OAUTH2_DEVICE_CODE_EXPIRY_SECONDS) + duration_from_epoch_now();
+        // let device_code = gen_device_code()
+        //     .inspect_err(|err| error!("Failed to generate a device code! {:?}", err))?;
 
-        info!(
-            "verification_origin={} expiry={:?}",
-            verification_uri.to_string(),
-            expiry
-        );
+        Err(Oauth2Error::InvalidGrant)
 
         // TODO: store user_code / expiry / client_id / device_code in the backend, needs to be checked on the token exchange.
-
-        Ok(DeviceAuthorizationResponse::new(
-            verification_uri,
-            device_code,
-            user_code_string,
-        ))
+        // Ok(DeviceAuthorizationResponse::new(
+        //     verification_uri,
+        //     device_code,
+        //     user_code_string,
+        // ))
     }
 
     #[instrument(level = "info", skip(self))]
@@ -2666,7 +2663,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             introspection_endpoint,
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
-            #[cfg(feature = "dev-oauth2-device-flow")]
             device_authorization_endpoint: o2rs.device_authorization_endpoint.clone(),
         })
     }
@@ -2836,6 +2832,7 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 }
 
 /// device code is a random bucket of bytes used in the device flow
+#[cfg(feature = "dev-oauth2-device-flow")]
 #[inline]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
     let mut rng = rand::thread_rng();
@@ -2848,6 +2845,7 @@ fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
 }
 
 #[inline]
+#[cfg(any(feature = "dev-oauth2-device-flow", test))]
 /// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
 fn gen_user_code() -> (String, u32) {
     use rand::Rng;

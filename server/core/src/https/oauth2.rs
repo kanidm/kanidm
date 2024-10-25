@@ -1,4 +1,4 @@
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
 use super::errors::WebError;
 use super::middleware::KOpId;
@@ -21,13 +21,14 @@ use axum::{
 };
 use axum_macros::debug_handler;
 use compact_jwt::{JwkKeySet, OidcToken};
-use hashbrown::HashMap;
+use kanidm_proto::constants::uri::{
+    OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
+};
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::AuthorisationResponse;
-use kanidm_proto::{
-    constants::uri::{OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT},
-    oauth2::DeviceAuthorizationResponse,
-};
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -39,10 +40,9 @@ use serde::{Deserialize, Serialize};
 use serde_with::formats::CommaSeparator;
 use serde_with::{serde_as, StringWithSeparator};
 
-use uri::{
-    OAUTH2_AUTHORISE_DEVICE, OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
-    OAUTH2_TOKEN_REVOKE_ENDPOINT,
-};
+#[cfg(feature = "dev-oauth2-device-flow")]
+use uri::OAUTH2_AUTHORISE_DEVICE;
+use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
 // TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -744,10 +744,11 @@ pub(crate) struct DeviceFlowForm {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
     scope: Option<BTreeSet<String>>,
     #[serde(flatten)]
-    extra: HashMap<String, String>,
+    extra: BTreeMap<String, String>, // catches any extra nonsense that gets sent through
 }
 
 /// Device flow! [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)
+#[cfg(feature = "dev-oauth2-device-flow")]
 #[instrument(level = "info", skip(state, kopid, client_auth_info))]
 pub(crate) async fn oauth2_authorise_device_post(
     State(state): State<ServerState>,
@@ -797,7 +798,7 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .with_state(state.clone());
 
-    Router::new()
+    let mut router = Router::new()
         .route("/oauth2", get(super::v1_oauth2::oauth2_get))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
@@ -816,12 +817,16 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             OAUTH2_AUTHORISE_REJECT,
             post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
-        )
-        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
-        .route(OAUTH2_AUTHORISE_DEVICE, post(oauth2_authorise_device_post))
-        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        );
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    #[cfg(feature = "dev-oauth2-device-flow")]
+    {
+        router = router.route(OAUTH2_AUTHORISE_DEVICE, post(oauth2_authorise_device_post))
+    }
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    router = router
         .route(
             OAUTH2_TOKEN_ENDPOINT,
             post(oauth2_token_post).options(oauth2_preflight_options),
@@ -835,5 +840,7 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(OAUTH2_TOKEN_REVOKE_ENDPOINT, post(oauth2_token_revoke_post))
         .merge(openid_router)
         .with_state(state)
-        .layer(from_fn(super::middleware::caching::dont_cache_me))
+        .layer(from_fn(super::middleware::caching::dont_cache_me));
+
+    router
 }

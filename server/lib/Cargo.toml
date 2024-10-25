@@ -26,10 +26,10 @@ name = "image_benches"
 harness = false
 
 [features]
-default = ["dev-oauth2-device-flow"]
+# default = ["dev-oauth2-device-flow"]
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
-dev-oauth2-device-flow = []          # still-in-development oauth2 device flow support
+dev-oauth2-device-flow = [] # still-in-development oauth2 device flow support
 
 [dependencies]
 base64 = { workspace = true }

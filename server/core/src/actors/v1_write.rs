@@ -1,4 +1,3 @@
-use std::collections::BTreeSet;
 use std::iter;
 
 use compact_jwt::JweCompact;
@@ -1703,6 +1702,7 @@ impl QueryServerWriteV1 {
             .and_then(|()| idms_prox_write.commit().map_err(Oauth2Error::ServerError))
     }
 
+    #[cfg(feature = "dev-oauth2-device-flow")]
     pub async fn handle_oauth2_device_flow_start(
         &self,
         client_auth_info: ClientAuthInfo,

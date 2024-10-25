@@ -463,7 +463,6 @@ pub struct OidcDiscoveryResponse {
     pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
 
-    #[cfg(feature = "dev-oauth2-device-flow")]
     /// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-4>
     pub device_authorization_endpoint: Option<Url>,
 }

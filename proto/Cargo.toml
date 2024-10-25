@@ -16,7 +16,7 @@ test = true
 doctest = true
 
 [features]
-default = ["dev-oauth2-device-flow"]
+# default = ["dev-oauth2-device-flow"]
 wasm = ["webauthn-rs-proto/wasm"]
 test = []
 
