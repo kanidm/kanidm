@@ -1,29 +1,31 @@
 <nav class="(( crate::https::ui::CSS_NAVBAR_NAV ))">
-    <div class="container-fluid">
-        <a class="(( crate::https::ui::CSS_NAVBAR_BRAND ))"
-            href="/ui/apps">Kanidm</a>
+    <div class="container-lg">
+        <a class="(( crate::https::ui::CSS_NAVBAR_BRAND ))" href="/ui/apps">
+            <img src="/pkg/img/logo.svg?v=((crate::https::cache_buster::get_cache_buster_key()))" alt="Kanidm brand logo" width="auto" height="40" class="navbar-toggler-img" />
+            <div class="ps-2">Kanidm</div>
+        </a>
 
         <!-- this shows a button on mobile devices to open the menu-->
-        <button class="navbar-toggler bg-white" type="button"
+        <button class="navbar-toggler" type="button"
             data-bs-toggle="collapse" data-bs-target="#navbarCollapse"
             aria-controls="navbarCollapse" aria-expanded="false"
             aria-label="Toggle navigation">
-            <img
-                src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
-                alt="Toggle navigation" class="navbar-toggler-img" />
+            <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarCollapse">
             <ul class="(( crate::https::ui::CSS_NAVBAR_LINKS_UL ))">
-                <li class="mb-1">
+                <li>
                     <a class="nav-link" href=((Urls::Apps))>
                         <span data-feather="file"></span>Apps</a>
                 </li>
-                <li class="mb-1">
+                <li>
                     <a class="nav-link" href=((Urls::Profile))>
                         <span data-feather="file"></span>Profile</a>
                 </li>
-                <li class="mb-1">
+            </ul>
+            <ul class="(( crate::https::ui::CSS_NAVBAR_LINKS_UL )) ms-md-auto">
+                <li>
                     <a class="nav-link" href="#" data-bs-toggle="modal"
                         data-bs-target="#signoutModal">Sign out</a>
                 </li>

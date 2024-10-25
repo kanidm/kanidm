@@ -21,26 +21,27 @@
 			value="(( username ))"
 			required=true
 		/>
-
-		<input
-			class="input-hidden"
-			id="password"
-			name="password"
-			type="password"
-			autocomplete="current-password"
-			value=""
-		/>
-
-		<input
-			class="input-hidden"
-			id="totp"
-			name="totp"
-			type="number"
-			autocomplete="one-time-code"
-			value=""
-		/>
-
 	</div>
+
+	<!-- BEGIN: to work better with password managers -->
+	<input
+		class="d-none"
+		id="password"
+		name="password"
+		type="password"
+		autocomplete="current-password"
+		value=""
+	/>
+	<input
+		class="d-none"
+		id="totp"
+		name="totp"
+		type="number"
+		autocomplete="one-time-code"
+		value=""
+	/>
+	<!-- END -->
+
 	<div class="mb-3 form-check form-switch">
 		<input
 			type="checkbox"
