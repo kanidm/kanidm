@@ -41,8 +41,7 @@ use kanidm_proto::oauth2::{
     IdTokenSignAlg, ResponseMode, ResponseType, SubjectType, TokenEndpointAuthMethod,
 };
 use openssl::sha;
-#[cfg(feature = "dev-oauth2-device-flow")]
-use rand::Rng;
+
 use serde::{Deserialize, Serialize};
 use serde_with::{formats, serde_as};
 use time::OffsetDateTime;
@@ -2832,11 +2831,13 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 }
 
 /// device code is a random bucket of bytes used in the device flow
-#[cfg(feature = "dev-oauth2-device-flow")]
+#[cfg(any(feature = "dev-oauth2-device-flow", test))]
 #[inline]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
     let mut rng = rand::thread_rng();
     let mut result = [0u8; 16];
+    // doing it here because of feature-shenanigans.
+    use rand::Rng;
     if let Err(err) = rng.try_fill(&mut result) {
         error!("Failed to generate device code! {:?}", err);
         return Err(Oauth2Error::ServerError(OperationError::Backend));
@@ -6772,7 +6773,9 @@ mod tests {
 
     #[test]
     fn test_get_code() {
-        use super::{gen_user_code, parse_user_code};
+        use super::{gen_device_code, gen_user_code, parse_user_code};
+
+        assert!(gen_device_code().is_ok());
 
         let (res_string, res_value) = gen_user_code();
 
