@@ -302,7 +302,6 @@ where
 
     println!("{}", entries.len());
 
-    // Do we need the user group for non unix?
     let mut groups = vec![];
     let mut unix_groups = Group::<Unix>::try_from_entry(value)
         .ok()
