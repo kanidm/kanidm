@@ -13,7 +13,7 @@ pub(crate) struct RadiusAccount {
     pub name: String,
     pub displayname: String,
     pub uuid: Uuid,
-    pub groups: Vec<Group>,
+    pub groups: Vec<Group<()>>,
     pub radius_secret: String,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
@@ -45,7 +45,7 @@ impl RadiusAccount {
             .map(|s| s.to_string())
             .ok_or_else(|| OperationError::MissingAttribute(Attribute::DisplayName))?;
 
-        let groups = Group::try_from_account_entry_reduced(value, qs)?;
+        let groups = Group::<()>::try_from_account_reduced(value, qs)?;
 
         let valid_from = value.get_ava_single_datetime(Attribute::AccountValidFrom);
 
