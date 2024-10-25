@@ -16,6 +16,7 @@ use tokio_util::codec::{FramedRead, FramedWrite};
 
 use crate::CoreAction;
 use tokio::sync::broadcast;
+use tokio::sync::mpsc;
 
 struct LdapSession {
     uat: Option<LdapBoundToken>,
@@ -126,11 +127,12 @@ async fn client_process(
 }
 
 /// TLS LDAP Listener, hands off to [client_process]
-async fn tls_acceptor(
+async fn ldap_tls_acceptor(
     listener: TcpListener,
-    tls_acceptor: SslAcceptor,
+    mut tls_acceptor: SslAcceptor,
     qe_r_ref: &'static QueryServerReadV1,
     mut rx: broadcast::Receiver<CoreAction>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
 ) {
     loop {
         tokio::select! {
@@ -150,6 +152,10 @@ async fn tls_acceptor(
                     }
                 }
             }
+            Some(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
+                std::mem::swap(&mut tls_acceptor, &mut new_tls_acceptor);
+                info!("Reloaded ldap tls acceptor");
+            }
         }
     }
     info!("Stopped {}", super::TaskName::LdapActor);
@@ -160,6 +166,7 @@ pub(crate) async fn create_ldap_server(
     opt_ssl_acceptor: Option<SslAcceptor>,
     qe_r_ref: &'static QueryServerReadV1,
     rx: broadcast::Receiver<CoreAction>,
+    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
 ) -> Result<tokio::task::JoinHandle<()>, ()> {
     if address.starts_with(":::") {
         // takes :::xxxx to xxxx
@@ -182,7 +189,13 @@ pub(crate) async fn create_ldap_server(
         Some(ssl_acceptor) => {
             info!("Starting LDAPS interface ldaps://{} ...", address);
 
-            tokio::spawn(tls_acceptor(listener, ssl_acceptor, qe_r_ref, rx))
+            tokio::spawn(ldap_tls_acceptor(
+                listener,
+                ssl_acceptor,
+                qe_r_ref,
+                rx,
+                tls_acceptor_reload_rx,
+            ))
         }
         None => {
             error!("The server won't run without TLS!");

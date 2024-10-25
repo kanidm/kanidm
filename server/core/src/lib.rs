@@ -52,12 +52,14 @@ use kanidmd_lib::value::CredentialType;
 use libc::umask;
 
 use tokio::sync::broadcast;
+use tokio::sync::Notify;
 use tokio::task;
 
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
 use crate::admin::AdminActor;
 use crate::config::{Configuration, ServerRole};
 use crate::interval::IntervalActor;
+use tokio::sync::mpsc;
 
 // === internal setup helpers
 
@@ -738,6 +740,7 @@ pub(crate) enum TaskName {
     IntervalActor,
     LdapActor,
     Replication,
+    TlsAcceptorReload,
 }
 
 impl Display for TaskName {
@@ -754,6 +757,7 @@ impl Display for TaskName {
                 TaskName::IntervalActor => "Interval Actor",
                 TaskName::LdapActor => "LDAP Acceptor Actor",
                 TaskName::Replication => "Replication",
+                TaskName::TlsAcceptorReload => "TlsAcceptor Reload Monitor",
             }
         )
     }
@@ -761,12 +765,17 @@ impl Display for TaskName {
 
 pub struct CoreHandle {
     clean_shutdown: bool,
-    pub tx: broadcast::Sender<CoreAction>,
+    tx: broadcast::Sender<CoreAction>,
+    tls_acceptor_reload_notify: Arc<Notify>,
     /// This stores a name for the handle, and the handle itself so we can tell which failed/succeeded at the end.
     handles: Vec<(TaskName, task::JoinHandle<()>)>,
 }
 
 impl CoreHandle {
+    pub fn subscribe(&mut self) -> broadcast::Receiver<CoreAction> {
+        self.tx.subscribe()
+    }
+
     pub async fn shutdown(&mut self) {
         if self.tx.send(CoreAction::Shutdown).is_err() {
             eprintln!("No receivers acked shutdown request. Treating as unclean.");
@@ -781,6 +790,10 @@ impl CoreHandle {
         }
 
         self.clean_shutdown = true;
+    }
+
+    pub async fn tls_acceptor_reload(&mut self) {
+        self.tls_acceptor_reload_notify.notify_one()
     }
 }
 
@@ -826,10 +839,10 @@ pub async fn create_server_core(
     let status_ref = StatusActor::start();
 
     // Setup TLS (if any)
-    let _opt_tls_params = match crypto::setup_tls(&config) {
-        Ok(opt_tls_params) => opt_tls_params,
-        Err(()) => {
-            error!("Failed to configure TLS parameters");
+    let maybe_tls_acceptor = match crypto::setup_tls(&config.tls_config) {
+        Ok(tls_acc) => tls_acc,
+        Err(err) => {
+            error!(?err, "Failed to configure TLS acceptor");
             return Err(());
         }
     };
@@ -1009,6 +1022,54 @@ pub async fn create_server_core(
         info!("Stopped {}", TaskName::AuditdActor);
     });
 
+    // Setup a TLS Acceptor Reload trigger.
+
+    let mut broadcast_rx = broadcast_tx.subscribe();
+    let tls_acceptor_reload_notify = Arc::new(Notify::new());
+    let tls_accepter_reload_task_notify = tls_acceptor_reload_notify.clone();
+    let tls_config = config.tls_config.clone();
+
+    let ldap_configured = config.ldapaddress.is_some();
+    let (ldap_tls_acceptor_reload_tx, ldap_tls_acceptor_reload_rx) = mpsc::channel(1);
+    let (http_tls_acceptor_reload_tx, http_tls_acceptor_reload_rx) = mpsc::channel(1);
+
+    let tls_acceptor_reload_handle = task::spawn(async move {
+        loop {
+            tokio::select! {
+                Ok(action) = broadcast_rx.recv() => {
+                    match action {
+                        CoreAction::Shutdown => break,
+                    }
+                }
+                _ = tls_accepter_reload_task_notify.notified() => {
+                    let tls_acceptor = match crypto::setup_tls(&tls_config) {
+                        Ok(Some(tls_acc)) => tls_acc,
+                        Ok(None) => {
+                            warn!("TLS not configured, ignoring reload request.");
+                            continue;
+                        }
+                        Err(err) => {
+                            error!(?err, "Failed to configure and reload TLS acceptor");
+                            continue;
+                        }
+                    };
+
+                    // We don't log here as the receivers will notify when they have completed
+                    // the reload.
+                    if ldap_configured &&
+                        ldap_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
+                            error!("ldap tls acceptor did not accept the reload, the server may have failed!");
+                        };
+                    if http_tls_acceptor_reload_tx.send(tls_acceptor.clone()).await.is_err() {
+                        error!("http tls acceptor did not accept the reload, the server may have failed!");
+                        break;
+                    };
+                }
+            }
+        }
+        info!("Stopped {}", TaskName::TlsAcceptorReload);
+    });
+
     // Setup timed events associated to the write thread
     let interval_handle = IntervalActor::start(server_write_ref, broadcast_tx.subscribe());
     // Setup timed events associated to the read thread
@@ -1035,13 +1096,8 @@ pub async fn create_server_core(
     // If we have been requested to init LDAP, configure it now.
     let maybe_ldap_acceptor_handle = match &config.ldapaddress {
         Some(la) => {
-            let opt_ldap_ssl_acceptor = match crypto::setup_tls(&config) {
-                Ok(t) => t,
-                Err(()) => {
-                    error!("Failed to configure LDAP TLS parameters");
-                    return Err(());
-                }
-            };
+            let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
+
             if !config_test {
                 // ⚠️  only start the sockets and listeners in non-config-test modes.
                 let h = ldaps::create_ldap_server(
@@ -1049,6 +1105,7 @@ pub async fn create_server_core(
                     opt_ldap_ssl_acceptor,
                     server_read_ref,
                     broadcast_tx.subscribe(),
+                    ldap_tls_acceptor_reload_rx,
                 )
                 .await?;
                 Some(h)
@@ -1092,8 +1149,9 @@ pub async fn create_server_core(
             status_ref,
             server_write_ref,
             server_read_ref,
-            broadcast_tx.subscribe(),
             broadcast_tx.clone(),
+            maybe_tls_acceptor,
+            http_tls_acceptor_reload_rx,
         )
         .await
         {
@@ -1133,6 +1191,7 @@ pub async fn create_server_core(
         (TaskName::IntervalActor, interval_handle),
         (TaskName::DelayedActionActor, delayed_handle),
         (TaskName::AuditdActor, auditd_handle),
+        (TaskName::TlsAcceptorReload, tls_acceptor_reload_handle),
     ];
 
     if let Some(backup_handle) = maybe_backup_handle {
@@ -1157,6 +1216,7 @@ pub async fn create_server_core(
 
     Ok(CoreHandle {
         clean_shutdown: false,
+        tls_acceptor_reload_notify,
         tx: broadcast_tx,
         handles,
     })

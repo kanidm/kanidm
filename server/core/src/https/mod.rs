@@ -19,7 +19,7 @@ mod views;
 use self::extractors::ClientConnInfo;
 use self::javascript::*;
 use crate::actors::{QueryServerReadV1, QueryServerWriteV1};
-use crate::config::{Configuration, ServerRole, TlsConfiguration};
+use crate::config::{Configuration, ServerRole};
 use crate::CoreAction;
 
 use axum::{
@@ -40,8 +40,7 @@ use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
 use kanidmd_lib::{idm::ClientCertInfo, status::StatusActor};
-use openssl::ssl::{Ssl, SslAcceptor, SslFiletype, SslMethod, SslSessionCacheMode, SslVerifyMode};
-use openssl::x509::X509;
+use openssl::ssl::{Ssl, SslAcceptor};
 
 use kanidm_lib_crypto::x509_cert::{der::Decode, x509_public_key_s256, Certificate};
 
@@ -51,6 +50,7 @@ use std::fmt::Write;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::broadcast,
+    sync::mpsc,
     task,
 };
 use tokio_openssl::SslStream;
@@ -58,8 +58,7 @@ use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
 use uuid::Uuid;
 
-use std::fs;
-use std::io::{ErrorKind, Read};
+use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::{net::SocketAddr, str::FromStr};
@@ -209,9 +208,12 @@ pub async fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
-    mut rx: broadcast::Receiver<CoreAction>,
     server_message_tx: broadcast::Sender<CoreAction>,
+    maybe_tls_acceptor: Option<SslAcceptor>,
+    tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
 ) -> Result<task::JoinHandle<()>, ()> {
+    let rx = server_message_tx.subscribe();
+
     let js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
@@ -384,204 +386,93 @@ pub async fn create_https_server(
 
     info!("Starting the web server...");
 
-    Ok(task::spawn(async move {
-        tokio::select! {
-            Ok(action) = rx.recv() => {
-                match action {
-                    CoreAction::Shutdown => {},
+    match maybe_tls_acceptor {
+        Some(tls_acceptor) => {
+            let listener = match TcpListener::bind(addr).await {
+                Ok(l) => l,
+                Err(err) => {
+                    error!(?err, "Failed to bind tcp listener");
+                    return Err(());
                 }
-            }
-            res = match config.tls_config {
-                Some(tls_param) => {
-                    // This isn't optimal, but we can't share this with the
-                    // other path for integration tests because that doesn't
-                    // do tls (yet?)
-                    let listener = match TcpListener::bind(addr).await {
-                        Ok(l) => l,
-                        Err(err) => {
-                            error!(?err, "Failed to bind tcp listener");
-                            return
-                        }
-                    };
-                    task::spawn(server_loop(tls_param, listener, app))
-                },
-                None => {
-                    task::spawn(axum_server::bind(addr).serve(app))
-                }
-            } => {
-                match res {
-                    Ok(res_inner) => {
-                        match res_inner {
-                            Ok(_) => debug!("Web server exited OK"),
-                            Err(err) => {
-                                error!("Web server exited with {:?}", err);
-                            }
-                        }
-
-                    },
-                    Err(err) => {
-                        error!("Web server exited with {:?}", err);
-                    }
-                };
-                if let Err(err) = server_message_tx.send(CoreAction::Shutdown) {
-                    error!("Web server failed to send shutdown message! {:?}", err)
-                };
-            }
-
-
-        };
-
-        info!("Stopped {}", super::TaskName::HttpsServer);
-    }))
+            };
+            Ok(task::spawn(server_loop(
+                tls_acceptor,
+                listener,
+                app,
+                rx,
+                server_message_tx,
+                tls_acceptor_reload_rx,
+            )))
+        }
+        None => Ok(task::spawn(server_loop_plaintext(addr, app, rx))),
+    }
 }
 
 async fn server_loop(
-    tls_param: TlsConfiguration,
+    mut tls_acceptor: SslAcceptor,
     listener: TcpListener,
     app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
-) -> Result<(), std::io::Error> {
-    let mut tls_builder = SslAcceptor::mozilla_intermediate_v5(SslMethod::tls())?;
-
-    tls_builder
-        .set_certificate_chain_file(tls_param.chain.clone())
-        .map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to create TLS listener: {:?}", err),
-            )
-        })?;
-
-    tls_builder
-        .set_private_key_file(tls_param.key.clone(), SslFiletype::PEM)
-        .map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!("Failed to create TLS listener: {:?}", err),
-            )
-        })?;
-
-    tls_builder.check_private_key().map_err(|err| {
-        std::io::Error::new(
-            ErrorKind::Other,
-            format!("Failed to create TLS listener: {:?}", err),
-        )
-    })?;
-
-    // If configured, setup TLS client authentication.
-    if let Some(client_ca) = tls_param.client_ca.as_ref() {
-        info!("Loading client certificates from {}", client_ca.display());
-
-        let verify = SslVerifyMode::PEER;
-        // In future we may add a "require mTLS option" which would necessitate this.
-        // verify.insert(SslVerifyMode::FAIL_IF_NO_PEER_CERT);
-        tls_builder.set_verify(verify);
-
-        // When client certs are available, we disable the TLS session cache.
-        // This is so that when the smartcard is *removed* on the client, it forces
-        // the client session to immediately expire.
-        //
-        // https://stackoverflow.com/questions/12393711/session-disconnect-the-client-after-smart-card-is-removed
-        //
-        // Alternately, on logout we need to trigger https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.set_ssl_context
-        // with https://docs.rs/openssl/latest/openssl/ssl/struct.Ssl.html#method.ssl_context +
-        // https://docs.rs/openssl/latest/openssl/ssl/struct.SslContextRef.html#method.remove_session
-        //
-        // Or we lower session time outs etc.
-        tls_builder.set_session_cache_mode(SslSessionCacheMode::OFF);
-
-        let read_dir = fs::read_dir(client_ca).map_err(|err| {
-            std::io::Error::new(
-                ErrorKind::Other,
-                format!(
-                    "Failed to create TLS listener while loading client ca from {}: {:?}",
-                    client_ca.display(),
-                    err
-                ),
-            )
-        })?;
-
-        for cert_dir_ent in read_dir.filter_map(|item| item.ok()).filter(|item| {
-            item.file_name()
-                .to_str()
-                // Hashed certs end in .0
-                // Hashed crls are .r0
-                .map(|fname| fname.ends_with(".0"))
-                .unwrap_or_default()
-        }) {
-            let mut cert_pem = String::new();
-            fs::File::open(cert_dir_ent.path())
-                .and_then(|mut file| file.read_to_string(&mut cert_pem))
-                .map_err(|err| {
-                    std::io::Error::new(
-                        ErrorKind::Other,
-                        format!("Failed to create TLS listener: {:?}", err),
-                    )
-                })?;
-
-            let cert = X509::from_pem(cert_pem.as_bytes()).map_err(|err| {
-                std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to create TLS listener: {:?}", err),
-                )
-            })?;
-
-            let cert_store = tls_builder.cert_store_mut();
-            cert_store.add_cert(cert.clone()).map_err(|err| {
-                std::io::Error::new(
-                    ErrorKind::Other,
-                    format!(
-                        "Failed to load cert store while creating TLS listener: {:?}",
-                        err
-                    ),
-                )
-            })?;
-            // This tells the client what CA's they should use. It DOES NOT
-            // verify them. That's the job of the cert store above!
-            tls_builder.add_client_ca(&cert).map_err(|err| {
-                std::io::Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to create TLS listener: {:?}", err),
-                )
-            })?;
-        }
-
-        // TODO: Build our own CRL map HERE!
-
-        // Allow dumping client cert chains for dev debugging
-        // In the case this is status=false, should we be dumping these anyway?
-        if enabled!(tracing::Level::TRACE) {
-            tls_builder.set_verify_callback(verify, |status, x509store| {
-                if let Some(current_cert) = x509store.current_cert() {
-                    let cert_text_bytes = current_cert.to_text().unwrap_or_default();
-                    let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
-                    tracing::warn!(client_cert = %cert_text);
-                };
-
-                if let Some(chain) = x509store.chain() {
-                    for cert in chain.iter() {
-                        let cert_text_bytes = cert.to_text().unwrap_or_default();
-                        let cert_text = String::from_utf8_lossy(cert_text_bytes.as_slice());
-                        tracing::warn!(chain_cert = %cert_text);
-                    }
-                }
-
-                status
-            });
-        }
-
-        // End tls_client setup
-    }
-
-    let tls_acceptor = tls_builder.build();
+    mut rx: broadcast::Receiver<CoreAction>,
+    server_message_tx: broadcast::Sender<CoreAction>,
+    mut tls_acceptor_reload_rx: mpsc::Receiver<SslAcceptor>,
+) {
     pin_mut!(listener);
 
     loop {
-        if let Ok((stream, addr)) = listener.accept().await {
-            let tls_acceptor = tls_acceptor.clone();
-            let app = app.clone();
-            task::spawn(handle_conn(tls_acceptor, stream, app, addr));
+        tokio::select! {
+            Ok(action) = rx.recv() => {
+                match action {
+                    CoreAction::Shutdown => break,
+                }
+            }
+            accept = listener.accept() => {
+                match accept {
+                    Ok((stream, addr)) => {
+                        let tls_acceptor = tls_acceptor.clone();
+                        let app = app.clone();
+                        task::spawn(handle_conn(tls_acceptor, stream, app, addr));
+                    }
+                    Err(err) => {
+                        error!("Web server exited with {:?}", err);
+                        if let Err(err) = server_message_tx.send(CoreAction::Shutdown) {
+                            error!("Web server failed to send shutdown message! {:?}", err)
+                        };
+                        break;
+                    }
+                }
+            }
+            Some(mut new_tls_acceptor) = tls_acceptor_reload_rx.recv() => {
+                std::mem::swap(&mut tls_acceptor, &mut new_tls_acceptor);
+                info!("Reloaded http tls acceptor");
+            }
         }
     }
+
+    info!("Stopped {}", super::TaskName::HttpsServer);
+}
+
+async fn server_loop_plaintext(
+    addr: SocketAddr,
+    app: IntoMakeServiceWithConnectInfo<Router, ClientConnInfo>,
+    mut rx: broadcast::Receiver<CoreAction>,
+) {
+    let listener = axum_server::bind(addr).serve(app);
+
+    pin_mut!(listener);
+
+    loop {
+        tokio::select! {
+            Ok(action) = rx.recv() => {
+                match action {
+                    CoreAction::Shutdown =>
+                        break,
+                }
+            }
+            _ = &mut listener => {}
+        }
+    }
+
+    info!("Stopped {}", super::TaskName::HttpsServer);
 }
 
 /// This handles an individual connection.

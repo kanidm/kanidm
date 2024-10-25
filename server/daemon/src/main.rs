@@ -756,7 +756,7 @@ async fn kanidm_main(
                         loop {
                             #[cfg(target_family = "unix")]
                             {
-                                let mut listener = sctx.tx.subscribe();
+                                let mut listener = sctx.subscribe();
                                 tokio::select! {
                                     Ok(()) = tokio::signal::ctrl_c() => {
                                         break
@@ -780,7 +780,8 @@ async fn kanidm_main(
                                         #[allow(clippy::unwrap_used)]
                                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                     } => {
-                                        // Ignore
+                                        // Reload TLS certificates
+                                        sctx.tls_acceptor_reload().await
                                     }
                                     Some(()) = async move {
                                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
