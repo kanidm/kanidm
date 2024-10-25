@@ -486,7 +486,7 @@ pub(crate) async fn view_new_totp(
         )));
     };
 
-    return Ok((push_url, partial).into_response());
+    Ok((push_url, partial).into_response())
 }
 
 pub(crate) async fn add_totp(
