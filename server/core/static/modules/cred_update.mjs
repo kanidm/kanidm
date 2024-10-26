@@ -69,7 +69,7 @@ function onPasskeyCreated(assertion) {
         document.getElementById("passkey-create-data").value = JSON.stringify(creationData)
 
         // Make the name input visible and hide the "Begin Passkey Enrollment" button
-        document.getElementById("passkeyNamingSafariBtn").classList.add("d-none")
+        document.getElementById("passkeyNamingSafariPre").classList.add("d-none")
         document.getElementById("passkeyNamingForm").classList.remove("d-none")
         document.getElementById("passkeyNamingSubmitBtn").classList.remove("d-none")
     } catch (e) {

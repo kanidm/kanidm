@@ -12,10 +12,12 @@ use kanidm_proto::internal::UserAuthToken;
 use super::constants::{ProfileMenuItems, UiMessage, Urls};
 use super::errors::HtmxError;
 use super::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
+use super::navbar::NavbarCtx;
 
 #[derive(Template)]
 #[template(path = "user_settings.html")]
 pub(crate) struct ProfileView {
+    navbar_ctx: NavbarCtx,
     profile_partial: ProfilePartialView,
 }
 
@@ -27,13 +29,13 @@ struct ProfilePartialView {
     account_name: String,
     display_name: String,
     email: Option<String>,
-    posix_enabled: bool,
 }
 
 pub(crate) async fn view_profile_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
 ) -> Result<ProfileView, WebError> {
     let uat: UserAuthToken = state
         .qe_r_ref
@@ -45,13 +47,13 @@ pub(crate) async fn view_profile_get(
     let can_rw = uat.purpose_readwrite_active(time);
 
     Ok(ProfileView {
+        navbar_ctx: NavbarCtx { domain_info },
         profile_partial: ProfilePartialView {
             menu_active_item: ProfileMenuItems::UserProfile,
             can_rw,
             account_name: uat.name().to_string(),
             display_name: uat.displayname.clone(),
             email: uat.mail_primary.clone(),
-            posix_enabled: false,
         },
     })
 }
