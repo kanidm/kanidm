@@ -16,19 +16,17 @@ test = true
 doctest = false
 
 [features]
-default = ["ui_htmx"]
-ui_htmx = []
+default = []
 dev-oauth2-device-flow = []
 
 [dependencies]
-async-trait = { workspace = true }
 askama = { workspace = true, features = ["with-axum"] }
 askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-extra = { version = "0.9.4", features = ["cookie"] }
 axum-macros = "0.4.1"
-axum-server = { version = "0.7.1", features = ["tls-openssl"] }
+axum-server = { version = "0.7.1", default-features = false }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
@@ -36,7 +34,6 @@ cron = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
 futures-util = { workspace = true }
-hashbrown = { workspace = true }
 hyper = { workspace = true }
 hyper-util = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -50,7 +47,6 @@ openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
 # opentelemetry_api = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
-rand = { workspace = true }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
@@ -71,8 +67,6 @@ tower-http = { version = "0.6.1", features = [
     "uuid",
 ] }
 tracing = { workspace = true, features = ["attributes"] }
-tracing-subscriber = { workspace = true, features = ["time", "json"] }
-urlencoding = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true, features = ["serde", "v4"] }
 utoipa = { workspace = true, features = [

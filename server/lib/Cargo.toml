@@ -17,14 +17,6 @@ path = "src/lib.rs"
 test = true
 doctest = false
 
-[[bench]]
-name = "scaling_10k"
-harness = false
-
-[[bench]]
-name = "image_benches"
-harness = false
-
 [features]
 default = []
 dhat-heap = ["dep:dhat"]
@@ -48,8 +40,7 @@ kanidm_proto = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 lazy_static = { workspace = true }
 ldap3_proto = { workspace = true }
-libc = { workspace = true }
-libsqlite3-sys = { workspace = true }
+# libsqlite3-sys = { workspace = true }
 num_enum = { workspace = true }
 # We need to explicitly ask for openssl-sys so that we get the version propagated
 # into the build.rs for legacy feature checks.
@@ -69,19 +60,15 @@ serde = { workspace = true, features = ["derive"] }
 serde_cbor = { workspace = true }
 serde_json = { workspace = true }
 sketching = { workspace = true }
-smartstring = { workspace = true, features = ["serde"] }
 smolset = { workspace = true }
 sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std"] }
 tokio = { workspace = true, features = ["net", "sync", "time", "rt"] }
-tokio-util = { workspace = true, features = ["codec"] }
-toml = { workspace = true }
 nonempty = { workspace = true, features = ["serialize"] }
 
 tracing = { workspace = true, features = ["attributes"] }
 
 url = { workspace = true, features = ["serde"] }
-urlencoding = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 webauthn-rs = { workspace = true, features = [
     "resident-key-support",
@@ -110,7 +97,6 @@ compact_jwt = { workspace = true, features = [
     "hsm-crypto",
     "unsafe_release_without_verify",
 ] }
-criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }
 # This is needed so that we can use a test feature across the crate boundary to proto

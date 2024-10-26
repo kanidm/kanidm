@@ -9,11 +9,11 @@
 <main id="main" class="form-signin m-auto align-items-center d-flex flex-column">
 	(% if display_ctx.domain_info.image().is_some() %)
 	<img src="/ui/images/domain"
-		alt="Kanidm" class="kanidm_logo" />
+		alt="(( display_ctx.domain_info.display_name() ))" class="kanidm_logo" />
 	(% else %)
 	<img
 		src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
-		alt="Kanidm" class="kanidm_logo" />
+		alt="(( display_ctx.domain_info.display_name() ))" class="kanidm_logo" />
 	(% endif %)
 	<h3>Kanidm</h3>
 	(% if let Some(reauth) = display_ctx.reauth %)

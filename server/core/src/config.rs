@@ -266,7 +266,6 @@ impl ServerConfig {
                 "KANIDM_PKG_VERSION",
                 "KANIDM_PRE_RELEASE",
                 "KANIDM_PROFILE_NAME",
-                "KANIDM_WEB_UI_PKG_PATH",
             ];
 
             if ignorable_build_fields.contains(&key.as_str()) {

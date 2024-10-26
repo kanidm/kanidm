@@ -89,7 +89,10 @@ async fn main() -> ExitCode {
                         }
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
                             // Prompt for and get the password
-                            let cred = match rpassword::prompt_password("Enter Unix password: ") {
+                            let cred = match dialoguer::Password::new()
+                                .with_prompt("Enter Unix password: ")
+                                .interact()
+                            {
                                 Ok(p) => p,
                                 Err(e) => {
                                     error!("Problem getting input: {}", e);

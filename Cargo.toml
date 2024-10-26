@@ -23,10 +23,6 @@ members = [
     "unix_integration/nss_kanidm",
     "unix_integration/pam_kanidm",
     "unix_integration/resolver",
-    "server/web_ui/admin",
-    "server/web_ui/login_flows",
-    "server/web_ui/user",
-    "server/web_ui/shared",
     "server/daemon",
     "server/lib",
     "server/lib-macros",
@@ -169,7 +165,6 @@ compact_jwt = { version = "^0.4.2", default-features = false }
 concread = "^0.5.3"
 cron = "0.12.1"
 crossbeam = "0.8.4"
-criterion = "^0.5.1"
 csv = "1.3.0"
 dialoguer = "0.10.4"
 dhat = "0.3.3"
@@ -178,11 +173,8 @@ fernet = "^0.2.1"
 filetime = "^0.2.24"
 fs4 = "^0.8.3"
 futures = "^0.3.31"
-futures-concurrency = "^3.1.0"
 futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.64.0", default-features = false }
-gloo = "^0.8.1"
-gloo-utils = "0.2.0"
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
 http = "1.1.0"
@@ -198,7 +190,6 @@ image = { version = "0.24.9", default-features = false, features = [
 ] }
 itertools = "0.13.0"
 enum-iterator = "2.1.0"
-js-sys = "^0.3.70"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
 lazy_static = "^1.5.0"
@@ -247,7 +238,6 @@ reqwest = { version = "0.12.8", default-features = false, features = [
     "gzip",
     "rustls-tls-native-roots",
 ] }
-rpassword = "^7.3.1"
 rusqlite = { version = "^0.28.0", features = ["array", "bundled"] }
 rustls = { version = "0.23.13", default-features = false, features = [
     "aws_lc_rs",
@@ -259,7 +249,6 @@ serde = "^1.0.210"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.132"
 serde_urlencoded = "^0.7.1"
-serde-wasm-bindgen = "0.5"
 serde_with = "3.11.0"
 sha-crypt = "0.5.0"
 sha2 = "0.10.8"
@@ -283,7 +272,6 @@ tracing = { version = "^0.1.40", features = [
     "max_level_trace",
     "release_max_level_debug",
 ] }
-# tracing = { version = "^0.1.37" }
 tracing-subscriber = { version = "^0.3.18", features = ["env-filter"] }
 tracing-forest = "^0.1.6"
 
@@ -292,10 +280,6 @@ urlencoding = "2.1.3"
 utoipa = { version = "4.2.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = "6.0.0"
 uuid = "^1.11.0"
-
-wasm-bindgen = "^0.2.95"
-wasm-bindgen-futures = "^0.4.45"
-wasm-bindgen-test = "0.3.45"
 
 webauthn-authenticator-rs = { version = "0.5.0", features = [
     "softpasskey",
@@ -306,14 +290,12 @@ webauthn-rs = { version = "0.5.0", features = ["preview-features"] }
 webauthn-rs-core = "0.5.0"
 webauthn-rs-proto = "0.5.0"
 
-web-sys = "^0.3.72"
 whoami = "^1.5.2"
 walkdir = "2"
 
 x509-cert = "0.2.5"
 
-yew = "^0.20.0"
-yew-router = "^0.17.0"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
+

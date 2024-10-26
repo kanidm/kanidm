@@ -30,9 +30,7 @@ kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
 kanidmd_lib = { workspace = true }
-lazy_static = { workspace = true }
 openssl = { workspace = true }
-regex = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 serde = { workspace = true }
 sketching = { workspace = true }

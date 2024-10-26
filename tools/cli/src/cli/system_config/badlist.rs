@@ -1,6 +1,5 @@
 use crate::common::OpType;
 use crate::{handle_client_error, PwBadlistOpt};
-use futures_concurrency::prelude::*;
 
 // use std::thread;
 use std::fs::File;
@@ -104,12 +103,15 @@ impl PwBadlistOpt {
                     })
                     .collect();
 
-                let results = task_handles.join().await;
+                let mut filt_pwset = Vec::with_capacity(pwset.len());
 
-                let mut filt_pwset: Vec<_> = results
-                    .into_iter()
-                    .flat_map(|res| res.expect("Thread join failure"))
-                    .collect();
+                for task_handle in task_handles {
+                    let Ok(mut results) = task_handle.await else {
+                        error!("Failed to join a worker thread, unable to proceed");
+                        return;
+                    };
+                    filt_pwset.append(&mut results);
+                }
 
                 filt_pwset.sort_unstable();
 

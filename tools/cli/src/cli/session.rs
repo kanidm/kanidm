@@ -253,10 +253,13 @@ async fn do_password(
             trace!("User provided password directly, don't need to prompt.");
             password.to_owned()
         }
-        None => rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
-            error!("Failed to create password prompt -- {:?}", e);
-            std::process::exit(1);
-        }),
+        None => dialoguer::Password::new()
+            .with_prompt("Enter password: ")
+            .interact()
+            .unwrap_or_else(|e| {
+                error!("Failed to create password prompt -- {:?}", e);
+                std::process::exit(1);
+            }),
     };
     client.auth_step_password(password.as_str()).await
 }

@@ -7,9 +7,7 @@ mod javascript;
 mod manifest;
 pub(crate) mod middleware;
 mod oauth2;
-mod tests;
 pub(crate) mod trace;
-mod ui;
 mod v1;
 mod v1_domain;
 mod v1_oauth2;
@@ -35,7 +33,6 @@ use axum::{
 use axum_extra::extract::cookie::CookieJar;
 use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
-use hashbrown::HashMap;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
 use kanidm_proto::{constants::KSESSIONID, internal::COOKIE_AUTH_SESSION_ID};
@@ -70,8 +67,6 @@ pub struct ServerState {
     pub qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
     pub jws_signer: JwsHs256Signer,
-    // The SHA384 hashes of javascript files we're going to serve to users
-    pub js_files: JavaScriptFiles,
     pub(crate) trust_x_forward_for: bool,
     pub csp_header: HeaderValue,
     pub domain: String,
@@ -117,73 +112,27 @@ impl ServerState {
     }
 }
 
-#[derive(Clone)]
-pub struct JavaScriptFiles {
-    all_pages: Vec<JavaScriptFile>,
-    selected: HashMap<String, JavaScriptFile>,
-}
-
-pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
+pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> {
     let mut all_pages: Vec<JavaScriptFile> = Vec::new();
-    let mut selected: HashMap<String, JavaScriptFile> = HashMap::new();
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        let pkg_path = if cfg!(feature = "ui_htmx") {
-            env!("KANIDM_HTMX_UI_PKG_PATH").to_owned()
-        } else {
-            env!("KANIDM_WEB_UI_PKG_PATH").to_owned()
-        };
+        let pkg_path = env!("KANIDM_HTMX_UI_PKG_PATH").to_owned();
 
-        let filelist = if cfg!(feature = "ui_htmx") {
-            vec![
-                ("external/bootstrap.bundle.min.js", None, false, false),
-                ("external/htmx.min.1.9.12.js", None, false, false),
-                ("external/confetti.js", None, false, false),
-                ("external/base64.js", None, false, false),
-                ("modules/cred_update.mjs", None, false, false),
-                ("pkhtml.js", None, false, false),
-            ]
-        } else {
-            vec![
-                (
-                    "wasmloader_admin.js",
-                    Some("module".to_string()),
-                    false,
-                    true,
-                ),
-                (
-                    "wasmloader_login_flows.js",
-                    Some("module".to_string()),
-                    false,
-                    true,
-                ),
-                (
-                    "wasmloader_user.js",
-                    Some("module".to_string()),
-                    false,
-                    true,
-                ),
-                ("shared.js", Some("module".to_string()), false, false),
-                ("external/bootstrap.bundle.min.js", None, false, false),
-                ("external/viz.js", None, true, false),
-            ]
-        };
+        let filelist = [
+            "external/bootstrap.bundle.min.js",
+            "external/htmx.min.1.9.12.js",
+            "external/confetti.js",
+            "external/base64.js",
+            "modules/cred_update.mjs",
+            "pkhtml.js",
+        ];
 
-        for (filepath, filetype, dynamic, select) in filelist {
+        for filepath in filelist {
             match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
                 Ok(hash) => {
-                    let js = JavaScriptFile {
-                        filepath,
-                        dynamic,
-                        hash,
-                        filetype,
-                    };
-                    if select {
-                        selected.insert(filepath.to_string(), js);
-                    } else {
-                        all_pages.push(js)
-                    }
+                    let js = JavaScriptFile { hash };
+                    all_pages.push(js)
                 }
                 Err(err) => {
                     admin_error!(
@@ -196,10 +145,7 @@ pub fn get_js_files(role: ServerRole) -> Result<JavaScriptFiles, ()> {
             }
         }
     }
-    Ok(JavaScriptFiles {
-        all_pages,
-        selected,
-    })
+    Ok(all_pages)
 }
 
 pub async fn create_https_server(
@@ -214,16 +160,11 @@ pub async fn create_https_server(
 ) -> Result<task::JoinHandle<()>, ()> {
     let rx = server_message_tx.subscribe();
 
-    let js_files = get_js_files(config.role)?;
+    let all_js_files = get_js_files(config.role)?;
     // set up the CSP headers
     // script-src 'self'
     //      'sha384-Zao7ExRXVZOJobzS/uMp0P1jtJz3TTqJU4nYXkdmsjpiVD+/wcwCyX7FGqRIqvIz'
-    //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM'
-    //      'unsafe-eval';
-    let mut all_js_files = js_files.all_pages.clone();
-    for (_, jsfile) in js_files.selected.clone() {
-        all_js_files.push(jsfile);
-    }
+    //      'sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM';
 
     let js_directives = all_js_files
         .into_iter()
@@ -245,7 +186,7 @@ pub async fn create_https_server(
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
-            "script-src 'self' 'unsafe-eval'{};",
+            "script-src 'self'{};",
         ),
         js_checksums
     );
@@ -261,7 +202,6 @@ pub async fn create_https_server(
         qe_w_ref,
         qe_r_ref,
         jws_signer,
-        js_files,
         trust_x_forward_for,
         csp_header,
         domain: config.domain.clone(),
@@ -270,36 +210,17 @@ pub async fn create_https_server(
 
     let static_routes = match config.role {
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            // Create a spa router that captures everything at ui without key extraction.
-            if cfg!(feature = "ui_htmx") {
-                Router::new()
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
-                    .route("/ui/images/domain", get(v1_domain::image_get))
-                    // Layers only apply to routes that are *already* added, not the ones
-                    // added after.
-                    .layer(middleware::compression::new())
-                    .layer(from_fn(middleware::caching::cache_me_short))
-                    .route("/", get(|| async { Redirect::to("/ui") }))
-                    .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
-                    .nest("/ui", views::view_router())
-            } else {
-                Router::new()
-                    .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
-                    .layer(middleware::compression::new())
-                    // Direct users to the base app page. If a login is required,
-                    // then views will take care of redirection.
-                    .route("/", get(|| async { Redirect::temporary("/ui") }))
-                    .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
-                    // user UI app is the catch-all
-                    .nest("/ui", ui::spa_router_user_ui())
-                    // login flows app
-                    .nest("/ui/login", ui::spa_router_login_flows())
-                    .nest("/ui/reauth", ui::spa_router_login_flows())
-                    .nest("/ui/oauth2", ui::spa_router_login_flows())
-                    // admin app
-                    .nest("/ui/admin", ui::spa_router_admin())
-                // skip_route_check
-            }
+            Router::new()
+                .route("/ui/images/oauth2/:rs_name", get(oauth2::oauth2_image_get))
+                .route("/ui/images/domain", get(v1_domain::image_get))
+                .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
+                // Layers only apply to routes that are *already* added, not the ones
+                // added after.
+                .layer(middleware::compression::new())
+                .layer(from_fn(middleware::caching::cache_me_short))
+                .route("/", get(|| async { Redirect::to("/ui") }))
+                .nest("/ui", views::view_router())
+            // Can't compress on anything that changes
         }
         ServerRole::WriteReplicaNoUI => Router::new(),
     };
@@ -312,32 +233,18 @@ pub async fn create_https_server(
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_router = if cfg!(feature = "ui_htmx") {
-                let pkg_path = PathBuf::from(env!("KANIDM_HTMX_UI_PKG_PATH"));
-                if !pkg_path.exists() {
-                    eprintln!(
-                        "Couldn't find htmx UI package path: ({}), quitting.",
-                        env!("KANIDM_HTMX_UI_PKG_PATH")
-                    );
-                    std::process::exit(1);
-                }
-                Router::new().nest_service("/pkg", ServeDir::new(pkg_path))
-                // TODO: Add in the br precompress
-            } else {
-                let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
-                if !pkg_path.exists() {
-                    eprintln!(
-                        "Couldn't find Web UI package path: ({}), quitting.",
-                        env!("KANIDM_WEB_UI_PKG_PATH")
-                    );
-                    std::process::exit(1);
-                }
-
-                Router::new()
-                    .nest_service("/pkg", ServeDir::new(pkg_path).precompressed_br())
-                    .layer(middleware::compression::new())
+            let pkg_path = PathBuf::from(env!("KANIDM_HTMX_UI_PKG_PATH"));
+            if !pkg_path.exists() {
+                eprintln!(
+                    "Couldn't find htmx UI package path: ({}), quitting.",
+                    env!("KANIDM_HTMX_UI_PKG_PATH")
+                );
+                std::process::exit(1);
             }
-            .layer(from_fn(middleware::caching::cache_me_short));
+            let pkg_router = Router::new()
+                .nest_service("/pkg", ServeDir::new(pkg_path))
+                // TODO: Add in the br precompress
+                .layer(from_fn(middleware::caching::cache_me_short));
 
             app.merge(pkg_router)
         }

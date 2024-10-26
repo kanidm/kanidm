@@ -34,10 +34,8 @@ futures = { workspace = true }
 dhat = { workspace = true, optional = true }
 clap = { workspace = true, features = ["env"] }
 reqwest = { workspace = true }
-serde = { workspace = true, features = ["derive"] }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
-toml = { workspace = true }
 tracing = { workspace = true }
 serde_json.workspace = true
 

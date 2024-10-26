@@ -32,35 +32,6 @@ pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
 
 #[derive(Clone)]
 pub struct JavaScriptFile {
-    // Relative to the pkg/ dir
-    pub filepath: &'static str,
-    // Dynamic
-    pub dynamic: bool,
     // SHA384 hash of the file
     pub hash: String,
-    // if it's a module add the "type"
-    pub filetype: Option<String>,
-}
-
-impl JavaScriptFile {
-    /// returns a `<script>` or `<meta>` HTML tag, includes the hash as a query value as a cache-busting mechanism
-    pub fn as_tag(&self) -> String {
-        let filetype = match &self.filetype {
-            Some(val) => {
-                format!(" type=\"{}\"", val.as_str())
-            }
-            _ => String::from(""),
-        };
-        if self.dynamic {
-            format!(
-                r#"<meta async src="/pkg/{}?hash={}" integrity="sha384-{}"{} />"#,
-                self.filepath, &self.hash, &self.hash, &filetype,
-            )
-        } else {
-            format!(
-                r#"<script async src="/pkg/{}?hash={}" integrity="sha384-{}"{}></script>"#,
-                self.filepath, &self.hash, &self.hash, &filetype,
-            )
-        }
-    }
 }

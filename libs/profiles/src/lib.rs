@@ -54,7 +54,6 @@ impl std::fmt::Display for CpuOptLevel {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ProfileConfig {
-    web_ui_pkg_path: String,
     htmx_ui_pkg_path: String,
     #[serde(default)]
     cpu_flags: CpuOptLevel,
@@ -127,10 +126,6 @@ pub fn apply_profile() {
     }
     println!("cargo:rustc-env=KANIDM_PROFILE_NAME={}", profile);
     println!("cargo:rustc-env=KANIDM_CPU_FLAGS={}", profile_cfg.cpu_flags);
-    println!(
-        "cargo:rustc-env=KANIDM_WEB_UI_PKG_PATH={}",
-        profile_cfg.web_ui_pkg_path
-    );
     println!(
         "cargo:rustc-env=KANIDM_HTMX_UI_PKG_PATH={}",
         profile_cfg.htmx_ui_pkg_path

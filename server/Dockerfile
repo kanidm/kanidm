@@ -38,13 +38,6 @@ COPY . /usr/src/kanidm
 
 # ======================
 
-# WORKDIR /usr/src/kanidm/server/web_ui
-# # This can't be used in the wasm build for now.
-# # ENV RUSTFLAGS="-Clinker=clang"
-# RUN ./build_wasm.sh
-
-# ======================
-
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 # Exports don't persist through RUN statements.
@@ -72,7 +65,6 @@ RUN \
         pam
 
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
-COPY --from=builder /usr/src/kanidm/server/web_ui/pkg /pkg
 COPY --from=builder /usr/src/kanidm/server/core/static /hpkg
 RUN chmod +x /sbin/kanidmd
 

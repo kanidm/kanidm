@@ -23,11 +23,9 @@ chrono = { workspace = true }
 clap = { workspace = true }
 crossbeam = { workspace = true }
 csv = { workspace = true }
-futures-util = { workspace = true, features = ["sink"] }
 hashbrown = { workspace = true }
 idlset = { workspace = true }
 kanidm_client = { workspace = true }
-kanidm_proto = { workspace = true }
 mathru = { workspace = true }
 rand = { workspace = true }
 rand_chacha = { workspace = true }
@@ -37,7 +35,6 @@ tokio = { workspace = true, features = ["rt-multi-thread", "sync"] }
 toml = { workspace = true }
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
-uuid = { workspace = true, features = ["serde", "v4" ] }
 
 [target.'cfg(not(any(target_family = "windows", target_os = "illumos")))'.dependencies]
 mimalloc = { workspace = true }
