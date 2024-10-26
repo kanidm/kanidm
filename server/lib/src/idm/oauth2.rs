@@ -23,12 +23,11 @@ use compact_jwt::{
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
-#[cfg(feature = "dev-oauth2-device-flow")]
-use itertools::Itertools;
 use kanidm_proto::constants::*;
 
-#[cfg(feature = "dev-oauth2-device-flow")]
-use kanidm_proto::oauth2::OAUTH2_DEVICE_CODE_EXPIRY_SECONDS;
+// #[cfg(feature = "dev-oauth2-device-flow")]
+// use kanidm_proto::oauth2::OAUTH2_DEVICE_CODE_EXPIRY_SECONDS;
+
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
@@ -2831,8 +2830,9 @@ fn validate_scopes(req_scopes: &BTreeSet<String>) -> Result<(), Oauth2Error> {
 }
 
 /// device code is a random bucket of bytes used in the device flow
-#[cfg(any(feature = "dev-oauth2-device-flow", test))]
 #[inline]
+#[cfg(any(feature = "dev-oauth2-device-flow", test))]
+#[allow(dead_code)]
 fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
     let mut rng = rand::thread_rng();
     let mut result = [0u8; 16];
@@ -2847,6 +2847,7 @@ fn gen_device_code() -> Result<[u8; 16], Oauth2Error> {
 
 #[inline]
 #[cfg(any(feature = "dev-oauth2-device-flow", test))]
+#[allow(dead_code)]
 /// Returns (xxx-yyy-zzz, digits) where one's the human-facing code, the other is what we store in the DB.
 fn gen_user_code() -> (String, u32) {
     use rand::Rng;

@@ -12,6 +12,7 @@ use time::OffsetDateTime;
 use tracing::{info, instrument, trace};
 use uuid::Uuid;
 
+
 use kanidmd_lib::{
     event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent},
     filter::{Filter, FilterInvalid},
@@ -32,6 +33,9 @@ use kanidmd_lib::{
 };
 
 use kanidmd_lib::prelude::*;
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+use std::collections::BTreeSet;
 
 use super::QueryServerWriteV1;
 
