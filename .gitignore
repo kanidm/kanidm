@@ -19,7 +19,6 @@ tools/orca/example_profiles/small/orca-edited.toml
 *.d.ts
 
 server/web_ui/*/pkg/*.js
-server/web_ui/*/pkg/*.wasm
 
 # kanidm simple packaging
 deployment-config/

@@ -9,11 +9,6 @@ if [ -z "$(which cargo)" ]; then
     ERROR=1
 fi
 
-if [ -z "$(which wasm-pack)" ]; then
-    echo "You don't have wasm-pack installed! Installing it now..."
-    cargo install wasm-pack
-fi
-
 if [ $ERROR -eq 1 ]; then
     exit 1
 fi

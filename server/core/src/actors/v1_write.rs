@@ -12,7 +12,6 @@ use time::OffsetDateTime;
 use tracing::{info, instrument, trace};
 use uuid::Uuid;
 
-
 use kanidmd_lib::{
     event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent},
     filter::{Filter, FilterInvalid},

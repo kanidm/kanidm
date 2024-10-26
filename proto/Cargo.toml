@@ -16,10 +16,8 @@ test = true
 doctest = true
 
 [features]
-# default = ["dev-oauth2-device-flow"]
-wasm = ["webauthn-rs-proto/wasm"]
+default = []
 test = []
-
 dev-oauth2-device-flow = []
 
 [dependencies]
@@ -33,7 +31,6 @@ serde_json = { workspace = true }
 serde_with = { workspace = true, features = ["time_0_3", "base64", "hex"] }
 smartstring = { workspace = true, features = ["serde"] }
 time = { workspace = true, features = ["serde", "std"] }
-tracing = { workspace = true }
 url = { workspace = true, features = ["serde"] }
 urlencoding = { workspace = true }
 utoipa = { workspace = true }

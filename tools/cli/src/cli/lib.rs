@@ -198,10 +198,15 @@ impl KanidmClientOpt {
 
 pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     for _ in 0..3 {
-        let password = rpassword::prompt_password(prompt).ok()?;
+        let password = dialoguer::Password::new()
+            .with_prompt(prompt)
+            .interact()
+            .ok()?;
 
-        let password_confirm =
-            rpassword::prompt_password("Retype the new password to confirm: ").ok()?;
+        let password_confirm = dialoguer::Password::new()
+            .with_prompt("Reenter the password to confirm: ")
+            .interact()
+            .ok()?;
 
         if password == password_confirm {
             return Some(password);

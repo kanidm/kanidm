@@ -1,15 +1,15 @@
-<nav class="(( crate::https::ui::CSS_NAVBAR_NAV ))">
+<nav class="navbar navbar-expand-md navbar-dark bg-dark mb-4">
     <div class="container-lg">
-        <a class="(( crate::https::ui::CSS_NAVBAR_BRAND ))" href="/ui/apps">
+        <a class="navbar-brand d-flex align-items-center" href="/ui/apps">
             (% if navbar_ctx.domain_info.image().is_some() %)
             <img src="/ui/images/domain"
-                alt="Kanidm" width="auto" height="40" class="navbar-toggler-img" />
+                alt="(( navbar_ctx.domain_info.display_name() ))" width="auto" height="40" class="navbar-toggler-img" />
             (% else %)
             <img
                 src="/pkg/img/logo.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
-                alt="Kanidm" width="auto" height="40" class="navbar-toggler-img" />
+                alt="(( navbar_ctx.domain_info.display_name() ))" width="auto" height="40" class="navbar-toggler-img" />
             (% endif %)
-            <div class="ps-2">Kanidm</div>
+            <div class="ps-2">(( navbar_ctx.domain_info.display_name() ))</div>
         </a>
 
         <!-- this shows a button on mobile devices to open the menu-->
@@ -21,7 +21,7 @@
         </button>
 
         <div class="collapse navbar-collapse" id="navbarCollapse">
-            <ul class="(( crate::https::ui::CSS_NAVBAR_LINKS_UL ))">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0">
                 <li>
                     <a class="nav-link" href=((Urls::Apps))>
                         <span data-feather="file"></span>Apps</a>
@@ -31,7 +31,7 @@
                         <span data-feather="file"></span>Profile</a>
                 </li>
             </ul>
-            <ul class="(( crate::https::ui::CSS_NAVBAR_LINKS_UL )) ms-md-auto">
+            <ul class="navbar-nav me-auto mb-2 mb-md-0 ms-md-auto">
                 <li>
                     <a class="nav-link" href="#" data-bs-toggle="modal"
                         data-bs-target="#signoutModal">Sign out</a>

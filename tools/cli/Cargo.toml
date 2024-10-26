@@ -43,13 +43,11 @@ anyhow = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 compact_jwt = { workspace = true, features = ["openssl"] }
 dialoguer = { workspace = true }
-futures-concurrency = { workspace = true }
 libc = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 kanidm_proto = { workspace = true }
 qrcode = { workspace = true }
-rpassword = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 shellexpand = { workspace = true }
@@ -62,6 +60,8 @@ uuid = { workspace = true }
 zxcvbn = { workspace = true }
 lazy_static.workspace = true
 regex = { workspace = true }
+
+[dev-dependencies]
 sketching = { workspace = true }
 
 [build-dependencies]

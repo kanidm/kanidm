@@ -83,7 +83,9 @@ async fn main() -> Result<(), ()> {
     let r = if opt.username == "anonymous" {
         client.auth_anonymous().await
     } else {
-        let password = rpassword::prompt_password("Enter password: ")
+        let password = dialoguer::Password::new()
+            .with_prompt("Enter password: ")
+            .interact()
             .map_err(|e| error!("Failed to retrieve password - {:?}", e))?;
         client
             .auth_simple_password(opt.username.as_str(), password.as_str())

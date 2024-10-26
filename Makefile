@@ -316,14 +316,6 @@ cert/clean:
 	rm -f /tmp/kanidm/ca.txt*
 	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}
 
-.PHONY: webui
-webui: ## Build the WASM web frontend
-	cd server/web_ui && ./build_wasm.sh
-
-.PHONY: webui/test
-webui/test: ## Run wasm-pack test
-	cd server/web_ui/shared/ && wasm-pack test --headless --chrome --mode no-install
-
 .PHONY: rust/coverage
 coverage/test: ## Run coverage tests
 coverage/test:

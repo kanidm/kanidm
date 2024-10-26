@@ -9,18 +9,18 @@ else
 fi
 
 ${SUDOCMD} apt-get update &&
-${SUDOCMD} apt-get install -y \
-    libpam0g-dev \
-    libudev-dev \
-    libssl-dev \
-    pkg-config \
-    curl \
-    rsync \
-    git \
-    cmake \
-    build-essential \
-    jq \
-    tpm-udev
+    ${SUDOCMD} apt-get install -y \
+        libpam0g-dev \
+        libudev-dev \
+        libssl-dev \
+        pkg-config \
+        curl \
+        rsync \
+        git \
+        cmake \
+        build-essential \
+        jq \
+        tpm-udev
 
 if [ -z "${PACKAGING}" ]; then
     PACKAGING=0
@@ -31,17 +31,18 @@ if [ "${PACKAGING}" -eq 1 ]; then
     # This works in Debian, but not in Ubuntu because they do multiarch weird.
     # It would be too invasive to config a daily driver Ubuntu install for multiarch,
     # so instead we don't, and just warn.
+    # shellcheck disable=SC1091
     source /etc/os-release
     if [[ "$ID" == "ubuntu" ]]; then
-      2>&1 echo "You're running Ubuntu, so we're skipping enabling multiarch for you because it would be too invasive. You won't be able to build valid debs for other than your native architecture."
-    ${SUDOCMD} apt-get install -y \
-    	libpam0g \
-    	libssl3
+        echo 2>&1 "You're running Ubuntu, so we're skipping enabling multiarch for you because it would be too invasive. You won't be able to build valid debs for other than your native architecture."
+        ${SUDOCMD} apt-get install -y \
+            libpam0g \
+            libssl3
     elif [[ "$ID" == "debian" ]]; then
-    ${SUDOCMD} dpkg --add-architecture arm64 && ${SUDOCMD} apt-get update
-    ${SUDOCMD} apt-get install -y \
-    	libpam0g:{amd64,arm64} \
-    	libssl3:{amd64,arm64}
+        ${SUDOCMD} dpkg --add-architecture arm64 && ${SUDOCMD} apt-get update
+        ${SUDOCMD} apt-get install -y \
+            libpam0g:{amd64,arm64} \
+            libssl3:{amd64,arm64}
     fi
     export INSTALL_RUST=1
 fi
@@ -71,14 +72,6 @@ if [ -z "$(which cargo)" ]; then
     ERROR=1
 fi
 
-if [ $ERROR -eq 0 ] && [ -z "$(which wasm-pack)" ]; then
-    echo "You don't have wasm-pack installed! Installing it now..."
-    cargo install wasm-pack
-fi
-if [ $ERROR -eq 0 ] && [ -z "$(which wasm-bindgen)" ]; then
-    echo "You don't have wasm-bindgen installed! Installing it now..."
-    cargo install -f wasm-bindgen-cli
-fi
 if [ $ERROR -eq 0 ] && [ -z "$(which cross)" ]; then
     echo "You don't have cross installed! Installing it now..."
     cargo install -f cross
@@ -87,7 +80,6 @@ if [ $ERROR -eq 0 ] && [ -z "$(which cargo-deb)" ]; then
     echo "You don't have cargo-deb installed! Installing it now..."
     cargo install -f cargo-deb
 fi
-
 
 if [ $ERROR -eq 1 ]; then
     exit 1

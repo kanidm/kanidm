@@ -41,5 +41,4 @@ tokio = { workspace = true, features = [
 toml = { workspace = true }
 uuid = { workspace = true, features = ["serde", "v4"] }
 url = { workspace = true, features = ["serde"] }
-webauthn-rs-proto = { workspace = true, features = ["wasm"] }
-# hyper = { workspace = true }
+webauthn-rs-proto = { workspace = true }

@@ -53,14 +53,12 @@ doctest = false
 
 [dependencies]
 async-trait.workspace = true
-# base64urlsafedata = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
-# csv = { workspace = true }
+dialoguer = { workspace = true }
 futures = { workspace = true }
 hashbrown = { workspace = true }
 libc = { workspace = true }
-# libsqlite3-sys = { workspace = true }
 lru = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -69,7 +67,6 @@ kanidm_lib_crypto = { workspace = true }
 kanidm_lib_file_permissions = { workspace = true }
 kanidm_unix_common = { workspace = true }
 notify-debouncer-full = { workspace = true }
-rpassword = { workspace = true }
 rusqlite = { workspace = true }
 selinux = { workspace = true, optional = true }
 serde = { workspace = true, features = ["derive"] }
