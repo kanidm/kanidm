@@ -16,6 +16,7 @@ test = true
 doctest = false
 
 [features]
+default = ["ui_htmx"]
 ui_htmx = []
 
 [dependencies]
