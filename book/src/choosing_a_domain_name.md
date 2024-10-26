@@ -1,96 +1,346 @@
 # Choosing a Domain Name
 
-Through out this book, Kanidm will make reference to a "domain name". This is your chosen DNS domain
-name that you intend to use for Kanidm. Choosing this domain name however is not simple as there are
-a number of considerations you need to be careful of.
+This book makes many references to a "domain name". This is the DNS domain name
+that you intend to use for Kanidm.
+
+This isn't always simple, and this chapter covers the key issues to consider
+when choosing a domain.
 
 > [!WARNING]
 >
-> Incorrect choice of the domain name may have security impacts on your Kanidm instance, not limited
-> to credential phishing, theft, session leaks and more. It is critical you follow the advice in
-> this chapter.
+> **Bad choices** of domain name may have security impacts on your Kanidm
+> instance, not limited to credential phishing, theft, session leaks and more.
+>
+> **Changing** domain name is hard to do – it not only means reconfiguring all
+> LDAP and OAuth clients, but will also break all registered WebAuthn
+> credentials for all users (which are bound to an `Origin`).
+>
+> It's critical that you consider and follow the advice in this chapter, and
+> aim to get it right the first time.
+>
+> You'll save yourself a lot of work later!
+
+<!-- -->
+
+> [!TIP]
+>
+> We believe these practices are applicable *regardless* of your organisation's
+> size (even if your Kanidm instance is just for you!), or if you think your
+> organisation is not "important enough" to be the target of attacks.
+>
+> While some suggestions may seem "extreme" or "paranoid", they generally come
+> from Kanidm's authors' collective decades of experience managing, maintaining,
+> and securing networks and systems at both very large and very small
+> organisations both inside and outside the technology industry.
 
 ## Considerations
 
-### Domain Ownership
+### Use a domain under your exclusive control
 
-It is recommended you use a domain name within a domain that you own. While many examples list
-`example.com` throughout this book, it is not recommended to use this outside of testing. Another
-example of risky domain to use is `local`. While it seems appealing to use these, because you do not
-have unique ownership of these domains, if you move your machine to a foreign network, it is
-possible you may leak credentials or other cookies to these domains. TLS in a majority of cases can
-and will protect you from such leaks however, but it should not always be relied upon as a sole line
-of defence.
+You should always use a domain name that you've registered and directly control
+its DNS.
 
-Failure to use a unique domain you own, may allow DNS hijacking or other credential leaks in some
-circumstances.
+While `example.com` and top-level domains ending in `.example` appear throughout
+this book, [these are examples only][rfc2606]. You should **not** use this
+outside of testing.
 
-### Subdomains
+[rfc2606]: https://datatracker.ietf.org/doc/html/rfc2606
 
-Due to how web browsers and webauthn work, any matching domain name or subdomain of an effective
-domain may have access to cookies within a browser session. An example is that `host.a.example.com`
-has access to cookies from `a.example.com` and `example.com`.
+You'll need a registered domain for a CA (certificate authority) to issue you a
+TLS certificate which is widely accepted by browsers. This will also **prevent**
+those same CAs from issuing a certificate for that domain to *someone else*.
 
-For this reason your Kanidm host (or hosts) should be on a unique subdomain, with no other services
-registered under that subdomain. For example, consider `idm.example.com` as a subdomain for
-exclusive use of Kanidm. This is _inverse_ to Active Directory which often has its domain name
-selected to be the parent (toplevel) domain (`example.com`).
+If you use a domain controlled by someone else (eg: a Dynamic DNS provider, or
+your cloud provider), they could take over that domain *whenever they like*.
+They could also use control of DNS or email to convince a CA to issue a
+certificate for that domain.
 
-Failure to use a unique subdomain may allow cookies to leak to other entities within your domain,
-and may allow webauthn to be used on entities you did not intend for which may or may not lead to
-some phishing scenarios.
+*Any party who holds a valid certificate for the domain can steal or issue
+credentials.*
 
-## Examples
+### Avoid non-public and reserved domains
 
-### Good Domain Names
+Avoid using "made-up" (eg: `.lan`) or reserved domains (eg:
+[`.local`][dot-local]), because your clients may leak credentials if they move
+to another network, aren't connected to a VPN, or if it
+[collides with new TLDs][name-collision].
 
-Consider we own `kanidm.com`. If we were to run geographical instances, and have testing
-environments the following domain and hostnames could be used.
+Properly-configured TLS can prevent *most* (but not all) leakage, but defence in
+depth is best.
 
-#### Production Domain Name
+This will also ensure your infrastructure is accessible regardless of your
+users' local network conditions.
 
-- origin: `https://idm.kanidm.com`
-- domain name: `idm.kanidm.com`
-- host names: `australia.idm.kanidm.com`, `newzealand.idm.kanidm.com`
+[dot-local]: https://www.rfc-editor.org/rfc/rfc6762.html#section-3
+[name-collision]: https://en.wikipedia.org/wiki/Top-level_domain#Reserved_domains
 
-This allows us to have named geographical instances such as `https://australia.idm.kanidm.com` which
-still works with webauthn and cookies which are transferable between instances.
+### Domain authorities
 
-It is critical no other hosts are registered under this domain name.
+Domain authorities can set their own eligibility policies for registering a
+top-level domain. They may also allow a third-party to challenge your claim to
+a top-level domain, subject to a dispute resolution policy. These policies may
+change over time for commercial or political reasons.
 
-#### Testing Domain Name
+If your domain is on a ccTLD (country TLD), it may be de-registered should that
+country cease to exist (eg: [as for `.io`][dot-io]).
 
-- origin: `https://idm.dev.kanidm.com`
-- domain name: `idm.dev.kanidm.com`
-- host names: `australia.idm.dev.kanidm.com`, `newzealand.idm.dev.kanidm.com`
+[dot-io]: https://www.theverge.com/2024/10/8/24265441/uk-treaty-end-io-domain-chagos-islands
 
-Note that due to the name being `idm.dev.kanidm.com` vs `idm.kanidm.com`, the testing instance is
-not a subdomain of production, meaning the cookies and webauthn tokens can NOT be transferred
-between them. This provides proper isolation between the instances.
+### Top-level domains containing "kanidm"
 
-### Bad Domain Names
+We ask that you **do not** use the word `kanidm` as part of your instance's
+*top-level* (or [public suffix][ps]) domain, eg: `contosokanidm.example`.
 
-`idm.local` - This is a bad example as `.local` is an mDNS domain name suffix which means that
-client machines if they visit another network _may_ try to contact `idm.local` believing they are on
-their usual network. If TLS certificate verification were disabled, this would allow leaking of
-credentials.
+Use something like `auth`, `idm`, `login` or `sso` instead – they're shorter,
+too!
 
-`kanidm.com` - This is bad because the use of the top level domain means that any subdomain can
-access the cookies issued by `kanidm.com`, effectively leaking them to all other hosts.
+We're OK with you using `kanidm` in a *subdomain* to point to your Kanidm
+instance, eg: `kanidm.example.com`.
 
-Second instance overlap:
+We've worked hard to build this project, and using its name in conjunction with
+an organisation *not* associated with the project dilutes the name's branding
+value.
 
-#### Production
+### Subdomains and Origin policy
 
-- origin: `https://idm.kanidm.com`
-- domain name: `idm.kanidm.com`
+Browsers allow a server on a subdomain to use intra-domain resources, and access
+and set credentials and cookies from all of its parents until a
+[public suffix][ps]. This can allow a malicious or compromised service to attack
+other services which share a parent domain.
 
-#### Testing
+[ps]: https://publicsuffix.org/
 
-- origin: `https://dev.idm.kanidm.com`
-- domain name: `dev.idm.kanidm.com`
+Public suffix rules are *mostly* predictable, but has some exceptional cases.
+For example:
 
-While the production instance has a valid and well defined subdomain that doesn't conflict, because
-the dev instance is a subdomain of production, it allows production cookies to leak to dev. Dev
-instances may have weaker security controls in some cases which can then allow compromise of the
-production instance.
+* `host.a.example.com` can access and set cookies for:
+
+  * `host.a.example.com` (itself)
+  * `a.example.com`
+  * `example.com`
+  
+  But **not** the public suffix `.com`.
+
+* `host.a.example.qld.gov.au` can access and set cookies for:
+
+  * `host.a.example.qld.gov.au` (itself)
+  * `a.example.qld.gov.au`
+  * `example.qld.gov.au`
+
+  But **not** any public suffix:
+
+  * `qld.gov.au` (Queensland state government)
+  * `gov.au` (Australian federal government)
+  * `.au` (Australia)
+
+* `host.a.example.nsw.gov.au` can access and set cookies for:
+
+  * `host.a.example.nsw.gov.au` (itself)
+  * `a.example.nsw.gov.au`
+  * `example.nsw.gov.au`
+  * `nsw.gov.au` ([NSW state government has opted out][nsw-optout])
+
+  But **not** any public suffix:
+
+  * `gov.au` (Australian federal government)
+  * `.au` (Australia)
+
+[nsw-optout]: https://bugzilla.mozilla.org/show_bug.cgi?id=547985
+
+This can be an issue if Kanidm shares a domain with:
+
+* applications which serve raw, user-supplied data in APIs (eg: blob/file
+  storage and [Matrix homeservers][matrix-csp])
+* third-party servers *outside* of your organisation's control (eg: SaaS apps)
+* anything which can be deployed to with minimal oversight (eg: a web host that
+  allows uploading content via unencrypted FTP)
+
+[matrix-csp]: https://github.com/element-hq/synapse/blob/develop/README.rst#security-note
+
+### Avoid wildcard and widely-scoped certificates
+
+CAs can issue wildcard TLS certificates, which apply to all subdomains in the
+same domain (eg: `*.example.com`).
+
+This is used by some organisations to avoid leaking information about what
+services exist on a domain in certificate transparency logs. However, this
+information will exposed *anyway* whenever a client makes a DNS query.
+
+If a service is issued a wildcard TLS certificate which *also* covers a Kanidm
+installation on the same domain, any DNS hijacking could let that service
+impersonate Kanidm to those clients, and steal credentials.
+
+While DNS-over-HTTPS generally prevents local hijacking, it's
+[possible for a network to disable it when automatically enabled][disable-doh],
+or just block it entirely.
+
+[disable-doh]: https://support.mozilla.org/en-US/kb/canary-domain-use-application-dnsnet
+
+Sharing a single certificate between many services increases the risk that the
+private key may be exposed, and broadens the impact scope.
+
+### Separate production and testing environments
+
+If running more than one instance of Kanidm, ensure that no two deployments
+share the same subdomain. This prevents credential and cookie transfers between
+the two environments. For example:
+
+* Production: `idm.example.com`
+* Testing: `idm-test.example.com`
+
+If you instead had an instance of Kanidm at `idm.example.com` for production and
+another at `test.idm.example.com` for testing, then the test instance could
+access the credentials and cookies of the production environment.
+
+This also prevents credentials intended for the test environment from being used
+in production (where there may be stricter controls).
+
+### Regional deployments
+
+You could have multiple instances of Kanidm configured with replication, with a
+single domain name and origin (eg: `idm.example.com`).
+
+You could then make regional instances accessible from different host names (eg:
+`au.idm.example.com` and `nz.idm.example.com`).
+
+This allows credentials and cookies to be freely transferred between hosts that
+are part of a single environment.
+
+## Recommendations
+
+For **maximum** security, your Kanidm domain name should be a subdomain of a
+top-level domain (or domain under a [public suffix][ps]) that has no other
+services assigned it, eg:
+
+* Origin: `https://idm.exampleauth.example`
+* Domain name: `idm.exampleauth.example`
+
+When using [OAuth 2.0/OpenID Connect](./integrations/oauth2.md), there is no
+need for a client app to share a top-level domain with Kanidm, because the app
+does not need to share cookies.
+
+Large public auth providers (eg: Google, Meta, Microsoft) work the same way with
+both first and third-party apps.
+
+If you have strict security controls for all apps on your top-level domain, you
+could run Kanidm on a subdomain of your main domain, eg:
+
+* Origin: `https://idm.example.com`
+* Domain name: `idm.example.com`
+
+But running Kanidm on a *separate* top-level domain makes it much easier to
+restrict changes that *could* affect your IDM infrastructure.
+
+> [!NOTE]
+>
+> This is the **inverse** of the common Active Directory practice of using the
+> organisation's primary top-level domain directly, eg: `example.com`.
+
+### Multi-environment and regional deployments
+
+If we were to run regional instances, and have a separate testing environment,
+the following domain and hostnames could be used:
+
+#### Production environment
+
+- Origin: `https://idm.example.com`
+- Domain name: `idm.example.com`
+- Host names: `australia.idm.example.com`, `newzealand.idm.example.com`
+
+This allows us to have named regional instances such as
+`https://australia.idm.example.com` which still works with WebAuthn and cookies
+which are transferable between instances.
+
+It is critical no other hosts are registered under `idm.example.com`.
+
+#### Testing environment
+
+- Origin: `https://idm-test.example.com`
+- Domain name: `idm-test.example.com`
+- Host names: `australia.idm-test.example.com`, `newzealand.idm-test.example.com`
+
+This puts the testing instance under a separate subdomain of the top-level
+domain to production (`idm.example.com`), so cookies and WebAuthn tokens can
+**not** be transferred between them.
+
+This provides proper isolation between the instances.
+
+## Bad domain names
+
+Domains you should avoid:
+
+<dl>
+
+<dt>
+
+`idm.local` 
+
+</dt>
+
+<dd>
+
+The `.local` top-level domain is [reserved for multicast DNS][dot-local].
+
+If a client visits another network, it _may_ try to contact `idm.local`
+believing it is on its usual network. If TLS certificate verification were
+disabled (or not configured correctly), this would leak credentials.
+
+</dd>
+
+<dt>
+
+`example.com`
+
+</dt>
+
+<dd>
+
+Using the top-level domain directly allows any subdomain of that domain to
+access credentials and cookies intended for Kanidm.
+
+</dd>
+
+<dt>
+
+`idm.example.nsw.gov.au`
+
+</dt>
+
+<dd>
+
+[`nsw.gov.au` has opted out of being a public suffix][nsw-optout], so all
+domains under that suffix (except `schools.nsw.gov.au`) share origin and
+cookies.
+
+</dd>
+
+<dt>
+
+`idm.examplekanidm.example`
+
+</dt>
+
+<dd>
+
+Kanidm is the brand for this project.
+
+</dd>
+
+</dl>
+
+### Multi-instance with overlap
+
+* Production:
+  * Origin: `https://idm.example.com`
+  * Domain name: `idm.example.com`
+
+* Testing:
+  * Origin: `https://test.idm.example.com`
+  * Domain name: `test.idm.example.com`
+
+While the production instance has a valid and well defined subdomain that
+doesn't conflict, because the testing instance is a subdomain of production, it
+allows production cookies to leak to the testing environment.
+
+Testing environments may have weaker security controls in some cases which can
+then allow compromise of services using the production instance.
