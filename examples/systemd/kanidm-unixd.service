@@ -7,7 +7,7 @@ After=chronyd.service ntpd.service network-online.target
 
 [Service]
 DynamicUser=yes
-Type=notify
+Type=notify-reload
 ExecStart=/usr/local/sbin/kanidm_unixd
 
 CacheDirectory=kanidm-unixd
