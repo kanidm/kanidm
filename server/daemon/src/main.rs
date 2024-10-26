@@ -785,7 +785,7 @@ async fn kanidm_main(
                                         #[cfg(target_os = "linux")]
                                         let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
 
-                                        sctx.tls_acceptor_reload().await
+                                        sctx.tls_acceptor_reload().await;
 
                                         #[cfg(target_os = "linux")]
                                         let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
