@@ -98,9 +98,6 @@ git and compiler tools. You should install this first.
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
-To build the Web UI you'll need [wasm-pack](https://rustwasm.github.io/wasm-pack/)
-(`cargo install wasm-pack`).
-
 ### SUSE / OpenSUSE
 
 You will need to install rustup and our build dependencies with:
@@ -325,31 +322,6 @@ For example, this will set the CPU flags to "none" and the location for the Web 
 ```bash
 KANIDM_BUILD_PROFILE=release_linux cargo build --release --bin kanidmd
 ```
-
-### Building the Web UI
-
-> [!NOTE:]
->
-> There is a pre-packaged version of the Web UI at `/server/web_ui/pkg/`, which can be used
-> directly. This means you don't need to build the Web UI yourself.
-
-The Web UI uses Rust WebAssembly rather than Javascript. To build this you need to set up the
-environment:
-
-```bash
-cargo install wasm-pack
-```
-
-Then you are able to build the UI:
-
-```bash
-cd server/web_ui/
-./build_wasm_dev.sh
-```
-
-To build for release, run `build_wasm.sh`, or `make webui` from the project root.
-
-The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
 ### Development Server for Interactive Testing
 

@@ -6,7 +6,6 @@
 cargo install cargo-audit
 cargo install cargo-outdated
 cargo install cargo-udeps
-cargo install wasm-bindgen-cli
 ```
 
 ## Pre Release Check List
@@ -34,7 +33,6 @@ cargo install wasm-bindgen-cli
 
 ### Administration
 
-- [ ] build wasm components with release profile
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
 - [ ] cargo test
@@ -70,7 +68,7 @@ cargo install wasm-bindgen-cli
 
 ## Final Release Check List
 
-### Git Management
+### Git Management Part Deux
 
 - [ ] git checkout 1.1.x
 - [ ] git pull origin 1.1.x
