@@ -1,5 +1,6 @@
 use crate::entry::EntryInitNew;
 use crate::prelude::*;
+use crate::value::CredentialType;
 
 use kanidm_proto::internal::{Filter, OperationError, UiHint};
 
@@ -326,6 +327,8 @@ lazy_static! {
             (Attribute::Class, EntryClass::AccountPolicy.to_value()),
             // Enforce this is a system protected object
             (Attribute::Class, EntryClass::System.to_value()),
+            // MFA By Default
+            (Attribute::CredentialTypeMinimum, CredentialType::Mfa.into()),
         ],
         ..Default::default()
     };
