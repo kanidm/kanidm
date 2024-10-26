@@ -1,6 +1,5 @@
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::constants::ATTR_DESCRIPTION;
-use kanidmd_lib::idm::group::Group;
 use kanidmd_testkit::{create_user, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use serde_json::Value;
 

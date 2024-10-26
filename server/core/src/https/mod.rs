@@ -280,6 +280,7 @@ pub async fn create_https_server(
                     .layer(middleware::compression::new())
                     .layer(from_fn(middleware::caching::cache_me_short))
                     .route("/", get(|| async { Redirect::to("/ui") }))
+                    .route("/manifest.webmanifest", get(manifest::manifest)) // skip_route_check
                     .nest("/ui", views::view_router())
             } else {
                 Router::new()

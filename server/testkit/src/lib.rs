@@ -28,8 +28,15 @@ pub const IDM_ADMIN_TEST_PASSWORD: &str = "integration idm admin password";
 
 pub const NOT_ADMIN_TEST_USERNAME: &str = "krab_test_user";
 pub const NOT_ADMIN_TEST_PASSWORD: &str = "eicieY7ahchaoCh0eeTa";
+pub const NOT_ADMIN_TEST_EMAIL: &str = "krab_test@example.com";
 
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
+
+pub const TEST_INTEGRATION_RS_ID: &str = "test_integration";
+pub const TEST_INTEGRATION_RS_GROUP_ALL: &str = "idm_all_accounts";
+pub const TEST_INTEGRATION_RS_DISPLAY: &str = "Test Integration";
+pub const TEST_INTEGRATION_RS_URL: &str = "https://demo.example.com";
+pub const TEST_INTEGRATION_RS_REDIRECT_URL: &str = "https://demo.example.com/oauth2/flow";
 
 pub use testkit_macros::test;
 use tracing::trace;
@@ -381,4 +388,29 @@ pub async fn login_put_admin_idm_admins(rsclient: &KanidmClient) {
         .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &[ADMIN_TEST_USER])
         .await
         .expect("Failed to add admin user to idm_admins")
+}
+
+#[macro_export]
+macro_rules! assert_no_cache {
+    ($response:expr) => {{
+        // Check we have correct nocache headers.
+        let cache_header: &str = $response
+            .headers()
+            .get(http::header::CACHE_CONTROL)
+            .expect("missing cache-control header")
+            .to_str()
+            .expect("invalid cache-control header");
+
+        assert!(cache_header.contains("no-store"));
+        assert!(cache_header.contains("max-age=0"));
+
+        let pragma_header: &str = $response
+            .headers()
+            .get("pragma")
+            .expect("missing cache-control header")
+            .to_str()
+            .expect("invalid cache-control header");
+
+        assert!(pragma_header.contains("no-cache"));
+    }};
 }

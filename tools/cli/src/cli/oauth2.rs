@@ -31,6 +31,12 @@ impl Oauth2Opt {
             Oauth2Opt::DisableLegacyCrypto(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferShortUsername(nopt) => nopt.copt.debug,
             Oauth2Opt::PreferSPNUsername(nopt) => nopt.copt.debug,
+
+            #[cfg(feature = "dev-oauth2-device-flow")]
+            Oauth2Opt::DeviceFlowDisable(nopt) => nopt.copt.debug,
+
+            #[cfg(feature = "dev-oauth2-device-flow")]
+            Oauth2Opt::DeviceFlowEnable(nopt) => nopt.copt.debug,
             Oauth2Opt::CreateBasic { copt, .. }
             | Oauth2Opt::CreatePublic { copt, .. }
             | Oauth2Opt::UpdateClaimMap { copt, .. }
@@ -47,6 +53,30 @@ impl Oauth2Opt {
 
     pub async fn exec(&self) {
         match self {
+            #[cfg(feature = "dev-oauth2-device-flow")]
+            Oauth2Opt::DeviceFlowDisable(nopt) => {
+                // TODO: finish the CLI bits for DeviceFlowDisable
+                let client = nopt.copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_client_device_flow_update(&nopt.name, true)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
+            #[cfg(feature = "dev-oauth2-device-flow")]
+            Oauth2Opt::DeviceFlowEnable(nopt) => {
+                // TODO: finish the CLI bits for DeviceFlowEnable
+                let client = nopt.copt.to_client(OpType::Write).await;
+                match client
+                    .idm_oauth2_client_device_flow_update(&nopt.name, true)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, nopt.copt.output_mode),
+                }
+            }
             Oauth2Opt::List(copt) => {
                 let client = copt.to_client(OpType::Read).await;
                 match client.idm_oauth2_rs_list().await {

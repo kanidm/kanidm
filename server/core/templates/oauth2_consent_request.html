@@ -25,6 +25,9 @@
 		</div>
 	(% endif %)
 	<form id="login" action="/ui/oauth2/consent" method="post">
+		(% if let Some(redirect) = redirect %)
+			<input type="hidden" id="redirect" name="redirect" value="(( redirect ))" />
+		(% endif %)
 		<input type="hidden" id="consent_token" name="consent_token" value="(( consent_token ))" />
 		<button autofocus=true class="w-100 btn btn-lg btn-primary" type="submit">Proceed</button>
 	</form>

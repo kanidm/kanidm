@@ -1,9 +1,8 @@
+use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
 use kanidmd_lib::prelude::*;
-
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
 
 use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
 
@@ -11,6 +10,8 @@ use std::collections::BTreeSet;
 
 use askama::Template;
 
+#[cfg(feature = "dev-oauth2-device-flow")]
+use axum::http::StatusCode;
 use axum::{
     extract::{Query, State},
     http::header::ACCESS_CONTROL_ALLOW_ORIGIN,
@@ -31,6 +32,7 @@ struct ConsentRequestView {
     // scopes: BTreeSet<String>,
     pii_scopes: BTreeSet<String>,
     consent_token: String,
+    redirect: Option<String>,
 }
 
 #[derive(Template)]
@@ -54,19 +56,18 @@ pub async fn view_resume_get(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
-) -> Response {
+) -> Result<Response, UnrecoverableErrorView> {
     let maybe_auth_req =
         cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
     if let Some(auth_req) = maybe_auth_req {
-        oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
+        Ok(oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await)
     } else {
         error!("unable to resume session, no auth_req was found in the cookie");
-        UnrecoverableErrorView {
+        Err(UnrecoverableErrorView {
             err_code: OperationError::InvalidState,
             operation_id: kopid.eventid,
-        }
-        .into_response()
+        })
     }
 }
 
@@ -128,6 +129,7 @@ async fn oauth2_auth_req(
                 // scopes,
                 pii_scopes,
                 consent_token,
+                redirect: None,
             }
             .into_response()
         }
@@ -185,6 +187,9 @@ async fn oauth2_auth_req(
 #[derive(Debug, Clone, Deserialize)]
 pub struct ConsentForm {
     consent_token: String,
+    #[serde(default)]
+    #[allow(dead_code)] // TODO: do smoething with this
+    redirect: Option<String>,
 }
 
 pub async fn view_consent_post(
@@ -193,7 +198,7 @@ pub async fn view_consent_post(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(consent_form): Form<ConsentForm>,
-) -> Response {
+) -> Result<Response, UnrecoverableErrorView> {
     let res = state
         .qe_w_ref
         .handle_oauth2_authorise_permit(client_auth_info, consent_form.consent_token, kopid.eventid)
@@ -207,23 +212,38 @@ pub async fn view_consent_post(
         }) => {
             let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
-            (
-                jar,
-                [
-                    (HX_REDIRECT, redirect_uri.as_str().to_string()),
-                    (
-                        ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                        redirect_uri.origin().ascii_serialization(),
-                    ),
-                ],
-                Redirect::to(redirect_uri.as_str()),
-            )
-                .into_response()
+            if let Some(redirect) = consent_form.redirect {
+                Ok((
+                    jar,
+                    [
+                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (
+                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            redirect_uri.origin().ascii_serialization(),
+                        ),
+                    ],
+                    Redirect::to(&redirect),
+                )
+                    .into_response())
+            } else {
+                redirect_uri
+                    .query_pairs_mut()
+                    .clear()
+                    .append_pair("state", &state)
+                    .append_pair("code", &code);
+                Ok((
+                    jar,
+                    [
+                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (
+                            ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
+                            redirect_uri.origin().ascii_serialization(),
+                        ),
+                    ],
+                    Redirect::to(redirect_uri.as_str()),
+                )
+                    .into_response())
+            }
         }
         Err(err_code) => {
             error!(
@@ -232,11 +252,64 @@ pub async fn view_consent_post(
                 &err_code.to_string()
             );
 
-            UnrecoverableErrorView {
+            Err(UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
-            }
-            .into_response()
+            })
         }
     }
+}
+
+#[derive(Template, Debug, Clone)]
+#[cfg(feature = "dev-oauth2-device-flow")]
+#[template(path = "oauth2_device_login.html")]
+pub struct Oauth2DeviceLoginView {
+    domain_custom_image: bool,
+    title: String,
+    user_code: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[cfg(feature = "dev-oauth2-device-flow")]
+pub(crate) struct QueryUserCode {
+    pub user_code: Option<String>,
+}
+
+#[axum::debug_handler]
+#[cfg(feature = "dev-oauth2-device-flow")]
+pub async fn view_device_get(
+    State(state): State<ServerState>,
+    Extension(_kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Query(user_code): Query<QueryUserCode>,
+) -> Result<Oauth2DeviceLoginView, (StatusCode, String)> {
+    // TODO: if we have a valid auth session and the user code is valid, prompt the user to allow the session to start
+    Ok(Oauth2DeviceLoginView {
+        domain_custom_image: state.qe_r_ref.domain_info_read().has_custom_image(),
+        title: "Device Login".to_string(),
+        user_code: user_code.user_code.unwrap_or("".to_string()),
+    })
+}
+
+#[derive(Deserialize)]
+#[cfg(feature = "dev-oauth2-device-flow")]
+pub struct Oauth2DeviceLoginForm {
+    user_code: String,
+    confirm_login: bool,
+}
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+#[axum::debug_handler]
+pub async fn view_device_post(
+    State(_state): State<ServerState>,
+    Extension(_kopid): Extension<KOpId>,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    Form(form): Form<Oauth2DeviceLoginForm>,
+) -> Result<String, (StatusCode, &'static str)> {
+    debug!("User code: {}", form.user_code);
+    debug!("User confirmed: {}", form.confirm_login);
+
+    // TODO: when the user POST's this form we need to check the user code and see if it's valid
+    // then start a login flow which ends up authorizing the token at the end.
+    Err((StatusCode::NOT_IMPLEMENTED, "Not implemented yet"))
 }

@@ -18,12 +18,13 @@ test = true
 doctest = false
 
 [features]
-default = []
+# default = ["dev-oauth2-device-flow"]
 # Enables webdriver tests, you need to be running a webdriver server
 webdriver = []
 
+dev-oauth2-device-flow = []
+
 [dependencies]
-hyper-tls = { workspace = true }
 http = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -35,7 +36,6 @@ regex = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 serde = { workspace = true }
 sketching = { workspace = true }
-tempfile = { workspace = true }
 testkit-macros = { workspace = true }
 tokio = { workspace = true, features = [
     "net",
@@ -57,7 +57,9 @@ escargot = "0.5.12"
 # used for webdriver testing
 fantoccini = { version = "0.21.2" }
 futures = { workspace = true }
-oauth2_ext = { workspace = true, default-features = false }
+oauth2_ext = { workspace = true, default-features = false, features = [
+    "reqwest",
+] }
 openssl = { workspace = true }
 petgraph = { version = "0.6.4", features = ["serde", "serde-1"] }
 serde_json = { workspace = true }

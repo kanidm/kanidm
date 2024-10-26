@@ -1,3 +1,4 @@
+<!-- markdownlint-disable MD025 MD042 -->
 # Kanidm
 
 - [Introduction to Kanidm](introduction_to_kanidm.md)
@@ -83,6 +84,7 @@
   - [Cryptography Key Domains (2024)](developers/designs/cryptography_key_domains.md)
   - [Domain Join - Machine Accounts](developers/designs/domain_join_machine_accounts.md)
   - [Elevated Priv Mode](developers/designs/elevated_priv_mode.md)
+  - [OAuth2 Device Flow](developers/designs/oauth2_device_flow.md)
   - [OAuth2 Refresh Tokens](developers/designs/oauth2_refresh_tokens.md)
   - [Replication Coordinator](developers/designs/replication_coordinator.md)
   - [Replication Design and Notes](developers/designs/replication_design_and_notes.md)
