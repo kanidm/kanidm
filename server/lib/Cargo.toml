@@ -39,7 +39,6 @@ compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
 concread = { workspace = true }
 dhat = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
-enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }

@@ -2,7 +2,7 @@ use std::env;
 
 fn main() {
     // Allows openssl3 as a cfg flag
-    println!("cargo::rustc-check-cfg=cfg(openssl3)");
+    println!("cargo:rustc-check-cfg=cfg(openssl3)");
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-env-changed=DEP_OPENSSL_VERSION_NUMBER");
 
