@@ -38,7 +38,6 @@ compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto"] }
 concread = { workspace = true }
 dhat = { workspace = true, optional = true }
 dyn-clone = { workspace = true }
-enum-iterator = { workspace = true }
 fernet = { workspace = true, features = ["fernet_danger_timestamps"] }
 # futures-util = { workspace = true }
 hashbrown = { workspace = true }
@@ -105,7 +104,11 @@ svg = { workspace = true }
 whoami = { workspace = true }
 
 [dev-dependencies]
-compact_jwt = { workspace = true, features = ["openssl", "hsm-crypto", "unsafe_release_without_verify"] }
+compact_jwt = { workspace = true, features = [
+    "openssl",
+    "hsm-crypto",
+    "unsafe_release_without_verify",
+] }
 criterion = { workspace = true, features = ["html_reports"] }
 futures = { workspace = true }
 kanidmd_lib_macros = { workspace = true }

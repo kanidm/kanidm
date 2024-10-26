@@ -25,7 +25,6 @@ askama = { workspace = true }
 askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
-axum-auth = "0.7.0"
 axum-extra = { version = "0.9.4", features = ["cookie"] }
 axum-macros = "0.4.1"
 axum-server = { version = "0.7.1", features = ["tls-openssl"] }

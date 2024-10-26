@@ -23,7 +23,6 @@ default = []
 webdriver = []
 
 [dependencies]
-hyper-tls = { workspace = true }
 http = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
@@ -35,7 +34,6 @@ regex = { workspace = true }
 reqwest = { workspace = true, default-features = false, features = ["cookies"] }
 serde = { workspace = true }
 sketching = { workspace = true }
-tempfile = { workspace = true }
 testkit-macros = { workspace = true }
 tokio = { workspace = true, features = [
     "net",
