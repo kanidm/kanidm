@@ -15,6 +15,7 @@ resolver = "2"
 members = [
     "proto",
     "tools/cli",
+    "tools/device_flow",
     "tools/iam_migrations/freeipa",
     "tools/iam_migrations/ldap",
     "tools/orca",

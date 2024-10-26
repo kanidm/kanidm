@@ -54,24 +54,24 @@ pub type DomainVersion = u32;
 /// previously.
 pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 
-/// Deprcated as of 1.3.0
+/// Deprecated as of 1.3.0
 pub const DOMAIN_LEVEL_5: DomainVersion = 5;
 
 /// Domain Level introduced with 1.2.0.
-/// Deprcated as of 1.4.0
+/// Deprecated as of 1.4.0
 pub const DOMAIN_LEVEL_6: DomainVersion = 6;
 pub const PATCH_LEVEL_1: u32 = 1;
 
 /// Domain Level introduced with 1.3.0.
-/// Deprcated as of 1.5.0
+/// Deprecated as of 1.5.0
 pub const DOMAIN_LEVEL_7: DomainVersion = 7;
 
 /// Domain Level introduced with 1.4.0.
-/// Deprcated as of 1.6.0
+/// Deprecated as of 1.6.0
 pub const DOMAIN_LEVEL_8: DomainVersion = 8;
 
 /// Domain Level introduced with 1.5.0.
-/// Deprcated as of 1.7.0
+/// Deprecated as of 1.7.0
 pub const DOMAIN_LEVEL_9: DomainVersion = 9;
 
 // The minimum level that we can re-migrate from.
