@@ -92,7 +92,6 @@ svg = { workspace = true }
 whoami = { workspace = true }
 
 [dev-dependencies]
-criterion = "0.5.1"
 compact_jwt = { workspace = true, features = [
     "openssl",
     "hsm-crypto",
