@@ -2,11 +2,18 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
+use serde_with::base64::{Base64, UrlSafe};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{base64, formats, serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{formats, serde_as, skip_serializing_none, StringWithSeparator};
 use url::Url;
 use uuid::Uuid;
+
+/// How many seconds a device code is valid for.
+pub const OAUTH2_DEVICE_CODE_EXPIRY_SECONDS: u64 = 300;
+/// How often a client device can query the status of the token
+pub const OAUTH2_DEVICE_CODE_INTERVAL_SECONDS: u64 = 5;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone, Copy)]
 pub enum CodeChallengeMethod {
@@ -19,7 +26,7 @@ pub enum CodeChallengeMethod {
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct PkceRequest {
-    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    #[serde_as(as = "Base64<UrlSafe, formats::Unpadded>")]
     pub code_challenge: Vec<u8>,
     pub code_challenge_method: CodeChallengeMethod,
 }
@@ -100,6 +107,13 @@ pub enum GrantTypeReq {
     RefreshToken {
         refresh_token: String,
         #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
+        scope: Option<BTreeSet<String>>,
+    },
+    /// ref <https://www.rfc-editor.org/rfc/rfc8628#section-3.4>
+    #[serde(rename = "urn:ietf:params:oauth:grant-type:device_code")]
+    DeviceCode {
+        device_code: String,
+        // #[serde_as(as = "Option<StringWithSeparator::<SpaceSeparator, String>>")]
         scope: Option<BTreeSet<String>>,
     },
 }
@@ -448,6 +462,9 @@ pub struct OidcDiscoveryResponse {
     pub introspection_endpoint: Option<Url>,
     pub introspection_endpoint_auth_methods_supported: Vec<TokenEndpointAuthMethod>,
     pub introspection_endpoint_auth_signing_alg_values_supported: Option<Vec<IdTokenSignAlg>>,
+
+    /// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-4>
+    pub device_authorization_endpoint: Option<Url>,
 }
 
 /// The response to an OAuth2 rfc8414 metadata request
@@ -502,6 +519,39 @@ pub struct ErrorResponse {
     pub error: String,
     pub error_description: Option<String>,
     pub error_uri: Option<Url>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+/// Ref <https://www.rfc-editor.org/rfc/rfc8628#section-3.2>
+pub struct DeviceAuthorizationResponse {
+    /// Base64-encoded bundle of 16 bytes
+    device_code: String,
+    /// xxx-yyy-zzz where x/y/z are digits. Stored internally as a u32 because we'll drop the dashes and parse as a number.
+    user_code: String,
+    verification_uri: Url,
+    verification_uri_complete: Url,
+    expires_in: u64,
+    interval: u64,
+}
+
+impl DeviceAuthorizationResponse {
+    pub fn new(verification_uri: Url, device_code: [u8; 16], user_code: String) -> Self {
+        let mut verification_uri_complete = verification_uri.clone();
+        verification_uri_complete
+            .query_pairs_mut()
+            .append_pair("user_code", &user_code);
+
+        let device_code = STANDARD.encode(device_code);
+
+        Self {
+            verification_uri_complete,
+            device_code,
+            user_code,
+            verification_uri,
+            expires_in: OAUTH2_DEVICE_CODE_EXPIRY_SECONDS,
+            interval: OAUTH2_DEVICE_CODE_INTERVAL_SECONDS,
+        }
+    }
 }
 
 #[cfg(test)]

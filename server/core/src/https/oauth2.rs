@@ -1,3 +1,5 @@
+use std::collections::{BTreeMap, BTreeSet};
+
 use super::errors::WebError;
 use super::middleware::KOpId;
 use super::ServerState;
@@ -5,11 +7,13 @@ use crate::https::extractors::VerifiedClientInformation;
 use axum::{
     body::Body,
     extract::{Path, Query, State},
-    http::header::{
-        ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
-        WWW_AUTHENTICATE,
+    http::{
+        header::{
+            ACCESS_CONTROL_ALLOW_HEADERS, ACCESS_CONTROL_ALLOW_ORIGIN, CONTENT_TYPE, LOCATION,
+            WWW_AUTHENTICATE,
+        },
+        HeaderValue, StatusCode,
     },
-    http::{HeaderValue, StatusCode},
     middleware::from_fn,
     response::{IntoResponse, Response},
     routing::{get, post},
@@ -22,6 +26,9 @@ use kanidm_proto::constants::uri::{
 };
 use kanidm_proto::constants::APPLICATION_JSON;
 use kanidm_proto::oauth2::AuthorisationResponse;
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 use kanidmd_lib::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
@@ -30,6 +37,12 @@ use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
 use kanidmd_lib::value::PartialValue;
 use serde::{Deserialize, Serialize};
+use serde_with::formats::CommaSeparator;
+use serde_with::{serde_as, StringWithSeparator};
+
+#[cfg(feature = "dev-oauth2-device-flow")]
+use uri::OAUTH2_AUTHORISE_DEVICE;
+use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 
 // TODO: merge this into a value in WebError later
 pub struct HTTPOauth2Error(Oauth2Error);
@@ -724,6 +737,38 @@ pub async fn oauth2_preflight_options() -> Response {
         .into_response()
 }
 
+#[serde_as]
+#[derive(Deserialize, Debug, Serialize)]
+pub(crate) struct DeviceFlowForm {
+    client_id: String,
+    #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, String>>")]
+    scope: Option<BTreeSet<String>>,
+    #[serde(flatten)]
+    extra: BTreeMap<String, String>, // catches any extra nonsense that gets sent through
+}
+
+/// Device flow! [RFC8628](https://datatracker.ietf.org/doc/html/rfc8628)
+#[cfg(feature = "dev-oauth2-device-flow")]
+#[instrument(level = "info", skip(state, kopid, client_auth_info))]
+pub(crate) async fn oauth2_authorise_device_post(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    Form(form): Form<DeviceFlowForm>,
+) -> Result<Json<DeviceAuthorizationResponse>, HTTPOauth2Error> {
+    state
+        .qe_w_ref
+        .handle_oauth2_device_flow_start(
+            client_auth_info,
+            &form.client_id,
+            &form.scope,
+            kopid.eventid,
+        )
+        .await
+        .map(Json::from)
+        .map_err(HTTPOauth2Error)
+}
+
 pub fn route_setup(state: ServerState) -> Router<ServerState> {
     // this has all the openid-related routes
     let openid_router = Router::new()
@@ -753,7 +798,7 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         )
         .with_state(state.clone());
 
-    Router::new()
+    let mut router = Router::new()
         .route("/oauth2", get(super::v1_oauth2::oauth2_get))
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
@@ -772,21 +817,30 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             OAUTH2_AUTHORISE_REJECT,
             post(oauth2_authorise_reject_post).get(oauth2_authorise_reject_get),
-        )
-        // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
-        // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+        );
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    #[cfg(feature = "dev-oauth2-device-flow")]
+    {
+        router = router.route(OAUTH2_AUTHORISE_DEVICE, post(oauth2_authorise_device_post))
+    }
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    router = router
         .route(
-            "/oauth2/token",
+            OAUTH2_TOKEN_ENDPOINT,
             post(oauth2_token_post).options(oauth2_preflight_options),
         )
         // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
-            "/oauth2/token/introspect",
+            OAUTH2_TOKEN_INTROSPECT_ENDPOINT,
             post(oauth2_token_introspect_post),
         )
-        .route("/oauth2/token/revoke", post(oauth2_token_revoke_post))
+        .route(OAUTH2_TOKEN_REVOKE_ENDPOINT, post(oauth2_token_revoke_post))
         .merge(openid_router)
         .with_state(state)
-        .layer(from_fn(super::middleware::caching::dont_cache_me))
+        .layer(from_fn(super::middleware::caching::dont_cache_me));
+
+    router
 }
