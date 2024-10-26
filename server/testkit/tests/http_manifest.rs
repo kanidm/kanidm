@@ -16,7 +16,7 @@ async fn test_https_manifest(rsclient: KanidmClient) {
         }
     };
     eprintln!("response: {:#?}", response);
-    assert_eq!(response.status(), 404);
+    assert_eq!(response.status(), 200);
 
     eprintln!(
         "csp headers: {:#?}",
