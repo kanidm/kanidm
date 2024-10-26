@@ -781,7 +781,14 @@ async fn kanidm_main(
                                         tokio::signal::unix::signal(sigterm).unwrap().recv().await
                                     } => {
                                         // Reload TLS certificates
+                                        // systemd has a special reload handler for this.
+                                        #[cfg(target_os = "linux")]
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
+
                                         sctx.tls_acceptor_reload().await
+
+                                        #[cfg(target_os = "linux")]
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
                                     }
                                     Some(()) = async move {
                                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
