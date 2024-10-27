@@ -6,6 +6,7 @@
 cargo install cargo-audit
 cargo install cargo-outdated
 cargo install cargo-udeps
+cargo install cargo-machete
 ```
 
 ## Pre Release Check List
@@ -19,6 +20,7 @@ cargo install cargo-udeps
 - [ ] Update MSRV if applicable
 - [ ] cargo update
 - [ ] `RUSTC_BOOTSTRAP=1 cargo udeps`
+- [ ] `cargo machete`
 - [ ] cargo outdated -R
 - [ ] cargo audit
 - [ ] cargo test
@@ -36,7 +38,7 @@ cargo install cargo-udeps
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
 - [ ] cargo test
-- [ ] git commit
+- [ ] git commit -a -m "Release Notes"
 - [ ] git push origin YYYYMMDD-pre-release
 - [ ] Merge PR
 
@@ -44,16 +46,14 @@ cargo install cargo-udeps
 
 - [ ] git checkout master
 - [ ] git pull
-- [ ] git checkout -b 1.1.x (Note no v to prevent ref conflict)
+- [ ] git checkout -b 1.x.0 (Note no v to prevent ref conflict)
 - [ ] update version to set pre tag in ./Cargo.toml
-- [ ] update version to set pre tag in ./Makefile
-- [ ] git commit
-- [ ] git tag v1.1.x-pre
+- [ ] git commit -m "Release 1.x.0-pre"
+- [ ] git tag v1.x.0-pre
 
 - [ ] Final inspect of the branch
 
-- [ ] git push origin 1.1.x
-- [ ] git push origin 1.1.x --tags
+- [ ] git push origin 1.x.0 --tags
 
 - [ ] github -> Ensure release branch is protected
 
@@ -63,20 +63,21 @@ cargo install cargo-udeps
 - [ ] git pull
 - [ ] git checkout -b YYYYMMDD-dev-version
 - [ ] update version to +1 and add dev tag in ./Cargo.toml
-- [ ] update version to +1 and add dev tag in ./Makefile
 - [ ] update `DOMAIN_*_LEVEL` in server/lib/src/constants/mod.rs
+- [ ] update and add new migrations
 
 ## Final Release Check List
 
 ### Git Management Part Deux
 
-- [ ] git checkout 1.1.x
-- [ ] git pull origin 1.1.x
+- [ ] git checkout 1.x.0
+- [ ] git pull origin 1.x.0
 
 - [ ] update version to remove pre tag in ./Cargo.toml
-- [ ] update version to remove pre tag in ./Makefile
-- [ ] git tag v1.1.x
-- [ ] git push origin 1.1.x --tags
+- [ ] update Makefile to set docker image to latest
+- [ ] git commit -a -m 'Release 1.x.0'
+- [ ] git tag v1.x.0
+- [ ] git push origin 1.x.0 --tags
 
 - [ ] github -> create new release based on tag (not branch) - use tag because then tools will get
       the tag + patches we apply.
@@ -99,10 +100,10 @@ cargo install cargo-udeps
 ### Docker
 
 - [ ] docker buildx use cluster
-- [ ] `make buildx/kanidmd/x86_64_v3 buildx/kanidmd buildx/kanidm_tools buildx/radiusd`
-- [ ] `IMAGE_VERSION=latest make buildx`
+- [ ] `make buildx`
 - [ ] Update the readme on docker <https://hub.docker.com/repository/docker/kanidm/server>
 
 ### Distro
 
 - [ ] vendor and release to build.opensuse.org
+
