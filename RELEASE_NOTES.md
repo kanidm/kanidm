@@ -14,7 +14,7 @@ report it to our [issue tracker].
 
 # Release Notes
 
-## 2024-08-07 - Kanidm 1.4.0
+## 2024-11-01 - Kanidm 1.4.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
 combined effort of our community and we appreciate their invaluable contributions, comments,
