@@ -14,7 +14,7 @@ report it to our [issue tracker].
 
 # Release Notes
 
-## 2024-08-07 - Kanidm 1.4.0
+## 2024-11-01 - Kanidm 1.4.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
 combined effort of our community and we appreciate their invaluable contributions, comments,
@@ -63,7 +63,7 @@ and taken the needed steps before upgrading.
 - SCIM foundations for getting and modifying entries, reference handling, and complex attribute
   display. Much more to come in this space!
 - Rewrite the entire web frontend to be simpler and faster, allowing more features to be added
-  in future. Greatly improves user expirence as the pages are now very fast to load!
+  in the future. Greatly improves user experience as the pages are now very fast to load!
 
 ## 2024-08-07 - Kanidm 1.3.0
 
