@@ -28,11 +28,11 @@ aiohttp = "^3.8.1"
 Authlib = "^1.2.0"
 
 [tool.poetry.dev-dependencies]
-mypy = "^1.12"
+mypy = "^1.13"
 pytest = "^8.3.3"
 types-toml = "^0.10.8"
 pylint-pydantic = "^0.3.2"
-coverage = "^7.6.3"
+coverage = "^7.6.4"
 pylint-pytest = "^1.1.7"
 pytest-asyncio = "^0.24.0"
 pytest-mock = "^3.14.0"
@@ -45,7 +45,7 @@ mkdocstrings-python = "^1.12.2"
 pook = "^2.1.1"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.1,<0.7.1"
+ruff = ">=0.5.1,<0.7.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
