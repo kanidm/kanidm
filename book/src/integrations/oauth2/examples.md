@@ -261,7 +261,7 @@ using OAuth2:
     <dd>
 
     Upload a Kanidm or other organisational logo.
-    
+
     This will appear on the login form (with no text) to prompt users to sign
     in.
 
@@ -480,7 +480,7 @@ with some limitations:
 
     It will set the user's preferred name on *first* log in *only*.
 
-To set up a *new* self-hosted Outline instance to authenicate with Kanidm:
+To set up a *new* self-hosted Outline instance to authenticate with Kanidm:
 
 1.  Add an email address to your regular Kanidm account, if it doesn't have one
     already:

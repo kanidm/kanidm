@@ -51,7 +51,7 @@ pub enum AuthSession {
         token: Option<Box<UserToken>>,
         cred_handler: AuthCredHandler,
         /// Some authentication operations may need to spawn background tasks. These tasks need
-        /// to know when to stop as the caller has disconnected. This reciever allows that, so
+        /// to know when to stop as the caller has disconnected. This receiver allows that, so
         /// that tasks which .resubscribe() to this channel can then select! on it and be notified
         /// when they need to stop.
         shutdown_rx: broadcast::Receiver<()>,

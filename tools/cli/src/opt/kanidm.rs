@@ -1147,7 +1147,7 @@ pub enum Oauth2Opt {
     DisablePkce(Named),
     #[clap(name = "warning-enable-legacy-crypto")]
     /// Enable legacy signing crypto on this oauth2 client. This defaults to being disabled.
-    /// You only need to enable this for openid clients that do not support modern crytopgraphic
+    /// You only need to enable this for openid clients that do not support modern cryptographic
     /// operations.
     EnableLegacyCrypto(Named),
     /// Disable legacy signing crypto on this oauth2 client. This is the default.

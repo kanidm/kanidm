@@ -159,7 +159,7 @@ pub enum AuthRequest {
     MFAPoll {
         /// Message to display to the user.
         msg: String,
-        /// Interval in seconds between poll attemts.
+        /// Interval in seconds between poll attempts.
         polling_interval: u32,
     },
     MFAPollWait,
@@ -209,7 +209,7 @@ pub trait IdProvider {
     async fn attempt_online(&self, _tpm: &mut tpm::BoxedDynTpm, _now: SystemTime) -> bool;
 
     /// Mark that this provider should attempt to go online next time it
-    /// recieves a request
+    /// receives a request
     async fn mark_next_check(&self, _now: SystemTime);
 
     /// Force this provider offline immediately.

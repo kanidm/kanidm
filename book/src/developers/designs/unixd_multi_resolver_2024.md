@@ -54,7 +54,7 @@ to improve it as a result. This will necesitate a major rework of the project.
 
 The current design treated the client as a trivial communication layer. The daemon/event loop
 contained all state including if the resolver was online or offline. Additionally the TPM and
-password caching operations primarily occured in the daemon layer, which limited the access of these
+password caching operations primarily occurred in the daemon layer, which limited the access of these
 features to the client backend itself.
 
 ### Future Features
@@ -130,7 +130,7 @@ future.
 #### CTAP2 / TPM-PIN
 
 We want to allow local authentication with CTAP2 or a TPM with PIN. Both provide stronger assurances
-of both who the user is, and that they are in posession of a specific cryptographic device. The nice
+of both who the user is, and that they are in possession of a specific cryptographic device. The nice
 part of this is that they both implement hardware bruteforce protections. For soft-tpm we can
 emulate this with a strict bruteforce lockout prevention mechanism.
 
@@ -384,7 +384,7 @@ and rely on sqlite heavily.
 We should migrate to a primarily in-memory cache, where sqlite is used only for persistence. The
 sqlite content should be optionally able to be encrypted by a TPM bound key.
 
-To obsfucate details, the sqlite db should be a single table of key:value where keys are uuids
+To obfuscate details, the sqlite db should be a single table of key:value where keys are uuids
 associated to the item. The uuid is a local detail, not related to the provider.
 
 The cache should move to a concread based concurrent tree which will also allow us to multi-thread
