@@ -624,7 +624,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
-    /// Migration domain level 8 to 9
+    /// Migration domain level 8 to 9 (1.5.0)
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_8_to_9(&mut self) -> Result<(), OperationError> {
         if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
@@ -661,6 +661,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             })?;
 
         self.reload()?;
+
+        Ok(())
+    }
+
+    /// Migration domain level 9 to 10 (1.6.0)
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_9_to_10(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
+            error!("Unable to raise domain level from 8 to 9.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
 
         Ok(())
     }
@@ -1381,4 +1392,7 @@ mod tests {
 
     #[qs_test(domain_level=DOMAIN_LEVEL_8)]
     async fn test_migrations_dl8_dl9(_server: &QueryServer) {}
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_9)]
+    async fn test_migrations_dl9_dl10(_server: &QueryServer) {}
 }
