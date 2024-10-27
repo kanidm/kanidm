@@ -14,6 +14,57 @@ report it to our [issue tracker].
 
 # Release Notes
 
+## 2024-08-07 - Kanidm 1.4.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the
+combined effort of our community and we appreciate their invaluable contributions, comments,
+questions, feedback and support.
+
+You should review our
+[support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) as this
+may have important effects on your distribution or upgrades in future.
+
+Before upgrading you should review
+[our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes)
+
+### 1.4.0 Important Changes
+
+- The web user interface has been rewritten and now supports theming. You will notice that your
+domain displayname is included in a number of locations on upgrade, and that you can set
+your own domain and OAuth2 client icons.
+- OAuth2 strict redirect uri is now required. Ensure you have read
+[our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes).
+and taken the needed steps before upgrading.
+
+### 1.4.0 Release Highlights
+
+- Improve handling of client timeouts when the server is under high load
+- Resolve a minor issue preventing some credential updates from saving
+- PAM/NSS unixd now allow non-Kanidm backends - more to come soon
+- Mail attributes have substring indexing added
+- Access controls for mail servers to read mail attributes
+- Admin CLI tools support instance profiles allowing admin of multiple sites to be easier
+- Resolve a minor issue in OAuth2 introspection which returned the wrong claim for `token_type`
+- Resolve an issue where memberOf should imply dynamicMemberOf in access controls
+- Allow configuration of custom domain icons
+- Internal representation of attributes changed to an enum to reduce memory consumption
+- Add CreatedAt and ModifiedAt timestamps to entries
+- Expose RFC7009 and RFC7662 via OIDC metadata discovery
+- Improve pipe handling for CLI tools
+- Large techdebt cleanups
+- PAM/NSS unixd can provide system users, replacing `pam_unix`
+- Account policy supports LDAP password fallback to main password
+- PAM/NSS unixd can extend a system group with members from remote sources (such as Kanidm)
+- Resolve a potential issue in replication on upgrade where migrated entries cause a referential
+  integrity conflict leading to a forced initialisation
+- Display credential reset token expiry time when created on CLI
+- Reload certificates and private keys on SIGHUP
+- Remove a large number of dependencies that were either not needed or could be streamlined
+- SCIM foundations for getting and modifying entries, reference handling, and complex attribute
+  display. Much more to come in this space!
+- Rewrite the entire web frontend to be simpler and faster, allowing more features to be added
+  in future. Greatly improves user expirence as the pages are now very fast to load!
+
 ## 2024-08-07 - Kanidm 1.3.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
