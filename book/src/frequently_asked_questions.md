@@ -75,7 +75,7 @@ administrator. While they may not have direct access to the client/application s
 still use this `client_id+secret` to then carry out the authorisation code interception attack
 listed.
 
-For confidential clients (refered to as a `basic` client in Kanidm due to the use of HTTP Basic for
+For confidential clients (referred to as a `basic` client in Kanidm due to the use of HTTP Basic for
 `client_id+secret` presentation) PKCE may optionally be disabled. This can allow authorisation code
 attacks to be carried out - however _if_ TLS is used and the `client_secret` never leaks, then these
 attacks will not be possible. Since there are many public references to system administrators

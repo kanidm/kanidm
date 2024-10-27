@@ -140,7 +140,7 @@ pub fn sm_authenticate_connected<P: PamHandler>(
         let client_response = match daemon_client.call_and_wait(&req, timeout) {
             Ok(r) => r,
             Err(err) => {
-                // Something unrecoverable occured, bail and stop everything
+                // Something unrecoverable occurred, bail and stop everything
                 error!(?err, "PAM_AUTH_ERR");
                 return PamResultCode::PAM_AUTH_ERR;
             }

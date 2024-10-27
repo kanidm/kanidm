@@ -65,12 +65,12 @@ same. // TODO: Should a user be allowed to relabel their kanidm ssh keys ?
 
 Due to their long length they should be line-wrapped into a text field so the entirety is visible
 when shown. To reduce visible clutter and inconsistent spacing we will put the values into
-collapsable elements.
+collapsible elements.
 
 These collapsed elements must include:
 
 - label
-- value's key type (ECDSA, rsa, ect..) and may include:
+- value's key type (ECDSA, rsa, etc..) and may include:
 - value's comment, truncated to some max length
 
 #### Editing keys

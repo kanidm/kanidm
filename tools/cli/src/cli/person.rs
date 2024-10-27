@@ -1219,7 +1219,7 @@ async fn sshkey_add_prompt(session_token: &CUSessionToken, client: &KanidmClient
                 ClientErrorHttp(_, Some(DuplicateKey), _) => {
                     eprintln!("SSH Public Key already exists in this account");
                 }
-                _ => eprintln!("An error occured -> {:?}", err),
+                _ => eprintln!("An error occurred -> {:?}", err),
             }
             break;
         } else {
@@ -1249,7 +1249,7 @@ async fn sshkey_remove_prompt(session_token: &CUSessionToken, client: &KanidmCli
             ClientErrorHttp(_, Some(NoMatchingEntries), _) => {
                 eprintln!("SSH Public Key does not exist. Keys were NOT removed.");
             }
-            _ => eprintln!("An error occured -> {:?}", err),
+            _ => eprintln!("An error occurred -> {:?}", err),
         }
     } else {
         println!("Successfully removed SSH Public Key");
