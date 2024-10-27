@@ -56,7 +56,7 @@ and taken the needed steps before upgrading.
 - Account policy supports LDAP password fallback to main password
 - pam/nss unixd can extend a system group with members from remote sources (such as Kanidm)
 - Resolve a potential issue in replication on upgrade where migrated entries cause a referential
-  integrity conflfict leading to a forced intialisation
+  integrity conflict leading to a forced initialisation
 - Display credential reset token expiry time when created on cli
 - Reload certificates and private keys on SIGHUP
 - Remove a large number of dependencies that were either not needed or could be streamlined
