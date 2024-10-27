@@ -40,7 +40,7 @@ and taken the needed steps before upgrading.
 
 - Improve handling of client timeouts when the server is under high load
 - Resolve a minor issue preventing some credential updates from saving
-- pam/nss unixd now allow non-kanidm backends - more to come soon
+- PAM/NSS unixd now allow non-Kanidm backends - more to come soon
 - Mail attributes have substring indexing added
 - Access controls for mail servers to read mail attributes
 - Admin CLI tools support instance profiles allowing admin of multiple sites to be easier
@@ -52,12 +52,12 @@ and taken the needed steps before upgrading.
 - Expose RFC7009 and RFC7662 via OIDC metadata discovery
 - Improve pipe handling for CLI tools
 - Large techdebt cleanups
-- pam/nss unixd can provide system users, replacing `pam_unix`
+- PAM/NSS unixd can provide system users, replacing `pam_unix`
 - Account policy supports LDAP password fallback to main password
-- pam/nss unixd can extend a system group with members from remote sources (such as Kanidm)
+- PAM/NSS unixd can extend a system group with members from remote sources (such as Kanidm)
 - Resolve a potential issue in replication on upgrade where migrated entries cause a referential
   integrity conflict leading to a forced initialisation
-- Display credential reset token expiry time when created on cli
+- Display credential reset token expiry time when created on CLI
 - Reload certificates and private keys on SIGHUP
 - Remove a large number of dependencies that were either not needed or could be streamlined
 - SCIM foundations for getting and modifying entries, reference handling, and complex attribute
