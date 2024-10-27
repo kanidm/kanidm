@@ -14,7 +14,7 @@ of requirements and integrations. You should not need any other components (like
 use Kanidm - we already have everything you need!
 
 To achieve this we rely heavily on strict defaults, simple configuration, and self-healing
-components. This allows Kanidm to run from small home labs, families, small businesses, and all the
+components. This allows Kanidm to support small home labs, families, small businesses, and all the
 way to the largest enterprise needs.
 
 If you want to host your own authentication service, then Kanidm is for you!
@@ -121,7 +121,7 @@ of resource overhead and difficulty for administration and upgrades.
 
 Kanidm aims to have the features richness of FreeIPA, but without the resource and administration
 overheads. If you want a complete IDM package, but in a lighter footprint and easier to manage, then
-Kanidm is probably for you. In testing with 3000 users + 1500 groups, Kanidm is 3 times faster for
+Kanidm is probably for you. In testing with 3000 users and 1500 groups, Kanidm is 3 times faster for
 search operations and 5 times faster for modification and addition of entries (your results may
 differ however, but generally Kanidm is much faster than FreeIPA).
 
@@ -147,7 +147,7 @@ elements in a simpler and correct way out of the box in comparison.
   <summary>Rauthy</summary>
 
 Rauthy is a minimal OIDC provider. It supports WebAuthn just like Kanidm - they actually use our
-library for it!
+libraries for it!
 
 Rauthy only provides support for OIDC and so is unable to support other use cases like RADIUS and
 unix authentication.
@@ -161,7 +161,7 @@ then Kanidm will support those.
   <summary>Authentik / Authelia / Zitadel</summary>
 
 Authentik is an IDM provider written in Python and, Authelia and Zitadel are written in Go. all
-similar to Kanidm in the features it offers but notably all have weaker support for unix
+similar to Kanidm in the features it offers but notably all have weaker support for UNIX
 authentication and do not support the same level of authentication policy as Kanidm. Notably, all
 are missing WebAuthn Attestation.
 
