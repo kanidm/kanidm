@@ -11,10 +11,10 @@
 //! The [scim_proto] library, which is generic over all scim implementations.
 //!
 //! The client module, which describes how a client should transmit entries, and
-//! how it should parse them when it recieves them.
+//! how it should parse them when it receives them.
 //!
 //! The server module, which describes how a server should transmit entries and
-//! how it should recieve them.
+//! how it should receive them.
 
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};

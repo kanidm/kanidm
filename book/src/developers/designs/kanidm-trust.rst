@@ -38,7 +38,7 @@ There are different ways we can scope a trust out, each with pros-cons. Here are
  may implement some controls around which subject DN's to allow/deny, but this is pretty fraught
  with landminds. You don't know who exists until they login!
 * Azure AD individual account trusting. Instead of trusting a whole domain you allow a user from
- a remote tennant to access your resources. You don't trust everyone in their tennant, just that
+ a remote tenant to access your resources. You don't trust everyone in their tenant, just that
  one account that you can invite. You can then revoke them as needed.
 * Group-trust - FreeIPA does this with AD. It's still like kerberos, but you only trust a subset
  of the users determined by "groups" from the trusted site.

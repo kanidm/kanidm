@@ -7,10 +7,10 @@ support machine accounts also know as domain joining.
 
 ### Limiting Unix Password Auth
 
-Currently unix password authentication is targetted as the method for sudo. Initial access to the
+Currently unix password authentication is targeted as the method for sudo. Initial access to the
 machine should come from ssh keys (and in future, ctap2).
 
-In order to maintain compatability with LDAP style authentication, we allow "anonymous hosts" to
+In order to maintain compatibility with LDAP style authentication, we allow "anonymous hosts" to
 retrieve ssh public keys, and then perform sudo authentication.
 
 This has the obvious caveat that anyone can stand up a machine that trusts a Kanidm instance. This
