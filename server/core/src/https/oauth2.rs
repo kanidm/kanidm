@@ -289,7 +289,8 @@ async fn oauth2_authorise(
                 .body(body)
                 .unwrap()
         }
-        Err(Oauth2Error::AuthenticationRequired) => {
+        Ok(AuthoriseResponse::AuthenticationRequired { .. })
+        | Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
             #[allow(clippy::unwrap_used)]
             Response::builder()

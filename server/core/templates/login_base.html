@@ -20,6 +20,10 @@
 	<div class="alert alert-info" role="alert">
 		Reauthenticating as (( reauth.username )) to access (( reauth.purpose ))
 	</div>
+	(% else if let Some(oauth2) = display_ctx.oauth2 %)
+	<div class="alert alert-info" role="alert">
+		Authenticate to access (( oauth2.client_name ))
+	</div>
 	(% endif %)
 	<div>
 		(% block logincontainer %)
