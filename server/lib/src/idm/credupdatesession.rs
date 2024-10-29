@@ -2460,17 +2460,17 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Check the label.
         if !LABEL_RE.is_match(&label) {
-            error!("SSH Pubilc Key label invalid");
+            error!("SSH Public Key label invalid");
             return Err(OperationError::InvalidLabel);
         }
 
         if session.sshkeys.contains_key(&label) {
-            error!("SSH Pubilc Key label duplicate");
+            error!("SSH Public Key label duplicate");
             return Err(OperationError::DuplicateLabel);
         }
 
         if session.sshkeys.values().any(|sk| *sk == sshpubkey) {
-            error!("SSH Pubilc Key duplicate");
+            error!("SSH Public Key duplicate");
             return Err(OperationError::DuplicateKey);
         }
 
@@ -2692,7 +2692,7 @@ mod tests {
     ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
         let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
 
-        // Remove the default all persons policy, it interfers with our test.
+        // Remove the default all persons policy, it interferes with our test.
         let modlist = ModifyList::new_purge(Attribute::CredentialTypeMinimum);
         idms_prox_write
             .qs_write
@@ -3067,7 +3067,7 @@ mod tests {
 
         let cutxn = idms.cred_update_transaction().await.unwrap();
 
-        // Now fake going back in time .... allows the tokne to decrypt, but the session
+        // Now fake going back in time .... allows the token to decrypt, but the session
         // is gone anyway!
         let c_status = cutxn
             .credential_update_status(&cust, ct)

@@ -56,7 +56,7 @@ const GID_NSPAWN_MAX: u32 = 1879048191;
 const GID_UNUSED_D_MIN: u32 = 0x7000_0000;
 pub const GID_UNUSED_D_MAX: u32 = 0x7fff_ffff;
 
-/// Anything above 2147483648 can confuse the kernel (so basicly half the address space
+/// Anything above 2147483648 can confuse the kernel (so basically half the address space
 /// can't be accessed.
 // const GID_UNSAFE_MAX: u32 = 2147483648;
 
@@ -109,7 +109,7 @@ fn apply_gidnumber<T: Clone>(
                 || (GID_UNUSED_B_MIN..= GID_UNUSED_B_MAX).contains(&gid)
                 || (GID_UNUSED_C_MIN..=GID_UNUSED_C_MAX).contains(&gid)
                 // We won't ever generate an id in the nspawn range, but we do secretly allow
-                // it to be set for compatability with services like freeipa or openldap. TBH
+                // it to be set for compatibility with services like freeipa or openldap. TBH
                 // most people don't even use systemd nspawn anyway ...
                 //
                 // I made this design choice to avoid a tunable that may confuse people to

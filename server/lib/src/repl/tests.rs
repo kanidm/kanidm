@@ -1964,7 +1964,7 @@ async fn test_repl_increment_consumer_ruv_trim_past_valid(
     drop(server_b_txn);
 }
 
-// Test two synchronised nodes where changes are not occuring - this situation would previously
+// Test two synchronised nodes where changes are not occurring - this situation would previously
 // cause issues because when a change did occur, the ruv would "jump" ahead and cause desyncs.w
 #[qs_pair_test]
 async fn test_repl_increment_consumer_ruv_trim_idle_servers(
@@ -3438,7 +3438,7 @@ async fn test_repl_increment_session_new(server_a: &QueryServer, server_b: &Quer
 /// ensures that any RUV state to a server is now fresh and unique
 ///
 /// Second, to prevent tainting the RUV with outdated information, we need to stop it
-/// propogating when consumed. At the end of each consumption, the RUV should be trimmed
+/// propagating when consumed. At the end of each consumption, the RUV should be trimmed
 /// if and only if entries exist in it that exceed the CL max. It is only trimmed conditionally
 /// to prevent infinite replication loops since a trim implies the creation of a new anchor.
 
