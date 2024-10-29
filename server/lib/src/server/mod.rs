@@ -2696,7 +2696,7 @@ mod tests {
     async fn test_scim_entry_structure(server: &QueryServer) {
         let mut read_txn = server.read().await.unwrap();
 
-        // Query entry (A buitin one ?)
+        // Query entry (A builtin one ?)
         let entry = read_txn
             .internal_search_uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE)
             .unwrap();

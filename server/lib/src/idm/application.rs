@@ -388,7 +388,7 @@ mod tests {
         assert!(cr.is_ok());
     }
 
-    // Tests it is not possible to create an applicatin without the linked group attribute
+    // Tests it is not possible to create an application without the linked group attribute
     #[idm_test]
     async fn test_idm_application_no_linked_group(
         idms: &IdmServer,
@@ -418,7 +418,7 @@ mod tests {
         assert!(cr.is_err());
     }
 
-    // Tests creating an applicatin with a real linked group attribute
+    // Tests creating an application with a real linked group attribute
     #[idm_test]
     async fn test_idm_application_linked_group(
         idms: &IdmServer,
