@@ -1422,13 +1422,13 @@ impl QueryServerReadV1 {
             .map_err(Oauth2Error::ServerError)?;
         let ident = idms_prox_read
             .validate_client_auth_info_to_ident(client_auth_info, ct)
-            .map_err(|e| {
+            .inspect_err(|e| {
                 error!("Invalid identity: {:?}", e);
-                Oauth2Error::AuthenticationRequired
-            })?;
+            })
+            .ok();
 
         // Now we can send to the idm server for authorisation checking.
-        idms_prox_read.check_oauth2_authorisation(&ident, &auth_req, ct)
+        idms_prox_read.check_oauth2_authorisation(ident.as_ref(), &auth_req, ct)
     }
 
     #[instrument(

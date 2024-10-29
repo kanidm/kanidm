@@ -653,6 +653,7 @@ pub(crate) async fn view_self_reset_get(
     } else {
         let display_ctx = LoginDisplayCtx {
             domain_info,
+            oauth2: None,
             reauth: Some(Reauth {
                 username: uat.spn,
                 purpose: ReauthPurpose::ProfileSettings,

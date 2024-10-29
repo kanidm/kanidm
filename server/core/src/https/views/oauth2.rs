@@ -1,4 +1,8 @@
-use crate::https::{extractors::VerifiedClientInformation, middleware::KOpId, ServerState};
+use crate::https::{
+    extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation},
+    middleware::KOpId,
+    ServerState,
+};
 use kanidmd_lib::idm::oauth2::{
     AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
 };
@@ -23,6 +27,7 @@ use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
 use super::constants::Urls;
+use super::login::{LoginDisplayCtx, Oauth2Ctx};
 use super::{cookies, UnrecoverableErrorView};
 
 #[derive(Template)]
@@ -45,23 +50,25 @@ pub async fn view_index_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Query(auth_req): Query<AuthorisationRequest>,
 ) -> Response {
-    oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await
+    oauth2_auth_req(state, kopid, client_auth_info, domain_info, jar, auth_req).await
 }
 
 pub async fn view_resume_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> Result<Response, UnrecoverableErrorView> {
     let maybe_auth_req =
         cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
     if let Some(auth_req) = maybe_auth_req {
-        Ok(oauth2_auth_req(state, kopid, client_auth_info, jar, auth_req).await)
+        Ok(oauth2_auth_req(state, kopid, client_auth_info, domain_info, jar, auth_req).await)
     } else {
         error!("unable to resume session, no auth_req was found in the cookie");
         Err(UnrecoverableErrorView {
@@ -75,6 +82,7 @@ async fn oauth2_auth_req(
     state: ServerState,
     kopid: KOpId,
     client_auth_info: ClientAuthInfo,
+    domain_info: DomainInfoRead,
     jar: CookieJar,
     auth_req: AuthorisationRequest,
 ) -> Response {
@@ -83,21 +91,23 @@ async fn oauth2_auth_req(
         .handle_oauth2_authorise(client_auth_info, auth_req.clone(), kopid.eventid)
         .await;
 
+    // No matter what, we always clear the stored oauth2 cookie to prevent
+    // ui loops
+    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
+        let mut authreq_cookie = authreq_cookie.clone();
+        authreq_cookie.make_removal();
+        authreq_cookie.set_path(Urls::Ui.as_ref());
+        jar.add(authreq_cookie)
+    } else {
+        jar
+    };
+
     match res {
         Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
             mut redirect_uri,
             state,
             code,
         })) => {
-            let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-                let mut authreq_cookie = authreq_cookie.clone();
-                authreq_cookie.make_removal();
-                authreq_cookie.set_path("/ui");
-                jar.add(authreq_cookie)
-            } else {
-                jar
-            };
-
             redirect_uri
                 .query_pairs_mut()
                 .clear()
@@ -133,17 +143,32 @@ async fn oauth2_auth_req(
             }
             .into_response()
         }
-        Err(Oauth2Error::AuthenticationRequired) => {
-            // Sign the auth req and hide it in our cookie.
-            let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, "/ui")
-                .map(|mut cookie| {
-                    cookie.set_same_site(SameSite::Strict);
-                    jar.add(cookie)
-                })
-                .ok_or(OperationError::InvalidSessionState);
+
+        Ok(AuthoriseResponse::AuthenticationRequired {
+            client_name,
+            login_hint,
+        }) => {
+            // Sign the auth req and hide it in our cookie - we'll come back for
+            // you later.
+            let maybe_jar =
+                cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, Urls::Ui.as_ref())
+                    .map(|mut cookie| {
+                        cookie.set_same_site(SameSite::Strict);
+                        jar.add(cookie)
+                    })
+                    .ok_or(OperationError::InvalidSessionState);
 
             match maybe_jar {
-                Ok(jar) => (jar, Redirect::to(Urls::Login.as_ref())).into_response(),
+                Ok(jar) => {
+                    let display_ctx = LoginDisplayCtx {
+                        domain_info,
+                        oauth2: Some(Oauth2Ctx { client_name }),
+                        reauth: None,
+                        error: None,
+                    };
+
+                    super::login::view_oauth2_get(jar, display_ctx, login_hint)
+                }
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,

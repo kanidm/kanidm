@@ -28,6 +28,7 @@ pub(crate) enum Urls {
     UpdateCredentials,
     Oauth2Resume,
     Login,
+    Ui,
 }
 
 impl AsRef<str> for Urls {
@@ -39,6 +40,7 @@ impl AsRef<str> for Urls {
             Self::UpdateCredentials => "/ui/update_credentials",
             Self::Oauth2Resume => "/ui/oauth2/resume",
             Self::Login => "/ui/login",
+            Self::Ui => "/ui",
         }
     }
 }
