@@ -216,7 +216,7 @@ fn do_leaf_memberof(
                     tgte.set_ava_set(&Attribute::MemberOf, mo);
                 }
 
-                // If the group has memberOf attributes, we propogate these to
+                // If the group has memberOf attributes, we propagate these to
                 // our entry now.
                 if let Some(group_mo) = memberof_ref {
                     // IMPORTANT this can't be a NONE because we just create MO in
@@ -359,7 +359,7 @@ fn apply_memberof(
                 );
 
                 // Since our groups memberof (and related, direct member of) has changed, we
-                // need to propogate these values forward into our members. At this point we
+                // need to propagate these values forward into our members. At this point we
                 // mark all our members as being part of the affected set.
                 let pre_member = pre.get_ava_refer(Attribute::Member);
                 let post_member = tgte.get_ava_refer(Attribute::Member);

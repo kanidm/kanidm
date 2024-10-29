@@ -256,7 +256,7 @@ mod tests {
     use kanidm_lib_crypto::CryptoPolicy;
 
     // Test the remove operation, removing all application passwords for an
-    // applicaiton should also remove the KV pair.
+    // application should also remove the KV pair.
     #[test]
     fn test_valueset_application_password_remove() {
         let app1_uuid = Uuid::new_v4();
