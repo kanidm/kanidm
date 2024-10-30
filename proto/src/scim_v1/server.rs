@@ -6,6 +6,7 @@ use scim_proto::ScimEntryHeader;
 use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
 use std::collections::{BTreeMap, BTreeSet};
+use super::ScimOauth2ClaimMapJoinChar;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
@@ -161,10 +162,10 @@ pub struct ScimOAuth2ScopeMap {
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ClaimMap {
-    pub group: Uuid,
+    pub group: String,
+    pub group_uuid: Uuid,
     pub claim: String,
-    pub join_char: String,
-    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
+    pub join_char: ScimOauth2ClaimMapJoinChar,
     pub values: BTreeSet<String>,
 }
 

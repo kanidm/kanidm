@@ -3,11 +3,13 @@ use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_with::formats::PreferMany;
-use serde_with::serde_as;
-use serde_with::skip_serializing_none;
 use serde_with::OneOrMany;
+use serde_with::{base64, formats, serde_as, skip_serializing_none};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use std::collections::BTreeMap;
+use time::OffsetDateTime;
+use time::format_description::well_known::Rfc3339;
+use std::collections::{BTreeMap, BTreeSet};
+use super::ScimOauth2ClaimMapJoinChar;
 use uuid::Uuid;
 
 pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
@@ -29,6 +31,43 @@ pub struct ScimReference {
 }
 
 pub type ScimReferences = Vec<ScimReference>;
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct ScimDateTime {
+    #[serde_as(as = "Rfc3339")]
+    pub date_time: OffsetDateTime,
+}
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimCertificate {
+    #[serde_as(as = "base64::Base64<base64::UrlSafe, formats::Unpadded>")]
+    pub der: Vec<u8>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimAddress {
+    pub street_address: String,
+    pub locality: String,
+    pub region: String,
+    pub postal_code: String,
+    pub country: String,
+}
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimOAuth2ClaimMap {
+    pub group: Option<String>,
+    pub group_uuid: Option<Uuid>,
+    pub claim: String,
+    pub join_char: ScimOauth2ClaimMapJoinChar,
+    pub values: BTreeSet<String>,
+}
 
 #[derive(Serialize, Debug, Clone)]
 pub struct ScimEntryPutKanidm {
