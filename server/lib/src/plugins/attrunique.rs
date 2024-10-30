@@ -140,7 +140,7 @@ fn enforce_unique<VALID, STATE>(
     // We can probably bisect over the filter to work this out?
 
     if conflict_cand {
-        // Some kind of confilct exists. We need to isolate which parts of the filter were suspect.
+        // Some kind of conflict exists. We need to isolate which parts of the filter were suspect.
         // To do this, we bisect over the filter and it's suspect elements.
         //
         // In most cases there is likely only 1 suspect element. But in some there are more. To make

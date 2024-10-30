@@ -6363,7 +6363,7 @@ mod tests {
                     btreeset!["value_b".to_string()],
                 ),
             ),
-            // Map with a different seperator
+            // Map with a different separator
             Modify::Present(
                 Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
