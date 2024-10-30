@@ -18,7 +18,7 @@ async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient)
         .json()
         .await
         .unwrap();
-    assert!(openapi_response.openapi != "1.2.3");
+    assert_eq!(openapi_response.openapi, "3.0.3");
 
     // this validates that it's valid JSON schema, but not that it's valid openapi... but it's a start.
     let schema: serde_json::Value = reqwest::get(url)
@@ -34,10 +34,7 @@ async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient)
     let result = compiled.validate(&instance);
     if let Err(errors) = result {
         println!("ERRORS!");
-        for error in errors {
-            println!("Validation error: {}", error);
-            println!("Instance path: {}", error.instance_path);
-        }
+        println!("{:?}", errors);
         panic!("Validation errors!");
     }
 }
