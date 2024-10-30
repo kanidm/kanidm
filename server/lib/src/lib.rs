@@ -1,9 +1,7 @@
 //! The Kanidmd server library. This implements all of the internal components of the server
 //! which is used to process authentication, store identities and enforce access controls.
 
-// WILLIAM, DONT LEAVE THIS HERE.
-// #![deny(warnings)]
-
+#![deny(warnings)]
 #![deny(deprecated)]
 #![recursion_limit = "512"]
 #![warn(unused_extern_crates)]

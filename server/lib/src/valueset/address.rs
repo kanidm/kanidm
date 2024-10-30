@@ -57,7 +57,7 @@ impl ValueSetAddress {
 
 impl ValueSetScimPut for ValueSetAddress {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let mut addresses: Vec<ScimAddressClient> =
+        let addresses: Vec<ScimAddressClient> =
             serde_json::from_value(value).map_err(|_| todo!())?;
 
         let set = addresses

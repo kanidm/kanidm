@@ -345,9 +345,13 @@ pub trait AccessControlsTransaction<'a> {
             .into_iter()
             .filter_map(|e| {
                 match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
-                    SearchResult::Denied | SearchResult::Grant => {
+                    SearchResult::Denied => {
+                        None
+                    }
+                    SearchResult::Grant => {
                         // No properly written access module should allow
                         // unbounded attribute read!
+                        error!("An access module allowed full read, this is a BUG! Denying read to prevent data leaks.");
                         None
                     }
                     SearchResult::Allow(allowed_attrs) => {

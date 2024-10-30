@@ -1,4 +1,5 @@
 //! These are types that a client will send to the server.
+use super::ScimOauth2ClaimMapJoinChar;
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
@@ -6,10 +7,9 @@ use serde_with::formats::PreferMany;
 use serde_with::OneOrMany;
 use serde_with::{base64, formats, serde_as, skip_serializing_none};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-use time::OffsetDateTime;
-use time::format_description::well_known::Rfc3339;
 use std::collections::{BTreeMap, BTreeSet};
-use super::ScimOauth2ClaimMapJoinChar;
+use time::format_description::well_known::Rfc3339;
+use time::OffsetDateTime;
 use uuid::Uuid;
 
 pub type ScimSshPublicKeys = Vec<ScimSshPublicKey>;
@@ -67,6 +67,15 @@ pub struct ScimOAuth2ClaimMap {
     pub claim: String,
     pub join_char: ScimOauth2ClaimMapJoinChar,
     pub values: BTreeSet<String>,
+}
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimOAuth2ScopeMap {
+    pub group: Option<String>,
+    pub group_uuid: Option<Uuid>,
+    pub scopes: BTreeSet<String>,
 }
 
 #[derive(Serialize, Debug, Clone)]

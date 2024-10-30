@@ -5,18 +5,17 @@ use std::collections::{BTreeMap, BTreeSet};
 use crate::be::dbvalue::{DbValueOauthClaimMap, DbValueOauthScopeMapV1};
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap, ScimValueIntermediate,
-    UnresolvedScimValueOauth2ClaimMap, UnresolvedValueSetOauth2ClaimMap, ValueSet,
-    ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
+    uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap,
+    ResolvedValueSetOauth2ScopeMap, ScimValueIntermediate, UnresolvedScimValueOauth2ClaimMap,
+    UnresolvedScimValueOauth2ScopeMap, UnresolvedValueSetOauth2ClaimMap,
+    UnresolvedValueSetOauth2ScopeMap, ValueSet, ValueSetIntermediate, ValueSetResolveStatus,
+    ValueSetScimPut,
 };
 use kanidm_proto::scim_v1::client::ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
-use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
+use kanidm_proto::scim_v1::client::ScimOAuth2ScopeMap as ClientScimOAuth2ScopeMap;
 use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {
@@ -53,7 +52,11 @@ impl ValueSetOauthScope {
 
 impl ValueSetScimPut for ValueSetOauthScope {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let set: BTreeSet<String> = serde_json::from_value(value).map_err(|_| todo!())?;
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetOauthScope { set },
+        )))
     }
 }
 
@@ -126,7 +129,9 @@ impl ValueSetT for ValueSetOauthScope {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(ScimResolveStatus::Resolved(str_join(&self.set).into()))
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::ArrayString(
+            self.set.iter().cloned().collect(),
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -212,11 +217,53 @@ impl ValueSetOauthScopeMap {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetOauthScopeMap { map }))
     }
+
+    pub(crate) fn from_set(resolved: Vec<ResolvedValueSetOauth2ScopeMap>) -> ValueSet {
+        let map = resolved
+            .into_iter()
+            .map(|ResolvedValueSetOauth2ScopeMap { group_uuid, scopes }| (group_uuid, scopes))
+            .collect();
+
+        Box::new(ValueSetOauthScopeMap { map })
+    }
 }
 
 impl ValueSetScimPut for ValueSetOauthScopeMap {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        todo!();
+        let scope_maps: Vec<ClientScimOAuth2ScopeMap> =
+            serde_json::from_value(value).map_err(|_| todo!())?;
+
+        // We make these both the same len as claim maps as during the resolve
+        // process we move everything from unresolved to resolved, and worst
+        // case is everything is unresolved.
+        let mut resolved = Vec::with_capacity(scope_maps.len());
+        let mut unresolved = Vec::with_capacity(scope_maps.len());
+
+        for ClientScimOAuth2ScopeMap {
+            group,
+            group_uuid,
+            scopes,
+        } in scope_maps.into_iter()
+        {
+            match (group_uuid, group) {
+                (None, None) => {
+                    todo!()
+                }
+                (Some(group_uuid), _) => {
+                    resolved.push(ResolvedValueSetOauth2ScopeMap { group_uuid, scopes })
+                }
+                (None, Some(group_name)) => {
+                    unresolved.push(UnresolvedValueSetOauth2ScopeMap { group_name, scopes })
+                }
+            }
+        }
+
+        Ok(ValueSetResolveStatus::NeedsResolution(
+            ValueSetIntermediate::Oauth2ScopeMap {
+                resolved,
+                unresolved,
+            },
+        ))
     }
 }
 
@@ -309,18 +356,18 @@ impl ValueSetT for ValueSetOauthScopeMap {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
-            self.map
-                .iter()
-                .map(|(uuid, scopes)| {
-                    ScimOAuth2ScopeMap {
-                        uuid: *uuid,
-                        // Flattened to a space separated list.
-                        scopes: scopes.clone(),
-                    }
-                })
-                .collect::<Vec<_>>(),
-        )))
+        let unresolved_maps = self
+            .map
+            .iter()
+            .map(|(group_uuid, scopes)| UnresolvedScimValueOauth2ScopeMap {
+                group_uuid: *group_uuid,
+                scopes: scopes.clone(),
+            })
+            .collect::<Vec<_>>();
+
+        Some(ScimResolveStatus::NeedsResolution(
+            ScimValueIntermediate::Oauth2ScopeMap(unresolved_maps),
+        ))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -833,31 +880,49 @@ mod tests {
     #[test]
     fn test_scim_oauth2_scope() {
         let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
-        let data = r#""fully_sick_scope_m8""#;
+        let data = r#"["fully_sick_scope_m8"]"#;
         crate::valueset::scim_json_reflexive(vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetOauthScope>(vs, &[])
     }
 
-    #[test]
-    fn test_scim_oauth2_scope_map() {
-        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
+    #[qs_test]
+    async fn test_scim_oauth2_scope_map(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let g_uuid = uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f");
+        assert!(write_txn
+            .internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup")),
+                (Attribute::Uuid, Value::Uuid(g_uuid))
+            ),])
+            .is_ok());
+
         let set = ["read".to_string(), "write".to_string()].into();
-        let vs: ValueSet = ValueSetOauthScopeMap::new(u, set);
+        let vs: ValueSet = ValueSetOauthScopeMap::new(g_uuid, set);
 
         let data = r#"
 [
   {
-    "scopes": "read write",
-    "uuid": "3a163ca0-4762-4620-a188-06b750c84c86"
+    "scopes": ["read", "write"],
+    "group": "testgroup@example.com",
+    "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f"
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
+        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetOauthScopeMap>(vs, &[])
+        crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetOauthScopeMap>(
+            &mut write_txn,
+            vs,
+            &[],
+        );
+
+        assert!(write_txn.commit().is_ok());
     }
 
     #[qs_test]

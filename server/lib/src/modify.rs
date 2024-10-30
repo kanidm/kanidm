@@ -10,6 +10,7 @@ use kanidm_proto::internal::{
 use kanidm_proto::v1::Entry as ProtoEntry;
 // Should this be std?
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -228,6 +229,26 @@ impl ModifyList<ModifyInvalid> {
         ModifyList {
             valid: ModifyValid,
             mods: self.mods,
+        }
+    }
+}
+
+impl From<BTreeMap<Attribute, Option<ValueSet>>> for ModifyList<ModifyInvalid> {
+    fn from(attrs: BTreeMap<Attribute, Option<ValueSet>>) -> Self {
+        let mods = attrs
+            .into_iter()
+            .map(|(attr, maybe_valueset)| {
+                if let Some(valueset) = maybe_valueset {
+                    Modify::Set(attr, valueset)
+                } else {
+                    Modify::Purged(attr)
+                }
+            })
+            .collect();
+
+        ModifyList {
+            valid: ModifyInvalid,
+            mods,
         }
     }
 }
