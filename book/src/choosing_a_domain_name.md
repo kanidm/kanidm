@@ -11,14 +11,15 @@ when choosing a domain.
 > **Bad choices** of domain name may have security impacts on your Kanidm
 > instance, not limited to credential phishing, theft, session leaks and more.
 >
-> **Changing** domain name is hard to do – it not only means reconfiguring all
-> LDAP and OAuth clients, but will also break all registered WebAuthn
-> credentials for all users (which are bound to an `Origin`).
+> [**Changing** domain name is hard to do](./domain_rename.md) – it not only
+> means reconfiguring all LDAP and OAuth clients, but will also break all
+> registered WebAuthn credentials for all users (which are bound to an
+> `Origin`).
 >
 > It's critical that you consider and follow the advice in this chapter, and
 > aim to get it right the first time.
 >
-> You'll save yourself a lot of work later!
+> You'll save yourself (and your users) a lot of work later!
 
 <!-- -->
 
@@ -89,7 +90,7 @@ country cease to exist (eg: [as for `.io`][dot-io]).
 ### Top-level domains containing "kanidm"
 
 We ask that you **do not** use the word `kanidm` as part of your instance's
-*top-level* (or [public suffix][ps]) domain, eg: `contosokanidm.example`.
+*top-level* (or [public-suffix-level][ps]) domain, eg: `contoso-kanidm.example`.
 
 Use something like `auth`, `idm`, `login` or `sso` instead – they're shorter,
 too!
@@ -98,10 +99,10 @@ We're OK with you using `kanidm` in a *subdomain* to point to your Kanidm
 instance, eg: `kanidm.example.com`.
 
 We've worked hard to build this project, and using its name in conjunction with
-an organisation *not* associated with the project dilutes the name's branding
+an organisation *not* associated with the project dilutes the name's brand
 value.
 
-### Subdomains and Origin policy
+### Subdomains and Cross-Origin policy
 
 Browsers allow a server on a subdomain to use intra-domain resources, and access
 and set credentials and cookies from all of its parents until a
@@ -154,8 +155,79 @@ This can be an issue if Kanidm shares a domain with:
 * third-party servers *outside* of your organisation's control (eg: SaaS apps)
 * anything which can be deployed to with minimal oversight (eg: a web host that
   allows uploading content via unencrypted FTP)
+* DNS entries that resolve to arbitrary IP addresses (eg:
+  `192-0-2-1.ipv4.example.com` to `192.0.2.1`, and `192.0.2.1` is not under
+  the authority of `example.com`)
 
 [matrix-csp]: https://github.com/element-hq/synapse/blob/develop/README.rst#security-note
+
+In most cases, hosting Kanidm on a subdomain of a separate top-level (or
+*existing* [public-suffix level][ps]) domain (eg: `idm.contoso-auth.example`) is
+sufficient to isolate your Kanidm deployment's `Origin` from other applications
+and services.
+
+> [!WARNING]
+>
+> There is generally **no need** to request additions to
+> [the public suffix list][ps] to deploy Kanidm securely,
+> *even for multi-environment deployments*.
+>
+> The **only** exception is to *remove* an *existing* opt-out that affects your
+> domain where it must operate under a particular suffix (eg: a NSW government
+> agency using `example.nsw.gov.au`).
+>
+> Such requests are a
+> [major burden for the *volunteer-operated* list][ps-diffusion], can take
+> [months to roll out to clients][ps-rollout], and changes may have unintended
+> side-effects.
+>
+> By comparison, registering a separate domain is easy, and takes minutes.
+
+[ps-diffusion]: https://github.com/publicsuffix/list/wiki/Third-Party-Diffusion
+[ps-rollout]: https://github.com/publicsuffix/list/wiki/Guidelines#appropriate-expectations-on-derivative-propagation-use-or-inclusion
+
+> [!TIP]
+>
+> Web apps (and APIs) that authenticate with
+> [OAuth 2.0/OpenID Connect](./integrations/oauth2.md) **never** need to share
+> cookies or Origin with Kanidm, so they **do not** need to be on the same
+> top-level (or [public-suffix-level][ps]) domain.
+>
+> Large public auth providers (eg: Google, Meta, Microsoft) work the same way
+> with both first and third-party web apps.
+
+### Kanidm requires its own hostname
+
+Kanidm must be the *only* thing running on a hostname, served from `/`, with all
+its paths served as-is.
+
+It cannot:
+
+* be run from a subdirectory (eg: `https://example.com/kanidm/`)
+* have *other* services accessible on the hostname in subdirectories (eg:
+  `https://idm.example.com/wiki/`)
+* have *other* services accessible over HTTP or HTTPS at the same hostname on a
+  different port (eg: `https://idm.example.com:8080/`)
+
+These introduce similar security risks to the
+[subdomain issues described above](#subdomains-and-cross-origin-policy).
+
+One reasonable exception is to serve [ACME HTTP-01 challenges][acme-http] (for
+Let's Encrypt) at `http://${hostname}/.well-known/acme-challenge/`. You'll need
+a *separate* HTTP server to respond to these challenges, and ensure that only
+authorised processes can request a certificate for Kanidm's hostname.
+
+[acme-http]: https://letsencrypt.org/docs/challenge-types/#http-01-challenge
+
+> [!TIP]
+>
+> The `/.well-known/` path ([RFC 8615][]) can be assigned security-sensitive
+> meaning in other protocols, similar to [ACME HTTP-01][acme-http].
+>
+> Kanidm currently uses this path for OpenID Connect Discovery, and may use it
+> for other integrations in the future.
+
+[RFC 8615]: https://datatracker.ietf.org/doc/html/rfc8615
 
 ### Avoid wildcard and widely-scoped certificates
 
@@ -212,18 +284,12 @@ For **maximum** security, your Kanidm domain name should be a subdomain of a
 top-level domain (or domain under a [public suffix][ps]) that has no other
 services assigned it, eg:
 
-* Origin: `https://idm.exampleauth.example`
-* Domain name: `idm.exampleauth.example`
+* Origin: `https://idm.example-auth.example`
+* Domain name: `idm.example-auth.example`
 
-When using [OAuth 2.0/OpenID Connect](./integrations/oauth2.md), there is no
-need for a client app to share a top-level domain with Kanidm, because the app
-does not need to share cookies.
-
-Large public auth providers (eg: Google, Meta, Microsoft) work the same way with
-both first and third-party apps.
-
-If you have strict security controls for all apps on your top-level domain, you
-could run Kanidm on a subdomain of your main domain, eg:
+If you have
+[strict security controls for all apps on your top-level domain](#subdomains-and-cross-origin-policy),
+you could run Kanidm on a subdomain of your main domain, eg:
 
 * Origin: `https://idm.example.com`
 * Domain name: `idm.example.com`
@@ -233,8 +299,9 @@ restrict changes that *could* affect your IDM infrastructure.
 
 > [!NOTE]
 >
-> This is the **inverse** of the common Active Directory practice of using the
-> organisation's primary top-level domain directly, eg: `example.com`.
+> Using a subdomain is the **inverse** of the common Active Directory practice
+> of using the organisation's primary top-level domain directly, eg:
+> `example.com`.
 
 ### Multi-environment and regional deployments
 
