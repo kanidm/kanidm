@@ -208,6 +208,12 @@ impl fmt::Display for Oauth2TokenType {
 
 #[derive(Debug)]
 pub enum AuthoriseResponse {
+    AuthenticationRequired {
+        // A pretty-name of the client
+        client_name: String,
+        // A username hint, if any
+        login_hint: Option<String>,
+    },
     ConsentRequested {
         // A pretty-name of the client
         client_name: String,
@@ -1775,7 +1781,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorisation(
         &self,
-        ident: &Identity,
+        maybe_ident: Option<&Identity>,
         auth_req: &AuthorisationRequest,
         ct: Duration,
     ) -> Result<AuthoriseResponse, Oauth2Error> {
@@ -1889,6 +1895,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             None
         };
 
+        // =============================================================================
+        // By this point, we have validated the majority of the security related
+        // parameters of the request. We can now inspect the identity and decide
+        // if we should ask the user to re-authenticate and proceed.
+
         // TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
         // Are we going to provide the functions for these? Most of these can be "later".
         // IF CHANGED: Update OidcDiscoveryResponse!!!
@@ -1908,7 +1919,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // TODO: id_token_hint - a past token which can be used as a hint.
 
-        // NOTE: login_hint is handled in the UI code, not here.
+        let Some(ident) = maybe_ident else {
+            debug!("No identity available, assume authentication required");
+            return Ok(AuthoriseResponse::AuthenticationRequired {
+                client_name: o2rs.displayname.clone(),
+                login_hint: auth_req.oidc_ext.login_hint.clone(),
+            });
+        };
 
         let Some(account_uuid) = ident.get_uuid() else {
             error!("consent request ident does not have a valid uuid, unable to proceed");
@@ -2939,7 +2956,7 @@ mod tests {
             };
 
             $idms_prox_read
-                .check_oauth2_authorisation($ident, &auth_req, $ct)
+                .check_oauth2_authorisation(Some($ident), &auth_req, $ct)
                 .expect("OAuth2 authorisation failed")
         }};
     }
@@ -3431,7 +3448,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::UnsupportedResponseType
         );
@@ -3451,7 +3468,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidRequest
         );
@@ -3471,7 +3488,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidClientId
         );
@@ -3491,7 +3508,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -3511,10 +3528,32 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
+
+        // Not Authenticated
+        let auth_req = AuthorisationRequest {
+            response_type: "code".to_string(),
+            client_id: "test_resource_server".to_string(),
+            state: "123".to_string(),
+            pkce_request: pkce_request.clone(),
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            nonce: None,
+            oidc_ext: Default::default(),
+            unknown_keys: Default::default(),
+        };
+
+        let req = idms_prox_read
+            .check_oauth2_authorisation(None, &auth_req, ct)
+            .unwrap();
+
+        assert!(matches!(
+            req,
+            AuthoriseResponse::AuthenticationRequired { .. }
+        ));
 
         // Requested scope is not available
         let auth_req = AuthorisationRequest {
@@ -3531,7 +3570,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -3551,7 +3590,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&idm_admin_ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&idm_admin_ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -3571,7 +3610,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&anon_ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&anon_ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::AccessDenied
         );
@@ -3863,7 +3902,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("OAuth2 authorisation failed");
 
         trace!(?consent_request);
@@ -3932,7 +3971,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("OAuth2 authorisation failed");
 
         trace!(?consent_request);
@@ -5134,7 +5173,7 @@ mod tests {
         };
 
         idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
     }
 
@@ -5347,7 +5386,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
 
         // Should be in the consent phase;
@@ -5405,7 +5444,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
 
         // Should be present in the consent phase however!
@@ -5542,7 +5581,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Failed to perform OAuth2 authorisation request.");
 
         // Should be in the consent phase;
@@ -5620,7 +5659,7 @@ mod tests {
 
         assert!(
             idms_prox_read
-                .check_oauth2_authorisation(&ident, &auth_req, ct)
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
                 .unwrap_err()
                 == Oauth2Error::InvalidOrigin
         );
@@ -6324,7 +6363,7 @@ mod tests {
                     btreeset!["value_b".to_string()],
                 ),
             ),
-            // Map with a different seperator
+            // Map with a different separator
             Modify::Present(
                 Attribute::OAuth2RsClaimMap,
                 Value::OauthClaimMap(
@@ -6575,7 +6614,7 @@ mod tests {
         };
 
         let consent_request = idms_prox_read
-            .check_oauth2_authorisation(&ident, &auth_req, ct)
+            .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("OAuth2 authorisation failed");
 
         // Should be in the consent phase;

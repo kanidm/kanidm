@@ -2335,7 +2335,7 @@ mod tests {
                         // Check the uat.
                     }
                     _ => {
-                        error!("A critical error has occurred! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-success result!");
                         panic!();
                     }
                 }
@@ -2469,7 +2469,7 @@ mod tests {
                         token
                     }
                     _ => {
-                        error!("A critical error has occurred! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-success result!");
                         panic!();
                     }
                 }
@@ -2540,7 +2540,7 @@ mod tests {
                         // Check the uat.
                     }
                     _ => {
-                        error!("A critical error has occurred! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-success result!");
                         panic!();
                     }
                 }
@@ -3311,7 +3311,7 @@ mod tests {
                         // Check the uat.
                     }
                     _ => {
-                        error!("A critical error has occurred! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-success result!");
                         panic!();
                     }
                 }
@@ -3843,7 +3843,7 @@ mod tests {
                 match state {
                     AuthState::Success(uat, AuthIssueSession::Token) => uat,
                     _ => {
-                        error!("A critical error has occurred! We have a non-succcess result!");
+                        error!("A critical error has occurred! We have a non-success result!");
                         panic!();
                     }
                 }

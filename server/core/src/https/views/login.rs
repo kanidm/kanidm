@@ -76,10 +76,15 @@ pub struct Reauth {
     pub purpose: ReauthPurpose,
 }
 
+pub struct Oauth2Ctx {
+    pub client_name: String,
+}
+
 pub struct LoginDisplayCtx {
     pub domain_info: DomainInfoRead,
     // We only need this on the first re-auth screen to indicate what we are doing
     pub reauth: Option<Reauth>,
+    pub oauth2: Option<Oauth2Ctx>,
     pub error: Option<LoginError>,
 }
 
@@ -182,6 +187,17 @@ pub async fn view_reauth_get(
     return_location: &str,
     display_ctx: LoginDisplayCtx,
 ) -> Response {
+    // No matter what, we always clear the stored oauth2 cookie to prevent
+    // ui loops
+    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
+        let mut authreq_cookie = authreq_cookie.clone();
+        authreq_cookie.make_removal();
+        authreq_cookie.set_path(Urls::Ui.as_ref());
+        jar.add(authreq_cookie)
+    } else {
+        jar
+    };
+
     let session_valid_result = state
         .qe_r_ref
         .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
@@ -247,12 +263,15 @@ pub async fn view_reauth_get(
 
             let remember_me = !username.is_empty();
 
-            LoginView {
-                display_ctx,
-                username,
-                remember_me,
-            }
-            .into_response()
+            (
+                jar,
+                LoginView {
+                    display_ctx,
+                    username,
+                    remember_me,
+                },
+            )
+                .into_response()
         }
         Err(err_code) => UnrecoverableErrorView {
             err_code,
@@ -260,6 +279,33 @@ pub async fn view_reauth_get(
         }
         .into_response(),
     }
+}
+
+pub fn view_oauth2_get(
+    jar: CookieJar,
+    display_ctx: LoginDisplayCtx,
+    login_hint: Option<String>,
+) -> Response {
+    let (username, remember_me) = if let Some(login_hint) = login_hint {
+        (login_hint, false)
+    } else if let Some(cookie_username) =
+        // cookie jar with remember me.
+        jar.get(COOKIE_USERNAME).map(|c| c.value().to_string())
+    {
+        (cookie_username, true)
+    } else {
+        (String::default(), false)
+    };
+
+    (
+        jar,
+        LoginView {
+            display_ctx,
+            username,
+            remember_me,
+        },
+    )
+        .into_response()
 }
 
 pub async fn view_index_get(
@@ -275,10 +321,21 @@ pub async fn view_index_get(
         .handle_auth_valid(client_auth_info, kopid.eventid)
         .await;
 
+    // No matter what, we always clear the stored oauth2 cookie to prevent
+    // ui loops
+    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
+        let mut authreq_cookie = authreq_cookie.clone();
+        authreq_cookie.make_removal();
+        authreq_cookie.set_path(Urls::Ui.as_ref());
+        jar.add(authreq_cookie)
+    } else {
+        jar
+    };
+
     match session_valid_result {
         Ok(()) => {
             // Send the user to the landing.
-            Redirect::to(Urls::Apps.as_ref()).into_response()
+            (jar, Redirect::to(Urls::Apps.as_ref())).into_response()
         }
         Err(OperationError::NotAuthenticated) | Err(OperationError::SessionExpired) => {
             // cookie jar with remember me.
@@ -291,16 +348,20 @@ pub async fn view_index_get(
 
             let display_ctx = LoginDisplayCtx {
                 domain_info,
+                oauth2: None,
                 reauth: None,
                 error: None,
             };
 
-            LoginView {
-                display_ctx,
-                username,
-                remember_me,
-            }
-            .into_response()
+            (
+                jar,
+                LoginView {
+                    display_ctx,
+                    username,
+                    remember_me,
+                },
+            )
+                .into_response()
         }
         Err(err_code) => UnrecoverableErrorView {
             err_code,
@@ -368,6 +429,7 @@ pub async fn view_login_begin_post(
 
     let mut display_ctx = LoginDisplayCtx {
         domain_info,
+        oauth2: None,
         reauth: None,
         error: None,
     };
@@ -450,6 +512,7 @@ pub async fn view_login_mech_choose_post(
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
+        oauth2: None,
         reauth: None,
         error: None,
     };
@@ -505,6 +568,7 @@ pub async fn view_login_totp_post(
         Err(_) => {
             let display_ctx = LoginDisplayCtx {
                 domain_info,
+                oauth2: None,
                 reauth: None,
                 error: None,
             };
@@ -610,6 +674,7 @@ async fn credential_step(
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
+        oauth2: None,
         reauth: None,
         error: None,
     };

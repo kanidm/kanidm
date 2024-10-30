@@ -85,19 +85,19 @@ pub struct ScimSshPubKey {
 
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScimSyncPerson {
     #[serde(flatten)]
     pub entry: ScimEntryHeader,
 
-    pub user_name: String,
-    pub display_name: String,
+    pub name: String,
+    pub displayname: String,
     pub gidnumber: Option<u32>,
     pub password_import: Option<String>,
     pub unix_password_import: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub totp_import: Vec<ScimTotp>,
-    pub login_shell: Option<String>,
+    pub loginshell: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mail: Vec<MultiValueAttr>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
@@ -119,7 +119,7 @@ pub struct ScimSyncPersonBuilder {
 }
 
 impl ScimSyncPerson {
-    pub fn builder(id: Uuid, user_name: String, display_name: String) -> ScimSyncPersonBuilder {
+    pub fn builder(id: Uuid, name: String, displayname: String) -> ScimSyncPersonBuilder {
         ScimSyncPersonBuilder {
             inner: ScimSyncPerson {
                 entry: ScimEntryHeader {
@@ -131,13 +131,13 @@ impl ScimSyncPerson {
                     external_id: None,
                     meta: None,
                 },
-                user_name,
-                display_name,
+                name,
+                displayname,
                 gidnumber: None,
                 password_import: None,
                 unix_password_import: None,
                 totp_import: Vec::with_capacity(0),
-                login_shell: None,
+                loginshell: None,
                 mail: Vec::with_capacity(0),
                 ssh_publickey: Vec::with_capacity(0),
                 account_valid_from: None,
@@ -173,8 +173,8 @@ impl ScimSyncPersonBuilder {
         self
     }
 
-    pub fn set_login_shell(mut self, login_shell: Option<String>) -> Self {
-        self.inner.login_shell = login_shell;
+    pub fn set_login_shell(mut self, loginshell: Option<String>) -> Self {
+        self.inner.loginshell = loginshell;
         self
     }
 
@@ -221,7 +221,7 @@ pub struct ScimExternalMember {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all = "snake_case")]
 pub struct ScimSyncGroup {
     #[serde(flatten)]
     pub entry: ScimEntryHeader,

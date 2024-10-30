@@ -73,6 +73,7 @@ pub(crate) async fn view_profile_unlock_get(
 
     let display_ctx = LoginDisplayCtx {
         domain_info,
+        oauth2: None,
         reauth: Some(Reauth {
             username: uat.spn,
             purpose: ReauthPurpose::ProfileSettings,
