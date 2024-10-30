@@ -102,7 +102,7 @@ We've worked hard to build this project, and using its name in conjunction with
 an organisation *not* associated with the project dilutes the name's brand
 value.
 
-### Subdomains and Origin policy
+### Subdomains and Cross-Origin policy
 
 Browsers allow a server on a subdomain to use intra-domain resources, and access
 and set credentials and cookies from all of its parents until a
@@ -196,6 +196,39 @@ and services.
 > Large public auth providers (eg: Google, Meta, Microsoft) work the same way
 > with both first and third-party web apps.
 
+### Kanidm requires its own hostname
+
+Kanidm must be the *only* thing running on a hostname, served from `/`, with all
+its paths served as-is.
+
+It cannot:
+
+* be run from a subdirectory (eg: `https://example.com/kanidm/`)
+* have *other* services accessible on the hostname in subdirectories (eg:
+  `https://idm.example.com/wiki/`)
+* have *other* services accessible over HTTP or HTTPS at the same hostname on a
+  different port (eg: `https://idm.example.com:8080/`)
+
+These introduce similar security risks to the
+[subdomain issues described above](#subdomains-and-cross-origin-policy).
+
+One reasonable exception is to serve [ACME HTTP-01 challenges][acme-http] (for
+Let's Encrypt) at `http://${hostname}/.well-known/acme-challenge/`. You'll need
+a *separate* HTTP server to respond to these challenges, and ensure that only
+authorised processes can request a certificate for Kanidm's hostname.
+
+[acme-http]: https://letsencrypt.org/docs/challenge-types/#http-01-challenge
+
+> [!TIP]
+>
+> The `/.well-known/` path ([RFC 8615][]) can be assigned security-sensitive
+> meaning in other protocols, similar to [ACME HTTP-01][acme-http].
+>
+> Kanidm currently uses this path for OpenID Connect Discovery, and may use it
+> for other integrations in the future.
+
+[RFC 8615]: https://datatracker.ietf.org/doc/html/rfc8615
+
 ### Avoid wildcard and widely-scoped certificates
 
 CAs can issue wildcard TLS certificates, which apply to all subdomains in the
@@ -255,7 +288,7 @@ services assigned it, eg:
 * Domain name: `idm.example-auth.example`
 
 If you have
-[strict security controls for all apps on your top-level domain](#subdomains-and-origin-policy),
+[strict security controls for all apps on your top-level domain](#subdomains-and-cross-origin-policy),
 you could run Kanidm on a subdomain of your main domain, eg:
 
 * Origin: `https://idm.example.com`
