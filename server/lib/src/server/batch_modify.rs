@@ -1,9 +1,9 @@
 use super::{ChangeFlag, QueryServerWriteTransaction};
 use crate::prelude::*;
 use crate::server::Plugins;
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 
-pub type ModSetValid = HashMap<Uuid, ModifyList<ModifyValid>>;
+pub type ModSetValid = BTreeMap<Uuid, ModifyList<ModifyValid>>;
 
 pub struct BatchModifyEvent {
     pub ident: Identity,
