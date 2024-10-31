@@ -210,7 +210,7 @@ You can create a scope map with:
 
 ```bash
 kanidm system oauth2 update-scope-map <name> <kanidm_group_name> [scopes]...
-kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
+kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile openid
 ```
 
 > [!TIP]
