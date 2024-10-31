@@ -58,8 +58,7 @@ impl ValueSetScimPut for ValueSetSshKey {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let value: Vec<ScimSshPublicKey> = serde_json::from_value(value).map_err(|err| {
             error!(?err, "SCIM Ssh Public Key syntax invalid");
-            // OperationError::SC0006Uint32SyntaxInvalid
-            todo!()
+            OperationError::SC0024SshPublicKeySyntaxInvalid
         })?;
 
         let map = value

@@ -52,7 +52,10 @@ impl ValueSetOauthScope {
 
 impl ValueSetScimPut for ValueSetOauthScope {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let set: BTreeSet<String> = serde_json::from_value(value).map_err(|_| todo!())?;
+        let set: BTreeSet<String> = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Oauth2Scope syntax invalid");
+            OperationError::SC0019Oauth2ScopeSyntaxInvalid
+        })?;
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(
             ValueSetOauthScope { set },
@@ -231,7 +234,10 @@ impl ValueSetOauthScopeMap {
 impl ValueSetScimPut for ValueSetOauthScopeMap {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let scope_maps: Vec<ClientScimOAuth2ScopeMap> =
-            serde_json::from_value(value).map_err(|_| todo!())?;
+            serde_json::from_value(value).map_err(|err| {
+                error!(?err, "SCIM Oauth2ScopeMap syntax invalid");
+                OperationError::SC0020Oauth2ScopeMapSyntaxInvalid
+            })?;
 
         // We make these both the same len as claim maps as during the resolve
         // process we move everything from unresolved to resolved, and worst
@@ -247,7 +253,8 @@ impl ValueSetScimPut for ValueSetOauthScopeMap {
         {
             match (group_uuid, group) {
                 (None, None) => {
-                    todo!()
+                    error!("SCIM Oauth2ScopeMap a group name or uuid must be present");
+                    return Err(OperationError::SC0021Oauth2ScopeMapMissingGroupIdentifier);
                 }
                 (Some(group_uuid), _) => {
                     resolved.push(ResolvedValueSetOauth2ScopeMap { group_uuid, scopes })
@@ -536,7 +543,10 @@ impl ValueSetOauthClaimMap {
 impl ValueSetScimPut for ValueSetOauthClaimMap {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let claim_maps: Vec<ClientScimOAuth2ClaimMap> =
-            serde_json::from_value(value).map_err(|_| todo!())?;
+            serde_json::from_value(value).map_err(|err| {
+                error!(?err, "SCIM Oauth2ClaimMap syntax invalid");
+                OperationError::SC0022Oauth2ClaimMapSyntaxInvalid
+            })?;
 
         // We make these both the same len as claim maps as during the resolve
         // process we move everything from unresolved to resolved, and worst
@@ -556,7 +566,8 @@ impl ValueSetScimPut for ValueSetOauthClaimMap {
 
             match (group_uuid, group) {
                 (None, None) => {
-                    todo!()
+                    error!("SCIM Oauth2ClaimMap a group name or uuid must be present");
+                    return Err(OperationError::SC0023Oauth2ClaimMapMissingGroupIdentifier);
                 }
                 (Some(group_uuid), _) => resolved.push(ResolvedValueSetOauth2ClaimMap {
                     group_uuid,

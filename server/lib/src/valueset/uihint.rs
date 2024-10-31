@@ -34,8 +34,7 @@ impl ValueSetScimPut for ValueSetUiHint {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let value = serde_json::from_value::<Vec<UiHint>>(value).map_err(|err| {
             error!(?err, "SCIM UiHint syntax invalid");
-            // OperationError::SC0009IndexTypeSyntaxInvalid
-            todo!();
+            OperationError::SC0025UiHintSyntaxInvalid
         })?;
 
         let set = value.into_iter().collect();
