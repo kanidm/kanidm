@@ -943,7 +943,7 @@ pub struct Oauth2CreateScopeMapOpt {
     nopt: Named,
     #[clap(name = "group")]
     group: String,
-    #[clap(name = "scopes")]
+    #[clap(name = "scopes", required = true)]
     scopes: Vec<String>,
 }
 

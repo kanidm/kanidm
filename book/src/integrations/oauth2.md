@@ -210,7 +210,7 @@ You can create a scope map with:
 
 ```bash
 kanidm system oauth2 update-scope-map <name> <kanidm_group_name> [scopes]...
-kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
+kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile openid
 ```
 
 > [!TIP]
@@ -225,13 +225,17 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_admins admin
 > - **email** - email, email_verified
 > - **address** - address
 > - **phone** - phone_number, phone_number_verified
+> - **groups** - groups
 
 <!-- this is just to split the templates up -->
 
 > [!WARNING]
 >
-> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map named
+> If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map containing
 > `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
+> ```bash
+> kanidm system oauth2 update-scope-map nextcloud nextcloud_users openid
+> ```
 
 You can create a supplemental scope map with:
 
