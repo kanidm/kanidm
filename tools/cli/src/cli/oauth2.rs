@@ -140,12 +140,6 @@ impl Oauth2Opt {
                 }
             }
             Oauth2Opt::UpdateScopeMap(cbopt) => {
-                // This should not be required, It should tbe verified by num_args but apparently that isn't working ¯\_(ツ)_/¯
-                if cbopt.scopes.is_empty() {
-                    eprintln!("Scopes cannot be empty");
-                    return;
-                }
-
                 let client = cbopt.nopt.copt.to_client(OpType::Write).await;
                 match client
                     .idm_oauth2_rs_update_scope_map(
