@@ -68,7 +68,7 @@ async fn main() -> ExitCode {
                 info: PamServiceInfo {
                     service: "kanidm-unix".to_string(),
                     tty: "/dev/null".to_string(),
-                    rhost: "localhost".to_string(),
+                    rhost: None,
                 },
             };
             loop {

@@ -107,7 +107,8 @@ pub enum PamAuthRequest {
 pub struct PamServiceInfo {
     pub service: String,
     pub tty: String,
-    pub rhost: String,
+    // Only set if it really is a remote host?
+    pub rhost: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -144,7 +145,10 @@ impl ClientRequest {
             ClientRequest::NssGroupByName(id) => format!("NssGroupByName({})", id),
             ClientRequest::PamAuthenticateInit { account_id, info } => format!(
                 "PamAuthenticateInit{{ account_id={} tty={} pam_secvice{} rhost={} }}",
-                account_id, info.service, info.tty, info.rhost
+                account_id,
+                info.service,
+                info.tty,
+                info.rhost.as_deref().unwrap_or("")
             ),
             ClientRequest::PamAuthenticateStep(_) => "PamAuthenticateStep".to_string(),
             ClientRequest::PamAccountAllowed(id) => {

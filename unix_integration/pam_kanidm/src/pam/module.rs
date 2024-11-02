@@ -256,7 +256,7 @@ impl PamHandle {
         tracing::debug!(?maybe_tty, ?maybe_rhost, ?maybe_service);
 
         match (maybe_tty, maybe_rhost, maybe_service) {
-            (Some(tty), Some(rhost), Some(service)) => Ok(PamServiceInfo {
+            (Some(tty), rhost, Some(service)) => Ok(PamServiceInfo {
                 service,
                 tty,
                 rhost,
