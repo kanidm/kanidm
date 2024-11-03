@@ -1087,7 +1087,7 @@ impl Resolver {
         let pam_info = PamServiceInfo {
             service: "kanidm-unix-test".to_string(),
             tty: "/dev/null".to_string(),
-            rhost: "localhost".to_string(),
+            rhost: None,
         };
 
         let mut auth_session = match self
