@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.4.0"
+version = "1.4.1"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -121,20 +121,20 @@ codegen-units = 256
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
 [workspace.dependencies]
-kanidmd_core = { path = "./server/core", version = "=1.4.0" }
-kanidmd_lib = { path = "./server/lib", version = "=1.4.0" }
-kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.4.0" }
-kanidmd_testkit = { path = "./server/testkit", version = "=1.4.0" }
-kanidm_build_profiles = { path = "./libs/profiles", version = "=1.4.0" }
-kanidm_client = { path = "./libs/client", version = "=1.4.0" }
+kanidmd_core = { path = "./server/core", version = "=1.4.1" }
+kanidmd_lib = { path = "./server/lib", version = "=1.4.1" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.4.1" }
+kanidmd_testkit = { path = "./server/testkit", version = "=1.4.1" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "=1.4.1" }
+kanidm_client = { path = "./libs/client", version = "=1.4.1" }
 kanidm-hsm-crypto = "^0.2.0"
-kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.4.0" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.4.0" }
-kanidm_proto = { path = "./proto", version = "=1.4.0" }
-kanidm_unix_common = { path = "./unix_integration/common", version = "=1.4.0" }
-kanidm_utils_users = { path = "./libs/users", version = "=1.4.0" }
-scim_proto = { path = "./libs/scim_proto", version = "=1.4.0" }
-sketching = { path = "./libs/sketching", version = "=1.4.0" }
+kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.4.1" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.4.1" }
+kanidm_proto = { path = "./proto", version = "=1.4.1" }
+kanidm_unix_common = { path = "./unix_integration/common", version = "=1.4.1" }
+kanidm_utils_users = { path = "./libs/users", version = "=1.4.1" }
+scim_proto = { path = "./libs/scim_proto", version = "=1.4.1" }
+sketching = { path = "./libs/sketching", version = "=1.4.1" }
 
 anyhow = { version = "1.0.90" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
