@@ -106,7 +106,8 @@ pub enum PamAuthRequest {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct PamServiceInfo {
     pub service: String,
-    pub tty: String,
+    // Somehow SDDM doesn't set this ...
+    pub tty: Option<String>,
     // Only set if it really is a remote host?
     pub rhost: Option<String>,
 }
@@ -147,7 +148,7 @@ impl ClientRequest {
                 "PamAuthenticateInit{{ account_id={} tty={} pam_secvice{} rhost={} }}",
                 account_id,
                 info.service,
-                info.tty,
+                info.tty.as_deref().unwrap_or(""),
                 info.rhost.as_deref().unwrap_or("")
             ),
             ClientRequest::PamAuthenticateStep(_) => "PamAuthenticateStep".to_string(),
