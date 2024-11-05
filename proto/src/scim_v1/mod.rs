@@ -57,13 +57,13 @@ pub struct ScimEntryGetQuery {
 pub enum ScimSchema {
     #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:account")]
     SyncAccountV1,
-    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:Group")]
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:group")]
     SyncV1GroupV1,
-    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:Person")]
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:person")]
     SyncV1PersonV1,
-    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:PosixAccount")]
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount")]
     SyncV1PosixAccountV1,
-    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:PosixGroup")]
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup")]
     SyncV1PosixGroupV1,
 }
 
