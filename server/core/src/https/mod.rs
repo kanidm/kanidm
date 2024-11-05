@@ -186,7 +186,7 @@ pub async fn create_https_server(
             "frame-ancestors 'none'; ",
             "img-src 'self' data:; ",
             "worker-src 'none'; ",
-            "script-src 'self'{};",
+            "script-src 'self' 'unsafe-eval'{};",
         ),
         js_checksums
     );
