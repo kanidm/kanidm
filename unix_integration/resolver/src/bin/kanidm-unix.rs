@@ -67,7 +67,7 @@ async fn main() -> ExitCode {
                 account_id: account_id.clone(),
                 info: PamServiceInfo {
                     service: "kanidm-unix".to_string(),
-                    tty: "/dev/null".to_string(),
+                    tty: None,
                     rhost: None,
                 },
             };
