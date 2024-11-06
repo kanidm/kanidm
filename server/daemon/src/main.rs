@@ -172,7 +172,7 @@ async fn submit_admin_req(path: &str, req: AdminTaskRequest, output_mode: Consol
         },
         Some(Ok(AdminTaskResponse::ShowReplicationCertificate { cert })) => match output_mode {
             ConsoleOutputMode::JSON => {
-                eprintln!("{{\"certificate\":\"{}\"}}", cert)
+                println!("{{\"certificate\":\"{}\"}}", cert)
             }
             ConsoleOutputMode::Text => {
                 info!(certificate = ?cert)
