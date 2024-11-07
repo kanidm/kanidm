@@ -14,9 +14,12 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
+
+pub use sshkeys::KeyType;
 
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
@@ -64,6 +67,12 @@ struct CredStatusView {
     credentials_update_partial: CredResetPartialView,
 }
 
+struct Aaa {
+    key_type: KeyType,
+    key: String,
+    comment: Option<String>,
+}
+
 #[derive(Template)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
@@ -77,6 +86,8 @@ struct CredResetPartialView {
     primary: Option<CredentialDetail>,
     unixcred_state: CUCredState,
     unixcred: Option<CredentialDetail>,
+    sshkeys_state: CUCredState,
+    sshkeys: BTreeMap<String, Aaa>,
 }
 
 #[skip_serializing_none]
@@ -849,8 +860,24 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys,
         ..
     } = cu_status;
+
+    let sshkeyss: BTreeMap<String, Aaa> = sshkeys
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                Aaa {
+                    key_type: v.clone().key_type,
+                    key: v.fingerprint().hash,
+                    comment: v.comment.clone(),
+                },
+            )
+        })
+        .collect();
 
     CredResetPartialView {
         ext_cred_portal,
@@ -863,6 +890,8 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys: sshkeyss,
     }
 }
 

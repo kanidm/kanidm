@@ -28,6 +28,8 @@ axum-auth = "0.7.0"
 axum-extra = { version = "0.9.4", features = ["cookie"] }
 axum-macros = "0.4.1"
 axum-server = { version = "0.7.1", features = ["tls-openssl"] }
+base64 = "0.22"
+sha2 = { workspace = true }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
@@ -55,6 +57,9 @@ serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 sketching = { workspace = true }
+hex = { workspace = true }
+sshkeys = { workspace = true }
+sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
