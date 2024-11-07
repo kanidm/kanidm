@@ -1119,6 +1119,8 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL6: SchemaClass = SchemaClass {
         Attribute::PrivateCookieKey,
         Attribute::FernetPrivateKeyStr,
         Attribute::Es256PrivateKeyDer,
+        Attribute::PatchLevel,
+        Attribute::DomainDevelopmentTaint,
     ],
     systemmust: vec![
         Attribute::Name,

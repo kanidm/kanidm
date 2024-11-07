@@ -470,7 +470,7 @@ lazy_static! {
             EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_group_entry_managed_by",
+        name: "idm_acp_group_entry_managed_by_modify",
         uuid: UUID_IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY,
         description: "Builtin IDM Control for allowing entry_managed_by to be set on group entries",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_ACCESS_CONTROL_ADMINS]),
@@ -918,7 +918,7 @@ lazy_static! {
             EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_hp_oauth2_manage_priv",
+        name: "idm_acp_oauth2_manage",
         uuid: UUID_IDM_ACP_OAUTH2_MANAGE_V1,
         description: "Builtin IDM Control for managing OAuth2 resource server integrations.",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_OAUTH2_ADMINS]),
@@ -1315,7 +1315,7 @@ lazy_static! {
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlModify,
         ],
-        name: "idm_people_self_acp_write_mail",
+        name: "idm_acp_people_self_write_mail",
         uuid: UUID_IDM_ACP_PEOPLE_SELF_WRITE_MAIL,
         description: "Builtin IDM Control for self write of mail for people accounts.",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_SELF_MAIL_WRITE]),
@@ -1570,7 +1570,7 @@ lazy_static! {
 
 lazy_static! {
     pub static ref IDM_ACP_ACCOUNT_SELF_WRITE_V1: BuiltinAcp = BuiltinAcp {
-        name: "idm_acp_self_account_write",
+        name: "idm_acp_account_self_write",
         uuid: UUID_IDM_ACP_ACCOUNT_SELF_WRITE_V1,
         description: "Builtin IDM Control for self write - required for accounts to update their own session state.",
         classes: vec![
@@ -1974,7 +1974,7 @@ lazy_static! {
             EntryClass::AccessControlProfile,
             EntryClass::AccessControlModify,
         ],
-        name: "idm_acp_people_account_policy_manage",
+        name: "idm_acp_people_manage",
         uuid: UUID_IDM_ACP_PEOPLE_MANAGE_V1,
         description: "Builtin IDM Control for management of peoples non sensitive attributes.",
         receiver: BuiltinAcpReceiver::Group(vec![UUID_IDM_PEOPLE_ADMINS]),
@@ -2301,7 +2301,7 @@ lazy_static! {
             EntryClass::AccessControlModify,
             EntryClass::AccessControlSearch
         ],
-        name: "idm_acp_service_account_entry_managed_by",
+        name: "idm_acp_service_account_entry_managed_by_modify",
         uuid: UUID_IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY,
         description:
             "Builtin IDM Control for allowing entry_managed_by to be set on service account entries",

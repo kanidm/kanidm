@@ -73,6 +73,7 @@ pub const DOMAIN_LEVEL_8: DomainVersion = 8;
 /// Domain Level introduced with 1.5.0.
 /// Deprecated as of 1.7.0
 pub const DOMAIN_LEVEL_9: DomainVersion = 9;
+pub const PATCH_LEVEL_2: u32 = 2;
 
 /// Domain Level introduced with 1.6.0.
 /// Deprecated as of 1.8.0
@@ -89,7 +90,7 @@ pub const DOMAIN_PREVIOUS_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 // the NEXT level that users will upgrade too.
 pub const DOMAIN_TGT_LEVEL: DomainVersion = DOMAIN_LEVEL_9;
 // The current patch level if any out of band fixes are required.
-pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_1;
+pub const DOMAIN_TGT_PATCH_LEVEL: u32 = PATCH_LEVEL_2;
 // The target domain functional level for the SUBSEQUENT release/dev cycle.
 pub const DOMAIN_TGT_NEXT_LEVEL: DomainVersion = DOMAIN_LEVEL_10;
 // The maximum supported domain functional level
