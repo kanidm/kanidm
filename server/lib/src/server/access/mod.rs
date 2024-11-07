@@ -137,7 +137,10 @@ fn resolve_access_conditions(
         AccessControlReceiver::Group(groups) => {
             let group_check = ident_memberof
                 // Have at least one group allowed.
-                .map(|imo| imo.intersection(groups).next().is_some())
+                .map(|imo| {
+                    trace!(?imo, ?groups);
+                    imo.intersection(groups).next().is_some()
+                })
                 .unwrap_or_default();
 
             if group_check {
@@ -401,6 +404,7 @@ pub trait AccessControlsTransaction<'a> {
         let related_acp: Vec<_> = modify_state
             .iter()
             .filter_map(|acs| {
+                trace!(acs_name = ?acs.acp.name);
                 let (receiver_condition, target_condition) = resolve_access_conditions(
                     ident,
                     ident_memberof,

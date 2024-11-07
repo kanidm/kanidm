@@ -2944,10 +2944,19 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             match schema.is_multivalue(k) {
                 Ok(r) => {
                     // As this is single value, purge then present to maintain this
-                    // invariant. The other situation we purge is within schema with
-                    // the system types where we need to be able to express REMOVAL
-                    // of attributes, thus we need the purge.
-                    if !r || *k == Attribute::SystemMust || *k == Attribute::SystemMay {
+                    // invariant.
+                    if !r ||
+                        // we need to be able to express REMOVAL of attributes, so we
+                        // purge here for migrations of certain system attributes.
+                        *k == Attribute::AcpReceiverGroup ||
+                        *k == Attribute::AcpCreateAttr ||
+                        *k == Attribute::AcpCreateClass ||
+                        *k == Attribute::AcpModifyPresentAttr ||
+                        *k == Attribute::AcpModifyRemovedAttr ||
+                        *k == Attribute::AcpModifyClass ||
+                        *k == Attribute::SystemMust ||
+                        *k == Attribute::SystemMay
+                    {
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
