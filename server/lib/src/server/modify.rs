@@ -863,4 +863,91 @@ mod tests {
         // do a pw check.
         assert!(cred_ref.verify_password("test_password").unwrap());
     }
+
+    #[qs_test]
+    async fn test_modify_name_self_write(server: &QueryServer) {
+        let user_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Person.to_value()),
+            (Attribute::Class, EntryClass::Account.to_value()),
+            (Attribute::Name, Value::new_iname("testperson1")),
+            (Attribute::Uuid, Value::Uuid(user_uuid)),
+            (Attribute::Description, Value::new_utf8s("testperson1")),
+            (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+        );
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        assert!(server_txn.internal_create(vec![e1]).is_ok());
+
+        // Impersonate the user.
+
+        let testperson_entry = server_txn.internal_search_uuid(user_uuid).unwrap();
+
+        let user_ident = Identity::from_impersonate_entry_readwrite(testperson_entry);
+
+        // Can we change ourself?
+        let me_inv_m = ModifyEvent::new_impersonate_identity(
+            user_ident,
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(user_uuid),)),
+            ModifyList::new_list(vec![
+                Modify::Purged(Attribute::Name),
+                Modify::Present(Attribute::Name, Value::new_iname("test_person_renamed")),
+                Modify::Purged(Attribute::DisplayName),
+                Modify::Present(
+                    Attribute::DisplayName,
+                    Value::Utf8("test_person_renamed".into()),
+                ),
+                Modify::Purged(Attribute::LegalName),
+                Modify::Present(
+                    Attribute::LegalName,
+                    Value::Utf8("test_person_renamed".into()),
+                ),
+            ]),
+        );
+
+        // Modify success.
+        assert!(server_txn.modify(&me_inv_m).is_ok());
+
+        // Alter the deal.
+        let modify_remove_person = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(
+                Attribute::Uuid,
+                PartialValue::Uuid(UUID_IDM_PEOPLE_SELF_NAME_WRITE),
+            )),
+            ModifyList::new_list(vec![Modify::Purged(Attribute::Member)]),
+        );
+
+        assert!(server_txn.modify(&modify_remove_person).is_ok());
+
+        // Reload the users identity which will cause the memberships to be reflected now.
+        let testperson_entry = server_txn.internal_search_uuid(user_uuid).unwrap();
+
+        let user_ident = Identity::from_impersonate_entry_readwrite(testperson_entry);
+
+        let me_inv_m = ModifyEvent::new_impersonate_identity(
+            user_ident,
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(user_uuid),)),
+            ModifyList::new_list(vec![
+                Modify::Purged(Attribute::Name),
+                Modify::Present(Attribute::Name, Value::new_iname("test_person_renamed")),
+                Modify::Purged(Attribute::DisplayName),
+                Modify::Present(
+                    Attribute::DisplayName,
+                    Value::Utf8("test_person_renamed".into()),
+                ),
+                Modify::Purged(Attribute::LegalName),
+                Modify::Present(
+                    Attribute::LegalName,
+                    Value::Utf8("test_person_renamed".into()),
+                ),
+            ]),
+        );
+
+        // The modification must now fail.
+        assert_eq!(
+            server_txn.modify(&me_inv_m),
+            Err(OperationError::AccessDenied)
+        );
+    }
 }
