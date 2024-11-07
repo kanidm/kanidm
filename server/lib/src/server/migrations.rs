@@ -743,7 +743,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             .into_iter()
             .try_for_each(|entry| self.internal_migrate_or_create(entry))
             .map_err(|err| {
-                error!(?err, "migrate_domain_8_to_9 -> Error");
+                error!(?err, "migrate_domain_patch_level_2 -> Error");
                 err
             })?;
 
