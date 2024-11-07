@@ -2075,6 +2075,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_8_to_9()?;
         }
 
+        if previous_patch_level < PATCH_LEVEL_2 && domain_info_patch_level >= PATCH_LEVEL_2 {
+            self.migrate_domain_patch_level_2()?;
+        }
+
         if previous_version <= DOMAIN_LEVEL_9 && domain_info_version >= DOMAIN_LEVEL_10 {
             self.migrate_domain_9_to_10()?;
         }
