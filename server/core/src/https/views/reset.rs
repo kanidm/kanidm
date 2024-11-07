@@ -14,10 +14,14 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use uuid::Uuid;
+
+pub use sshkey_attest::proto::PublicKey as SshPublicKey;
+pub use sshkeys::KeyType;
 
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
@@ -69,6 +73,12 @@ struct CredStatusView {
     credentials_update_partial: CredResetPartialView,
 }
 
+struct SshKey {
+    key_type: KeyType,
+    key: String,
+    comment: Option<String>,
+}
+
 #[derive(Template)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
@@ -83,6 +93,8 @@ struct CredResetPartialView {
     primary: Option<CredentialDetail>,
     unixcred_state: CUCredState,
     unixcred: Option<CredentialDetail>,
+    sshkeys_state: CUCredState,
+    sshkeys: BTreeMap<String, SshKey>,
 }
 
 #[skip_serializing_none]
@@ -104,6 +116,13 @@ struct SetUnixCredPartial {
     check_res: PwdCheckResult,
 }
 
+#[derive(Template)]
+#[template(path = "credential_update_add_publickey_partial.html")]
+struct AddPublicKeyPartial {
+    title_error: Option<String>,
+    key_error: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 enum PwdCheckResult {
     Success,
@@ -118,6 +137,17 @@ enum PwdCheckResult {
 pub(crate) struct NewPassword {
     new_password: String,
     new_password_check: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct NewPublicKey {
+    title: String,
+    key: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct PublicKeyRemoveData {
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -336,6 +366,29 @@ pub(crate) async fn remove_unixcred(
             kopid.eventid,
         )
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .await?;
+
+    Ok(get_cu_partial_response(cu_status))
+}
+
+pub(crate) async fn remove_publickey(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    Form(publickey): Form<PublicKeyRemoveData>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::SshPublicKeyRemove(publickey.name),
+            kopid.eventid,
+        )
+        .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -805,6 +858,78 @@ pub(crate) async fn view_set_unixcred(
         .into_response())
 }
 
+pub(crate) async fn view_add_publickey(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    jar: CookieJar,
+    opt_form: Option<Form<NewPublicKey>>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
+
+    let new_key = match opt_form {
+        None => {
+            return Ok((
+                swapped_handler_trigger,
+                AddPublicKeyPartial {
+                    title_error: None,
+                    key_error: None,
+                },
+            )
+                .into_response());
+        }
+        Some(Form(new_key)) => new_key,
+    };
+
+    let (title_error, key_error, status) = {
+        let publickey = match SshPublicKey::from_string(&new_key.key) {
+            Err(_) => {
+                return Ok((
+                    swapped_handler_trigger,
+                    AddPublicKeyPartial {
+                        title_error: None,
+                        key_error: Some(String::from("Key cannot be parsed")),
+                    },
+                )
+                    .into_response());
+            }
+            Ok(publickey) => publickey,
+        };
+        let res = state
+            .qe_r_ref
+            .handle_idmcredentialupdate(
+                cu_session_token,
+                CURequest::SshPublicKey(new_key.title, publickey),
+                kopid.eventid,
+            )
+            .await;
+        match res {
+            Ok(cu_status) => return Ok(get_cu_partial_response(cu_status)),
+            Err(e @ (OperationError::InvalidLabel | OperationError::DuplicateLabel)) => {
+                (Some(e.to_string()), None, StatusCode::UNPROCESSABLE_ENTITY)
+            }
+            Err(e @ OperationError::DuplicateKey) => {
+                (None, Some(e.to_string()), StatusCode::UNPROCESSABLE_ENTITY)
+            }
+            Err(operr) => return Err(ErrorResponse::from(HtmxError::new(&kopid, operr))),
+        }
+    };
+
+    Ok((
+        status,
+        swapped_handler_trigger,
+        HxPushUrl(Uri::from_static("/ui/reset/add_publickey")),
+        AddPublicKeyPartial {
+            title_error,
+            key_error,
+        },
+    )
+        .into_response())
+}
+
 pub(crate) async fn view_reset_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -910,8 +1035,24 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys,
         ..
     } = cu_status;
+
+    let sshkeyss: BTreeMap<String, SshKey> = sshkeys
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                SshKey {
+                    key_type: v.clone().key_type,
+                    key: v.fingerprint().hash,
+                    comment: v.comment.clone(),
+                },
+            )
+        })
+        .collect();
 
     CredResetPartialView {
         ext_cred_portal,
@@ -925,6 +1066,8 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys: sshkeyss,
     }
 }
 

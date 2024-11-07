@@ -3175,6 +3175,8 @@ dependencies = [
  "serde_json",
  "serde_with",
  "sketching",
+ "sshkey-attest",
+ "sshkeys",
  "tempfile",
  "time",
  "tokio",

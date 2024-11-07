@@ -26,7 +26,6 @@ mod navbar;
 mod oauth2;
 mod profile;
 mod reset;
-mod sshkeys;
 
 #[derive(Template)]
 #[template(path = "unrecoverable_error.html")]
@@ -46,7 +45,6 @@ pub fn view_router() -> Router<ServerState> {
         .route("/apps", get(apps::view_apps_get))
         .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
-        .route("/ssh_keys", get(sshkeys::view_sshkeys_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
         .route("/profile/unlock", get(profile::view_profile_unlock_get))
@@ -105,6 +103,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset/change_password", post(reset::view_new_pwd))
         .route("/reset/add_passkey", post(reset::view_new_passkey))
         .route("/reset/set_unixcred", post(reset::view_set_unixcred))
+        .route("/reset/add_publickey", post(reset::view_add_publickey))
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))
@@ -112,6 +111,7 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .route("/api/remove_publickey", post(reset::remove_publickey))
         .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
