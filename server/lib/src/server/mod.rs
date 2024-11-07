@@ -2075,6 +2075,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_8_to_9()?;
         }
 
+        if previous_patch_level < PATCH_LEVEL_2 && domain_info_patch_level >= PATCH_LEVEL_2 {
+            self.migrate_domain_patch_level_2()?;
+        }
+
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.

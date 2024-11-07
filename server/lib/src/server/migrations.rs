@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::prelude::*;
 
 use kanidm_proto::internal::{
@@ -123,6 +121,9 @@ impl QueryServer {
             "After setting internal domain info"
         );
 
+        let mut reload_required = false;
+
+        // If the database domain info is a lower version than our target level, we reload.
         if domain_info_version < domain_target_level {
             write_txn
                 .internal_modify_uuid(
@@ -138,10 +139,7 @@ impl QueryServer {
 
             // Reload if anything in migrations requires it - this triggers the domain migrations
             // which in turn can trigger schema reloads etc.
-            write_txn.reload()?;
-            // Force a reindex here since schema probably changed and we aren't at the
-            // runtime phase where it will trigger on its own yet.
-            write_txn.reindex()?;
+            reload_required = true;
         } else if domain_development_taint {
             // This forces pre-release versions to re-migrate each start up. This solves
             // the domain-version-sprawl issue so that during a development cycle we can
@@ -154,12 +152,12 @@ impl QueryServer {
             // AND
             // We did not already need a version migration as above
             write_txn.domain_remigrate(DOMAIN_PREVIOUS_TGT_LEVEL)?;
-            write_txn.reload()?;
-            // Force a reindex here since schema probably changed and we aren't at the
-            // runtime phase where it will trigger on its own yet.
-            write_txn.reindex()?;
+
+            reload_required = true;
         }
 
+        // If we are new enough to support patches, and we are lower than the target patch level
+        // then a reload will be applied after we raise the patch level.
         if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
             write_txn
                 .internal_modify_uuid(
@@ -170,12 +168,24 @@ impl QueryServer {
                     ),
                 )
                 .map(|()| {
-                    warn!("Domain level has been raised to {}", domain_target_level);
+                    warn!(
+                        "Domain patch level has been raised to {}",
+                        domain_patch_level
+                    );
                 })?;
 
-            // Run the patch migrations if any.
-            write_txn.reload()?;
+            reload_required = true;
         };
+
+        // Execute whatever operations we have batched up and ready to go. This is needed
+        // to preserve ordering of the operations - if we reloaded after a remigrate then
+        // we would have skipped the patch level fix which needs to have occured *first*.
+        if reload_required {
+            write_txn.reload()?;
+            // We are not yet at the schema phase where reindexes will auto-trigger
+            // so if one was required, do it now.
+            write_txn.reindex()?;
+        }
 
         // Now set the db/domain devel taint flag to match our current release status
         // if it changes. This is what breaks the cycle of db taint from dev -> stable
@@ -665,6 +675,81 @@ impl<'a> QueryServerWriteTransaction<'a> {
         Ok(())
     }
 
+    /// Patch Application - This triggers a one-shot fixup task for issue #3178
+    /// to force access controls to re-migrate in existing databases so that they're
+    /// content matches expected values.
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_patch_level_2(&mut self) -> Result<(), OperationError> {
+        admin_warn!("applying domain patch 2.");
+
+        debug_assert!(*self.phase >= ServerPhase::SchemaReady);
+
+        let idm_data = [
+            IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone().into(),
+            IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone().into(),
+            IDM_ACP_ACCOUNT_UNIX_EXTEND_V1.clone().into(),
+            IDM_ACP_ACP_MANAGE_V1.clone().into(),
+            IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone().into(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
+            IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
+            IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
+            IDM_ACP_GROUP_ENTRY_MANAGED_BY_MODIFY_V1.clone().into(),
+            IDM_ACP_GROUP_ENTRY_MANAGER_V1.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL6.clone().into(),
+            IDM_ACP_GROUP_READ_V1.clone().into(),
+            IDM_ACP_GROUP_UNIX_MANAGE_V1.clone().into(),
+            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
+            IDM_ACP_HP_GROUP_UNIX_MANAGE_V1.clone().into(),
+            IDM_ACP_HP_PEOPLE_CREDENTIAL_RESET_V1.clone().into(),
+            IDM_ACP_HP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1
+                .clone()
+                .into(),
+            IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
+            IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
+            IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone().into(),
+            IDM_ACP_PEOPLE_DELETE_V1.clone().into(),
+            IDM_ACP_PEOPLE_MANAGE_V1.clone().into(),
+            IDM_ACP_PEOPLE_PII_MANAGE_V1.clone().into(),
+            IDM_ACP_PEOPLE_PII_READ_V1.clone().into(),
+            IDM_ACP_PEOPLE_READ_V1.clone().into(),
+            IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone().into(),
+            IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone().into(),
+            IDM_ACP_RADIUS_SERVERS_V1.clone().into(),
+            IDM_ACP_RECYCLE_BIN_REVIVE_V1.clone().into(),
+            IDM_ACP_RECYCLE_BIN_SEARCH_V1.clone().into(),
+            IDM_ACP_SCHEMA_WRITE_ATTRS_V1.clone().into(),
+            IDM_ACP_SCHEMA_WRITE_CLASSES_V1.clone().into(),
+            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
+            IDM_ACP_SELF_READ_DL8.clone().into(),
+            IDM_ACP_SELF_WRITE_DL8.clone().into(),
+            IDM_ACP_SERVICE_ACCOUNT_CREATE_V1.clone().into(),
+            IDM_ACP_SERVICE_ACCOUNT_DELETE_V1.clone().into(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGED_BY_MODIFY_V1
+                .clone()
+                .into(),
+            IDM_ACP_SERVICE_ACCOUNT_ENTRY_MANAGER_V1.clone().into(),
+            IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone().into(),
+            IDM_ACP_SYNC_ACCOUNT_MANAGE_V1.clone().into(),
+            IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1
+                .clone()
+                .into(),
+        ];
+
+        idm_data
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_patch_level_2 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
+        Ok(())
+    }
+
     #[instrument(level = "info", skip_all)]
     pub fn initialise_schema_core(&mut self) -> Result<(), OperationError> {
         admin_debug!("initialise_schema_core -> start ...");
@@ -786,6 +871,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_ATTR_KEY_ACTION_ROTATE_DL6.clone().into(),
             SCHEMA_ATTR_KEY_ACTION_REVOKE_DL6.clone().into(),
             SCHEMA_ATTR_KEY_ACTION_IMPORT_JWS_ES256_DL6.clone().into(),
+            // DL7
+            SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
+            SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
         ];
 
         let r = idm_schema
@@ -818,7 +906,6 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
             // DL6
             SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
             SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_GROUP_DL6.clone().into(),
@@ -828,6 +915,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_classes_dl1
