@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::prelude::*;
 
 use kanidm_proto::internal::{
@@ -708,7 +706,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .clone()
                 .into(),
             IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
-            IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
+            IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone().into(),
             IDM_ACP_PEOPLE_CREDENTIAL_RESET_V1.clone().into(),
             IDM_ACP_PEOPLE_DELETE_V1.clone().into(),
