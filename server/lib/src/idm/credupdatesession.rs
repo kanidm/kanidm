@@ -1849,7 +1849,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Is there something else in progress? Cancel it if so.
         if !matches!(session.mfaregstate, MfaRegState::None) {
-            debug!("Cancelling abandoned mfareg");
+            debug!("Clearing incomplete mfareg");
         }
 
         // Generate the TOTP.
@@ -2131,7 +2131,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         };
 
         if !matches!(session.mfaregstate, MfaRegState::None) {
-            debug!("Cancelling abandoned mfareg");
+            debug!("Clearing incomplete mfareg");
         }
 
         let (ccr, pk_reg) = self
