@@ -31,6 +31,8 @@ use compact_jwt::jwe::JweBuilder;
 
 use super::accountpolicy::ResolvedAccountPolicy;
 
+// A user can take up to 15 minutes to update their credentials before we automatically
+// cancel on them.
 const MAXIMUM_CRED_UPDATE_TTL: Duration = Duration::from_secs(900);
 // Minimum 5 minutes.
 const MINIMUM_INTENT_TTL: Duration = Duration::from_secs(300);
@@ -1126,26 +1128,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 };
                 (*max_ttl, *perms)
             }
-            Some(IntentTokenState::Valid { max_ttl, perms }) => {
-                // Check the TTL
-                if current_time >= *max_ttl {
-                    trace!(?current_time, ?max_ttl);
-                    security_info!(%account.uuid, "intent has expired");
-                    return Err(OperationError::SessionExpired);
-                } else {
-                    security_info!(
-                        %entry,
-                        %account.uuid,
-                        "Initiating Credential Update Session",
-                    );
-                    (*max_ttl, *perms)
-                }
-            }
+            Some(IntentTokenState::Valid { max_ttl, perms }) => (*max_ttl, *perms),
             None => {
                 admin_error!("Corruption may have occurred - index yielded an entry for intent_id, but the entry does not contain that intent_id");
                 return Err(OperationError::InvalidState);
             }
         };
+
+        if current_time >= max_ttl {
+            security_info!(?current_time, ?max_ttl, %account.uuid, "intent has expired");
+            return Err(OperationError::SessionExpired);
+        }
+
+        security_info!(
+            %entry,
+            %account.uuid,
+            "Initiating Credential Update Session",
+        );
 
         // To prevent issues with repl, we need to associate this cred update session id, with
         // this intent token id.
@@ -1848,11 +1847,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             return Err(OperationError::AccessDenied);
         };
 
-        // Is there something else in progress?
-        // Or should this just cancel it ....
+        // Is there something else in progress? Cancel it if so.
         if !matches!(session.mfaregstate, MfaRegState::None) {
-            admin_info!("Invalid TOTP state, another update is in progress");
-            return Err(OperationError::InvalidState);
+            debug!("Cancelling abandoned mfareg");
         }
 
         // Generate the TOTP.
@@ -2017,7 +2014,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
         let mut session = session_handle.try_lock().map_err(|_| {
-            admin_error!("Session already locked, unable to proceed.");
+            error!("Session already locked, unable to proceed.");
             OperationError::InvalidState
         })?;
         trace!(?session);
@@ -2035,13 +2032,13 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             .primary
             .as_ref()
             .ok_or_else(|| {
-                admin_error!("Tried to add backup codes, but no primary credential stub exists");
+                error!("Tried to add backup codes, but no primary credential stub exists");
                 OperationError::InvalidState
             })
             .and_then(|cred|
                 cred.update_backup_code(BackupCodes::new(codes.clone()))
                     .map_err(|_| {
-                        admin_error!("Tried to add backup codes, but MFA is not enabled on this credential yet");
+                        error!("Tried to add backup codes, but MFA is not enabled on this credential yet");
                         OperationError::InvalidState
                     })
             )
@@ -2134,8 +2131,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         };
 
         if !matches!(session.mfaregstate, MfaRegState::None) {
-            admin_info!("Invalid Passkey Init state, another update is in progress");
-            return Err(OperationError::InvalidState);
+            debug!("Cancelling abandoned mfareg");
         }
 
         let (ccr, pk_reg) = self
@@ -2248,8 +2244,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         };
 
         if !matches!(session.mfaregstate, MfaRegState::None) {
-            info!("Invalid Attested Passkey Init state, another update is in progress");
-            return Err(OperationError::InvalidState);
+            debug!("Cancelling abandoned mfareg");
         }
 
         let att_ca_list = session
