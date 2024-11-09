@@ -2952,6 +2952,7 @@ mod tests {
                 scope: $scope,
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
+                max_age: None,
                 unknown_keys: Default::default(),
             };
 
@@ -3443,6 +3444,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3463,6 +3465,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3483,6 +3486,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3503,6 +3507,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3523,6 +3528,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3543,6 +3549,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3565,6 +3572,7 @@ mod tests {
             scope: "invalid_scope read".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3585,6 +3593,7 @@ mod tests {
             scope: "read openid".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3605,6 +3614,7 @@ mod tests {
             scope: "read openid".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3898,6 +3908,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -3967,6 +3978,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -5169,6 +5181,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -5382,6 +5395,7 @@ mod tests {
             scope: "openid email".to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -5440,6 +5454,7 @@ mod tests {
             scope: "openid email".to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -5577,6 +5592,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -5654,6 +5670,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
@@ -6610,6 +6627,7 @@ mod tests {
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
+            max_age: None,
             unknown_keys: Default::default(),
         };
 
