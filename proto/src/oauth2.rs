@@ -49,6 +49,8 @@ pub struct AuthorisationRequest {
     // OIDC also allows other optional params
     #[serde(flatten)]
     pub oidc_ext: AuthorisationRequestOidc,
+    // Needs to be hoisted here due to serde flatten bug #3185
+    pub max_age: Option<i64>,
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
@@ -60,7 +62,6 @@ pub struct AuthorisationRequest {
 pub struct AuthorisationRequestOidc {
     pub display: Option<String>,
     pub prompt: Option<String>,
-    pub max_age: Option<i64>,
     pub ui_locales: Option<()>,
     pub claims_locales: Option<()>,
     pub id_token_hint: Option<String>,
