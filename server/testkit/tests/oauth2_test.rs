@@ -236,6 +236,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
             ("code_challenge_method", "S256"),
             ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
             ("scope", "email read openid"),
+            ("max_age", "1"),
         ])
         .send()
         .await
