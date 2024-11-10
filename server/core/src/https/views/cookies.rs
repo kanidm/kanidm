@@ -37,6 +37,8 @@ pub fn make_unsigned<'a>(
     // then webauthn won't work anyway!
     token_cookie.set_domain(state.domain.clone());
     token_cookie.set_path(path);
+    // These last forever.
+    token_cookie.make_permanent();
     token_cookie
 }
 
@@ -69,6 +71,8 @@ pub fn make_signed<'a, T: Serialize>(
     token_cookie.set_http_only(true);
     token_cookie.set_path(path);
     token_cookie.set_domain(state.domain.clone());
+    // These last forever, we have our own internal expiration handling.
+    token_cookie.make_permanent();
     Some(token_cookie)
 }
 

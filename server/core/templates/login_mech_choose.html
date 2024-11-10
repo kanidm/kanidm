@@ -11,6 +11,7 @@
 			<form id="login" action="/ui/login/mech_choose" method="post">
 				<input type="hidden" id="mech" name="mech" value="(( mech.value ))" />
 				<button
+					(% if mech.autofocus %)autofocus(% endif %)
 					type="submit"
 					class="btn btn-dark"
 				>(( mech.name ))</button>
