@@ -40,12 +40,12 @@ pytest-aiohttp = "^1.0.5"
 black = "^24.10.0"
 mkdocs = "^1.5.3"
 mkdocs-material = "^9.5.44"
-mkdocstrings = "^0.26.2"
+mkdocstrings = "^0.27.0"
 mkdocstrings-python = "^1.12.2"
 pook = "^2.1.1"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.1,<0.7.3"
+ruff = ">=0.5.1,<0.7.4"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
