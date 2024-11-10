@@ -36,7 +36,7 @@ body {
   &.active {
     font-weight: 600;
   }
-  
+
   &:hover, &.active {
     background-color: var(--bs-gray-300);
   }
@@ -138,10 +138,15 @@ body {
   transition: none !important;
 }
 
+.card > a {
+  height: 150px;
+}
+
 .oauth2-img {
-  max-width: 150px;
-  max-height: 150px;
-  min-height: 150px;
+  max-width: 100%;
+  max-height: 90%;
+  padding: 10px;
+  height: 100%;
 }
 
 .btn-tiny {
