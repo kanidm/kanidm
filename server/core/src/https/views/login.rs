@@ -99,6 +99,7 @@ struct LoginView {
 pub struct Mech<'a> {
     name: AuthMech,
     value: &'a str,
+    autofocus: bool,
 }
 
 #[derive(Template)]
@@ -754,7 +755,7 @@ async fn view_login_step(
         safety -= 1;
 
         match auth_state {
-            AuthState::Choose(allowed) => {
+            AuthState::Choose(mut allowed) => {
                 debug!("🧩 -> AuthState::Choose");
 
                 jar = add_session_cookie(&state, jar, &session_context)?;
@@ -793,13 +794,22 @@ async fn view_login_step(
 
                     // Render the list of options.
                     _ => {
-                        let mechs = allowed
+                        allowed.sort_unstable();
+                        // Put strongest first.
+                        allowed.reverse();
+
+                        let mechs: Vec<_> = allowed
                             .into_iter()
-                            .map(|m| Mech {
+                            .enumerate()
+                            .map(|(i, m)| Mech {
                                 value: m.to_value(),
                                 name: m,
+                                // Auto focus the first item, it's the strongest
+                                // mechanism and the one we should optimise for.
+                                autofocus: i == 0,
                             })
                             .collect();
+
                         LoginMechView { display_ctx, mechs }.into_response()
                     }
                 };

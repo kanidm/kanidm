@@ -85,10 +85,10 @@ impl fmt::Debug for AuthCredential {
 pub enum AuthMech {
     Anonymous,
     Password,
+    PasswordBackupCode,
     // Now represents TOTP.
     #[serde(rename = "passwordmfa")]
     PasswordTotp,
-    PasswordBackupCode,
     PasswordSecurityKey,
     Passkey,
 }
