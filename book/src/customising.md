@@ -22,7 +22,10 @@ kanidm system domain set-display-name <new-display-name> -D admin
 ### Updating the site image
 
 Similarly instead of the default Ferris the crab logo, the image on the signin page can be updated
-with or reset with
+or reset with the below commands. The image must satisfy the following conditions:
+1. Maximum 1024 x 1024 pixels
+2. Less than 256 KB
+3. Is a supported image file type: png, jpg, gif, svg, webp
 
 ```bash
 kanidm system domain set-image <file-path> [image-type] -D admin
@@ -37,12 +40,13 @@ kanidm system domain remove-image -D admin
 Each application can have its display name updated with the following
 
 ```bash
-kanidm system oauth2 set-displayname <NAME> <displayname> -D idm_admin
+kanidm system oauth2 set-display-name <NAME> <displayname> -D idm_admin
 ```
 
 ### Updating the image
 
-Each application can have its image updated or reset with the following
+Each application can have its image updated or reset with the following commands. The image is
+subject to the same restrictions as the site image above.
 
 ```bash
 kanidm system oauth2 set-image <NAME> <file-path> [image-type] -D idm_admin
