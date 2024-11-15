@@ -16,7 +16,7 @@ By default, the display name is 'Kanidm <hostname>' which is visible when logged
 display name, run the following
 
 ```bash
-kanidm system domain set-display-name <new-display-name> -D admin
+kanidm system domain set-displayname <new-display-name> -D admin
 ```
 
 ### Updating the site image
@@ -40,7 +40,7 @@ kanidm system domain remove-image -D admin
 Each application can have its display name updated with the following
 
 ```bash
-kanidm system oauth2 set-display-name <NAME> <displayname> -D idm_admin
+kanidm system oauth2 set-displayname <NAME> <displayname> -D idm_admin
 ```
 
 ### Updating the image
