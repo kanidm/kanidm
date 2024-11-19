@@ -31,7 +31,7 @@ use axum::{
 };
 
 use axum_extra::extract::cookie::CookieJar;
-use compact_jwt::{JwsCompact, JwsHs256Signer, JwsVerifier};
+use compact_jwt::{error::JwtError, JwsCompact, JwsHs256Signer, JwsVerifier};
 use futures::pin_mut;
 use hyper::body::Incoming;
 use hyper_util::rt::{TokioExecutor, TokioIo};
@@ -83,7 +83,19 @@ impl ServerState {
             Ok(val) => match self.jws_signer.verify(&val) {
                 Ok(val) => val.from_json::<T>().ok(),
                 Err(err) => {
-                    error!("Failed to unmarshal JWT from headers: {:?}", err);
+                    error!(?err, "Failed to deserialise JWT from request");
+                    if matches!(err, JwtError::InvalidSignature) {
+                        // The server has an ephemeral in memory HMAC signer. This is important as
+                        // auth (login) sessions on one node shouldn't validate on another. Sessions
+                        // that are shared beween nodes use the internal ECDSA signer.
+                        //
+                        // But because of this if the server restarts it rolls the key. Additionally
+                        // it can occur if the load balancer isn't sticking sessions to the correct
+                        // node. That can cause this error. So we want to specifically call it out
+                        // to admins so they can investigate that the fault is occuring *outside*
+                        // of kanidm.
+                        warn!("Invalid Signature errors can occur if your instance restarted recently, if a load balancer is not configured for sticky sessions, or a session was tampered with.");
+                    }
                     None
                 }
             },
