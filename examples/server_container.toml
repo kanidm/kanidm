@@ -23,7 +23,7 @@ bindaddress = "[::]:8443"
 #   The path to the kanidm database.
 db_path = "/data/kanidm.db"
 #
-#   If you have a known filesystem, kanidm can tune the 
+#   If you have a known filesystem, kanidm can tune the
 #   database page size to match. Valid choices are:
 #   [zfs, other]
 #   If you are unsure about this leave it as the default
@@ -44,7 +44,9 @@ db_path = "/data/kanidm.db"
 #   memory pressure on your system.
 # db_arc_size = 2048
 #
-#   TLS chain and key in pem format. Both must be present
+#   TLS chain and key in pem format. Both must be present.
+#   If the server receives a SIGHUP, these files will be
+#   re-read and reloaded if their content is valid.
 tls_chain = "/data/chain.pem"
 tls_key = "/data/key.pem"
 #
