@@ -92,7 +92,7 @@ impl ServerState {
                         // But because of this if the server restarts it rolls the key. Additionally
                         // it can occur if the load balancer isn't sticking sessions to the correct
                         // node. That can cause this error. So we want to specifically call it out
-                        // to admins so they can investigate that the fault is occuring *outside*
+                        // to admins so they can investigate that the fault is occurring *outside*
                         // of kanidm.
                         warn!("Invalid Signature errors can occur if your instance restarted recently, if a load balancer is not configured for sticky sessions, or a session was tampered with.");
                     }
