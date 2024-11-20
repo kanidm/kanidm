@@ -45,7 +45,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// SCIM PUT is the handler where a single entry is updated. In a SCIM PUT request
     /// the request defines the state of an attribute in entirety for the update. This
     /// means if the caller wants to add one email address, they must PUT all existing
-    /// addresses in addition to the addition of the new one.
+    /// addresses in addition to the new one.
     pub fn scim_put(
         &mut self,
         scim_entry_put: ScimEntryPutEvent,
@@ -126,7 +126,7 @@ mod tests {
         // Make an entry.
         let group_uuid = Uuid::new_v4();
 
-        // We need to extra entries that will serve as members to our group.
+        // Add members to our groups to test reference handling in scim
         let extra1_uuid = Uuid::new_v4();
         let extra2_uuid = Uuid::new_v4();
         let extra3_uuid = Uuid::new_v4();
