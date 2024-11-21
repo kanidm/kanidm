@@ -72,7 +72,7 @@ tls_key = "/var/lib/private/kanidm/key.pem"
 #   credentials for accounts including but not limited to
 #   webauthn, oauth tokens, and more.
 #   If you change this value you *must* run
-#   `kanidmd domain_name_change` immediately after.
+#   `kanidmd domain rename` immediately after.
 domain = "idm.example.com"
 #
 #   The origin for webauthn. This is the url to the server,

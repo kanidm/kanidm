@@ -7,7 +7,7 @@ use std::fs::read;
 impl DomainOpt {
     pub fn debug(&self) -> bool {
         match self {
-            DomainOpt::SetDisplayName(copt) => copt.copt.debug,
+            DomainOpt::SetDisplayname(copt) => copt.copt.debug,
             DomainOpt::SetLdapBasedn { copt, .. }
             | DomainOpt::SetImage { copt, .. }
             | DomainOpt::RemoveImage { copt }
@@ -19,7 +19,7 @@ impl DomainOpt {
 
     pub async fn exec(&self) {
         match self {
-            DomainOpt::SetDisplayName(opt) => {
+            DomainOpt::SetDisplayname(opt) => {
                 eprintln!(
                     "Attempting to set the domain's display name to: {:?}",
                     opt.new_display_name

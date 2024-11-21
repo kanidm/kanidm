@@ -1069,8 +1069,17 @@ impl Resolver {
                 Ok(PamAuthResponse::Denied)
             }
             Ok(AuthResult::Next(req)) => Ok(req.into()),
-            Err(IdpError::NotFound) => Ok(PamAuthResponse::Unknown),
-            _ => Err(()),
+            Err(IdpError::NotFound) => {
+                *auth_session = AuthSession::Denied;
+
+                Ok(PamAuthResponse::Unknown)
+            }
+            Err(err) => {
+                *auth_session = AuthSession::Denied;
+
+                error!(?err, "Unable to proceed, failing the session");
+                Err(())
+            }
         }
     }
 

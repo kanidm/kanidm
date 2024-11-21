@@ -458,7 +458,7 @@ impl IdProvider for KanidmProvider {
                         Ok(AuthResult::Denied)
                     }
                     Err(ClientError::Transport(err)) => {
-                        error!(?err);
+                        error!(?err, "A client transport error occured.");
                         Err(IdpError::Transport)
                     }
                     Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {

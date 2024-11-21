@@ -54,7 +54,15 @@ pub async fn view_index_get(
     jar: CookieJar,
     Query(auth_req): Query<AuthorisationRequest>,
 ) -> Response {
-    oauth2_auth_req(state, kopid, client_auth_info, domain_info, jar, auth_req).await
+    oauth2_auth_req(
+        state,
+        kopid,
+        client_auth_info,
+        domain_info,
+        jar,
+        Some(auth_req),
+    )
+    .await
 }
 
 pub async fn view_resume_get(
@@ -63,19 +71,19 @@ pub async fn view_resume_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
-) -> Result<Response, UnrecoverableErrorView> {
+) -> Response {
     let maybe_auth_req =
         cookies::get_signed::<AuthorisationRequest>(&state, &jar, COOKIE_OAUTH2_REQ);
 
-    if let Some(auth_req) = maybe_auth_req {
-        Ok(oauth2_auth_req(state, kopid, client_auth_info, domain_info, jar, auth_req).await)
-    } else {
-        error!("unable to resume session, no auth_req was found in the cookie");
-        Err(UnrecoverableErrorView {
-            err_code: OperationError::InvalidState,
-            operation_id: kopid.eventid,
-        })
-    }
+    oauth2_auth_req(
+        state,
+        kopid,
+        client_auth_info,
+        domain_info,
+        jar,
+        maybe_auth_req,
+    )
+    .await
 }
 
 async fn oauth2_auth_req(
@@ -84,13 +92,8 @@ async fn oauth2_auth_req(
     client_auth_info: ClientAuthInfo,
     domain_info: DomainInfoRead,
     jar: CookieJar,
-    auth_req: AuthorisationRequest,
+    maybe_auth_req: Option<AuthorisationRequest>,
 ) -> Response {
-    let res: Result<AuthoriseResponse, Oauth2Error> = state
-        .qe_r_ref
-        .handle_oauth2_authorise(client_auth_info, auth_req.clone(), kopid.eventid)
-        .await;
-
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
     let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
@@ -101,6 +104,25 @@ async fn oauth2_auth_req(
     } else {
         jar
     };
+
+    // If the auth_req was cross-signed, old, or just bad, error. But we have *cleared* it
+    // from the cookie which means we won't see it again.
+    let Some(auth_req) = maybe_auth_req else {
+        error!("unable to resume session, no valid auth_req was found in the cookie. This cookie has been removed.");
+        return (
+            jar,
+            UnrecoverableErrorView {
+                err_code: OperationError::InvalidState,
+                operation_id: kopid.eventid,
+            },
+        )
+            .into_response();
+    };
+
+    let res: Result<AuthoriseResponse, Oauth2Error> = state
+        .qe_r_ref
+        .handle_oauth2_authorise(client_auth_info, auth_req.clone(), kopid.eventid)
+        .await;
 
     match res {
         Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {

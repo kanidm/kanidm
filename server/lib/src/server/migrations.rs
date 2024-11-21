@@ -179,7 +179,7 @@ impl QueryServer {
 
         // Execute whatever operations we have batched up and ready to go. This is needed
         // to preserve ordering of the operations - if we reloaded after a remigrate then
-        // we would have skipped the patch level fix which needs to have occured *first*.
+        // we would have skipped the patch level fix which needs to have occurred *first*.
         if reload_required {
             write_txn.reload()?;
             // We are not yet at the schema phase where reindexes will auto-trigger
