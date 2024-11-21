@@ -1078,7 +1078,7 @@ pub enum Oauth2Opt {
     #[clap(name = "delete")]
     /// Delete a oauth2 client
     Delete(Named),
-    /// Set a new displayname for a client
+    /// Set a new display name for a client
     #[clap(name = "set-displayname")]
     SetDisplayname(Oauth2SetDisplayname),
     /// Set a new name for this client. You may need to update
@@ -1197,7 +1197,7 @@ pub enum Oauth2Opt {
 }
 
 #[derive(Args, Debug)]
-pub struct OptSetDomainDisplayName {
+pub struct OptSetDomainDisplayname {
     #[clap(flatten)]
     copt: CommonOpt,
     #[clap(name = "new-display-name")]
@@ -1260,9 +1260,9 @@ pub enum DeniedNamesOpt {
 
 #[derive(Debug, Subcommand)]
 pub enum DomainOpt {
-    #[clap[name = "set-display-name"]]
+    #[clap[name = "set-displayname"]]
     /// Set the domain display name
-    SetDisplayName(OptSetDomainDisplayName),
+    SetDisplayname(OptSetDomainDisplayname),
     #[clap[name = "set-ldap-basedn"]]
     /// Change the basedn of this server. Takes effect after a server restart.
     /// Examples are `o=organisation` or `dc=domain,dc=name`. Must be a valid ldap
