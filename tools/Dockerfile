@@ -57,7 +57,7 @@ RUN \
         --release && \
     cargo install \
         --git https://github.com/kanidm/webauthn-rs.git \
-        --rev 5f4db4172f8e22aedc68c282d177e98db2b1892f \
+        --rev 66a3d9903b31fa5a67fc00dd65ba8f55695df183 \
         --force fido-mds-tool \
         --target-dir="/usr/src/kanidm/target/" && \
     sccache -s
