@@ -14,8 +14,9 @@ use serde::Deserialize;
 
 use kanidm_unix_common::constants::*;
 
+// Allowed as the large enum is only short lived at startup to the true config
+#[allow(clippy::large_enum_variant)]
 // This bit of magic lets us deserialise the old config and the new versions.
-
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum ConfigUntagged {
@@ -34,6 +35,7 @@ enum ConfigVersion {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct ConfigV2 {
     cache_db_path: Option<String>,
     sock_path: Option<String>,
@@ -96,6 +98,12 @@ struct ConfigInt {
     hsm_pin_path: Option<String>,
     hsm_type: Option<String>,
     tpm_tcti_name: Option<String>,
+
+    // Detect and warn on values in these places.
+    #[serde(default)]
+    cache_db_path: Option<toml::value::Value>,
+    #[serde(default)]
+    kanidm: Option<toml::value::Value>,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -287,6 +295,11 @@ impl UnixdConfig {
     }
 
     fn apply_from_config_legacy(self, config: ConfigInt) -> Result<Self, UnixIntegrationError> {
+        if config.kanidm.is_some() || config.cache_db_path.is_some() {
+            error!("You are using version=\"2\" options in a legacy config. THESE WILL NOT WORK.");
+            return Err(UnixIntegrationError);
+        }
+
         let map_group = config
             .allow_local_account_override
             .iter()
