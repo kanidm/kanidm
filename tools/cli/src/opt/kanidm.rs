@@ -212,7 +212,7 @@ pub enum GroupAccountPolicyOpt {
     #[clap(name = "webauthn-attestation-ca-list")]
     WebauthnAttestationCaList {
         name: String,
-        attestation_ca_list_json: String,
+        attestation_ca_list_json_file: PathBuf,
         #[clap(flatten)]
         copt: CommonOpt,
     },
