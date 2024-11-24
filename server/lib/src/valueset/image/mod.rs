@@ -4,15 +4,13 @@ use std::fmt::Display;
 
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
-use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ValueSet};
 use hashbrown::HashSet;
 use image::codecs::gif::GifDecoder;
 use image::codecs::webp::WebPDecoder;
 use image::ImageDecoder;
 use kanidm_proto::internal::{ImageType, ImageValue};
-use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetImage {
@@ -293,12 +291,6 @@ impl ValueSetImage {
     }
 }
 
-impl ValueSetScimPut for ValueSetImage {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
-    }
-}
-
 impl ValueSetT for ValueSetImage {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
@@ -466,7 +458,6 @@ impl ValueSetT for ValueSetImage {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetImage;
     use super::{ImageType, ImageValue, ImageValueThings};
 
     #[test]
@@ -520,6 +511,7 @@ mod tests {
         assert!(!image.hash_imagevalue().is_empty());
     }
 
+    /*
     // This test is broken on github as it appears to be changing the binary image hash.
     #[test]
     fn test_scim_imagevalue() {
@@ -539,9 +531,7 @@ mod tests {
             "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
         ]"#;
 
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetImage>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
+    */
 }

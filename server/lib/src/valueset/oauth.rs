@@ -7,8 +7,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
-use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet};
 
 use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
 use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
@@ -43,12 +42,6 @@ impl ValueSetOauthScope {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetOauthScope { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetOauthScope {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -206,12 +199,6 @@ impl ValueSetOauthScopeMap {
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetOauthScopeMap { map }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetOauthScopeMap {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -439,12 +426,6 @@ impl ValueSetOauthClaimMap {
             .for_each(|mapping_mut| mapping_mut.values.retain(|_k, v| !v.is_empty()));
 
         self.map.retain(|_k, v| !v.values.is_empty());
-    }
-}
-
-impl ValueSetScimPut for ValueSetOauthClaimMap {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -746,10 +727,7 @@ mod tests {
     fn test_scim_oauth2_scope() {
         let vs: ValueSet = ValueSetOauthScope::new("fully_sick_scope_m8".to_string());
         let data = r#""fully_sick_scope_m8""#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetOauthScope>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -766,10 +744,7 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetOauthScopeMap>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -788,9 +763,6 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetOauthClaimMap>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

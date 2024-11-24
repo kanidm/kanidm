@@ -1,9 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
 use smolset::SmolSet;
-use crate::valueset::{DbValueSetV2, ValueSet, ScimResolveStatus, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUint32 {
@@ -35,12 +34,6 @@ impl ValueSetUint32 {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUint32 { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetUint32 {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -185,9 +178,6 @@ mod tests {
     #[test]
     fn test_scim_uint32() {
         let vs: ValueSet = ValueSetUint32::new(69);
-        crate::valueset::scim_json_reflexive(vs.clone(), "69");
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUint32>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, "69");
     }
 }

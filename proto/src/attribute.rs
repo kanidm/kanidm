@@ -140,9 +140,6 @@ pub enum Attribute {
     Refers,
     Replicated,
     Rs256PrivateKeyDer,
-    /// A set of scim schemas. This is similar to a kanidm class.
-    #[serde(rename = "schemas")]
-    ScimSchemas,
     Scope,
     SourceUuid,
     Spn,
@@ -371,7 +368,6 @@ impl Attribute {
             Attribute::Replicated => ATTR_REPLICATED,
             Attribute::Rs256PrivateKeyDer => ATTR_RS256_PRIVATE_KEY_DER,
             Attribute::Scope => ATTR_SCOPE,
-            Attribute::ScimSchemas => ATTR_SCIM_SCHEMAS,
             Attribute::SourceUuid => ATTR_SOURCE_UUID,
             Attribute::Spn => ATTR_SPN,
             Attribute::SshPublicKey => ATTR_SSH_PUBLICKEY,
@@ -552,7 +548,6 @@ impl Attribute {
             ATTR_REFERS => Attribute::Refers,
             ATTR_REPLICATED => Attribute::Replicated,
             ATTR_RS256_PRIVATE_KEY_DER => Attribute::Rs256PrivateKeyDer,
-            ATTR_SCIM_SCHEMAS => Attribute::ScimSchemas,
             ATTR_SCOPE => Attribute::Scope,
             ATTR_SOURCE_UUID => Attribute::SourceUuid,
             ATTR_SPN => Attribute::Spn,

@@ -23,17 +23,16 @@ pub struct ModifyInvalid;
 #[derive(Debug, Clone)]
 #[allow(clippy::large_enum_variant)]
 pub enum Modify {
-    /// This value *should* exist for this attribute.
+    // This value *should* exist.
+    // Clippy doesn't like value here, as value > pv. It could be an improvement to
+    // box here, but not sure. ... TODO and thought needed.
     Present(Attribute, Value),
-    /// This value *should not* exist for this attribute.
+    // This value *should not* exist.
     Removed(Attribute, PartialValue),
-    /// This attr should not exist, and if it does exist, will have all content removed.
+    // This attr *should not* exist.
     Purged(Attribute),
-    /// This attr and value must exist *in this state* for this change to proceed.
+    // This attr and value must exist *in this state* for this change to proceed.
     Assert(Attribute, PartialValue),
-    /// Set and replace the entire content of an attribute. This requires both presence
-    /// and removal access to the attribute to proceed.
-    Set(Attribute, ValueSet),
 }
 
 pub fn m_pres(attr: Attribute, v: &Value) -> Modify {
@@ -200,10 +199,6 @@ impl ModifyList<ModifyInvalid> {
                 },
                 Modify::Purged(attr) => match schema_attributes.get(attr) {
                     Some(_attr_name) => Ok(Modify::Purged(attr.clone())),
-                    None => Err(SchemaError::InvalidAttribute(attr.to_string())),
-                },
-                Modify::Set(attr, valueset) => match schema_attributes.get(attr) {
-                    Some(_attr_name) => Ok(Modify::Set(attr.clone(), valueset.clone())),
                     None => Err(SchemaError::InvalidAttribute(attr.to_string())),
                 },
             })

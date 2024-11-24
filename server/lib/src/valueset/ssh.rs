@@ -1,12 +1,14 @@
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::BTreeMap;
+
 use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
 use sshkey_attest::proto::PublicKey as SshPublicKey;
+
 use kanidm_proto::scim_v1::server::ScimSshPublicKey;
 
 #[derive(Debug, Clone)]
@@ -49,12 +51,6 @@ impl ValueSetSshKey {
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetSshKey { map }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetSshKey {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -233,9 +229,6 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetSshKey>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

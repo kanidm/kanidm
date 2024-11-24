@@ -1,13 +1,15 @@
+use std::collections::BTreeSet;
+
+use smolset::SmolSet;
+
 use crate::be::dbvalue::DbValueAddressV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
 use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
-use kanidm_proto::scim_v1::JsonValue;
-use smolset::SmolSet;
-use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {
@@ -49,12 +51,6 @@ impl ValueSetAddress {
             )
             .collect();
         Ok(Box::new(ValueSetAddress { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetAddress {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -287,12 +283,6 @@ impl ValueSetEmailAddress {
                 .cloned()
                 .map(|primary| Box::new(ValueSetEmailAddress { primary, set }))
         }
-    }
-}
-
-impl ValueSetScimPut for ValueSetEmailAddress {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -617,10 +607,7 @@ mod tests {
             "value": "claire@example.com"
           }
         ]"#;
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetEmailAddress>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 
     #[test]
@@ -645,9 +632,6 @@ mod tests {
           }
         ]"#;
 
-        crate::valueset::scim_json_reflexive(vs.clone(), data);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetAddress>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, data);
     }
 }

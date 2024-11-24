@@ -2,8 +2,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::value::NSUNIQUEID_RE;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
+use crate::valueset::{DbValueSetV2, ValueSet};
 
 use smolset::SmolSet;
 
@@ -37,12 +36,6 @@ impl ValueSetNsUniqueId {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetNsUniqueId { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetNsUniqueId {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -179,12 +172,6 @@ mod tests {
     fn test_scim_nsuniqueid() {
         let vs: ValueSet =
             ValueSetNsUniqueId::new("3a163ca0-47624620-a18806b7-50c84c86".to_string());
-        crate::valueset::scim_json_reflexive(
-            vs.clone(),
-            r#""3a163ca0-47624620-a18806b7-50c84c86""#,
-        );
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetNsUniqueId>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, r#""3a163ca0-47624620-a18806b7-50c84c86""#);
     }
 }

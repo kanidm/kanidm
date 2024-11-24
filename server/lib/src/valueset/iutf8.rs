@@ -3,8 +3,8 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
+use crate::valueset::{DbValueSetV2, ValueSet};
+
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
@@ -37,12 +37,6 @@ impl ValueSetIutf8 {
     {
         let set = iter.into_iter().map(str::to_string).collect();
         Some(Box::new(ValueSetIutf8 { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetIutf8 {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -215,9 +209,6 @@ mod tests {
     #[test]
     fn test_scim_iutf8() {
         let vs: ValueSet = ValueSetIutf8::new("lowercase string");
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""lowercase string""#);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetIutf8>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, r#""lowercase string""#);
     }
 }

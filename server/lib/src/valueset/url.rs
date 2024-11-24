@@ -1,8 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
+
 use smolset::SmolSet;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUrl {
@@ -34,12 +34,6 @@ impl ValueSetUrl {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUrl { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetUrl {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -171,9 +165,6 @@ mod tests {
     fn test_scim_url() {
         let u = Url::parse("https://idm.example.com").unwrap();
         let vs: ValueSet = ValueSetUrl::new(u);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#""https://idm.example.com/""#);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUrl>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, r#""https://idm.example.com/""#);
     }
 }

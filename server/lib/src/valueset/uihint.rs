@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
+
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
+
 use kanidm_proto::internal::UiHint;
-use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUiHint {
@@ -26,12 +26,6 @@ impl ValueSetUiHint {
         let set: Result<_, _> = data.into_iter().map(UiHint::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetUiHint { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetUiHint {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -153,9 +147,6 @@ mod tests {
     #[test]
     fn test_scim_uihint() {
         let vs: ValueSet = ValueSetUiHint::new(UiHint::PosixAccount);
-        crate::valueset::scim_json_reflexive(vs.clone(), r#"["PosixAccount"]"#);
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetUiHint>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, r#"["PosixAccount"]"#);
     }
 }

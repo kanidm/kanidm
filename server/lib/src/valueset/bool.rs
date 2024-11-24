@@ -1,8 +1,7 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
-use kanidm_proto::scim_v1::JsonValue;
+use crate::valueset::{DbValueSetV2, ValueSet};
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
@@ -35,12 +34,6 @@ impl ValueSetBool {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetBool { set }))
-    }
-}
-
-impl ValueSetScimPut for ValueSetBool {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
-        todo!();
     }
 }
 
@@ -175,9 +168,6 @@ mod tests {
     #[test]
     fn test_scim_boolean() {
         let vs: ValueSet = ValueSetBool::new(true);
-        crate::valueset::scim_json_reflexive(vs.clone(), "true");
-
-        // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive::<ValueSetBool>(vs, &[])
+        crate::valueset::scim_json_reflexive(vs, "true");
     }
 }

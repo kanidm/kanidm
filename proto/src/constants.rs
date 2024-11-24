@@ -179,7 +179,6 @@ pub const ATTR_RECYCLEDDIRECTMEMBEROF: &str = "recycled_directmemberof";
 pub const ATTR_REFERS: &str = "refers";
 pub const ATTR_REPLICATED: &str = "replicated";
 pub const ATTR_RS256_PRIVATE_KEY_DER: &str = "rs256_private_key_der";
-pub const ATTR_SCIM_SCHEMAS: &str = "schemas";
 pub const ATTR_SCOPE: &str = "scope";
 pub const ATTR_SELF: &str = "self";
 pub const ATTR_SOURCE_UUID: &str = "source_uuid";

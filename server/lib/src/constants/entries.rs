@@ -7,7 +7,6 @@ use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
-use crate::valueset::{ValueSet, ValueSetIutf8};
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::OperationError;
@@ -177,11 +176,6 @@ impl EntryClass {
     pub fn to_value(self) -> Value {
         let s: &'static str = self.into();
         Value::new_iutf8(s)
-    }
-
-    pub fn to_valueset(self) -> ValueSet {
-        let s: &'static str = self.into();
-        ValueSetIutf8::new(s)
     }
 
     pub fn to_partialvalue(self) -> PartialValue {
