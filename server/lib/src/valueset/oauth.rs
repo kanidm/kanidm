@@ -8,15 +8,12 @@ use crate::schema::SchemaAttribute;
 use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
 use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ResolvedValueSetOauth2ClaimMap, ScimValueIntermediate,
-    UnresolvedScimValueOauth2ClaimMap, UnresolvedValueSetOauth2ClaimMap, ValueSet,
-    ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
+    uuid_to_proto_string, DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::client::ScimOAuth2ClaimMap as ClientScimOAuth2ClaimMap;
+use kanidm_proto::scim_v1::JsonValue;
+
 use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
 use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
-use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetOauthScope {
@@ -438,45 +435,6 @@ impl ValueSetOauthClaimMap {
         Ok(Box::new(ValueSetOauthClaimMap { map }))
     }
 
-    pub(crate) fn from_set(resolved: Vec<ResolvedValueSetOauth2ClaimMap>) -> ValueSet {
-        let mut map = BTreeMap::new();
-
-        for ResolvedValueSetOauth2ClaimMap {
-            group_uuid,
-            claim,
-            join_char,
-            claim_values,
-        } in resolved.into_iter()
-        {
-            match map.entry(claim) {
-                BTreeEntry::Vacant(e) => {
-                    let mut values = BTreeMap::default();
-                    values.insert(group_uuid, claim_values);
-
-                    let claim_map = OauthClaimMapping {
-                        join: join_char,
-                        values,
-                    };
-                    e.insert(claim_map);
-                }
-                BTreeEntry::Occupied(mut e) => {
-                    // Just add the uuid/value, this claim name already exists.
-                    let mapping_mut = e.get_mut();
-                    match mapping_mut.values.entry(group_uuid) {
-                        BTreeEntry::Vacant(e) => {
-                            e.insert(claim_values);
-                        }
-                        BTreeEntry::Occupied(mut e) => {
-                            e.insert(claim_values);
-                        }
-                    }
-                }
-            }
-        }
-
-        Box::new(ValueSetOauthClaimMap { map })
-    }
-
     fn trim(&mut self) {
         self.map
             .values_mut()
@@ -488,50 +446,7 @@ impl ValueSetOauthClaimMap {
 
 impl ValueSetScimPut for ValueSetOauthClaimMap {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let claim_maps: Vec<ClientScimOAuth2ClaimMap> =
-            serde_json::from_value(value).map_err(|_| todo!())?;
-
-        // We make these both the same len as claim maps as during the resolve
-        // process we move everything from unresolved to resolved, and worst
-        // case is everything is unresolved.
-        let mut resolved = Vec::with_capacity(claim_maps.len());
-        let mut unresolved = Vec::with_capacity(claim_maps.len());
-
-        for ClientScimOAuth2ClaimMap {
-            group,
-            group_uuid,
-            claim,
-            join_char,
-            values: claim_values,
-        } in claim_maps.into_iter()
-        {
-            let join_char = OauthClaimMapJoin::from(join_char);
-
-            match (group_uuid, group) {
-                (None, None) => {
-                    todo!()
-                }
-                (Some(group_uuid), _) => resolved.push(ResolvedValueSetOauth2ClaimMap {
-                    group_uuid,
-                    claim,
-                    join_char,
-                    claim_values,
-                }),
-                (None, Some(group_name)) => unresolved.push(UnresolvedValueSetOauth2ClaimMap {
-                    group_name,
-                    claim,
-                    join_char,
-                    claim_values,
-                }),
-            }
-        }
-
-        Ok(ValueSetResolveStatus::NeedsResolution(
-            ValueSetIntermediate::Oauth2ClaimMap {
-                resolved,
-                unresolved,
-            },
-        ))
+        todo!();
     }
 }
 
@@ -728,24 +643,22 @@ impl ValueSetT for ValueSetOauthClaimMap {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        let unresolved_maps = self
-            .map
-            .iter()
-            .flat_map(|(claim_name, mappings)| {
-                mappings.values.iter().map(|(group_uuid, claim_values)| {
-                    UnresolvedScimValueOauth2ClaimMap {
-                        group_uuid: *group_uuid,
-                        claim: claim_name.to_string(),
-                        join_char: mappings.join.into(),
-                        values: claim_values.clone(),
-                    }
+        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
+            self.map
+                .iter()
+                .flat_map(|(claim_name, mappings)| {
+                    mappings
+                        .values
+                        .iter()
+                        .map(|(group_uuid, claim_values)| ScimOAuth2ClaimMap {
+                            group: *group_uuid,
+                            claim: claim_name.to_string(),
+                            join_char: mappings.join.to_str().to_string(),
+                            values: claim_values.clone(),
+                        })
                 })
-            })
-            .collect::<Vec<_>>();
-
-        Some(ScimResolveStatus::NeedsResolution(
-            ScimValueIntermediate::Oauth2ClaimMap(unresolved_maps),
-        ))
+                .collect::<Vec<_>>(),
+        )))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -812,7 +725,8 @@ impl ValueSetT for ValueSetOauthClaimMap {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetOauthClaimMap, ValueSetOauthScope, ValueSetOauthScopeMap};
-    use crate::prelude::*;
+    use crate::prelude::ValueSet;
+    use crate::valueset::ValueSetT;
     use std::collections::BTreeSet;
 
     #[test]
@@ -860,43 +774,25 @@ mod tests {
         crate::valueset::scim_json_put_reflexive::<ValueSetOauthScopeMap>(vs, &[])
     }
 
-    #[qs_test]
-    async fn test_scim_oauth2_claim_map(server: &QueryServer) {
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        let g_uuid = uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f");
-        assert!(write_txn
-            .internal_create(vec![entry_init!(
-                (Attribute::Class, EntryClass::Object.to_value()),
-                (Attribute::Class, EntryClass::Group.to_value()),
-                (Attribute::Name, Value::new_iname("testgroup")),
-                (Attribute::Uuid, Value::Uuid(g_uuid))
-            ),])
-            .is_ok());
-
+    #[test]
+    fn test_scim_oauth2_claim_map() {
+        let u = uuid::uuid!("3a163ca0-4762-4620-a188-06b750c84c86");
         let set = ["read".to_string(), "write".to_string()].into();
-        let vs: ValueSet = ValueSetOauthClaimMap::new_value("claim".to_string(), g_uuid, set);
+        let vs: ValueSet = ValueSetOauthClaimMap::new_value("claim".to_string(), u, set);
 
         let data = r#"
 [
   {
     "claim": "claim",
-    "group": "testgroup@example.com",
-    "groupUuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f",
+    "group": "3a163ca0-4762-4620-a188-06b750c84c86",
     "joinChar": ";",
-    "values": ["read", "write"]
+    "values": "read write"
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
-        crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetOauthClaimMap>(
-            &mut write_txn,
-            vs,
-            &[],
-        );
-
-        assert!(write_txn.commit().is_ok());
+        crate::valueset::scim_json_put_reflexive::<ValueSetOauthClaimMap>(vs, &[])
     }
 }

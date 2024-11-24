@@ -36,7 +36,6 @@ use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
 use kanidm_proto::scim_v1::server::ScimReference;
 use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
@@ -850,53 +849,16 @@ pub trait QueryServerTransaction<'a> {
     ) -> Result<Option<ScimValueKanidm>, OperationError> {
         match scim_value_intermediate {
             ScimValueIntermediate::References(uuids) => {
-                let scim_references = uuids
-                    .into_iter()
-                    .map(|uuid| {
-                        self.uuid_to_spn(uuid)
-                            .and_then(|maybe_value| {
-                                maybe_value.ok_or(
-                                    // May need a better error for no match here
-                                    OperationError::InvalidValueState,
-                                )
-                            })
-                            .map(|value| ScimReference {
-                                uuid,
-                                value: value.to_proto_string_clone(),
-                            })
-                    })
-                    .collect::<Result<Vec<_>, _>>()?;
+                let mut scim_references = vec![];
+                for uuid in uuids {
+                    if let Some(option) = self.uuid_to_spn(uuid)? {
+                        scim_references.push(ScimReference {
+                            uuid,
+                            value: option.to_proto_string_clone(),
+                        })
+                    }
+                }
                 Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
-            }
-            ScimValueIntermediate::Oauth2ClaimMap(unresolved_maps) => {
-                let scim_claim_maps = unresolved_maps
-                    .into_iter()
-                    .map(
-                        |UnresolvedScimValueOauth2ClaimMap {
-                             group_uuid,
-                             claim,
-                             join_char,
-                             values,
-                         }| {
-                            self.uuid_to_spn(group_uuid)
-                                .and_then(|maybe_value| {
-                                    maybe_value.ok_or(
-                                        // May need a better error for no match here
-                                        OperationError::InvalidValueState,
-                                    )
-                                })
-                                .map(|value| ScimOAuth2ClaimMap {
-                                    group: value.to_proto_string_clone(),
-                                    group_uuid,
-                                    claim,
-                                    join_char,
-                                    values,
-                                })
-                        },
-                    )
-                    .collect::<Result<Vec<_>, _>>()?;
-
-                Ok(Some(ScimValueKanidm::OAuth2ClaimMap(scim_claim_maps)))
             }
         }
     }
@@ -937,10 +899,12 @@ pub trait QueryServerTransaction<'a> {
             SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
             SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
             SyntaxType::UiHint => ValueSetUiHint::from_scim_json_put(value),
+            SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
             SyntaxType::CredentialType => ValueSetCredentialType::from_scim_json_put(value),
             SyntaxType::WebauthnAttestationCaList => {
                 ValueSetWebauthnAttestationCaList::from_scim_json_put(value)
             }
+            SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
             SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
             SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
             SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
@@ -949,17 +913,6 @@ pub trait QueryServerTransaction<'a> {
             // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
             SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
                 "Json Filters are not able to be set.".to_string(),
-            )),
-            // Can't be set currently as these are only internally generated for key-id's
-            // SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
-            SyntaxType::HexString => Err(OperationError::InvalidAttribute(
-                "Hex strings are not able to be set.".to_string(),
-            )),
-
-            // Can't be set until we have better error handling in the set paths
-            // SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
-            SyntaxType::Image => Err(OperationError::InvalidAttribute(
-                "Images are not able to be set.".to_string(),
             )),
 
             // Syntax types that can not be submitted
@@ -1050,39 +1003,6 @@ pub trait QueryServerTransaction<'a> {
                 }
 
                 let vs = ValueSetRefer::from_set(resolved);
-                Ok(vs)
-            }
-
-            ValueSetIntermediate::Oauth2ClaimMap {
-                mut resolved,
-                unresolved,
-            } => {
-                resolved.extend(unresolved.into_iter().map(
-                    |UnresolvedValueSetOauth2ClaimMap {
-                         group_name,
-                         claim,
-                         join_char,
-                         claim_values,
-                     }| {
-                        let group_uuid =
-                            self.name_to_uuid(group_name.as_str()).unwrap_or_else(|_| {
-                                warn!(
-                            ?group_name,
-                            "Value can not be resolved to a uuid - assuming it does not exist."
-                        );
-                                UUID_DOES_NOT_EXIST
-                            });
-
-                        ResolvedValueSetOauth2ClaimMap {
-                            group_uuid,
-                            claim,
-                            join_char,
-                            claim_values,
-                        }
-                    },
-                ));
-
-                let vs = ValueSetOauthClaimMap::from_set(resolved);
                 Ok(vs)
             }
         }

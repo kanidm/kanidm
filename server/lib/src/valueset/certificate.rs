@@ -3,7 +3,6 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
-use kanidm_proto::scim_v1::client::ScimCertificate as ClientScimCertificate;
 use kanidm_proto::scim_v1::server::ScimCertificate;
 use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeMap;
@@ -105,35 +104,7 @@ impl ValueSetCertificate {
 
 impl ValueSetScimPut for ValueSetCertificate {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let der_values: Vec<ClientScimCertificate> =
-            serde_json::from_value(value).map_err(|_| todo!())?;
-
-        // For each one, check it's a real der certificate.
-        let mut map = BTreeMap::new();
-
-        for ClientScimCertificate { der } in der_values {
-            // Parse the DER
-            let certificate = Certificate::from_der(&der)
-                .map(Box::new)
-                .map_err(|x509_err| {
-                    error!(?x509_err, "Unable to restore certificate from DER");
-                    // OperationError::VS0003CertificateDerDecode
-                    todo!();
-                })?;
-
-            // sha256 the public key
-            let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
-                error!("Unable to digest public key");
-                // OperationError::VS0004CertificatePublicKeyDigest
-                todo!();
-            })?;
-
-            map.insert(pk_s256, certificate);
-        }
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(
-            ValueSetCertificate { map },
-        )))
+        todo!();
     }
 }
 

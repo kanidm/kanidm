@@ -3,7 +3,7 @@ use crate::schema::SchemaAttribute;
 use crate::valueset::{
     DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::{client::ScimDateTime, JsonValue};
+use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 use time::OffsetDateTime;
 
@@ -49,13 +49,13 @@ impl ValueSetDateTime {
 
 impl ValueSetScimPut for ValueSetDateTime {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let ScimDateTime { date_time } = serde_json::from_value(value).map_err(|err| {
+        let value: OffsetDateTime = serde_json::from_value(value).map_err(|err| {
             error!(?err, "SCIM DateTime syntax invalid");
             OperationError::SC0010DateTimeSyntaxInvalid
         })?;
 
         let mut set = SmolSet::new();
-        set.insert(date_time);
+        set.insert(value);
 
         Ok(ValueSetResolveStatus::Resolved(Box::new(
             ValueSetDateTime { set },
@@ -142,7 +142,14 @@ impl ValueSetT for ValueSetDateTime {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        self.set.iter().next().copied().map(|v| v.into())
+        let mut iter = self.set.iter().copied();
+        if self.len() == 1 {
+            let v = iter.next().unwrap_or(OffsetDateTime::UNIX_EPOCH);
+            Some(v.into())
+        } else {
+            let arr = iter.collect::<Vec<_>>();
+            Some(arr.into())
+        }
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {

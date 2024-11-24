@@ -83,16 +83,6 @@ pub struct ScimSshPublicKey {
     pub value: SshPublicKey,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
-pub enum ScimOauth2ClaimMapJoinChar {
-    #[serde(rename = ",", alias = "csv")]
-    CommaSeparatedValue,
-    #[serde(rename = " ", alias = "ssv")]
-    SpaceSeparatedValue,
-    #[serde(rename = ";", alias = "json_array")]
-    JsonArray,
-}
-
 #[cfg(test)]
 mod tests {
     // use super::*;

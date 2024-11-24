@@ -6,7 +6,6 @@ use crate::value::{Address, VALIDATE_EMAIL_RE};
 use crate::valueset::{
     DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::client::ScimAddress as ScimAddressClient;
 use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::scim_v1::{server::ScimAddress, ScimMail};
 use smolset::SmolSet;
@@ -57,36 +56,7 @@ impl ValueSetAddress {
 
 impl ValueSetScimPut for ValueSetAddress {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let mut addresses: Vec<ScimAddressClient> =
-            serde_json::from_value(value).map_err(|_| todo!())?;
-
-        let set = addresses
-            .into_iter()
-            .map(
-                |ScimAddressClient {
-                     street_address,
-                     locality,
-                     region,
-                     postal_code,
-                     country,
-                 }| {
-                    let formatted =
-                        format!("{street_address}, {locality}, {region}, {postal_code}, {country}");
-                    Address {
-                        formatted,
-                        street_address,
-                        locality,
-                        region,
-                        postal_code,
-                        country,
-                    }
-                },
-            )
-            .collect();
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetAddress {
-            set,
-        })))
+        todo!();
     }
 }
 

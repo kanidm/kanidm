@@ -4,9 +4,7 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
-use crate::value::{
-    Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, OauthClaimMapJoin, Session,
-};
+use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
@@ -14,7 +12,6 @@ use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
@@ -671,16 +668,9 @@ impl PartialEq for ValueSet {
     }
 }
 
-pub struct UnresolvedScimValueOauth2ClaimMap {
-    pub group_uuid: Uuid,
-    pub claim: String,
-    pub join_char: ScimOauth2ClaimMapJoinChar,
-    pub values: BTreeSet<String>,
-}
-
+// #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ScimValueIntermediate {
     References(Vec<Uuid>),
-    Oauth2ClaimMap(Vec<UnresolvedScimValueOauth2ClaimMap>),
 }
 
 pub enum ScimResolveStatus {
@@ -745,24 +735,6 @@ pub enum ValueSetIntermediate {
         resolved: BTreeSet<Uuid>,
         unresolved: Vec<String>,
     },
-    Oauth2ClaimMap {
-        resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
-        unresolved: Vec<UnresolvedValueSetOauth2ClaimMap>,
-    },
-}
-
-pub struct UnresolvedValueSetOauth2ClaimMap {
-    pub group_name: String,
-    pub claim: String,
-    pub join_char: OauthClaimMapJoin,
-    pub claim_values: BTreeSet<String>,
-}
-
-pub struct ResolvedValueSetOauth2ClaimMap {
-    pub group_uuid: Uuid,
-    pub claim: String,
-    pub join_char: OauthClaimMapJoin,
-    pub claim_values: BTreeSet<String>,
 }
 
 pub fn uuid_to_proto_string(u: Uuid) -> String {

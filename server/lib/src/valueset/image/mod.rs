@@ -292,6 +292,12 @@ impl ValueSetImage {
     }
 }
 
+impl ValueSetScimPut for ValueSetImage {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        todo!();
+    }
+}
+
 impl ValueSetT for ValueSetImage {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
@@ -533,5 +539,8 @@ mod tests {
         ]"#;
 
         crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetImage>(vs, &[])
     }
 }
