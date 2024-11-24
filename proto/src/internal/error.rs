@@ -176,7 +176,6 @@ pub enum OperationError {
     SC0002ReferenceSyntaxInvalid,
     SC0003MailSyntaxInvalid,
     SC0004UuidSyntaxInvalid,
-    SC0005BoolSyntaxInvalid,
     // Migration
     MG0001InvalidReMigrationLevel,
     MG0002RaiseDomainLevelExceedsMaximum,
@@ -416,7 +415,6 @@ impl OperationError {
             Self::SC0002ReferenceSyntaxInvalid => Some("A SCIM Reference Set contained invalid syntax and can not be processed.".into()),
             Self::SC0003MailSyntaxInvalid => Some("A SCIM Mail Address contained invalid syntax".into()),
             Self::SC0004UuidSyntaxInvalid => Some("A SCIM Uuid contained invalid syntax".into()),
-            Self::SC0005BoolSyntaxInvalid => Some("A SCIM boolean contained invalid syntax".into()),
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
