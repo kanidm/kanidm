@@ -1,12 +1,12 @@
+use std::collections::BTreeSet;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{
     uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
-    ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
-use std::collections::BTreeSet;
+use crate::valueset::{uuid_to_proto_string, ScimResolveStatus, DbValueSetV2, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {
@@ -369,10 +369,14 @@ mod tests {
 
         let data = r#"{"Refer": "4d21d04a-dc0e-42eb-b850-34dd180b107f"}"#;
 
-        crate::valueset::scim_json_reflexive_unresolved(vs.clone(), data);
+<<<<<<< HEAD
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
+=======
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(vs, &[])
+>>>>>>> f6db5aa44 (groundwork)
     }
 
     #[test]
@@ -381,9 +385,13 @@ mod tests {
 
         let data = r#"{"ReferMany": ["4d21d04a-dc0e-42eb-b850-34dd180b107f"]}"#;
 
-        crate::valueset::scim_json_reflexive_unresolved(vs.clone(), data);
+<<<<<<< HEAD
+        crate::valueset::scim_json_reflexive_unresolved(vs, data);
+=======
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
 
         // Test that we can parse json values into a valueset.
         crate::valueset::scim_json_put_reflexive::<ValueSetRefer>(vs, &[])
+>>>>>>> f6db5aa44 (groundwork)
     }
 }

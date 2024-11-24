@@ -4,6 +4,7 @@ use std::fmt::Display;
 
 use crate::be::dbvalue::DbValueImage;
 use crate::prelude::*;
+use crate::repl::proto::ReplAttrV1;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
 use hashbrown::HashSet;

@@ -1,3 +1,20 @@
+use std::collections::{BTreeMap, BTreeSet};
+use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
+use dyn_clone::DynClone;
+use hashbrown::HashSet;
+use kanidm_lib_crypto::{x509_cert::Certificate, Sha256Digest};
+use kanidm_proto::internal::ImageValue;
+use openssl::ec::EcKey;
+use openssl::pkey::Private;
+use openssl::pkey::Public;
+use serde::Serialize;
+use serde_with::serde_as;
+use smolset::SmolSet;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
+use time::OffsetDateTime;
+use webauthn_rs::prelude::AttestationCaList;
+use webauthn_rs::prelude::AttestedPasskey as AttestedPasskeyV4;
+use webauthn_rs::prelude::Passkey as PasskeyV4;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::credential::{apppwd::ApplicationPassword, totp::Totp, Credential};
 use crate::prelude::*;
@@ -5,6 +22,7 @@ use crate::repl::cid::Cid;
 use crate::schema::SchemaAttribute;
 use crate::server::keys::KeyId;
 use crate::value::{Address, ApiToken, CredentialType, IntentTokenState, Oauth2Session, Session};
+use kanidm_proto::internal::{Filter as ProtoFilter, UiHint};
 use compact_jwt::{crypto::JwsRs256Signer, JwsEs256Signer};
 use dyn_clone::DynClone;
 use hashbrown::HashSet;
@@ -15,8 +33,6 @@ use kanidm_proto::scim_v1::JsonValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
-use serde::Serialize;
-use serde_with::serde_as;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
@@ -952,8 +968,7 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
     expect_vs: ValueSet,
     additional_tests: &[(JsonValue, ValueSet)],
 ) {
-    let scim_value = expect_vs.to_scim_value().unwrap().assume_resolved();
-
+    let scim_value = expect_vs.to_scim_value().unwrap();
     let generic = serde_json::to_value(scim_value).unwrap();
     // Check that we can turn back into a vs from the generic version.
     let vs = T::from_scim_json_put(generic).unwrap();
