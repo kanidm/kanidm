@@ -148,6 +148,7 @@ pub enum OperationError {
     KG002TaskCommFailure,
     KG003CacheClearFailed,
 
+    // What about something like this for unique errors?
     // Credential Update Errors
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,

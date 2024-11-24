@@ -855,7 +855,10 @@ pub trait QueryServerTransaction<'a> {
                     .map(|uuid| {
                         self.uuid_to_spn(uuid)
                             .and_then(|maybe_value| {
-                                maybe_value.ok_or(OperationError::InvalidValueState)
+                                maybe_value.ok_or(
+                                    // May need a better error for no match here
+                                    OperationError::InvalidValueState,
+                                )
                             })
                             .map(|value| ScimReference {
                                 uuid,
@@ -877,7 +880,10 @@ pub trait QueryServerTransaction<'a> {
                          }| {
                             self.uuid_to_spn(group_uuid)
                                 .and_then(|maybe_value| {
-                                    maybe_value.ok_or(OperationError::InvalidValueState)
+                                    maybe_value.ok_or(
+                                        // May need a better error for no match here
+                                        OperationError::InvalidValueState,
+                                    )
                                 })
                                 .map(|value| ScimOAuth2ClaimMap {
                                     group: value.to_proto_string_clone(),
@@ -899,7 +905,10 @@ pub trait QueryServerTransaction<'a> {
                     .map(|UnresolvedScimValueOauth2ScopeMap { group_uuid, scopes }| {
                         self.uuid_to_spn(group_uuid)
                             .and_then(|maybe_value| {
-                                maybe_value.ok_or(OperationError::InvalidValueState)
+                                maybe_value.ok_or(
+                                    // May need a better error for no match here
+                                    OperationError::InvalidValueState,
+                                )
                             })
                             .map(|value| ScimOAuth2ScopeMap {
                                 group: value.to_proto_string_clone(),
