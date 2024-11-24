@@ -143,10 +143,7 @@ impl ValueSetT for ValueSetIutf8 {
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
         self.set
             .iter()
-            .all(|s| Value::validate_str_escapes(s) && Value::validate_singleline(s) &&
-                // I'm sure there is a better way ...
-                s.to_lowercase().as_str() == s.as_str()
-            )
+            .all(|s| Value::validate_str_escapes(s) && Value::validate_singleline(s))
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
