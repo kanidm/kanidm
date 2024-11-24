@@ -41,16 +41,7 @@ impl ValueSetIndex {
 
 impl ValueSetScimPut for ValueSetIndex {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: Vec<IndexType> = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM IndexType syntax invalid");
-            OperationError::SC0009IndexTypeSyntaxInvalid
-        })?;
-
-        let set = value.into_iter().collect();
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIndex {
-            set,
-        })))
+        todo!();
     }
 }
 

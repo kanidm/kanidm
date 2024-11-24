@@ -41,17 +41,7 @@ impl ValueSetUint32 {
 
 impl ValueSetScimPut for ValueSetUint32 {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: u32 = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM uint32 syntax invalid");
-            OperationError::SC0006Uint32SyntaxInvalid
-        })?;
-
-        let mut set = SmolSet::new();
-        set.insert(value);
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUint32 {
-            set,
-        })))
+        todo!();
     }
 }
 

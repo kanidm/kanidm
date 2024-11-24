@@ -987,9 +987,6 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
 ) {
     let scim_value = expect_vs.to_scim_value().unwrap().assume_resolved();
 
-    let strout = serde_json::to_string_pretty(&scim_value).unwrap();
-    eprintln!("{}", strout);
-
     let generic = serde_json::to_value(scim_value).unwrap();
     // Check that we can turn back into a vs from the generic version.
     let vs = T::from_scim_json_put(generic).unwrap().assume_resolved();

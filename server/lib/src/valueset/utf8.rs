@@ -4,7 +4,6 @@ use crate::utils::trigraph_iter;
 use crate::valueset::{
     DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
 };
-use kanidm_proto::scim_v1::client::ScimStrings;
 use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeSet;
 
@@ -32,13 +31,7 @@ impl ValueSetUtf8 {
 
 impl ValueSetScimPut for ValueSetUtf8 {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let ScimStrings(values) = serde_json::from_value(value).map_err(|_| todo!())?;
-
-        let set = values.into_iter().collect();
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUtf8 {
-            set,
-        })))
+        todo!();
     }
 }
 

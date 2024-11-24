@@ -49,17 +49,7 @@ impl ValueSetDateTime {
 
 impl ValueSetScimPut for ValueSetDateTime {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value: OffsetDateTime = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM DateTime syntax invalid");
-            OperationError::SC0010DateTimeSyntaxInvalid
-        })?;
-
-        let mut set = SmolSet::new();
-        set.insert(value);
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(
-            ValueSetDateTime { set },
-        )))
+        todo!();
     }
 }
 

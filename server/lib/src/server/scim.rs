@@ -69,7 +69,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 mod tests {
     use super::ScimEntryPutEvent;
     use crate::prelude::*;
-    use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
+    use kanidm_proto::scim_v1::server::ScimEntryPutKanidm;
 
     #[qs_test]
     async fn scim_put_basic(server: &QueryServer) {
@@ -120,7 +120,7 @@ mod tests {
             attrs: [(Attribute::Description, Some("Group Description".into()))].into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
@@ -139,7 +139,7 @@ mod tests {
             attrs: [(Attribute::Description, None)].into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
@@ -157,7 +157,7 @@ mod tests {
             .into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
@@ -186,7 +186,7 @@ mod tests {
             .into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
@@ -213,7 +213,7 @@ mod tests {
             .into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
@@ -235,7 +235,7 @@ mod tests {
             attrs: [(Attribute::Member, Some(ScimValueKanidm::Uuid(extra1_uuid)))].into(),
         };
 
-        let put_generic = put.try_into().unwrap();
+        let put_generic = put.to_generic().unwrap();
         let put_event =
             ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
