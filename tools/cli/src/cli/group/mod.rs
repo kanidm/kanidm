@@ -200,11 +200,14 @@ impl GroupOpt {
                 let client = copt.to_client(OpType::Write).await;
 
                 match client
-                    .idm_group_set_entry_managed_by(name.as_str(), entry_managed_by.as_str())
+                    .idm_group_set_entry_managed_by(name, entry_managed_by)
                     .await
                 {
                     Err(e) => handle_client_error(e, copt.output_mode),
-                    Ok(_) => println!("Successfully set members for group {}", name.as_str()),
+                    Ok(_) => println!(
+                        "Successfully set entry manager to '{}' for group '{}'",
+                        entry_managed_by, name
+                    ),
                 }
             }
             GroupOpt::Posix { commands } => match commands {
