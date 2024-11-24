@@ -7,9 +7,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::str_join;
 use crate::value::{OauthClaimMapJoin, OAUTHSCOPE_RE};
-use crate::valueset::{
-    uuid_to_proto_string, DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
-};
+use crate::valueset::{uuid_to_proto_string, DbValueSetV2, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
 
 use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
@@ -49,7 +47,7 @@ impl ValueSetOauthScope {
 }
 
 impl ValueSetScimPut for ValueSetOauthScope {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }
@@ -212,7 +210,7 @@ impl ValueSetOauthScopeMap {
 }
 
 impl ValueSetScimPut for ValueSetOauthScopeMap {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }
@@ -445,7 +443,7 @@ impl ValueSetOauthClaimMap {
 }
 
 impl ValueSetScimPut for ValueSetOauthClaimMap {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }

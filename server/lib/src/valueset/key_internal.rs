@@ -1,13 +1,17 @@
-use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage};
 use crate::prelude::*;
+use crate::valueset::ScimResolveStatus;
+
 use crate::server::keys::KeyId;
 use crate::value::{KeyStatus, KeyUsage};
-use crate::valueset::ScimResolveStatus;
+
+use crate::be::dbvalue::{DbValueKeyInternal, DbValueKeyStatus, DbValueKeyUsage};
 use crate::valueset::{DbValueSetV2, ValueSet};
-use kanidm_proto::scim_v1::server::ScimKeyInternal;
+
 use std::collections::BTreeMap;
 use std::fmt;
 use time::OffsetDateTime;
+
+use kanidm_proto::scim_v1::server::ScimKeyInternal;
 
 #[derive(Clone, PartialEq, Eq)]
 pub struct KeyInternalData {

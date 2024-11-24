@@ -6,9 +6,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
-};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
@@ -880,7 +878,7 @@ impl ValueSetCredentialType {
 }
 
 impl ValueSetScimPut for ValueSetCredentialType {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }
@@ -1018,7 +1016,7 @@ impl ValueSetWebauthnAttestationCaList {
 }
 
 impl ValueSetScimPut for ValueSetWebauthnAttestationCaList {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }

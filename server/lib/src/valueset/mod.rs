@@ -15,6 +15,8 @@ use kanidm_proto::scim_v1::JsonValue;
 use openssl::ec::EcKey;
 use openssl::pkey::Private;
 use openssl::pkey::Public;
+use serde::Serialize;
+use serde_with::serde_as;
 use smolset::SmolSet;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::{BTreeMap, BTreeSet};
@@ -659,7 +661,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
 }
 
 pub trait ValueSetScimPut {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError>;
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError>;
 }
 
 impl PartialEq for ValueSet {
@@ -668,9 +670,11 @@ impl PartialEq for ValueSet {
     }
 }
 
-// #[derive(Debug, Clone, PartialEq, Eq)]
+#[serde_as]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
 pub enum ScimValueIntermediate {
-    References(Vec<Uuid>),
+    Refer(Uuid),
+    ReferMany(Vec<Uuid>),
 }
 
 pub enum ScimResolveStatus {
@@ -704,37 +708,6 @@ impl ScimResolveStatus {
             ScimResolveStatus::NeedsResolution(svi) => svi,
         }
     }
-}
-
-pub enum ValueSetResolveStatus {
-    Resolved(ValueSet),
-    NeedsResolution(ValueSetIntermediate),
-}
-
-#[cfg(test)]
-impl ValueSetResolveStatus {
-    pub fn assume_resolved(self) -> ValueSet {
-        match self {
-            ValueSetResolveStatus::Resolved(v) => v,
-            ValueSetResolveStatus::NeedsResolution(_) => {
-                panic!("assume_resolved called on NeedsResolution")
-            }
-        }
-    }
-
-    pub fn assume_unresolved(self) -> ValueSetIntermediate {
-        match self {
-            ValueSetResolveStatus::Resolved(_) => panic!("assume_unresolved called on Resolved"),
-            ValueSetResolveStatus::NeedsResolution(svi) => svi,
-        }
-    }
-}
-
-pub enum ValueSetIntermediate {
-    References {
-        resolved: BTreeSet<Uuid>,
-        unresolved: Vec<String>,
-    },
 }
 
 pub fn uuid_to_proto_string(u: Uuid) -> String {
@@ -955,20 +928,14 @@ pub(crate) fn scim_json_reflexive(vs: ValueSet, data: &str) {
 
     let json_value: serde_json::Value = serde_json::to_value(&scim_value).unwrap();
 
-    eprintln!("{}", data);
     let expect: serde_json::Value = serde_json::from_str(data).unwrap();
 
     assert_eq!(json_value, expect);
 }
 
 #[cfg(test)]
-pub(crate) fn scim_json_reflexive_unresolved(
-    write_txn: &mut QueryServerWriteTransaction,
-    vs: ValueSet,
-    data: &str,
-) {
-    let scim_int_value = vs.to_scim_value().unwrap().assume_unresolved();
-    let scim_value = write_txn.resolve_scim_interim(scim_int_value).unwrap();
+pub(crate) fn scim_json_reflexive_unresolved(vs: ValueSet, data: &str) {
+    let scim_value = vs.to_scim_value().unwrap().assume_unresolved();
 
     let strout = serde_json::to_string_pretty(&scim_value).unwrap();
     eprintln!("{}", strout);
@@ -989,37 +956,12 @@ pub(crate) fn scim_json_put_reflexive<T: ValueSetScimPut>(
 
     let generic = serde_json::to_value(scim_value).unwrap();
     // Check that we can turn back into a vs from the generic version.
-    let vs = T::from_scim_json_put(generic).unwrap().assume_resolved();
+    let vs = T::from_scim_json_put(generic).unwrap();
     assert_eq!(&vs, &expect_vs);
 
     // For each additional check, assert they work as expected.
     for (jv, expect_vs) in additional_tests {
-        let vs = T::from_scim_json_put(jv.clone()).unwrap().assume_resolved();
-        assert_eq!(&vs, expect_vs);
-    }
-}
-
-#[cfg(test)]
-pub(crate) fn scim_json_put_reflexive_unresolved<T: ValueSetScimPut>(
-    write_txn: &mut QueryServerWriteTransaction,
-    expect_vs: ValueSet,
-    additional_tests: &[(JsonValue, ValueSet)],
-) {
-    let scim_int_value = expect_vs.to_scim_value().unwrap().assume_unresolved();
-    let scim_value = write_txn.resolve_scim_interim(scim_int_value).unwrap();
-
-    let generic = serde_json::to_value(scim_value).unwrap();
-    // Check that we can turn back into a vs from the generic version.
-    let vs_inter = T::from_scim_json_put(generic).unwrap().assume_unresolved();
-    let vs = write_txn.resolve_valueset_intermediate(vs_inter).unwrap();
-    assert_eq!(&vs, &expect_vs);
-
-    // For each additional check, assert they work as expected.
-    for (jv, expect_vs) in additional_tests {
-        let vs_inter = T::from_scim_json_put(jv.clone())
-            .unwrap()
-            .assume_unresolved();
-        let vs = write_txn.resolve_valueset_intermediate(vs_inter).unwrap();
+        let vs = T::from_scim_json_put(jv.clone()).unwrap();
         assert_eq!(&vs, expect_vs);
     }
 }

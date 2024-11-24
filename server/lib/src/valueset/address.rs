@@ -3,11 +3,9 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
-};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
+use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
 use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::scim_v1::{server::ScimAddress, ScimMail};
 use smolset::SmolSet;
 use std::collections::BTreeSet;
 
@@ -55,7 +53,7 @@ impl ValueSetAddress {
 }
 
 impl ValueSetScimPut for ValueSetAddress {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }
@@ -293,40 +291,8 @@ impl ValueSetEmailAddress {
 }
 
 impl ValueSetScimPut for ValueSetEmailAddress {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let scim_mails: Vec<ScimMail> = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM Mail Attribute Syntax Invalid");
-            OperationError::SC0003MailSyntaxInvalid
-        })?;
-
-        let mut primary = None;
-        let set: BTreeSet<_> = scim_mails
-            .into_iter()
-            .map(
-                |ScimMail {
-                     value,
-                     primary: is_primary,
-                 }| {
-                    if is_primary {
-                        primary = Some(value.clone());
-                    }
-                    value
-                },
-            )
-            .collect();
-
-        let primary = primary
-            .or_else(|| set.iter().next().cloned())
-            .ok_or_else(|| {
-                error!(
-                    "Mail attribute has no values that can be used as the primary mail address."
-                );
-                OperationError::SC0003MailSyntaxInvalid
-            })?;
-
-        Ok(ValueSetResolveStatus::Resolved(Box::new(
-            ValueSetEmailAddress { primary, set },
-        )))
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
+        todo!();
     }
 }
 

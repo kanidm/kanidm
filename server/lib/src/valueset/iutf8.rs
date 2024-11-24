@@ -3,7 +3,7 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeSet;
 
@@ -41,7 +41,7 @@ impl ValueSetIutf8 {
 }
 
 impl ValueSetScimPut for ValueSetIutf8 {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }

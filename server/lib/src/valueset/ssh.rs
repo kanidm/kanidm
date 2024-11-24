@@ -2,9 +2,7 @@ use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
-};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::server::ScimSshPublicKey;
 use kanidm_proto::scim_v1::JsonValue;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
@@ -55,7 +53,7 @@ impl ValueSetSshKey {
 }
 
 impl ValueSetScimPut for ValueSetSshKey {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }

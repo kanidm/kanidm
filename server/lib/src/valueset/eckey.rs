@@ -1,11 +1,13 @@
+use crate::valueset::ScimResolveStatus;
+use std::iter::{self};
+
 use super::ValueSet;
 use crate::be::dbvalue::DbValueSetV2;
 use crate::prelude::*;
 use crate::value::{PartialValue, SyntaxType, Value};
-use crate::valueset::ScimResolveStatus;
+
 use openssl::ec::EcKey;
 use openssl::pkey::{Private, Public};
-use std::iter::{self};
 
 #[derive(Debug, Clone)]
 struct EcKeyPrivate {

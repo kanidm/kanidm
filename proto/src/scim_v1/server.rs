@@ -1,5 +1,4 @@
 use super::client::ScimEntryPutGeneric;
-use super::ScimMail;
 use crate::attribute::Attribute;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
@@ -58,6 +57,13 @@ pub struct ScimAddress {
     pub region: String,
     pub postal_code: String,
     pub country: String,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimMail {
+    pub primary: bool,
+    pub value: String,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -201,6 +207,7 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
+#[serde_as]
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {

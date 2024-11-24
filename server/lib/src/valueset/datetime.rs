@@ -1,8 +1,6 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{
-    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
-};
+use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetScimPut};
 use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 use time::OffsetDateTime;
@@ -48,7 +46,7 @@ impl ValueSetDateTime {
 }
 
 impl ValueSetScimPut for ValueSetDateTime {
-    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSet, OperationError> {
         todo!();
     }
 }
