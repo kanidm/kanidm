@@ -884,12 +884,14 @@ impl ValueSetScimPut for ValueSetCredentialType {
         let value = serde_json::from_value::<String>(value)
             .map_err(|err| {
                 error!(?err, "SCIM CredentialType syntax invalid");
-                OperationError::SC0015CredentialTypeSyntaxInvalid
+                // OperationError::SC0008SyntaxTypeSyntaxInvalid
+                todo!()
             })
             .and_then(|value| {
                 CredentialType::try_from(value.as_str()).map_err(|()| {
                     error!("SCIM CredentialType syntax invalid - value");
-                    OperationError::SC0015CredentialTypeSyntaxInvalid
+                    // OperationError::SC0008SyntaxTypeSyntaxInvalid
+                    todo!()
                 })
             })?;
 

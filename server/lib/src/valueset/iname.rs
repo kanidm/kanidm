@@ -42,10 +42,7 @@ impl ValueSetIname {
 
 impl ValueSetScimPut for ValueSetIname {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value = serde_json::from_value::<String>(value).map_err(|err| {
-            error!(?err, "SCIM Iname Syntax Invalid");
-            OperationError::SC0016InameSyntaxInvalid
-        })?;
+        let value = serde_json::from_value::<String>(value).map_err(|_| todo!())?;
 
         let mut set = BTreeSet::new();
         set.insert(value.to_lowercase());

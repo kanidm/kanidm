@@ -106,10 +106,7 @@ impl ValueSetCertificate {
 impl ValueSetScimPut for ValueSetCertificate {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
         let der_values: Vec<ClientScimCertificate> =
-            serde_json::from_value(value).map_err(|err| {
-                error!(?err, "SCIM Certificate syntax invalid");
-                OperationError::SC0012CertificateSyntaxInvalid
-            })?;
+            serde_json::from_value(value).map_err(|_| todo!())?;
 
         // For each one, check it's a real der certificate.
         let mut map = BTreeMap::new();
@@ -120,13 +117,15 @@ impl ValueSetScimPut for ValueSetCertificate {
                 .map(Box::new)
                 .map_err(|x509_err| {
                     error!(?x509_err, "Unable to restore certificate from DER");
-                    OperationError::SC0013CertificateInvalidDer
+                    // OperationError::VS0003CertificateDerDecode
+                    todo!();
                 })?;
 
             // sha256 the public key
             let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
                 error!("Unable to digest public key");
-                OperationError::SC0014CertificateInvalidDigest
+                // OperationError::VS0004CertificatePublicKeyDigest
+                todo!();
             })?;
 
             map.insert(pk_s256, certificate);

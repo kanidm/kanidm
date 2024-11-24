@@ -32,10 +32,7 @@ impl ValueSetUtf8 {
 
 impl ValueSetScimPut for ValueSetUtf8 {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let ScimStrings(values) = serde_json::from_value(value).map_err(|err| {
-            error!(?err, "SCIM Utf8 Syntax Invalid");
-            OperationError::SC0026Utf8SyntaxInvalid
-        })?;
+        let ScimStrings(values) = serde_json::from_value(value).map_err(|_| todo!())?;
 
         let set = values.into_iter().collect();
 

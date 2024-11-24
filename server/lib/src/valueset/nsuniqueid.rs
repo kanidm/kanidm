@@ -42,10 +42,7 @@ impl ValueSetNsUniqueId {
 
 impl ValueSetScimPut for ValueSetNsUniqueId {
     fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
-        let value = serde_json::from_value::<String>(value).map_err(|err| {
-            error!(?err, "SCIM NsUniqueId Syntax Invalid");
-            OperationError::SC0018NsUniqueIdSyntaxInvalid
-        })?;
+        let value = serde_json::from_value::<String>(value).map_err(|_| todo!())?;
 
         let mut set = SmolSet::new();
         set.insert(value.to_lowercase());
