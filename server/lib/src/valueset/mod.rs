@@ -678,15 +678,9 @@ pub struct UnresolvedScimValueOauth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
-pub struct UnresolvedScimValueOauth2ScopeMap {
-    pub group_uuid: Uuid,
-    pub scopes: BTreeSet<String>,
-}
-
 pub enum ScimValueIntermediate {
     References(Vec<Uuid>),
     Oauth2ClaimMap(Vec<UnresolvedScimValueOauth2ClaimMap>),
-    Oauth2ScopeMap(Vec<UnresolvedScimValueOauth2ScopeMap>),
 }
 
 pub enum ScimResolveStatus {
@@ -755,10 +749,6 @@ pub enum ValueSetIntermediate {
         resolved: Vec<ResolvedValueSetOauth2ClaimMap>,
         unresolved: Vec<UnresolvedValueSetOauth2ClaimMap>,
     },
-    Oauth2ScopeMap {
-        resolved: Vec<ResolvedValueSetOauth2ScopeMap>,
-        unresolved: Vec<UnresolvedValueSetOauth2ScopeMap>,
-    },
 }
 
 pub struct UnresolvedValueSetOauth2ClaimMap {
@@ -773,16 +763,6 @@ pub struct ResolvedValueSetOauth2ClaimMap {
     pub claim: String,
     pub join_char: OauthClaimMapJoin,
     pub claim_values: BTreeSet<String>,
-}
-
-pub struct UnresolvedValueSetOauth2ScopeMap {
-    pub group_name: String,
-    pub scopes: BTreeSet<String>,
-}
-
-pub struct ResolvedValueSetOauth2ScopeMap {
-    pub group_uuid: Uuid,
-    pub scopes: BTreeSet<String>,
 }
 
 pub fn uuid_to_proto_string(u: Uuid) -> String {

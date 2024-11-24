@@ -365,7 +365,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Unable to decode AccessTokenIntrospectResponse");
 
     assert!(tir.active);
-    assert!(!tir.scope.is_empty());
+    assert!(tir.scope.is_some());
     assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert_eq!(
         tir.username.as_deref(),
@@ -469,7 +469,7 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Unable to decode AccessTokenIntrospectResponse");
 
     assert!(tir.active);
-    assert!(!tir.scope.is_empty());
+    assert!(tir.scope.is_some());
     assert_eq!(tir.client_id.as_deref(), Some(TEST_INTEGRATION_RS_ID));
     assert_eq!(tir.username.as_deref(), Some("test_integration@localhost"));
     assert_eq!(tir.token_type, Some(AccessTokenType::Bearer));

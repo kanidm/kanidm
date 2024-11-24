@@ -53,6 +53,7 @@ use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
+use crate::utils::str_join;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -1462,7 +1463,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let session_id = Uuid::new_v4();
 
-        let scope = granted_scopes.clone();
+        let scope = if granted_scopes.is_empty() {
+            None
+        } else {
+            Some(str_join(&granted_scopes))
+        };
 
         let uuid = o2rs.uuid;
 
@@ -1547,7 +1552,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let refresh_expiry = iat + OAUTH_REFRESH_TOKEN_EXPIRY as i64;
         let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
 
-        let scope = scopes.clone();
+        let scope = if scopes.is_empty() {
+            None
+        } else {
+            Some(str_join(&scopes))
+        };
 
         let iss = o2rs.iss.clone();
 
@@ -1932,7 +1941,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
 
         // scopes - you need to have every requested scope or this auth_req is denied.
-        let req_scopes: BTreeSet<String> = auth_req.scope.clone();
+        let req_scopes: BTreeSet<String> = auth_req
+            .scope
+            .split_ascii_whitespace()
+            .map(str::to_string)
+            .collect();
 
         if req_scopes.is_empty() {
             admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
@@ -2264,7 +2277,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
             // ==== good to generate response ====
 
-            let scope = scopes.clone();
+            let scope = if scopes.is_empty() {
+                None
+            } else {
+                Some(str_join(&scopes))
+            };
 
             let preferred_username = if prefer_short_username {
                 Some(account.name.clone())
@@ -2330,7 +2347,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                         return Ok(AccessTokenIntrospectResponse::inactive());
                     };
 
-                    let scope = scopes.clone();
+                    let scope = if scopes.is_empty() {
+                        None
+                    } else {
+                        Some(str_join(&scopes))
+                    };
 
                     let token_type = Some(AccessTokenType::Bearer);
 
@@ -2870,7 +2891,6 @@ fn parse_user_code(val: &str) -> Result<u32, Oauth2Error> {
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
-    use std::collections::BTreeSet;
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
@@ -2920,8 +2940,6 @@ mod tests {
             $code_challenge:expr,
             $scope:expr
         ) => {{
-            let scope: BTreeSet<String> = $scope.split(" ").map(|s| s.to_string()).collect();
-
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
@@ -2931,7 +2949,7 @@ mod tests {
                     code_challenge_method: CodeChallengeMethod::S256,
                 }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope,
+                scope: $scope,
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 max_age: None,
@@ -3423,7 +3441,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3444,7 +3462,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3465,7 +3483,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3486,7 +3504,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3507,7 +3525,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3528,7 +3546,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3551,7 +3569,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["invalid_scope".to_string(), "read".to_string()],
+            scope: "invalid_scope read".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3572,7 +3590,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["openid".to_string(), "read".to_string()],
+            scope: "read openid".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3593,7 +3611,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["openid".to_string(), "read".to_string()],
+            scope: "read openid".to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3887,7 +3905,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://portal.example.com").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -3957,7 +3975,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("app://cheese").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -4061,10 +4079,7 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(
-            intr_response.scope,
-            btreeset!["openid".to_string(), "supplement".to_string()]
-        );
+        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")
@@ -5163,7 +5178,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5377,7 +5392,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: "openid email".to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5436,7 +5451,7 @@ mod tests {
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             // Note the scope isn't requested here!
-            scope: btreeset!["openid".to_string(), "email".to_string()],
+            scope: "openid email".to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5574,7 +5589,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -5652,7 +5667,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -6553,10 +6568,7 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(
-            intr_response.scope,
-            btreeset!["openid".to_string(), "supplement".to_string()]
-        );
+        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")
@@ -6612,7 +6624,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
-            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -6702,7 +6714,7 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(intr_response.scope, btreeset!["supplement".to_string()]);
+        assert_eq!(intr_response.scope.as_deref(), Some("supplement"));
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")

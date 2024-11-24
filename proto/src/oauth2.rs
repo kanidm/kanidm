@@ -33,7 +33,6 @@ pub struct PkceRequest {
 
 /// An OAuth2 client redirects to the authorisation server with Authorisation Request
 /// parameters.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorisationRequest {
@@ -44,8 +43,7 @@ pub struct AuthorisationRequest {
     #[serde(flatten)]
     pub pkce_request: Option<PkceRequest>,
     pub redirect_uri: Url,
-    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-    pub scope: BTreeSet<String>,
+    pub scope: String,
     // OIDC adds a nonce parameter that is optional.
     pub nonce: Option<String>,
     // OIDC also allows other optional params
@@ -187,7 +185,6 @@ pub struct OAuth2RFC9068TokenExtensions {
 }
 
 /// The response for an access token
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenResponse {
@@ -198,8 +195,7 @@ pub struct AccessTokenResponse {
     pub refresh_token: Option<String>,
     /// Space separated list of scopes that were approved, if this differs from the
     /// original request.
-    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-    pub scope: BTreeSet<String>,
+    pub scope: Option<String>,
     /// If the `openid` scope was requested, an `id_token` may be present in the response.
     pub id_token: Option<String>,
 }
@@ -252,13 +248,11 @@ pub struct AccessTokenIntrospectRequest {
 
 /// Response to an introspection request. If the token is inactive or revoked, only
 /// `active` will be set to the value of `false`.
-#[serde_as]
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct AccessTokenIntrospectResponse {
     pub active: bool,
-    #[serde_as(as = "StringWithSeparator::<SpaceSeparator, String>")]
-    pub scope: BTreeSet<String>,
+    pub scope: Option<String>,
     pub client_id: Option<String>,
     pub username: Option<String>,
     pub token_type: Option<AccessTokenType>,
@@ -275,7 +269,7 @@ impl AccessTokenIntrospectResponse {
     pub fn inactive() -> Self {
         AccessTokenIntrospectResponse {
             active: false,
-            scope: BTreeSet::default(),
+            scope: None,
             client_id: None,
             username: None,
             token_type: None,

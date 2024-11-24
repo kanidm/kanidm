@@ -1,12 +1,12 @@
 use super::ScimMail;
-use super::ScimOauth2ClaimMapJoinChar;
 use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
-use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
+use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
 use std::collections::{BTreeMap, BTreeSet};
+use super::ScimOauth2ClaimMapJoinChar;
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
 use url::Url;
@@ -153,8 +153,8 @@ pub struct ScimApiToken {
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ScopeMap {
-    pub group: String,
-    pub group_uuid: Uuid,
+    pub uuid: Uuid,
+    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
     pub scopes: BTreeSet<String>,
 }
 

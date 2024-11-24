@@ -1,5 +1,4 @@
 use crate::prelude::*;
-use crate::server::batch_modify::{BatchModifyEvent, ModSetValid};
 use kanidm_proto::scim_v1::client::ScimEntryPutGeneric;
 use std::collections::BTreeMap;
 
@@ -48,63 +47,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
     /// addresses in addition to the addition of the new one.
     pub fn scim_put(
         &mut self,
-        scim_entry_put: ScimEntryPutEvent,
+        _scim_entry_put: ScimEntryPutEvent,
     ) -> Result<ScimEntryKanidm, OperationError> {
-        let ScimEntryPutEvent {
-            ident,
-            target,
-            attrs,
-        } = scim_entry_put;
+        // There are two options here
+        // 1. We make scim put it's own event type and copy what we do in modify to achieve it.
+        // 2. We make scim put transform into a modify event and submit that instead.
 
-        // This function transforms the put event into a modify event.
-        let mods_invalid: ModifyList<ModifyInvalid> = attrs.into();
+        // I think we do 2. because there is enough in the modify that is different
+        // such as schema checking and transform that we have to account for, and then
+        // we can directly call set_ava on the entry.
 
-        let mods_valid = mods_invalid
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
+        // Need to transform ScimPut attrs from json Value ->
 
-        let mut modset = ModSetValid::default();
+        // Should this be earlier in the process?
 
-        modset.insert(target, mods_valid);
-
-        let modify_event = BatchModifyEvent {
-            ident: ident.clone(),
-            modset,
-        };
-
-        // dispatch to batch modify
-        self.batch_modify(&modify_event)?;
-
-        // Now get the entry. We handle a lot of the errors here nicely,
-        // but if we got to this point, they really can't happen.
-        let filter_intent = filter!(f_and!([f_eq(Attribute::Uuid, PartialValue::Uuid(target))]));
-
-        let f_intent_valid = filter_intent
-            .validate(self.get_schema())
-            .map_err(OperationError::SchemaViolation)?;
-
-        let f_valid = f_intent_valid.clone().into_ignore_hidden();
-
-        let se = SearchEvent {
-            ident,
-            filter: f_valid,
-            filter_orig: f_intent_valid,
-            // Return all attributes, even ones we didn't affect
-            attrs: None,
-        };
-
-        let mut vs = self.search_ext(&se)?;
-        match vs.pop() {
-            Some(entry) if vs.is_empty() => entry.to_scim_kanidm(self),
-            _ => {
-                if vs.is_empty() {
-                    Err(OperationError::NoMatchingEntries)
-                } else {
-                    // Multiple entries matched, should not be possible!
-                    Err(OperationError::UniqueConstraintViolation)
-                }
-            }
-        }
+        todo!();
     }
 }
 
@@ -113,16 +70,12 @@ mod tests {
     use super::ScimEntryPutEvent;
     use crate::prelude::*;
     use kanidm_proto::scim_v1::client::ScimEntryPutKanidm;
-    use kanidm_proto::scim_v1::server::ScimReference;
 
     #[qs_test]
     async fn scim_put_basic(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
-        let idm_admin_entry = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
-
-        let idm_admin_ident = Identity::from_impersonate_entry_readwrite(idm_admin_entry);
-
+        let internal_ident = Identity::from_internal();
         // Make an entry.
         let group_uuid = Uuid::new_v4();
 
@@ -169,7 +122,7 @@ mod tests {
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
@@ -188,7 +141,7 @@ mod tests {
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
@@ -199,31 +152,22 @@ mod tests {
             id: group_uuid,
             attrs: [(
                 Attribute::Member,
-                Some(ScimValueKanidm::EntryReferences(vec![ScimReference {
-                    uuid: extra1_uuid,
-                    // Doesn't matter what this is, because there is a UUID, it's ignored
-                    value: String::default(),
-                }])),
+                Some(ScimValueKanidm::ArrayUuid(vec![extra1_uuid])),
             )]
             .into(),
         };
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         let members = updated_entry.attrs.get(&Attribute::Member).unwrap();
 
-        trace!(?members);
-
         match members {
-            ScimValueKanidm::EntryReferences(member_set) if member_set.len() == 1 => {
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra1_uuid,
-                    value: "extra_1@example.com".to_string(),
-                }));
+            ScimValueKanidm::ArrayUuid(member_set) if member_set.len() == 1 => {
+                assert!(member_set.contains(&extra1_uuid));
             }
             _ => assert!(false),
         };
@@ -233,19 +177,10 @@ mod tests {
             id: group_uuid,
             attrs: [(
                 Attribute::Member,
-                Some(ScimValueKanidm::EntryReferences(vec![
-                    ScimReference {
-                        uuid: extra1_uuid,
-                        value: String::default(),
-                    },
-                    ScimReference {
-                        uuid: extra2_uuid,
-                        value: String::default(),
-                    },
-                    ScimReference {
-                        uuid: extra3_uuid,
-                        value: String::default(),
-                    },
+                Some(ScimValueKanidm::ArrayUuid(vec![
+                    extra1_uuid,
+                    extra2_uuid,
+                    extra3_uuid,
                 ])),
             )]
             .into(),
@@ -253,28 +188,17 @@ mod tests {
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         let members = updated_entry.attrs.get(&Attribute::Member).unwrap();
 
-        trace!(?members);
-
         match members {
-            ScimValueKanidm::EntryReferences(member_set) if member_set.len() == 3 => {
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra1_uuid,
-                    value: "extra_1@example.com".to_string(),
-                }));
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra2_uuid,
-                    value: "extra_2@example.com".to_string(),
-                }));
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra3_uuid,
-                    value: "extra_3@example.com".to_string(),
-                }));
+            ScimValueKanidm::ArrayUuid(member_set) if member_set.len() == 3 => {
+                assert!(member_set.contains(&extra1_uuid));
+                assert!(member_set.contains(&extra2_uuid));
+                assert!(member_set.contains(&extra3_uuid));
             }
             _ => assert!(false),
         };
@@ -284,45 +208,23 @@ mod tests {
             id: group_uuid,
             attrs: [(
                 Attribute::Member,
-                Some(ScimValueKanidm::EntryReferences(vec![
-                    ScimReference {
-                        uuid: extra1_uuid,
-                        value: String::default(),
-                    },
-                    ScimReference {
-                        uuid: extra3_uuid,
-                        value: String::default(),
-                    },
-                ])),
+                Some(ScimValueKanidm::ArrayUuid(vec![extra1_uuid, extra3_uuid])),
             )]
             .into(),
         };
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");
         let members = updated_entry.attrs.get(&Attribute::Member).unwrap();
 
-        trace!(?members);
-
         match members {
-            ScimValueKanidm::EntryReferences(member_set) if member_set.len() == 2 => {
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra1_uuid,
-                    value: "extra_1@example.com".to_string(),
-                }));
-                assert!(member_set.contains(&ScimReference {
-                    uuid: extra3_uuid,
-                    value: "extra_3@example.com".to_string(),
-                }));
-                // Member 2 is gone
-                assert!(!member_set.contains(&ScimReference {
-                    uuid: extra2_uuid,
-                    value: "extra_2@example.com".to_string(),
-                }));
+            ScimValueKanidm::ArrayUuid(member_set) if member_set.len() == 2 => {
+                assert!(member_set.contains(&extra1_uuid));
+                assert!(member_set.contains(&extra3_uuid));
             }
             _ => assert!(false),
         };
@@ -330,12 +232,12 @@ mod tests {
         // empty set removes attr
         let put = ScimEntryPutKanidm {
             id: group_uuid,
-            attrs: [(Attribute::Member, None)].into(),
+            attrs: [(Attribute::Member, Some(ScimValueKanidm::Uuid(extra1_uuid)))].into(),
         };
 
         let put_generic = put.try_into().unwrap();
         let put_event =
-            ScimEntryPutEvent::try_from(idm_admin_ident.clone(), put_generic, &mut server_txn)
+            ScimEntryPutEvent::try_from(internal_ident.clone(), put_generic, &mut server_txn)
                 .expect("Failed to resolve data type");
 
         let updated_entry = server_txn.scim_put(put_event).expect("Failed to put");

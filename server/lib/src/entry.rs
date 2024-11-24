@@ -2253,13 +2253,10 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
-    pub fn to_scim_kanidm<'a, TXN>(
+    pub fn to_scim_kanidm(
         &self,
-        read_txn: &mut TXN,
-    ) -> Result<ScimEntryKanidm, OperationError>
-    where
-        TXN: QueryServerTransaction<'a>,
-    {
+        read_txn: &mut QueryServerReadTransaction,
+    ) -> Result<ScimEntryKanidm, OperationError> {
         let result: Result<BTreeMap<Attribute, ScimValueKanidm>, OperationError> = self
             .attrs
             .iter()

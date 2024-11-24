@@ -1037,6 +1037,12 @@ impl ValueSetWebauthnAttestationCaList {
     }
 }
 
+impl ValueSetScimPut for ValueSetWebauthnAttestationCaList {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        todo!();
+    }
+}
+
 impl ValueSetT for ValueSetWebauthnAttestationCaList {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
