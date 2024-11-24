@@ -890,6 +890,7 @@ pub trait QueryServerTransaction<'a> {
             SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
             SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
             SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
+            SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
             SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
             SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
             SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
@@ -908,12 +909,6 @@ pub trait QueryServerTransaction<'a> {
             SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
             SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
             SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
-
-            // Not Yet ... if ever
-            // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
-            SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
-                "Json Filters are not able to be set.".to_string(),
-            )),
 
             // Syntax types that can not be submitted
             SyntaxType::Credential => Err(OperationError::InvalidAttribute(

@@ -18,7 +18,6 @@
 
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
-use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
@@ -74,13 +73,6 @@ pub struct ScimMail {
     #[serde(default)]
     pub primary: bool,
     pub value: String,
-}
-
-#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ScimSshPublicKey {
-    pub label: String,
-    pub value: SshPublicKey,
 }
 
 #[cfg(test)]
