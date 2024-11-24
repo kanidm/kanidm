@@ -126,7 +126,7 @@ mod tests {
         // Make an entry.
         let group_uuid = Uuid::new_v4();
 
-        // We need to extra entries that will serve as members to our group.
+        // We need to extra entries that well serve as members to our group.
         let extra1_uuid = Uuid::new_v4();
         let extra2_uuid = Uuid::new_v4();
         let extra3_uuid = Uuid::new_v4();
