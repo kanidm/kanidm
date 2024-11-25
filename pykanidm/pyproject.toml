@@ -32,20 +32,20 @@ mypy = "^1.13"
 pytest = "^8.3.3"
 types-toml = "^0.10.8"
 pylint-pydantic = "^0.3.2"
-coverage = "^7.6.4"
+coverage = "^7.6.8"
 pylint-pytest = "^1.1.7"
 pytest-asyncio = "^0.24.0"
 pytest-mock = "^3.14.0"
 pytest-aiohttp = "^1.0.5"
 black = "^24.10.0"
 mkdocs = "^1.5.3"
-mkdocs-material = "^9.5.44"
-mkdocstrings = "^0.26.2"
+mkdocs-material = "^9.5.45"
+mkdocstrings = "^0.27.0"
 mkdocstrings-python = "^1.12.2"
-pook = "^2.1.1"
+pook = "^2.1.2"
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.1,<0.7.3"
+ruff = ">=0.5.1,<0.8.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
