@@ -400,14 +400,6 @@ async fn repl_task(
         }
     };
 
-    let socket_addrs = match origin.socket_addrs(|| Some(443)) {
-        Ok(sa) => sa,
-        Err(err) => {
-            error!(?err, "Replica origin could not resolve to ip:port");
-            return;
-        }
-    };
-
     // Setup our tls connector.
     let mut ssl_builder = match SslConnector::builder(SslMethod::tls_client()) {
         Ok(sb) => sb,
@@ -465,8 +457,17 @@ async fn repl_task(
     // we keep track of the "last known good" socketaddr so we can try that first next time.
     let mut last_working_address: Option<SocketAddr> = None;
 
-    // Okay, all the parameters are setup. Now we wait on our interval.
+    // Okay, all the parameters are set up. Now we wait on our interval.
     loop {
+        // we resolve the DNS entry to the ip:port each time we attempt a connection to avoid stale DNS issues, ref #3188
+        let socket_addrs = match origin.socket_addrs(|| Some(443)) {
+            Ok(sa) => sa,
+            Err(err) => {
+                error!(?err, "Replica origin could not resolve to ip:port");
+                return;
+            }
+        };
+
         // if the target address worked last time, then let's use it this time!
         let mut sorted_socket_addrs = vec![];
 
