@@ -2,7 +2,8 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/rust
 {
 	"name": "Rust",
-	// Or use a Dockerfile or Docker Compose file. More info: https://containers.dev/guide/dockerfile
+
+	// https://github.com/devcontainers/images/tree/main/src/rust
 	"image": "mcr.microsoft.com/devcontainers/rust:1-1-bookworm",
 	"features": {
 	},
@@ -13,6 +14,11 @@
 			"source": "devcontainer-cargo-cache-${devcontainerId}",
 			"target": "/usr/local/cargo",
 			"type": "volume"
+		},
+		{
+			"source": "devcontainer-sccache-cache-${devcontainerId}",
+			"target": "/home/vscode/.cache/sccache",
+			"type": "volume"
 		}
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
@@ -21,7 +27,17 @@
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [8443],
 	// Use 'postCreateCommand' to run commands after the container is created.
-	"postCreateCommand": "rustup update && rustup default stable && rustup component add rustfmt clippy && sudo apt-get update && sudo apt-get install -y sccache ripgrep libssl-dev pkg-config jq libpam0g-dev libudev-dev cmake build-essential && cargo install cargo-audit   mdbook-mermaid mdbook && cargo install mdbook-alerts --version 0.6.4 && cargo install deno --locked"
+	"postCreateCommand": "./scripts/devcontainer_postcreate.sh",
+
+	// postStartCommand runs things once the container's up, in this case, we're starting sccache
+	"postStartCommand": "source ./scripts/devcontainer_poststart.sh",
+
+	// environment variables
+	"containerEnv": {
+		// "RUSTC_WRAPPER": "sccache",
+		// "CC":"/usr/bin/sccache /usr/bin/clang",
+		"SCCACHE_SERVER_UDS" : "/tmp/sccache.sock"
+	}
 
 	// Configure tool-specific properties.
 	// "customizations": {},
