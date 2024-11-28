@@ -1,5 +1,9 @@
 # Example OAuth2 Configurations
 
+> [!TIP]
+>
+> Web applications that authenticate with Kanidm **must** be served over HTTPS.
+
 ## Apache `mod_auth_openidc`
 
 Add the following to a `mod_auth_openidc.conf`. It should be included in a `mods_enabled` folder or
@@ -651,7 +655,22 @@ To set up an ownCloud instance to authenticate with Kanidm:
     kanidm system oauth2 show-basic-secret owncloud
     ```
 
-7.  Create a JSON configuration file (`oidc-config.json`) for ownCloud's OIDC
+7.  Set [ownCloud's session cookie `SameSite` value to `Lax`][owncloud-samesite]:
+
+    *   For manual installations, add the option
+        `'http.cookie.samesite' => 'Lax',` to `config.php`.
+    *   For Docker installations, set the `OWNCLOUD_HTTP_COOKIE_SAMESITE`
+        environment variable to `Lax`, then stop and start the container.
+
+    When ownCloud and Kanidm are on different top-level domains
+    ([as we recommend](../../choosing_a_domain_name.md#subdomains-and-cross-origin-policy)),
+    ownCloud's default `SameSite=Strict` session cookie policy causes browsers
+    to drop the session cookie when Kanidm redirects back to ownCloud, which
+    then causes their OIDC library to
+    [send an invalid token request to Kanidm][owncloud-session-bug], which
+    Kanidm (correctly) rejects.
+
+8.  Create a JSON configuration file (`oidc-config.json`) for ownCloud's OIDC
     App.
 
     To key users by UID (most secure configuration, but not suitable if you have
@@ -687,7 +706,7 @@ To set up an ownCloud instance to authenticate with Kanidm:
     }
     ```
 
-8.  Deploy the config file you created with [`occ`][occ].
+9.  Deploy the config file you created with [`occ`][occ].
 
     [The exact command varies][occ] depending on how you've deployed ownCloud.
 
@@ -726,7 +745,9 @@ login form, which you can use to sign in.
 
 [owncloud-branding]: https://doc.owncloud.com/server/next/admin_manual/enterprise/clients/creating_branded_apps.html
 [owncloud-oidcsd]: https://doc.owncloud.com/server/next/admin_manual/configuration/user/oidc/oidc.html#set-up-service-discovery
+[owncloud-samesite]: https://doc.owncloud.com/server/next/admin_manual/configuration/server/config_sample_php_parameters.html#define-how-to-relax-same-site-cookie-settings
 [owncloud-secrets]: https://doc.owncloud.com/server/next/admin_manual/configuration/user/oidc/oidc.html#client-ids-secrets-and-redirect-uris
+[owncloud-session-bug]: https://github.com/jumbojett/OpenID-Connect-PHP/issues/453
 [owncloud-oauth2-app]: https://marketplace.owncloud.com/apps/oauth2
 [owncloud-ios-mdm]: https://doc.owncloud.com/ios-app/12.2/appendices/mdm.html#oauth2-based-authentication
 [occ]: https://doc.owncloud.com/server/next/admin_manual/configuration/server/occ_command.html
