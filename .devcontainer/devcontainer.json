@@ -30,7 +30,7 @@
 	"postCreateCommand": "./scripts/devcontainer_postcreate.sh",
 
 	// postStartCommand runs things once the container's up, in this case, we're starting sccache
-	"postStartCommand": "source ./scripts/devcontainer_poststart.sh",
+	"postStartCommand": "./scripts/devcontainer_poststart.sh",
 
 	// environment variables
 	"containerEnv": {
