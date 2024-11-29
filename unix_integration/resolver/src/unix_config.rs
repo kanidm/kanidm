@@ -71,6 +71,7 @@ struct KanidmConfigV2 {
     conn_timeout: Option<u64>,
     request_timeout: Option<u64>,
     pam_allowed_login_groups: Option<Vec<String>>,
+    #[serde(default)]
     map_group: Vec<GroupMap>,
 }
 
