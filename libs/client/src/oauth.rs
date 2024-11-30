@@ -434,6 +434,8 @@ impl KanidmClient {
         id: &str,
         origin: &Url,
     ) -> Result<(), ClientError> {
+        // TODO: should we normalise loopback origins, so when a user specifies `http://localhost/foo` we store it as `http://[::1]/foo`?
+
         let url_to_add = &[origin.as_str()];
         self.perform_post_request(
             format!("/v1/oauth2/{}/_attr/{}", id, ATTR_OAUTH2_RS_ORIGIN).as_str(),
