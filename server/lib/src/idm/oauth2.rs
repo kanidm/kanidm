@@ -1832,18 +1832,13 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             })?;
 
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
-        // be a loopback address exempting it from this check and enforcement.
-        let is_local_application =
-            o2rs.type_.allow_localhost_redirect() && check_is_loopback(&auth_req.redirect_uri);
-
-        // if they're doing localhost things, then we can carry on safely
-        if is_local_application {
+        // be a loopback address exempting it from this check and enforcement and we can carry on safely.
+        if o2rs.type_.allow_localhost_redirect() && check_is_loopback(&auth_req.redirect_uri) {
             debug!("Loopback redirect_uri detected, allowing for localhost");
         } else {
             // The legacy origin match is in use.
             let origin_uri_matched =
                 !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-
             // Strict uri validation is in use.
             let strict_redirect_uri_matched =
                 o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
