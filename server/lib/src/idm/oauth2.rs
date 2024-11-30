@@ -252,6 +252,7 @@ enum OauthRSType {
 }
 
 impl OauthRSType {
+    /// We only allow localhost redirects if PKCE is enabled/required
     fn allow_localhost_redirect(&self) -> bool {
         match self {
             OauthRSType::Basic { .. } => false,
@@ -1832,11 +1833,23 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
         // be a loopback address exempting it from this check and enforcement.
-        let is_loopback_redirect = o2rs.type_.allow_localhost_redirect()
-            && check_loopback_matches(&auth_req.redirect_uri, &o2rs.redirect_uris);
+        let is_local_application =
+            o2rs.type_.allow_localhost_redirect() && check_is_loopback(&auth_req.redirect_uri);
 
-        // if they're doing localhost things, then we can carry
-        if !is_loopback_redirect {
+        // if they're doing localhost things, then we can carry on safely
+        if is_local_application {
+            debug!("Loopback redirect_uri detected, allowing for localhost");
+        } else {
+            // We have to specifically match on http here because non-http origins may be exempt from this
+            // enforcement.
+            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() == "http" {
+                admin_warn!(
+                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
+                    auth_req.redirect_uri.to_string()
+                );
+                return Err(Oauth2Error::InvalidOrigin);
+            }
+
             // The legacy origin match is in use.
             let origin_uri_matched =
                 !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
@@ -1848,11 +1861,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
 
             // At least one of these conditions must hold true to proceed.
-            if !(strict_redirect_uri_matched
-                || origin_uri_matched
-                || opaque_origin_matched
-                || is_loopback_redirect)
-            {
+            if !(strict_redirect_uri_matched || origin_uri_matched || opaque_origin_matched) {
                 if o2rs.strict_redirect_uri {
                     warn!(
                                 "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
@@ -1866,21 +1875,11 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 }
                 return Err(Oauth2Error::InvalidOrigin);
             }
-
-            // We have to specifically match on http here because non-http origins may be exempt from this
-            // enforcement.
-            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() == "http" {
-                admin_warn!(
-                    "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
-                    auth_req.redirect_uri.scheme()
-                );
-                return Err(Oauth2Error::InvalidOrigin);
-            }
         }
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
             if !o2rs.require_pkce() {
-                security_info!(?o2rs.name, "Insecure RS configuration - PKCE is not enforced, but rs is requesting it!");
+                security_info!(?o2rs.name, "Insecure OAuth2 client configuration - PKCE is not enforced, but client is requesting it!");
             }
             // CodeChallengeMethod must be S256
             if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
@@ -2898,25 +2897,12 @@ fn host_is_local(host: &Host<&str>) -> bool {
     }
 }
 
-/// Ensure that the redirect URI is a loopback/localhost address and that the path matches one of the
-/// provided OAuth2 redirect URIs.
-fn check_loopback_matches(redirect_uri: &Url, o2rs_redirect_uris: &HashSet<Url>) -> bool {
-    match redirect_uri.host() {
-        Some(host) => {
-            // Check if the host is a loopback/localhost address.
-            if !host_is_local(&host) {
-                false
-            } else {
-                // check if the path matches something in the list
-                o2rs_redirect_uris.iter().any(|uri| match uri.host() {
-                    None => false,
-                    // it's also a loopback address, let's check the path
-                    Some(host) => host_is_local(&host) && uri.path() == redirect_uri.path(),
-                })
-            }
-        }
-        None => false,
-    }
+/// Ensure that the redirect URI is a loopback/localhost address
+fn check_is_loopback(redirect_uri: &Url) -> bool {
+    redirect_uri.host().map_or(false, |host| {
+        // Check if the host is a loopback/localhost address.
+        host_is_local(&host)
+    })
 }
 
 #[cfg(test)]
