@@ -5,7 +5,7 @@ use crate::server::ChangeFlag;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     // Apply the state changes if they are valid.
 
     fn consumer_incremental_apply_entries(

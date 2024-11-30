@@ -163,7 +163,7 @@ pub struct KeyProvidersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, KeyProvidersInner>,
 }
 
-impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
+impl KeyProvidersTransaction for KeyProvidersWriteTransaction<'_> {
     #[cfg(test)]
     fn get_uuid(&self, key_provider_uuid: Uuid) -> Option<&KeyProvider> {
         self.inner
@@ -187,7 +187,7 @@ impl<'a> KeyProvidersTransaction for KeyProvidersWriteTransaction<'a> {
     }
 }
 
-impl<'a> KeyProvidersWriteTransaction<'a> {
+impl KeyProvidersWriteTransaction<'_> {
     #[cfg(test)]
     pub(crate) fn get_default(&self) -> Result<&KeyProvider, OperationError> {
         // In future we will make this configurable, and we'll load the default into
@@ -224,7 +224,7 @@ impl<'a> KeyProvidersWriteTransaction<'a> {
     }
 }
 
-impl<'a> KeyProvidersWriteTransaction<'a> {
+impl KeyProvidersWriteTransaction<'_> {
     pub(crate) fn update_providers(
         &mut self,
         providers: Vec<Arc<KeyProvider>>,

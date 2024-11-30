@@ -385,7 +385,7 @@ pub trait IdlArcSqliteTransaction {
     fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError>;
 }
 
-impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
+impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'_> {
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -480,7 +480,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     }
 }
 
-impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
+impl IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'_> {
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -578,7 +578,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdlArcSqliteWriteTransaction<'a> {
+impl IdlArcSqliteWriteTransaction<'_> {
     #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", name = "idl_arc_sqlite::clear_cache", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {

@@ -891,7 +891,7 @@ pub struct AccessControlsWriteTransaction<'a> {
     acp_resolve_filter_cache: Cell<ResolveFilterCacheReadTxn<'a>>,
 }
 
-impl<'a> AccessControlsWriteTransaction<'a> {
+impl AccessControlsWriteTransaction<'_> {
     // We have a method to update each set, so that if an error
     // occurs we KNOW it's an error, rather than using errors as
     // part of the logic (IE try-parse-fail method).
@@ -983,9 +983,9 @@ pub struct AccessControlsReadTransaction<'a> {
     acp_resolve_filter_cache: Cell<ResolveFilterCacheReadTxn<'a>>,
 }
 
-unsafe impl<'a> Sync for AccessControlsReadTransaction<'a> {}
+unsafe impl Sync for AccessControlsReadTransaction<'_> {}
 
-unsafe impl<'a> Send for AccessControlsReadTransaction<'a> {}
+unsafe impl Send for AccessControlsReadTransaction<'_> {}
 
 impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
     fn get_search(&self) -> &Vec<AccessControlSearch> {

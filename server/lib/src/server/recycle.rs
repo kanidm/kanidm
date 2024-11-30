@@ -4,7 +4,7 @@ use crate::prelude::*;
 use crate::server::Plugins;
 use hashbrown::HashMap;
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn purge_tombstones(&mut self) -> Result<usize, OperationError> {
         // purge everything that is a tombstone.

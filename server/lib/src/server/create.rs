@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::server::CreateEvent;
 use crate::server::{ChangeFlag, Plugins};
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     /// The create event is a raw, read only representation of the request
     /// that was made to us, including information about the identity

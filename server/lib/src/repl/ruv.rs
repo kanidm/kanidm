@@ -236,7 +236,7 @@ pub struct ReplicationUpdateVectorWriteTransaction<'a> {
     ranged: BptreeMapWriteTxn<'a, Uuid, BTreeSet<Duration>>,
 }
 
-impl<'a> fmt::Debug for ReplicationUpdateVectorWriteTransaction<'a> {
+impl fmt::Debug for ReplicationUpdateVectorWriteTransaction<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "RUV DATA DUMP")?;
         self.data
@@ -255,7 +255,7 @@ pub struct ReplicationUpdateVectorReadTransaction<'a> {
     ranged: BptreeMapReadTxn<'a, Uuid, BTreeSet<Duration>>,
 }
 
-impl<'a> fmt::Debug for ReplicationUpdateVectorReadTransaction<'a> {
+impl fmt::Debug for ReplicationUpdateVectorReadTransaction<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "RUV DATA DUMP")?;
         self.data
@@ -540,7 +540,7 @@ pub trait ReplicationUpdateVectorTransaction {
     }
 }
 
-impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorWriteTransaction<'a> {
+impl ReplicationUpdateVectorTransaction for ReplicationUpdateVectorWriteTransaction<'_> {
     fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange> {
         self.data.to_snapshot()
     }
@@ -550,7 +550,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorWriteTran
     }
 }
 
-impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTransaction<'a> {
+impl ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTransaction<'_> {
     fn ruv_snapshot(&self) -> BptreeMapReadSnapshot<'_, Cid, IDLBitRange> {
         self.data.to_snapshot()
     }
@@ -560,7 +560,7 @@ impl<'a> ReplicationUpdateVectorTransaction for ReplicationUpdateVectorReadTrans
     }
 }
 
-impl<'a> ReplicationUpdateVectorWriteTransaction<'a> {
+impl ReplicationUpdateVectorWriteTransaction<'_> {
     pub fn clear(&mut self) {
         self.added = None;
         self.data.clear();

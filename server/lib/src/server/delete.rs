@@ -2,7 +2,7 @@ use crate::prelude::*;
 use crate::server::DeleteEvent;
 use crate::server::{ChangeFlag, Plugins};
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     #[allow(clippy::cognitive_complexity)]
     #[instrument(level = "debug", skip_all)]
     pub fn delete(&mut self, de: &DeleteEvent) -> Result<(), OperationError> {

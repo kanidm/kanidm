@@ -10,7 +10,7 @@ pub(crate) struct ModifyPartial<'a> {
     pub me: &'a ModifyEvent,
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn modify(&mut self, me: &ModifyEvent) -> Result<(), OperationError> {
         let mp = self.modify_pre_apply(me)?;
@@ -305,7 +305,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// Used in conjunction with internal_apply_writable, to get a pre/post
     /// pair, where post is pre-configured with metadata to allow
     /// modificiation before submit back to internal_apply_writable

@@ -70,7 +70,6 @@ fn generate_domain_cookie_key() -> Value {
 
 impl Domain {
     /// Generates the cookie key for the domain.
-
     fn modify_inner<T: Clone + std::fmt::Debug>(
         qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],

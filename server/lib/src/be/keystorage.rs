@@ -33,7 +33,7 @@ pub enum KeyHandle {
     },
 }
 
-impl<'a> BackendWriteTransaction<'a> {
+impl BackendWriteTransaction<'_> {
     /// Retrieve a key stored in the database by it's key handle. This
     /// handle may require further processing for the key to be usable
     /// in higher level contexts as this is simply the storage layer
@@ -55,7 +55,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdlArcSqliteWriteTransaction<'a> {
+impl IdlArcSqliteWriteTransaction<'_> {
     pub(crate) fn get_key_handle(
         &mut self,
         handle: KeyHandleId,
