@@ -251,9 +251,20 @@ enum OauthRSType {
     },
 }
 
+impl OauthRSType {
+    fn allow_localhost_redirect(&self) -> bool {
+        match self {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => *allow_localhost_redirect,
+        }
+    }
+}
+
 impl std::fmt::Debug for OauthRSType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut ds = f.debug_struct("Oauth2RSType");
+        let mut ds = f.debug_struct("OauthRSType");
         match self {
             OauthRSType::Basic { enable_pkce, .. } => {
                 ds.field("type", &"basic").field("pkce", enable_pkce)
@@ -1819,29 +1830,23 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Oauth2Error::InvalidClientId
             })?;
 
-        let allow_localhost_redirect = match &o2rs.type_ {
-            OauthRSType::Basic { .. } => false,
-            OauthRSType::Public {
-                allow_localhost_redirect,
-            } => *allow_localhost_redirect,
-        };
-
-        // Strict uri validation is in use.
-        let strict_redirect_uri_matched =
-            o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
-        // The legacy origin match is in use.
-        let origin_uri_matched =
-            !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-        // Allow opaque origins such as app uris.
-        let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
-
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
         // be a loopback address exempting it from this check and enforcement.
-        let is_loopback_redirect = allow_localhost_redirect
+        let is_loopback_redirect = o2rs.type_.allow_localhost_redirect()
             && check_loopback_matches(&auth_req.redirect_uri, &o2rs.redirect_uris);
 
         // if they're doing localhost things, then we can carry
         if !is_loopback_redirect {
+            // The legacy origin match is in use.
+            let origin_uri_matched =
+                !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
+
+            // Strict uri validation is in use.
+            let strict_redirect_uri_matched =
+                o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+            // Allow opaque origins such as app uris.
+            let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
+
             // At least one of these conditions must hold true to proceed.
             if !(strict_redirect_uri_matched
                 || origin_uri_matched
@@ -2885,26 +2890,28 @@ fn parse_user_code(val: &str) -> Result<u32, Oauth2Error> {
 }
 
 /// Check if a host is local (loopback or localhost)
-fn host_is_local(host: Host<&str>) -> bool {
+fn host_is_local(host: &Host<&str>) -> bool {
     match host {
         Host::Ipv4(ip) => ip.is_loopback(),
         Host::Ipv6(ip) => ip.is_loopback(),
-        Host::Domain(domain) => domain == "localhost",
+        Host::Domain(domain) => *domain == "localhost",
     }
 }
 
+/// Ensure that the redirect URI is a loopback/localhost address and that the path matches one of the
+/// provided OAuth2 redirect URIs.
 fn check_loopback_matches(redirect_uri: &Url, o2rs_redirect_uris: &HashSet<Url>) -> bool {
     match redirect_uri.host() {
         Some(host) => {
             // Check if the host is a loopback/localhost address.
-            if !host_is_local(host) {
+            if !host_is_local(&host) {
                 false
             } else {
                 // check if the path matches something in the list
                 o2rs_redirect_uris.iter().any(|uri| match uri.host() {
                     None => false,
                     // it's also a loopback address, let's check the path
-                    Some(host) => host_is_local(host) && uri.path() == redirect_uri.path(),
+                    Some(host) => host_is_local(&host) && uri.path() == redirect_uri.path(),
                 })
             }
         }
@@ -2930,7 +2937,7 @@ mod tests {
     use openssl::sha;
 
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error};
+    use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
@@ -6910,7 +6917,7 @@ mod tests {
         let example_is_not_local = "https://example.com/sdfsdf";
         println!("Ensuring that {} is not local", example_is_not_local);
         assert!(!host_is_local(
-            Url::parse(example_is_not_local)
+            &Url::parse(example_is_not_local)
                 .expect("Failed to parse example.com as a host?")
                 .host()
                 .expect(&format!(
@@ -6929,9 +6936,42 @@ mod tests {
         for (url, path) in test_urls.into_iter() {
             println!("Testing URL: {}", url);
             let url = Url::parse(url).expect("One of the test values failed!");
-            assert!(host_is_local(url.host().expect("Didn't parse a host out?")));
+            assert!(host_is_local(
+                &url.host().expect("Didn't parse a host out?")
+            ));
 
             assert_eq!(url.path(), path);
         }
+    }
+
+    #[test]
+    fn test_oauth2_rs_type_allow_localhost_redirect() {
+        let test_cases = [
+            (
+                OauthRSType::Public {
+                    allow_localhost_redirect: true,
+                },
+                true,
+            ),
+            (
+                OauthRSType::Public {
+                    allow_localhost_redirect: false,
+                },
+                false,
+            ),
+            (
+                OauthRSType::Basic {
+                    authz_secret: "supersecret".to_string(),
+                    enable_pkce: false,
+                },
+                false,
+            ),
+        ];
+
+        assert!(test_cases.iter().all(|(rs_type, expected)| {
+            let actual = rs_type.allow_localhost_redirect();
+            println!("Testing {:?} -> {}", rs_type, expected);
+            actual == *expected
+        }));
     }
 }
