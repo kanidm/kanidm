@@ -343,14 +343,9 @@ kanidm system oauth2 disable-localhost-redirects <name>
 kanidm system oauth2 enable-localhost-redirects mywebapp
 ```
 
-Then configure a local URL. We're going to match on "is it a loopback address" and "does the path match" so specify something similar to the following:
-
-```bash
-kanidm system oauth2 add-redirect-url <name> <URL>
-kanidm system oauth2 add-redirect-url <name> http://localhost/my/redirect/path
-kanidm system oauth2 add-redirect-url <name> http://127.0.0.1/my/redirect/path
-kanidm system oauth2 add-redirect-url <name> http://[::1]/my/redirect/path
-```
+> [!WARNING]
+>
+> Kanidm only allows these to be enabled on public clients where PKCE is enforced.
 
 ## Alternate Redirect URLs
 
