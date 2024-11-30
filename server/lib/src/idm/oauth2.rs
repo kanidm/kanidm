@@ -1862,7 +1862,9 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             }
             // We have to specifically match on http here because non-http origins may be exempt from this
             // enforcement.
-            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() != "https" {
+            if (o2rs.origin_https_required && auth_req.redirect_uri.scheme() != "https")
+                && !opaque_origin_matched
+            {
                 admin_warn!(
                     "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
                     auth_req.redirect_uri.to_string()
