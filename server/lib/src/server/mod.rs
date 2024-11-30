@@ -141,9 +141,9 @@ pub struct QueryServerReadTransaction<'a> {
     trim_cid: Cid,
 }
 
-unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
+unsafe impl Sync for QueryServerReadTransaction<'_> {}
 
-unsafe impl<'a> Send for QueryServerReadTransaction<'a> {}
+unsafe impl Send for QueryServerReadTransaction<'_> {}
 
 bitflags::bitflags! {
     #[derive(Copy, Clone, Debug)]
@@ -189,7 +189,7 @@ pub struct QueryServerWriteTransaction<'a> {
     dyngroup_cache: CowCellWriteTxn<'a, DynGroupCache>,
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     pub(crate) fn trim_cid(&self) -> &Cid {
         &self.trim_cid
     }
@@ -1164,7 +1164,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerReadTransaction<'a> {
+impl QueryServerReadTransaction<'_> {
     pub(crate) fn trim_cid(&self) -> &Cid {
         &self.trim_cid
     }

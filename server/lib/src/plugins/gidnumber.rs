@@ -9,46 +9,46 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::uuid_to_gid_u32;
 
-/// Systemd dynamic units allocate between 61184–65519, most distros allocate
-/// system uids from 0 - 1000, and many others give user ids between 1000 to
-/// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
-///
-/// Per <https://systemd.io/UIDS-GIDS/>, systemd claims a huge chunk of this
-/// space to itself. As a result we can't allocate between 65536 and u32 max
-/// because systemd takes most of the usable range for its own containers,
-/// and half the range is probably going to trigger linux kernel issues.
-///
-/// Seriously, linux's uid/gid model is so fundamentally terrible... Windows
-/// NT got this right with SIDs.
-///
-/// Because of this, we have to ensure that anything we allocate is in the
-/// range 1879048192 (0x70000000) to 2147483647 (0x7fffffff)
+// Systemd dynamic units allocate between 61184–65519, most distros allocate
+// system uids from 0 - 1000, and many others give user ids between 1000 to
+// 2000. This whole numberspace is cursed, lets assume it's not ours. :(
+//
+// Per <https://systemd.io/UIDS-GIDS/>, systemd claims a huge chunk of this
+// space to itself. As a result we can't allocate between 65536 and u32 max
+// because systemd takes most of the usable range for its own containers,
+// and half the range is probably going to trigger linux kernel issues.
+//
+// Seriously, linux's uid/gid model is so fundamentally terrible... Windows
+// NT got this right with SIDs.
+//
+// Because of this, we have to ensure that anything we allocate is in the
+// range 1879048192 (0x70000000) to 2147483647 (0x7fffffff)
 const GID_SYSTEM_NUMBER_PREFIX: u32 = 0x7000_0000;
 const GID_SYSTEM_NUMBER_MASK: u32 = 0x0fff_ffff;
 
-/// Systemd claims so many ranges to itself, we have to check we are in certain bounds.
-
-/// This is the normal system range, we MUST NOT allow it to be allocated.
+// Systemd claims so many ranges to itself, we have to check we are in certain bounds.
+//
+// This is the normal system range, we MUST NOT allow it to be allocated.
 pub const GID_REGULAR_USER_MIN: u32 = 1000;
 pub const GID_REGULAR_USER_MAX: u32 = 60000;
 
-/// Systemd homed claims 60001 through 60577
+// Systemd homed claims 60001 through 60577
 
 pub const GID_UNUSED_A_MIN: u32 = 60578;
 pub const GID_UNUSED_A_MAX: u32 = 61183;
 
-/// Systemd dyn service users 61184 through 65519
+// Systemd dyn service users 61184 through 65519
 
 pub const GID_UNUSED_B_MIN: u32 = 65520;
 pub const GID_UNUSED_B_MAX: u32 = 65533;
 
-/// nobody is 65534
-/// 16bit uid -1 65535
+// nobody is 65534
+// 16bit uid -1 65535
 
 pub const GID_UNUSED_C_MIN: u32 = 65536;
 const GID_UNUSED_C_MAX: u32 = 524287;
 
-/// systemd claims 524288 through 1879048191 for nspawn
+// systemd claims 524288 through 1879048191 for nspawn
 
 const GID_NSPAWN_MIN: u32 = 524288;
 const GID_NSPAWN_MAX: u32 = 1879048191;
@@ -56,8 +56,8 @@ const GID_NSPAWN_MAX: u32 = 1879048191;
 const GID_UNUSED_D_MIN: u32 = 0x7000_0000;
 pub const GID_UNUSED_D_MAX: u32 = 0x7fff_ffff;
 
-/// Anything above 2147483648 can confuse the kernel (so basically half the address space
-/// can't be accessed.
+// Anything above 2147483648 can confuse the kernel (so basically half the address space
+// can't be accessed.
 // const GID_UNSAFE_MAX: u32 = 2147483648;
 
 pub struct GidNumber {}

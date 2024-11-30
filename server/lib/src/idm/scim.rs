@@ -114,7 +114,7 @@ impl GenerateScimSyncTokenEvent {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub fn scim_sync_generate_token(
         &mut self,
         gte: &GenerateScimSyncTokenEvent,
@@ -234,7 +234,7 @@ pub struct ScimSyncFinaliseEvent {
     pub target: Uuid,
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub fn scim_sync_finalise(
         &mut self,
         sfe: &ScimSyncFinaliseEvent,
@@ -364,7 +364,7 @@ pub struct ScimSyncTerminateEvent {
     pub target: Uuid,
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub fn scim_sync_terminate(
         &mut self,
         ste: &ScimSyncTerminateEvent,
@@ -497,7 +497,7 @@ pub struct ScimSyncUpdateEvent {
     pub ident: Identity,
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "info", skip_all)]
     pub fn scim_sync_apply(
         &mut self,
@@ -1464,7 +1464,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn scim_sync_get_state(
         &mut self,
         ident: &Identity,

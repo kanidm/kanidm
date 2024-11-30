@@ -449,7 +449,7 @@ impl Oauth2ResourceServers {
     }
 }
 
-impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
+impl Oauth2ResourceServersWriteTransaction<'_> {
     pub fn reload(
         &mut self,
         value: Vec<Arc<EntrySealedCommitted>>,
@@ -789,7 +789,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
@@ -1777,7 +1777,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorisation(
         &self,

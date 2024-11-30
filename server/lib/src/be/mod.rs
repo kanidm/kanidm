@@ -173,9 +173,9 @@ pub struct BackendReadTransaction<'a> {
     ruv: ReplicationUpdateVectorReadTransaction<'a>,
 }
 
-unsafe impl<'a> Sync for BackendReadTransaction<'a> {}
+unsafe impl Sync for BackendReadTransaction<'_> {}
 
-unsafe impl<'a> Send for BackendReadTransaction<'a> {}
+unsafe impl Send for BackendReadTransaction<'_> {}
 
 pub struct BackendWriteTransaction<'a> {
     idlayer: IdlArcSqliteWriteTransaction<'a>,
@@ -1009,7 +1009,7 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     }
 }
 
-impl<'a> BackendReadTransaction<'a> {
+impl BackendReadTransaction<'_> {
     pub fn list_indexes(&mut self) -> Result<Vec<String>, OperationError> {
         self.get_idlayer().list_idxs()
     }

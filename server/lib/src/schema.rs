@@ -759,7 +759,7 @@ pub trait SchemaTransaction {
     }
 }
 
-impl<'a> SchemaWriteTransaction<'a> {
+impl SchemaWriteTransaction<'_> {
     // Schema probably needs to be part of the backend, so that commits are wholly atomic
     // but in the current design, we need to open be first, then schema, but we have to commit be
     // first, then schema to ensure that the be content matches our schema. Saying this, if your
@@ -2241,7 +2241,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 }
 
-impl<'a> SchemaTransaction for SchemaWriteTransaction<'a> {
+impl SchemaTransaction for SchemaWriteTransaction<'_> {
     fn get_attributes_unique(&self) -> &Vec<Attribute> {
         &self.unique_cache
     }

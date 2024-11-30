@@ -174,7 +174,7 @@ impl DestroyApiTokenEvent {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub fn service_account_generate_api_token(
         &mut self,
         gte: &GenerateApiTokenEvent,
@@ -353,7 +353,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn service_account_list_api_token(
         &mut self,
         lte: &ListApiTokenEvent,
