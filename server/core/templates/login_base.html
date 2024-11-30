@@ -15,7 +15,7 @@
 		src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
 		alt="(( display_ctx.domain_info.display_name() ))" class="kanidm_logo" />
 	(% endif %)
-	<h3>Kanidm</h3>
+	<h3>(( display_ctx.domain_info.display_name() ))</h3>
 	(% if let Some(reauth) = display_ctx.reauth %)
 	<div class="alert alert-info" role="alert">
 		Reauthenticating as (( reauth.username )) to access (( reauth.purpose ))
