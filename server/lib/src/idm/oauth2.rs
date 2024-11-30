@@ -1838,7 +1838,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
         // be a loopback address exempting it from this check and enforcement.
         let is_loopback_redirect = allow_localhost_redirect
-            && check_lopback_matches(&auth_req.redirect_uri, &o2rs.redirect_uris);
+            && check_loopback_matches(&auth_req.redirect_uri, &o2rs.redirect_uris);
 
         // if they're doing localhost things, then we can carry
         if !is_loopback_redirect {
@@ -2893,7 +2893,7 @@ fn host_is_local(host: Host<&str>) -> bool {
     }
 }
 
-fn check_lopback_matches(redirect_uri: &Url, o2rs_redirect_uris: &HashSet<Url>) -> bool {
+fn check_loopback_matches(redirect_uri: &Url, o2rs_redirect_uris: &HashSet<Url>) -> bool {
     match redirect_uri.host() {
         Some(host) => {
             // Check if the host is a loopback/localhost address.
