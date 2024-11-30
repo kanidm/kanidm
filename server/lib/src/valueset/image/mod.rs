@@ -458,7 +458,7 @@ impl ValueSetT for ValueSetImage {
 
 #[cfg(test)]
 mod tests {
-    use super::ValueSetImage;
+    // use super::ValueSetImage;
     use super::{ImageType, ImageValue, ImageValueThings};
 
     #[test]
