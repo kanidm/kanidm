@@ -6617,12 +6617,16 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_uat, ident, oauth2_rs_uuid) = setup_oauth2_resource_server_public(idms, ct).await;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+        let mut idms_prox_write: crate::idm::server::IdmServerProxyWriteTransaction<'_> =
+            idms.proxy_write(ct).await.unwrap();
 
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Value::Bool(true),
-        )]);
+        let redirect_uri = Url::parse("http://localhost:8765/oauth2/result")
+            .expect("Failed to parse redirect URL");
+
+        let modlist = ModifyList::new_list(vec![
+            Modify::Present(Attribute::OAuth2AllowLocalhostRedirect, Value::Bool(true)),
+            Modify::Present(Attribute::OAuth2RsOrigin, Value::Url(redirect_uri.clone())),
+        ]);
 
         assert!(idms_prox_write
             .qs_write
@@ -6647,7 +6651,7 @@ mod tests {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
-            redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+            redirect_uri: redirect_uri.clone(),
             scope: OAUTH2_SCOPE_OPENID.to_string(),
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
@@ -6679,7 +6683,7 @@ mod tests {
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
-                redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+                redirect_uri,
                 // From the first step.
                 code_verifier,
             },
