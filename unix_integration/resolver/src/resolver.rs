@@ -412,9 +412,12 @@ impl Resolver {
                 }
                 None => {
                     error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
-                    // We don't know if this is permanent or transient, so just useCached, unless
-                    // the admin clears tokens from providers that are no longer present.
-                    Ok(UserTokenState::UseCached)
+
+                    // We don't want to use a token from a former provider, we want it refreshed,
+                    // so lets indicate that we didn't find the token. If we return useCcahed like
+                    // we did previously, we'd never clear and reset this token since we'd never
+                    // locate it's provider.
+                    Ok(UserTokenState::NotFound)
                 }
             }
         } else {
@@ -481,9 +484,11 @@ impl Resolver {
                 }
                 None => {
                     error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
-                    // We don't know if this is permanent or transient, so just useCached, unless
-                    // the admin clears tokens from providers that are no longer present.
-                    Ok(GroupTokenState::UseCached)
+                    // We don't want to use a token from a former provider, we want it refreshed,
+                    // so lets indicate that we didn't find the token. If we return useCcahed like
+                    // we did previously, we'd never clear and reset this token since we'd never
+                    // locate it's provider.
+                    Ok(GroupTokenState::NotFound)
                 }
             }
         } else {
