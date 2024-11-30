@@ -457,16 +457,27 @@ async fn repl_task(
     // we keep track of the "last known good" socketaddr so we can try that first next time.
     let mut last_working_address: Option<SocketAddr> = None;
 
-    // Okay, all the parameters are set up. Now we wait on our interval.
+    // Okay, all the parameters are set up. Now we replicate on our interval.
     loop {
-        // we resolve the DNS entry to the ip:port each time we attempt a connection to avoid stale DNS issues, ref #3188
+        // we resolve the DNS entry to the ip:port each time we attempt a connection to avoid stale DNS issues, ref #3188, have to do it in this slightly jank way because of the loop
+        let mut addr_resolution_error = false;
+
         let socket_addrs = match origin.socket_addrs(|| Some(443)) {
             Ok(sa) => sa,
             Err(err) => {
-                error!(?err, "Replica origin could not resolve to ip:port");
-                return;
+                error!(
+                    ?err,
+                    "Replication error - could not resolve '{}' to ip:port, will wait an interval and retry", origin
+                );
+                repl_interval.tick().await;
+                addr_resolution_error = true;
+                vec![]
             }
         };
+
+        if addr_resolution_error {
+            continue;
+        }
 
         // if the target address worked last time, then let's use it this time!
         let mut sorted_socket_addrs = vec![];
