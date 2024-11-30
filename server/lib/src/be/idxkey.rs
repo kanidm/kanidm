@@ -43,7 +43,7 @@ pub trait IdxKeyToRef {
     fn keyref(&self) -> IdxKeyRef<'_>;
 }
 
-impl<'a> IdxKeyToRef for IdxKeyRef<'a> {
+impl IdxKeyToRef for IdxKeyRef<'_> {
     fn keyref(&self) -> IdxKeyRef<'_> {
         // Copy the self.
         *self
@@ -65,15 +65,15 @@ impl<'a> Borrow<dyn IdxKeyToRef + 'a> for IdxKey {
     }
 }
 
-impl<'a> PartialEq for (dyn IdxKeyToRef + 'a) {
+impl PartialEq for (dyn IdxKeyToRef + '_) {
     fn eq(&self, other: &Self) -> bool {
         self.keyref().eq(&other.keyref())
     }
 }
 
-impl<'a> Eq for (dyn IdxKeyToRef + 'a) {}
+impl Eq for (dyn IdxKeyToRef + '_) {}
 
-impl<'a> Hash for (dyn IdxKeyToRef + 'a) {
+impl Hash for (dyn IdxKeyToRef + '_) {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.keyref().hash(state)
     }
@@ -107,7 +107,7 @@ pub trait IdlCacheKeyToRef {
     fn keyref(&self) -> IdlCacheKeyRef<'_>;
 }
 
-impl<'a> IdlCacheKeyToRef for IdlCacheKeyRef<'a> {
+impl IdlCacheKeyToRef for IdlCacheKeyRef<'_> {
     fn keyref(&self) -> IdlCacheKeyRef<'_> {
         // Copy the self
         *self
@@ -130,27 +130,27 @@ impl<'a> Borrow<dyn IdlCacheKeyToRef + 'a> for IdlCacheKey {
     }
 }
 
-impl<'a> PartialEq for (dyn IdlCacheKeyToRef + 'a) {
+impl PartialEq for (dyn IdlCacheKeyToRef + '_) {
     fn eq(&self, other: &Self) -> bool {
         self.keyref().eq(&other.keyref())
     }
 }
 
-impl<'a> Eq for (dyn IdlCacheKeyToRef + 'a) {}
+impl Eq for (dyn IdlCacheKeyToRef + '_) {}
 
-impl<'a> Hash for (dyn IdlCacheKeyToRef + 'a) {
+impl Hash for (dyn IdlCacheKeyToRef + '_) {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.keyref().hash(state)
     }
 }
 
-impl<'a> PartialOrd for (dyn IdlCacheKeyToRef + 'a) {
+impl PartialOrd for (dyn IdlCacheKeyToRef + '_) {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(&other.keyref()))
     }
 }
 
-impl<'a> Ord for (dyn IdlCacheKeyToRef + 'a) {
+impl Ord for (dyn IdlCacheKeyToRef + '_) {
     fn cmp(&self, other: &Self) -> Ordering {
         self.keyref().cmp(&other.keyref())
     }

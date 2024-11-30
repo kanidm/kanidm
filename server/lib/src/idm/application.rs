@@ -62,7 +62,7 @@ pub struct LdapApplicationsWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, LdapApplicationsInner>,
 }
 
-impl<'a> LdapApplicationsWriteTransaction<'a> {
+impl LdapApplicationsWriteTransaction<'_> {
     pub fn reload(&mut self, value: Vec<Arc<EntrySealedCommitted>>) -> Result<(), OperationError> {
         let app_set: Result<HashMap<_, _>, _> = value
             .into_iter()

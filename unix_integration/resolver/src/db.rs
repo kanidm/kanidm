@@ -240,7 +240,7 @@ impl<'a> DbTxn<'a> {
     }
 }
 
-impl<'a, 'b> KeyStoreTxn<'a, 'b> {
+impl KeyStoreTxn<'_, '_> {
     pub fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
         tag: &str,
@@ -261,7 +261,7 @@ impl<'a, 'b> KeyStoreTxn<'a, 'b> {
     }
 }
 
-impl<'a> DbTxn<'a> {
+impl DbTxn<'_> {
     fn get_tagged_hsm_key<K: DeserializeOwned>(
         &mut self,
         tag: &str,
@@ -329,7 +329,7 @@ impl<'a> DbTxn<'a> {
     }
 }
 
-impl<'a> DbTxn<'a> {
+impl DbTxn<'_> {
     pub fn migrate(&mut self) -> Result<(), CacheError> {
         self.conn.set_prepared_statement_cache_capacity(16);
         self.conn
@@ -897,13 +897,13 @@ impl<'a> DbTxn<'a> {
     }
 }
 
-impl<'a> fmt::Debug for DbTxn<'a> {
+impl fmt::Debug for DbTxn<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "DbTxn {{}}")
     }
 }
 
-impl<'a> Drop for DbTxn<'a> {
+impl Drop for DbTxn<'_> {
     // Abort
     fn drop(&mut self) {
         if !self.committed {

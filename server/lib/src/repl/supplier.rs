@@ -9,7 +9,7 @@ use crate::be::keystorage::{KeyHandle, KeyHandleId};
 use kanidm_lib_crypto::mtls::build_self_signed_server_and_client_identity;
 use kanidm_lib_crypto::prelude::{PKey, Private, X509};
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     fn supplier_generate_key_cert(
         &mut self,
         domain_name: &str,
@@ -80,7 +80,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerReadTransaction<'a> {
+impl QueryServerReadTransaction<'_> {
     // Given a consumers state, calculate the differential of changes they
     // need to be sent to bring them to the equivalent state.
 

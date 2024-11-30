@@ -1521,7 +1521,7 @@ fn gen_password_upgrade_mod(
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn jws_public_jwk(&mut self, key_id: &str) -> Result<Jwk, OperationError> {
         self.qs_read
             .get_key_providers()
@@ -1628,7 +1628,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub(crate) fn crypto_policy(&self) -> &CryptoPolicy {
         self.crypto_policy
     }
@@ -4223,7 +4223,7 @@ mod tests {
             .await;
 
         assert!(result.is_ok());
-        if let Some(_) = expected {
+        if expected.is_some() {
             assert!(result.unwrap().is_some());
         } else {
             assert!(result.unwrap().is_none());

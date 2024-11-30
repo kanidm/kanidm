@@ -520,7 +520,7 @@ impl InitCredentialUpdateEvent {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     fn validate_init_credential_update(
         &mut self,
         target: Uuid,
@@ -1546,7 +1546,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerCredUpdateTransaction<'a> {
+impl IdmServerCredUpdateTransaction<'_> {
     #[cfg(test)]
     pub fn get_origin(&self) -> &Url {
         &self.webauthn.get_allowed_origins()[0]

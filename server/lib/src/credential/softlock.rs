@@ -1,62 +1,65 @@
-use std::time::Duration;
+//! Represents a temporary denial of the credential to authenticate. This is used
+//! to ratelimit and prevent bruteforcing of accounts. At an initial failure the
+//! SoftLock is created and the count set to 1, with a unlock_at set to 1 second
+//! later, and a reset_count_at: at a maximum time window for a cycle.
+//!
+//! If the softlock already exists, and the failure count is 0, then this acts as the
+//! creation where the reset_count_at window is then set.
+//!
+//! While current_time < unlock_at, all authentication attempts are denied with a
+//! message regarding the account being temporarily unavailable. Once
+//! unlock_at < current_time, authentication will be processed again. If a subsequent
+//! failure occurs, unlock_at is extended based on policy, and failure_count incremented.
+//!
+//! If unlock_at < current_time, and authentication succeeds the login is allowed
+//! and no changes to failure_count or unlock_at are made.
+//!
+//! If reset_count_at < current_time, then failure_count is reset to 0 before processing.
+//!
+//! This allows handling of max_failure_count, so that when that value from policy is
+//! exceeded then unlock_at is set to reset_count_at to softlock until the cycle
+//! is over (see NIST sp800-63b.). For example, reset_count_at will be 24 hours after
+//! the first failed authentication attempt.
+//!
+//! This also works for something like TOTP which allows a 60 second cycle for the
+//! reset_count_at and a max number of attempts in that window (say 5). with short
+//! delays in between (1 second).
+//!
+//! ```
+//!
+//!                                                  ┌────────────────────────┐
+//!                                                  │reset_at < current_time │
+//!                                                 ─└────────────────────────┘
+//!                                                │                         │
+//!                                                ▼
+//!             ┌─────┐                         .─────.       ┌────┐         │
+//!             │Valid│                        ╱       ╲      │Fail│
+//!        ┌────┴─────┴───────────────────────(count = 0)─────┴────┴┐        │
+//!        │                                   `.     ,'            │
+//!        │                                     `───'              │        │
+//!        │             ┌────────────────────────┐▲                │
+//!        │             │reset_at < current_time │                 │        │
+//!        │             └────────────────────────┘│                │
+//!        │                      ┌ ─ ─ ─ ─ ─ ─ ─ ─                 │        │
+//!        │                                                        │
+//!        │                      ├─────┬───────┬──┐                ▼        │
+//!        │                      │     │ Fail  │  │             .─────.
+//!        │                      │     │count++│  │           ,'       `.   │
+//!        ▼                   .─────.  └───────┘  │          ;  Locked   :
+//! ┌────────────┐            ╱       ╲            └─────────▶: count > 0 ;◀─┤
+//! │Auth Success│◀─┬─────┬──(Unlocked )                       ╲         ╱   │
+//! └────────────┘  │Valid│   `.     ,'                         `.     ,'    │
+//!                 └─────┘     `───'                             `───'      │
+//!                               ▲                                 │        │
+//!                               │                                 │        │
+//!                               └─────┬──────────────────────────┬┴┬───────┴──────────────────┐
+//!                                     │ expire_at < current_time │ │ current_time < expire_at │
+//!                                     └──────────────────────────┘ └──────────────────────────┘
+//!
+//! ```
+//!
 
-/// Represents a temporary denial of the credential to authenticate. This is used
-/// to ratelimit and prevent bruteforcing of accounts. At an initial failure the
-/// SoftLock is created and the count set to 1, with a unlock_at set to 1 second
-/// later, and a reset_count_at: at a maximum time window for a cycle.
-///
-/// If the softlock already exists, and the failure count is 0, then this acts as the
-/// creation where the reset_count_at window is then set.
-///
-/// While current_time < unlock_at, all authentication attempts are denied with a
-/// message regarding the account being temporarily unavailable. Once
-/// unlock_at < current_time, authentication will be processed again. If a subsequent
-/// failure occurs, unlock_at is extended based on policy, and failure_count incremented.
-///
-/// If unlock_at < current_time, and authentication succeeds the login is allowed
-/// and no changes to failure_count or unlock_at are made.
-///
-/// If reset_count_at < current_time, then failure_count is reset to 0 before processing.
-///
-/// This allows handling of max_failure_count, so that when that value from policy is
-/// exceeded then unlock_at is set to reset_count_at to softlock until the cycle
-/// is over (see NIST sp800-63b.). For example, reset_count_at will be 24 hours after
-/// the first failed authentication attempt.
-///
-/// This also works for something like TOTP which allows a 60 second cycle for the
-/// reset_count_at and a max number of attempts in that window (say 5). with short
-/// delays in between (1 second).
-//
-//                                                  ┌────────────────────────┐
-//                                                  │reset_at < current_time │
-//                                                 ─└────────────────────────┘
-//                                                │                         │
-//                                                ▼
-//             ┌─────┐                         .─────.       ┌────┐         │
-//             │Valid│                        ╱       ╲      │Fail│
-//        ┌────┴─────┴───────────────────────(count = 0)─────┴────┴┐        │
-//        │                                   `.     ,'            │
-//        │                                     `───'              │        │
-//        │             ┌────────────────────────┐▲                │
-//        │             │reset_at < current_time │                 │        │
-//        │             └────────────────────────┘│                │
-//        │                      ┌ ─ ─ ─ ─ ─ ─ ─ ─                 │        │
-//        │                                                        │
-//        │                      ├─────┬───────┬──┐                ▼        │
-//        │                      │     │ Fail  │  │             .─────.
-//        │                      │     │count++│  │           ,'       `.   │
-//        ▼                   .─────.  └───────┘  │          ;  Locked   :
-// ┌────────────┐            ╱       ╲            └─────────▶: count > 0 ;◀─┤
-// │Auth Success│◀─┬─────┬──(Unlocked )                       ╲         ╱   │
-// └────────────┘  │Valid│   `.     ,'                         `.     ,'    │
-//                 └─────┘     `───'                             `───'      │
-//                               ▲                                 │        │
-//                               │                                 │        │
-//                               └─────┬──────────────────────────┬┴┬───────┴──────────────────┐
-//                                     │ expire_at < current_time │ │ current_time < expire_at │
-//                                     └──────────────────────────┘ └──────────────────────────┘
-//
-//
+use std::time::Duration;
 
 const ONEDAY: u64 = 86400;
 

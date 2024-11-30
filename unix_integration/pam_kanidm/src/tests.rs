@@ -63,16 +63,9 @@ enum Event {
     StackedAuthtok(Option<&'static str>),
 }
 
+#[derive(Default)]
 struct TestHandler {
     response_queue: Mutex<VecDeque<Event>>,
-}
-
-impl Default for TestHandler {
-    fn default() -> Self {
-        TestHandler {
-            response_queue: Default::default(),
-        }
-    }
 }
 
 impl From<Vec<Event>> for TestHandler {

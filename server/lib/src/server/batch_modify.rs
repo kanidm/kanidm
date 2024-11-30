@@ -10,7 +10,7 @@ pub struct BatchModifyEvent {
     pub modset: ModSetValid,
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// This function behaves different to modify. Modify applies the same
     /// modification operation en-mass to 1 -> N entries. This takes a set of modifications
     /// that define a precise entry to apply a change to and only modifies that.

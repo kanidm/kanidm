@@ -846,7 +846,7 @@ impl DestroySessionTokenEvent {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     pub fn account_destroy_session_token(
         &mut self,
         dte: &DestroySessionTokenEvent,
@@ -973,7 +973,7 @@ pub struct ListUserAuthTokenEvent {
     pub target: Uuid,
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn account_list_user_auth_tokens(
         &mut self,
         lte: &ListUserAuthTokenEvent,

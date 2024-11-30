@@ -214,7 +214,7 @@ impl QueryServer {
     }
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
     /// level.
     #[cfg(test)]
@@ -1064,7 +1064,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerReadTransaction<'a> {
+impl QueryServerReadTransaction<'_> {
     /// Retrieve the domain info of this server
     pub fn domain_upgrade_check(
         &mut self,

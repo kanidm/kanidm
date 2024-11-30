@@ -54,7 +54,7 @@ impl IdentifyUserSubmitCodeEvent {
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn handle_identify_user_start(
         &mut self,
         IdentifyUserStartEvent { target, ident }: &IdentifyUserStartEvent,
