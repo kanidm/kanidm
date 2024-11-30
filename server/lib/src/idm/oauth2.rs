@@ -1840,16 +1840,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         if is_local_application {
             debug!("Loopback redirect_uri detected, allowing for localhost");
         } else {
-            // We have to specifically match on http here because non-http origins may be exempt from this
-            // enforcement.
-            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() == "http" {
-                admin_warn!(
-                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
-                    auth_req.redirect_uri.to_string()
-                );
-                return Err(Oauth2Error::InvalidOrigin);
-            }
-
             // The legacy origin match is in use.
             let origin_uri_matched =
                 !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
@@ -1873,6 +1863,15 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                         auth_req.redirect_uri.origin()
                     );
                 }
+                return Err(Oauth2Error::InvalidOrigin);
+            }
+            // We have to specifically match on http here because non-http origins may be exempt from this
+            // enforcement.
+            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() == "http" {
+                admin_warn!(
+                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
+                    auth_req.redirect_uri.to_string()
+                );
                 return Err(Oauth2Error::InvalidOrigin);
             }
         }
