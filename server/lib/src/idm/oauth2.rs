@@ -46,7 +46,7 @@ use serde_with::{formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::{Origin, Url};
+use url::{Host, Origin, Url};
 
 use crate::idm::account::Account;
 use crate::idm::server::{
@@ -1826,12 +1826,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             } => *allow_localhost_redirect,
         };
 
-        let localhost_redirect = auth_req
-            .redirect_uri
-            .domain()
-            .map(|domain| domain == "localhost")
-            .unwrap_or_default();
-
         // Strict uri validation is in use.
         let strict_redirect_uri_matched =
             o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
@@ -1840,46 +1834,48 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
         // Allow opaque origins such as app uris.
         let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
-        // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
-        // be localhost exempting it from this check and enforcement.
-        let localhost_redirect_matched = allow_localhost_redirect && localhost_redirect;
 
-        // At least one of these conditions must hold true to proceed.
-        if !(strict_redirect_uri_matched
-            || origin_uri_matched
-            || opaque_origin_matched
-            || localhost_redirect_matched)
-        {
-            if o2rs.strict_redirect_uri {
-                warn!(
-                    "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
-                    auth_req.redirect_uri.as_str()
-                );
-            } else {
-                warn!(
-                    "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
-                    auth_req.redirect_uri.origin()
-                );
+        // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
+        // be a loopback address exempting it from this check and enforcement.
+        let is_loopback_redirect = allow_localhost_redirect
+            && check_lopback_matches(&auth_req.redirect_uri, &o2rs.redirect_uris);
+
+        // if they're doing localhost things, then we can carry
+        if !is_loopback_redirect {
+            // At least one of these conditions must hold true to proceed.
+            if !(strict_redirect_uri_matched
+                || origin_uri_matched
+                || opaque_origin_matched
+                || is_loopback_redirect)
+            {
+                if o2rs.strict_redirect_uri {
+                    warn!(
+                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
+                                auth_req.redirect_uri.as_str()
+                            );
+                } else {
+                    warn!(
+                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
+                        auth_req.redirect_uri.origin()
+                    );
+                }
+                return Err(Oauth2Error::InvalidOrigin);
             }
-            return Err(Oauth2Error::InvalidOrigin);
-        }
 
-        // We have to specifically match on http here because non-http origins may be exempt from this
-        // enforcement.
-        if !localhost_redirect
-            && o2rs.origin_https_required
-            && auth_req.redirect_uri.scheme() == "http"
-        {
-            admin_warn!(
-                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
-                auth_req.redirect_uri.scheme()
-            );
-            return Err(Oauth2Error::InvalidOrigin);
+            // We have to specifically match on http here because non-http origins may be exempt from this
+            // enforcement.
+            if o2rs.origin_https_required && auth_req.redirect_uri.scheme() == "http" {
+                admin_warn!(
+                    "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
+                    auth_req.redirect_uri.scheme()
+                );
+                return Err(Oauth2Error::InvalidOrigin);
+            }
         }
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
             if !o2rs.require_pkce() {
-                security_info!(?o2rs.name, "Insecure rs configuration - pkce is not enforced, but rs is requesting it!");
+                security_info!(?o2rs.name, "Insecure RS configuration - PKCE is not enforced, but rs is requesting it!");
             }
             // CodeChallengeMethod must be S256
             if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
@@ -1891,7 +1887,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
             return Err(Oauth2Error::InvalidRequest);
         } else {
-            security_info!(?o2rs.name, "Insecure client configuration - pkce is not enforced.");
+            security_info!(?o2rs.name, "Insecure client configuration - PKCE is not enforced.");
             None
         };
 
@@ -1928,7 +1924,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         };
 
         let Some(account_uuid) = ident.get_uuid() else {
-            error!("consent request ident does not have a valid uuid, unable to proceed");
+            error!("Consent request ident does not have a valid UUID, unable to proceed");
             return Err(Oauth2Error::InvalidRequest);
         };
 
@@ -2888,6 +2884,34 @@ fn parse_user_code(val: &str) -> Result<u32, Oauth2Error> {
     })
 }
 
+/// Check if a host is local (loopback or localhost)
+fn host_is_local(host: Host<&str>) -> bool {
+    match host {
+        Host::Ipv4(ip) => ip.is_loopback(),
+        Host::Ipv6(ip) => ip.is_loopback(),
+        Host::Domain(domain) => domain == "localhost",
+    }
+}
+
+fn check_lopback_matches(redirect_uri: &Url, o2rs_redirect_uris: &HashSet<Url>) -> bool {
+    match redirect_uri.host() {
+        Some(host) => {
+            // Check if the host is a loopback/localhost address.
+            if !host_is_local(host) {
+                false
+            } else {
+                // check if the path matches something in the list
+                o2rs_redirect_uris.iter().any(|uri| match uri.host() {
+                    None => false,
+                    // it's also a loopback address, let's check the path
+                    Some(host) => host_is_local(host) && uri.path() == redirect_uri.path(),
+                })
+            }
+        }
+        None => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
@@ -2906,7 +2930,7 @@ mod tests {
     use openssl::sha;
 
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
+    use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
@@ -6872,5 +6896,38 @@ mod tests {
             .handle_oauth2_start_device_flow(client_auth_info, "test_rs_id", &None, eventid);
         dbg!(&res);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_url_localhost_domain() {
+        // ref #2390 - localhost with ports for OAuth2 redirect_uri
+
+        // ensure host_is_local isn't true for a non-local host
+        let example_is_not_local = "https://example.com/sdfsdf";
+        println!("Ensuring that {} is not local", example_is_not_local);
+        assert!(!host_is_local(
+            Url::parse(example_is_not_local)
+                .expect("Failed to parse example.com as a host?")
+                .host()
+                .expect(&format!(
+                    "Couldn't get a host from {}",
+                    example_is_not_local
+                ))
+        ));
+
+        let test_urls = [
+            ("http://localhost:8080/oauth2/callback", "/oauth2/callback"),
+            ("https://localhost/foo/bar", "/foo/bar"),
+            ("http://127.0.0.1:12345/foo", "/foo"),
+            ("http://[::1]:12345/foo", "/foo"),
+        ];
+
+        for (url, path) in test_urls.into_iter() {
+            println!("Testing URL: {}", url);
+            let url = Url::parse(url).expect("One of the test values failed!");
+            assert!(host_is_local(url.host().expect("Didn't parse a host out?")));
+
+            assert_eq!(url.path(), path);
+        }
     }
 }
