@@ -1,8 +1,11 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::client::ScimStrings;
+use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
@@ -24,6 +27,21 @@ impl ValueSetUtf8 {
     pub fn from_dbvs2(data: Vec<String>) -> Result<ValueSet, OperationError> {
         let set = data.into_iter().collect();
         Ok(Box::new(ValueSetUtf8 { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetUtf8 {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let ScimStrings(values) = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Utf8 Syntax Invalid");
+            OperationError::SC0026Utf8SyntaxInvalid
+        })?;
+
+        let set = values.into_iter().collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUtf8 {
+            set,
+        })))
     }
 }
 
@@ -227,6 +245,10 @@ mod tests {
     #[test]
     fn test_scim_utf8() {
         let vs: ValueSet = ValueSetUtf8::new("Test".to_string());
-        crate::valueset::scim_json_reflexive(vs, r#""Test""#);
+        // Test that the output json matches some known str
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""Test""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetUtf8>(vs, &[])
     }
 }

@@ -1,13 +1,3 @@
-use crate::valueset::ScimResolveStatus;
-use smolset::SmolSet;
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
-use time::OffsetDateTime;
-
-use webauthn_rs::prelude::{
-    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
-};
-
 use crate::be::dbvalue::{
     DbValueAttestedPasskeyV1, DbValueCredV1, DbValueIntentTokenStateV1, DbValuePasskeyV1,
 };
@@ -16,9 +6,18 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{CredUpdateSessionPerms, CredentialType, IntentTokenState};
-use crate::valueset::{DbValueSetV2, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
 use kanidm_proto::scim_v1::server::{ScimIntentToken, ScimIntentTokenState};
+use kanidm_proto::scim_v1::JsonValue;
+use smolset::SmolSet;
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::BTreeMap;
+use time::OffsetDateTime;
+use webauthn_rs::prelude::{
+    AttestationCaList, AttestedPasskey as AttestedPasskeyV4, Passkey as PasskeyV4,
+};
 
 #[derive(Debug, Clone)]
 pub struct ValueSetCredential {
@@ -880,6 +879,29 @@ impl ValueSetCredentialType {
     }
 }
 
+impl ValueSetScimPut for ValueSetCredentialType {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value = serde_json::from_value::<String>(value)
+            .map_err(|err| {
+                error!(?err, "SCIM CredentialType syntax invalid");
+                OperationError::SC0015CredentialTypeSyntaxInvalid
+            })
+            .and_then(|value| {
+                CredentialType::try_from(value.as_str()).map_err(|()| {
+                    error!("SCIM CredentialType syntax invalid - value");
+                    OperationError::SC0015CredentialTypeSyntaxInvalid
+                })
+            })?;
+
+        let mut set = SmolSet::new();
+        set.insert(value);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetCredentialType { set },
+        )))
+    }
+}
+
 impl ValueSetT for ValueSetCredentialType {
     fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
         match value {
@@ -949,9 +971,10 @@ impl ValueSetT for ValueSetCredentialType {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
-            self.set.iter().map(|ct| ct.to_string()).collect::<Vec<_>>(),
-        )))
+        self.set
+            .iter()
+            .next()
+            .map(|ct| ScimResolveStatus::Resolved(ScimValueKanidm::from(ct.to_string())))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -1166,6 +1189,9 @@ mod tests {
     #[test]
     fn test_scim_credential_type() {
         let vs: ValueSet = ValueSetCredentialType::new(CredentialType::Mfa);
-        crate::valueset::scim_json_reflexive(vs, r#"["mfa"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""mfa""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetCredentialType>(vs, &[])
     }
 }

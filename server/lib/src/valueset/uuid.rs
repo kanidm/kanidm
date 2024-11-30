@@ -1,11 +1,12 @@
-use std::collections::BTreeSet;
-
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::{
     uuid_to_proto_string, DbValueSetV2, ScimResolveStatus, ScimValueIntermediate, ValueSet,
+    ValueSetIntermediate, ValueSetResolveStatus, ValueSetScimPut,
 };
+use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetUuid {
@@ -37,6 +38,21 @@ impl ValueSetUuid {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUuid { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetUuid {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let uuid: Uuid = serde_json::from_value(value).map_err(|err| {
+            warn!(?err, "Invalid SCIM Uuid syntax");
+            OperationError::SC0004UuidSyntaxInvalid
+        })?;
+
+        let mut set = SmolSet::new();
+        set.insert(uuid);
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUuid {
+            set,
+        })))
     }
 }
 
@@ -119,7 +135,8 @@ impl ValueSetT for ValueSetUuid {
             .iter()
             .next()
             .copied()
-            .map(|uuid| ScimResolveStatus::NeedsResolution(ScimValueIntermediate::Refer(uuid)))
+            .map(ScimValueKanidm::Uuid)
+            .map(ScimResolveStatus::Resolved)
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -211,6 +228,55 @@ impl ValueSetRefer {
             Some(Box::new(ValueSetRefer { set }))
         }
     }
+
+    pub(crate) fn from_set(set: BTreeSet<Uuid>) -> ValueSet {
+        Box::new(ValueSetRefer { set })
+    }
+}
+
+impl ValueSetScimPut for ValueSetRefer {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        use kanidm_proto::scim_v1::client::{ScimReference, ScimReferences};
+
+        let scim_refs: ScimReferences = serde_json::from_value(value).map_err(|err| {
+            warn!(?err, "Invalid SCIM reference set syntax");
+            OperationError::SC0002ReferenceSyntaxInvalid
+        })?;
+
+        let mut resolved = BTreeSet::default();
+        let mut unresolved = Vec::with_capacity(scim_refs.len());
+
+        for scim_ref in scim_refs.into_iter() {
+            match scim_ref {
+                ScimReference {
+                    uuid: None,
+                    value: None,
+                } => {
+                    warn!("Invalid SCIM reference set syntax, uuid and value are both unset.");
+                    return Err(OperationError::SC0002ReferenceSyntaxInvalid);
+                }
+                ScimReference {
+                    uuid: Some(uuid), ..
+                } => {
+                    resolved.insert(uuid);
+                }
+                ScimReference {
+                    value: Some(val), ..
+                } => {
+                    unresolved.push(val);
+                }
+            }
+        }
+
+        // We may not actually need to resolve anything, but to make tests easier we
+        // always return that we need resolution.
+        Ok(ValueSetResolveStatus::NeedsResolution(
+            ValueSetIntermediate::References {
+                resolved,
+                unresolved,
+            },
+        ))
+    }
 }
 
 impl ValueSetT for ValueSetRefer {
@@ -290,7 +356,7 @@ impl ValueSetT for ValueSetRefer {
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
         let uuids = self.set.iter().copied().collect::<Vec<_>>();
         Some(ScimResolveStatus::NeedsResolution(
-            ScimValueIntermediate::ReferMany(uuids),
+            ScimValueIntermediate::References(uuids),
         ))
     }
 
@@ -348,23 +414,50 @@ impl ValueSetT for ValueSetRefer {
 #[cfg(test)]
 mod tests {
     use super::{ValueSetRefer, ValueSetUuid};
-    use crate::prelude::ValueSet;
+    use crate::prelude::*;
 
     #[test]
     fn test_scim_uuid() {
         let vs: ValueSet = ValueSetUuid::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
 
-        let data = r#"{"Refer": "4d21d04a-dc0e-42eb-b850-34dd180b107f"}"#;
+        let data = r#""4d21d04a-dc0e-42eb-b850-34dd180b107f""#;
 
-        crate::valueset::scim_json_reflexive_unresolved(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetUuid>(vs, &[])
     }
 
-    #[test]
-    fn test_scim_refer() {
-        let vs: ValueSet = ValueSetRefer::new(uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f"));
+    #[qs_test]
+    async fn test_scim_refer(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
-        let data = r#"{"ReferMany": ["4d21d04a-dc0e-42eb-b850-34dd180b107f"]}"#;
+        let t_uuid = uuid::uuid!("4d21d04a-dc0e-42eb-b850-34dd180b107f");
+        assert!(write_txn
+            .internal_create(vec![entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(t_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            ),])
+            .is_ok());
 
-        crate::valueset::scim_json_reflexive_unresolved(vs, data);
+        let vs: ValueSet = ValueSetRefer::new(t_uuid);
+
+        let data = r#"[{"uuid": "4d21d04a-dc0e-42eb-b850-34dd180b107f", "value": "testperson1@example.com"}]"#;
+
+        crate::valueset::scim_json_reflexive_unresolved(&mut write_txn, vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive_unresolved::<ValueSetRefer>(
+            &mut write_txn,
+            vs,
+            &[],
+        );
+
+        assert!(write_txn.commit().is_ok());
     }
 }

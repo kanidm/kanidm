@@ -1,7 +1,8 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 use smolset::SmolSet;
 
@@ -35,6 +36,29 @@ impl ValueSetIndex {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetIndex { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetIndex {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value = serde_json::from_value::<Vec<String>>(value).map_err(|err| {
+            error!(?err, "SCIM IndexType syntax invalid");
+            OperationError::SC0009IndexTypeSyntaxInvalid
+        })?;
+
+        let set = value
+            .into_iter()
+            .map(|s| {
+                IndexType::try_from(s.as_str()).map_err(|_| {
+                    error!("SCIM IndexType syntax invalid value");
+                    OperationError::SC0009IndexTypeSyntaxInvalid
+                })
+            })
+            .collect::<Result<_, _>>()?;
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIndex {
+            set,
+        })))
     }
 }
 
@@ -159,6 +183,9 @@ mod tests {
     #[test]
     fn test_scim_index() {
         let vs: ValueSet = ValueSetIndex::new(IndexType::Equality);
-        crate::valueset::scim_json_reflexive(vs, r#"["EQUALITY"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#"["EQUALITY"]"#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetIndex>(vs, &[])
     }
 }

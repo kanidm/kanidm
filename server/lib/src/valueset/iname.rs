@@ -2,7 +2,8 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use kanidm_proto::scim_v1::JsonValue;
 
 use std::collections::BTreeSet;
 
@@ -36,6 +37,22 @@ impl ValueSetIname {
     {
         let set = iter.into_iter().map(str::to_string).collect();
         Some(Box::new(ValueSetIname { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetIname {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value = serde_json::from_value::<String>(value).map_err(|err| {
+            error!(?err, "SCIM Iname Syntax Invalid");
+            OperationError::SC0016InameSyntaxInvalid
+        })?;
+
+        let mut set = BTreeSet::new();
+        set.insert(value.to_lowercase());
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIname {
+            set,
+        })))
     }
 }
 
@@ -209,6 +226,9 @@ mod tests {
     #[test]
     fn test_scim_iname() {
         let vs: ValueSet = ValueSetIname::new("stevo");
-        crate::valueset::scim_json_reflexive(vs, r#""stevo""#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""stevo""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetIname>(vs, &[])
     }
 }

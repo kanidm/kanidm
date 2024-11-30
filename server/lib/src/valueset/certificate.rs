@@ -2,8 +2,10 @@ use crate::be::dbvalue::DbValueCertificate;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use kanidm_proto::scim_v1::client::ScimCertificate as ClientScimCertificate;
 use kanidm_proto::scim_v1::server::ScimCertificate;
+use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeMap;
 
 use kanidm_lib_crypto::{
@@ -98,6 +100,41 @@ impl ValueSetCertificate {
         }
 
         Some(Box::new(ValueSetCertificate { map }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetCertificate {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let der_values: Vec<ClientScimCertificate> =
+            serde_json::from_value(value).map_err(|err| {
+                error!(?err, "SCIM Certificate syntax invalid");
+                OperationError::SC0012CertificateSyntaxInvalid
+            })?;
+
+        // For each one, check it's a real der certificate.
+        let mut map = BTreeMap::new();
+
+        for ClientScimCertificate { der } in der_values {
+            // Parse the DER
+            let certificate = Certificate::from_der(&der)
+                .map(Box::new)
+                .map_err(|x509_err| {
+                    error!(?x509_err, "Unable to restore certificate from DER");
+                    OperationError::SC0013CertificateInvalidDer
+                })?;
+
+            // sha256 the public key
+            let pk_s256 = x509_public_key_s256(&certificate).ok_or_else(|| {
+                error!("Unable to digest public key");
+                OperationError::SC0014CertificateInvalidDigest
+            })?;
+
+            map.insert(pk_s256, certificate);
+        }
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetCertificate { map },
+        )))
     }
 }
 
@@ -313,5 +350,8 @@ raBy6edj7W0EIH+yQxkDEwIhAI0nVKaI6duHLAvtKW6CfEQFG6jKg7dyk37YYiRD
                 .unwrap();
 
         assert_eq!(cert.s256, expect_s256);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetCertificate>(vs, &[])
     }
 }

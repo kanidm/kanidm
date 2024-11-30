@@ -183,6 +183,9 @@ mod tests {
     fn test_scim_hexstring() {
         let vs: ValueSet =
             ValueSetHexString::new("D68475C760A7A0F6A924C28F095573A967F600D6".to_string());
-        crate::valueset::scim_json_reflexive(vs, r#""D68475C760A7A0F6A924C28F095573A967F600D6""#);
+        crate::valueset::scim_json_reflexive(
+            vs.clone(),
+            r#""D68475C760A7A0F6A924C28F095573A967F600D6""#,
+        );
     }
 }

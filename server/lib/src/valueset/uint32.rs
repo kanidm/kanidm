@@ -1,7 +1,9 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
@@ -34,6 +36,22 @@ impl ValueSetUint32 {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetUint32 { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetUint32 {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value: u32 = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM uint32 syntax invalid");
+            OperationError::SC0006Uint32SyntaxInvalid
+        })?;
+
+        let mut set = SmolSet::new();
+        set.insert(value);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetUint32 {
+            set,
+        })))
     }
 }
 
@@ -178,6 +196,9 @@ mod tests {
     #[test]
     fn test_scim_uint32() {
         let vs: ValueSet = ValueSetUint32::new(69);
-        crate::valueset::scim_json_reflexive(vs, "69");
+        crate::valueset::scim_json_reflexive(vs.clone(), "69");
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetUint32>(vs, &[])
     }
 }

@@ -1,15 +1,16 @@
-use std::collections::BTreeSet;
-
-use smolset::SmolSet;
-
 use crate::be::dbvalue::DbValueAddressV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::value::{Address, VALIDATE_EMAIL_RE};
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
-use kanidm_proto::scim_v1::server::{ScimAddress, ScimMail};
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::client::ScimAddress as ScimAddressClient;
+use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::{server::ScimAddress, ScimMail};
+use smolset::SmolSet;
+use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetAddress {
@@ -51,6 +52,43 @@ impl ValueSetAddress {
             )
             .collect();
         Ok(Box::new(ValueSetAddress { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetAddress {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let addresses: Vec<ScimAddressClient> = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Address syntax invalid");
+            OperationError::SC0011AddressSyntaxInvalid
+        })?;
+
+        let set = addresses
+            .into_iter()
+            .map(
+                |ScimAddressClient {
+                     street_address,
+                     locality,
+                     region,
+                     postal_code,
+                     country,
+                 }| {
+                    let formatted =
+                        format!("{street_address}, {locality}, {region}, {postal_code}, {country}");
+                    Address {
+                        formatted,
+                        street_address,
+                        locality,
+                        region,
+                        postal_code,
+                        country,
+                    }
+                },
+            )
+            .collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetAddress {
+            set,
+        })))
     }
 }
 
@@ -283,6 +321,44 @@ impl ValueSetEmailAddress {
                 .cloned()
                 .map(|primary| Box::new(ValueSetEmailAddress { primary, set }))
         }
+    }
+}
+
+impl ValueSetScimPut for ValueSetEmailAddress {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let scim_mails: Vec<ScimMail> = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Mail Attribute Syntax Invalid");
+            OperationError::SC0003MailSyntaxInvalid
+        })?;
+
+        let mut primary = None;
+        let set: BTreeSet<_> = scim_mails
+            .into_iter()
+            .map(
+                |ScimMail {
+                     value,
+                     primary: is_primary,
+                 }| {
+                    if is_primary {
+                        primary = Some(value.clone());
+                    }
+                    value
+                },
+            )
+            .collect();
+
+        let primary = primary
+            .or_else(|| set.iter().next().cloned())
+            .ok_or_else(|| {
+                error!(
+                    "Mail attribute has no values that can be used as the primary mail address."
+                );
+                OperationError::SC0003MailSyntaxInvalid
+            })?;
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetEmailAddress { primary, set },
+        )))
     }
 }
 
@@ -607,7 +683,10 @@ mod tests {
             "value": "claire@example.com"
           }
         ]"#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetEmailAddress>(vs, &[])
     }
 
     #[test]
@@ -632,6 +711,9 @@ mod tests {
           }
         ]"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetAddress>(vs, &[])
     }
 }

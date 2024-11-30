@@ -18,7 +18,7 @@
 
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
-use serde_json::Value as JsonValue;
+use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
 use utoipa::ToSchema;
 
@@ -27,6 +27,7 @@ use serde_with::{serde_as, skip_serializing_none, StringWithSeparator};
 
 pub use self::synch::*;
 pub use scim_proto::prelude::*;
+pub use serde_json::Value as JsonValue;
 
 pub mod client;
 pub mod server;
@@ -50,6 +51,46 @@ pub struct ScimEntryGeneric {
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
     pub attributes: Option<Vec<Attribute>>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub enum ScimSchema {
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:account")]
+    SyncAccountV1,
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:group")]
+    SyncV1GroupV1,
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:person")]
+    SyncV1PersonV1,
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:posixaccount")]
+    SyncV1PosixAccountV1,
+    #[serde(rename = "urn:ietf:params:scim:schemas:kanidm:sync:1:posixgroup")]
+    SyncV1PosixGroupV1,
+}
+
+#[serde_as]
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+#[serde(deny_unknown_fields, rename_all = "camelCase")]
+pub struct ScimMail {
+    #[serde(default)]
+    pub primary: bool,
+    pub value: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimSshPublicKey {
+    pub label: String,
+    pub value: SshPublicKey,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone, ToSchema)]
+pub enum ScimOauth2ClaimMapJoinChar {
+    #[serde(rename = ",", alias = "csv")]
+    CommaSeparatedValue,
+    #[serde(rename = " ", alias = "ssv")]
+    SpaceSeparatedValue,
+    #[serde(rename = ";", alias = "json_array")]
+    JsonArray,
 }
 
 #[cfg(test)]

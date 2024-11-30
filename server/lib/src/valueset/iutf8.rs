@@ -3,8 +3,9 @@ use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
 use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
-
+use crate::valueset::{DbValueSetV2, ValueSet, ValueSetResolveStatus, ValueSetScimPut};
+use kanidm_proto::scim_v1::client::ScimStrings;
+use kanidm_proto::scim_v1::JsonValue;
 use std::collections::BTreeSet;
 
 #[derive(Debug, Clone)]
@@ -37,6 +38,21 @@ impl ValueSetIutf8 {
     {
         let set = iter.into_iter().map(str::to_string).collect();
         Some(Box::new(ValueSetIutf8 { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetIutf8 {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let ScimStrings(values) = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Iutf8 Syntax Invalid");
+            OperationError::SC0017Iutf8SyntaxInvalid
+        })?;
+
+        let set = values.iter().map(|s| s.to_lowercase()).collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetIutf8 {
+            set,
+        })))
     }
 }
 
@@ -128,9 +144,11 @@ impl ValueSetT for ValueSetIutf8 {
     }
 
     fn validate(&self, _schema_attr: &SchemaAttribute) -> bool {
-        self.set
-            .iter()
-            .all(|s| Value::validate_str_escapes(s) && Value::validate_singleline(s))
+        self.set.iter().all(|s| {
+            Value::validate_str_escapes(s) && Value::validate_singleline(s) &&
+                // I'm sure there is a better way ...
+                s.to_lowercase().as_str() == s.as_str()
+        })
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
@@ -209,6 +227,9 @@ mod tests {
     #[test]
     fn test_scim_iutf8() {
         let vs: ValueSet = ValueSetIutf8::new("lowercase string");
-        crate::valueset::scim_json_reflexive(vs, r#""lowercase string""#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""lowercase string""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetIutf8>(vs, &[])
     }
 }

@@ -1,19 +1,6 @@
 //! `server` contains the query server, which is the main high level construction
 //! to coordinate queries and operations in the server.
 
-use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
-use concread::cowcell::*;
-use hashbrown::{HashMap, HashSet};
-use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
-use kanidm_proto::scim_v1::server::ScimReference;
-use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use std::collections::BTreeSet;
-use std::str::FromStr;
-use std::sync::Arc;
-use tokio::sync::{Semaphore, SemaphorePermit};
-use tracing::trace;
-// We use so many, we just import them all ...
 use self::access::{
     profiles::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
@@ -25,6 +12,7 @@ use self::keys::{
     KeyObject, KeyProvider, KeyProviders, KeyProvidersReadTransaction, KeyProvidersTransaction,
     KeyProvidersWriteTransaction,
 };
+use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
 use crate::filter::{
     Filter, FilterInvalid, FilterValid, FilterValidResolved, ResolveFilterCache,
     ResolveFilterCacheReadTxn,
@@ -42,6 +30,21 @@ use crate::schema::{
 use crate::value::{CredentialType, EXTRACT_VAL_DN};
 use crate::valueset::uuid_to_proto_string;
 use crate::valueset::ScimValueIntermediate;
+use crate::valueset::*;
+use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
+use concread::cowcell::*;
+use hashbrown::{HashMap, HashSet};
+use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
+use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
+use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
+use kanidm_proto::scim_v1::server::ScimReference;
+use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
+use std::collections::BTreeSet;
+use std::str::FromStr;
+use std::sync::Arc;
+use tokio::sync::{Semaphore, SemaphorePermit};
+use tracing::trace;
 
 pub(crate) mod access;
 pub mod batch_modify;
@@ -52,6 +55,7 @@ pub(crate) mod keys;
 pub(crate) mod migrations;
 pub mod modify;
 pub(crate) mod recycle;
+pub mod scim;
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 256;
 const RESOLVE_FILTER_CACHE_LOCAL: usize = 8;
@@ -845,28 +849,282 @@ pub trait QueryServerTransaction<'a> {
         scim_value_intermediate: ScimValueIntermediate,
     ) -> Result<Option<ScimValueKanidm>, OperationError> {
         match scim_value_intermediate {
-            ScimValueIntermediate::Refer(uuid) => {
-                if let Some(option) = self.uuid_to_spn(uuid)? {
-                    Ok(Some(ScimValueKanidm::EntryReference(ScimReference {
-                        uuid,
-                        value: option.to_proto_string_clone(),
-                    })))
-                } else {
-                    // TODO: didn't have spn, fallback to uuid.to_string ?
-                    Ok(None)
-                }
-            }
-            ScimValueIntermediate::ReferMany(uuids) => {
-                let mut scim_references = vec![];
-                for uuid in uuids {
-                    if let Some(option) = self.uuid_to_spn(uuid)? {
-                        scim_references.push(ScimReference {
-                            uuid,
-                            value: option.to_proto_string_clone(),
-                        })
-                    }
-                }
+            ScimValueIntermediate::References(uuids) => {
+                let scim_references = uuids
+                    .into_iter()
+                    .map(|uuid| {
+                        self.uuid_to_spn(uuid)
+                            .and_then(|maybe_value| {
+                                maybe_value.ok_or(OperationError::InvalidValueState)
+                            })
+                            .map(|value| ScimReference {
+                                uuid,
+                                value: value.to_proto_string_clone(),
+                            })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
                 Ok(Some(ScimValueKanidm::EntryReferences(scim_references)))
+            }
+            ScimValueIntermediate::Oauth2ClaimMap(unresolved_maps) => {
+                let scim_claim_maps = unresolved_maps
+                    .into_iter()
+                    .map(
+                        |UnresolvedScimValueOauth2ClaimMap {
+                             group_uuid,
+                             claim,
+                             join_char,
+                             values,
+                         }| {
+                            self.uuid_to_spn(group_uuid)
+                                .and_then(|maybe_value| {
+                                    maybe_value.ok_or(OperationError::InvalidValueState)
+                                })
+                                .map(|value| ScimOAuth2ClaimMap {
+                                    group: value.to_proto_string_clone(),
+                                    group_uuid,
+                                    claim,
+                                    join_char,
+                                    values,
+                                })
+                        },
+                    )
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(Some(ScimValueKanidm::OAuth2ClaimMap(scim_claim_maps)))
+            }
+
+            ScimValueIntermediate::Oauth2ScopeMap(unresolved_maps) => {
+                let scim_claim_maps = unresolved_maps
+                    .into_iter()
+                    .map(|UnresolvedScimValueOauth2ScopeMap { group_uuid, scopes }| {
+                        self.uuid_to_spn(group_uuid)
+                            .and_then(|maybe_value| {
+                                maybe_value.ok_or(OperationError::InvalidValueState)
+                            })
+                            .map(|value| ScimOAuth2ScopeMap {
+                                group: value.to_proto_string_clone(),
+                                group_uuid,
+                                scopes,
+                            })
+                    })
+                    .collect::<Result<Vec<_>, _>>()?;
+
+                Ok(Some(ScimValueKanidm::OAuth2ScopeMap(scim_claim_maps)))
+            }
+        }
+    }
+
+    fn resolve_scim_json_put(
+        &mut self,
+        attr: &Attribute,
+        value: Option<JsonValue>,
+    ) -> Result<Option<ValueSet>, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        let Some(schema_a) = schema.get_attributes().get(attr) else {
+            // No attribute of this name exists - fail fast, there is no point to
+            // proceed, as nothing can be satisfied.
+            return Err(OperationError::InvalidAttributeName(attr.to_string()));
+        };
+
+        let Some(value) = value else {
+            // It's a none so the value needs to be unset, and the attr DOES exist in
+            // schema.
+            return Ok(None);
+        };
+
+        let resolve_status = match schema_a.syntax {
+            SyntaxType::Utf8String => ValueSetUtf8::from_scim_json_put(value),
+            SyntaxType::Utf8StringInsensitive => ValueSetIutf8::from_scim_json_put(value),
+            SyntaxType::Uuid => ValueSetUuid::from_scim_json_put(value),
+            SyntaxType::Boolean => ValueSetBool::from_scim_json_put(value),
+            SyntaxType::SyntaxId => ValueSetSyntax::from_scim_json_put(value),
+            SyntaxType::IndexId => ValueSetIndex::from_scim_json_put(value),
+            SyntaxType::ReferenceUuid => ValueSetRefer::from_scim_json_put(value),
+            SyntaxType::Utf8StringIname => ValueSetIname::from_scim_json_put(value),
+            SyntaxType::NsUniqueId => ValueSetNsUniqueId::from_scim_json_put(value),
+            SyntaxType::DateTime => ValueSetDateTime::from_scim_json_put(value),
+            SyntaxType::EmailAddress => ValueSetEmailAddress::from_scim_json_put(value),
+            SyntaxType::Url => ValueSetUrl::from_scim_json_put(value),
+            SyntaxType::OauthScope => ValueSetOauthScope::from_scim_json_put(value),
+            SyntaxType::OauthScopeMap => ValueSetOauthScopeMap::from_scim_json_put(value),
+            SyntaxType::OauthClaimMap => ValueSetOauthClaimMap::from_scim_json_put(value),
+            SyntaxType::UiHint => ValueSetUiHint::from_scim_json_put(value),
+            SyntaxType::CredentialType => ValueSetCredentialType::from_scim_json_put(value),
+            SyntaxType::Certificate => ValueSetCertificate::from_scim_json_put(value),
+            SyntaxType::SshKey => ValueSetSshKey::from_scim_json_put(value),
+            SyntaxType::Uint32 => ValueSetUint32::from_scim_json_put(value),
+
+            // Not Yet ... if ever
+            // SyntaxType::JsonFilter => ValueSetJsonFilter::from_scim_json_put(value),
+            SyntaxType::JsonFilter => Err(OperationError::InvalidAttribute(
+                "Json Filters are not able to be set.".to_string(),
+            )),
+            // Can't be set currently as these are only internally generated for key-id's
+            // SyntaxType::HexString => ValueSetHexString::from_scim_json_put(value),
+            SyntaxType::HexString => Err(OperationError::InvalidAttribute(
+                "Hex strings are not able to be set.".to_string(),
+            )),
+
+            // Can't be set until we have better error handling in the set paths
+            // SyntaxType::Image => ValueSetImage::from_scim_json_put(value),
+            SyntaxType::Image => Err(OperationError::InvalidAttribute(
+                "Images are not able to be set.".to_string(),
+            )),
+
+            // Can't be set yet, mostly as I'm lazy
+            // SyntaxType::WebauthnAttestationCaList => {
+            //    ValueSetWebauthnAttestationCaList::from_scim_json_put(value)
+            // }
+            SyntaxType::WebauthnAttestationCaList => Err(OperationError::InvalidAttribute(
+                "Webauthn Attestation Ca Lists are not able to be set.".to_string(),
+            )),
+
+            // Syntax types that can not be submitted
+            SyntaxType::Credential => Err(OperationError::InvalidAttribute(
+                "Credentials are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute(
+                "Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute(
+                "SPNs are not able to be set.".to_string(),
+            )),
+            SyntaxType::Cid => Err(OperationError::InvalidAttribute(
+                "CIDs are not able to be set.".to_string(),
+            )),
+            SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute(
+                "Private Binaries are not able to be set.".to_string(),
+            )),
+            SyntaxType::IntentToken => Err(OperationError::InvalidAttribute(
+                "Intent Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::Passkey => Err(OperationError::InvalidAttribute(
+                "Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::AttestedPasskey => Err(OperationError::InvalidAttribute(
+                "Attested Passkeys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyEs256 => Err(OperationError::InvalidAttribute(
+                "Jws ES256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::JwsKeyRs256 => Err(OperationError::InvalidAttribute(
+                "Jws RS256 Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::Oauth2Session => Err(OperationError::InvalidAttribute(
+                "Sessions are not able to be set.".to_string(),
+            )),
+            SyntaxType::TotpSecret => Err(OperationError::InvalidAttribute(
+                "TOTP Secrets are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApiToken => Err(OperationError::InvalidAttribute(
+                "API Tokens are not able to be set.".to_string(),
+            )),
+            SyntaxType::AuditLogString => Err(OperationError::InvalidAttribute(
+                "Audit Strings are not able to be set.".to_string(),
+            )),
+            SyntaxType::EcKeyPrivate => Err(OperationError::InvalidAttribute(
+                "EC Private Keys are not able to be set.".to_string(),
+            )),
+            SyntaxType::KeyInternal => Err(OperationError::InvalidAttribute(
+                "Key Internal Structures are not able to be set.".to_string(),
+            )),
+            SyntaxType::ApplicationPassword => Err(OperationError::InvalidAttribute(
+                "Application Passwords are not able to be set.".to_string(),
+            )),
+        }?;
+
+        match resolve_status {
+            ValueSetResolveStatus::Resolved(vs) => Ok(vs),
+            ValueSetResolveStatus::NeedsResolution(vs_inter) => {
+                self.resolve_valueset_intermediate(vs_inter)
+            }
+        }
+        .map(Some)
+    }
+
+    fn resolve_valueset_intermediate(
+        &mut self,
+        vs_inter: ValueSetIntermediate,
+    ) -> Result<ValueSet, OperationError> {
+        match vs_inter {
+            ValueSetIntermediate::References {
+                mut resolved,
+                unresolved,
+            } => {
+                for value in unresolved {
+                    let un = self.name_to_uuid(value.as_str()).unwrap_or_else(|_| {
+                        warn!(
+                            ?value,
+                            "Value can not be resolved to a uuid - assuming it does not exist."
+                        );
+                        UUID_DOES_NOT_EXIST
+                    });
+
+                    resolved.insert(un);
+                }
+
+                let vs = ValueSetRefer::from_set(resolved);
+                Ok(vs)
+            }
+
+            ValueSetIntermediate::Oauth2ClaimMap {
+                mut resolved,
+                unresolved,
+            } => {
+                resolved.extend(unresolved.into_iter().map(
+                    |UnresolvedValueSetOauth2ClaimMap {
+                         group_name,
+                         claim,
+                         join_char,
+                         claim_values,
+                     }| {
+                        let group_uuid =
+                            self.name_to_uuid(group_name.as_str()).unwrap_or_else(|_| {
+                                warn!(
+                            ?group_name,
+                            "Value can not be resolved to a uuid - assuming it does not exist."
+                        );
+                                UUID_DOES_NOT_EXIST
+                            });
+
+                        ResolvedValueSetOauth2ClaimMap {
+                            group_uuid,
+                            claim,
+                            join_char,
+                            claim_values,
+                        }
+                    },
+                ));
+
+                let vs = ValueSetOauthClaimMap::from_set(resolved);
+                Ok(vs)
+            }
+
+            ValueSetIntermediate::Oauth2ScopeMap {
+                mut resolved,
+                unresolved,
+            } => {
+                resolved.extend(unresolved.into_iter().map(
+                    |UnresolvedValueSetOauth2ScopeMap { group_name, scopes }| {
+                        let group_uuid =
+                            self.name_to_uuid(group_name.as_str()).unwrap_or_else(|_| {
+                                warn!(
+                            ?group_name,
+                            "Value can not be resolved to a uuid - assuming it does not exist."
+                        );
+                                UUID_DOES_NOT_EXIST
+                            });
+
+                        ResolvedValueSetOauth2ScopeMap { group_uuid, scopes }
+                    },
+                ));
+
+                let vs = ValueSetOauthScopeMap::from_set(resolved);
+                Ok(vs)
             }
         }
     }

@@ -1,15 +1,15 @@
-use std::collections::btree_map::Entry as BTreeEntry;
-use std::collections::BTreeMap;
-
 use crate::be::dbvalue::DbValueTaggedStringV1;
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
 use crate::utils::trigraph_iter;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::JsonValue;
+use kanidm_proto::scim_v1::ScimSshPublicKey;
 use sshkey_attest::proto::PublicKey as SshPublicKey;
-
-use kanidm_proto::scim_v1::server::ScimSshPublicKey;
+use std::collections::btree_map::Entry as BTreeEntry;
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone)]
 pub struct ValueSetSshKey {
@@ -51,6 +51,24 @@ impl ValueSetSshKey {
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetSshKey { map }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetSshKey {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value: Vec<ScimSshPublicKey> = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM Ssh Public Key syntax invalid");
+            OperationError::SC0024SshPublicKeySyntaxInvalid
+        })?;
+
+        let map = value
+            .into_iter()
+            .map(|ScimSshPublicKey { label, value }| (label, value))
+            .collect();
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetSshKey {
+            map,
+        })))
     }
 }
 
@@ -229,6 +247,9 @@ mod tests {
   }
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetSshKey>(vs, &[])
     }
 }

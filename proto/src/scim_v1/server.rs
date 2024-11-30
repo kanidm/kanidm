@@ -1,8 +1,11 @@
+use super::ScimMail;
+use super::ScimOauth2ClaimMapJoinChar;
+use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
+use crate::internal::UiHint;
 use scim_proto::ScimEntryHeader;
 use serde::Serialize;
-use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none, StringWithSeparator};
-use sshkey_attest::proto::PublicKey as SshPublicKey;
+use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
@@ -30,13 +33,6 @@ pub struct ScimAddress {
     pub region: String,
     pub postal_code: String,
     pub country: String,
-}
-
-#[derive(Serialize, Debug, Clone, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ScimMail {
-    pub primary: bool,
-    pub value: String,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -73,13 +69,6 @@ pub struct ScimAuditString {
     #[serde_as(as = "Rfc3339")]
     pub date_time: OffsetDateTime,
     pub value: String,
-}
-
-#[derive(Serialize, Debug, Clone, ToSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct ScimSshPublicKey {
-    pub label: String,
-    pub value: SshPublicKey,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
@@ -164,8 +153,8 @@ pub struct ScimApiToken {
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ScopeMap {
-    pub uuid: Uuid,
-    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
+    pub group: String,
+    pub group_uuid: Uuid,
     pub scopes: BTreeSet<String>,
 }
 
@@ -173,14 +162,13 @@ pub struct ScimOAuth2ScopeMap {
 #[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimOAuth2ClaimMap {
-    pub group: Uuid,
+    pub group: String,
+    pub group_uuid: Uuid,
     pub claim: String,
-    pub join_char: String,
-    #[serde_as(as = "StringWithSeparator::<formats::SpaceSeparator, String>")]
+    pub join_char: ScimOauth2ClaimMapJoinChar,
     pub values: BTreeSet<String>,
 }
 
-#[serde_as]
 #[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
@@ -226,6 +214,7 @@ pub enum ScimValueKanidm {
     OAuth2ScopeMap(Vec<ScimOAuth2ScopeMap>),
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
     KeyInternal(Vec<ScimKeyInternal>),
+    UiHints(Vec<UiHint>),
 }
 
 impl From<bool> for ScimValueKanidm {
@@ -240,6 +229,12 @@ impl From<OffsetDateTime> for ScimValueKanidm {
     }
 }
 
+impl From<Vec<UiHint>> for ScimValueKanidm {
+    fn from(set: Vec<UiHint>) -> Self {
+        Self::UiHints(set)
+    }
+}
+
 impl From<Vec<OffsetDateTime>> for ScimValueKanidm {
     fn from(set: Vec<OffsetDateTime>) -> Self {
         Self::ArrayDateTime(set)
@@ -249,6 +244,12 @@ impl From<Vec<OffsetDateTime>> for ScimValueKanidm {
 impl From<String> for ScimValueKanidm {
     fn from(s: String) -> Self {
         Self::String(s)
+    }
+}
+
+impl From<&str> for ScimValueKanidm {
+    fn from(s: &str) -> Self {
+        Self::String(s.to_string())
     }
 }
 

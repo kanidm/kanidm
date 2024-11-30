@@ -1,8 +1,9 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::ScimResolveStatus;
-use crate::valueset::{DbValueSetV2, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::{client::ScimDateTime, JsonValue};
 use smolset::SmolSet;
 use time::OffsetDateTime;
 
@@ -43,6 +44,22 @@ impl ValueSetDateTime {
     {
         let set = iter.into_iter().collect();
         Some(Box::new(ValueSetDateTime { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetDateTime {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let ScimDateTime { date_time } = serde_json::from_value(value).map_err(|err| {
+            error!(?err, "SCIM DateTime syntax invalid");
+            OperationError::SC0010DateTimeSyntaxInvalid
+        })?;
+
+        let mut set = SmolSet::new();
+        set.insert(date_time);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(
+            ValueSetDateTime { set },
+        )))
     }
 }
 
@@ -125,14 +142,7 @@ impl ValueSetT for ValueSetDateTime {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        let mut iter = self.set.iter().copied();
-        if self.len() == 1 {
-            let v = iter.next().unwrap_or(OffsetDateTime::UNIX_EPOCH);
-            Some(v.into())
-        } else {
-            let arr = iter.collect::<Vec<_>>();
-            Some(arr.into())
-        }
+        self.set.iter().next().copied().map(|v| v.into())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -200,6 +210,9 @@ mod tests {
         let odt = OffsetDateTime::UNIX_EPOCH + Duration::from_secs(69_420);
         let vs: ValueSet = ValueSetDateTime::new(odt);
 
-        crate::valueset::scim_json_reflexive(vs, r#""1970-01-01T19:17:00Z""#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""1970-01-01T19:17:00Z""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetDateTime>(vs, &[])
     }
 }
