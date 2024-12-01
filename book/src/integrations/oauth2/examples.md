@@ -799,6 +799,7 @@ Prepare the environment:
 
 ```bash
 kanidm system oauth2 create grafana "grafana.domain.name" https://grafana.domain.name
+kanidm system oauth2 set-landing-url grafana 'https://grafana.domain.name/login/generic_oauth'
 kanidm system oauth2 update-scope-map grafana grafana_users email openid profile groups
 kanidm system oauth2 enable-pkce grafana
 kanidm system oauth2 get grafana
