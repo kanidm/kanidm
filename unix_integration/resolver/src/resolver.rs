@@ -320,7 +320,10 @@ impl Resolver {
         let offset = ex_time
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
-                error!("time conversion error - ex_time less than epoch? {:?}", e);
+                error!(
+                    "Time conversion error - cache expiry time became less than epoch? {:?}",
+                    e
+                );
             })?;
 
         // Check if requested `shell` exists on the system, else use `default_shell`
@@ -328,10 +331,13 @@ impl Resolver {
             .shell
             .as_ref()
             .map(|shell| {
-                let exists = Path::new(shell).exists();
+                let exists = Path::new(shell).canonicalize()
+                    .map_err(|err|{
+                        debug!("Failed to canonicalize path, using base path. Tried: {} Error: {:?}", shell, err);
+                    }).unwrap_or(Path::new(shell).to_path_buf()).exists();
                 if !exists {
-                    info!(
-                        "User shell is not present on this system - {}. Check `/etc/shells` for valid shell options.",
+                    warn!(
+                        "Configured shell for {} is not present on this system - {}. Check `/etc/shells` for valid shell options.", token.name,
                         shell
                     )
                 }
