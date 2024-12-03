@@ -41,7 +41,7 @@ impl ScimEntryPutEvent {
     }
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// SCIM PUT is the handler where a single entry is updated. In a SCIM PUT request
     /// the request defines the state of an attribute in entirety for the update. This
     /// means if the caller wants to add one email address, they must PUT all existing
