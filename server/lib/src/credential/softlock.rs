@@ -25,7 +25,7 @@
 //! reset_count_at and a max number of attempts in that window (say 5). with short
 //! delays in between (1 second).
 //!
-//! ```
+//! ```text
 //!
 //!                                                  ┌────────────────────────┐
 //!                                                  │reset_at < current_time │
