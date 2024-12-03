@@ -787,8 +787,14 @@ async fn kanidm_main(
 
                                         sctx.tls_acceptor_reload().await;
 
+                                        // Systemd freaks out if you send the ready state too fast after the
+                                        // reload state and can kill Kanidmd as a result.
+                                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
                                         #[cfg(target_os = "linux")]
                                         let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+
+                                        info!("Reload complete");
                                     }
                                     Some(()) = async move {
                                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
