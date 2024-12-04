@@ -58,7 +58,7 @@ impl QueryServer {
             // sure that some base IDM operations are fast. Since this is still
             // very early in the bootstrap process, and very few entries exist,
             // reindexing is very fast here.
-            write_txn.reindex()?;
+            write_txn.reindex(false)?;
         } else {
             // Domain info was present, so we need to reflect that in our server
             // domain structures. If we don't do this, the in memory domain level
@@ -184,7 +184,7 @@ impl QueryServer {
             write_txn.reload()?;
             // We are not yet at the schema phase where reindexes will auto-trigger
             // so if one was required, do it now.
-            write_txn.reindex()?;
+            write_txn.reindex(false)?;
         }
 
         // Now set the db/domain devel taint flag to match our current release status

@@ -60,16 +60,14 @@ pub fn has_trailer(contents: &Vec<u8>) -> Result<bool, ImageValidationError> {
         ))
     } else if (eoi_index + 2) < buf.len() {
         // there's still bytes in the buffer after the EOI magic bytes
-        #[cfg(any(test, debug_assertions))]
-        println!(
+        debug!(
             "we're at pos: {} and buf len is {}, is not OK",
             eoi_index,
             buf.len()
         );
         Ok(true)
     } else {
-        #[cfg(any(test, debug_assertions))]
-        println!(
+        debug!(
             "we're at pos: {} and buf len is {}, is OK",
             eoi_index,
             buf.len()

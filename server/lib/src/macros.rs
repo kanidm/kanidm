@@ -652,12 +652,6 @@ macro_rules! vs_cid {
     });
 }
 
-macro_rules! limmediate_warning {
-    ($($arg:tt)*) => ({
-        eprint!($($arg)*)
-    })
-}
-
 macro_rules! str_concat {
     ($str_iter:expr, $join_char:expr) => {{
         use itertools::Itertools;

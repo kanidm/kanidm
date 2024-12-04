@@ -2431,11 +2431,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
         self.internal_modify(&filt, &modl)
     }
 
-    pub fn reindex(&mut self) -> Result<(), OperationError> {
+    pub fn reindex(&mut self, immediate: bool) -> Result<(), OperationError> {
         // initiate a be reindex here. This could have been from first run checking
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
-        self.be_txn.reindex()
+        self.be_txn.reindex(immediate)
     }
 
     fn force_schema_reload(&mut self) {
@@ -2491,7 +2491,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // operational, then a reindex may be required. After the reindex, the schema
             // must also be reloaded so that slope optimisation indexes are loaded correctly.
             if *self.phase >= ServerPhase::Running {
-                self.reindex()?;
+                self.reindex(false)?;
                 self.reload_schema()?;
             }
         }

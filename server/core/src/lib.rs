@@ -409,43 +409,18 @@ pub async fn restore_server_core(config: &Configuration, dst_path: &str) {
     }
     info!("Database loaded successfully");
 
-    info!("Attempting to init query server ...");
-
-    let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
-        Ok(t) => t,
-        Err(e) => {
-            error!("Unable to setup query server or idm server -> {:?}", e);
-            return;
-        }
-    };
-    info!("Success!");
-
-    info!("Start reindex phase ...");
-
-    let Ok(mut qs_write) = qs.write(duration_from_epoch_now()).await else {
-        error!("Unable to acquire write transaction");
-        return;
-    };
-    let r = qs_write.reindex().and_then(|_| qs_write.commit());
-
-    match r {
-        Ok(_) => info!("Reindex Success!"),
-        Err(e) => {
-            error!("Restore failed: {:?}", e);
-            std::process::exit(1);
-        }
-    };
+    reindex_inner(be, schema, config).await;
 
     info!("✅ Restore Success!");
 }
 
 pub async fn reindex_server_core(config: &Configuration) {
-    eprintln!("Start Index Phase 1 ...");
+    info!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Failed to setup in memory schema: {:?}", e);
+            error!("Failed to setup in memory schema: {:?}", e);
             std::process::exit(1);
         }
     };
@@ -458,6 +433,12 @@ pub async fn reindex_server_core(config: &Configuration) {
         }
     };
 
+    reindex_inner(be, schema, config).await;
+
+    info!("✅ Reindex Success!");
+}
+
+async fn reindex_inner(be: Backend, schema: Schema, config: &Configuration) {
     // Reindex only the core schema attributes to bootstrap the process.
     let mut be_wr_txn = match be.write() {
         Ok(txn) => txn,
@@ -469,16 +450,17 @@ pub async fn reindex_server_core(config: &Configuration) {
             return;
         }
     };
-    let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
+
+    let r = be_wr_txn.reindex(true).and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.
     if r.is_err() {
-        eprintln!("Failed to reindex database: {:?}", r);
+        error!("Failed to reindex database: {:?}", r);
         std::process::exit(1);
     }
-    eprintln!("Index Phase 1 Success!");
+    info!("Index Phase 1 Success!");
 
-    eprintln!("Attempting to init query server ...");
+    info!("Attempting to init query server ...");
 
     let (qs, _idms, _idms_delayed, _idms_audit) = match setup_qs_idms(be, schema, config).await {
         Ok(t) => t,
@@ -487,20 +469,20 @@ pub async fn reindex_server_core(config: &Configuration) {
             return;
         }
     };
-    eprintln!("Init Query Server Success!");
+    info!("Init Query Server Success!");
 
-    eprintln!("Start Index Phase 2 ...");
+    info!("Start Index Phase 2 ...");
 
     let Ok(mut qs_write) = qs.write(duration_from_epoch_now()).await else {
         error!("Unable to acquire write transaction");
         return;
     };
-    let r = qs_write.reindex().and_then(|_| qs_write.commit());
+    let r = qs_write.reindex(true).and_then(|_| qs_write.commit());
 
     match r {
-        Ok(_) => eprintln!("Index Phase 2 Success!"),
+        Ok(_) => info!("Index Phase 2 Success!"),
         Err(e) => {
-            eprintln!("Reindex failed: {:?}", e);
+            error!("Reindex failed: {:?}", e);
             std::process::exit(1);
         }
     };

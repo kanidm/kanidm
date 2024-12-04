@@ -1138,7 +1138,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
     /// specific situations.
     #[instrument(level = "trace", skip_all)]
     pub fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
-        warn!("CLEARING CACHE");
+        debug!("CLEARING CACHE");
         self.db.danger_purge_idxs().map(|()| {
             self.idl_cache.clear();
             self.name_cache.clear();

@@ -623,7 +623,7 @@ impl QueryServerWriteTransaction<'_> {
 
         // We have to reindex to force all the existing indexes to be dumped
         // and recreated before we start to import.
-        self.reindex().inspect_err(|err| {
+        self.reindex(false).inspect_err(|err| {
             error!(?err, "Failed to reload schema");
         })?;
 
