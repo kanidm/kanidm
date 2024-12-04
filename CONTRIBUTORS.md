@@ -1,6 +1,6 @@
 ## Author
 
-- William Brown (Firstyear): william@blackhats.net.au
+- William Brown (Firstyear): <william@blackhats.net.au>
 
 ## Contributors
 
@@ -44,6 +44,7 @@
 - adamcstephens
 - Chris Olstrom (colstrom)
 - Christopher-Robin (cebbinghaus)
+- Krzysztof Dajka (alteriks)
 
 ## Acknowledgements
 
