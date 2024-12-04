@@ -291,16 +291,12 @@ where
         .map(|u| f_eq(Attribute::Uuid, PartialValue::Uuid(u)))
         .collect();
 
-    println!("{:?}", conditions);
-
     let f = filter!(f_or(conditions));
 
     let entries = qs.internal_search(f).map_err(|e| {
         admin_error!(?e, "internal search failed");
         e
     })?;
-
-    println!("{}", entries.len());
 
     let mut groups = vec![];
     let mut unix_groups = Group::<Unix>::try_from_entry(value)

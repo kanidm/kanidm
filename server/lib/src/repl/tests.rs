@@ -18,9 +18,6 @@ fn repl_initialise(
     // First, build the refresh context.
     let refresh_context = from.supplier_provide_refresh()?;
 
-    // Verify content of the refresh
-    // eprintln!("{:#?}", refresh_context);
-
     // Apply it to the server
     to.consumer_apply_refresh(refresh_context)?;
 
