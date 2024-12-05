@@ -18,10 +18,11 @@ See also:
 
 ## On Kanidm
 
-### 1. Create the proxmox resource server
+### 1. Create the proxmox resource server and configure the redirect URL
 
 ```bash
 kanidm system oauth2 create proxmox "proxmox" https://yourproxmox.example.com
+kanidm system oauth2 add-redirect-url "proxmox" https://yourproxmox.example.com
 ```
 
 ### 2. Create the appropriate group(s)
@@ -88,4 +89,3 @@ Login to proxmox node and execute:
 ```bash
 pveum realm add kanidm --type openid --issuer-url https://idm.example.com/oauth2/openid/proxmox --client-id proxmox --client-key="secret from step 6" --username-claim username --scopes="email profile openid" --autocreate
 ```
-
