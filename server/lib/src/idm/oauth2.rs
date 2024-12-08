@@ -2512,11 +2512,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
-        let code_challenge_methods_supported = if o2rs.require_pkce() {
-            vec![PkceAlg::S256]
-        } else {
-            Vec::with_capacity(0)
-        };
+        let code_challenge_methods_supported = vec![PkceAlg::S256];
 
         Ok(Oauth2Rfc8414MetadataResponse {
             issuer,
@@ -2587,11 +2583,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let claims_supported = None;
         let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
 
-        let code_challenge_methods_supported = if o2rs.require_pkce() {
-            vec![PkceAlg::S256]
-        } else {
-            Vec::with_capacity(0)
-        };
+        let code_challenge_methods_supported = vec![PkceAlg::S256];
 
         // The following are extensions allowed by the oidc specification.
 
