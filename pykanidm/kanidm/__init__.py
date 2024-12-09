@@ -527,9 +527,7 @@ class KanidmClient:
         """get an OAuth2 client"""
         endpoint = f"{Endpoints.OAUTH2}/{rs_name}"
         response: ClientResponse[IOauth2Rs] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
         return RawOAuth2Rs(**response.data).as_oauth2_rs
 
@@ -589,9 +587,7 @@ class KanidmClient:
         """Get a service account"""
         endpoint = f"{Endpoints.SERVICE_ACCOUNT}/{name}"
         response: ClientResponse[IServiceAccount] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get service account: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get service account: {response.content}")
         return RawServiceAccount(**response.data).as_service_account
 
@@ -678,9 +674,7 @@ class KanidmClient:
         """Get a group"""
         endpoint = f"{Endpoints.GROUP}/{name}"
         response: ClientResponse[IGroup] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get group: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get group: {response.content}")
         return RawGroup(**response.data).as_group
 
@@ -725,9 +719,7 @@ class KanidmClient:
         """Get a person by name"""
         endpoint = f"{Endpoints.PERSON}/{name}"
         response: ClientResponse[IPerson] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get person: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get person: {response.content}")
         return RawPerson(**response.data).as_person
 
@@ -778,9 +770,7 @@ class KanidmClient:
             endpoint = f"{endpoint}/{ttl}"
 
         response: ClientResponse[Any] = await self.call_get(endpoint)
-        if response.content is None:
-            raise ValueError(f"Failed to get token: {response.content}")
-        if response.status_code != 200:
+        if response.status_code != 200 or response.content is None:
             raise ValueError(f"Failed to get token: {response.content}")
         token = PersonCredentialResetToken.model_validate(json_lib.loads(response.content))
 
