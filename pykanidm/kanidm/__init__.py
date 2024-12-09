@@ -143,7 +143,6 @@ class KanidmClient:
                     self.logger.debug("Setting up SSL context with CA path=%s", self.config.ca_path)
                     self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=self.config.ca_path)
             else:
-
                 logging.debug("Setting up default SSL context")
                 self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
 

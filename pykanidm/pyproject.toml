@@ -81,6 +81,3 @@ omit = ["tests"]
 
 [tool.mypy]
 plugins = "pydantic.mypy"
-
-[tool.black]
-line-length = 150
