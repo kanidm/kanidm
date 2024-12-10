@@ -660,7 +660,10 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
-        let idm_data = [IDM_ACP_OAUTH2_MANAGE_DL9.clone().into()];
+        let idm_data = [
+            IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
+        ];
 
         idm_data
             .into_iter()
