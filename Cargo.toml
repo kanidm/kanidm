@@ -136,7 +136,7 @@ kanidm_utils_users = { path = "./libs/users", version = "=1.5.0-dev" }
 scim_proto = { path = "./libs/scim_proto", version = "=1.5.0-dev" }
 sketching = { path = "./libs/sketching", version = "=1.5.0-dev" }
 
-anyhow = { version = "1.0.93" }
+anyhow = { version = "1.0.94" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
 askama = { version = "0.12.1", features = ["serde", "with-axum"] }
 askama_axum = { version = "0.4.0" }
@@ -157,7 +157,7 @@ base64 = "^0.22.1"
 base64urlsafedata = "0.5.0"
 bitflags = "^2.6.0"
 bytes = "^1.9.0"
-clap = { version = "^4.5.21", features = ["derive", "env"] }
+clap = { version = "^4.5.23", features = ["derive", "env"] }
 clap_complete = "^4.5.38"
 # Forced by saffron/cron
 chrono = "^0.4.35"
@@ -177,7 +177,7 @@ futures-util = { version = "^0.3.30", features = ["sink"] }
 gix = { version = "0.64.0", default-features = false }
 hashbrown = { version = "0.14.3", features = ["serde", "inline-more", "ahash"] }
 hex = "^0.4.3"
-http = "1.1.0"
+http = "1.2.0"
 hyper = { version = "1.5.1", features = [
     "full",
 ] } # hyper full includes client/server/http2
@@ -263,9 +263,9 @@ tempfile = "3.14.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
 
-tokio = "^1.41.1"
+tokio = "^1.42.0"
 tokio-openssl = "^0.6.5"
-tokio-util = "^0.7.12"
+tokio-util = "^0.7.13"
 
 toml = "^0.5.11"
 tracing = { version = "^0.1.41", features = [
