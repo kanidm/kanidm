@@ -20,7 +20,6 @@ use axum::{
     Extension, Form, Json, Router,
 };
 use axum_macros::debug_handler;
-use compact_jwt::{JwkKeySet, OidcToken};
 use kanidm_proto::constants::uri::{
     OAUTH2_AUTHORISE, OAUTH2_AUTHORISE_PERMIT, OAUTH2_AUTHORISE_REJECT,
 };
@@ -587,13 +586,13 @@ pub async fn oauth2_openid_userinfo_get(
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-) -> Result<Json<OidcToken>, HTTPOauth2Error> {
+) -> Response {
     // The token we want to inspect is in the authorisation header.
     let client_token = match client_auth_info.bearer_token {
         Some(val) => val,
         None => {
             error!("Bearer Authentication Not Provided");
-            return Err(HTTPOauth2Error(Oauth2Error::AuthenticationRequired));
+            return HTTPOauth2Error(Oauth2Error::AuthenticationRequired).into_response();
         }
     };
 
@@ -603,8 +602,13 @@ pub async fn oauth2_openid_userinfo_get(
         .await;
 
     match res {
-        Ok(uir) => Ok(Json(uir)),
-        Err(e) => Err(HTTPOauth2Error(e)),
+        Ok(uir) => (
+            StatusCode::OK,
+            [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
+            Json(uir),
+        )
+            .into_response(),
+        Err(e) => HTTPOauth2Error(e).into_response(),
     }
 }
 
@@ -612,13 +616,18 @@ pub async fn oauth2_openid_publickey_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Extension(kopid): Extension<KOpId>,
-) -> Result<Json<JwkKeySet>, WebError> {
-    state
+) -> Response {
+    let res = state
         .qe_r_ref
         .handle_oauth2_openid_publickey(client_id, kopid.eventid)
         .await
         .map(Json::from)
-        .map_err(WebError::from)
+        .map_err(WebError::from);
+
+    match res {
+        Ok(jsn) => (StatusCode::OK, [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")], jsn).into_response(),
+        Err(web_err) => web_err.response_with_access_control_origin_header(),
+    }
 }
 
 /// This is called directly by the resource server, where we then issue
@@ -789,7 +798,7 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
             "/oauth2/openid/:client_id/public_key.jwk",
-            get(oauth2_openid_publickey_get),
+            get(oauth2_openid_publickey_get).options(oauth2_preflight_options),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OAUTH2 DISCOVERY URLS
