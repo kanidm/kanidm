@@ -78,9 +78,25 @@ url = { workspace = true }
 workspace = true
 features = ["win10"]
 
-[target."cfg(not(any(target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
+[target."cfg(target_os = \"linux\")".dependencies.webauthn-authenticator-rs]
 workspace = true
-features = ["u2fhid"]
+features = [
+    "u2fhid",
+    "mozilla",
+]
+
+[target."cfg(target_os = \"macos\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = [
+    "u2fhid",
+    "mozilla",
+]
+
+[target."cfg(target_os = \"freebsd\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = [
+    "mozilla",
+]
 
 ## Debian packaging
 [package.metadata.deb]
