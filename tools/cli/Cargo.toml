@@ -74,29 +74,23 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 
+## See src/cli/webauthn/mod.rs for which features are
+## required for which target_os here
 [target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["win10"]
 
 [target."cfg(target_os = \"linux\")".dependencies.webauthn-authenticator-rs]
 workspace = true
-features = [
-    "u2fhid",
-    "mozilla",
-]
+features = ["u2fhid"]
 
 [target."cfg(target_os = \"macos\")".dependencies.webauthn-authenticator-rs]
 workspace = true
-features = [
-    "u2fhid",
-    "mozilla",
-]
+features = ["mozilla"]
 
 [target."cfg(target_os = \"freebsd\")".dependencies.webauthn-authenticator-rs]
 workspace = true
-features = [
-    "mozilla",
-]
+features = ["mozilla"]
 
 ## Debian packaging
 [package.metadata.deb]
