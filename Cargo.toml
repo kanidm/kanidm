@@ -284,7 +284,6 @@ uuid = "^1.11.0"
 webauthn-authenticator-rs = { version = "0.5.0", features = [
     "softpasskey",
     "softtoken",
-    "mozilla",
 ] }
 webauthn-rs = { version = "0.5.0", features = ["preview-features"] }
 webauthn-rs-core = "0.5.0"
