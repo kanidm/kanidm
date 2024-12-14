@@ -24,6 +24,7 @@ impl std::fmt::Display for UiMessage {
 pub(crate) enum Urls {
     Apps,
     CredReset,
+    CredResetError,
     Profile,
     UpdateCredentials,
     Oauth2Resume,
@@ -36,6 +37,7 @@ impl AsRef<str> for Urls {
         match self {
             Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
+            Self::CredResetError => "/ui/reset/err",
             Self::Profile => "/ui/profile",
             Self::UpdateCredentials => "/ui/update_credentials",
             Self::Oauth2Resume => "/ui/oauth2/resume",
