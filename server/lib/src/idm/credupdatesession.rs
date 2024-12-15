@@ -1311,7 +1311,6 @@ impl IdmServerProxyWriteTransaction<'_> {
                 "Session is unable to commit due to: {}",
                 commit_failure_reasons
             );
-            // TODO: perhaps it would be more helpful to add a new operation error that describes what the issue is
             return Err(OperationError::CU0004SessionInconsistent);
         }
 

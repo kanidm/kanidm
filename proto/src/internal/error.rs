@@ -374,9 +374,9 @@ impl OperationError {
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
 
-            Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings".into()),
-            Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed".into()),
-            Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. It may have already been used in another browser or tab?".into()),
+            Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings.".into()),
+            Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed.".into()),
+            Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
 
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
