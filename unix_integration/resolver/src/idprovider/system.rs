@@ -8,6 +8,8 @@ use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::PamAuthRequest;
 use kanidm_unix_common::unix_proto::{NssGroup, NssUser};
 
+const SYSTEM_GID_BOUNDARY: u32 = 1000;
+
 pub struct SystemProviderInternal {
     users: HashMap<Id, Arc<EtcUser>>,
     user_list: Vec<Arc<EtcUser>>,
@@ -237,6 +239,8 @@ impl SystemProvider {
                 {
                     error!(name = %user.name, uid = %user.uid, gid = %user.gid, members = ?group.members, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }
+            } else if user.uid < SYSTEM_GID_BOUNDARY {
+                info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system. Ignoring as this is a system account.");
             } else {
                 info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");
                 let group = Arc::new(EtcGroup {
