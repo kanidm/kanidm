@@ -153,6 +153,15 @@ pub enum OperationError {
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
     CU0003WebauthnUserNotVerified,
+
+    // The session is inconsistent and can't be committed, but the errors
+    // can be resolved.
+    CU0004SessionInconsistent,
+    // Another session used this intent token, and so it can't be committed.
+    CU0005IntentTokenConflict,
+    // The intent token was invalidated before we could commit.
+    CU0006IntentTokenInvalidated,
+
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     VS0002CertificatePublicKeyDigest,
@@ -271,7 +280,7 @@ impl Display for OperationError {
 
 impl OperationError {
     /// Return the message associated with the error if there is one.
-    fn message(&self) -> Option<String> {
+    pub fn message(&self) -> Option<String> {
         match self {
             Self::SessionExpired => None,
             Self::EmptyRequest => None,
@@ -340,6 +349,11 @@ impl OperationError {
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
+
+            Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings.".into()),
+            Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed.".into()),
+            Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
+
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,

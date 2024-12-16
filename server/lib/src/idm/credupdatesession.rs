@@ -1311,8 +1311,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 "Session is unable to commit due to: {}",
                 commit_failure_reasons
             );
-            // TODO: perhaps it would be more helpful to add a new operation error that describes what the issue is
-            return Err(OperationError::InvalidState);
+            return Err(OperationError::CU0004SessionInconsistent);
         }
 
         // Setup mods for the various bits. We always assert an *exact* state.
@@ -1339,7 +1338,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 }) => {
                     if *session_id != session_token.sessionid {
                         security_info!("Session originated from an intent token, but the intent token has initiated a conflicting second update session. Refusing to commit changes.");
-                        return Err(OperationError::InvalidState);
+                        return Err(OperationError::CU0005IntentTokenConflict);
                     } else {
                         *max_ttl
                     }
@@ -1351,7 +1350,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 })
                 | None => {
                     security_info!("Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.");
-                    return Err(OperationError::InvalidState);
+                    return Err(OperationError::CU0006IntentTokenInvalidated);
                 }
             };
 
