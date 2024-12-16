@@ -899,22 +899,25 @@ async fn view_login_step(
 
                         // Important - this can be make unsigned as token_str has it's own
                         // signatures.
-                        let bearer_cookie = cookies::make_unsigned(
+                        let mut bearer_cookie = cookies::make_unsigned(
                             &state,
                             COOKIE_BEARER_TOKEN,
                             token_str.clone(),
                             "/",
                         );
+                        // Important - can be permanent as the token has it's own expiration time internally
+                        bearer_cookie.make_permanent();
 
                         jar = if session_context.remember_me {
                             // Important - can be unsigned as username is just for remember
                             // me and no other purpose.
-                            let username_cookie = cookies::make_unsigned(
+                            let mut username_cookie = cookies::make_unsigned(
                                 &state,
                                 COOKIE_USERNAME,
                                 session_context.username.clone(),
                                 Urls::Login.as_ref(),
                             );
+                            username_cookie.make_permanent();
                             jar.add(username_cookie)
                         } else {
                             jar

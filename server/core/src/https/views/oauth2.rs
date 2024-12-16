@@ -112,7 +112,7 @@ async fn oauth2_auth_req(
         return (
             jar,
             UnrecoverableErrorView {
-                err_code: OperationError::InvalidState,
+                err_code: OperationError::UI0003InvalidOauth2Resume,
                 operation_id: kopid.eventid,
             },
         )
@@ -176,6 +176,10 @@ async fn oauth2_auth_req(
                 cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, Urls::Ui.as_ref())
                     .map(|mut cookie| {
                         cookie.set_same_site(SameSite::Strict);
+                        // Expire at the end of the session.
+                        cookie.set_expires(None);
+                        // Could experiment with this to a shorter value, but session should be enough.
+                        cookie.set_max_age(None);
                         jar.add(cookie)
                     })
                     .ok_or(OperationError::InvalidSessionState);
