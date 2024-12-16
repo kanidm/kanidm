@@ -53,7 +53,7 @@ assert_cmd = "2.0.16"
 compact_jwt = { workspace = true }
 escargot = "0.5.13"
 # used for webdriver testing
-fantoccini = { version = "0.21.2" }
+fantoccini = { version = "0.21.3" }
 futures = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",

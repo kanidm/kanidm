@@ -552,6 +552,8 @@ pub async fn view_login_mech_choose_post(
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LoginTotpForm {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    password: Option<String>,
     totp: String,
 }
 
@@ -560,7 +562,7 @@ pub async fn view_login_totp_post(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-    jar: CookieJar,
+    mut jar: CookieJar,
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
     // trim leading and trailing white space.
@@ -582,6 +584,31 @@ pub async fn view_login_totp_post(
             .into_response();
         }
     };
+
+    // In some flows the PW manager may not have autocompleted the pw until
+    // this point. This could be due to a re-auth flow which skips the username
+    // prompt, the use of remember-me+return which then skips the autocomplete.
+    //
+    // In the case the pw *is* bg filled, we need to add it to the session context
+    // here.
+    //
+    // It's probably not "optimal" to be getting the context out and signing it
+    // here to re-add it, but it also helps keep the flow neater in general.
+
+    if let Some(password_autofill) = login_totp_form.password {
+        let mut session_context =
+            cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
+                .unwrap_or_default();
+
+        session_context.password = Some(password_autofill);
+
+        // If we can't write this back to the jar, we warn and move on.
+        if let Ok(update_jar) = add_session_cookie(&state, jar.clone(), &session_context) {
+            jar = update_jar;
+        } else {
+            warn!("Unable to update session_context, ignoring...");
+        }
+    }
 
     let auth_cred = AuthCredential::Totp(totp);
     credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
