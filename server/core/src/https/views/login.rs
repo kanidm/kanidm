@@ -905,7 +905,7 @@ async fn view_login_step(
                             token_str.clone(),
                             "/",
                         );
-                        // Important - can be permanent as the token has it's own expiration time internally
+                        // Important - can be permanent as the token has its own expiration time internally
                         bearer_cookie.make_permanent();
 
                         jar = if session_context.remember_me {
