@@ -244,6 +244,7 @@ pub enum OperationError {
     // Web UI
     UI0001ChallengeSerialisation,
     UI0002InvalidState,
+    UI0003InvalidOauth2Resume,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -422,9 +423,12 @@ impl OperationError {
             Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
             Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
             Self::PL0001GidOverlapsSystemRange => None,
+
             Self::SC0001IncomingSshPublicKey => None,
+
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
+            Self::UI0003InvalidOauth2Resume => Some("The server attemped to resume OAuth2, but no OAuth2 session is in progress.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |
