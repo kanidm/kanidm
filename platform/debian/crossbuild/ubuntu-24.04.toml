@@ -1,0 +1,35 @@
+# Ubuntu target cross config. Mostly the same as Debian but with extra multiarch hacks.
+
+[target.aarch64-unknown-linux-gnu]
+dockerfile = "platform/debian/kanidm_ppa_automation/crossbuild/images/ubuntu-24.04-aarch64-unknown-linux-gnu.dockerfile"
+pre-build = [
+    "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+    
+    # All of these dirty hacks are needed because Ubuntu hates multiarch and doesn't do it properly on the same mirrors.
+    # Note of pain: The sed expression here has a load bearing double escape on the newline which is not normally needed. -_-
+    "sed '/^URIs: .*/ s/$/\\nArchitectures: amd64/' -i /etc/apt/sources.list.d/ubuntu.sources || cat /etc/apt/sources.list.d/ubuntu.sources",
+
+    # Install the bits that need to match the native arch
+    "apt update && apt install --assume-yes rsync libssl-dev build-essential pkg-config",
+
+
+    # arm64 is on a completely different mirror structure, add that pinned to arm64
+    "echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble main' >> /etc/apt/sources.list.d/arm64.list",
+    "echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ noble-updates main' >> /etc/apt/sources.list.d/arm64.list",
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH",
+]
+
+[target.x86_64-unknown-linux-gnu]
+dockerfile = "platform/debian/kanidm_ppa_automation/crossbuild/images/ubuntu-24.04-x86_64-unknown-linux-gnu.dockerfile"
+pre-build = [
+    "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+
+    # Install the bits that need to match the native arch
+    "apt update && apt install --assume-yes rsync libssl-dev build-essential pkg-config",
+
+    # Enable multiarch
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    # Install the bits that need to match the target arch
+    "apt update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH",
+]

@@ -1,3 +1,0 @@
-[submodule "platform/debian/kanidm_ppa_automation"]
-	path = platform/debian/kanidm_ppa_automation
-	url = https://github.com/kanidm/kanidm_ppa_automation
