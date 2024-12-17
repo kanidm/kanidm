@@ -15,6 +15,7 @@ use axum::{
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use kanidm_proto::internal::{
     COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+    COOKIE_CU_SESSION_TOKEN
 };
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
@@ -161,7 +162,7 @@ pub async fn view_logout_get(
     Extension(kopid): Extension<KOpId>,
     mut jar: CookieJar,
 ) -> Response {
-    if let Err(err_code) = state
+    let response = if let Err(err_code) = state
         .qe_w_ref
         .handle_logout(client_auth_info, kopid.eventid)
         .await
@@ -172,12 +173,16 @@ pub async fn view_logout_get(
         }
         .into_response()
     } else {
-        let response = Redirect::to(Urls::Login.as_ref()).into_response();
+        Redirect::to(Urls::Login.as_ref()).into_response()
+    };
 
-        jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
+    // Always clear cookies even on an error.
+    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
+    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID);
+    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
 
-        (jar, response).into_response()
-    }
+    (jar, response).into_response()
 }
 
 pub async fn view_reauth_get(
@@ -190,14 +195,7 @@ pub async fn view_reauth_get(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
     let session_valid_result = state
         .qe_r_ref
@@ -324,14 +322,7 @@ pub async fn view_index_get(
 
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
     match session_valid_result {
         Ok(()) => {
