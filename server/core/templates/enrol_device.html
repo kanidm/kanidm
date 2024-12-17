@@ -1,0 +1,17 @@
+(% extends "user_settings_partial_base.html" %)
+
+(% block selected_setting_group %)
+Enrol Another Device
+(% endblock %)
+
+(% block settings_window %)
+<p>You can enrol another device to your account by scanning the QR code or following the link below.</p>
+
+<div id="intentInfo">
+    <div>((qr_code_svg|safe))</div>
+    <ul>
+        <li>Url: <code>((uri|safe))</code></li>
+        <li>Secret: <code>(( secret ))</code></li>
+    </ul>
+</div>
+(% endblock %)
