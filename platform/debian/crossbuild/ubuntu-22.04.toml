@@ -1,0 +1,31 @@
+# Ubuntu target cross config. Mostly the same as Debian but with extra multiarch hacks.
+
+[target.aarch64-unknown-linux-gnu]
+dockerfile = "platform/debian/kanidm_ppa_automation/crossbuild/images/ubuntu-22.04-aarch64-unknown-linux-gnu.dockerfile"
+pre-build = [
+    "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+
+    # Install the bits that need to match the native arch
+    "apt update && apt install --assume-yes rsync libssl-dev build-essential pkg-config",
+
+    # All of these dirty hacks are needed because Ubuntu hates multiarch and doesn't do it properly on the same mirrors.
+    "sed 's/^deb http/deb [arch=amd64] http/' -i '/etc/apt/sources.list'",
+    "echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy main restricted' >> /etc/apt/sources.list.d/arm64.list",
+    "echo 'deb [arch=arm64] http://ports.ubuntu.com/ubuntu-ports/ jammy-updates main restricted' >> /etc/apt/sources.list.d/arm64.list",
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    "apt update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH",
+]
+
+[target.x86_64-unknown-linux-gnu]
+dockerfile = "platform/debian/kanidm_ppa_automation/crossbuild/images/ubuntu-22.04-x86_64-unknown-linux-gnu.dockerfile"
+pre-build = [
+    "TZ=UTC ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone",
+
+    # Install the bits that need to match the native arch
+    "apt update && apt install --assume-yes rsync libssl-dev build-essential pkg-config",
+
+    # Enable multiarch
+    "dpkg --add-architecture $CROSS_DEB_ARCH",
+    # Install the bits that need to match the target arch
+    "apt update && apt-get install --assume-yes libssl-dev:$CROSS_DEB_ARCH  libpam0g-dev:$CROSS_DEB_ARCH libudev-dev:$CROSS_DEB_ARCH",
+]
