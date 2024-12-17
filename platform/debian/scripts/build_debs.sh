@@ -59,7 +59,7 @@ echo "Updating changelog"
 mkdir -p target/debian
 sed -E \
     "s/#DATE#/$(date -R)/" \
-    platform/debian/kanidm_ppa_automation/templates/changelog  | \
+    platform/debian/templates/changelog  | \
     sed -E "s/#VERSION#/${PACKAGE_VERSION}/" | \
     sed -E "s/#GIT_COMMIT#/${GIT_COMMIT}/" | \
     sed -E "s/#PACKAGE#/${PACKAGE}/" > target/debian/changelog
