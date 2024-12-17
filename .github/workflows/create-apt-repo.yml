@@ -1,17 +1,27 @@
 ---
 name: "Create apt repo"
 
-"on":  # TODO: This needs to also become a cron for the nightly function to make sense
-  push:
-  pull_request:
-  schedule:
+on:
+  push: # To allow dev runs in forks, feature branch name must start with `ppa/`, e.g. `ppa/fix_snafu`.
+    branches:
+      - "ppa/**"
+  release: # Stable packages come from this.
+  schedule: # Nightly packages come from this.
     - cron: '45 6 * * *'  # UTC 6:45
+  pull_request: # To allow testing packaging changes. In addition the PR must have the `ppa` label to actually do something.
+    types: [ "labeled", "opened", "synchronize", "reopened" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
 jobs:
   build:
+    if: |
+      ${{ github.event_name == 'push' }} ||
+      ${{ github.event_name == 'release' }} ||
+      ${{ github.event_name == 'schedule' }} ||
+      contains(github.event.pull_request.labels.*.name, 'ppa')
     name: Build debs
     runs-on: ubuntu-24.04
     strategy:
@@ -53,11 +63,6 @@ jobs:
           repository: "kanidm/kanidm"
           ref: "${{ matrix.category.ref }}"
           submodules: false
-      # Overlay the latest packaging tools instead of using the submodule reference which is intended for human use.
-      - name: Checkout packaging tools
-        uses: actions/checkout@v4
-        with:
-          path: platform/debian/kanidm_ppa_automation
       - name: Amend PATH
         run: |
           mkdir "${HOME}/bin"
@@ -79,13 +84,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Install deb build dependencies
         run: |
-            sudo -E platform/debian/kanidm_ppa_automation/scripts/install_ci_build_dependencies.sh \
+            sudo -E platform/debian/scripts/install_ci_build_dependencies.sh \
               "${{ matrix.target.debian-name }}"
       # Step 1. Crossbuild
       - name: Build packages (cross bins & libs)
         shell: bash
         run: |
-          platform/debian/kanidm_ppa_automation/scripts/crossbuild.sh \
+          platform/debian/scripts/crossbuild.sh \
             "${{ matrix.os }}-${{ matrix.target.name }}"
         env:
           VERBOSE: true
@@ -100,7 +105,7 @@ jobs:
       # Step 2. deb build
       - name: Build packages (debs)
         run: |
-          platform/debian/kanidm_ppa_automation/scripts/build_debs.sh "${{ matrix.target.name }}"
+          platform/debian/scripts/build_debs.sh "${{ matrix.target.name }}"
 
       - name: Upload debs
         uses: actions/upload-artifact@v4
@@ -111,6 +116,11 @@ jobs:
 
   # Step 3. Create the APT repo from the debs
   create-repo:
+    if: |
+      ${{ github.event_name == 'push' }} ||
+      ${{ github.event_name == 'release' }} ||
+      ${{ github.event_name == 'schedule' }} ||
+      contains(github.event.pull_request.labels.*.name, 'ppa')
     name: Create APT repo
     needs: build
     runs-on: ubuntu-24.04
@@ -147,11 +157,15 @@ jobs:
           # When GPG secrets are not available (say a PR), the repo WILL NOT be signed.
           # Provide your own key material in a fork to test with signed repo snapshots.
           gpg_private_key: "${{ secrets.GPG_PRIVATE_KEY }}"
-          gpg_passphrase: "${{ secrets.PASSPHRASE }}"
+          gpg_passphrase: "${{ secrets.GPG_PASSPHRASE }}"
           import_gpg_key: "${{ steps.get_import_key.outputs.gpg_public_key }}"
 
-  # Step 4. Publish the created repo if and only if it's a push to main.
+  # Step 4. Publish the created repo if and only if it's a release or nightly.
+  # To test changes to this stage you will need to override the if statement during testing.
   publish:
+    if: |
+      ${{ github.event_name == 'release' }} ||
+      ${{ github.event_name == 'schedule' }}
     name: Deploy to GitHub Pages
     needs: create-repo
     runs-on: ubuntu-24.04
@@ -162,7 +176,7 @@ jobs:
           name: kanidm_ppa_snapshot
           path: snapshot
           merge-multiple: true  # Flatten artifact name out
-      - name: Add README.md  # Pull in book chapter on PPA usage
+      - name: Add README.md  # Pull in book chapter on PPA usage. NOTE: This is pulled from the master branch!
         shell: bash
         run: |
           curl https://raw.githubusercontent.com/kanidm/kanidm/refs/heads/master/book/src/packaging/ppa_packages.md > snapshot/README.md
@@ -174,11 +188,10 @@ jobs:
         if: env.private_key_check != ''  # Not present for PRs on purpose.
         with:
           gpg_private_key: ${{ secrets.GPG_PRIVATE_KEY }}
-          passphrase: ${{ secrets.PASSPHRASE }}
+          passphrase: ${{ secrets.GPG_PASSPHRASE }}
           git_commit_gpgsign: true
       - name: Publish to PPA
         uses: crazy-max/ghaction-github-pages@v4
-        if: github.ref == 'refs/heads/main'
         with:
           repo: kanidm/kanidm_ppa
           target_branch: main
