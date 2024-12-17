@@ -6,11 +6,16 @@ use compact_jwt::{Jws, JwsSigner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+#[instrument(name = "views::cookies::destroy", level = "debug", skip(jar))]
 pub fn destroy(jar: CookieJar, ck_id: &str) -> CookieJar {
     if let Some(ck) = jar.get(ck_id) {
-        let mut ck = ck.clone();
-        ck.make_removal();
-        jar.add(ck)
+        let mut removal_cookie = ck.clone();
+        removal_cookie.make_removal();
+        // Need to be set to / to remove on all parent paths.
+        // If you don't set a path, NOTHING IS REMOVED!!!
+        removal_cookie.set_path("/");
+
+        jar.add(removal_cookie)
     } else {
         jar
     }
