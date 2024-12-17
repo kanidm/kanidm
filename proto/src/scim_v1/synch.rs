@@ -220,6 +220,7 @@ pub struct ScimExternalMember {
     pub external_id: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimSyncGroup {
