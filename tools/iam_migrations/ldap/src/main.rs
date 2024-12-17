@@ -633,7 +633,7 @@ fn ldap_to_scim_entry(
             .build();
 
         let scim_entry_generic: ScimEntry = scim_sync_person.try_into().map_err(|json_err| {
-            error!(?json_err, "Unable to convert group to scim_sync_group");
+            error!(?json_err, "Unable to convert person to scim_sync_person");
         })?;
 
         Ok(Some(scim_entry_generic))
