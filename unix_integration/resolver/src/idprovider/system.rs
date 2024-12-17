@@ -8,6 +8,9 @@ use kanidm_unix_common::unix_passwd::{CryptPw, EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::PamAuthRequest;
 use kanidm_unix_common::unix_proto::{NssGroup, NssUser};
 
+// The minimum GID that Kanidm will consider for creating a UPG
+const SYSTEM_GID_BOUNDARY: u32 = 1000;
+
 pub struct SystemProviderInternal {
     users: HashMap<Id, Arc<EtcUser>>,
     user_list: Vec<Arc<EtcUser>>,
@@ -223,22 +226,22 @@ impl SystemProvider {
             let uid = Id::Gid(user.uid);
             let gid = Id::Gid(user.gid);
 
-            if user.uid != user.gid {
-                error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user uid and gid are not the same, this may be a security risk!");
-            }
-
             // Security checks.
-            if let Some(group) = system_ids_txn.groups.get(&gid) {
+            if user.uid != user.gid {
+                warn!(name = %user.name, uid = %user.uid, gid = %user.gid, "user uid and gid are not the same, this may be a security risk!");
+            } else if let Some(group) = system_ids_txn.groups.get(&gid) {
                 if group.name != user.name {
-                    error!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group does not appear to have the same name as the user, this may be a security risk!");
+                    warn!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group does not appear to have the same name as the user, this may be a security risk!");
                 }
                 if !(group.members.is_empty()
                     || (group.members.len() == 1 && group.members.first() == Some(&user.name)))
                 {
-                    error!(name = %user.name, uid = %user.uid, gid = %user.gid, members = ?group.members, "user private group must not have members, THIS IS A SECURITY RISK!");
+                    warn!(name = %user.name, uid = %user.uid, gid = %user.gid, members = ?group.members, "user private group must not have members, THIS IS A SECURITY RISK!");
                 }
+            } else if user.uid < SYSTEM_GID_BOUNDARY {
+                warn!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, ignoring as this is a system account.");
             } else {
-                info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it");
+                info!(name = %user.name, uid = %user.uid, gid = %user.gid, "user private group is not present on system, synthesising it.");
                 let group = Arc::new(EtcGroup {
                     name: user.name.clone(),
                     password: String::new(),
