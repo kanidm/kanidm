@@ -3,7 +3,7 @@ use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::cookie::SameSite;
 use axum_extra::extract::CookieJar;
 use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
@@ -30,6 +30,7 @@ use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
+use crate::https::views::cookies;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::ServerState;
@@ -210,7 +211,7 @@ pub(crate) async fn commit(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     state
         .qe_w_ref
@@ -218,7 +219,10 @@ pub(crate) async fn commit(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
-    Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
+    // No longer need the cookie jar.
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+
+    Ok((jar, HxLocation::from(Uri::from_static("/ui")), "").into_response())
 }
 
 pub(crate) async fn cancel_cred_update(
@@ -228,7 +232,7 @@ pub(crate) async fn cancel_cred_update(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     state
         .qe_w_ref
@@ -236,7 +240,11 @@ pub(crate) async fn cancel_cred_update(
         .map_err(|op_err| HtmxError::new(&kopid, op_err))
         .await?;
 
+    // No longer need the cookie jar.
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+
     Ok((
+        jar,
         HxLocation::from(Uri::from_static(Urls::Profile.as_ref())),
         "",
     )
@@ -250,7 +258,7 @@ pub(crate) async fn cancel_mfareg(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -268,7 +276,7 @@ pub(crate) async fn remove_alt_creds(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -286,7 +294,7 @@ pub(crate) async fn remove_unixcred(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -309,7 +317,7 @@ pub(crate) async fn remove_totp(
     jar: CookieJar,
     Form(totp): Form<TOTPRemoveData>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -332,7 +340,7 @@ pub(crate) async fn remove_passkey(
     jar: CookieJar,
     Form(passkey): Form<PasskeyRemoveData>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -355,7 +363,7 @@ pub(crate) async fn finish_passkey(
     jar: CookieJar,
     Form(passkey_create): Form<PasskeyCreateForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
 
     match serde_json::from_str(passkey_create.creation_data.as_str()) {
         Ok(creation_data) => {
@@ -393,7 +401,7 @@ pub(crate) async fn view_new_passkey(
     jar: CookieJar,
     Form(init_form): Form<PasskeyInitForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
     let cu_req = match init_form.class {
         PasskeyClass::Any => CURequest::PasskeyInit,
         PasskeyClass::Attested => CURequest::AttestedPasskeyInit,
@@ -445,7 +453,7 @@ pub(crate) async fn view_new_totp(
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
     let push_url = HxPushUrl(Uri::from_static("/ui/reset/add_totp"));
 
     let cu_status = state
@@ -497,7 +505,7 @@ pub(crate) async fn add_totp(
     jar: CookieJar,
     new_totp_form: Form<NewTotp>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
 
     let check_totpcode = u32::from_str(&new_totp_form.check_totpcode).unwrap_or_default();
 
@@ -569,7 +577,7 @@ pub(crate) async fn view_new_pwd(
     jar: CookieJar,
     opt_form: Option<Form<NewPassword>>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
@@ -679,10 +687,9 @@ fn add_cu_cookie(
     state: &ServerState,
     cu_session_token: CUSessionToken,
 ) -> CookieJar {
-    let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
-    token_cookie.set_secure(state.secure_cookies);
+    let mut token_cookie =
+        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token, "/");
     token_cookie.set_same_site(SameSite::Strict);
-    token_cookie.set_http_only(true);
     jar.add(token_cookie)
 }
 
@@ -694,7 +701,7 @@ pub(crate) async fn view_set_unixcred(
     jar: CookieJar,
     opt_form: Option<Form<NewPassword>>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
@@ -781,7 +788,7 @@ pub(crate) async fn view_reset_get(
                 | OperationError::InvalidState,
             ) => {
                 // If our previous credential update session expired we want to see the reset form again.
-                jar = jar.remove(Cookie::from(COOKIE_CU_SESSION_TOKEN));
+                jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
 
                 if let Some(token) = params.token {
                     let token_uri_string = format!("{}?token={}", Urls::CredReset, token);
@@ -917,7 +924,7 @@ fn get_cu_response(
     }
 }
 
-async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
+async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
         let cu_session_token = cookie.value();
