@@ -52,7 +52,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset authsession expiry.");
+                    println!("Successfully reset authsession expiry.");
                 }
             }
 
@@ -86,7 +86,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset password minimum length.");
+                    println!("Successfully reset password minimum length.");
                 }
             }
             GroupAccountPolicyOpt::PrivilegedSessionExpiry { name, expiry, copt } => {
@@ -108,7 +108,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset privilege session expiry.");
+                    println!("Successfully reset privilege session expiry.");
                 }
             }
             GroupAccountPolicyOpt::WebauthnAttestationCaList {
@@ -135,7 +135,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset webauthn attestation CA list.");
+                    println!("Successfully reset webauthn attestation CA list.");
                 }
             }
 
@@ -162,7 +162,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset search maximum results limit.");
+                    println!("Successfully reset search maximum results limit to default.");
                 }
             }
             GroupAccountPolicyOpt::LimitSearchMaxFilterTest {
@@ -188,7 +188,7 @@ impl GroupAccountPolicyOpt {
                 {
                     handle_client_error(e, copt.output_mode);
                 } else {
-                    println!("Reset search maximum filter test limit.");
+                    println!("Successfully reset search maximum filter test limit.");
                 }
             }
             GroupAccountPolicyOpt::AllowPrimaryCredFallback { name, allow, copt } => {

@@ -251,28 +251,28 @@ pub enum GroupAccountPolicyOpt {
         copt: CommonOpt,
     },
 
-    /// Reset the maximum time for session expiry to it's default value
+    /// Reset the maximum time for session expiry to its default value
     #[clap(name = "reset-auth-expiry")]
     ResetAuthSessionExpiry {
         name: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Reset the minimum character length of passwords to it's default value.
+    /// Reset the minimum character length of passwords to its default value.
     #[clap(name = "reset-password-minimum-length")]
     ResetPasswordMinimumLength {
         name: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Reset the maximum time for privilege session expiry to it's default value.
+    /// Reset the maximum time for privilege session expiry to its default value.
     #[clap(name = "reset-privilege-expiry")]
     ResetPrivilegedSessionExpiry {
         name: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Reset the WebAuthn attestation CA list to it's default value
+    /// Reset the WebAuthn attestation CA list to its default value
     /// allowing any passkey to be used by members of this group.
     #[clap(name = "reset-webauthn-attestation-ca-list")]
     ResetWebauthnAttestationCaList {
@@ -280,14 +280,14 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Reset the searche maxmium results limit to it's default value.
+    /// Reset the searche maxmium results limit to its default value.
     #[clap(name = "reset-limit-search-max-results")]
     ResetLimitSearchMaxResults {
         name: String,
         #[clap(flatten)]
         copt: CommonOpt,
     },
-    /// Reset the max filter test limit to it's default value.
+    /// Reset the max filter test limit to its default value.
     #[clap(name = "reset-limit-search-max-filter-test")]
     ResetLimitSearchMaxFilterTest {
         name: String,
