@@ -40,6 +40,8 @@ try {
     });
 } catch (_error) {};
 
-window.addEventListener("load", (event) => {
-    asskey_login()
-});
+try {
+    window.addEventListener("load", (event) => {
+        asskey_login()
+    });
+} catch (_error) {};
