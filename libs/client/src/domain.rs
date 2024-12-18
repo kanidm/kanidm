@@ -1,4 +1,5 @@
 use crate::{ClientError, KanidmClient};
+use kanidm_proto::constants::ATTR_DOMAIN_ALLOW_EASTER_EGGS;
 use kanidm_proto::internal::ImageValue;
 use reqwest::multipart;
 
@@ -6,6 +7,14 @@ impl KanidmClient {
     /// Clear the current domain logo/image
     pub async fn idm_domain_delete_image(&self) -> Result<(), ClientError> {
         self.perform_delete_request("/v1/domain/_image").await
+    }
+
+    pub async fn idm_set_domain_allow_easter_eggs(&self, enable: bool) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("{}{}", "/v1/domain/_attr/", ATTR_DOMAIN_ALLOW_EASTER_EGGS),
+            vec![enable.to_string()],
+        )
+        .await
     }
 
     /// Add or update the domain logo/image
