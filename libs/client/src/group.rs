@@ -37,6 +37,14 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_authsession_expiry_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!("/v1/group/{}/_attr/authsession_expiry", id))
+            .await
+    }
+
     pub async fn group_account_policy_credential_type_minimum_set(
         &self,
         id: &str,
@@ -61,6 +69,17 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_password_minimum_length_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!(
+            "/v1/group/{}/_attr/auth_password_minimum_length",
+            id
+        ))
+        .await
+    }
+
     pub async fn group_account_policy_privilege_expiry_set(
         &self,
         id: &str,
@@ -73,6 +92,14 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_privilege_expiry_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!("/v1/group/{}/_attr/privilege_expiry", id))
+            .await
+    }
+
     pub async fn group_account_policy_webauthn_attestation_set(
         &self,
         id: &str,
@@ -82,6 +109,17 @@ impl KanidmClient {
             &format!("/v1/group/{}/_attr/webauthn_attestation_ca_list", id),
             vec![att_ca_list.to_string()],
         )
+        .await
+    }
+
+    pub async fn group_account_policy_webauthn_attestation_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!(
+            "/v1/group/{}/_attr/webauthn_attestation_ca_list",
+            id
+        ))
         .await
     }
 
@@ -97,6 +135,14 @@ impl KanidmClient {
         .await
     }
 
+    pub async fn group_account_policy_limit_search_max_results_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!("/v1/group/{}/_attr/limit_search_max_results", id))
+            .await
+    }
+
     pub async fn group_account_policy_limit_search_max_filter_test(
         &self,
         id: &str,
@@ -106,6 +152,17 @@ impl KanidmClient {
             &format!("/v1/group/{}/_attr/limit_search_max_filter_test", id),
             vec![maximum.to_string()],
         )
+        .await
+    }
+
+    pub async fn group_account_policy_limit_search_max_filter_test_reset(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(&format!(
+            "/v1/group/{}/_attr/limit_search_max_filter_test",
+            id
+        ))
         .await
     }
 

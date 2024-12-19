@@ -197,6 +197,8 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+
+
     /// Set the maximum time for privilege session expiry in seconds.
     #[clap(name = "privilege-expiry")]
     PrivilegedSessionExpiry {
@@ -205,6 +207,8 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+
+
     /// The WebAuthn attestation CA list that should be enforced
     /// on members of this group. Prevents use of passkeys that are
     /// not in this list. To create this list, use `fido-mds-tool`
@@ -216,6 +220,7 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+
     /// Sets the maximum number of entries that may be returned in a
     /// search operation.
     #[clap(name = "limit-search-max-results")]
@@ -245,6 +250,51 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
+
+    /// Reset the maximum time for session expiry to its default value
+    #[clap(name = "reset-auth-expiry")]
+    ResetAuthSessionExpiry {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Reset the minimum character length of passwords to its default value.
+    #[clap(name = "reset-password-minimum-length")]
+    ResetPasswordMinimumLength {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Reset the maximum time for privilege session expiry to its default value.
+    #[clap(name = "reset-privilege-expiry")]
+    ResetPrivilegedSessionExpiry {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Reset the WebAuthn attestation CA list to its default value
+    /// allowing any passkey to be used by members of this group.
+    #[clap(name = "reset-webauthn-attestation-ca-list")]
+    ResetWebauthnAttestationCaList {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Reset the searche maxmium results limit to its default value.
+    #[clap(name = "reset-limit-search-max-results")]
+    ResetLimitSearchMaxResults {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+    /// Reset the max filter test limit to its default value.
+    #[clap(name = "reset-limit-search-max-filter-test")]
+    ResetLimitSearchMaxFilterTest {
+        name: String,
+        #[clap(flatten)]
+        copt: CommonOpt,
+    },
+
 }
 
 #[derive(Debug, Subcommand)]
@@ -1277,6 +1327,15 @@ pub enum DomainOpt {
     /// Enable or disable unix passwords being used to bind via LDAP. Unless you have a specific
     /// requirement for this, you should disable this.
     SetLdapAllowUnixPasswordBind {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "allow", action = clap::ArgAction::Set)]
+        enable: bool,
+    },
+    /// Enable or disable easter eggs in the server. This includes seasonal icons, kanidm
+    /// birthday surprises and other fun components. Defaults to false for production releases
+    /// and true in development builds.
+    SetAllowEasterEggs {
         #[clap(flatten)]
         copt: CommonOpt,
         #[clap(name = "allow", action = clap::ArgAction::Set)]
