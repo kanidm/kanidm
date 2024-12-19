@@ -1332,6 +1332,15 @@ pub enum DomainOpt {
         #[clap(name = "allow", action = clap::ArgAction::Set)]
         enable: bool,
     },
+    /// Enable or disable easter eggs in the server. This includes seasonal icons, kanidm
+    /// birthday surprises and other fun components. Defaults to false for production releases
+    /// and true in development builds.
+    SetAllowEasterEggs {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "allow", action = clap::ArgAction::Set)]
+        enable: bool,
+    },
     #[clap(name = "show")]
     /// Show information about this system's domain
     Show(CommonOpt),
