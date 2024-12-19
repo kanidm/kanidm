@@ -79,6 +79,7 @@ pub struct DomainInfo {
     pub(crate) d_patch_level: u32,
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
+    pub(crate) d_allow_easter_eggs: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
 }
@@ -102,6 +103,10 @@ impl DomainInfo {
 
     pub fn has_custom_image(&self) -> bool {
         self.d_image.is_some()
+    }
+
+    pub fn allow_easter_eggs(&self) -> bool {
+        self.d_allow_easter_eggs
     }
 }
 
@@ -1657,6 +1662,7 @@ impl QueryServer {
             // Automatically derive our current taint mode based on the PRERELEASE setting.
             d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
+            d_allow_easter_eggs: false,
             d_image: None,
         }));
 
@@ -2284,6 +2290,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .get_ava_single_bool(Attribute::DomainDevelopmentTaint)
                 .unwrap_or_default();
 
+        let domain_allow_easter_eggs = domain_info
+            .get_ava_single_bool(Attribute::DomainAllowEasterEggs)
+            // This defaults to false for release versions, and true in development
+            .unwrap_or(option_env!("KANIDM_PRE_RELEASE").is_some());
+
         // We have to set the domain version here so that features which check for it
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
@@ -2293,6 +2304,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         mut_d_info.d_vers = domain_info_version;
         mut_d_info.d_patch_level = domain_info_patch_level;
         mut_d_info.d_devel_taint = domain_info_devel_taint;
+        mut_d_info.d_allow_easter_eggs = domain_allow_easter_eggs;
 
         // We must both be at the correct domain version *and* the correct patch level. If we are
         // not, then we only proceed to migrate *if* our server boot phase is correct.
