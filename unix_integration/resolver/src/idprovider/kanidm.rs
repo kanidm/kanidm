@@ -23,6 +23,7 @@ use kanidm_unix_common::unix_proto::PamAuthRequest;
 const KANIDM_HMAC_KEY: &str = "kanidm-hmac-key";
 const KANIDM_PWV1_KEY: &str = "kanidm-pw-v1";
 
+// If the provider is offline, we need to backoff and wait a bit.
 const OFFLINE_NEXT_CHECK: Duration = Duration::from_secs(60);
 
 #[derive(Debug, Clone)]
@@ -243,6 +244,7 @@ impl UserToken {
 }
 
 impl KanidmProviderInternal {
+    #[instrument(level = "debug", skip_all)]
     async fn check_online(&mut self, tpm: &mut tpm::BoxedDynTpm, now: SystemTime) -> bool {
         match self.state {
             // Proceed
@@ -255,23 +257,35 @@ impl KanidmProviderInternal {
         }
     }
 
+    #[instrument(level = "debug", skip_all)]
     async fn attempt_online(&mut self, _tpm: &mut tpm::BoxedDynTpm, now: SystemTime) -> bool {
-        match self.client.auth_anonymous().await {
-            Ok(_uat) => {
-                self.state = CacheState::Online;
-                true
-            }
-            Err(ClientError::Transport(err)) => {
-                warn!(?err, "transport failure");
-                self.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
-                false
-            }
-            Err(err) => {
-                error!(?err, "Provider authentication failed");
-                self.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
-                false
+        let mut max_attempts = 3;
+        while max_attempts > 0 {
+            max_attempts -= 1;
+            match self.client.auth_anonymous().await {
+                Ok(_uat) => {
+                    debug!("provider is now online");
+                    self.state = CacheState::Online;
+                    return true;
+                }
+                Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {
+                    error!(?reason, ?opid, "Provider authentication failed");
+                    // Provider needs to re-auth ASAP. We set this state value here
+                    // so that if we exceed max attempts, the next caller knows to check
+                    // online immediately.
+                    self.state = CacheState::OfflineNextCheck(now);
+                    // attempt again immediately!!!!
+                    continue;
+                }
+                Err(err) => {
+                    error!(?err, "Provider online failed");
+                    self.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                    return false;
+                }
             }
         }
+        warn!("Exceeded maximum number of attempts to bring provider online");
+        return false;
     }
 }
 
@@ -351,7 +365,8 @@ impl IdProvider for KanidmProvider {
                         e, opid
                     ),
                 };
-                inner.state = CacheState::OfflineNextCheck(now + OFFLINE_NEXT_CHECK);
+                // Provider needs to re-auth ASAP
+                inner.state = CacheState::OfflineNextCheck(now);
                 Ok(UserTokenState::UseCached)
             }
             // 404 / Removed.
