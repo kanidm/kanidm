@@ -647,7 +647,9 @@ impl QueryServerWriteTransaction<'_> {
         // Now update schema
         let idm_schema_changes = [
             SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
+            SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL9.clone().into(),
         ];
 
         idm_schema_changes
@@ -663,6 +665,7 @@ impl QueryServerWriteTransaction<'_> {
         let idm_data = [
             IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
             IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
+            IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
         ];
 
         idm_data
