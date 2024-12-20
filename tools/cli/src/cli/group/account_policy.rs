@@ -113,12 +113,17 @@ impl GroupAccountPolicyOpt {
             }
             GroupAccountPolicyOpt::WebauthnAttestationCaList {
                 name,
-                attestation_ca_list_json,
+                attestation_ca_list_json_file,
                 copt,
             } => {
                 let client = copt.to_client(OpType::Write).await;
+                let json = std::fs::read_to_string(attestation_ca_list_json_file).unwrap_or_else(|e| {
+                    error!("Could not read attestation CA list JSON file {attestation_ca_list_json_file:?}: {e:?}");
+                    std::process::exit(1);
+                });
+
                 if let Err(e) = client
-                    .group_account_policy_webauthn_attestation_set(name, attestation_ca_list_json)
+                    .group_account_policy_webauthn_attestation_set(name, &json)
                     .await
                 {
                     handle_client_error(e, copt.output_mode);
