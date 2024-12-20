@@ -79,12 +79,15 @@ mod tests {
         // Group
         let group_uuid = uuid::uuid!("2d0a9e7c-cc08-4ca2-8d7f-114f9abcfc8a");
 
-        let group = ScimSyncGroup::builder("testgroup".to_string(), group_uuid)
-            .set_description(Some("test desc".to_string()))
-            .set_gidnumber(Some(12345))
-            .set_members(vec!["member_a".to_string(), "member_a".to_string()].into_iter())
-            .set_external_id(Some("cn=testgroup".to_string()))
-            .build();
+        let group = ScimSyncGroup::builder(
+            group_uuid,
+            "cn=testgroup".to_string(),
+            "testgroup".to_string(),
+        )
+        .set_description(Some("test desc".to_string()))
+        .set_gidnumber(Some(12345))
+        .set_members(vec!["member_a".to_string(), "member_a".to_string()].into_iter())
+        .build();
 
         let entry: Result<ScimEntry, _> = group.try_into();
 
@@ -95,32 +98,35 @@ mod tests {
 
         let user_sshkey = "sk-ecdsa-sha2-nistp256@openssh.com AAAAInNrLWVjZHNhLXNoYTItbmlzdHAyNTZAb3BlbnNzaC5jb20AAAAIbmlzdHAyNTYAAABBBENubZikrb8hu+HeVRdZ0pp/VAk2qv4JDbuJhvD0yNdWDL2e3cBbERiDeNPkWx58Q4rVnxkbV1fa8E2waRtT91wAAAAEc3NoOg== testuser@fidokey";
 
-        let person =
-            ScimSyncPerson::builder(user_uuid, "testuser".to_string(), "Test User".to_string())
-                .set_password_import(Some("new_password".to_string()))
-                .set_unix_password_import(Some("new_password".to_string()))
-                .set_totp_import(vec![ScimTotp {
-                    external_id: "Totp".to_string(),
-                    secret: "abcd".to_string(),
-                    algo: "SHA3".to_string(),
-                    step: 60,
-                    digits: 8,
-                }])
-                .set_mail(vec![MultiValueAttr {
-                    primary: Some(true),
-                    value: "testuser@example.com".to_string(),
-                    ..Default::default()
-                }])
-                .set_ssh_publickey(vec![ScimSshPubKey {
-                    label: "Key McKeyface".to_string(),
-                    value: user_sshkey.to_string(),
-                }])
-                .set_login_shell(Some("/bin/false".to_string()))
-                .set_account_valid_from(Some("2023-11-28T04:57:55Z".to_string()))
-                .set_account_expire(Some("2023-11-28T04:57:55Z".to_string()))
-                .set_gidnumber(Some(54321))
-                .set_external_id(Some("cn=testuser".to_string()))
-                .build();
+        let person = ScimSyncPerson::builder(
+            user_uuid,
+            "cn=testuser".to_string(),
+            "testuser".to_string(),
+            "Test User".to_string(),
+        )
+        .set_password_import(Some("new_password".to_string()))
+        .set_unix_password_import(Some("new_password".to_string()))
+        .set_totp_import(vec![ScimTotp {
+            external_id: "Totp".to_string(),
+            secret: "abcd".to_string(),
+            algo: "SHA3".to_string(),
+            step: 60,
+            digits: 8,
+        }])
+        .set_mail(vec![MultiValueAttr {
+            primary: Some(true),
+            value: "testuser@example.com".to_string(),
+            ..Default::default()
+        }])
+        .set_ssh_publickey(vec![ScimSshPubKey {
+            label: "Key McKeyface".to_string(),
+            value: user_sshkey.to_string(),
+        }])
+        .set_login_shell(Some("/bin/false".to_string()))
+        .set_account_valid_from(Some("2023-11-28T04:57:55Z".to_string()))
+        .set_account_expire(Some("2023-11-28T04:57:55Z".to_string()))
+        .set_gidnumber(Some(54321))
+        .build();
 
         let entry: Result<ScimEntry, _> = person.try_into();
 
