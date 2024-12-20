@@ -770,6 +770,14 @@ pub static ref SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7: SchemaAttribute = Schem
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS,
+    name: Attribute::DomainAllowEasterEggs,
+    description: "A flag to enable easter eggs in the server that may not always be wanted by all users/deployments.".to_string(),
+    syntax: SyntaxType::Boolean,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_REFERS_DL7: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_REFERS,
     name: Attribute::Refers,
@@ -1166,6 +1174,30 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL8: SchemaClass = SchemaClass {
         Attribute::Image,
         Attribute::PatchLevel,
         Attribute::DomainDevelopmentTaint,
+    ],
+    systemmust: vec![
+        Attribute::Name,
+        Attribute::DomainUuid,
+        Attribute::DomainName,
+        Attribute::DomainDisplayName,
+        Attribute::Version,
+    ],
+    ..Default::default()
+};
+
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL9: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid,
+        Attribute::DomainLdapBasedn,
+        Attribute::LdapAllowUnixPwBind,
+        Attribute::Image,
+        Attribute::PatchLevel,
+        Attribute::DomainDevelopmentTaint,
+        Attribute::DomainAllowEasterEggs,
     ],
     systemmust: vec![
         Attribute::Name,

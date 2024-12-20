@@ -12,6 +12,12 @@ impl GroupAccountPolicyOpt {
             | GroupAccountPolicyOpt::LimitSearchMaxResults { copt, .. }
             | GroupAccountPolicyOpt::LimitSearchMaxFilterTest { copt, .. }
             | GroupAccountPolicyOpt::AllowPrimaryCredFallback { copt, .. }
+            | GroupAccountPolicyOpt::ResetWebauthnAttestationCaList { copt, .. }
+            | GroupAccountPolicyOpt::ResetAuthSessionExpiry { copt, .. }
+            | GroupAccountPolicyOpt::ResetPasswordMinimumLength { copt, .. }
+            | GroupAccountPolicyOpt::ResetPrivilegedSessionExpiry { copt, .. }
+            | GroupAccountPolicyOpt::ResetLimitSearchMaxResults { copt, .. }
+            | GroupAccountPolicyOpt::ResetLimitSearchMaxFilterTest { copt, .. }
             | GroupAccountPolicyOpt::PrivilegedSessionExpiry { copt, .. } => copt.debug,
         }
     }
@@ -37,6 +43,19 @@ impl GroupAccountPolicyOpt {
                     println!("Updated authsession expiry.");
                 }
             }
+
+            GroupAccountPolicyOpt::ResetAuthSessionExpiry { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_authsession_expiry_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset authsession expiry.");
+                }
+            }
+
             GroupAccountPolicyOpt::CredentialTypeMinimum { name, value, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
@@ -59,6 +78,17 @@ impl GroupAccountPolicyOpt {
                     println!("Updated password minimum length.");
                 }
             }
+            GroupAccountPolicyOpt::ResetPasswordMinimumLength { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_password_minimum_length_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset password minimum length.");
+                }
+            }
             GroupAccountPolicyOpt::PrivilegedSessionExpiry { name, expiry, copt } => {
                 let client = copt.to_client(OpType::Write).await;
                 if let Err(e) = client
@@ -70,14 +100,30 @@ impl GroupAccountPolicyOpt {
                     println!("Updated privilege session expiry.");
                 }
             }
+            GroupAccountPolicyOpt::ResetPrivilegedSessionExpiry { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_privilege_expiry_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset privilege session expiry.");
+                }
+            }
             GroupAccountPolicyOpt::WebauthnAttestationCaList {
                 name,
-                attestation_ca_list_json,
+                attestation_ca_list_json_file,
                 copt,
             } => {
                 let client = copt.to_client(OpType::Write).await;
+                let json = std::fs::read_to_string(attestation_ca_list_json_file).unwrap_or_else(|e| {
+                    error!("Could not read attestation CA list JSON file {attestation_ca_list_json_file:?}: {e:?}");
+                    std::process::exit(1);
+                });
+
                 if let Err(e) = client
-                    .group_account_policy_webauthn_attestation_set(name, attestation_ca_list_json)
+                    .group_account_policy_webauthn_attestation_set(name, &json)
                     .await
                 {
                     handle_client_error(e, copt.output_mode);
@@ -85,6 +131,19 @@ impl GroupAccountPolicyOpt {
                     println!("Updated webauthn attestation CA list.");
                 }
             }
+
+            GroupAccountPolicyOpt::ResetWebauthnAttestationCaList { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_webauthn_attestation_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset webauthn attestation CA list.");
+                }
+            }
+
             GroupAccountPolicyOpt::LimitSearchMaxResults {
                 name,
                 maximum,
@@ -100,6 +159,17 @@ impl GroupAccountPolicyOpt {
                     println!("Updated search maximum results limit.");
                 }
             }
+            GroupAccountPolicyOpt::ResetLimitSearchMaxResults { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_limit_search_max_results_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset search maximum results limit to default.");
+                }
+            }
             GroupAccountPolicyOpt::LimitSearchMaxFilterTest {
                 name,
                 maximum,
@@ -113,6 +183,17 @@ impl GroupAccountPolicyOpt {
                     handle_client_error(e, copt.output_mode);
                 } else {
                     println!("Updated search maximum filter test limit.");
+                }
+            }
+            GroupAccountPolicyOpt::ResetLimitSearchMaxFilterTest { name, copt } => {
+                let client = copt.to_client(OpType::Write).await;
+                if let Err(e) = client
+                    .group_account_policy_limit_search_max_filter_test_reset(name)
+                    .await
+                {
+                    handle_client_error(e, copt.output_mode);
+                } else {
+                    println!("Successfully reset search maximum filter test limit.");
                 }
             }
             GroupAccountPolicyOpt::AllowPrimaryCredFallback { name, allow, copt } => {

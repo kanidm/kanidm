@@ -31,6 +31,8 @@ weakest to strongest:
 - `passkey`
 - `attested_passkey`
 
+`attested_passkey` requires [configuring an allowlist of trusted authenticators](#setting-webauthn-attestation-ca-lists).
+
 ### Password Minimum Length
 
 The minimum length for passwords (if they are allowed).
@@ -45,7 +47,7 @@ read/write session.
 The list of certificate authorities and device aaguids that must be used by members of this policy.
 This allows limiting devices to specific models.
 
-To generate this list you should use `fido-mds-tool`.
+To generate this list you should [use `fido-mds-tool`](#setting-webauthn-attestation-ca-lists).
 
 ## Policy Resolution
 
@@ -149,15 +151,42 @@ kanidm group account-policy privilege-expiry my_admin_group 86400 # NB: will be 
 
 ### Setting Webauthn Attestation CA Lists
 
-The list should be generated with `fido-mds-tool`. This will emit JSON that can be directly used
-with Kanidm.
+To verify Webauthn authenticators with attestation, Kanidm needs an allowlist of
+authenticators to trust. Generate this list with the `fido-mds-tool` from
+the [webauthn-rs project](https://github.com/kanidm/webauthn-rs). If you have a
+Rust toolchain installed, it can built and installed from source with
 
 ```bash
-kanidm group account-policy webauthn-attestation-ca-list <group name> <attestation ca list json>
-kanidm group account-policy webauthn-attestation-ca-list idm_all_persons '{"cas":{"D6E4b4Drh .... }'
+cargo install fido-mds-tool
 ```
 
-> NOTE: `fido-mds-tool` is available in the `kanidm:tools` container.
+Alternatively, `fido-mds-tool` is available in the
+[tools container](../installing_client_tools.md#tools-container).
+
+First, fetch the MDS data provided by the FIDO Alliance:
+```bash
+fido-mds-tool fetch
+```
+
+Then, query the MDS data to generate your allowlist of authenticators.
+For example, to trust all authenticators made by Yubico, run
+
+```bash
+fido-mds-tool query --output-cert-roots "desc cnt yubikey" > trusted-authenticators
+```
+
+For details of how to query the MDS data, run
+
+```bash
+fido-mds-tool query --help
+```
+
+Once you have generated the authenticator allowlist, use it to configure Kanidm's
+account policy for a group. For example, to set the allowlist for all persons, run
+
+```bash
+kanidm group account-policy webauthn-attestation-ca-list idm_all_persons trusted-authenticators
+```
 
 ## Global Settings
 

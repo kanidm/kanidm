@@ -96,14 +96,7 @@ async fn oauth2_auth_req(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
     // If the auth_req was cross-signed, old, or just bad, error. But we have *cleared* it
     // from the cookie which means we won't see it again.
