@@ -220,6 +220,7 @@ pub struct ScimExternalMember {
     pub external_id: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimSyncGroup {
@@ -229,7 +230,7 @@ pub struct ScimSyncGroup {
     pub name: String,
     pub description: Option<String>,
     pub gidnumber: Option<u32>,
-    pub members: Vec<ScimExternalMember>,
+    pub member: Vec<ScimExternalMember>,
 }
 
 impl TryInto<ScimEntry> for ScimSyncGroup {
@@ -259,7 +260,7 @@ impl ScimSyncGroup {
                 name,
                 description: None,
                 gidnumber: None,
-                members: Vec::with_capacity(0),
+                member: Vec::with_capacity(0),
             },
         }
     }
@@ -288,7 +289,7 @@ impl ScimSyncGroupBuilder {
     where
         I: Iterator<Item = String>,
     {
-        self.inner.members = member_iter
+        self.inner.member = member_iter
             .map(|external_id| ScimExternalMember { external_id })
             .collect();
         self

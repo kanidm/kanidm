@@ -219,8 +219,8 @@ pub trait IdProvider {
     /// with remote members.
     fn has_map_group(&self, local: &str) -> Option<&Id>;
 
-    /// This is similar to a "domain join" process. What do we actually need to pass here
-    /// for this to work for kanidm or himmelblau? Should we make it take a generic?
+    // This is similar to a "domain join" process. What do we actually need to pass here
+    // for this to work for kanidm or himmelblau? Should we make it take a generic?
     /*
     async fn configure_machine_identity(
         &self,

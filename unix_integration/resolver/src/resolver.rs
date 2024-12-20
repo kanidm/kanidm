@@ -57,11 +57,15 @@ pub enum AuthSession {
         shutdown_rx: broadcast::Receiver<()>,
     },
     Offline {
+        account_id: String,
+        id: Id,
         client: Arc<dyn IdProvider + Sync + Send>,
         token: Box<UserToken>,
         cred_handler: AuthCredHandler,
     },
     System {
+        account_id: String,
+        id: Id,
         cred_handler: AuthCredHandler,
         shadow: Arc<Shadow>,
     },
@@ -316,7 +320,10 @@ impl Resolver {
         let offset = ex_time
             .duration_since(SystemTime::UNIX_EPOCH)
             .map_err(|e| {
-                error!("time conversion error - ex_time less than epoch? {:?}", e);
+                error!(
+                    "Time conversion error - cache expiry time became less than epoch? {:?}",
+                    e
+                );
             })?;
 
         // Check if requested `shell` exists on the system, else use `default_shell`
@@ -324,10 +331,13 @@ impl Resolver {
             .shell
             .as_ref()
             .map(|shell| {
-                let exists = Path::new(shell).exists();
+                let exists = Path::new(shell).canonicalize()
+                    .map_err(|err|{
+                        debug!("Failed to canonicalize path, using base path. Tried: {} Error: {:?}", shell, err);
+                    }).unwrap_or(Path::new(shell).to_path_buf()).exists();
                 if !exists {
-                    info!(
-                        "User shell is not present on this system - {}. Check `/etc/shells` for valid shell options.",
+                    warn!(
+                        "Configured shell for {} is not present on this system - {}. Check `/etc/shells` for valid shell options.", token.name,
                         shell
                     )
                 }
@@ -408,9 +418,12 @@ impl Resolver {
                 }
                 None => {
                     error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
-                    // We don't know if this is permanent or transient, so just useCached, unless
-                    // the admin clears tokens from providers that are no longer present.
-                    Ok(UserTokenState::UseCached)
+
+                    // We don't want to use a token from a former provider, we want it refreshed,
+                    // so lets indicate that we didn't find the token. If we return useCcahed like
+                    // we did previously, we'd never clear and reset this token since we'd never
+                    // locate it's provider.
+                    Ok(UserTokenState::NotFound)
                 }
             }
         } else {
@@ -477,9 +490,11 @@ impl Resolver {
                 }
                 None => {
                     error!(provider = ?tok.provider, "Token was resolved by a provider that no longer appears to be present.");
-                    // We don't know if this is permanent or transient, so just useCached, unless
-                    // the admin clears tokens from providers that are no longer present.
-                    Ok(GroupTokenState::UseCached)
+                    // We don't want to use a token from a former provider, we want it refreshed,
+                    // so lets indicate that we didn't find the token. If we return useCcahed like
+                    // we did previously, we'd never clear and reset this token since we'd never
+                    // locate it's provider.
+                    Ok(GroupTokenState::NotFound)
                 }
             }
         } else {
@@ -818,7 +833,7 @@ impl Resolver {
         match self.system_provider.auth_init(&id, current_time).await {
             // The system provider will not take part in this authentication.
             SystemProviderAuthInit::Ignore => {
-                debug!("account unknown to system provider, continue.");
+                debug!(?account_id, "account unknown to system provider, continue.");
             }
             // The provider knows the account, and is unable to proceed,
             // We return unknown here so that pam_kanidm can be skipped and fall back
@@ -853,6 +868,8 @@ impl Resolver {
                 shadow,
             } => {
                 let auth_session = AuthSession::System {
+                    account_id: account_id.to_string(),
+                    id,
                     shadow,
                     cred_handler,
                 };
@@ -916,6 +933,8 @@ impl Resolver {
                 match init_result {
                     Ok((next_req, cred_handler)) => {
                         let auth_session = AuthSession::Offline {
+                            account_id: account_id.to_string(),
+                            id,
                             client,
                             token: Box::new(token),
                             cred_handler,
@@ -998,7 +1017,7 @@ impl Resolver {
                 ref shutdown_rx,
             } => {
                 let mut hsm_lock = self.hsm.lock().await;
-                client
+                let result = client
                     .unix_user_online_auth_step(
                         account_id,
                         cred_handler,
@@ -1006,9 +1025,26 @@ impl Resolver {
                         hsm_lock.deref_mut(),
                         shutdown_rx,
                     )
-                    .await
+                    .await;
+
+                match result {
+                    Ok(AuthResult::Success { .. }) => {
+                        info!(?account_id, "Authentication Success");
+                    }
+                    Ok(AuthResult::Denied) => {
+                        info!(?account_id, "Authentication Denied");
+                    }
+                    Ok(AuthResult::Next(_)) => {
+                        info!(?account_id, "Authentication Continue");
+                    }
+                    _ => {}
+                };
+
+                result
             }
             &mut AuthSession::Offline {
+                ref account_id,
+                id: _,
                 ref client,
                 ref token,
                 ref mut cred_handler,
@@ -1016,16 +1052,33 @@ impl Resolver {
                 // We are offline, continue. Remember, authsession should have
                 // *everything you need* to proceed here!
                 let mut hsm_lock = self.hsm.lock().await;
-                client
+                let result = client
                     .unix_user_offline_auth_step(
                         token,
                         cred_handler,
                         pam_next_req,
                         hsm_lock.deref_mut(),
                     )
-                    .await
+                    .await;
+
+                match result {
+                    Ok(AuthResult::Success { .. }) => {
+                        info!(?account_id, "Authentication Success");
+                    }
+                    Ok(AuthResult::Denied) => {
+                        info!(?account_id, "Authentication Denied");
+                    }
+                    Ok(AuthResult::Next(_)) => {
+                        info!(?account_id, "Authentication Continue");
+                    }
+                    _ => {}
+                };
+
+                result
             }
             &mut AuthSession::System {
+                ref account_id,
+                id: _,
                 ref mut cred_handler,
                 ref shadow,
             } => {
@@ -1036,11 +1089,15 @@ impl Resolver {
 
                 let next = match system_auth_result {
                     SystemAuthResult::Denied => {
+                        info!(?account_id, "Authentication Denied");
+
                         *auth_session = AuthSession::Denied;
 
                         Ok(PamAuthResponse::Denied)
                     }
                     SystemAuthResult::Success => {
+                        info!(?account_id, "Authentication Success");
+
                         *auth_session = AuthSession::Success;
 
                         Ok(PamAuthResponse::Success)
@@ -1057,7 +1114,6 @@ impl Resolver {
         match maybe_err {
             // What did the provider direct us to do next?
             Ok(AuthResult::Success { mut token }) => {
-                debug!("provider authentication success.");
                 self.set_cache_usertoken(&mut token).await?;
                 *auth_session = AuthSession::Success;
 

@@ -3,7 +3,6 @@ use crate::schema::SchemaAttribute;
 use crate::valueset::ScimResolveStatus;
 use crate::valueset::{DbValueSetV2, ValueSet};
 use kanidm_proto::internal::Filter as ProtoFilter;
-
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
@@ -206,6 +205,9 @@ mod tests {
   "{\"pres\":\"class\"}"
 ]
         "#;
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
+
+        // Test that we can parse json values into a valueset.
+        // crate::valueset::scim_json_put_reflexive::<ValueSetJsonFilter>(vs, &[])
     }
 }

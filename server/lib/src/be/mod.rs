@@ -173,9 +173,9 @@ pub struct BackendReadTransaction<'a> {
     ruv: ReplicationUpdateVectorReadTransaction<'a>,
 }
 
-unsafe impl<'a> Sync for BackendReadTransaction<'a> {}
+unsafe impl Sync for BackendReadTransaction<'_> {}
 
-unsafe impl<'a> Send for BackendReadTransaction<'a> {}
+unsafe impl Send for BackendReadTransaction<'_> {}
 
 pub struct BackendWriteTransaction<'a> {
     idlayer: IdlArcSqliteWriteTransaction<'a>,
@@ -1009,7 +1009,7 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     }
 }
 
-impl<'a> BackendReadTransaction<'a> {
+impl BackendReadTransaction<'_> {
     pub fn list_indexes(&mut self) -> Result<Vec<String>, OperationError> {
         self.get_idlayer().list_idxs()
     }
@@ -1684,7 +1684,7 @@ impl<'a> BackendWriteTransaction<'a> {
         let dbv = self.get_db_index_version()?;
         admin_debug!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
-            self.reindex()?;
+            self.reindex(false)?;
             self.set_db_index_version(v)
         } else {
             Ok(())
@@ -1692,8 +1692,14 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[instrument(level = "info", skip_all)]
-    pub fn reindex(&mut self) -> Result<(), OperationError> {
-        limmediate_warning!("NOTICE: System reindex started\n");
+    pub fn reindex(&mut self, immediate: bool) -> Result<(), OperationError> {
+        let notice_immediate = immediate || (cfg!(not(test)) && cfg!(not(debug_assertions)));
+
+        info!(
+            immediate = notice_immediate,
+            "System reindex: started - this may take a long time!"
+        );
+
         // Purge the idxs
         self.idlayer.danger_purge_idxs()?;
 
@@ -1704,39 +1710,46 @@ impl<'a> BackendWriteTransaction<'a> {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IdList::AllIds;
-        let entries = self.idlayer.get_identry(&idl).map_err(|e| {
-            admin_error!(err = ?e, "get_identry failure");
-            e
+        let entries = self.idlayer.get_identry(&idl).inspect_err(|err| {
+            error!(?err, "get_identry failure");
         })?;
 
         let mut count = 0;
 
+        // This is the longest phase of reindexing, so we have a "progress" display here.
         entries
             .iter()
             .try_for_each(|e| {
-                count += 1;
-                if count % 2500 == 0 {
-                    limmediate_warning!("{}", count);
-                } else if count % 250 == 0 {
-                    limmediate_warning!(".");
+                if immediate {
+                    count += 1;
+                    if count % 2500 == 0 {
+                        eprint!("{}", count);
+                    } else if count % 250 == 0 {
+                        eprint!(".");
+                    }
                 }
+
                 self.entry_index(None, Some(e))
             })
-            .map_err(|e| {
-                admin_error!("reindex failed -> {:?}", e);
-                e
+            .inspect_err(|err| {
+                error!(?err, "reindex failed");
             })?;
-        limmediate_warning!("done ✅: reindexed {} entries\n", count);
-        limmediate_warning!("Optimising Indexes ... ");
+
+        if immediate {
+            eprintln!(" done ✅");
+        }
+
+        info!(immediate, "Reindexed {count} entries");
+
+        info!("Optimising Indexes: started");
         self.idlayer.optimise_dirty_idls();
-        limmediate_warning!("done ✅\n");
-        limmediate_warning!("Calculating Index Optimisation Slopes ... ");
-        self.idlayer.analyse_idx_slopes().map_err(|e| {
-            admin_error!(err = ?e, "index optimisation failed");
-            e
+        info!("Optimising Indexes: complete ✅");
+        info!("Calculating Index Optimisation Slopes: started");
+        self.idlayer.analyse_idx_slopes().inspect_err(|err| {
+            error!(?err, "index optimisation failed");
         })?;
-        limmediate_warning!("done ✅\n");
-        limmediate_warning!("NOTICE: System reindex complete\n");
+        info!("Calculating Index Optimisation Slopes: complete ✅");
+        info!("System reindex: complete 🎉");
         Ok(())
     }
 
@@ -1906,9 +1919,6 @@ impl<'a> BackendWriteTransaction<'a> {
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         info!("Restored {} entries", dbentries.len());
-
-        // Reindex now we are loaded.
-        self.reindex()?;
 
         let vr = self.verify();
         if vr.is_empty() {
@@ -2696,7 +2706,7 @@ mod tests {
             // Add some test data?
             let missing = be.missing_idxs().unwrap();
             assert_eq!(missing.len(), 7);
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
             assert!(missing.is_empty());
@@ -2730,7 +2740,7 @@ mod tests {
             // Check they are gone
             let missing = be.missing_idxs().unwrap();
             assert_eq!(missing.len(), 7);
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
             assert!(missing.is_empty());
@@ -2876,7 +2886,7 @@ mod tests {
     fn test_be_index_create_delete_simple() {
         run_test!(|be: &mut BackendWriteTransaction| {
             // First, setup our index tables!
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2979,7 +2989,7 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // delete multiple entries at a time, without deleting others
             // First, setup our index tables!
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -3079,7 +3089,7 @@ mod tests {
     #[test]
     fn test_be_index_modify_simple() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             // modify with one type, ensuring we clean the indexes behind
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
@@ -3158,7 +3168,7 @@ mod tests {
     #[test]
     fn test_be_index_modify_rename() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             // test when we change name AND uuid
             // This will be needing to be correct for conflicts when we add
             // replication support!
@@ -3251,7 +3261,7 @@ mod tests {
     #[test]
     fn test_be_index_search_simple() {
         run_test!(|be: &mut BackendWriteTransaction| {
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -3622,7 +3632,7 @@ mod tests {
 
             // Now check slope generation for the values. Today these are calculated
             // at reindex time, so we now perform the re-index.
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
@@ -3733,7 +3743,7 @@ mod tests {
             assert!(res.is_ok());
 
             // --> This will shortcut due to indexing.
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
             let res = be.search(&lim_deny, &filt);
             assert_eq!(res, Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
@@ -3774,7 +3784,7 @@ mod tests {
             assert!(single_result.is_ok());
 
             // Reindex so we have things in place for our query
-            assert!(be.reindex().is_ok());
+            assert!(be.reindex(false).is_ok());
 
             // 🚨 This is evil!
             // The and allows us to hit "allids + indexed -> partial".

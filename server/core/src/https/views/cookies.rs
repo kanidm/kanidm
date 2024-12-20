@@ -6,16 +6,16 @@ use compact_jwt::{Jws, JwsSigner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+#[instrument(name = "views::cookies::destroy", level = "debug", skip(jar))]
 pub fn destroy(jar: CookieJar, ck_id: &str) -> CookieJar {
     if let Some(ck) = jar.get(ck_id) {
-        let mut ck = ck.clone();
-        ck.make_removal();
-        /*
-        if let Some(path) = ck.path().cloned() {
-            ck.set_path(&path);
-        }
-        */
-        jar.add(ck)
+        let mut removal_cookie = ck.clone();
+        removal_cookie.make_removal();
+        // Need to be set to / to remove on all parent paths.
+        // If you don't set a path, NOTHING IS REMOVED!!!
+        removal_cookie.set_path("/");
+
+        jar.add(removal_cookie)
     } else {
         jar
     }
@@ -37,8 +37,6 @@ pub fn make_unsigned<'a>(
     // then webauthn won't work anyway!
     token_cookie.set_domain(state.domain.clone());
     token_cookie.set_path(path);
-    // These last forever.
-    token_cookie.make_permanent();
     token_cookie
 }
 
@@ -71,8 +69,6 @@ pub fn make_signed<'a, T: Serialize>(
     token_cookie.set_http_only(true);
     token_cookie.set_path(path);
     token_cookie.set_domain(state.domain.clone());
-    // These last forever, we have our own internal expiration handling.
-    token_cookie.make_permanent();
     Some(token_cookie)
 }
 

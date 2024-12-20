@@ -458,6 +458,7 @@ impl ValueSetT for ValueSetImage {
 
 #[cfg(test)]
 mod tests {
+    // use super::ValueSetImage;
     use super::{ImageType, ImageValue, ImageValueThings};
 
     #[test]
@@ -511,8 +512,8 @@ mod tests {
         assert!(!image.hash_imagevalue().is_empty());
     }
 
-    /*
     // This test is broken on github as it appears to be changing the binary image hash.
+    /*
     #[test]
     fn test_scim_imagevalue() {
         let filename = format!(
@@ -531,7 +532,7 @@ mod tests {
             "142dc7984dd548dd5dacfe2ad30f8473e3217e39b3b6c8d17a0cf6e4e24b02e0"
         ]"#;
 
-        crate::valueset::scim_json_reflexive(vs, data);
+        crate::valueset::scim_json_reflexive(vs.clone(), data);
     }
     */
 }

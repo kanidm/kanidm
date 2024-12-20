@@ -17,7 +17,13 @@ import yarl
 
 from kanidm.models.group import Group, GroupList, IGroup, RawGroup
 from kanidm.models.oauth2_rs import IOauth2Rs, OAuth2Rs, Oauth2RsList, RawOAuth2Rs
-from kanidm.models.person import IPerson, Person, PersonList, RawPerson
+from kanidm.models.person import (
+    IPerson,
+    Person,
+    PersonList,
+    RawPerson,
+    PersonCredentialResetToken,
+)
 from kanidm.models.service_account import (
     IServiceAccount,
     ServiceAccount,
@@ -93,7 +99,7 @@ class KanidmClient:
         """Constructor for KanidmClient"""
 
         self.logger = logger or getLogger(__name__)
-        self.instance_name = instance_name # TODO: use this in loaders etc
+        self.instance_name = instance_name  # TODO: use this in loaders etc
         if config is not None:
             self.config = config
         else:
@@ -123,7 +129,7 @@ class KanidmClient:
 
     def _configure_ssl(self) -> None:
         """Sets up SSL configuration for the client"""
-        if False in [self.config.verify_certificate, self.config.verify_hostnames ]:
+        if False in [self.config.verify_certificate, self.config.verify_hostnames]:
             logging.debug("Setting up SSL context with no verification")
             self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
             self._ssl_context.hostname_checks_common_name = False
@@ -135,9 +141,8 @@ class KanidmClient:
                     raise FileNotFoundError(f"CA Path not found: {self.config.ca_path}")
                 else:
                     self.logger.debug("Setting up SSL context with CA path=%s", self.config.ca_path)
-                    self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH,cafile=self.config.ca_path)
+                    self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH, cafile=self.config.ca_path)
             else:
-
                 logging.debug("Setting up default SSL context")
                 self._ssl_context = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
 
@@ -521,9 +526,7 @@ class KanidmClient:
         """get an OAuth2 client"""
         endpoint = f"{Endpoints.OAUTH2}/{rs_name}"
         response: ClientResponse[IOauth2Rs] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get oauth2 resource server: {response.content}")
         return RawOAuth2Rs(**response.data).as_oauth2_rs
 
@@ -583,9 +586,7 @@ class KanidmClient:
         """Get a service account"""
         endpoint = f"{Endpoints.SERVICE_ACCOUNT}/{name}"
         response: ClientResponse[IServiceAccount] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get service account: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get service account: {response.content}")
         return RawServiceAccount(**response.data).as_service_account
 
@@ -672,9 +673,7 @@ class KanidmClient:
         """Get a group"""
         endpoint = f"{Endpoints.GROUP}/{name}"
         response: ClientResponse[IGroup] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get group: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get group: {response.content}")
         return RawGroup(**response.data).as_group
 
@@ -719,9 +718,7 @@ class KanidmClient:
         """Get a person by name"""
         endpoint = f"{Endpoints.PERSON}/{name}"
         response: ClientResponse[IPerson] = await self.call_get(endpoint)
-        if response.status_code != 200:
-            raise ValueError(f"Failed to get person: {response.content}")
-        if response.data is None:
+        if response.status_code != 200 or response.data is None:
             raise ValueError(f"Failed to get person: {response.content}")
         return RawPerson(**response.data).as_person
 
@@ -764,6 +761,19 @@ class KanidmClient:
         """Delete a person"""
         endpoint = f"{Endpoints.PERSON}/{id}"
         return await self.call_delete(endpoint)
+
+    async def person_account_credential_update_token(self, id: str, ttl: Optional[int] = None) -> PersonCredentialResetToken:
+        """Create a password reset token for person with an optional time to live in seconds"""
+        endpoint = f"{Endpoints.PERSON}/{id}/_credential/_update_intent"
+        if ttl:
+            endpoint = f"{endpoint}/{ttl}"
+
+        response: ClientResponse[Any] = await self.call_get(endpoint)
+        if response.status_code != 200 or response.content is None:
+            raise ValueError(f"Failed to get token: {response.content}")
+        token = PersonCredentialResetToken.model_validate(json_lib.loads(response.content))
+
+        return token
 
     async def person_account_post_ssh_key(self, id: str, tag: str, pubkey: str) -> ClientResponse[None]:
         """Create an SSH key for a user"""

@@ -110,9 +110,9 @@ These validity settings impact all authentication functions of the account (kani
 
 By default, Kanidm allows an account to change some attributes, but not their mail address.
 
-Adding the user to the `idm_people_self_write_mail` group, as shown below, allows the user to edit
+Adding the user to the `idm_people_self_mail_write` group, as shown below, allows the user to edit
 their own mail.
 
 ```bash
-kanidm group add-members idm_people_self_write_mail demo_user --name idm_admin
+kanidm group add-members idm_people_self_mail_write demo_user --name idm_admin
 ```

@@ -1,7 +1,9 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::{DbValueSetV2, ScimResolveStatus, ValueSet};
-
+use crate::valueset::{
+    DbValueSetV2, ScimResolveStatus, ValueSet, ValueSetResolveStatus, ValueSetScimPut,
+};
+use kanidm_proto::scim_v1::JsonValue;
 use smolset::SmolSet;
 
 #[derive(Debug, Clone)]
@@ -24,6 +26,29 @@ impl ValueSetSyntax {
         let set: Result<_, _> = data.into_iter().map(SyntaxType::try_from).collect();
         let set = set.map_err(|_| OperationError::InvalidValueState)?;
         Ok(Box::new(ValueSetSyntax { set }))
+    }
+}
+
+impl ValueSetScimPut for ValueSetSyntax {
+    fn from_scim_json_put(value: JsonValue) -> Result<ValueSetResolveStatus, OperationError> {
+        let value = serde_json::from_value::<String>(value)
+            .map_err(|err| {
+                error!(?err, "SCIM SyntaxType syntax invalid");
+                OperationError::SC0008SyntaxTypeSyntaxInvalid
+            })
+            .and_then(|value| {
+                SyntaxType::try_from(value.as_str()).map_err(|()| {
+                    error!("SCIM SyntaxType syntax invalid - value");
+                    OperationError::SC0008SyntaxTypeSyntaxInvalid
+                })
+            })?;
+
+        let mut set = SmolSet::new();
+        set.insert(value);
+
+        Ok(ValueSetResolveStatus::Resolved(Box::new(ValueSetSyntax {
+            set,
+        })))
     }
 }
 
@@ -106,9 +131,10 @@ impl ValueSetT for ValueSetSyntax {
     }
 
     fn to_scim_value(&self) -> Option<ScimResolveStatus> {
-        Some(ScimResolveStatus::Resolved(ScimValueKanidm::from(
-            self.set.iter().map(|u| u.to_string()).collect::<Vec<_>>(),
-        )))
+        self.set
+            .iter()
+            .next()
+            .map(|u| ScimResolveStatus::Resolved(ScimValueKanidm::from(u.to_string())))
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -162,6 +188,9 @@ mod tests {
     #[test]
     fn test_scim_syntax() {
         let vs: ValueSet = ValueSetSyntax::new(SyntaxType::Uuid);
-        crate::valueset::scim_json_reflexive(vs, r#"["UUID"]"#);
+        crate::valueset::scim_json_reflexive(vs.clone(), r#""UUID""#);
+
+        // Test that we can parse json values into a valueset.
+        crate::valueset::scim_json_put_reflexive::<ValueSetSyntax>(vs, &[])
     }
 }

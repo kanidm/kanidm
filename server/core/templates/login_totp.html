@@ -10,6 +10,17 @@
 (% endmatch %)
 <form id="login" action="/ui/login/totp" method="post">
 	<div class="input-group mb-3">
+		<!-- BEGIN: allows a password manager to autocomplete these fields in the BG. -->
+		<input
+			class="d-none"
+			id="password"
+			name="password"
+			type="password"
+			autocomplete="current-password"
+			value=""
+		/>
+		<!-- END -->
+
 		<input
 			autofocus=true
 			class="autofocus form-control"

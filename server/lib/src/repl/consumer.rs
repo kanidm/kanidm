@@ -5,7 +5,7 @@ use crate::server::ChangeFlag;
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     // Apply the state changes if they are valid.
 
     fn consumer_incremental_apply_entries(
@@ -623,7 +623,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // We have to reindex to force all the existing indexes to be dumped
         // and recreated before we start to import.
-        self.reindex().inspect_err(|err| {
+        self.reindex(false).inspect_err(|err| {
             error!(?err, "Failed to reload schema");
         })?;
 

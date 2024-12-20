@@ -16,6 +16,7 @@ use crate::https::ServerState;
 mod apps;
 mod constants;
 mod cookies;
+mod enrol;
 mod errors;
 mod login;
 mod navbar;
@@ -37,6 +38,7 @@ pub fn view_router() -> Router<ServerState> {
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
         )
         .route("/apps", get(apps::view_apps_get))
+        .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))

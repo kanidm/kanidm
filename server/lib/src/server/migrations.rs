@@ -58,7 +58,7 @@ impl QueryServer {
             // sure that some base IDM operations are fast. Since this is still
             // very early in the bootstrap process, and very few entries exist,
             // reindexing is very fast here.
-            write_txn.reindex()?;
+            write_txn.reindex(false)?;
         } else {
             // Domain info was present, so we need to reflect that in our server
             // domain structures. If we don't do this, the in memory domain level
@@ -184,7 +184,7 @@ impl QueryServer {
             write_txn.reload()?;
             // We are not yet at the schema phase where reindexes will auto-trigger
             // so if one was required, do it now.
-            write_txn.reindex()?;
+            write_txn.reindex(false)?;
         }
 
         // Now set the db/domain devel taint flag to match our current release status
@@ -214,7 +214,7 @@ impl QueryServer {
     }
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// Apply a domain migration `to_level`. Panics if `to_level` is not greater than the active
     /// level.
     #[cfg(test)]
@@ -647,7 +647,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // Now update schema
         let idm_schema_changes = [
             SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
+            SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL9.clone().into(),
         ];
 
         idm_schema_changes
@@ -660,7 +662,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         self.reload()?;
 
-        let idm_data = [IDM_ACP_OAUTH2_MANAGE_DL9.clone().into()];
+        let idm_data = [
+            IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
+            IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
+        ];
 
         idm_data
             .into_iter()
@@ -1064,7 +1070,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 }
 
-impl<'a> QueryServerReadTransaction<'a> {
+impl QueryServerReadTransaction<'_> {
     /// Retrieve the domain info of this server
     pub fn domain_upgrade_check(
         &mut self,

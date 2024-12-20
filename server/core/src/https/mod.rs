@@ -53,6 +53,7 @@ use tokio::{
 use tokio_openssl::SslStream;
 use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
+use url::Url;
 use uuid::Uuid;
 
 use std::io::ErrorKind;
@@ -62,16 +63,17 @@ use std::{net::SocketAddr, str::FromStr};
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub status_ref: &'static StatusActor,
-    pub qe_w_ref: &'static QueryServerWriteV1,
-    pub qe_r_ref: &'static QueryServerReadV1,
+    pub(crate) status_ref: &'static StatusActor,
+    pub(crate) qe_w_ref: &'static QueryServerWriteV1,
+    pub(crate) qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub jws_signer: JwsHs256Signer,
+    pub(crate) jws_signer: JwsHs256Signer,
     pub(crate) trust_x_forward_for: bool,
-    pub csp_header: HeaderValue,
-    pub domain: String,
+    pub(crate) csp_header: HeaderValue,
+    pub(crate) origin: Url,
+    pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
-    pub secure_cookies: bool,
+    pub(crate) secure_cookies: bool,
 }
 
 impl ServerState {
@@ -209,6 +211,12 @@ pub async fn create_https_server(
 
     let trust_x_forward_for = config.trust_x_forward_for;
 
+    let origin = Url::parse(&config.origin)
+        // Should be impossible!
+        .map_err(|err| {
+            error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
+        })?;
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -216,6 +224,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for,
         csp_header,
+        origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
     };

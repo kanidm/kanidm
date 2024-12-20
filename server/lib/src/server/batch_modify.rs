@@ -1,16 +1,16 @@
 use super::{ChangeFlag, QueryServerWriteTransaction};
 use crate::prelude::*;
 use crate::server::Plugins;
-use hashbrown::HashMap;
+use std::collections::BTreeMap;
 
-pub type ModSetValid = HashMap<Uuid, ModifyList<ModifyValid>>;
+pub type ModSetValid = BTreeMap<Uuid, ModifyList<ModifyValid>>;
 
 pub struct BatchModifyEvent {
     pub ident: Identity,
     pub modset: ModSetValid,
 }
 
-impl<'a> QueryServerWriteTransaction<'a> {
+impl QueryServerWriteTransaction<'_> {
     /// This function behaves different to modify. Modify applies the same
     /// modification operation en-mass to 1 -> N entries. This takes a set of modifications
     /// that define a precise entry to apply a change to and only modifies that.

@@ -46,14 +46,13 @@ use serde_with::{formats, serde_as};
 use time::OffsetDateTime;
 use tracing::trace;
 use uri::{OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::{Origin, Url};
+use url::{Host, Origin, Url};
 
 use crate::idm::account::Account;
 use crate::idm::server::{
     IdmServerProxyReadTransaction, IdmServerProxyWriteTransaction, IdmServerTransaction,
 };
 use crate::prelude::*;
-use crate::utils::str_join;
 use crate::value::{Oauth2Session, OauthClaimMapJoin, SessionState, OAUTHSCOPE_RE};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -251,9 +250,21 @@ enum OauthRSType {
     },
 }
 
+impl OauthRSType {
+    /// We only allow localhost redirects if PKCE is enabled/required
+    fn allow_localhost_redirect(&self) -> bool {
+        match self {
+            OauthRSType::Basic { .. } => false,
+            OauthRSType::Public {
+                allow_localhost_redirect,
+            } => *allow_localhost_redirect,
+        }
+    }
+}
+
 impl std::fmt::Debug for OauthRSType {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        let mut ds = f.debug_struct("Oauth2RSType");
+        let mut ds = f.debug_struct("OauthRSType");
         match self {
             OauthRSType::Basic { enable_pkce, .. } => {
                 ds.field("type", &"basic").field("pkce", enable_pkce)
@@ -449,7 +460,7 @@ impl Oauth2ResourceServers {
     }
 }
 
-impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
+impl Oauth2ResourceServersWriteTransaction<'_> {
     pub fn reload(
         &mut self,
         value: Vec<Arc<EntrySealedCommitted>>,
@@ -789,7 +800,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyWriteTransaction<'a> {
+impl IdmServerProxyWriteTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_token_revoke(
         &mut self,
@@ -1463,11 +1474,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let session_id = Uuid::new_v4();
 
-        let scope = if granted_scopes.is_empty() {
-            None
-        } else {
-            Some(str_join(&granted_scopes))
-        };
+        let scope = granted_scopes.clone();
 
         let uuid = o2rs.uuid;
 
@@ -1552,11 +1559,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let refresh_expiry = iat + OAUTH_REFRESH_TOKEN_EXPIRY as i64;
         let odt_refresh_expiry = odt_ct + Duration::from_secs(OAUTH_REFRESH_TOKEN_EXPIRY);
 
-        let scope = if scopes.is_empty() {
-            None
-        } else {
-            Some(str_join(&scopes))
-        };
+        let scope = scopes.clone();
 
         let iss = o2rs.iss.clone();
 
@@ -1777,7 +1780,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     #[instrument(level = "debug", skip_all)]
     pub fn check_oauth2_authorisation(
         &self,
@@ -1819,67 +1822,51 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Oauth2Error::InvalidClientId
             })?;
 
-        let allow_localhost_redirect = match &o2rs.type_ {
-            OauthRSType::Basic { .. } => false,
-            OauthRSType::Public {
-                allow_localhost_redirect,
-            } => *allow_localhost_redirect,
-        };
+        // redirect_uri must be part of the client_id origins, unless the client is public and then it MAY
+        // be a loopback address exempting it from this check and enforcement and we can carry on safely.
+        if o2rs.type_.allow_localhost_redirect() && check_is_loopback(&auth_req.redirect_uri) {
+            debug!("Loopback redirect_uri detected, allowing for localhost");
+        } else {
+            // The legacy origin match is in use.
+            let origin_uri_matched =
+                !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
+            // Strict uri validation is in use.
+            let strict_redirect_uri_matched =
+                o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
+            // Allow opaque origins such as app uris.
+            let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
 
-        let localhost_redirect = auth_req
-            .redirect_uri
-            .domain()
-            .map(|domain| domain == "localhost")
-            .unwrap_or_default();
-
-        // Strict uri validation is in use.
-        let strict_redirect_uri_matched =
-            o2rs.strict_redirect_uri && o2rs.redirect_uris.contains(&auth_req.redirect_uri);
-        // The legacy origin match is in use.
-        let origin_uri_matched =
-            !o2rs.strict_redirect_uri && o2rs.origins.contains(&auth_req.redirect_uri.origin());
-        // Allow opaque origins such as app uris.
-        let opaque_origin_matched = o2rs.opaque_origins.contains(&auth_req.redirect_uri);
-        // redirect_uri must be part of the client_id origin, unless the client is public and then it MAY
-        // be localhost exempting it from this check and enforcement.
-        let localhost_redirect_matched = allow_localhost_redirect && localhost_redirect;
-
-        // At least one of these conditions must hold true to proceed.
-        if !(strict_redirect_uri_matched
-            || origin_uri_matched
-            || opaque_origin_matched
-            || localhost_redirect_matched)
-        {
-            if o2rs.strict_redirect_uri {
-                warn!(
-                    "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
-                    auth_req.redirect_uri.as_str()
-                );
-            } else {
-                warn!(
-                    "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
-                    auth_req.redirect_uri.origin()
-                );
+            // At least one of these conditions must hold true to proceed.
+            if !(strict_redirect_uri_matched || origin_uri_matched || opaque_origin_matched) {
+                if o2rs.strict_redirect_uri {
+                    warn!(
+                                "Invalid OAuth2 redirect_uri (must be an exact match to a redirect-url) - got {}",
+                                auth_req.redirect_uri.as_str()
+                            );
+                } else {
+                    warn!(
+                        "Invalid OAuth2 redirect_uri (must be related to origin) - got {:?}",
+                        auth_req.redirect_uri.origin()
+                    );
+                }
+                return Err(Oauth2Error::InvalidOrigin);
             }
-            return Err(Oauth2Error::InvalidOrigin);
-        }
-
-        // We have to specifically match on http here because non-http origins may be exempt from this
-        // enforcement.
-        if !localhost_redirect
-            && o2rs.origin_https_required
-            && auth_req.redirect_uri.scheme() == "http"
-        {
-            admin_warn!(
-                "Invalid OAuth2 redirect_uri (must be https for secure origin) - got {:?}",
-                auth_req.redirect_uri.scheme()
-            );
-            return Err(Oauth2Error::InvalidOrigin);
+            // We have to specifically match on http here because non-http origins may be exempt from this
+            // enforcement.
+            if (o2rs.origin_https_required && auth_req.redirect_uri.scheme() != "https")
+                && !opaque_origin_matched
+            {
+                admin_warn!(
+                    "Invalid OAuth2 redirect_uri scheme (must be https for secure origin) - got {}",
+                    auth_req.redirect_uri.to_string()
+                );
+                return Err(Oauth2Error::InvalidOrigin);
+            }
         }
 
         let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
             if !o2rs.require_pkce() {
-                security_info!(?o2rs.name, "Insecure rs configuration - pkce is not enforced, but rs is requesting it!");
+                security_info!(?o2rs.name, "Insecure OAuth2 client configuration - PKCE is not enforced, but client is requesting it!");
             }
             // CodeChallengeMethod must be S256
             if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
@@ -1891,7 +1878,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
             return Err(Oauth2Error::InvalidRequest);
         } else {
-            security_info!(?o2rs.name, "Insecure client configuration - pkce is not enforced.");
+            security_info!(?o2rs.name, "Insecure client configuration - PKCE is not enforced.");
             None
         };
 
@@ -1928,7 +1915,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         };
 
         let Some(account_uuid) = ident.get_uuid() else {
-            error!("consent request ident does not have a valid uuid, unable to proceed");
+            error!("Consent request ident does not have a valid UUID, unable to proceed");
             return Err(Oauth2Error::InvalidRequest);
         };
 
@@ -1941,11 +1928,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         }
 
         // scopes - you need to have every requested scope or this auth_req is denied.
-        let req_scopes: BTreeSet<String> = auth_req
-            .scope
-            .split_ascii_whitespace()
-            .map(str::to_string)
-            .collect();
+        let req_scopes: BTreeSet<String> = auth_req.scope.clone();
 
         if req_scopes.is_empty() {
             admin_error!("Invalid OAuth2 request - must contain at least one requested scope");
@@ -2277,11 +2260,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
             // ==== good to generate response ====
 
-            let scope = if scopes.is_empty() {
-                None
-            } else {
-                Some(str_join(&scopes))
-            };
+            let scope = scopes.clone();
 
             let preferred_username = if prefer_short_username {
                 Some(account.name.clone())
@@ -2347,11 +2326,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                         return Ok(AccessTokenIntrospectResponse::inactive());
                     };
 
-                    let scope = if scopes.is_empty() {
-                        None
-                    } else {
-                        Some(str_join(&scopes))
-                    };
+                    let scope = scopes.clone();
 
                     let token_type = Some(AccessTokenType::Bearer);
 
@@ -2888,9 +2863,27 @@ fn parse_user_code(val: &str) -> Result<u32, Oauth2Error> {
     })
 }
 
+/// Check if a host is local (loopback or localhost)
+fn host_is_local(host: &Host<&str>) -> bool {
+    match host {
+        Host::Ipv4(ip) => ip.is_loopback(),
+        Host::Ipv6(ip) => ip.is_loopback(),
+        Host::Domain(domain) => *domain == "localhost",
+    }
+}
+
+/// Ensure that the redirect URI is a loopback/localhost address
+fn check_is_loopback(redirect_uri: &Url) -> bool {
+    redirect_uri.host().map_or(false, |host| {
+        // Check if the host is a loopback/localhost address.
+        host_is_local(&host)
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
+    use std::collections::BTreeSet;
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
@@ -2906,7 +2899,7 @@ mod tests {
     use openssl::sha;
 
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
-    use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
+    use crate::idm::oauth2::{host_is_local, AuthoriseResponse, Oauth2Error, OauthRSType};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
@@ -2940,6 +2933,8 @@ mod tests {
             $code_challenge:expr,
             $scope:expr
         ) => {{
+            let scope: BTreeSet<String> = $scope.split(" ").map(|s| s.to_string()).collect();
+
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
@@ -2949,7 +2944,7 @@ mod tests {
                     code_challenge_method: CodeChallengeMethod::S256,
                 }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: $scope,
+                scope,
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 max_age: None,
@@ -3441,7 +3436,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3462,7 +3457,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3483,7 +3478,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3504,7 +3499,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3525,7 +3520,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3546,7 +3541,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3569,7 +3564,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "invalid_scope read".to_string(),
+            scope: btreeset!["invalid_scope".to_string(), "read".to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3590,7 +3585,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "read openid".to_string(),
+            scope: btreeset!["openid".to_string(), "read".to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3611,7 +3606,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "read openid".to_string(),
+            scope: btreeset!["openid".to_string(), "read".to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -3905,7 +3900,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://portal.example.com").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -3975,7 +3970,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("app://cheese").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -4079,7 +4074,10 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
+        assert_eq!(
+            intr_response.scope,
+            btreeset!["openid".to_string(), "supplement".to_string()]
+        );
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")
@@ -5178,7 +5176,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5392,7 +5390,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: "openid email".to_string(),
+            scope: btreeset!["openid".to_string(), "email".to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5451,7 +5449,7 @@ mod tests {
             }),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             // Note the scope isn't requested here!
-            scope: "openid email".to_string(),
+            scope: btreeset!["openid".to_string(), "email".to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -5589,7 +5587,7 @@ mod tests {
             state: "123".to_string(),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -5667,7 +5665,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://demo.example.com/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: None,
             oidc_ext: Default::default(),
             max_age: None,
@@ -6568,7 +6566,10 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(intr_response.scope.as_deref(), Some("openid supplement"));
+        assert_eq!(
+            intr_response.scope,
+            btreeset!["openid".to_string(), "supplement".to_string()]
+        );
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")
@@ -6593,12 +6594,16 @@ mod tests {
         let ct = Duration::from_secs(TEST_CURRENT_TIME);
         let (_uat, ident, oauth2_rs_uuid) = setup_oauth2_resource_server_public(idms, ct).await;
 
-        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+        let mut idms_prox_write: crate::idm::server::IdmServerProxyWriteTransaction<'_> =
+            idms.proxy_write(ct).await.unwrap();
 
-        let modlist = ModifyList::new_list(vec![Modify::Present(
-            Attribute::OAuth2AllowLocalhostRedirect,
-            Value::Bool(true),
-        )]);
+        let redirect_uri = Url::parse("http://localhost:8765/oauth2/result")
+            .expect("Failed to parse redirect URL");
+
+        let modlist = ModifyList::new_list(vec![
+            Modify::Present(Attribute::OAuth2AllowLocalhostRedirect, Value::Bool(true)),
+            Modify::Present(Attribute::OAuth2RsOrigin, Value::Url(redirect_uri.clone())),
+        ]);
 
         assert!(idms_prox_write
             .qs_write
@@ -6624,7 +6629,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
             redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
-            scope: OAUTH2_SCOPE_OPENID.to_string(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
             max_age: None,
@@ -6655,7 +6660,7 @@ mod tests {
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
-                redirect_uri: Url::parse("http://localhost:8765/oauth2/result").unwrap(),
+                redirect_uri,
                 // From the first step.
                 code_verifier,
             },
@@ -6714,7 +6719,7 @@ mod tests {
 
         eprintln!("👉  {intr_response:?}");
         assert!(intr_response.active);
-        assert_eq!(intr_response.scope.as_deref(), Some("supplement"));
+        assert_eq!(intr_response.scope, btreeset!["supplement".to_string()]);
         assert_eq!(
             intr_response.client_id.as_deref(),
             Some("test_resource_server")
@@ -6872,5 +6877,71 @@ mod tests {
             .handle_oauth2_start_device_flow(client_auth_info, "test_rs_id", &None, eventid);
         dbg!(&res);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_url_localhost_domain() {
+        // ref #2390 - localhost with ports for OAuth2 redirect_uri
+
+        // ensure host_is_local isn't true for a non-local host
+        let example_is_not_local = "https://example.com/sdfsdf";
+        println!("Ensuring that {} is not local", example_is_not_local);
+        assert!(!host_is_local(
+            &Url::parse(example_is_not_local)
+                .expect("Failed to parse example.com as a host?")
+                .host()
+                .expect(&format!(
+                    "Couldn't get a host from {}",
+                    example_is_not_local
+                ))
+        ));
+
+        let test_urls = [
+            ("http://localhost:8080/oauth2/callback", "/oauth2/callback"),
+            ("https://localhost/foo/bar", "/foo/bar"),
+            ("http://127.0.0.1:12345/foo", "/foo"),
+            ("http://[::1]:12345/foo", "/foo"),
+        ];
+
+        for (url, path) in test_urls.into_iter() {
+            println!("Testing URL: {}", url);
+            let url = Url::parse(url).expect("One of the test values failed!");
+            assert!(host_is_local(
+                &url.host().expect("Didn't parse a host out?")
+            ));
+
+            assert_eq!(url.path(), path);
+        }
+    }
+
+    #[test]
+    fn test_oauth2_rs_type_allow_localhost_redirect() {
+        let test_cases = [
+            (
+                OauthRSType::Public {
+                    allow_localhost_redirect: true,
+                },
+                true,
+            ),
+            (
+                OauthRSType::Public {
+                    allow_localhost_redirect: false,
+                },
+                false,
+            ),
+            (
+                OauthRSType::Basic {
+                    authz_secret: "supersecret".to_string(),
+                    enable_pkce: false,
+                },
+                false,
+            ),
+        ];
+
+        assert!(test_cases.iter().all(|(rs_type, expected)| {
+            let actual = rs_type.allow_localhost_redirect();
+            println!("Testing {:?} -> {}", rs_type, expected);
+            actual == *expected
+        }));
     }
 }

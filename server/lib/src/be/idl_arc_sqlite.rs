@@ -385,7 +385,7 @@ pub trait IdlArcSqliteTransaction {
     fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError>;
 }
 
-impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
+impl IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'_> {
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -480,7 +480,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     }
 }
 
-impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
+impl IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'_> {
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -578,7 +578,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     }
 }
 
-impl<'a> IdlArcSqliteWriteTransaction<'a> {
+impl IdlArcSqliteWriteTransaction<'_> {
     #[cfg(any(test, debug_assertions))]
     #[instrument(level = "debug", name = "idl_arc_sqlite::clear_cache", skip_all)]
     pub fn clear_cache(&mut self) -> Result<(), OperationError> {
@@ -1138,7 +1138,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// specific situations.
     #[instrument(level = "trace", skip_all)]
     pub fn danger_purge_idxs(&mut self) -> Result<(), OperationError> {
-        warn!("CLEARING CACHE");
+        debug!("CLEARING CACHE");
         self.db.danger_purge_idxs().map(|()| {
             self.idl_cache.clear();
             self.name_cache.clear();

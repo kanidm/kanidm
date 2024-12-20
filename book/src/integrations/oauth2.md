@@ -45,6 +45,7 @@ introspection.
 
 Kanidm will expose its OAuth2 APIs at the following URLs, substituting
 `:client_id:` with an OAuth2 client ID.
+<!-- markdownlint-disable MD033 -->
 
 <dl>
 
@@ -59,7 +60,7 @@ URL **(recommended)**
 `https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration`
 
 This document includes all the URLs and attributes an app needs to be able to
-authenticate using OIDC with Kanidm, *except* for the `client_id` and
+authenticate using OIDC with Kanidm, _except_ for the `client_id` and
 `client_secret`.
 
 Use this document wherever possible, as it will allow you to easily build and/or
@@ -183,6 +184,8 @@ Token signing public key
 
 </dl>
 
+<!-- markdownlint-enable MD037 -->
+
 ## Configuration
 
 ### Create the Kanidm Configuration
@@ -220,12 +223,12 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile op
 > claims may be added to the authorisation token. It is not guaranteed that all of the associated
 > claims will be added.
 >
-> - **profile** - name, family_name, given_name, middle_name, nickname, preferred_username, profile,
+> * **profile** - name, family_name, given_name, middle_name, nickname, preferred_username, profile,
 >   picture, website, gender, birthdate, zoneinfo, locale, and updated_at
-> - **email** - email, email_verified
-> - **address** - address
-> - **phone** - phone_number, phone_number_verified
-> - **groups** - groups
+> * **email** - email, email_verified
+> * **address** - address
+> * **phone** - phone_number, phone_number_verified
+> * **groups** - groups
 
 <!-- this is just to split the templates up -->
 
@@ -233,6 +236,7 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile op
 >
 > If you are creating an OpenID Connect (OIDC) client you **MUST** provide a scope map containing
 > `openid`. Without this, OpenID Connect clients **WILL NOT WORK**!
+>
 > ```bash
 > kanidm system oauth2 update-scope-map nextcloud nextcloud_users openid
 > ```
@@ -315,10 +319,7 @@ applications that act as the OAuth2 client and its corresponding webserver is th
 In this case, the SPA is unable to act as a confidential client since the basic secret would need to
 be embedded in every client.
 
-Another common example is native applications that use a redirect to localhost. These can't have a
-client secret embedded, so must act as public clients.
-
-Public clients for this reason require PKCE to bind a specific browser session to its OAuth2
+For this reason, public clients require PKCE to bind a specific browser session to its OAuth2
 exchange. PKCE can not be disabled for public clients for this reason.
 
 To create an OAuth2 public client:
@@ -328,13 +329,23 @@ kanidm system oauth2 create-public <name> <displayname> <origin>
 kanidm system oauth2 create-public mywebapp "My Web App" https://webapp.example.com
 ```
 
-To allow localhost redirection
+## Native Applications
+
+Some applications will run a local web server on the user's device  which directs users to the IDP for
+authentication, then back to the local server. [BCP212](https://www.rfc-editor.org/info/bcp212)
+"OAuth 2.0 for Native Apps" specifies the rules for this.
+
+First allow localhost redirects:
 
 ```bash
 kanidm system oauth2 enable-localhost-redirects <name>
 kanidm system oauth2 disable-localhost-redirects <name>
 kanidm system oauth2 enable-localhost-redirects mywebapp
 ```
+
+> [!WARNING]
+>
+> Kanidm only allows these to be enabled on public clients where PKCE is enforced.
 
 ## Alternate Redirect URLs
 
@@ -378,8 +389,10 @@ To indicate your readiness for this transition, all OAuth2 clients must have the
 `strict-redirect-url` enabled. Once enabled, the client will begin to enforce the 1.4.0 strict
 validation behaviour.
 
-If you have not enabled `strict-redirect-url` on all OAuth2 clients the upgrade to 1.4.0 will refuse
-to proceed.
+> [!WARNING]
+>
+> If you have not enabled `strict-redirect-url` on all OAuth2 clients the upgrade to 1.4.0 will refuse
+> to proceed.
 
 To enable or disable strict validation:
 

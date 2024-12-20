@@ -215,7 +215,7 @@ mod tests {
 
     struct TestBVisitor;
 
-    impl<'de> Visitor<'de> for TestBVisitor {
+    impl Visitor<'_> for TestBVisitor {
         type Value = TestB;
 
         fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {

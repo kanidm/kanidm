@@ -9,7 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from authlib.jose import JsonWebSignature # type: ignore
+from authlib.jose import JsonWebSignature  # type: ignore
 from pydantic import ConfigDict, BaseModel, Field
 
 from . import TOKEN_PATH
@@ -113,7 +113,7 @@ class ConfigInstance(BaseModel):
 class TokenStore(BaseModel):
     """Represents the user auth tokens, so we can load them from the user store"""
 
-    instances: Dict[str, ConfigInstance] = Field({"" : {}})
+    instances: Dict[str, ConfigInstance] = Field({"": ConfigInstance.model_construct()})
 
     def save(self, filepath: Path = TOKEN_PATH) -> None:
         """saves the cached tokens to disk"""

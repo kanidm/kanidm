@@ -43,6 +43,7 @@ use crate::valueset::image::ImageValueThings;
 use crate::valueset::uuid_to_proto_string;
 
 use kanidm_proto::internal::{ApiTokenPurpose, Filter as ProtoFilter, UiHint};
+use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
 
@@ -1111,6 +1112,34 @@ pub enum OauthClaimMapJoin {
     SpaceSeparatedValue,
     #[default]
     JsonArray,
+}
+
+impl From<OauthClaimMapJoin> for ScimOauth2ClaimMapJoinChar {
+    fn from(value: OauthClaimMapJoin) -> Self {
+        match value {
+            OauthClaimMapJoin::CommaSeparatedValue => {
+                ScimOauth2ClaimMapJoinChar::CommaSeparatedValue
+            }
+            OauthClaimMapJoin::SpaceSeparatedValue => {
+                ScimOauth2ClaimMapJoinChar::SpaceSeparatedValue
+            }
+            OauthClaimMapJoin::JsonArray => ScimOauth2ClaimMapJoinChar::JsonArray,
+        }
+    }
+}
+
+impl From<ScimOauth2ClaimMapJoinChar> for OauthClaimMapJoin {
+    fn from(value: ScimOauth2ClaimMapJoinChar) -> Self {
+        match value {
+            ScimOauth2ClaimMapJoinChar::CommaSeparatedValue => {
+                OauthClaimMapJoin::CommaSeparatedValue
+            }
+            ScimOauth2ClaimMapJoinChar::SpaceSeparatedValue => {
+                OauthClaimMapJoin::SpaceSeparatedValue
+            }
+            ScimOauth2ClaimMapJoinChar::JsonArray => OauthClaimMapJoin::JsonArray,
+        }
+    }
 }
 
 impl OauthClaimMapJoin {

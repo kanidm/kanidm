@@ -4,7 +4,6 @@ use crate::prelude::*;
 use hashbrown::HashSet;
 use rand::distributions::{Distribution, Uniform};
 use rand::{thread_rng, Rng};
-use std::collections::BTreeSet;
 use std::ops::Range;
 
 #[derive(Debug)]
@@ -73,20 +72,6 @@ pub fn readable_password_from_random() -> String {
             .take(5)
             .collect::<String>(),
     )
-}
-
-pub fn str_join(set: &BTreeSet<String>) -> String {
-    let alloc_len = set.iter().fold(0, |acc, s| acc + s.len() + 1);
-    let mut buf = String::with_capacity(alloc_len);
-    set.iter().for_each(|s| {
-        buf.push_str(s);
-        buf.push(' ');
-    });
-
-    // Remove the excess trailing space.
-    let _ = buf.pop();
-
-    buf
 }
 
 impl Distribution<char> for DistinctAlpha {

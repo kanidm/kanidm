@@ -14,7 +14,8 @@ use axum::{
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use kanidm_proto::internal::{
-    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_OAUTH2_REQ, COOKIE_USERNAME,
+    COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN, COOKIE_OAUTH2_REQ,
+    COOKIE_USERNAME,
 };
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthIssueSession, AuthMech, AuthRequest, AuthStep,
@@ -161,7 +162,7 @@ pub async fn view_logout_get(
     Extension(kopid): Extension<KOpId>,
     mut jar: CookieJar,
 ) -> Response {
-    if let Err(err_code) = state
+    let response = if let Err(err_code) = state
         .qe_w_ref
         .handle_logout(client_auth_info, kopid.eventid)
         .await
@@ -172,12 +173,16 @@ pub async fn view_logout_get(
         }
         .into_response()
     } else {
-        let response = Redirect::to(Urls::Login.as_ref()).into_response();
+        Redirect::to(Urls::Login.as_ref()).into_response()
+    };
 
-        jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
+    // Always clear cookies even on an error.
+    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
+    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID);
+    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
 
-        (jar, response).into_response()
-    }
+    (jar, response).into_response()
 }
 
 pub async fn view_reauth_get(
@@ -190,14 +195,7 @@ pub async fn view_reauth_get(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
     let session_valid_result = state
         .qe_r_ref
@@ -324,14 +322,7 @@ pub async fn view_index_get(
 
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
 
     match session_valid_result {
         Ok(()) => {
@@ -552,6 +543,8 @@ pub async fn view_login_mech_choose_post(
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct LoginTotpForm {
+    #[serde(default, deserialize_with = "empty_string_as_none")]
+    password: Option<String>,
     totp: String,
 }
 
@@ -560,7 +553,7 @@ pub async fn view_login_totp_post(
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
-    jar: CookieJar,
+    mut jar: CookieJar,
     Form(login_totp_form): Form<LoginTotpForm>,
 ) -> Response {
     // trim leading and trailing white space.
@@ -582,6 +575,31 @@ pub async fn view_login_totp_post(
             .into_response();
         }
     };
+
+    // In some flows the PW manager may not have autocompleted the pw until
+    // this point. This could be due to a re-auth flow which skips the username
+    // prompt, the use of remember-me+return which then skips the autocomplete.
+    //
+    // In the case the pw *is* bg filled, we need to add it to the session context
+    // here.
+    //
+    // It's probably not "optimal" to be getting the context out and signing it
+    // here to re-add it, but it also helps keep the flow neater in general.
+
+    if let Some(password_autofill) = login_totp_form.password {
+        let mut session_context =
+            cookies::get_signed::<SessionContext>(&state, &jar, COOKIE_AUTH_SESSION_ID)
+                .unwrap_or_default();
+
+        session_context.password = Some(password_autofill);
+
+        // If we can't write this back to the jar, we warn and move on.
+        if let Ok(update_jar) = add_session_cookie(&state, jar.clone(), &session_context) {
+            jar = update_jar;
+        } else {
+            warn!("Unable to update session_context, ignoring...");
+        }
+    }
 
     let auth_cred = AuthCredential::Totp(totp);
     credential_step(state, kopid, jar, client_auth_info, auth_cred, domain_info).await
@@ -899,22 +917,25 @@ async fn view_login_step(
 
                         // Important - this can be make unsigned as token_str has it's own
                         // signatures.
-                        let bearer_cookie = cookies::make_unsigned(
+                        let mut bearer_cookie = cookies::make_unsigned(
                             &state,
                             COOKIE_BEARER_TOKEN,
                             token_str.clone(),
                             "/",
                         );
+                        // Important - can be permanent as the token has its own expiration time internally
+                        bearer_cookie.make_permanent();
 
                         jar = if session_context.remember_me {
                             // Important - can be unsigned as username is just for remember
                             // me and no other purpose.
-                            let username_cookie = cookies::make_unsigned(
+                            let mut username_cookie = cookies::make_unsigned(
                                 &state,
                                 COOKIE_USERNAME,
                                 session_context.username.clone(),
                                 Urls::Login.as_ref(),
                             );
+                            username_cookie.make_permanent();
                             jar.add(username_cookie)
                         } else {
                             jar

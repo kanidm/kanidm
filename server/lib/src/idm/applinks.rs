@@ -2,7 +2,7 @@ use crate::idm::server::IdmServerProxyReadTransaction;
 use crate::prelude::*;
 use kanidm_proto::internal::AppLink;
 
-impl<'a> IdmServerProxyReadTransaction<'a> {
+impl IdmServerProxyReadTransaction<'_> {
     pub fn list_applinks(&mut self, ident: &Identity) -> Result<Vec<AppLink>, OperationError> {
         // From the member-of of the ident.
         let Some(ident_mo) = ident.get_memberof() else {
