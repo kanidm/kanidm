@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.4.4"
+version = "1.4.5"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -121,20 +121,20 @@ codegen-units = 256
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
 [workspace.dependencies]
-kanidmd_core = { path = "./server/core", version = "=1.4.4" }
-kanidmd_lib = { path = "./server/lib", version = "=1.4.4" }
-kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.4.4" }
-kanidmd_testkit = { path = "./server/testkit", version = "=1.4.4" }
-kanidm_build_profiles = { path = "./libs/profiles", version = "=1.4.4" }
-kanidm_client = { path = "./libs/client", version = "=1.4.4" }
+kanidmd_core = { path = "./server/core", version = "=1.4.5" }
+kanidmd_lib = { path = "./server/lib", version = "=1.4.5" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.4.5" }
+kanidmd_testkit = { path = "./server/testkit", version = "=1.4.5" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "=1.4.5" }
+kanidm_client = { path = "./libs/client", version = "=1.4.5" }
 kanidm-hsm-crypto = "^0.2.0"
-kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.4.4" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.4.4" }
-kanidm_proto = { path = "./proto", version = "=1.4.4" }
-kanidm_unix_common = { path = "./unix_integration/common", version = "=1.4.4" }
-kanidm_utils_users = { path = "./libs/users", version = "=1.4.4" }
-scim_proto = { path = "./libs/scim_proto", version = "=1.4.4" }
-sketching = { path = "./libs/sketching", version = "=1.4.4" }
+kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.4.5" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.4.5" }
+kanidm_proto = { path = "./proto", version = "=1.4.5" }
+kanidm_unix_common = { path = "./unix_integration/common", version = "=1.4.5" }
+kanidm_utils_users = { path = "./libs/users", version = "=1.4.5" }
+scim_proto = { path = "./libs/scim_proto", version = "=1.4.5" }
+sketching = { path = "./libs/sketching", version = "=1.4.5" }
 
 anyhow = { version = "1.0.90" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
@@ -261,7 +261,7 @@ svg = "0.13.1"
 syn = { version = "2.0.82", features = ["full"] }
 tempfile = "3.13.0"
 testkit-macros = { path = "./server/testkit-macros" }
-time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
+time = { version = "=0.3.36", features = ["formatting", "local-offset"] }
 
 tokio = "^1.40.0"
 tokio-openssl = "^0.6.5"
