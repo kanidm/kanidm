@@ -1,0 +1,5 @@
+#PACKAGE# (#VERSION#) UNRELEASED; urgency=medium
+
+  * Updated to git commit #GIT_COMMIT#
+
+ -- James <james@terminaloutcomes.com>  #DATE#

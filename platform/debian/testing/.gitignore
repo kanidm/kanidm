@@ -1,0 +1,10 @@
+# Ignore all artifacts we download or generate
+*.img
+*.qcow2
+*.deb
+*.pid
+*.yaml
+*.socket
+*.zip
+ssh_ed25519*
+snapshot/
