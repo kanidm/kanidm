@@ -154,7 +154,7 @@ axum = { version = "0.7.9", features = [
 axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
-base64urlsafedata = "0.5.0"
+base64urlsafedata = "0.5.1"
 bitflags = "^2.6.0"
 bytes = "^1.9.0"
 clap = { version = "^4.5.23", features = ["derive", "env"] }
@@ -261,7 +261,7 @@ svg = "0.13.1"
 syn = { version = "2.0.90", features = ["full"] }
 tempfile = "3.14.0"
 testkit-macros = { path = "./server/testkit-macros" }
-time = { version = "^0.3.34", features = ["formatting", "local-offset"] }
+time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
 
 tokio = "^1.42.0"
 tokio-openssl = "^0.6.5"
@@ -281,13 +281,13 @@ utoipa = { version = "4.2.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = "6.0.0"
 uuid = "^1.11.0"
 
-webauthn-authenticator-rs = { version = "0.5.0", features = [
+webauthn-authenticator-rs = { version = "0.5.1", features = [
     "softpasskey",
     "softtoken",
 ] }
-webauthn-rs = { version = "0.5.0", features = ["preview-features"] }
-webauthn-rs-core = "0.5.0"
-webauthn-rs-proto = "0.5.0"
+webauthn-rs = { version = "0.5.1", features = ["preview-features"] }
+webauthn-rs-core = "0.5.1"
+webauthn-rs-proto = "0.5.1"
 
 whoami = "^1.5.2"
 walkdir = "2"
