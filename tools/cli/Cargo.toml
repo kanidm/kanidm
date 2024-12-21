@@ -87,6 +87,7 @@ features = ["u2fhid"]
 [target."cfg(target_os = \"macos\")".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["mozilla"]
+# features = ["u2fhid"]
 
 [target."cfg(target_os = \"freebsd\")".dependencies.webauthn-authenticator-rs]
 workspace = true
