@@ -269,7 +269,7 @@ impl KanidmProviderInternal {
                     return true;
                 }
                 Err(ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid)) => {
-                    error!(?reason, ?opid, "Provider authentication returned unauthorized, {} attempts remaining.");
+                    error!(?reason, ?opid, "Provider authentication returned unauthorized, {max_attempts} attempts remaining.");
                     // Provider needs to re-auth ASAP. We set this state value here
                     // so that if we exceed max attempts, the next caller knows to check
                     // online immediately.
