@@ -2409,10 +2409,13 @@ mod tests {
         assert!(val1.validate());
         let val2 = Value::new_datetime_s("2020-09-25T01:22:02+00:00").expect("Must be valid");
         assert!(val2.validate());
+        // Spaces are now valid in rfc3339 for parsing.
+        let val3 = Value::new_datetime_s("2020-09-25 01:22:02+00:00").expect("Must be valid");
+        assert!(val3.validate());
+
         assert!(Value::new_datetime_s("2020-09-25T01:22:02").is_none());
         assert!(Value::new_datetime_s("2020-09-25").is_none());
         assert!(Value::new_datetime_s("2020-09-25T01:22:02+10").is_none());
-        assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
         let inv1 = Value::DateTime(
