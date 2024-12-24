@@ -334,24 +334,10 @@ eslint: eslint/setup
 	@echo "################################"
 	@echo "   Running eslint..."
 	@echo "################################"
-	cd server/core && find ./static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
+	find server/core/static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
 	@echo "################################"
 	@echo "Done!"
 
 .PHONY: eslint/setup
 eslint/setup: ## Install eslint for the UI javascript things
-	cd server/core && npm ci
-
-.PHONY: prettier
-prettier: ## Run prettier on the UI javascript things
-prettier: eslint/setup
-	@echo "   Running prettier..."
-	cd server/core && npm run prettier
-	@echo "Done!"
-
-.PHONY: prettier/fix
-prettier/fix: ## Run prettier on the UI javascript things and write back changes
-prettier/fix: eslint/setup
-	@echo "   Running prettier..."
-	cd server/core && npm run prettier:fix
-	@echo "Done!"
+	npm ci
