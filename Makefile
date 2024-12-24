@@ -326,3 +326,18 @@ coveralls: ## Run cargo tarpaulin and upload to coveralls
 coveralls:
 	cargo tarpaulin --coveralls $(COVERALLS_REPO_TOKEN)
 	@echo "Coveralls repo information is at https://coveralls.io/github/kanidm/kanidm"
+
+
+.PHONY: eslint
+eslint: ## Run eslint on the UI javascript things
+eslint: eslint/setup
+	@echo "################################"
+	@echo "   Running eslint..."
+	@echo "################################"
+	find server/core/static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
+	@echo "################################"
+	@echo "Done!"
+
+.PHONY: eslint/setup
+eslint/setup: ## Install eslint for the UI javascript things
+	npm ci
