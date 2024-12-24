@@ -45,3 +45,6 @@ scripts/oauth_proxy/envfile
 # IDEs
 .idea/
 .vscode/
+
+# javascript test things
+node_modules/
