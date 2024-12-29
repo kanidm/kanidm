@@ -231,7 +231,7 @@ quote = "1"
 rand = "^0.8.5"
 rand_chacha = "0.3.1"
 regex = "1.11.0"
-reqwest = { version = "0.12.9", default-features = false, features = [
+reqwest = { version = "0.12.11", default-features = false, features = [
     "cookies",
     "http2",
     "json",
@@ -245,11 +245,11 @@ rustls = { version = "0.23.20", default-features = false, features = [
 
 sd-notify = "^0.4.3"
 selinux = "^0.4.6"
-serde = "^1.0.216"
+serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
 serde_json = "^1.0.134"
 serde_urlencoded = "^0.7.1"
-serde_with = "3.11.0"
+serde_with = "3.12.0"
 sha-crypt = "0.5.0"
 sha2 = "0.10.8"
 shellexpand = "^2.1.2"
@@ -258,7 +258,7 @@ smolset = "^1.3.1"
 sshkey-attest = "^0.5.0"
 sshkeys = "0.3.3"
 svg = "0.13.1"
-syn = { version = "2.0.91", features = ["full"] }
+syn = { version = "2.0.93", features = ["full"] }
 tempfile = "3.14.0"
 testkit-macros = { path = "./server/testkit-macros" }
 time = { version = "^0.3.36", features = ["formatting", "local-offset"] }
