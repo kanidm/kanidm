@@ -736,22 +736,13 @@ impl Resolver {
         Ok(r)
     }
 
-    pub async fn get_nssgroups_member(&self, account_id: Id) -> Result<Vec<NssGroup>, ()> {
-        let account = self.get_nssaccount(account_id).await?;
-        if let Some(account) = account {
-            Ok(self.get_nssgroups().await.
-                unwrap_or_else(|_| Vec::new())
-                .into_iter()
-                .filter(|g| g.members.contains(&account.name))
-                .collect())
-        } else {
-            Ok(Vec::new())
-        }
-    }
-
-    #[instrument(level = "debug", skip(self))]
     pub async fn get_nssgroups_member_name(&self, account_id: &str) -> Result<Vec<NssGroup>, ()> {
-        self.get_nssgroups_member(Id::Name(account_id.to_string())).await
+        let account_name = account_id.to_string();
+        Ok(self.get_nssgroups().await.
+            unwrap_or_else(|_| Vec::new())
+            .into_iter()
+            .filter(|g| g.members.contains(&account_name))
+            .collect())
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
