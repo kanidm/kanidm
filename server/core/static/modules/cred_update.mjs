@@ -18,10 +18,10 @@ function setupInteractivePwdFormListeners() {
         pwd_submit.disabled = true;
     }
 
-    new_pwd.addEventListener("input", (_) => {
+    new_pwd.addEventListener("input", () => {
         // Don't mark invalid if user didn't fill in the confirmation box yet
-        // Also my password manager (keepassxc with autocomplete)
-        //   likes to fire off input events when both inputs were empty.
+        // Also KeepassXC with autocomplete likes to fire off input events when
+        // both inputs are empty.
         if (new_pwd_check.value !== "") {
             if (new_pwd.value === new_pwd_check.value) {
                 markPwdCheckValid();
@@ -32,7 +32,7 @@ function setupInteractivePwdFormListeners() {
         new_pwd.classList.remove("is-invalid");
     });
 
-    new_pwd_check.addEventListener("input", (_) => {
+    new_pwd_check.addEventListener("input", () => {
         // No point in updating the status if confirmation box is empty
         if (new_pwd_check.value === "") return;
         if (new_pwd_check.value === new_pwd.value) {
@@ -45,7 +45,7 @@ function setupInteractivePwdFormListeners() {
 
 window.stillSwapFailureResponse = function(event) {
     if (event.detail.xhr.status === 422 || event.detail.xhr.status === 500) {
-        console.log("Still swapping failure response")
+        console.debug(`Got HTTP/${event.detail.xhr.status}, still swapping failure response`)
         event.detail.shouldSwap = true;
         event.detail.isError = false;
     }
@@ -93,11 +93,11 @@ function startPasskeyEnrollment() {
             .then((assertion) => {
                 onPasskeyCreated(assertion);
             }, (reason) => {
-                alert("Passkey creation failed " +  reason.toString())
-                console.log("Passkey creation failed: " + reason.toString())
+                alert(`Passkey creation failed ${reason.toString()}`)
+                console.log(`Passkey creation failed: ${reason.toString()}`)
             });
     } catch (e) {
-        console.log(e)
+        console.log(`Failed to initialize passkey creation: ${e}`)
         if (confirm("Failed to initialize passkey creation, confirm to reload this page.\nReport this issue if it keeps occurring.")) {
             window.location.reload();
         }
