@@ -334,10 +334,10 @@ eslint: eslint/setup
 	@echo "################################"
 	@echo "   Running eslint..."
 	@echo "################################"
-	find server/core/static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
+	cd server/core && find ./static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
 	@echo "################################"
 	@echo "Done!"
 
 .PHONY: eslint/setup
 eslint/setup: ## Install eslint for the UI javascript things
-	npm ci
+	cd server/core && npm ci
