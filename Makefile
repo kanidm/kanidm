@@ -348,3 +348,10 @@ prettier: eslint/setup
 	@echo "   Running prettier..."
 	cd server/core && npm run prettier
 	@echo "Done!"
+
+.PHONY: prettier/fix
+prettier/fix: ## Run prettier on the UI javascript things and write back changes
+prettier/fix: eslint/setup
+	@echo "   Running prettier..."
+	cd server/core && npm run prettier:fix
+	@echo "Done!"
