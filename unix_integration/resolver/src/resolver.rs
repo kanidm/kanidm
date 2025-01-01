@@ -736,6 +736,15 @@ impl Resolver {
         Ok(r)
     }
 
+    pub async fn get_nssgroups_member_name(&self, account_id: &str) -> Result<Vec<NssGroup>, ()> {
+        let account_name = account_id.to_string();
+        Ok(self.get_nssgroups().await.
+            unwrap_or_else(|_| Vec::new())
+            .into_iter()
+            .filter(|g| g.members.contains(&account_name))
+            .collect())
+    }
+
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
         if let Some(mut nss_group) = self.system_provider.get_nssgroup(&grp_id).await {
             debug!("system provider satisfied request");
