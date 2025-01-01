@@ -1,4 +1,4 @@
-console.debug('credupdate: loaded');
+console.debug("credupdate: loaded");
 
 // Makes the password form interactive (e.g. shows when passwords don't match)
 function setupInteractivePwdFormListeners() {
@@ -43,38 +43,44 @@ function setupInteractivePwdFormListeners() {
     });
 }
 
-window.stillSwapFailureResponse = function(event) {
+window.stillSwapFailureResponse = function (event) {
     if (event.detail.xhr.status === 422 || event.detail.xhr.status === 500) {
-        console.debug(`Got HTTP/${event.detail.xhr.status}, still swapping failure response`)
+        console.debug(`Got HTTP/${event.detail.xhr.status}, still swapping failure response`);
         event.detail.shouldSwap = true;
         event.detail.isError = false;
     }
-}
+};
 
 function onPasskeyCreated(assertion) {
     try {
-        console.log(assertion)
+        console.log(assertion);
         let creationData = {};
 
         creationData.id = assertion.id;
-        creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId))
+        creationData.rawId = Base64.fromUint8Array(new Uint8Array(assertion.rawId));
         creationData.response = {};
-        creationData.response.attestationObject = Base64.fromUint8Array(new Uint8Array(assertion.response.attestationObject))
-        creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON))
-        creationData.type = assertion.type
-        creationData.extensions = assertion.getClientExtensionResults()
-        creationData.extensions.uvm = undefined
+        creationData.response.attestationObject = Base64.fromUint8Array(
+            new Uint8Array(assertion.response.attestationObject),
+        );
+        creationData.response.clientDataJSON = Base64.fromUint8Array(new Uint8Array(assertion.response.clientDataJSON));
+        creationData.type = assertion.type;
+        creationData.extensions = assertion.getClientExtensionResults();
+        creationData.extensions.uvm = undefined;
 
         // Put the passkey creation data into the form for submission
-        document.getElementById("passkey-create-data").value = JSON.stringify(creationData)
+        document.getElementById("passkey-create-data").value = JSON.stringify(creationData);
 
         // Make the name input visible and hide the "Begin Passkey Enrollment" button
-        document.getElementById("passkeyNamingSafariPre").classList.add("d-none")
-        document.getElementById("passkeyNamingForm").classList.remove("d-none")
-        document.getElementById("passkeyNamingSubmitBtn").classList.remove("d-none")
+        document.getElementById("passkeyNamingSafariPre").classList.add("d-none");
+        document.getElementById("passkeyNamingForm").classList.remove("d-none");
+        document.getElementById("passkeyNamingSubmitBtn").classList.remove("d-none");
     } catch (e) {
-        console.log(e)
-        if (confirm("Failed to encode your new passkey's data for transmission, confirm to reload this page.\nReport this issue if it keeps occurring.")) {
+        console.log(e);
+        if (
+            confirm(
+                "Failed to encode your new passkey's data for transmission, confirm to reload this page.\nReport this issue if it keeps occurring.",
+            )
+        ) {
             window.location.reload();
         }
     }
@@ -82,36 +88,41 @@ function onPasskeyCreated(assertion) {
 
 function startPasskeyEnrollment() {
     try {
-        const data_elem = document.getElementById('data');
+        const data_elem = document.getElementById("data");
         const credentialRequestOptions = JSON.parse(data_elem.textContent);
-        credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(credentialRequestOptions.publicKey.challenge);
+        credentialRequestOptions.publicKey.challenge = Base64.toUint8Array(
+            credentialRequestOptions.publicKey.challenge,
+        );
         credentialRequestOptions.publicKey.user.id = Base64.toUint8Array(credentialRequestOptions.publicKey.user.id);
 
-        console.log(credentialRequestOptions)
-        navigator.credentials
-            .create({publicKey: credentialRequestOptions.publicKey})
-            .then((assertion) => {
+        console.log(credentialRequestOptions);
+        navigator.credentials.create({ publicKey: credentialRequestOptions.publicKey }).then(
+            (assertion) => {
                 onPasskeyCreated(assertion);
-            }, (reason) => {
-                alert(`Passkey creation failed ${reason.toString()}`)
-                console.log(`Passkey creation failed: ${reason.toString()}`)
-            });
+            },
+            (reason) => {
+                alert(`Passkey creation failed ${reason.toString()}`);
+                console.log(`Passkey creation failed: ${reason.toString()}`);
+            },
+        );
     } catch (e) {
-        console.log(`Failed to initialize passkey creation: ${e}`)
-        if (confirm("Failed to initialize passkey creation, confirm to reload this page.\nReport this issue if it keeps occurring.")) {
+        console.log(`Failed to initialize passkey creation: ${e}`);
+        if (
+            confirm(
+                "Failed to initialize passkey creation, confirm to reload this page.\nReport this issue if it keeps occurring.",
+            )
+        ) {
             window.location.reload();
         }
     }
 }
 
 function setupPasskeyNamingSafariButton() {
-    document.getElementById("passkeyNamingSafariBtn")
-        .addEventListener("click", startPasskeyEnrollment)
+    document.getElementById("passkeyNamingSafariBtn").addEventListener("click", startPasskeyEnrollment);
 }
 
 function setupSubmitBtnVisibility() {
-    document.getElementById("passkey-label")
-        ?.addEventListener("input", updateSubmitButtonVisibility)
+    document.getElementById("passkey-label")?.addEventListener("input", updateSubmitButtonVisibility);
 }
 
 function updateSubmitButtonVisibility(event) {
@@ -119,12 +130,14 @@ function updateSubmitButtonVisibility(event) {
     submitButton.disabled = event.value === "";
 }
 
-(function() {
-    console.debug('credupdate: init');
-    document.body.addEventListener("addPasswordSwapped", () => { setupInteractivePwdFormListeners() });
+(function () {
+    console.debug("credupdate: init");
+    document.body.addEventListener("addPasswordSwapped", () => {
+        setupInteractivePwdFormListeners();
+    });
     document.body.addEventListener("addPasskeySwapped", () => {
         setupPasskeyNamingSafariButton();
         startPasskeyEnrollment();
         setupSubmitBtnVisibility();
     });
-})()
+})();
