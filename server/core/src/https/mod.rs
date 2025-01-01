@@ -140,6 +140,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
             "external/base64.js",
             "modules/cred_update.mjs",
             "pkhtml.js",
+            "style.js",
         ];
 
         for filepath in filelist {
