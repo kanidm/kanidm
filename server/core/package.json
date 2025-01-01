@@ -20,7 +20,7 @@
     "prettier": "^3.4.2"
   },
   "scripts" : {
-    "prettier": "npx prettier  --ignore-path '*/external/*' server/core/static server/core/static/modules --check",
+    "prettier": "npx prettier  --ignore-path 'prettier-ignore' ./static ./static/modules --check",
     "prettier:fix": "npm run prettier -- --write"
   }
 
