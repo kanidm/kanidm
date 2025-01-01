@@ -8,13 +8,12 @@ set -e
 
 case "$1" in
     configure)
-        pam-auth-update --package
         echo "============================="
         echo "Thanks for installing Kanidm!"
         echo "============================="
         echo "Please ensure you modify the configuration files at /etc/kanidm/unixd and /etc/kanidm/config"
         echo "Full examples are in /usr/share/kanidm-unixd/"
-        echo "To configure nsswitch, please follow instructions in https://kanidm.github.io/kanidm/master/integrations/pam_and_nsswitch.html"
+        echo "PAM has already been autoconfigured by the libpam-kanidm package. To configure nsswitch, please follow instructions in https://kanidm.github.io/kanidm/master/integrations/pam_and_nsswitch.html"
     ;;
 
     abort-upgrade|abort-remove|abort-deconfigure)

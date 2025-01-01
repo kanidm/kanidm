@@ -35,6 +35,7 @@ maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = ["libc6", "libpam0g"]
 section = "network"
 priority = "optional"
+maintainer-scripts = "debian/"
 assets = [
 	# Empty on purpose
 ]
