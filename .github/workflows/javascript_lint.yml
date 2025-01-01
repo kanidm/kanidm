@@ -1,0 +1,13 @@
+---
+name: Javascript Linting
+"on":
+    - push
+jobs:
+  javascript_lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Run ESLint to check Javascript files
+      run:
+        make eslint
+
