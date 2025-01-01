@@ -341,3 +341,10 @@ eslint: eslint/setup
 .PHONY: eslint/setup
 eslint/setup: ## Install eslint for the UI javascript things
 	cd server/core && npm ci
+
+.PHONY: prettier
+prettier: ## Run prettier on the UI javascript things
+prettier: eslint/setup
+	@echo "   Running prettier..."
+	cd server/core && npm run prettier
+	@echo "Done!"
