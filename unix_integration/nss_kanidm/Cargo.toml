@@ -24,6 +24,9 @@ libc = { workspace = true }
 paste = { workspace = true }
 lazy_static = { workspace = true }
 
+[target."cfg(target_os = \"freebsd\")".build-dependencies]
+cc = "^1.2.6"
+
 ## Debian packaging
 # The base metadata does **not** work to build a functioning package!
 # A target specific variant must be used to get the right multiarch path.
