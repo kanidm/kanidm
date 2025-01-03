@@ -2,7 +2,7 @@
 <li>
     <a hx-select="main" hx-target="main" hx-swap="outerHTML show:false"
         href="(( href ))"
-        class="side-menu-item d-flex rounded link-dark(% if menu_active_item == menu_item %) active(% endif %)">
+        class="side-menu-item d-flex rounded link-emphasis(% if menu_active_item == menu_item %) active(% endif %)">
         <div class="icon-container align-items-center justify-content-center d-flex me-2">
             <img class="text-body-secondary"
                 src="/pkg/img/icons/(( icon_name )).svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
