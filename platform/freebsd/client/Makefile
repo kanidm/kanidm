@@ -4,7 +4,8 @@ PORTNAME=	kanidm
 # DISTVERSIONPREFIX=	v
 
 DISTVERSION=    g20250102
-GH_TAGNAME=     5eb9a4430f4beab41aed7d5d77414ceea6b2eb1c
+GH_TAGNAME=     edb8cccc84e9dacd2ac31ea1162dd24c0c454c55
+GH_ACCOUNT=     kanidm
 
 CATEGORIES=	security net databases
 
@@ -16,7 +17,6 @@ WWW=		https://github.com/kanidm/kanidm/
 
 USES=		cargo ssl
 USE_GITHUB=	yes
-GH_ACCOUNT=	kanidm
 
 ONLY_FOR_ARCHS=	aarch64 amd64
 
