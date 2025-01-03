@@ -560,12 +560,12 @@ fn main() -> ExitCode {
     let mut config_error: Vec<String> = Vec::new();
     let mut config = Configuration::new();
 
-    if env!("KANIDM_DEFAULT_CONFIG_PATH").is_empty() {
-        println!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_DEFAULT_CONFIG_PATH value");
+    if env!("KANIDM_SERVER_CONFIG_PATH").is_empty() {
+        println!("CRITICAL: Kanidmd was not built correctly and is missing a valid KANIDM_SERVER_CONFIG_PATH value");
         return ExitCode::FAILURE;
     }
 
-    let default_config_path = PathBuf::from(env!("KANIDM_DEFAULT_CONFIG_PATH"));
+    let default_config_path = PathBuf::from(env!("KANIDM_SERVER_CONFIG_PATH"));
 
     let maybe_config_path = if let Some(p) = opt.config_path() {
         Some(p)
