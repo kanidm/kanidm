@@ -2560,7 +2560,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let jwks_uri = Some(o2rs.jwks_uri.clone());
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
-        let response_modes_supported = vec![ResponseMode::Query];
+        let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
         let grant_types_supported = vec![GrantType::AuthorisationCode];
 
         let token_endpoint_auth_methods_supported = vec![
@@ -2631,7 +2631,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let jwks_uri = o2rs.jwks_uri.clone();
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
-        let response_modes_supported = vec![ResponseMode::Query];
+        let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
 
         // TODO: add device code if the rs supports it per <https://www.rfc-editor.org/rfc/rfc8628#section-4>
         // `urn:ietf:params:oauth:grant-type:device_code`
@@ -4604,7 +4604,7 @@ mod tests {
         assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
         assert_eq!(
             discovery.response_modes_supported,
-            vec![ResponseMode::Query]
+            vec![ResponseMode::Query, ResponseMode::Fragment]
         );
         assert_eq!(
             discovery.grant_types_supported,
@@ -4764,7 +4764,7 @@ mod tests {
         assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
         assert_eq!(
             discovery.response_modes_supported,
-            vec![ResponseMode::Query]
+            vec![ResponseMode::Query, ResponseMode::Fragment]
         );
         assert_eq!(
             discovery.grant_types_supported,
