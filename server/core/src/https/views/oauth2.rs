@@ -148,14 +148,17 @@ async fn oauth2_auth_req(
             consent_token,
         }) => {
             // We can just render the form now, the consent token has everything we need.
-            ConsentRequestView {
-                client_name,
-                // scopes,
-                pii_scopes,
-                consent_token,
-                redirect: None,
-            }
-            .into_response()
+            (
+                jar,
+                ConsentRequestView {
+                    client_name,
+                    // scopes,
+                    pii_scopes,
+                    consent_token,
+                    redirect: None,
+                },
+            )
+                .into_response()
         }
 
         Ok(AuthoriseResponse::AuthenticationRequired {
@@ -170,13 +173,13 @@ async fn oauth2_auth_req(
                     // Expire at the end of the session.
                     cookie.set_expires(None);
                     // Could experiment with this to a shorter value, but session should be enough.
-                    cookie.set_max_age(None);
-                    jar.add(cookie)
+                    cookie.set_max_age(time::Duration::minutes(15));
+                    jar.clone().add(cookie)
                 })
                 .ok_or(OperationError::InvalidSessionState);
 
             match maybe_jar {
-                Ok(jar) => {
+                Ok(new_jar) => {
                     let display_ctx = LoginDisplayCtx {
                         domain_info,
                         oauth2: Some(Oauth2Ctx { client_name }),
@@ -184,21 +187,27 @@ async fn oauth2_auth_req(
                         error: None,
                     };
 
-                    super::login::view_oauth2_get(jar, display_ctx, login_hint)
+                    super::login::view_oauth2_get(new_jar, display_ctx, login_hint)
                 }
-                Err(err_code) => UnrecoverableErrorView {
-                    err_code,
-                    operation_id: kopid.eventid,
-                }
-                .into_response(),
+                Err(err_code) => (
+                    jar,
+                    UnrecoverableErrorView {
+                        err_code,
+                        operation_id: kopid.eventid,
+                    },
+                )
+                    .into_response(),
             }
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            AccessDeniedView {
-                operation_id: kopid.eventid,
-            }
-            .into_response()
+            (
+                jar,
+                AccessDeniedView {
+                    operation_id: kopid.eventid,
+                },
+            )
+                .into_response()
         }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
@@ -217,11 +226,14 @@ async fn oauth2_auth_req(
                 &err_code.to_string()
             );
 
-            UnrecoverableErrorView {
-                err_code: OperationError::InvalidState,
-                operation_id: kopid.eventid,
-            }
-            .into_response()
+            (
+                jar,
+                UnrecoverableErrorView {
+                    err_code: OperationError::InvalidState,
+                    operation_id: kopid.eventid,
+                },
+            )
+                .into_response()
         }
     }
 }
