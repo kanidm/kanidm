@@ -29,7 +29,7 @@ use kanidm_proto::oauth2::AuthorisationResponse;
 #[cfg(feature = "dev-oauth2-device-flow")]
 use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 use kanidmd_lib::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
+    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest,
     AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
 };
 use kanidmd_lib::prelude::f_eq;
@@ -257,22 +257,14 @@ async fn oauth2_authorise(
                 .body(body.into())
                 .unwrap()
         }
-        Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        })) => {
+        Ok(AuthoriseResponse::Permitted(success)) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
             #[allow(clippy::unwrap_used)]
             let body =
                 Body::from(serde_json::to_string(&AuthorisationResponse::Permitted).unwrap());
+            let redirect_uri = success.build_redirect_uri();
 
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .status(StatusCode::FOUND)
@@ -377,18 +369,11 @@ async fn oauth2_authorise_permit(
         .await;
 
     match res {
-        Ok(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        }) => {
+        Ok(success) => {
             // https://datatracker.ietf.org/doc/html/draft-ietf-oauth-security-topics#section-4.11
             // We could consider changing this to 303?
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
+            let redirect_uri = success.build_redirect_uri();
+
             #[allow(clippy::expect_used)]
             Response::builder()
                 .status(StatusCode::FOUND)
@@ -463,12 +448,9 @@ async fn oauth2_authorise_reject(
         .await;
 
     match res {
-        Ok(mut redirect_uri) => {
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("error", "access_denied")
-                .append_pair("error_description", "authorisation rejected");
+        Ok(reject) => {
+            let redirect_uri = reject.build_redirect_uri();
+
             #[allow(clippy::unwrap_used)]
             Response::builder()
                 .header(LOCATION, redirect_uri.as_str())

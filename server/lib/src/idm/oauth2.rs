@@ -144,6 +144,8 @@ struct ConsentToken {
     pub scopes: BTreeSet<String>,
     // We stash some details here for oidc.
     pub nonce: Option<String>,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
 }
 
 #[serde_as]
@@ -236,6 +238,66 @@ pub struct AuthorisePermitSuccess {
     pub state: String,
     // The exchange code as a String
     pub code: String,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
+}
+
+impl AuthorisePermitSuccess {
+    /// Builds a redirect URI to go back to the application when permission was
+    /// granted.
+    pub fn build_redirect_uri(&self) -> Url {
+        let mut redirect_uri = self.redirect_uri.clone();
+
+        // Always clear query and fragment, regardless of the response mode
+        redirect_uri.set_query(None);
+        redirect_uri.set_fragment(None);
+
+        // We can't set query pairs on fragments, only query.
+        let encoded = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("state", &self.state)
+            .append_pair("code", &self.code)
+            .finish();
+
+        match self.response_mode {
+            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
+            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+        }
+
+        redirect_uri
+    }
+}
+
+#[derive(Debug)]
+pub struct AuthoriseReject {
+    // Where the RS wants us to go back to.
+    pub redirect_uri: Url,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
+}
+
+impl AuthoriseReject {
+    /// Builds a redirect URI to go back to the application when permission was
+    /// rejected.
+    pub fn build_redirect_uri(&self) -> Url {
+        let mut redirect_uri = self.redirect_uri.clone();
+
+        // Always clear query and fragment, regardless of the response mode
+        redirect_uri.set_query(None);
+        redirect_uri.set_fragment(None);
+
+        // We can't set query pairs on fragments, only query.
+        let encoded = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("error", "access_denied")
+            .append_pair("error_description", "authorisation rejected")
+            .finish();
+
+        match self.response_mode {
+            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
+            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+        }
+
+        redirect_uri
+    }
 }
 
 #[derive(Clone)]
@@ -1188,6 +1250,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             redirect_uri: consent_req.redirect_uri,
             state: consent_req.state,
             code,
+            response_mode: consent_req.response_mode,
         })
     }
 
@@ -1793,8 +1856,8 @@ impl IdmServerProxyReadTransaction<'_> {
         // * is within it's valid time window.
         trace!(?auth_req);
 
-        if auth_req.response_type != "code" {
-            admin_warn!("Invalid OAuth2 response_type (should be 'code')");
+        if auth_req.response_type != ResponseType::Code {
+            admin_warn!("Unsupported OAuth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
 
@@ -2046,6 +2109,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 state: auth_req.state.clone(),
                 code,
+                response_mode: auth_req.get_response_mode(),
             }))
         } else {
             //  Check that the scopes are the same as a previous consent (if any)
@@ -2084,6 +2148,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.iter().cloned().collect(),
                 nonce: auth_req.nonce.clone(),
+                response_mode: auth_req.get_response_mode(),
             };
 
             let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
@@ -2112,7 +2177,7 @@ impl IdmServerProxyReadTransaction<'_> {
         ident: &Identity,
         consent_token: &str,
         ct: Duration,
-    ) -> Result<Url, OperationError> {
+    ) -> Result<AuthoriseReject, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
             .oauth2rs
@@ -2154,7 +2219,10 @@ impl IdmServerProxyReadTransaction<'_> {
             })?;
 
         // All good, now confirm the rejection to the client application.
-        Ok(consent_req.redirect_uri)
+        Ok(AuthoriseReject {
+            redirect_uri: consent_req.redirect_uri,
+            response_mode: consent_req.response_mode,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2936,7 +3004,8 @@ mod tests {
             let scope: BTreeSet<String> = $scope.split(" ").map(|s| s.to_string()).collect();
 
             let auth_req = AuthorisationRequest {
-                response_type: "code".to_string(),
+                response_type: ResponseType::Code,
+                response_mode: None,
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
                 pkce_request: Some(PkceRequest {
@@ -3431,7 +3500,9 @@ mod tests {
 
         //  * response type != code.
         let auth_req = AuthorisationRequest {
-            response_type: "NOTCODE".to_string(),
+            // We're unlikely to support Implicit Grant
+            response_type: ResponseType::Token,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3452,7 +3523,8 @@ mod tests {
 
         // * No pkce in pkce enforced mode.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: None,
@@ -3473,7 +3545,8 @@ mod tests {
 
         //  * invalid rs name
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "NOT A REAL RESOURCE SERVER".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3494,7 +3567,8 @@ mod tests {
 
         //  * mismatched origin in the redirect.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3515,7 +3589,8 @@ mod tests {
 
         // * invalid uri in the redirect
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3536,7 +3611,8 @@ mod tests {
 
         // Not Authenticated
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3559,7 +3635,8 @@ mod tests {
 
         // Requested scope is not available
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3580,7 +3657,8 @@ mod tests {
 
         // Not a member of the group.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: pkce_request.clone(),
@@ -3601,7 +3679,8 @@ mod tests {
 
         // Deny Anonymous auth methods
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request,
@@ -3892,7 +3971,8 @@ mod tests {
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
@@ -3962,7 +4042,8 @@ mod tests {
             .expect("Unable to process uat");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
@@ -4428,7 +4509,7 @@ mod tests {
             .check_oauth2_authorise_reject(&ident, &consent_token, ct)
             .expect("Failed to perform OAuth2 reject");
 
-        assert_eq!(reject_success, redirect_uri);
+        assert_eq!(reject_success.redirect_uri, redirect_uri);
 
         // Too much time past to reject
         let past_ct = Duration::from_secs(TEST_CURRENT_TIME + 301);
@@ -5171,7 +5252,8 @@ mod tests {
 
         // Check we allow none.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: None,
@@ -5382,7 +5464,8 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
@@ -5440,7 +5523,8 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
@@ -5582,7 +5666,8 @@ mod tests {
 
         // First, the user does not request pkce in their exchange.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: None,
@@ -5657,7 +5742,8 @@ mod tests {
 
         // First, NOTE the lack of https on the redir uri.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
@@ -6621,7 +6707,8 @@ mod tests {
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
             state: "123".to_string(),
             pkce_request: Some(PkceRequest {
