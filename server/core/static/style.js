@@ -1,19 +1,19 @@
-function updateColorScheme() {
-    let colorScheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    let invertedColorScheme = colorScheme === 'dark' ? 'light' : 'dark';
-    document.body.setAttribute('data-bs-theme', colorScheme);
-    ["bg"].forEach((cls) => {
-        Array.from(document.getElementsByClassName(`${cls}-${invertedColorScheme}`)).forEach((e) => {
-            if (e.tagName !== "NAV")
-                e.classList.replace(`${cls}-${invertedColorScheme}`, `${cls}-${colorScheme}`);
-        });
-    });
-    ["btn", "link", "text"].forEach((cls) => {
-        Array.from(document.getElementsByClassName(`${cls}-${colorScheme}`)).forEach((e) => {
-            e.classList.replace(`${cls}-${colorScheme}`, `${cls}-${invertedColorScheme}`);
-        });
-    });
+/**  Queries the user's preferred colour scheme and returns the appropriate value.
+ From https://getbootstrap.com/docs/5.3/customize/color-modes/#javascript
+*/
+function getPreferredTheme() {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
 }
-updateColorScheme();
-window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateColorScheme);
-document.body.addEventListener('htmx:afterOnLoad', updateColorScheme);
+
+/**  Sets the theme.
+*/
+function updateColourScheme() {
+    const theme = getPreferredTheme();
+    console.debug(`updateColourScheme theme->${theme}`);
+    document.documentElement.setAttribute('data-bs-theme', theme)
+}
+
+updateColourScheme();
+window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', updateColourScheme);
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', updateColourScheme);
+document.body.addEventListener('htmx:afterOnLoad', updateColourScheme);
