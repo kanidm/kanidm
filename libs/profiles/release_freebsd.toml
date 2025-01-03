@@ -1,7 +1,7 @@
 # Don't set the value for autodetect
 # cpu_flags = "none"
 server_admin_bind_path = "/var/run/kanidmd/sock"
-server_htmx_ui_pkg_path = "/usr/local/share/kanidm/ui/hpkg"
+server_ui_pkg_path = "/usr/local/share/kanidm/ui/hpkg"
 server_config_path = "/usr/local/etc/kanidm/server.toml"
 resolver_config_path = "/usr/local/etc/kanidm/unixd"
 resolver_unix_shell_path = "/bin/sh"

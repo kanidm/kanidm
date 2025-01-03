@@ -1,7 +1,7 @@
 # Don't set the cpu_flags to autodetect for this platform
 # cpu_flags = "none"
 server_admin_bind_path = "/data/kanidmd.sock"
-server_htmx_ui_pkg_path = "/hpkg"
+server_ui_pkg_path = "/hpkg"
 server_config_path = "/data/server.toml"
 resolver_config_path = "/data/unixd"
 resolver_unix_shell_path = "/bin/false"

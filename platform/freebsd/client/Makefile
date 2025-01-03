@@ -3,7 +3,7 @@ PORTNAME=	kanidm
 # DISTVERSION=    1.5.0-dev
 # DISTVERSIONPREFIX=	v
 
-DISTVERSION=    g20250201
+DISTVERSION=    g20250102
 GH_TAGNAME=     5eb9a4430f4beab41aed7d5d77414ceea6b2eb1c
 
 CATEGORIES=	security net databases
@@ -20,7 +20,7 @@ GH_ACCOUNT=	kanidm
 
 ONLY_FOR_ARCHS=	aarch64 amd64
 
-CARGO_ENV=      KANIDM_BUILD_PROFILE=release_linux
+CARGO_ENV=      KANIDM_BUILD_PROFILE=release_freebsd
 
 CARGO_BUILD_ARGS = -p kanidm_tools -p kanidm_unix_int -p nss_kanidm -p pam_kanidm
 
