@@ -169,7 +169,9 @@ async fn oauth2_auth_req(
             // you later.
             let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req)
                 .map(|mut cookie| {
-                    cookie.set_same_site(SameSite::Strict);
+                    // If the cookie is 'strict' it's not set during a redirect to another domain
+                    // which is of course, what happens during oauth2.
+                    cookie.set_same_site(SameSite::Lax);
                     // Expire at the end of the session.
                     cookie.set_expires(None);
                     // Could experiment with this to a shorter value, but session should be enough.
