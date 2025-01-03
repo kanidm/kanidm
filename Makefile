@@ -178,9 +178,8 @@ codespell:
 	--skip='*.svg' \
 	--skip='*.br' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/lib/src/constants/system_config.rs'
-	--skip='./pykanidm/site' \
-	--skip='./server/lib/src/constants/*.json'
+	--skip='./server/lib/src/constants/system_config.rs' \
+	--skip='./pykanidm/site'
 
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest: ## python library testing
