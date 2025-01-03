@@ -10,7 +10,6 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-
 #[cfg(target_os = "freebsd")]
 /// BSD nss is quite different to that of linux (rather, glibc). As a result of this
 /// FreeBSD kindly offers us wrappers to allow compatability of the two. But to
@@ -36,7 +35,6 @@ mod bsd_nss_compat {
         unsafe { _nss_module_register(a, b, c) }
     }
 }
-
 
 #[cfg(target_family = "unix")]
 #[macro_use]

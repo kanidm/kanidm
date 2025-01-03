@@ -58,29 +58,29 @@ NSS_METHOD_PROTOTYPE(__nss_compat_setpwent);
 NSS_METHOD_PROTOTYPE(__nss_compat_endpwent);
 
 static ns_mtab methods[] = {
-	{ NSDB_GROUP, "getgrnam_r", __nss_compat_getgrnam_r, _nss_kanidm_getgrnam_r },
-	{ NSDB_GROUP, "getgrgid_r", __nss_compat_getgrgid_r, _nss_kanidm_getgrgid_r },
-	{ NSDB_GROUP, "getgrent_r", __nss_compat_getgrent_r, _nss_kanidm_getgrent_r },
-	{ NSDB_GROUP, "setgrent",   __nss_compat_setgrent,   _nss_kanidm_setgrent },
-	{ NSDB_GROUP, "endgrent",   __nss_compat_endgrent,   _nss_kanidm_endgrent },
+    { NSDB_GROUP, "getgrnam_r", __nss_compat_getgrnam_r, _nss_kanidm_getgrnam_r },
+    { NSDB_GROUP, "getgrgid_r", __nss_compat_getgrgid_r, _nss_kanidm_getgrgid_r },
+    { NSDB_GROUP, "getgrent_r", __nss_compat_getgrent_r, _nss_kanidm_getgrent_r },
+    { NSDB_GROUP, "setgrent",   __nss_compat_setgrent,   _nss_kanidm_setgrent },
+    { NSDB_GROUP, "endgrent",   __nss_compat_endgrent,   _nss_kanidm_endgrent },
 
-	{ NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r, _nss_kanidm_getpwnam_r },
-	{ NSDB_PASSWD, "getpwuid_r", __nss_compat_getpwuid_r, _nss_kanidm_getpwuid_r },
-	{ NSDB_PASSWD, "getpwent_r", __nss_compat_getpwent_r, _nss_kanidm_getpwent_r },
-	{ NSDB_PASSWD, "setpwent",   __nss_compat_setpwent,   _nss_kanidm_setpwent },
-	{ NSDB_PASSWD, "endpwent",   __nss_compat_endpwent,   _nss_kanidm_endpwent },
+    { NSDB_PASSWD, "getpwnam_r", __nss_compat_getpwnam_r, _nss_kanidm_getpwnam_r },
+    { NSDB_PASSWD, "getpwuid_r", __nss_compat_getpwuid_r, _nss_kanidm_getpwuid_r },
+    { NSDB_PASSWD, "getpwent_r", __nss_compat_getpwent_r, _nss_kanidm_getpwent_r },
+    { NSDB_PASSWD, "setpwent",   __nss_compat_setpwent,   _nss_kanidm_setpwent },
+    { NSDB_PASSWD, "endpwent",   __nss_compat_endpwent,   _nss_kanidm_endpwent },
 
-	{ NSDB_GROUP_COMPAT, "getgrnam_r", __nss_compat_getgrnam_r, _nss_kanidm_getgrnam_r },
-	{ NSDB_GROUP_COMPAT, "getgrgid_r", __nss_compat_getgrgid_r, _nss_kanidm_getgrgid_r },
-	{ NSDB_GROUP_COMPAT, "getgrent_r", __nss_compat_getgrent_r, _nss_kanidm_getgrent_r },
-	{ NSDB_GROUP_COMPAT, "setgrent",   __nss_compat_setgrent,   _nss_kanidm_setgrent },
-	{ NSDB_GROUP_COMPAT, "endgrent",   __nss_compat_endgrent,   _nss_kanidm_endgrent },
+    { NSDB_GROUP_COMPAT, "getgrnam_r", __nss_compat_getgrnam_r, _nss_kanidm_getgrnam_r },
+    { NSDB_GROUP_COMPAT, "getgrgid_r", __nss_compat_getgrgid_r, _nss_kanidm_getgrgid_r },
+    { NSDB_GROUP_COMPAT, "getgrent_r", __nss_compat_getgrent_r, _nss_kanidm_getgrent_r },
+    { NSDB_GROUP_COMPAT, "setgrent",   __nss_compat_setgrent,   _nss_kanidm_setgrent },
+    { NSDB_GROUP_COMPAT, "endgrent",   __nss_compat_endgrent,   _nss_kanidm_endgrent },
 
-	{ NSDB_PASSWD_COMPAT, "getpwnam_r", __nss_compat_getpwnam_r, _nss_kanidm_getpwnam_r },
-	{ NSDB_PASSWD_COMPAT, "getpwuid_r", __nss_compat_getpwuid_r, _nss_kanidm_getpwuid_r },
-	{ NSDB_PASSWD_COMPAT, "getpwent_r", __nss_compat_getpwent_r, _nss_kanidm_getpwent_r },
-	{ NSDB_PASSWD_COMPAT, "setpwent",   __nss_compat_setpwent,   _nss_kanidm_setpwent },
-	{ NSDB_PASSWD_COMPAT, "endpwent",   __nss_compat_endpwent,   _nss_kanidm_endpwent },
+    { NSDB_PASSWD_COMPAT, "getpwnam_r", __nss_compat_getpwnam_r, _nss_kanidm_getpwnam_r },
+    { NSDB_PASSWD_COMPAT, "getpwuid_r", __nss_compat_getpwuid_r, _nss_kanidm_getpwuid_r },
+    { NSDB_PASSWD_COMPAT, "getpwent_r", __nss_compat_getpwent_r, _nss_kanidm_getpwent_r },
+    { NSDB_PASSWD_COMPAT, "setpwent",   __nss_compat_setpwent,   _nss_kanidm_setpwent },
+    { NSDB_PASSWD_COMPAT, "endpwent",   __nss_compat_endpwent,   _nss_kanidm_endpwent },
 };
 
 ns_mtab *
