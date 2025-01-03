@@ -6,6 +6,20 @@ use compact_jwt::{Jws, JwsSigner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
+fn new_cookie<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
+    let mut token_cookie = Cookie::new(ck_id, value);
+    token_cookie.set_secure(state.secure_cookies);
+    token_cookie.set_same_site(SameSite::Lax);
+    // Prevent Document.cookie accessing this. Still works with fetch.
+    token_cookie.set_http_only(true);
+    // We set a domain here because it allows subdomains
+    // of the idm to share the cookie. If domain was incorrect
+    // then webauthn won't work anyway!
+    token_cookie.set_domain(state.domain.clone());
+    token_cookie.set_path("/");
+    token_cookie
+}
+
 #[instrument(name = "views::cookies::destroy", level = "debug", skip(jar, state))]
 pub fn destroy(jar: CookieJar, ck_id: &str, state: &ServerState) -> CookieJar {
     if let Some(ck) = jar.get(ck_id) {
@@ -26,17 +40,7 @@ pub fn destroy(jar: CookieJar, ck_id: &str, state: &ServerState) -> CookieJar {
 }
 
 pub fn make_unsigned<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
-    let mut token_cookie = Cookie::new(ck_id, value);
-    token_cookie.set_secure(state.secure_cookies);
-    token_cookie.set_same_site(SameSite::Lax);
-    // Prevent Document.cookie accessing this. Still works with fetch.
-    token_cookie.set_http_only(true);
-    // We set a domain here because it allows subdomains
-    // of the idm to share the cookie. If domain was incorrect
-    // then webauthn won't work anyway!
-    token_cookie.set_domain(state.domain.clone());
-    token_cookie.set_path("/");
-    token_cookie
+    new_cookie(state, ck_id, value)
 }
 
 pub fn make_signed<'a, T: Serialize>(
@@ -61,13 +65,7 @@ pub fn make_signed<'a, T: Serialize>(
         })
         .ok()?;
 
-    let mut token_cookie = Cookie::new(ck_id, token);
-    token_cookie.set_secure(state.secure_cookies);
-    token_cookie.set_same_site(SameSite::Lax);
-    token_cookie.set_http_only(true);
-    token_cookie.set_path("/");
-    token_cookie.set_domain(state.domain.clone());
-    Some(token_cookie)
+    Some(new_cookie(state, ck_id, token))
 }
 
 pub fn get_signed<T: DeserializeOwned>(
