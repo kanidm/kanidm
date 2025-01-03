@@ -5,7 +5,7 @@ PORTNAME=	kanidm
 
 DISTVERSION=    g20250102
 GH_TAGNAME=     edb8cccc84e9dacd2ac31ea1162dd24c0c454c55
-GH_ACCOUNT=     kanidm
+GH_ACCOUNT=     Firstyear
 
 CATEGORIES=	security net databases
 
