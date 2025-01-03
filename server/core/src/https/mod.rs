@@ -146,6 +146,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
         for filepath in filelist {
             match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
                 Ok(hash) => {
+                    debug!("Integrity hash for {}: {}", filepath, hash);
                     let js = JavaScriptFile { hash };
                     all_pages.push(js)
                 }
