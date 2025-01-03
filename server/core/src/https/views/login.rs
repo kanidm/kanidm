@@ -915,7 +915,7 @@ async fn view_login_step(
                         // Update jar
                         let token_str = token.to_string();
 
-                        // Important - this can be make unsigned as token_str has it's own
+                        // Important - this can be make unsigned as token_str has its own
                         // signatures.
                         let mut bearer_cookie =
                             cookies::make_unsigned(&state, COOKIE_BEARER_TOKEN, token_str.clone());
