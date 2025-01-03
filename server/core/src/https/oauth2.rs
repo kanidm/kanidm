@@ -29,8 +29,8 @@ use kanidm_proto::oauth2::AuthorisationResponse;
 #[cfg(feature = "dev-oauth2-device-flow")]
 use kanidm_proto::oauth2::DeviceAuthorizationResponse;
 use kanidmd_lib::idm::oauth2::{
-    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest,
-    AuthoriseResponse, ErrorResponse, Oauth2Error, TokenRevokeRequest,
+    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthoriseResponse,
+    ErrorResponse, Oauth2Error, TokenRevokeRequest,
 };
 use kanidmd_lib::prelude::f_eq;
 use kanidmd_lib::prelude::*;
