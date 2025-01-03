@@ -54,12 +54,13 @@ impl std::fmt::Display for CpuOptLevel {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct ProfileConfig {
-    htmx_ui_pkg_path: String,
     #[serde(default)]
     cpu_flags: CpuOptLevel,
-    admin_bind_path: String,
-    default_config_path: String,
-    default_unix_shell_path: String,
+    server_admin_bind_path: String,
+    server_config_path: String,
+    server_ui_pkg_path: String,
+    resolver_config_path: String,
+    resolver_unix_shell_path: String,
 }
 
 pub fn apply_profile() {
@@ -127,19 +128,23 @@ pub fn apply_profile() {
     println!("cargo:rustc-env=KANIDM_PROFILE_NAME={}", profile);
     println!("cargo:rustc-env=KANIDM_CPU_FLAGS={}", profile_cfg.cpu_flags);
     println!(
-        "cargo:rustc-env=KANIDM_HTMX_UI_PKG_PATH={}",
-        profile_cfg.htmx_ui_pkg_path
+        "cargo:rustc-env=KANIDM_SERVER_UI_PKG_PATH={}",
+        profile_cfg.server_ui_pkg_path
     );
     println!(
-        "cargo:rustc-env=KANIDM_ADMIN_BIND_PATH={}",
-        profile_cfg.admin_bind_path
+        "cargo:rustc-env=KANIDM_SERVER_ADMIN_BIND_PATH={}",
+        profile_cfg.server_admin_bind_path
     );
     println!(
-        "cargo:rustc-env=KANIDM_DEFAULT_CONFIG_PATH={}",
-        profile_cfg.default_config_path
+        "cargo:rustc-env=KANIDM_SERVER_CONFIG_PATH={}",
+        profile_cfg.server_config_path
     );
     println!(
-        "cargo:rustc-env=KANIDM_DEFAULT_UNIX_SHELL_PATH={}",
-        profile_cfg.default_unix_shell_path
+        "cargo:rustc-env=KANIDM_RESOLVER_CONFIG_PATH={}",
+        profile_cfg.resolver_config_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_RESOLVER_UNIX_SHELL_PATH={}",
+        profile_cfg.resolver_unix_shell_path
     );
 }
