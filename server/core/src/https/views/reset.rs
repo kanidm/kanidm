@@ -688,7 +688,7 @@ fn add_cu_cookie(
     cu_session_token: CUSessionToken,
 ) -> CookieJar {
     let mut token_cookie =
-        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token, "/");
+        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
     token_cookie.set_same_site(SameSite::Strict);
     jar.add(token_cookie)
 }

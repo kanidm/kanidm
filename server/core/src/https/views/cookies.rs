@@ -21,12 +21,7 @@ pub fn destroy(jar: CookieJar, ck_id: &str) -> CookieJar {
     }
 }
 
-pub fn make_unsigned<'a>(
-    state: &'_ ServerState,
-    ck_id: &'a str,
-    value: String,
-    path: &'a str,
-) -> Cookie<'a> {
+pub fn make_unsigned<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
     let mut token_cookie = Cookie::new(ck_id, value);
     token_cookie.set_secure(state.secure_cookies);
     token_cookie.set_same_site(SameSite::Lax);
@@ -36,7 +31,7 @@ pub fn make_unsigned<'a>(
     // of the idm to share the cookie. If domain was incorrect
     // then webauthn won't work anyway!
     token_cookie.set_domain(state.domain.clone());
-    token_cookie.set_path(path);
+    token_cookie.set_path("/");
     token_cookie
 }
 
@@ -44,7 +39,6 @@ pub fn make_signed<'a, T: Serialize>(
     state: &'_ ServerState,
     ck_id: &'a str,
     value: &'_ T,
-    path: &'a str,
 ) -> Option<Cookie<'a>> {
     let kref = &state.jws_signer;
 
@@ -67,7 +61,7 @@ pub fn make_signed<'a, T: Serialize>(
     token_cookie.set_secure(state.secure_cookies);
     token_cookie.set_same_site(SameSite::Lax);
     token_cookie.set_http_only(true);
-    token_cookie.set_path(path);
+    token_cookie.set_path("/");
     token_cookie.set_domain(state.domain.clone());
     Some(token_cookie)
 }

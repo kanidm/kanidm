@@ -26,7 +26,6 @@ use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
-use super::constants::Urls;
 use super::login::{LoginDisplayCtx, Oauth2Ctx};
 use super::{cookies, UnrecoverableErrorView};
 
@@ -165,17 +164,16 @@ async fn oauth2_auth_req(
         }) => {
             // Sign the auth req and hide it in our cookie - we'll come back for
             // you later.
-            let maybe_jar =
-                cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, Urls::Ui.as_ref())
-                    .map(|mut cookie| {
-                        cookie.set_same_site(SameSite::Strict);
-                        // Expire at the end of the session.
-                        cookie.set_expires(None);
-                        // Could experiment with this to a shorter value, but session should be enough.
-                        cookie.set_max_age(None);
-                        jar.add(cookie)
-                    })
-                    .ok_or(OperationError::InvalidSessionState);
+            let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req)
+                .map(|mut cookie| {
+                    cookie.set_same_site(SameSite::Strict);
+                    // Expire at the end of the session.
+                    cookie.set_expires(None);
+                    // Could experiment with this to a shorter value, but session should be enough.
+                    cookie.set_max_age(None);
+                    jar.add(cookie)
+                })
+                .ok_or(OperationError::InvalidSessionState);
 
             match maybe_jar {
                 Ok(jar) => {
