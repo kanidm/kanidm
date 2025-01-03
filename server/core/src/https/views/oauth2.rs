@@ -95,7 +95,7 @@ async fn oauth2_auth_req(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     // If the auth_req was cross-signed, old, or just bad, error. But we have *cleared* it
     // from the cookie which means we won't see it again.
@@ -169,9 +169,7 @@ async fn oauth2_auth_req(
             // you later.
             let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req)
                 .map(|mut cookie| {
-                    // If the cookie is 'strict' it's not set during a redirect to another domain
-                    // which is of course, what happens during oauth2.
-                    cookie.set_same_site(SameSite::Lax);
+                    cookie.set_same_site(SameSite::Strict);
                     // Expire at the end of the session.
                     cookie.set_expires(None);
                     // Could experiment with this to a shorter value, but session should be enough.
@@ -249,13 +247,13 @@ pub struct ConsentForm {
 }
 
 pub async fn view_consent_post(
-    State(state): State<ServerState>,
+    State(server_state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     jar: CookieJar,
     Form(consent_form): Form<ConsentForm>,
 ) -> Result<Response, UnrecoverableErrorView> {
-    let res = state
+    let res = server_state
         .qe_w_ref
         .handle_oauth2_authorise_permit(client_auth_info, consent_form.consent_token, kopid.eventid)
         .await;
@@ -266,7 +264,7 @@ pub async fn view_consent_post(
             state,
             code,
         }) => {
-            let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+            let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &server_state);
 
             if let Some(redirect) = consent_form.redirect {
                 Ok((

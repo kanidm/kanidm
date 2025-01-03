@@ -177,10 +177,10 @@ pub async fn view_logout_get(
     };
 
     // Always clear cookies even on an error.
-    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
-    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
-    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID);
-    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN, &state);
+    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
+    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID, &state);
+    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
     (jar, response).into_response()
 }
@@ -195,7 +195,7 @@ pub async fn view_reauth_get(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     let session_valid_result = state
         .qe_r_ref
@@ -322,7 +322,7 @@ pub async fn view_index_get(
 
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     match session_valid_result {
         Ok(()) => {
