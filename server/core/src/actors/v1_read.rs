@@ -37,7 +37,7 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
+        AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
@@ -1441,7 +1441,7 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         consent_req: String,
         eventid: Uuid,
-    ) -> Result<Url, OperationError> {
+    ) -> Result<AuthoriseReject, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
