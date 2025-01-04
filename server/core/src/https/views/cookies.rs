@@ -6,11 +6,29 @@ use compact_jwt::{Jws, JwsSigner};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 
-#[instrument(name = "views::cookies::destroy", level = "debug", skip(jar))]
-pub fn destroy(jar: CookieJar, ck_id: &str) -> CookieJar {
+fn new_cookie<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
+    let mut token_cookie = Cookie::new(ck_id, value);
+    token_cookie.set_secure(state.secure_cookies);
+    token_cookie.set_same_site(SameSite::Lax);
+    // Prevent Document.cookie accessing this. Still works with fetch.
+    token_cookie.set_http_only(true);
+    // We set a domain here because it allows subdomains
+    // of the idm to share the cookie. If domain was incorrect
+    // then webauthn won't work anyway!
+    token_cookie.set_domain(state.domain.clone());
+    token_cookie.set_path("/");
+    token_cookie
+}
+
+#[instrument(name = "views::cookies::destroy", level = "debug", skip(jar, state))]
+pub fn destroy(jar: CookieJar, ck_id: &str, state: &ServerState) -> CookieJar {
     if let Some(ck) = jar.get(ck_id) {
         let mut removal_cookie = ck.clone();
         removal_cookie.make_removal();
+
+        // Need to be set to domain else the cookie isn't removed!
+        removal_cookie.set_domain(state.domain.clone());
+
         // Need to be set to / to remove on all parent paths.
         // If you don't set a path, NOTHING IS REMOVED!!!
         removal_cookie.set_path("/");
@@ -21,30 +39,14 @@ pub fn destroy(jar: CookieJar, ck_id: &str) -> CookieJar {
     }
 }
 
-pub fn make_unsigned<'a>(
-    state: &'_ ServerState,
-    ck_id: &'a str,
-    value: String,
-    path: &'a str,
-) -> Cookie<'a> {
-    let mut token_cookie = Cookie::new(ck_id, value);
-    token_cookie.set_secure(state.secure_cookies);
-    token_cookie.set_same_site(SameSite::Lax);
-    // Prevent Document.cookie accessing this. Still works with fetch.
-    token_cookie.set_http_only(true);
-    // We set a domain here because it allows subdomains
-    // of the idm to share the cookie. If domain was incorrect
-    // then webauthn won't work anyway!
-    token_cookie.set_domain(state.domain.clone());
-    token_cookie.set_path(path);
-    token_cookie
+pub fn make_unsigned<'a>(state: &'_ ServerState, ck_id: &'a str, value: String) -> Cookie<'a> {
+    new_cookie(state, ck_id, value)
 }
 
 pub fn make_signed<'a, T: Serialize>(
     state: &'_ ServerState,
     ck_id: &'a str,
     value: &'_ T,
-    path: &'a str,
 ) -> Option<Cookie<'a>> {
     let kref = &state.jws_signer;
 
@@ -63,13 +65,7 @@ pub fn make_signed<'a, T: Serialize>(
         })
         .ok()?;
 
-    let mut token_cookie = Cookie::new(ck_id, token);
-    token_cookie.set_secure(state.secure_cookies);
-    token_cookie.set_same_site(SameSite::Lax);
-    token_cookie.set_http_only(true);
-    token_cookie.set_path(path);
-    token_cookie.set_domain(state.domain.clone());
-    Some(token_cookie)
+    Some(new_cookie(state, ck_id, token))
 }
 
 pub fn get_signed<T: DeserializeOwned>(

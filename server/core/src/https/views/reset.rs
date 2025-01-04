@@ -220,7 +220,7 @@ pub(crate) async fn commit(
         .await?;
 
     // No longer need the cookie jar.
-    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
     Ok((jar, HxLocation::from(Uri::from_static("/ui")), "").into_response())
 }
@@ -241,7 +241,7 @@ pub(crate) async fn cancel_cred_update(
         .await?;
 
     // No longer need the cookie jar.
-    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
     Ok((
         jar,
@@ -688,7 +688,7 @@ fn add_cu_cookie(
     cu_session_token: CUSessionToken,
 ) -> CookieJar {
     let mut token_cookie =
-        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token, "/");
+        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
     token_cookie.set_same_site(SameSite::Strict);
     jar.add(token_cookie)
 }
@@ -788,7 +788,7 @@ pub(crate) async fn view_reset_get(
                 | OperationError::InvalidState,
             ) => {
                 // If our previous credential update session expired we want to see the reset form again.
-                jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+                jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
                 if let Some(token) = params.token {
                     let token_uri_string = format!("{}?token={}", Urls::CredReset, token);
