@@ -177,10 +177,10 @@ pub async fn view_logout_get(
     };
 
     // Always clear cookies even on an error.
-    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN);
-    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
-    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID);
-    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN);
+    jar = cookies::destroy(jar, COOKIE_BEARER_TOKEN, &state);
+    jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
+    jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID, &state);
+    jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
     (jar, response).into_response()
 }
@@ -195,7 +195,7 @@ pub async fn view_reauth_get(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     let session_valid_result = state
         .qe_r_ref
@@ -322,7 +322,7 @@ pub async fn view_index_get(
 
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     match session_valid_result {
         Ok(()) => {
@@ -915,14 +915,10 @@ async fn view_login_step(
                         // Update jar
                         let token_str = token.to_string();
 
-                        // Important - this can be make unsigned as token_str has it's own
+                        // Important - this can be make unsigned as token_str has its own
                         // signatures.
-                        let mut bearer_cookie = cookies::make_unsigned(
-                            &state,
-                            COOKIE_BEARER_TOKEN,
-                            token_str.clone(),
-                            "/",
-                        );
+                        let mut bearer_cookie =
+                            cookies::make_unsigned(&state, COOKIE_BEARER_TOKEN, token_str.clone());
                         // Important - can be permanent as the token has its own expiration time internally
                         bearer_cookie.make_permanent();
 
@@ -933,7 +929,6 @@ async fn view_login_step(
                                 &state,
                                 COOKIE_USERNAME,
                                 session_context.username.clone(),
-                                Urls::Login.as_ref(),
                             );
                             username_cookie.make_permanent();
                             jar.add(username_cookie)
@@ -980,16 +975,11 @@ fn add_session_cookie(
     jar: CookieJar,
     session_context: &SessionContext,
 ) -> Result<CookieJar, OperationError> {
-    cookies::make_signed(
-        state,
-        COOKIE_AUTH_SESSION_ID,
-        session_context,
-        Urls::Login.as_ref(),
-    )
-    .map(|mut cookie| {
-        // Not needed when redirecting into this site
-        cookie.set_same_site(SameSite::Strict);
-        jar.add(cookie)
-    })
-    .ok_or(OperationError::InvalidSessionState)
+    cookies::make_signed(state, COOKIE_AUTH_SESSION_ID, session_context)
+        .map(|mut cookie| {
+            // Not needed when redirecting into this site
+            cookie.set_same_site(SameSite::Strict);
+            jar.add(cookie)
+        })
+        .ok_or(OperationError::InvalidSessionState)
 }
