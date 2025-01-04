@@ -168,6 +168,11 @@ fn search_oauth2_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted
     match &ident.origin {
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
+            if iuser.entry.get_uuid() == UUID_ANONYMOUS {
+                trace!("Ignore UUID_ANONYMOUS for oauth2 filter checking");
+                return AccessResult::Ignore;
+            }
+
             let contains_o2_rs = entry
                 .get_ava_as_iutf8(Attribute::Class)
                 .map(|set| {
