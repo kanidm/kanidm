@@ -169,7 +169,7 @@ fn search_oauth2_filter_entry(ident: &Identity, entry: &Arc<EntrySealedCommitted
         IdentType::Internal | IdentType::Synch(_) => AccessResult::Ignore,
         IdentType::User(iuser) => {
             if iuser.entry.get_uuid() == UUID_ANONYMOUS {
-                trace!("Ignore UUID_ANONYMOUS for oauth2 filter checking");
+                debug!("Anonymous can't access OAuth2 entries, ignoring");
                 return AccessResult::Ignore;
             }
 
