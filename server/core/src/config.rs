@@ -574,7 +574,7 @@ impl Configuration {
         Configuration {
             address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapaddress: None,
-            adminbindpath: env!("KANIDM_ADMIN_BIND_PATH").to_string(),
+            adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
             threads: std::thread::available_parallelism()
                 .map(|t| t.get())
                 .unwrap_or_else(|_e| {

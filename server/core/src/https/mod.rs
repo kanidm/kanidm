@@ -131,7 +131,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        let pkg_path = env!("KANIDM_HTMX_UI_PKG_PATH").to_owned();
+        let pkg_path = env!("KANIDM_SERVER_UI_PKG_PATH").to_owned();
 
         let filelist = [
             "external/bootstrap.bundle.min.js",
@@ -254,11 +254,11 @@ pub async fn create_https_server(
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_path = PathBuf::from(env!("KANIDM_HTMX_UI_PKG_PATH"));
+            let pkg_path = PathBuf::from(env!("KANIDM_SERVER_UI_PKG_PATH"));
             if !pkg_path.exists() {
                 eprintln!(
                     "Couldn't find htmx UI package path: ({}), quitting.",
-                    env!("KANIDM_HTMX_UI_PKG_PATH")
+                    env!("KANIDM_SERVER_UI_PKG_PATH")
                 );
                 std::process::exit(1);
             }
