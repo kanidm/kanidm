@@ -2,9 +2,21 @@
 
 root = true
 
+
+
 [*.md]
 charset = utf-8
 end_of_line = lf
 indent_size = 2
 max_line_length = 100
 trim_trailing_whitespace = true
+
+[*.js]
+tab_width = 4
+max_line_length = 120
+print_width = 120
+
+[*.mjs]
+tab_width = 4
+max_line_length = 120
+print_width = 120

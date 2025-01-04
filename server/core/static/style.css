@@ -30,14 +30,15 @@ body {
 
 .side-menu-item {
   --icon-size: 24px;
-  padding: .4rem .7rem;
+  padding: 0.4rem 0.7rem;
   text-decoration: none;
 
   &.active {
     font-weight: 600;
   }
 
-  &:hover, &.active {
+  &:hover,
+  &.active {
     background-color: var(--bs-gray-300);
   }
 
@@ -52,7 +53,6 @@ body {
 /*
  * Personal Settings sidemenu
  */
-
 
 /*
  * Navbar
@@ -80,7 +80,9 @@ body {
   margin: auto;
   border-radius: 15px;
   background: #21252915;
-  box-shadow: -5px -5px 11px #ededed, 5px 5px 11px #ffffff;
+  box-shadow:
+    -5px -5px 11px #ededed,
+    5px 5px 11px #ffffff;
   margin: 15px;
 }
 
@@ -150,9 +152,9 @@ body {
 }
 
 .btn-tiny {
-  --bs-btn-padding-y: .05rem;
-  --bs-btn-padding-x: .4rem;
-  --bs-btn-font-size: .75rem;
+  --bs-btn-padding-y: 0.05rem;
+  --bs-btn-padding-x: 0.4rem;
+  --bs-btn-font-size: 0.75rem;
 }
 
 #cred-update-commit-bar {
