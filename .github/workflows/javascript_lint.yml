@@ -10,6 +10,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Run ESLint to check Javascript files
       run:
+        make eslint
   javascript_fmt:
     runs-on: ubuntu-latest
     steps:
