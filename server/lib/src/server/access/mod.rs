@@ -2964,6 +2964,7 @@ mod tests {
 
         let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2)];
 
+        // Check the authorisation search event, and that it reduces correctly.
         let se_a = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_1.clone(),
             filter_all!(f_pres(Attribute::Name)),
@@ -2971,17 +2972,28 @@ mod tests {
         let ex_a = vec![Arc::new(ev1)];
         let ex_a_reduced = vec![ev1_reduced];
 
+        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
+        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
+
+        // Check that anonymous is denied even though it's a member of the group.
+        let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
+        let mut anon = anon.into_invalid_new();
+        anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
+
+        let anon = Arc::new(anon.into_sealed_committed());
+
+        let se_anon =
+            SearchEvent::new_impersonate_entry(anon, filter_all!(f_pres(Attribute::Name)));
+        let ex_anon = vec![];
+        test_acp_search!(&se_anon, vec![], r_set.clone(), ex_anon);
+
+        // Check the deny case.
         let se_b = SearchEvent::new_impersonate_entry(
             E_TEST_ACCOUNT_2.clone(),
             filter_all!(f_pres(Attribute::Name)),
         );
         let ex_b = vec![];
 
-        // Check the authorisation search event, and that it reduces correctly.
-        test_acp_search!(&se_a, vec![], r_set.clone(), ex_a);
-        test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
-
-        // Check the deny case.
         test_acp_search!(&se_b, vec![], r_set, ex_b);
     }
 
