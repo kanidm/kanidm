@@ -63,8 +63,6 @@ try {
 try {
     addEventListener("load", () => {
         asskey_login();
-    addEventListener("load", () => {
-        asskey_login();
     });
 } catch (error) {
     console.error(`Failed to add load-time event listener for passkey authentication: ${error}`);

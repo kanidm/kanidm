@@ -19,10 +19,7 @@ function setupInteractivePwdFormListeners() {
     }
 
     new_pwd.addEventListener("input", () => {
-    new_pwd.addEventListener("input", () => {
         // Don't mark invalid if user didn't fill in the confirmation box yet
-        // Also KeepassXC with autocomplete likes to fire off input events when
-        // both inputs are empty.
         // Also KeepassXC with autocomplete likes to fire off input events when
         // both inputs are empty.
         if (new_pwd_check.value !== "") {
@@ -35,7 +32,6 @@ function setupInteractivePwdFormListeners() {
         new_pwd.classList.remove("is-invalid");
     });
 
-    new_pwd_check.addEventListener("input", () => {
     new_pwd_check.addEventListener("input", () => {
         // No point in updating the status if confirmation box is empty
         if (new_pwd_check.value === "") return;
