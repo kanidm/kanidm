@@ -39,7 +39,7 @@ body {
 
   &:hover,
   &.active {
-    background-color: var(--bs-gray-300);
+    background-color: var(--bs-tertiary-bg);
   }
 
   .icon-container img {
@@ -57,6 +57,23 @@ body {
 /*
  * Navbar
  */
+nav.kanidm_navbar {
+  background-color: var(--bs-navbar-brand-color);
+}
+
+nav a.navbar-brand,
+nav a.nav-link {
+  color: var(--bs-body-bg);
+}
+
+nav a.navbar-brand:hover,
+nav a.nav-link:hover {
+  color: var(--bs-secondary-bg);
+}
+
+footer {
+  background-color: var(--bs-tertiary-bg);
+}
 
 .kanidm_logo {
   width: 12em;
@@ -79,7 +96,7 @@ body {
   align-items: center;
   margin: auto;
   border-radius: 15px;
-  background: #21252915;
+  background-color: #21252915;
   box-shadow:
     -5px -5px 11px #ededed,
     5px 5px 11px #ffffff;
@@ -122,15 +139,15 @@ body {
 }
 
 .totp-timer__path-remaining.green {
-  color: rgb(65, 184, 131);
+  color: var(--bs-success);
 }
 
 .totp-timer__path-remaining.orange {
-  color: orange;
+  color: var(--bs-warning);
 }
 
 .totp-timer__path-remaining.red {
-  color: red;
+  color: var(--bs-danger);
 }
 
 .totp-timer__path-remaining.no-transition {

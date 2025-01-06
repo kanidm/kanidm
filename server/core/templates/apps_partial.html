@@ -13,7 +13,7 @@
 				(% match app %)
 				(% when AppLink::Oauth2 with { name, display_name, redirect_url, has_image }
 				%)
-				<a href="(( redirect_url ))" class="link-dark stretched-link mt-2">
+				<a href="(( redirect_url ))" class="link-emphasis stretched-link mt-2">
 					(% if has_image %)
 					<img src="/ui/images/oauth2/(( name ))" class="oauth2-img"
 						alt="((display_name)) icon" id="(( name ))">
