@@ -37,7 +37,8 @@ body {
     font-weight: 600;
   }
 
-  &:hover, &.active {
+  &:hover,
+  &.active {
     background-color: var(--bs-tertiary-bg);
   }
 
@@ -71,9 +72,8 @@ nav a.nav-link:hover {
 }
 
 footer {
-  background-color: var(--bs-tertiary-bg)
+  background-color: var(--bs-tertiary-bg);
 }
-
 
 .kanidm_logo {
   width: 12em;
@@ -97,7 +97,9 @@ footer {
   margin: auto;
   border-radius: 15px;
   background-color: #21252915;
-  box-shadow: -5px -5px 11px #ededed, 5px 5px 11px #ffffff;
+  box-shadow:
+    -5px -5px 11px #ededed,
+    5px 5px 11px #ffffff;
   margin: 15px;
 }
 
