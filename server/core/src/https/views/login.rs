@@ -12,7 +12,7 @@ use axum::{
     response::{IntoResponse, Redirect, Response},
     Extension, Form, Json,
 };
-use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
+use axum_extra::extract::cookie::{CookieJar, SameSite};
 use kanidm_proto::internal::{
     COOKIE_AUTH_SESSION_ID, COOKIE_BEARER_TOKEN, COOKIE_CU_SESSION_TOKEN, COOKIE_OAUTH2_REQ,
     COOKIE_USERNAME,
@@ -835,10 +835,8 @@ async fn view_login_step(
                 break res;
             }
             AuthState::Continue(allowed) => {
-                // Reauth inits its session here so we need to be able to add cookie here ig.
-                if jar.get(COOKIE_AUTH_SESSION_ID).is_none() {
-                    jar = add_session_cookie(&state, jar, &session_context)?;
-                }
+                // Reauth inits its session here so we need to be able to add it's cookie here.
+                jar = add_session_cookie(&state, jar, &session_context)?;
 
                 let res = match allowed.len() {
                     // Shouldn't be possible.
@@ -936,9 +934,9 @@ async fn view_login_step(
                             jar
                         };
 
-                        jar = jar
-                            .add(bearer_cookie)
-                            .remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+                        jar = jar.add(bearer_cookie);
+
+                        jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID, &state);
 
                         // Now, we need to decided where to go.
                         let res = if jar.get(COOKIE_OAUTH2_REQ).is_some() {
@@ -955,7 +953,7 @@ async fn view_login_step(
             }
             AuthState::Denied(reason) => {
                 debug!("🧩 -> AuthState::Denied");
-                jar = jar.remove(Cookie::from(COOKIE_AUTH_SESSION_ID));
+                jar = cookies::destroy(jar, COOKIE_AUTH_SESSION_ID, &state);
 
                 break LoginDeniedView {
                     display_ctx,
