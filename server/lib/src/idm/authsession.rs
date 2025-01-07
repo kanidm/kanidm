@@ -1383,7 +1383,17 @@ impl AuthSession {
             | AuthSessionState::InProgress(CredHandler::PasswordSecurityKey { .. })
             | AuthSessionState::InProgress(CredHandler::Passkey { .. })
             | AuthSessionState::InProgress(CredHandler::AttestedPasskey { .. }) => Ok(None),
-            _ => Err(OperationError::InvalidState),
+
+            AuthSessionState::Init(_) => {
+                debug!(
+                    "Request for credential uuid invalid as auth session state not yet initialised"
+                );
+                Err(OperationError::AU0001InvalidState)
+            }
+            AuthSessionState::Success | AuthSessionState::Denied(_) => {
+                debug!("Request for credential uuid invalid as auth session state has progressed");
+                Err(OperationError::AU0001InvalidState)
+            }
         }
     }
 
@@ -1485,13 +1495,13 @@ impl AuthSession {
 
                         let jwt = Jws::into_json(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to serialise into Jws");
-                            OperationError::InvalidState
+                            OperationError::AU0002JwsSerialisation
                         })?;
 
                         // Now encrypt and prepare the token for return to the client.
                         let token = self.key_object.jws_es256_sign(&jwt, time).map_err(|e| {
                             admin_error!(?e, "Failed to sign UserAuthToken to Jwt");
-                            OperationError::InvalidState
+                            OperationError::AU0003JwsSignature
                         })?;
 
                         (
@@ -1586,7 +1596,7 @@ impl AuthSession {
                 let uat = self
                     .account
                     .to_userauthtoken(session_id, scope, time, &self.account_policy)
-                    .ok_or(OperationError::InvalidState)?;
+                    .ok_or(OperationError::AU0004UserAuthTokenInvalid)?;
 
                 // Queue the session info write.
                 // This is dependent on the type of authentication factors
@@ -1619,7 +1629,7 @@ impl AuthSession {
                         .map_err(|e| {
                             debug!(?e, "queue failure");
                             admin_error!("unable to queue failing authentication as the session will not validate ... ");
-                            OperationError::InvalidState
+                            OperationError::AU0005DelayedProcessFailure
                         })?;
                     }
                 };
@@ -1635,7 +1645,7 @@ impl AuthSession {
                 let scope = match auth_type {
                     AuthType::Anonymous | AuthType::GeneratedPassword => {
                         error!("AuthType used in Reauth is not valid for session re-issuance. Rejecting");
-                        return Err(OperationError::InvalidState);
+                        return Err(OperationError::AU0006CredentialMayNotReauthenticate);
                     }
                     AuthType::Password
                     | AuthType::PasswordTotp
@@ -1654,7 +1664,7 @@ impl AuthSession {
                         time,
                         &self.account_policy,
                     )
-                    .ok_or(OperationError::InvalidState)?;
+                    .ok_or(OperationError::AU0007UserAuthTokenInvalid)?;
 
                 Ok(uat)
             }
