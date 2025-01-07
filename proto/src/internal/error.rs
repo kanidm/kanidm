@@ -142,6 +142,13 @@ pub enum OperationError {
     DatabaseLockAcquisitionTimeout,
 
     // Specific internal errors.
+    AU0001InvalidState,
+    AU0002JwsSerialisation,
+    AU0003JwsSignature,
+    AU0004UserAuthTokenInvalid,
+    AU0005DelayedProcessFailure,
+    AU0006CredentialMayNotReauthenticate,
+    AU0007UserAuthTokenInvalid,
 
     // Kanidm Generic Errors
     KG001TaskTimeout,
@@ -371,6 +378,15 @@ impl OperationError {
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
             Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
+
+    Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
+    Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
+    Self::AU0003JwsSignature => Some("JWS signature failed".into()),
+    Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+    Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
+    Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
+    Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
