@@ -1117,6 +1117,17 @@ impl Entry<EntryInvalid, EntryCommitted> {
 // Both invalid states can be reached from "entry -> invalidate"
 
 impl Entry<EntryInvalid, EntryNew> {
+    /// This function steps back from EntryInvalid to EntryInit.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub fn into_init_new(self) -> Entry<EntryInit, EntryNew> {
+        Entry {
+            valid: EntryInit,
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
     /// ⚠️  This function bypasses the schema validation and can panic if uuid is not found.
     /// The entry it creates can never be committed safely or replicated.
     /// This is a TEST ONLY method and will never be exposed in production.

@@ -123,6 +123,10 @@ impl ModifyList<ModifyInvalid> {
         Self::new_list(vec![m_purge(attr)])
     }
 
+    pub fn new_set(attr: Attribute, vs: ValueSet) -> Self {
+        Self::new_list(vec![Modify::Set(attr, vs)])
+    }
+
     pub fn push_mod(&mut self, modify: Modify) {
         self.mods.push(modify)
     }

@@ -229,6 +229,10 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile op
 > * **address** - address
 > * **phone** - phone_number, phone_number_verified
 > * **groups** - groups
+>
+> In addition Kanidm supports some vendor specific scopes that can include additional claims.
+>
+> * **ssh_publickeys** - array of ssh_publickey of the user
 
 <!-- this is just to split the templates up -->
 
