@@ -3,9 +3,7 @@ use crate::https::{
     middleware::KOpId,
     ServerState,
 };
-use kanidmd_lib::idm::oauth2::{
-    AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
-};
+use kanidmd_lib::idm::oauth2::{AuthorisationRequest, AuthoriseResponse, Oauth2Error};
 use kanidmd_lib::prelude::*;
 
 use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
@@ -117,16 +115,8 @@ async fn oauth2_auth_req(
         .await;
 
     match res {
-        Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        })) => {
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
+        Ok(AuthoriseResponse::Permitted(success)) => {
+            let redirect_uri = success.build_redirect_uri();
 
             (
                 jar,
@@ -259,32 +249,24 @@ pub async fn view_consent_post(
         .await;
 
     match res {
-        Ok(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        }) => {
+        Ok(success) => {
             let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &server_state);
 
             if let Some(redirect) = consent_form.redirect {
                 Ok((
                     jar,
                     [
-                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (HX_REDIRECT, success.redirect_uri.as_str().to_string()),
                         (
                             ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                            redirect_uri.origin().ascii_serialization(),
+                            success.redirect_uri.origin().ascii_serialization(),
                         ),
                     ],
                     Redirect::to(&redirect),
                 )
                     .into_response())
             } else {
-                redirect_uri
-                    .query_pairs_mut()
-                    .clear()
-                    .append_pair("state", &state)
-                    .append_pair("code", &code);
+                let redirect_uri = success.build_redirect_uri();
                 Ok((
                     jar,
                     [

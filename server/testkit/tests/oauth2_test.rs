@@ -17,7 +17,7 @@ use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
 use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
-use url::Url;
+use url::{form_urlencoded::parse as query_parse, Url};
 
 use kanidm_client::KanidmClient;
 use kanidmd_testkit::{
@@ -27,8 +27,23 @@ use kanidmd_testkit::{
     TEST_INTEGRATION_RS_URL,
 };
 
-#[kanidmd_testkit::test]
-async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
+/// Tests an OAuth 2.0 / OpenID confidential client Authorisation Client flow.
+///
+/// ## Arguments
+///
+/// * `response_mode`: If `Some`, the `response_mode` parameter to pass in the
+///   `/oauth2/authorise` request.
+///
+/// * `response_in_fragment`: If `false`, use the `code` passed in the
+///   callback URI's query parameter, and require the fragment to be empty.
+///
+///   If `true`, use the `code` passed in the callback URI's fragment, and
+///   require the query parameter to be empty.
+async fn test_oauth2_openid_basic_flow_impl(
+    rsclient: KanidmClient,
+    response_mode: Option<&str>,
+    response_in_fragment: bool,
+) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -225,19 +240,25 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
+    let mut query = vec![
+        ("response_type", "code"),
+        ("client_id", TEST_INTEGRATION_RS_ID),
+        ("state", "YWJjZGVm"),
+        ("code_challenge", pkce_code_challenge.as_str()),
+        ("code_challenge_method", "S256"),
+        ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
+        ("scope", "email read openid"),
+        ("max_age", "1"),
+    ];
+
+    if let Some(response_mode) = response_mode {
+        query.push(("response_mode", response_mode));
+    }
+
     let response = client
         .get(rsclient.make_url(OAUTH2_AUTHORISE))
         .bearer_auth(oauth_test_uat.clone())
-        .query(&[
-            ("response_type", "code"),
-            ("client_id", TEST_INTEGRATION_RS_ID),
-            ("state", "YWJjZGVm"),
-            ("code_challenge", pkce_code_challenge.as_str()),
-            ("code_challenge_method", "S256"),
-            ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
-            ("scope", "email read openid"),
-            ("max_age", "1"),
-        ])
+        .query(&query)
         .send()
         .await
         .expect("Failed to send request.");
@@ -288,14 +309,19 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
 
     // Now check it's content
     let redir_url = Url::parse(&redir_str).expect("Url parse failure");
+    let pairs: BTreeMap<_, _> = if response_in_fragment {
+        assert!(redir_url.query().is_none());
+        let fragment = redir_url.fragment().expect("missing URL fragment");
+        query_parse(fragment.as_bytes()).collect()
+    } else {
+        // response_mode = query is default for response_type = code
+        assert!(redir_url.fragment().is_none());
+        redir_url.query_pairs().collect()
+    };
 
     // We should have state and code.
-    let pairs: BTreeMap<_, _> = redir_url.query_pairs().collect();
-
     let code = pairs.get("code").expect("code not found!");
-
     let state = pairs.get("state").expect("state not found!");
-
     assert_eq!(state, "YWJjZGVm");
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
@@ -485,8 +511,50 @@ async fn test_oauth2_openid_basic_flow(rsclient: KanidmClient) {
         .expect("Failed to update oauth2 scopes");
 }
 
+/// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
+/// `response_mode` unset.
+///
+/// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
+async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: KanidmClient) {
+    test_oauth2_openid_basic_flow_impl(rsclient, None, false).await;
+}
+
+/// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
+/// `response_mode=query`.
+///
+/// The response should be returned as a query parameter.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_basic_flow_mode_query(rsclient: KanidmClient) {
+    test_oauth2_openid_basic_flow_impl(rsclient, Some("query"), false).await;
+}
+
+/// Test an OAuth 2.0/OpenID confidential client Authorisation Code flow, with
+/// `response_mode=fragment`.
+///
+/// The response should be returned in the URI's fragment.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_basic_flow_mode_fragment(rsclient: KanidmClient) {
+    test_oauth2_openid_basic_flow_impl(rsclient, Some("fragment"), true).await;
+}
+
+/// Tests an OAuth 2.0 / OpenID public client Authorisation Client flow.
+///
+/// ## Arguments
+///
+/// * `response_mode`: If `Some`, the `response_mode` parameter to pass in the
+///   `/oauth2/authorise` request.
+///
+/// * `response_in_fragment`: If `false`, use the `code` passed in the
+///   callback URI's query parameter, and require the fragment to be empty.
+///
+///   If `true`, use the `code` passed in the callback URI's fragment, and
+///   require the query parameter to be empty.
+async fn test_oauth2_openid_public_flow_impl(
+    rsclient: KanidmClient,
+    response_mode: Option<&str>,
+    response_in_fragment: bool,
+) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -624,18 +692,24 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // get call directly. This should be a 200. (?)
     let (pkce_code_challenge, pkce_code_verifier) = PkceCodeChallenge::new_random_sha256();
 
+    let mut query = vec![
+        ("response_type", "code"),
+        ("client_id", TEST_INTEGRATION_RS_ID),
+        ("state", "YWJjZGVm"),
+        ("code_challenge", pkce_code_challenge.as_str()),
+        ("code_challenge_method", "S256"),
+        ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
+        ("scope", "email read openid"),
+    ];
+
+    if let Some(response_mode) = response_mode {
+        query.push(("response_mode", response_mode));
+    }
+
     let response = client
         .get(rsclient.make_url(OAUTH2_AUTHORISE))
         .bearer_auth(oauth_test_uat.clone())
-        .query(&[
-            ("response_type", "code"),
-            ("client_id", TEST_INTEGRATION_RS_ID),
-            ("state", "YWJjZGVm"),
-            ("code_challenge", pkce_code_challenge.as_str()),
-            ("code_challenge_method", "S256"),
-            ("redirect_uri", TEST_INTEGRATION_RS_REDIRECT_URL),
-            ("scope", "email read openid"),
-        ])
+        .query(&query)
         .send()
         .await
         .expect("Failed to send request.");
@@ -685,13 +759,19 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
     // Now check it's content
     let redir_url = Url::parse(&redir_str).expect("Url parse failure");
 
+    let pairs: BTreeMap<_, _> = if response_in_fragment {
+        assert!(redir_url.query().is_none());
+        let fragment = redir_url.fragment().expect("missing URL fragment");
+        query_parse(fragment.as_bytes()).collect()
+    } else {
+        // response_mode = query is default for response_type = code
+        assert!(redir_url.fragment().is_none());
+        redir_url.query_pairs().collect()
+    };
+
     // We should have state and code.
-    let pairs: BTreeMap<_, _> = redir_url.query_pairs().collect();
-
     let code = pairs.get("code").expect("code not found!");
-
     let state = pairs.get("state").expect("state not found!");
-
     assert_eq!(state, "YWJjZGVm");
 
     // Step 3 - the "resource server" then uses this state and code to directly contact
@@ -794,6 +874,33 @@ async fn test_oauth2_openid_public_flow(rsclient: KanidmClient) {
         .idm_oauth2_rs_delete_sup_scope_map(TEST_INTEGRATION_RS_ID, TEST_INTEGRATION_RS_GROUP_ALL)
         .await
         .expect("Failed to update oauth2 scopes");
+}
+
+/// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
+/// `response_mode` unset.
+///
+/// The response should be returned as a query parameter.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_flow_mode_unset(rsclient: KanidmClient) {
+    test_oauth2_openid_public_flow_impl(rsclient, None, false).await;
+}
+
+/// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
+/// `response_mode=query`.
+///
+/// The response should be returned as a query parameter.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_flow_mode_query(rsclient: KanidmClient) {
+    test_oauth2_openid_public_flow_impl(rsclient, Some("query"), false).await;
+}
+
+/// Test an OAuth 2.0/OpenID public client Authorisation Code flow, with
+/// `response_mode=fragment`.
+///
+/// The response should be returned in the URI's fragment.
+#[kanidmd_testkit::test]
+async fn test_oauth2_openid_public_flow_mode_fragment(rsclient: KanidmClient) {
+    test_oauth2_openid_public_flow_impl(rsclient, Some("fragment"), true).await;
 }
 
 #[kanidmd_testkit::test]
