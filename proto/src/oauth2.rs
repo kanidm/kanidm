@@ -70,23 +70,31 @@ impl AuthorisationRequest {
     /// Get the `response_mode` appropriate for this request, taking into
     /// account defaults from the `response_type` parameter.
     ///
+    /// Returns `None` if the selection is invalid.
+    ///
     /// Reference:
     /// [OAuth 2.0 Multiple Response Type Encoding Practices: Response Modes](https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes)
-    pub const fn get_response_mode(&self) -> ResponseMode {
+    pub const fn get_response_mode(&self) -> Option<ResponseMode> {
         match (self.response_mode, self.response_type) {
-            (Some(m), _) => m,
-            (None, ResponseType::Code) => ResponseMode::Query,
             // https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#id_token
             // The default Response Mode for this Response Type is the fragment
             // encoding and the query encoding MUST NOT be used.
-            (None, ResponseType::IdToken) => ResponseMode::Fragment,
+            (None, ResponseType::IdToken) => Some(ResponseMode::Fragment),
+            (Some(ResponseMode::Query), ResponseType::IdToken) => None,
+
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+            (None, ResponseType::Code) => Some(ResponseMode::Query),
             // https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
-            // If the resource owner grants the access request, the
-            // authorization server issues an access token and delivers it
-            // to the client by adding the following parameters to the fragment
-            // component of the redirection URI using the
-            // "application/x-www-form-urlencoded" format
-            (None, ResponseType::Token) => ResponseMode::Fragment,
+            (None, ResponseType::Token) => Some(ResponseMode::Fragment),
+
+            // https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Security
+            // In no case should a set of Authorization Response parameters
+            // whose default Response Mode is the fragment encoding be encoded
+            // using the query encoding.
+            (Some(ResponseMode::Query), ResponseType::Token) => None,
+
+            // Allow others.
+            (Some(m), _) => Some(m),
         }
     }
 }

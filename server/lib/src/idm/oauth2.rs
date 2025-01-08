@@ -1860,6 +1860,14 @@ impl IdmServerProxyReadTransaction<'_> {
             admin_warn!("Unsupported OAuth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
+        let Some(response_mode) = auth_req.get_response_mode() else {
+            admin_warn!(
+                "Invalid response_mode {:?} for response_type {:?}",
+                auth_req.response_mode,
+                auth_req.response_type
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        };
 
         /*
          * 4.1.2.1.  Error Response
@@ -2109,7 +2117,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 state: auth_req.state.clone(),
                 code,
-                response_mode: auth_req.get_response_mode(),
+                response_mode,
             }))
         } else {
             //  Check that the scopes are the same as a previous consent (if any)
@@ -2148,7 +2156,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.iter().cloned().collect(),
                 nonce: auth_req.nonce.clone(),
-                response_mode: auth_req.get_response_mode(),
+                response_mode,
             };
 
             let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
