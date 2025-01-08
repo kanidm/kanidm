@@ -576,6 +576,17 @@ impl Resolver {
         })
     }
 
+    async fn get_usergroups(&self, g_uuid: Uuid) -> Vec<String> {
+        let mut dbtxn = self.db.write().await;
+
+        dbtxn
+            .get_user_groups(g_uuid)
+            .unwrap_or_else(|_| Vec::new())
+            .into_iter()
+            .map(|gt| self.token_gidattr(&gt))
+            .collect()
+    }
+
     async fn get_groupmembers(&self, g_uuid: Uuid) -> Vec<String> {
         let mut dbtxn = self.db.write().await;
 
@@ -737,12 +748,14 @@ impl Resolver {
     }
 
     pub async fn get_nssgroups_member_name(&self, account_id: &str) -> Result<Vec<NssGroup>, ()> {
-        let account_name = account_id.to_string();
-        Ok(self.get_nssgroups().await.
-            unwrap_or_else(|_| Vec::new())
-            .into_iter()
-            .filter(|g| g.members.contains(&account_name))
-            .collect())
+        if let Some(nss_user) = self.get_nssaccount(&account_id).await {
+            Ok(self.get_usergroups(nss_user).await
+                .into_iter()
+                .map(|g| self.token_gidattr(&g))
+                .collect())
+        } else {
+            Ok(Vec::new())
+        }
     }
 
     async fn get_nssgroup(&self, grp_id: Id) -> Result<Option<NssGroup>, ()> {
