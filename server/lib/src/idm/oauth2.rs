@@ -138,7 +138,7 @@ struct ConsentToken {
         as = "Option<serde_with::base64::Base64<serde_with::base64::UrlSafe, formats::Unpadded>>"
     )]
     pub code_challenge: Option<Vec<u8>>,
-    // Where the RS wants us to go back to.
+    // Where the client wants us to go back to.
     pub redirect_uri: Url,
     // The scopes being granted
     pub scopes: BTreeSet<String>,
@@ -232,7 +232,7 @@ pub enum AuthoriseResponse {
 
 #[derive(Debug)]
 pub struct AuthorisePermitSuccess {
-    // Where the RS wants us to go back to.
+    // Where the client wants us to go back to.
     pub redirect_uri: Url,
     // The CSRF as a string
     pub state: String,
@@ -269,7 +269,7 @@ impl AuthorisePermitSuccess {
 
 #[derive(Debug)]
 pub struct AuthoriseReject {
-    // Where the RS wants us to go back to.
+    // Where the client wants us to go back to.
     pub redirect_uri: Url,
     /// The format the response should be returned to the application in.
     pub response_mode: ResponseMode,
