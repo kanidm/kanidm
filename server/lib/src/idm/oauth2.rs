@@ -2142,6 +2142,10 @@ impl IdmServerProxyReadTransaction<'_> {
                 }
             };
 
+            if granted_scopes.contains(OAUTH2_SCOPE_SSH_PUBLICKEYS) {
+                pii_scopes.insert(OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string());
+            }
+
             // Subsequent we then return an encrypted session handle which allows
             // the user to indicate their consent to this authorisation.
             //
@@ -2854,9 +2858,23 @@ fn extra_claims_for_account(
         extra_claims.insert(claim_name.to_string(), claim_value.to_json_value());
     }
 
-    if scopes.contains("groups") {
+    // Now perform our custom claim's from scopes. We do these second so that
+    // a user can't stomp our claim names.
+
+    if scopes.contains(OAUTH2_SCOPE_SSH_PUBLICKEYS) {
         extra_claims.insert(
-            "groups".to_string(),
+            OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string(),
+            account
+                .sshkeys()
+                .values()
+                .map(|pub_key| serde_json::Value::String(pub_key.to_string()))
+                .collect(),
+        );
+    }
+
+    if scopes.contains(OAUTH2_SCOPE_GROUPS) {
+        extra_claims.insert(
+            OAUTH2_SCOPE_GROUPS.to_string(),
             account
                 .groups
                 .iter()
@@ -2970,7 +2988,7 @@ mod tests {
         JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcUnverified,
     };
     use kanidm_proto::constants::*;
-    use kanidm_proto::internal::UserAuthToken;
+    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
     use kanidm_proto::oauth2::*;
     use openssl::sha;
 
@@ -2979,6 +2997,7 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
+    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
@@ -3126,6 +3145,7 @@ mod tests {
                 Value::new_bool(prefer_short_username)
             )
         );
+
         let ce = CreateEvent::new_internal(vec![entry_rs, entry_group, E_TESTPERSON_1.clone()]);
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
@@ -5235,6 +5255,137 @@ mod tests {
 
         // does the userinfo endpoint provide the same groups?
         assert_eq!(oidc.claims.get("groups"), userinfo.claims.get("groups"));
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_openid_ssh_publickey_claim(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, ident, client_uuid) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+
+        // Extra setup for our test - add the correct claim and give an ssh publickey
+        // to our testperson
+        const ECDSA_SSH_PUBLIC_KEY: &str = "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3BtOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81lzPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@amethyst";
+        let ssh_pubkey = SshPublicKey::from_string(ECDSA_SSH_PUBLIC_KEY).unwrap();
+
+        let scope_set = BTreeSet::from([OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string()]);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        idms_prox_write
+            .qs_write
+            .internal_batch_modify(
+                [
+                    (
+                        UUID_TESTPERSON_1,
+                        ModifyList::new_set(
+                            Attribute::SshPublicKey,
+                            ValueSetSshKey::new("label".to_string(), ssh_pubkey),
+                        ),
+                    ),
+                    (
+                        client_uuid,
+                        ModifyList::new_set(
+                            Attribute::OAuth2RsSupScopeMap,
+                            ValueSetOauthScopeMap::new(UUID_IDM_ALL_ACCOUNTS, scope_set),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            )
+            .expect("Failed to modify test entries");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            code_challenge,
+            "openid groups".to_string()
+        );
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        let id_token = token_response.id_token.expect("No id_token in response!");
+        let access_token =
+            JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
+
+        assert!(idms_prox_write.commit().is_ok());
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc");
+
+        // does our id_token contain the expected groups?
+        assert!(oidc.claims.contains_key(OAUTH2_SCOPE_SSH_PUBLICKEYS));
+
+        assert!(oidc
+            .claims
+            .get(OAUTH2_SCOPE_SSH_PUBLICKEYS)
+            .expect("unable to find key")
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!(ECDSA_SSH_PUBLIC_KEY)));
+
+        // Do the id_token details line up to the userinfo?
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .expect("failed to get userinfo");
+
+        // does the userinfo endpoint provide the same groups?
+        assert_eq!(
+            oidc.claims.get(OAUTH2_SCOPE_SSH_PUBLICKEYS),
+            userinfo.claims.get(OAUTH2_SCOPE_SSH_PUBLICKEYS)
+        );
     }
 
     //  Check insecure pkce behaviour.

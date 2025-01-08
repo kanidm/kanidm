@@ -219,6 +219,7 @@ pub const ATTR_ALLOW_PRIMARY_CRED_FALLBACK: &str = "allow_primary_cred_fallback"
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
+pub const OAUTH2_SCOPE_SSH_PUBLICKEYS: &str = "ssh_publickeys";
 pub const OAUTH2_SCOPE_OPENID: &str = "openid";
 pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";
