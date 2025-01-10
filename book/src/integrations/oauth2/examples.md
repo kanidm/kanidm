@@ -54,6 +54,99 @@ In the virtual host, to protect a location/directory
 </Directory>
 ```
 
+## Gitea
+
+[Gitea](https://docs.gitea.com/) is a painless, self-hosted, all-in-one software
+development service. It has built in support for
+[external authentication](https://docs.gitea.com/administration/authentication)
+including OAuth2.
+
+To set up a Gitea instance to authenticate with Kanidm:
+
+1.  Add an email address to your regular Kanidm account, if it doesn't have one
+    already:
+
+    ```sh
+    kanidm person update your_username -m your_username@example.com
+    ```
+
+2. Create a new Kanidm group for your Gitea users (`gitea_users`), and add your
+    regular account to it:
+
+    ```sh
+    kanidm group create gitea_users
+    kanidm group add-members gitea_users your_username
+    ```
+
+3. Create a new OAuth2 application configuration in Kanidm (`gitea`), configure
+    the redirect URL, and scope access to the `gitea_users` group:
+
+    ```sh
+    kanidm system oauth2 create gitea Gitea https://gitea.example.com/user/login
+    kanidm system oauth2 add-redirect-url gitea https://gitea.example.com/user/oauth2/kanidm/callback
+    kanidm system oauth2 update-scope-map gitea gitea_users email openid profile groups
+    ```
+
+4. Gitea currently [does not support PKCE](https://github.com/go-gitea/gitea/issues/21376)
+    in their OIDC implementation. If you do not perform this step, you will see an error like
+    `No PKCE code challenge was provided with client in enforced PKCE mode.`
+    in your kanidm server logs. Therefore, we have to disable PKCE for Gitea:
+
+    ```sh
+    kanidm system oauth2 warning-insecure-client-disable-pkce gitea
+    ```
+
+5. Get the `gitea` OAuth2 client secret from Kanidm:
+
+    ```sh
+    kanidm system oauth2 show-basic-secret gitea
+    ```
+
+6. Log in to Gitea with an administrator account and go to Site Administration
+    -> Identity & Access -> Authentication Sources, and "Add Authentication Source",
+    then provide the following details:
+    * **Type**: `OAuth2`
+    * **Name**: `kanidm`, in case you want to choose a different name, make sure
+    to update `kanidm` in the redirect URL in step 3. The full redirect URL is
+    provided at the bottom of the current configuration page in Gitea.
+    * **OAuth2 Provider**: `OpenID Connect`
+    * **Client ID (key)**: `gitea`
+    * **Client Secret**: [from show-basic-secret above]
+    * **OpenID Connect Auto Discovery URL**: `https://kanidm.example.com/oauth2/openid/gitea/.well-known/openid-configuration`
+
+    Alternatively, you can provide the configuration via the CLI:
+
+    ```sh
+    gitea admin auth add-oauth \
+        --provider=openidConnect \
+        --name=kanidm \
+        --key=gitea \
+        --secret=[from show-basic-secret above] \
+        --auto-discover-url=https://kanidm.example.com/oauth2/openid/gitea/.well-known/openid-configuration \
+    ```
+
+You should now see a "Sign in with Kanidm" button on your Gitea login page.
+
+You may additionally want to configure:
+
+*   A Gitea themed icon in Kanidm for the `gitea` OAuth2 application:
+    ```sh
+    curl -LO https://gitea.example.com/assets/img/logo.svg
+    kanidm system oauth2 set-image gitea logo.svg svg
+    rm logo.svg
+    ```
+
+*   To disable password authentication in Gitea, add the following
+    [configuration](https://docs.gitea.com/next/administration/config-cheat-sheet)
+    to `app.ini`:
+
+    ```ini
+    [service]
+    ALLOW_ONLY_EXTERNAL_REGISTRATION = true
+    SHOW_REGISTRATION_BUTTON = false
+    ENABLE_PASSWORD_SIGNIN_FORM = false
+    ```
+
 ## GitLab
 
 [GitLab](https://gitlab.com) is a Git-based software development platform, which
