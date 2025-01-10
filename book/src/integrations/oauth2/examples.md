@@ -90,7 +90,7 @@ To set up a Gitea instance to authenticate with Kanidm:
 4. Gitea currently [does not support PKCE](https://github.com/go-gitea/gitea/issues/21376)
     in their OIDC implementation. If you do not perform this step, you will see an error like
     `No PKCE code challenge was provided with client in enforced PKCE mode.`
-    in your kanidm server logs. Therefore, we have to disable PKCE for Gitea:
+    in your Kanidm server logs. Therefore, we have to disable PKCE for Gitea:
 
     ```sh
     kanidm system oauth2 warning-insecure-client-disable-pkce gitea
