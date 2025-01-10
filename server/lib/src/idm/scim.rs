@@ -1,6 +1,9 @@
 use std::time::Duration;
 
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{
+    engine::general_purpose::{STANDARD, URL_SAFE},
+    Engine as _,
+};
 
 use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
@@ -922,7 +925,9 @@ impl IdmServerProxyWriteTransaction<'_> {
                         })
                         .and_then(|secret| match secret {
                             ScimAttr::String(value) => {
-                                STANDARD.decode(value.as_str())
+                                URL_SAFE.decode(value.as_str()).or_else(
+                                    |_| STANDARD.decode(value.as_str())
+                                )
                                     .map_err(|_| {
                                         error!("Invalid secret attribute - must be base64 string");
                                         OperationError::InvalidAttribute(format!(
