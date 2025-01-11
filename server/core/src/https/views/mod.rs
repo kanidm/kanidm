@@ -8,8 +8,12 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
+use concread::cowcell::CowCellReadTxn;
 use constants::Urls;
-use kanidmd_lib::prelude::{OperationError, Uuid};
+use kanidmd_lib::{
+    prelude::{OperationError, Uuid},
+    server::DomainInfo,
+};
 
 use crate::https::ServerState;
 
@@ -29,6 +33,8 @@ mod reset;
 struct UnrecoverableErrorView {
     err_code: OperationError,
     operation_id: Uuid,
+    // This is an option because it's not always present in an "unrecoverable" situation
+    domain_info: Option<CowCellReadTxn<DomainInfo>>,
 }
 
 pub fn view_router() -> Router<ServerState> {

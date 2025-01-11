@@ -30,6 +30,7 @@ axum-server = { version = "0.7.1", default-features = false }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
+concread.workspace = true
 cron = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
@@ -88,6 +89,8 @@ webauthn-rs = { workspace = true, features = [
 [dev-dependencies]
 walkdir = { workspace = true }
 tempfile = { workspace = true }
+http-body-util = "0.1.2"
+kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

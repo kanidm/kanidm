@@ -22,6 +22,7 @@ default = []
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
 dev-oauth2-device-flow = [] # still-in-development oauth2 device flow support
+test = []                   # Enable this for cross-package test features.
 
 [dependencies]
 base64 = { workspace = true }

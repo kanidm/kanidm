@@ -58,6 +58,7 @@ impl IntoResponse for HtmxError {
                         UnrecoverableErrorView {
                             err_code: inner,
                             operation_id: kopid,
+                            domain_info: None,
                         },
                     )
                         .into_response(),

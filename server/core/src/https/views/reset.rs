@@ -398,6 +398,7 @@ pub(crate) async fn view_new_passkey(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(init_form): Form<PasskeyInitForm>,
 ) -> axum::response::Result<Response> {
@@ -425,6 +426,7 @@ pub(crate) async fn view_new_passkey(
                 UnrecoverableErrorView {
                     err_code: OperationError::UI0001ChallengeSerialisation,
                     operation_id: kopid.eventid,
+                    domain_info: Some(domain_info),
                 }
                 .into_response()
             }
@@ -432,6 +434,7 @@ pub(crate) async fn view_new_passkey(
         _ => UnrecoverableErrorView {
             err_code: OperationError::UI0002InvalidState,
             operation_id: kopid.eventid,
+            domain_info: Some(domain_info),
         }
         .into_response(),
     };
