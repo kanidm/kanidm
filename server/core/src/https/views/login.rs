@@ -173,7 +173,7 @@ pub async fn view_logout_get(
         UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-            domain_info: Some(domain_info),
+            domain_info,
         }
         .into_response()
     } else {
@@ -245,7 +245,7 @@ pub async fn view_reauth_get(
                         Err(err_code) => UnrecoverableErrorView {
                             err_code,
                             operation_id: kopid.eventid,
-                            domain_info: Some(display_ctx.clone().domain_info),
+                            domain_info: display_ctx.clone().domain_info,
                         }
                         .into_response(),
                     }
@@ -254,7 +254,7 @@ pub async fn view_reauth_get(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                    domain_info: Some(display_ctx.domain_info),
+                    domain_info: display_ctx.domain_info,
                 }
                 .into_response(),
             }
@@ -281,7 +281,7 @@ pub async fn view_reauth_get(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-            domain_info: Some(display_ctx.domain_info),
+            domain_info: display_ctx.domain_info,
         }
         .into_response(),
     }
@@ -365,7 +365,7 @@ pub async fn view_index_get(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-            domain_info: Some(domain_info),
+            domain_info,
         }
         .into_response(),
     }
@@ -453,7 +453,7 @@ pub async fn view_login_begin_post(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                    domain_info: Some(domain_info),
+                    domain_info,
                 }
                 .into_response(),
             }
@@ -472,7 +472,7 @@ pub async fn view_login_begin_post(
             _ => UnrecoverableErrorView {
                 err_code,
                 operation_id: kopid.eventid,
-                domain_info: Some(domain_info),
+                domain_info,
             }
             .into_response(),
         },
@@ -538,7 +538,7 @@ pub async fn view_login_mech_choose_post(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                    domain_info: Some(domain_info),
+                    domain_info,
                 }
                 .into_response(),
             }
@@ -547,7 +547,7 @@ pub async fn view_login_mech_choose_post(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-            domain_info: Some(domain_info),
+            domain_info,
         }
         .into_response(),
     }
@@ -674,7 +674,7 @@ pub async fn view_login_passkey_post(
         }
         Err(e) => {
             error!(err = ?e, "Unable to deserialize credential submission");
-            HtmxError::new(&kopid, OperationError::SerdeJsonError).into_response()
+            HtmxError::new(&kopid, OperationError::SerdeJsonError, domain_info).into_response()
         }
     }
 }
@@ -741,7 +741,7 @@ async fn credential_step(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
-                    domain_info: Some(display_ctx.domain_info),
+                    domain_info: display_ctx.domain_info,
                 }
                 .into_response(),
             }
@@ -750,7 +750,7 @@ async fn credential_step(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
-            domain_info: Some(domain_info),
+            domain_info,
         }
         .into_response(),
     }
@@ -799,7 +799,7 @@ async fn view_login_step(
                         UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
-                            domain_info: Some(display_ctx.domain_info),
+                            domain_info: display_ctx.domain_info,
                         }
                         .into_response()
                     }
@@ -860,7 +860,7 @@ async fn view_login_step(
                         UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
-                            domain_info: Some(display_ctx.domain_info),
+                            domain_info: display_ctx.domain_info,
                         }
                         .into_response()
                     }
@@ -996,36 +996,4 @@ fn add_session_cookie(
             jar.add(cookie)
         })
         .ok_or(OperationError::InvalidSessionState)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use http_body_util::BodyExt;
-    #[tokio::test]
-    async fn test_unrecoverableerrorview() {
-        let domain_info = kanidmd_lib::server::DomainInfo::new_test();
-        let domain_info = concread::cowcell::CowCell::new(domain_info);
-
-        let view = UnrecoverableErrorView {
-            err_code: OperationError::InvalidState,
-            operation_id: Uuid::new_v4(),
-            domain_info: Some(domain_info.read()),
-        };
-
-        let response = view.into_response();
-
-        // TODO: this really should be an error code :(
-        assert_eq!(response.status(), 200);
-
-        let body = BodyExt::collect(response.into_body())
-            .await
-            .expect("Failed to get body")
-            .to_bytes();
-        let body_string = String::from_utf8(body.to_vec()).expect("Failed to decode to string");
-
-        dbg!(&body_string);
-        dbg!(domain_info.read().display_name());
-        assert!(body_string.contains(domain_info.read().display_name()));
-    }
 }

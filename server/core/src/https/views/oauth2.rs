@@ -104,7 +104,7 @@ async fn oauth2_auth_req(
             UnrecoverableErrorView {
                 err_code: OperationError::UI0003InvalidOauth2Resume,
                 operation_id: kopid.eventid,
-                domain_info: Some(domain_info),
+                domain_info,
             },
         )
             .into_response();
@@ -185,7 +185,7 @@ async fn oauth2_auth_req(
                     UnrecoverableErrorView {
                         err_code,
                         operation_id: kopid.eventid,
-                        domain_info: Some(domain_info),
+                        domain_info,
                     },
                 )
                     .into_response(),
@@ -223,7 +223,7 @@ async fn oauth2_auth_req(
                 UnrecoverableErrorView {
                     err_code: OperationError::InvalidState,
                     operation_id: kopid.eventid,
-                    domain_info: Some(domain_info),
+                    domain_info,
                 },
             )
                 .into_response()
@@ -295,7 +295,7 @@ pub async fn view_consent_post(
             Err(UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
-                domain_info: Some(domain_info),
+                domain_info,
             })
         }
     }

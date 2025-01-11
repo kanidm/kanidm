@@ -1,6 +1,7 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
 use axum_htmx::{HxReswap, HxRetarget, SwapOption};
+use kanidmd_lib::idm::server::DomainInfoRead;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -21,19 +22,19 @@ use crate::https::views::UnrecoverableErrorView;
 #[derive(Debug, ToSchema)]
 pub(crate) enum HtmxError {
     /// Something went wrong when doing things.
-    OperationError(Uuid, OperationError),
+    OperationError(Uuid, OperationError, DomainInfoRead),
 }
 
 impl HtmxError {
-    pub(crate) fn new(kopid: &KOpId, operr: OperationError) -> Self {
-        HtmxError::OperationError(kopid.eventid, operr)
+    pub(crate) fn new(kopid: &KOpId, operr: OperationError, domain_info: DomainInfoRead) -> Self {
+        HtmxError::OperationError(kopid.eventid, operr, domain_info)
     }
 }
 
 impl IntoResponse for HtmxError {
     fn into_response(self) -> Response {
         match self {
-            HtmxError::OperationError(kopid, inner) => {
+            HtmxError::OperationError(kopid, inner, domain_info) => {
                 let body = serde_json::to_string(&inner).unwrap_or(inner.to_string());
                 match &inner {
                     OperationError::NotAuthenticated
@@ -58,7 +59,7 @@ impl IntoResponse for HtmxError {
                         UnrecoverableErrorView {
                             err_code: inner,
                             operation_id: kopid,
-                            domain_info: None,
+                            domain_info,
                         },
                     )
                         .into_response(),

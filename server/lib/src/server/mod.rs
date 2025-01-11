@@ -110,8 +110,8 @@ impl DomainInfo {
     }
 
     #[cfg(feature = "test")]
-    pub fn new_test() -> Self {
-        Self {
+    pub fn new_test() -> CowCell<Self> {
+        concread::cowcell::CowCell::new(Self {
             d_uuid: Uuid::new_v4(),
             d_name: "test domain".to_string(),
             d_display: "Test Domain".to_string(),
@@ -121,7 +121,7 @@ impl DomainInfo {
             d_ldap_allow_unix_pw_bind: false,
             d_allow_easter_eggs: false,
             d_image: None,
-        }
+        })
     }
 }
 

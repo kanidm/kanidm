@@ -8,11 +8,10 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
-use concread::cowcell::CowCellReadTxn;
 use constants::Urls;
 use kanidmd_lib::{
+    idm::server::DomainInfoRead,
     prelude::{OperationError, Uuid},
-    server::DomainInfo,
 };
 
 use crate::https::ServerState;
@@ -34,7 +33,7 @@ struct UnrecoverableErrorView {
     err_code: OperationError,
     operation_id: Uuid,
     // This is an option because it's not always present in an "unrecoverable" situation
-    domain_info: Option<CowCellReadTxn<DomainInfo>>,
+    domain_info: DomainInfoRead,
 }
 
 pub fn view_router() -> Router<ServerState> {
@@ -134,5 +133,31 @@ where
         Some(s) => FromStr::from_str(s)
             .map_err(serde::de::Error::custom)
             .map(Some),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use askama_axum::IntoResponse;
+
+    use super::*;
+    #[tokio::test]
+    async fn test_unrecoverableerrorview() {
+        let domain_info = kanidmd_lib::server::DomainInfo::new_test();
+
+        let view = UnrecoverableErrorView {
+            err_code: OperationError::InvalidState,
+            operation_id: Uuid::new_v4(),
+            domain_info: domain_info.read(),
+        };
+
+        let error_html = view.render().expect("Failed to render");
+
+        assert!(error_html.contains(domain_info.read().display_name()));
+
+        let response = view.into_response();
+
+        // TODO: this really should be an error code :(
+        assert_eq!(response.status(), 200);
     }
 }
