@@ -109,7 +109,6 @@ impl DomainInfo {
         self.d_allow_easter_eggs
     }
 
-    /// This is ONLY FOR TESTING SERIOUSLY
     #[cfg(feature = "test")]
     pub fn new_test() -> Self {
         Self {
