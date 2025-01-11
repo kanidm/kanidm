@@ -30,7 +30,7 @@ axum-server = { version = "0.7.1", default-features = false }
 bytes = { workspace = true }
 chrono = { workspace = true }
 compact_jwt = { workspace = true }
-concread.workspace = true
+concread = { workspace = true }
 cron = { workspace = true }
 filetime = { workspace = true }
 futures = { workspace = true }
