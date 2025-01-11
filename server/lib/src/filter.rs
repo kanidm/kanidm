@@ -358,6 +358,54 @@ pub enum FilterPlan {
     InclusionIndexed(Vec<FilterPlan>),
 }
 
+// This difference in this is that we want to show unindexed elements more prominently
+// in the execution.
+
+fn fmt_filterplan_set(f: &mut fmt::Formatter<'_>, name: &str, plan: &[FilterPlan]) -> fmt::Result {
+    write!(f, "{name}(")?;
+    for item in plan {
+        write!(f, "{}, ", item)?;
+    }
+    write!(f, ")")
+}
+
+impl fmt::Display for FilterPlan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Invalid => write!(f, "Invalid"),
+            Self::EqIndexed(attr, _) => write!(f, "EqIndexed({attr})"),
+            Self::EqCorrupt(attr) => write!(f, "EqCorrupt({attr})"),
+            Self::EqUnindexed(attr) => write!(f, "EqUnindexed({attr})"),
+
+            Self::SubIndexed(attr, _) => write!(f, "SubIndexed({attr})"),
+            Self::SubCorrupt(attr) => write!(f, "SubCorrupt({attr})"),
+            Self::SubUnindexed(attr) => write!(f, "SubUnindexed({attr})"),
+
+            Self::PresIndexed(attr) => write!(f, "PresIndexed({attr})"),
+            Self::PresCorrupt(attr) => write!(f, "PresCorrupt({attr})"),
+            Self::PresUnindexed(attr) => write!(f, "PresUnindexed({attr})"),
+
+            Self::LessThanUnindexed(attr) => write!(f, "LessThanUnindexed({attr})"),
+
+            Self::OrUnindexed(plan) => fmt_filterplan_set(f, "OrUnindexed", &plan),
+            Self::OrIndexed(plan) => write!(f, "OrIndexed(len={})", plan.len()),
+            Self::OrPartial(plan) => fmt_filterplan_set(f, "OrPartial", &plan),
+            Self::OrPartialThreshold(plan) => fmt_filterplan_set(f, "OrPartialThreshold", &plan),
+
+            Self::AndEmptyCand(plan) => write!(f, "AndEmptyCand(len={})", plan.len()),
+            Self::AndUnindexed(plan) => fmt_filterplan_set(f, "AndUnindexed", &plan),
+            Self::AndIndexed(plan) => write!(f, "AndIndexed(len={})", plan.len()),
+            Self::AndPartial(plan) => fmt_filterplan_set(f, "AndPartial", &plan),
+            Self::AndPartialThreshold(plan) => fmt_filterplan_set(f, "AndPartialThreshold", &plan),
+
+            Self::AndNot(plan) => write!(f, "AndNot({plan})"),
+
+            Self::InclusionInvalid(plan) => fmt_filterplan_set(f, "InclusionInvalid", &plan),
+            Self::InclusionIndexed(plan) => write!(f, "InclusionIndexed(len={})", plan.len()),
+        }
+    }
+}
+
 /// A `Filter` is a logical set of assertions about the state of an [`Entry`] and
 /// it's avas. `Filter`s are built from a set of possible assertions.
 ///

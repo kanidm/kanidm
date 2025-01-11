@@ -94,11 +94,22 @@ impl Limits {
     }
 }
 
+/// The result of a key value request containing the list of entry IDs that
+/// match the filter/query condition.
 #[derive(Debug, Clone)]
 pub enum IdList {
+    /// The value is not indexed, and must be assumed that all entries may match.
     AllIds,
-    PartialThreshold(IDLBitRange),
+    /// The index is "fuzzy" like a bloom filter (perhaps superset is a better description)
+    /// - it containes all elements that do match, but may have extra elements that don't.
+    /// This requires the caller to perform a filter test to assert that all
+    /// returned entries match all assertions within the filter.
     Partial(IDLBitRange),
+    /// The set was indexed and is below the filter test threshold. This is because it's
+    /// now faster to test with the filter than to continue to access indexes at this point.
+    /// Like a partial set, this is a super set of the entries that match the query.
+    PartialThreshold(IDLBitRange),
+    /// The value is indexed and accurately represents the set of entries that precisely match.
     Indexed(IDLBitRange),
 }
 
@@ -640,7 +651,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-        debug!(search_filter_executed_plan = ?fplan);
+        debug!(search_filter_executed_plan = %fplan);
 
         match &idl {
             IdList::AllIds => {
@@ -736,7 +747,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::exists -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
-        debug!(exist_filter_executed_plan = ?fplan);
+        debug!(exist_filter_executed_plan = %fplan);
 
         // Apply limits to the IdList.
         match &idl {
