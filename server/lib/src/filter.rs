@@ -387,20 +387,20 @@ impl fmt::Display for FilterPlan {
 
             Self::LessThanUnindexed(attr) => write!(f, "LessThanUnindexed({attr})"),
 
-            Self::OrUnindexed(plan) => fmt_filterplan_set(f, "OrUnindexed", &plan),
+            Self::OrUnindexed(plan) => fmt_filterplan_set(f, "OrUnindexed", plan),
             Self::OrIndexed(plan) => write!(f, "OrIndexed(len={})", plan.len()),
-            Self::OrPartial(plan) => fmt_filterplan_set(f, "OrPartial", &plan),
-            Self::OrPartialThreshold(plan) => fmt_filterplan_set(f, "OrPartialThreshold", &plan),
+            Self::OrPartial(plan) => fmt_filterplan_set(f, "OrPartial", plan),
+            Self::OrPartialThreshold(plan) => fmt_filterplan_set(f, "OrPartialThreshold", plan),
 
             Self::AndEmptyCand(plan) => write!(f, "AndEmptyCand(len={})", plan.len()),
-            Self::AndUnindexed(plan) => fmt_filterplan_set(f, "AndUnindexed", &plan),
+            Self::AndUnindexed(plan) => fmt_filterplan_set(f, "AndUnindexed", plan),
             Self::AndIndexed(plan) => write!(f, "AndIndexed(len={})", plan.len()),
-            Self::AndPartial(plan) => fmt_filterplan_set(f, "AndPartial", &plan),
-            Self::AndPartialThreshold(plan) => fmt_filterplan_set(f, "AndPartialThreshold", &plan),
+            Self::AndPartial(plan) => fmt_filterplan_set(f, "AndPartial", plan),
+            Self::AndPartialThreshold(plan) => fmt_filterplan_set(f, "AndPartialThreshold", plan),
 
             Self::AndNot(plan) => write!(f, "AndNot({plan})"),
 
-            Self::InclusionInvalid(plan) => fmt_filterplan_set(f, "InclusionInvalid", &plan),
+            Self::InclusionInvalid(plan) => fmt_filterplan_set(f, "InclusionInvalid", plan),
             Self::InclusionIndexed(plan) => write!(f, "InclusionIndexed(len={})", plan.len()),
         }
     }

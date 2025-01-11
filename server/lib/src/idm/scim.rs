@@ -535,10 +535,14 @@ impl IdmServerProxyWriteTransaction<'_> {
         self.scim_sync_apply_phase_4(&changes.retain, sync_uuid)?;
 
         // Final house keeping. Commit the new sync state.
-        self.scim_sync_apply_phase_5(sync_uuid, &changes.to_state)
+        self.scim_sync_apply_phase_5(sync_uuid, &changes.to_state)?;
+
+        info!("success");
+
+        Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     fn scim_sync_apply_phase_1<'b>(
         &mut self,
         sse: &'b ScimSyncUpdateEvent,
@@ -633,7 +637,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok((sync_uuid, sync_authority_set, change_entries, sync_refresh))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn scim_sync_apply_phase_2(
         &mut self,
         change_entries: &BTreeMap<Uuid, &ScimEntry>,
@@ -752,7 +756,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(())
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn scim_sync_apply_phase_refresh_cleanup(
         &mut self,
         change_entries: &BTreeMap<Uuid, &ScimEntry>,
@@ -1252,7 +1256,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         Ok(ModifyList::new_list(mods))
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn scim_sync_apply_phase_3(
         &mut self,
         change_entries: &BTreeMap<Uuid, &ScimEntry>,
@@ -1338,7 +1342,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             })
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn scim_sync_apply_phase_4(
         &mut self,
         retain: &ScimSyncRetentionMode,
@@ -1444,7 +1448,7 @@ impl IdmServerProxyWriteTransaction<'_> {
         }
     }
 
-    #[instrument(level = "debug", skip_all)]
+    #[instrument(level = "info", skip_all)]
     pub(crate) fn scim_sync_apply_phase_5(
         &mut self,
         sync_uuid: Uuid,
