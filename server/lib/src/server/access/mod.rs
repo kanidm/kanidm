@@ -508,6 +508,8 @@ pub trait AccessControlsTransaction<'a> {
         let sync_agmts = self.get_sync_agreements();
 
         let r = entries.iter().all(|e| {
+            debug!(entry_id = %e.get_display_id());
+
             match apply_modify_access(&me.ident, related_acp.as_slice(), sync_agmts, e) {
                 ModifyResult::Denied => false,
                 ModifyResult::Grant => true,
@@ -634,6 +636,7 @@ pub trait AccessControlsTransaction<'a> {
             debug!(?requested_pres, "Requested present set");
             debug!(?requested_rem, "Requested remove set");
             debug!(?requested_classes, "Requested class set");
+            debug!(entry_id = %e.get_display_id());
 
             let sync_agmts = self.get_sync_agreements();
 

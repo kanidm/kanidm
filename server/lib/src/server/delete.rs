@@ -39,7 +39,8 @@ impl QueryServerWriteTransaction<'_> {
 
         // Is the candidate set empty?
         if pre_candidates.is_empty() {
-            warn!(filter = ?de.filter, "delete: no candidates match filter");
+            warn!("delete: no candidates match filter");
+            debug!(delete_filter = ?de.filter);
             return Err(OperationError::NoMatchingEntries);
         };
 
