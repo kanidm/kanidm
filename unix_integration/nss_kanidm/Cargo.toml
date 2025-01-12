@@ -25,7 +25,7 @@ paste = { workspace = true }
 lazy_static = { workspace = true }
 
 [target."cfg(target_os = \"freebsd\")".build-dependencies]
-cc = "^1.2.6"
+cc = "^1.2.9"
 
 ## Debian packaging
 # The base metadata does **not** work to build a functioning package!
