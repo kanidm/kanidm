@@ -250,31 +250,28 @@ impl ServerConfig {
     /// Updates the ServerConfig from environment variables starting with `KANIDM_`
     fn try_from_env(mut self) -> Result<Self, String> {
         for (key, value) in std::env::vars() {
-            if !key.starts_with("KANIDM_") {
+            let Some(key) = key.strip_prefix("KANIDM_") else {
                 continue;
-            }
+            };
 
             let ignorable_build_fields = [
-                "KANIDM_CPU_FLAGS",
-                "KANIDM_CPU_FLAGS",
-                "KANIDM_DEFAULT_CONFIG_PATH",
-                "KANIDM_DEFAULT_CONFIG_PATH",
-                "KANIDM_DEFAULT_UNIX_SHELL_PATH",
-                "KANIDM_DEFAULT_UNIX_SHELL_PATH",
-                "KANIDM_HTMX_UI_PKG_PATH",
-                "KANIDM_PKG_VERSION_HASH",
-                "KANIDM_PKG_VERSION",
-                "KANIDM_PRE_RELEASE",
-                "KANIDM_PROFILE_NAME",
+                "CPU_FLAGS",
+                "DEFAULT_CONFIG_PATH",
+                "DEFAULT_UNIX_SHELL_PATH",
+                "HTMX_UI_PKG_PATH",
+                "PKG_VERSION",
+                "PKG_VERSION_HASH",
+                "PRE_RELEASE",
+                "PROFILE_NAME",
             ];
 
-            if ignorable_build_fields.contains(&key.as_str()) {
+            if ignorable_build_fields.contains(&key) {
                 #[cfg(any(debug_assertions, test))]
-                eprintln!("-- Ignoring build-time env var {}", key);
+                eprintln!("-- Ignoring build-time env var KANIDM_{key}");
                 continue;
             }
 
-            match key.replace("KANIDM_", "").as_str() {
+            match key {
                 "DOMAIN" => {
                     self.domain = Some(value.to_string());
                 }
@@ -414,7 +411,7 @@ impl ServerConfig {
                     self.otel_grpc_url = Some(value.to_string());
                 }
 
-                _ => eprintln!("Ignoring env var {}", key),
+                _ => eprintln!("Ignoring env var KANIDM_{key}"),
             }
         }
 
