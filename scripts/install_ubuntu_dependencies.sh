@@ -13,6 +13,7 @@ ${SUDOCMD} apt-get update &&
         libpam0g-dev \
         libudev-dev \
         libssl-dev \
+        libsystemd-dev \
         pkg-config \
         curl \
         rsync \
