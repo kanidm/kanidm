@@ -69,7 +69,7 @@ pub(crate) async fn view_profile_unlock_get(
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .await
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let display_ctx = LoginDisplayCtx {
         domain_info,

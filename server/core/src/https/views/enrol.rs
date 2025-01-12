@@ -50,7 +50,7 @@ pub(crate) async fn view_enrol_get(
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
         .await
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
     let can_rw = uat.purpose_readwrite_active(time);
@@ -87,7 +87,7 @@ pub(crate) async fn view_enrol_get(
             kopid.eventid,
         )
         .await
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let secret = cu_intent.token;
 

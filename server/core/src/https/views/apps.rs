@@ -43,7 +43,7 @@ pub(crate) async fn view_apps_get(
         .qe_r_ref
         .handle_list_applinks(client_auth_info, kopid.eventid)
         .await
-        .map_err(|old| HtmxError::new(&kopid, old))?;
+        .map_err(|old| HtmxError::new(&kopid, old, domain_info.clone()))?;
 
     Ok({
         (
