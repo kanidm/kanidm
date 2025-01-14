@@ -48,6 +48,7 @@ struct SessionContext {
     after_auth_loc: Option<String>,
 }
 
+#[derive(Clone)]
 pub enum ReauthPurpose {
     ProfileSettings,
 }
@@ -59,7 +60,7 @@ impl fmt::Display for ReauthPurpose {
         }
     }
 }
-
+#[derive(Clone)]
 pub enum LoginError {
     InvalidUsername,
 }
@@ -71,16 +72,17 @@ impl fmt::Display for LoginError {
         }
     }
 }
-
+#[derive(Clone)]
 pub struct Reauth {
     pub username: String,
     pub purpose: ReauthPurpose,
 }
-
+#[derive(Clone)]
 pub struct Oauth2Ctx {
     pub client_name: String,
 }
 
+#[derive(Clone)]
 pub struct LoginDisplayCtx {
     pub domain_info: DomainInfoRead,
     // We only need this on the first re-auth screen to indicate what we are doing
@@ -160,6 +162,7 @@ pub async fn view_logout_get(
     State(state): State<ServerState>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     Extension(kopid): Extension<KOpId>,
+    DomainInfo(domain_info): DomainInfo,
     mut jar: CookieJar,
 ) -> Response {
     let response = if let Err(err_code) = state
@@ -170,6 +173,7 @@ pub async fn view_logout_get(
         UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
+            domain_info,
         }
         .into_response()
     } else {
@@ -232,7 +236,7 @@ pub async fn view_reauth_get(
                         ar,
                         client_auth_info,
                         session_context,
-                        display_ctx,
+                        display_ctx.clone(),
                     )
                     .await
                     {
@@ -241,6 +245,7 @@ pub async fn view_reauth_get(
                         Err(err_code) => UnrecoverableErrorView {
                             err_code,
                             operation_id: kopid.eventid,
+                            domain_info: display_ctx.clone().domain_info,
                         }
                         .into_response(),
                     }
@@ -249,6 +254,7 @@ pub async fn view_reauth_get(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
+                    domain_info: display_ctx.domain_info,
                 }
                 .into_response(),
             }
@@ -275,6 +281,7 @@ pub async fn view_reauth_get(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
+            domain_info: display_ctx.domain_info,
         }
         .into_response(),
     }
@@ -358,6 +365,7 @@ pub async fn view_index_get(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
+            domain_info,
         }
         .into_response(),
     }
@@ -420,7 +428,7 @@ pub async fn view_login_begin_post(
     };
 
     let mut display_ctx = LoginDisplayCtx {
-        domain_info,
+        domain_info: domain_info.clone(),
         oauth2: None,
         reauth: None,
         error: None,
@@ -445,6 +453,7 @@ pub async fn view_login_begin_post(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
+                    domain_info,
                 }
                 .into_response(),
             }
@@ -463,6 +472,7 @@ pub async fn view_login_begin_post(
             _ => UnrecoverableErrorView {
                 err_code,
                 operation_id: kopid.eventid,
+                domain_info,
             }
             .into_response(),
         },
@@ -503,7 +513,7 @@ pub async fn view_login_mech_choose_post(
         .await;
 
     let display_ctx = LoginDisplayCtx {
-        domain_info,
+        domain_info: domain_info.clone(),
         oauth2: None,
         reauth: None,
         error: None,
@@ -528,6 +538,7 @@ pub async fn view_login_mech_choose_post(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
+                    domain_info,
                 }
                 .into_response(),
             }
@@ -536,6 +547,7 @@ pub async fn view_login_mech_choose_post(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
+            domain_info,
         }
         .into_response(),
     }
@@ -662,7 +674,7 @@ pub async fn view_login_passkey_post(
         }
         Err(e) => {
             error!(err = ?e, "Unable to deserialize credential submission");
-            HtmxError::new(&kopid, OperationError::SerdeJsonError).into_response()
+            HtmxError::new(&kopid, OperationError::SerdeJsonError, domain_info).into_response()
         }
     }
 }
@@ -692,7 +704,7 @@ async fn credential_step(
             .unwrap_or_default();
 
     let display_ctx = LoginDisplayCtx {
-        domain_info,
+        domain_info: domain_info.clone(),
         oauth2: None,
         reauth: None,
         error: None,
@@ -720,7 +732,7 @@ async fn credential_step(
                 ar,
                 client_auth_info,
                 session_context,
-                display_ctx,
+                display_ctx.clone(),
             )
             .await
             {
@@ -729,6 +741,7 @@ async fn credential_step(
                 Err(err_code) => UnrecoverableErrorView {
                     err_code,
                     operation_id: kopid.eventid,
+                    domain_info: display_ctx.domain_info,
                 }
                 .into_response(),
             }
@@ -737,6 +750,7 @@ async fn credential_step(
         Err(err_code) => UnrecoverableErrorView {
             err_code,
             operation_id: kopid.eventid,
+            domain_info,
         }
         .into_response(),
     }
@@ -785,6 +799,7 @@ async fn view_login_step(
                         UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
+                            domain_info: display_ctx.domain_info,
                         }
                         .into_response()
                     }
@@ -845,6 +860,7 @@ async fn view_login_step(
                         UnrecoverableErrorView {
                             err_code: OperationError::InvalidState,
                             operation_id: kopid.eventid,
+                            domain_info: display_ctx.domain_info,
                         }
                         .into_response()
                     }

@@ -88,6 +88,7 @@ webauthn-rs = { workspace = true, features = [
 [dev-dependencies]
 walkdir = { workspace = true }
 tempfile = { workspace = true }
+kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }

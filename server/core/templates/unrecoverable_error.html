@@ -6,12 +6,24 @@
 (% endblock %)
 
 (% block body %)
+<main id="main" class="m-auto align-items-center d-flex flex-column">
+	(% if domain_info.image().is_some() %)
+		<img src="/ui/images/domain"
+			alt="(( domain_info.display_name() ))" class="kanidm_logo" />
+	(% else %)
+			<img
+				src="/pkg/img/logo-square.svg?v=((crate::https::cache_buster::get_cache_buster_key()))"
+				alt="(( domain_info.display_name() ))" class="kanidm_logo" />
+	(% endif %)
+	<h3>(( domain_info.display_name() ))</h3>
+
+
 	<h2>Error</h2>
-	<main id="main">
 		<p>An unrecoverable error occurred. Please contact your administrator with the details below.</p>
 		<p>Operation ID: (( operation_id ))</p>
 		<p>Error Code: (( err_code ))</p>
 		<a href=((Urls::Ui))>Return</a>
 	</main>
-(% endblock %)
+
+	(% endblock %)
 
