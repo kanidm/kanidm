@@ -194,7 +194,11 @@ pub trait AccessControlsTransaction<'a> {
     fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
     #[instrument(level = "trace", name = "access::search_related_acp", skip_all)]
-    fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
+    fn search_related_acp<'b>(
+        &'b self,
+        ident: &Identity,
+        attrs: Option<&BTreeSet<Attribute>>,
+    ) -> Vec<AccessControlSearchResolved<'b>> {
         let search_state = self.get_search();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
@@ -262,8 +266,18 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
+        // Trim any search rule that doesn't provide attributes related to the request.
+        let related_acp = if let Some(r_attrs) = attrs.as_ref() {
+            related_acp
+                .into_iter()
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
+                .collect()
+        } else {
+            // None here means all attrs requested.
+            related_acp
+        };
+
         related_acp
-        // }
     }
 
     #[instrument(level = "debug", name = "access::filter_entries", skip_all)]
@@ -280,7 +294,7 @@ pub trait AccessControlsTransaction<'a> {
         let requested_attrs: BTreeSet<Attribute> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp = self.search_related_acp(ident);
+        let related_acp = self.search_related_acp(ident, None);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
@@ -340,17 +354,7 @@ pub trait AccessControlsTransaction<'a> {
         // to see if the attribute is something we currently want.
 
         // Get the relevant acps for this receiver.
-        let related_acp = self.search_related_acp(&se.ident);
-        let related_acp: Vec<_> = if let Some(r_attrs) = se.attrs.as_ref() {
-            // If the acp doesn't overlap with our requested attrs, there is no point in
-            // testing it!
-            related_acp
-                .into_iter()
-                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
-                .collect()
-        } else {
-            related_acp
-        };
+        let related_acp = self.search_related_acp(&se.ident, se.attrs.as_ref());
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
@@ -827,21 +831,10 @@ pub trait AccessControlsTransaction<'a> {
 
         // == search ==
         // Get the relevant acps for this receiver.
-        let search_related_acp = self.search_related_acp(ident);
-        // Trim any search rule that doesn't provide attributes related to the request.
-        let search_related_acp = if let Some(r_attrs) = attrs.as_ref() {
-            search_related_acp
-                .into_iter()
-                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
-                .collect()
-        } else {
-            // None here means all attrs requested.
-            search_related_acp
-        };
-
+        let search_related_acp = self.search_related_acp(ident, attrs.as_ref());
         // == modify ==
-
         let modify_related_acp = self.modify_related_acp(ident);
+        // == delete ==
         let delete_related_acp = self.delete_related_acp(ident);
 
         let sync_agmts = self.get_sync_agreements();
