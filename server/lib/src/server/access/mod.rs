@@ -841,51 +841,16 @@ pub trait AccessControlsTransaction<'a> {
 
         let effective_permissions: Vec<_> = entries
             .iter()
-            .map(|e| {
-                // == search ==
-                let search_effective =
-                    match apply_search_access(ident, search_related_acp.as_slice(), e) {
-                        SearchResult::Denied => Access::Denied,
-                        SearchResult::Grant => Access::Grant,
-                        SearchResult::Allow(allowed_attrs) => {
-                            // Bound by requested attrs?
-                            Access::Allow(allowed_attrs.into_iter().collect())
-                        }
-                    };
-
-                // == modify ==
-                let (modify_pres, modify_rem, modify_class) = match apply_modify_access(
+            .map(|entry| {
+                self.entry_effective_permission_check(
                     ident,
-                    modify_related_acp.as_slice(),
+                    ident_uuid,
+                    entry,
+                    &search_related_acp,
+                    &modify_related_acp,
+                    &delete_related_acp,
                     sync_agmts,
-                    e,
-                ) {
-                    ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
-                    ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
-                    ModifyResult::Allow { pres, rem, cls } => (
-                        Access::Allow(pres.into_iter().collect()),
-                        Access::Allow(rem.into_iter().collect()),
-                        AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
-                    ),
-                };
-
-                // == delete ==
-                let delete_status = apply_delete_access(ident, delete_related_acp.as_slice(), e);
-
-                let delete = match delete_status {
-                    DeleteResult::Denied => false,
-                    DeleteResult::Grant => true,
-                };
-
-                AccessEffectivePermission {
-                    ident: ident_uuid,
-                    target: e.get_uuid(),
-                    delete,
-                    search: search_effective,
-                    modify_pres,
-                    modify_rem,
-                    modify_class,
-                }
+                )
             })
             .collect();
 
@@ -894,6 +859,57 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         Ok(effective_permissions)
+    }
+
+    fn entry_effective_permission_check<'b>(
+        &'b self,
+        ident: &Identity,
+        ident_uuid: Uuid,
+        entry: &Arc<EntrySealedCommitted>,
+        search_related_acp: &[AccessControlSearchResolved<'b>],
+        modify_related_acp: &[AccessControlModifyResolved<'b>],
+        delete_related_acp: &[AccessControlDeleteResolved<'b>],
+        sync_agmts: &HashMap<Uuid, BTreeSet<Attribute>>,
+    ) -> AccessEffectivePermission {
+        // == search ==
+        let search_effective = match apply_search_access(ident, search_related_acp, entry) {
+            SearchResult::Denied => Access::Denied,
+            SearchResult::Grant => Access::Grant,
+            SearchResult::Allow(allowed_attrs) => {
+                // Bound by requested attrs?
+                Access::Allow(allowed_attrs.into_iter().collect())
+            }
+        };
+
+        // == modify ==
+        let (modify_pres, modify_rem, modify_class) =
+            match apply_modify_access(ident, modify_related_acp, sync_agmts, entry) {
+                ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
+                ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
+                ModifyResult::Allow { pres, rem, cls } => (
+                    Access::Allow(pres.into_iter().collect()),
+                    Access::Allow(rem.into_iter().collect()),
+                    AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                ),
+            };
+
+        // == delete ==
+        let delete_status = apply_delete_access(ident, delete_related_acp, entry);
+
+        let delete = match delete_status {
+            DeleteResult::Denied => false,
+            DeleteResult::Grant => true,
+        };
+
+        AccessEffectivePermission {
+            ident: ident_uuid,
+            target: entry.get_uuid(),
+            delete,
+            search: search_effective,
+            modify_pres,
+            modify_rem,
+            modify_class,
+        }
     }
 }
 
