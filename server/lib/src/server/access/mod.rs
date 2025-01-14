@@ -350,7 +350,6 @@ pub trait AccessControlsTransaction<'a> {
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
-
         struct DoEffectiveCheck<'b> {
             modify_related_acp: Vec<AccessControlModifyResolved<'b>>,
             delete_related_acp: Vec<AccessControlDeleteResolved<'b>>,
@@ -389,7 +388,9 @@ pub trait AccessControlsTransaction<'a> {
             let sync_agmts = self.get_sync_agreements();
 
             DoEffectiveCheck {
-                modify_related_acp, delete_related_acp, sync_agmts
+                modify_related_acp,
+                delete_related_acp,
+                sync_agmts,
             }
         });
 
