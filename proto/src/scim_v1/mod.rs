@@ -48,7 +48,7 @@ pub struct ScimEntryGeneric {
 /// SCIM Query Parameters used during the get of a single entry
 #[serde_as]
 #[skip_serializing_none]
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default)]
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
     pub attributes: Option<Vec<Attribute>>,

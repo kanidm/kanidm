@@ -77,6 +77,7 @@ pub struct SearchEvent {
     // This is the original filter, for the purpose of ACI checking.
     pub filter_orig: Filter<FilterValid>,
     pub attrs: Option<BTreeSet<Attribute>>,
+    pub effective_access_check: bool,
 }
 
 impl SearchEvent {
@@ -99,6 +100,7 @@ impl SearchEvent {
             // We can't get this from the SearchMessage because it's annoying with the
             // current macro design.
             attrs: None,
+            effective_access_check: false,
         })
     }
 
@@ -132,6 +134,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: r_attrs,
+            effective_access_check: false,
         })
     }
 
@@ -168,6 +171,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: r_attrs,
+            effective_access_check: false,
         })
     }
 
@@ -185,6 +189,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: None,
+            effective_access_check: false,
         })
     }
 
@@ -202,6 +207,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: None,
+            effective_access_check: false,
         })
     }
 
@@ -217,6 +223,7 @@ impl SearchEvent {
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -229,6 +236,7 @@ impl SearchEvent {
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -242,6 +250,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -260,6 +269,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -276,6 +286,7 @@ impl SearchEvent {
             filter: filter.clone().into_valid().into_ignore_hidden(),
             filter_orig: filter.into_valid(),
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -296,6 +307,7 @@ impl SearchEvent {
             filter,
             filter_orig,
             attrs,
+            effective_access_check: false,
         })
     }
 
@@ -308,6 +320,7 @@ impl SearchEvent {
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
+            effective_access_check: false,
         }
     }
 
@@ -317,6 +330,7 @@ impl SearchEvent {
             filter: filter.clone(),
             filter_orig: filter,
             attrs: None,
+            effective_access_check: false,
         }
     }
 }

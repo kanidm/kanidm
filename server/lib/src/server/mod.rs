@@ -1546,6 +1546,7 @@ impl QueryServerReadTransaction<'_> {
             filter: f_valid,
             filter_orig: f_intent_valid,
             attrs: r_attrs,
+            effective_access_check: query.ext_access_check,
         };
 
         let mut vs = self.search_ext(&se)?;

@@ -23,7 +23,7 @@ use concread::arcache::ARCacheBuilder;
 use concread::cowcell::*;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
+use crate::entry::{Entry, EntryInit, EntryNew};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, ResolveFilterCache, ResolveFilterCacheReadTxn};
 use crate::modify::Modify;
@@ -35,6 +35,8 @@ use self::profiles::{
     AccessControlReceiver, AccessControlReceiverCondition, AccessControlSearch,
     AccessControlSearchResolved, AccessControlTarget, AccessControlTargetCondition,
 };
+
+use kanidm_proto::scim_v1::server::ScimAttributeEffectiveAccess;
 
 use self::create::{apply_create_access, CreateResult};
 use self::delete::{apply_delete_access, DeleteResult};
@@ -57,6 +59,16 @@ pub enum Access {
     Allow(BTreeSet<Attribute>),
 }
 
+impl From<&Access> for ScimAttributeEffectiveAccess {
+    fn from(value: &Access) -> Self {
+        match value {
+            Access::Grant => Self::Grant,
+            Access::Denied => Self::Denied,
+            Access::Allow(set) => Self::Allow(set.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AccessClass {
     Grant,
@@ -66,8 +78,9 @@ pub enum AccessClass {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
-    // I don't think we need this? The ident is implied by the requester.
+    /// Who the access applies to
     pub ident: Uuid,
+    /// The target the access affects
     pub target: Uuid,
     pub delete: bool,
     pub search: Access,
@@ -79,7 +92,7 @@ pub struct AccessEffectivePermission {
 pub enum AccessResult {
     // Deny this operation unconditionally.
     Denied,
-    // Unbounded allow, provided no denied exists.
+    // Unbounded allow, pro -vided no denied exists.
     Grant,
     // This module makes no decisions about this entry.
     Ignore,
@@ -322,7 +335,7 @@ pub trait AccessControlsTransaction<'a> {
         &self,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
-    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
 
@@ -369,11 +382,7 @@ pub trait AccessControlsTransaction<'a> {
                             allowed_attrs
                         };
 
-                        if reduced_attrs.is_empty() {
-                            None
-                        } else {
-                            Some(e.reduce_attributes(&reduced_attrs))
-                        }
+                        Some(e.reduce_attributes(&reduced_attrs, None))
                     }
                 }
 

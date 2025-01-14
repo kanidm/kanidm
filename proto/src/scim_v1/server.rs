@@ -16,10 +16,14 @@ use uuid::Uuid;
 /// A strongly typed ScimEntry that is for transmission to clients. This uses
 /// Kanidm internal strong types for values allowing direct serialisation and
 /// transmission.
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimEntryKanidm {
     #[serde(flatten)]
     pub header: ScimEntryHeader,
+
+    pub ext_access_check: Option<ScimEffectiveAccess>,
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
@@ -50,8 +54,6 @@ impl ScimAttributeEffectiveAccess {
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
     pub ident: Uuid,
-    /// The target that the effective permission affects
-    pub target: Uuid,
     /// If the ident may delete the target entry
     pub delete: bool,
     /// The set of effective access over search events
