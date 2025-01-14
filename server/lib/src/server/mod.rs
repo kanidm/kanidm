@@ -284,7 +284,7 @@ pub trait QueryServerTransaction<'a> {
     fn search_ext(
         &mut self,
         se: &SearchEvent,
-    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
         /*
          * This just wraps search, but it's for the external interface
          * so as a result it also reduces the entry set's attributes at

@@ -20,6 +20,7 @@ use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
 use sshkey_attest::proto::PublicKey as SshPublicKey;
 use std::collections::BTreeMap;
+use std::ops::Not;
 use utoipa::ToSchema;
 
 use serde_with::formats::CommaSeparator;
@@ -51,6 +52,8 @@ pub struct ScimEntryGeneric {
 pub struct ScimEntryGetQuery {
     #[serde_as(as = "Option<StringWithSeparator::<CommaSeparator, Attribute>>")]
     pub attributes: Option<Vec<Attribute>>,
+    #[serde(default, skip_serializing_if = "<&bool>::not")]
+    pub ext_access_check: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
@@ -178,7 +181,10 @@ mod tests {
     fn scim_entry_get_query() {
         use super::*;
 
-        let q = ScimEntryGetQuery { attributes: None };
+        let q = ScimEntryGetQuery {
+            attributes: None,
+            ..Default::default()
+        };
 
         let txt = serde_urlencoded::to_string(&q).unwrap();
 
@@ -186,6 +192,7 @@ mod tests {
 
         let q = ScimEntryGetQuery {
             attributes: Some(vec![Attribute::Name]),
+            ext_access_check: false,
         };
 
         let txt = serde_urlencoded::to_string(&q).unwrap();
@@ -193,9 +200,10 @@ mod tests {
 
         let q = ScimEntryGetQuery {
             attributes: Some(vec![Attribute::Name, Attribute::Spn]),
+            ext_access_check: true,
         };
 
         let txt = serde_urlencoded::to_string(&q).unwrap();
-        assert_eq!(txt, "attributes=name%2Cspn");
+        assert_eq!(txt, "attributes=name%2Cspn&ext_access_check=true");
     }
 }

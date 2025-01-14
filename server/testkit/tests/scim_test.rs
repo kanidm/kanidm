@@ -202,6 +202,7 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
     // Limit the attributes we want.
     let query = ScimEntryGetQuery {
         attributes: Some(vec![Attribute::Name]),
+        ..Default::default()
     };
 
     let scim_entry = rsclient
@@ -238,6 +239,7 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
     // Limit the attributes we want.
     let query = ScimEntryGetQuery {
         attributes: Some(vec![Attribute::Name]),
+        ..Default::default()
     };
 
     let scim_entry = rsclient

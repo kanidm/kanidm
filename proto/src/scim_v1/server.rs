@@ -25,6 +25,44 @@ pub struct ScimEntryKanidm {
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]
+pub enum ScimAttributeEffectiveAccess {
+    /// All attributes on the entry have this permission granted
+    Grant,
+    /// All attributes on the entry have this permission denied
+    Denied,
+    /// The following attributes on the entry have this permission granted
+    Allow(BTreeSet<Attribute>),
+}
+
+impl ScimAttributeEffectiveAccess {
+    /// Check if the effective access allows or denies this attribute
+    pub fn check(&self, attr: &Attribute) -> bool {
+        match self {
+            Self::Grant => true,
+            Self::Denied => true,
+            Self::Allow(set) => set.contains(attr),
+        }
+    }
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimEffectiveAccess {
+    /// The identity that inherits the effective permission
+    pub ident: Uuid,
+    /// The target that the effective permission affects
+    pub target: Uuid,
+    /// If the ident may delete the target entry
+    pub delete: bool,
+    /// The set of effective access over search events
+    pub search: ScimAttributeEffectiveAccess,
+    /// The set of effective access over modify present events
+    pub modify_present: ScimAttributeEffectiveAccess,
+    /// The set of effective access over modify remove events
+    pub modify_remove: ScimAttributeEffectiveAccess,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimAddress {
     pub formatted: String,

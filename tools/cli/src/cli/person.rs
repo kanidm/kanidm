@@ -238,6 +238,7 @@ impl PersonOpt {
                             aopt.aopts.account_id.as_str(),
                             Some(ScimEntryGetQuery {
                                 attributes: Some(vec![Attribute::SshPublicKey]),
+                                ..Default::default()
                             }),
                         )
                         .await

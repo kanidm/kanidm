@@ -67,7 +67,7 @@ pub enum AccessClass {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
     // I don't think we need this? The ident is implied by the requester.
-    // ident: Uuid,
+    pub ident: Uuid,
     pub target: Uuid,
     pub delete: bool,
     pub search: Access,
@@ -798,7 +798,7 @@ pub trait AccessControlsTransaction<'a> {
         // have an entry template. I think james was right about the create being
         // a template copy op ...
 
-        match &ident.origin {
+        let ident_uuid = match &ident.origin {
             IdentType::Internal => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
@@ -810,7 +810,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(_) => {}
+            IdentType::User(u) => u.entry.get_uuid(),
         };
 
         trace!(ident = %ident, "Effective permission check");
@@ -876,6 +876,7 @@ pub trait AccessControlsTransaction<'a> {
                 };
 
                 AccessEffectivePermission {
+                    ident: ident_uuid,
                     target: e.get_uuid(),
                     delete,
                     search: search_effective,
@@ -2535,6 +2536,7 @@ mod tests {
             vec![],
             &r_set,
             vec![AccessEffectivePermission {
+                ident: UUID_TEST_ACCOUNT_1,
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(btreeset![Attribute::Name]),
@@ -2576,6 +2578,7 @@ mod tests {
             )],
             &r_set,
             vec![AccessEffectivePermission {
+                ident: UUID_TEST_ACCOUNT_1,
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),
