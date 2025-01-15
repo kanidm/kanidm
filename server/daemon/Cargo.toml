@@ -38,7 +38,6 @@ tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
 serde_json.workspace = true
-systemd = { version = "0.10.0", default-features = false }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 sd-notify.workspace = true

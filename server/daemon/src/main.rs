@@ -751,14 +751,7 @@ async fn kanidm_main(
             if !config_test {
                 // On linux, notify systemd.
                 #[cfg(target_os = "linux")]
-                let _ = systemd::daemon::notify(
-                    false,
-                    [
-                        (systemd::daemon::STATE_READY, "1"),
-                        ("STATUS", "Kanidm is operational"),
-                    ]
-                    .iter(),
-                );
+                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
 
                 match sctx {
                     Ok(mut sctx) => {
@@ -792,33 +785,18 @@ async fn kanidm_main(
                                         // Reload TLS certificates
                                         // systemd has a special reload handler for this.
                                         #[cfg(target_os = "linux")]
-                                        // https://stackoverflow.com/a/70337205
-                                        let duration_since_epoch = match std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH) {
-                                            Ok(val) => val,
-                                            Err(err) => {
-                                                error!(
-                                                  "Failed to get UNIX_EPOCH: {:?}",
-                                                  err
-                                                );
-                                                return ExitCode::FAILURE;
-                                            }
-                                        };
-                                        let timestamp_micros = duration_since_epoch.as_micros().to_string();
-
-                                        #[cfg(target_os = "linux")]
-                                        let _ = systemd::daemon::notify(false, [
-                                            (systemd::daemon::STATE_RELOADING, "1"),
-                                            ("STATUS", "Reloading TLS acceptor"),
-                                            ("MONOTONIC_USEC", &timestamp_micros),
-                                        ].iter());
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
 
                                         sctx.tls_acceptor_reload().await;
 
+                                        // Systemd freaks out if you send the ready state too fast after the
+                                        // reload state and can kill Kanidmd as a result.
+                                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+
                                         #[cfg(target_os = "linux")]
-                                        let _ = systemd::daemon::notify(false, [
-                                            (systemd::daemon::STATE_READY, "1"),
-                                            ("STATUS", "Kanidm is operational"),
-                                        ].iter());
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+
+                                        info!("Reload complete");
                                     }
                                     Some(()) = async move {
                                         let sigterm = tokio::signal::unix::SignalKind::user_defined1();
