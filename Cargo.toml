@@ -120,7 +120,7 @@ codegen-units = 256
 
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
-sd-notify = { git = "https://github.com/Firstyear/sd-notify.git", rev = "de1854c3afad83ae80b7df7ecb7e891e98e205f9" }
+sd-notify = { git = "https://github.com/Firstyear/sd-notify.git", rev = "7593c0b4d5e6caea6390507d0eedb4ead7db3f50" }
 
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.5.0-dev" }
