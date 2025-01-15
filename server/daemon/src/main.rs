@@ -751,7 +751,17 @@ async fn kanidm_main(
             if !config_test {
                 // On linux, notify systemd.
                 #[cfg(target_os = "linux")]
-                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                {
+                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                    // Undocumented systemd feature - all messages should have a monotonic usec sent
+                    // with them. In some cases like "reloading" messages, it is undocumented but
+                    // failure to send this message causes the reload to fail.
+                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::MonotonicUsec]);
+                    let _ = sd_notify::notify(
+                        true,
+                        &[sd_notify::NotifyState::Status("Started Kanidm 🦀")],
+                    );
+                };
 
                 match sctx {
                     Ok(mut sctx) => {
@@ -785,7 +795,13 @@ async fn kanidm_main(
                                         // Reload TLS certificates
                                         // systemd has a special reload handler for this.
                                         #[cfg(target_os = "linux")]
+                                        {
                                         let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
+                                        // CRITICAL - if you do not send a monotonic usec message after a reloading
+                                        // message, your service WILL BE KILLED.
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::MonotonicUsec]);
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reloading ...")]);
+                                        }
 
                                         sctx.tls_acceptor_reload().await;
 
@@ -794,7 +810,11 @@ async fn kanidm_main(
                                         tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
                                         #[cfg(target_os = "linux")]
+                                        {
                                         let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::MonotonicUsec]);
+                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reload Success")]);
+                                        }
 
                                         info!("Reload complete");
                                     }
