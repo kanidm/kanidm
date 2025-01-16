@@ -120,8 +120,6 @@ codegen-units = 256
 
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
-sd-notify = { git = "https://github.com/Firstyear/sd-notify.git", rev = "7593c0b4d5e6caea6390507d0eedb4ead7db3f50" }
-
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.5.0-dev" }
 kanidmd_lib = { path = "./server/lib", version = "=1.5.0-dev" }
@@ -245,7 +243,7 @@ rustls = { version = "0.23.20", default-features = false, features = [
     "aws_lc_rs",
 ] }
 
-sd-notify = "^0.4.3"
+sd-notify = "^0.4.4"
 selinux = "^0.4.6"
 serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }
