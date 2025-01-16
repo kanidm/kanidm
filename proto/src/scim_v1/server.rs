@@ -43,7 +43,7 @@ impl ScimAttributeEffectiveAccess {
     pub fn check(&self, attr: &Attribute) -> bool {
         match self {
             Self::Grant => true,
-            Self::Denied => true,
+            Self::Denied => false,
             Self::Allow(set) => set.contains(attr),
         }
     }
