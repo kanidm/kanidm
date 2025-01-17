@@ -751,7 +751,21 @@ async fn kanidm_main(
             if !config_test {
                 // On linux, notify systemd.
                 #[cfg(target_os = "linux")]
-                let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                {
+                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                    // Undocumented systemd feature - all messages should have a monotonic usec sent
+                    // with them. In some cases like "reloading" messages, it is undocumented but
+                    // failure to send this message causes the reload to fail.
+                    if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
+                        let _ = sd_notify::notify(true, &[monotonic_usec]);
+                    } else {
+                        error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
+                    };
+                    let _ = sd_notify::notify(
+                        true,
+                        &[sd_notify::NotifyState::Status("Started Kanidm 🦀")],
+                    );
+                };
 
                 match sctx {
                     Ok(mut sctx) => {
@@ -760,66 +774,86 @@ async fn kanidm_main(
                             {
                                 let mut listener = sctx.subscribe();
                                 tokio::select! {
-                                    Ok(()) = tokio::signal::ctrl_c() => {
-                                        break
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::terminate();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        break
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::alarm();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::hangup();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Reload TLS certificates
-                                        // systemd has a special reload handler for this.
-                                        #[cfg(target_os = "linux")]
-                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
+                                                Ok(()) = tokio::signal::ctrl_c() => {
+                                                    break
+                                                }
+                                                Some(()) = async move {
+                                                    let sigterm = tokio::signal::unix::SignalKind::terminate();
+                                                    #[allow(clippy::unwrap_used)]
+                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                                } => {
+                                                    break
+                                                }
+                                                Some(()) = async move {
+                                                    let sigterm = tokio::signal::unix::SignalKind::alarm();
+                                                    #[allow(clippy::unwrap_used)]
+                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                                } => {
+                                                    // Ignore
+                                                }
+                                                Some(()) = async move {
+                                                    let sigterm = tokio::signal::unix::SignalKind::hangup();
+                                                    #[allow(clippy::unwrap_used)]
+                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                                } => {
+                                                    // Reload TLS certificates
+                                                    // systemd has a special reload handler for this.
+                                                    #[cfg(target_os = "linux")]
+                                                    {
+                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Reloading]);
+                                                    // CRITICAL - if you do not send a monotonic usec message after a reloading
+                                                    // message, your service WILL BE KILLED.
+                                if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
+                                let _ =
+                                    sd_notify::notify(true, &[monotonic_usec]);
+                                } else {
+                                    error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
+                                };
+                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reloading ...")]);
+                                                    }
 
-                                        sctx.tls_acceptor_reload().await;
+                                                    sctx.tls_acceptor_reload().await;
 
-                                        // Systemd freaks out if you send the ready state too fast after the
-                                        // reload state and can kill Kanidmd as a result.
-                                        tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                                                    // Systemd freaks out if you send the ready state too fast after the
+                                                    // reload state and can kill Kanidmd as a result.
+                                                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
 
-                                        #[cfg(target_os = "linux")]
-                                        let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                                                    #[cfg(target_os = "linux")]
+                                                    {
+                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Ready]);
+                                if let Ok(monotonic_usec) = sd_notify::NotifyState::monotonic_usec_now() {
+                                let _ =
+                                    sd_notify::notify(true, &[monotonic_usec]);
+                                } else {
+                                    error!("CRITICAL!!! Unable to access clock monotonic time. SYSTEMD WILL KILL US.");
+                                };
+                                                    let _ = sd_notify::notify(true, &[sd_notify::NotifyState::Status("Reload Success")]);
+                                                    }
 
-                                        info!("Reload complete");
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::user_defined1();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    Some(()) = async move {
-                                        let sigterm = tokio::signal::unix::SignalKind::user_defined2();
-                                        #[allow(clippy::unwrap_used)]
-                                        tokio::signal::unix::signal(sigterm).unwrap().recv().await
-                                    } => {
-                                        // Ignore
-                                    }
-                                    // we got a message on thr broadcast from somewhere else
-                                    Ok(msg) = async move {
-                                        listener.recv().await
-                                    } => {
-                                        debug!("Main loop received message: {:?}", msg);
-                                        break
-                                    }
-                                }
+                                                    info!("Reload complete");
+                                                }
+                                                Some(()) = async move {
+                                                    let sigterm = tokio::signal::unix::SignalKind::user_defined1();
+                                                    #[allow(clippy::unwrap_used)]
+                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                                } => {
+                                                    // Ignore
+                                                }
+                                                Some(()) = async move {
+                                                    let sigterm = tokio::signal::unix::SignalKind::user_defined2();
+                                                    #[allow(clippy::unwrap_used)]
+                                                    tokio::signal::unix::signal(sigterm).unwrap().recv().await
+                                                } => {
+                                                    // Ignore
+                                                }
+                                                // we got a message on thr broadcast from somewhere else
+                                                Ok(msg) = async move {
+                                                    listener.recv().await
+                                                } => {
+                                                    debug!("Main loop received message: {:?}", msg);
+                                                    break
+                                                }
+                                            }
                             }
                             #[cfg(target_family = "windows")]
                             {

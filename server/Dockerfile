@@ -29,6 +29,7 @@ RUN \
         libopenssl-3-devel \
         pam-devel \
         sqlite3-devel \
+        systemd-devel \
         rsync \
         findutils \
         which \

@@ -243,7 +243,7 @@ rustls = { version = "0.23.20", default-features = false, features = [
     "aws_lc_rs",
 ] }
 
-sd-notify = "^0.4.3"
+sd-notify = "^0.4.4"
 selinux = "^0.4.6"
 serde = "^1.0.217"
 serde_cbor = { version = "0.12.0-dev", package = "serde_cbor_2" }

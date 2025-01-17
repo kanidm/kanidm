@@ -18,6 +18,7 @@ sudo apt-get install -y \
     jq \
     libpam0g-dev \
     libssl-dev \
+    libsystemd-dev \
     libudev-dev \
     pkg-config \
     ripgrep
