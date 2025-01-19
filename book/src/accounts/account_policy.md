@@ -188,6 +188,17 @@ account policy for a group. For example, to set the allowlist for all persons, r
 kanidm group account-policy webauthn-attestation-ca-list idm_all_persons trusted-authenticators
 ```
 
+### Setting Primary Credential Fallback
+
+The primary credential fallback enables behavior which allows authenticating
+using the primary account password when logging in via LDAP.
+
+If both a LDAP and primary password are specified it will only accept the LDAP password.
+
+```bash
+kanidm group account-policy allow-primary-cred-fallback <group name> <enabled>
+```
+
 ## Global Settings
 
 There are a small number of account policy settings that are set globally rather than on a per group
