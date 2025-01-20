@@ -193,7 +193,7 @@ kanidm group account-policy webauthn-attestation-ca-list idm_all_persons trusted
 The primary credential fallback enables behavior which allows authenticating
 using the primary account password when logging in via LDAP.
 
-If both a LDAP and primary password are specified it will only accept the LDAP password.
+If both an LDAP and primary password are specified, Kanidm will only accept the LDAP password.
 
 ```bash
 kanidm group account-policy allow-primary-cred-fallback <group name> <enabled>
