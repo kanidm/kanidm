@@ -23,7 +23,7 @@ use concread::arcache::ARCacheBuilder;
 use concread::cowcell::*;
 use uuid::Uuid;
 
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
+use crate::entry::{Entry, EntryInit, EntryNew};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::filter::{Filter, FilterValid, ResolveFilterCache, ResolveFilterCacheReadTxn};
 use crate::modify::Modify;
@@ -35,6 +35,8 @@ use self::profiles::{
     AccessControlReceiver, AccessControlReceiverCondition, AccessControlSearch,
     AccessControlSearchResolved, AccessControlTarget, AccessControlTargetCondition,
 };
+
+use kanidm_proto::scim_v1::server::ScimAttributeEffectiveAccess;
 
 use self::create::{apply_create_access, CreateResult};
 use self::delete::{apply_delete_access, DeleteResult};
@@ -57,6 +59,16 @@ pub enum Access {
     Allow(BTreeSet<Attribute>),
 }
 
+impl From<&Access> for ScimAttributeEffectiveAccess {
+    fn from(value: &Access) -> Self {
+        match value {
+            Access::Grant => Self::Grant,
+            Access::Denied => Self::Denied,
+            Access::Allow(set) => Self::Allow(set.clone()),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AccessClass {
     Grant,
@@ -66,8 +78,9 @@ pub enum AccessClass {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccessEffectivePermission {
-    // I don't think we need this? The ident is implied by the requester.
-    // ident: Uuid,
+    /// Who the access applies to
+    pub ident: Uuid,
+    /// The target the access affects
     pub target: Uuid,
     pub delete: bool,
     pub search: Access,
@@ -79,12 +92,13 @@ pub struct AccessEffectivePermission {
 pub enum AccessResult {
     // Deny this operation unconditionally.
     Denied,
-    // Unbounded allow, provided no denied exists.
+    // Unbounded allow, provided no deny state exists.
     Grant,
     // This module makes no decisions about this entry.
     Ignore,
     // Limit the allowed attr set to this - this doesn't
-    // allow anything, it constrains what might be allowed.
+    // allow anything, it constrains what might be allowed
+    // by a later module.
     Constrain(BTreeSet<Attribute>),
     // Allow these attributes within constraints.
     Allow(BTreeSet<Attribute>),
@@ -181,7 +195,11 @@ pub trait AccessControlsTransaction<'a> {
     fn get_acp_resolve_filter_cache(&self) -> &mut ResolveFilterCacheReadTxn<'a>;
 
     #[instrument(level = "trace", name = "access::search_related_acp", skip_all)]
-    fn search_related_acp<'b>(&'b self, ident: &Identity) -> Vec<AccessControlSearchResolved<'b>> {
+    fn search_related_acp<'b>(
+        &'b self,
+        ident: &Identity,
+        attrs: Option<&BTreeSet<Attribute>>,
+    ) -> Vec<AccessControlSearchResolved<'b>> {
         let search_state = self.get_search();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
@@ -249,8 +267,18 @@ pub trait AccessControlsTransaction<'a> {
             })
             .collect();
 
+        // Trim any search rule that doesn't provide attributes related to the request.
+        let related_acp = if let Some(r_attrs) = attrs.as_ref() {
+            related_acp
+                .into_iter()
+                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
+                .collect()
+        } else {
+            // None here means all attrs requested.
+            related_acp
+        };
+
         related_acp
-        // }
     }
 
     #[instrument(level = "debug", name = "access::filter_entries", skip_all)]
@@ -267,7 +295,7 @@ pub trait AccessControlsTransaction<'a> {
         let requested_attrs: BTreeSet<Attribute> = filter_orig.get_attr_set();
 
         // First get the set of acps that apply to this receiver
-        let related_acp = self.search_related_acp(ident);
+        let related_acp = self.search_related_acp(ident, None);
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
@@ -318,33 +346,61 @@ pub trait AccessControlsTransaction<'a> {
         name = "access::search_filter_entry_attributes",
         skip_all
     )]
-    fn search_filter_entry_attributes(
-        &self,
+    fn search_filter_entry_attributes<'b>(
+        &'b self,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
-    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
+        struct DoEffectiveCheck<'b> {
+            modify_related_acp: Vec<AccessControlModifyResolved<'b>>,
+            delete_related_acp: Vec<AccessControlDeleteResolved<'b>>,
+            sync_agmts: &'b HashMap<Uuid, BTreeSet<Attribute>>,
+        }
+
+        let ident_uuid = match &se.ident.origin {
+            IdentType::Internal => {
+                // In production we can't risk leaking data here, so we return
+                // empty sets.
+                security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                // No need to check ACS
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::Synch(_) => {
+                security_critical!("Blocking sync check");
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::User(u) => u.entry.get_uuid(),
+        };
+
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
 
+        let do_effective_check = se.effective_access_check.then(|| {
+            debug!("effective permission check requested during reduction phase");
+
+            // == modify ==
+            let modify_related_acp = self.modify_related_acp(&se.ident);
+            // == delete ==
+            let delete_related_acp = self.delete_related_acp(&se.ident);
+
+            let sync_agmts = self.get_sync_agreements();
+
+            DoEffectiveCheck {
+                modify_related_acp,
+                delete_related_acp,
+                sync_agmts,
+            }
+        });
+
         // Get the relevant acps for this receiver.
-        let related_acp = self.search_related_acp(&se.ident);
-        let related_acp: Vec<_> = if let Some(r_attrs) = se.attrs.as_ref() {
-            // If the acp doesn't overlap with our requested attrs, there is no point in
-            // testing it!
-            related_acp
-                .into_iter()
-                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
-                .collect()
-        } else {
-            related_acp
-        };
+        let search_related_acp = self.search_related_acp(&se.ident, se.attrs.as_ref());
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
         let allowed_entries: Vec<_> = entries
             .into_iter()
-            .filter_map(|e| {
-                match apply_search_access(&se.ident, related_acp.as_slice(), &e) {
+            .filter_map(|entry| {
+                match apply_search_access(&se.ident, &search_related_acp, &entry) {
                     SearchResult::Denied => {
                         None
                     }
@@ -369,11 +425,20 @@ pub trait AccessControlsTransaction<'a> {
                             allowed_attrs
                         };
 
-                        if reduced_attrs.is_empty() {
-                            None
-                        } else {
-                            Some(e.reduce_attributes(&reduced_attrs))
-                        }
+                        let effective_permissions = do_effective_check.as_ref().map(|do_check| {
+                            self.entry_effective_permission_check(
+                                &se.ident,
+                                ident_uuid,
+                                &entry,
+                                &search_related_acp,
+                                &do_check.modify_related_acp,
+                                &do_check.delete_related_acp,
+                                do_check.sync_agmts,
+                            )
+                        })
+                        .map(Box::new);
+
+                        Some(entry.reduce_attributes(&reduced_attrs, effective_permissions))
                     }
                 }
 
@@ -798,7 +863,7 @@ pub trait AccessControlsTransaction<'a> {
         // have an entry template. I think james was right about the create being
         // a template copy op ...
 
-        match &ident.origin {
+        let ident_uuid = match &ident.origin {
             IdentType::Internal => {
                 // In production we can't risk leaking data here, so we return
                 // empty sets.
@@ -810,7 +875,7 @@ pub trait AccessControlsTransaction<'a> {
                 security_critical!("Blocking sync check");
                 return Err(OperationError::InvalidState);
             }
-            IdentType::User(_) => {}
+            IdentType::User(u) => u.entry.get_uuid(),
         };
 
         trace!(ident = %ident, "Effective permission check");
@@ -818,71 +883,26 @@ pub trait AccessControlsTransaction<'a> {
 
         // == search ==
         // Get the relevant acps for this receiver.
-        let search_related_acp = self.search_related_acp(ident);
-        // Trim any search rule that doesn't provide attributes related to the request.
-        let search_related_acp = if let Some(r_attrs) = attrs.as_ref() {
-            search_related_acp
-                .into_iter()
-                .filter(|acs| !acs.acp.attrs.is_disjoint(r_attrs))
-                .collect()
-        } else {
-            // None here means all attrs requested.
-            search_related_acp
-        };
-
+        let search_related_acp = self.search_related_acp(ident, attrs.as_ref());
         // == modify ==
-
         let modify_related_acp = self.modify_related_acp(ident);
+        // == delete ==
         let delete_related_acp = self.delete_related_acp(ident);
 
         let sync_agmts = self.get_sync_agreements();
 
         let effective_permissions: Vec<_> = entries
             .iter()
-            .map(|e| {
-                // == search ==
-                let search_effective =
-                    match apply_search_access(ident, search_related_acp.as_slice(), e) {
-                        SearchResult::Denied => Access::Denied,
-                        SearchResult::Grant => Access::Grant,
-                        SearchResult::Allow(allowed_attrs) => {
-                            // Bound by requested attrs?
-                            Access::Allow(allowed_attrs.into_iter().collect())
-                        }
-                    };
-
-                // == modify ==
-                let (modify_pres, modify_rem, modify_class) = match apply_modify_access(
+            .map(|entry| {
+                self.entry_effective_permission_check(
                     ident,
-                    modify_related_acp.as_slice(),
+                    ident_uuid,
+                    entry,
+                    &search_related_acp,
+                    &modify_related_acp,
+                    &delete_related_acp,
                     sync_agmts,
-                    e,
-                ) {
-                    ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
-                    ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
-                    ModifyResult::Allow { pres, rem, cls } => (
-                        Access::Allow(pres.into_iter().collect()),
-                        Access::Allow(rem.into_iter().collect()),
-                        AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
-                    ),
-                };
-
-                // == delete ==
-                let delete_status = apply_delete_access(ident, delete_related_acp.as_slice(), e);
-
-                let delete = match delete_status {
-                    DeleteResult::Denied => false,
-                    DeleteResult::Grant => true,
-                };
-
-                AccessEffectivePermission {
-                    target: e.get_uuid(),
-                    delete,
-                    search: search_effective,
-                    modify_pres,
-                    modify_rem,
-                    modify_class,
-                }
+                )
             })
             .collect();
 
@@ -891,6 +911,57 @@ pub trait AccessControlsTransaction<'a> {
         });
 
         Ok(effective_permissions)
+    }
+
+    fn entry_effective_permission_check<'b>(
+        &'b self,
+        ident: &Identity,
+        ident_uuid: Uuid,
+        entry: &Arc<EntrySealedCommitted>,
+        search_related_acp: &[AccessControlSearchResolved<'b>],
+        modify_related_acp: &[AccessControlModifyResolved<'b>],
+        delete_related_acp: &[AccessControlDeleteResolved<'b>],
+        sync_agmts: &HashMap<Uuid, BTreeSet<Attribute>>,
+    ) -> AccessEffectivePermission {
+        // == search ==
+        let search_effective = match apply_search_access(ident, search_related_acp, entry) {
+            SearchResult::Denied => Access::Denied,
+            SearchResult::Grant => Access::Grant,
+            SearchResult::Allow(allowed_attrs) => {
+                // Bound by requested attrs?
+                Access::Allow(allowed_attrs.into_iter().collect())
+            }
+        };
+
+        // == modify ==
+        let (modify_pres, modify_rem, modify_class) =
+            match apply_modify_access(ident, modify_related_acp, sync_agmts, entry) {
+                ModifyResult::Denied => (Access::Denied, Access::Denied, AccessClass::Denied),
+                ModifyResult::Grant => (Access::Grant, Access::Grant, AccessClass::Grant),
+                ModifyResult::Allow { pres, rem, cls } => (
+                    Access::Allow(pres.into_iter().collect()),
+                    Access::Allow(rem.into_iter().collect()),
+                    AccessClass::Allow(cls.into_iter().map(|s| s.into()).collect()),
+                ),
+            };
+
+        // == delete ==
+        let delete_status = apply_delete_access(ident, delete_related_acp, entry);
+
+        let delete = match delete_status {
+            DeleteResult::Denied => false,
+            DeleteResult::Grant => true,
+        };
+
+        AccessEffectivePermission {
+            ident: ident_uuid,
+            target: entry.get_uuid(),
+            delete,
+            search: search_effective,
+            modify_pres,
+            modify_rem,
+            modify_class,
+        }
     }
 }
 
@@ -2535,6 +2606,7 @@ mod tests {
             vec![],
             &r_set,
             vec![AccessEffectivePermission {
+                ident: UUID_TEST_ACCOUNT_1,
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(btreeset![Attribute::Name]),
@@ -2576,6 +2648,7 @@ mod tests {
             )],
             &r_set,
             vec![AccessEffectivePermission {
+                ident: UUID_TEST_ACCOUNT_1,
                 delete: false,
                 target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
                 search: Access::Allow(BTreeSet::new()),

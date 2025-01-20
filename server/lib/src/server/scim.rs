@@ -14,6 +14,10 @@ pub struct ScimEntryPutEvent {
     /// Update an attribute to contain the following value state.
     /// If the attribute is None, it is removed.
     pub attrs: BTreeMap<Attribute, Option<ValueSet>>,
+
+    /// If an effective access check should be carried out post modification
+    /// of the entries
+    pub effective_access_check: bool,
 }
 
 impl ScimEntryPutEvent {
@@ -33,10 +37,13 @@ impl ScimEntryPutEvent {
             })
             .collect::<Result<_, _>>()?;
 
+        let query = entry.query;
+
         Ok(ScimEntryPutEvent {
             ident,
             target,
             attrs,
+            effective_access_check: query.ext_access_check,
         })
     }
 }
@@ -54,6 +61,7 @@ impl QueryServerWriteTransaction<'_> {
             ident,
             target,
             attrs,
+            effective_access_check,
         } = scim_entry_put;
 
         // This function transforms the put event into a modify event.
@@ -91,6 +99,7 @@ impl QueryServerWriteTransaction<'_> {
             filter_orig: f_intent_valid,
             // Return all attributes, even ones we didn't affect
             attrs: None,
+            effective_access_check,
         };
 
         let mut vs = self.search_ext(&se)?;

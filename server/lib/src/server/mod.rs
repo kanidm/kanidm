@@ -284,7 +284,7 @@ pub trait QueryServerTransaction<'a> {
     fn search_ext(
         &mut self,
         se: &SearchEvent,
-    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
         /*
          * This just wraps search, but it's for the external interface
          * so as a result it also reduces the entry set's attributes at
@@ -1546,6 +1546,7 @@ impl QueryServerReadTransaction<'_> {
             filter: f_valid,
             filter_orig: f_intent_valid,
             attrs: r_attrs,
+            effective_access_check: query.ext_access_check,
         };
 
         let mut vs = self.search_ext(&se)?;
@@ -2639,6 +2640,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 mod tests {
     use crate::prelude::*;
     use kanidm_proto::scim_v1::server::ScimReference;
+    use kanidm_proto::scim_v1::ScimEntryGetQuery;
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -3045,5 +3047,48 @@ mod tests {
                 panic!("expected EntryReferences, actual {:?}", members_scim);
             }
         }
+    }
+
+    #[qs_test]
+    async fn test_scim_effective_access_query(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let group_uuid = Uuid::new_v4();
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(group_uuid))
+        );
+
+        assert!(server_txn.internal_create(vec![e1]).is_ok());
+        assert!(server_txn.commit().is_ok());
+
+        // Now read that entry.
+
+        let mut server_txn = server.read().await.unwrap();
+
+        let idm_admin_entry = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
+        let idm_admin_ident = Identity::from_impersonate_entry_readwrite(idm_admin_entry);
+
+        let query = ScimEntryGetQuery {
+            ext_access_check: true,
+            ..Default::default()
+        };
+
+        let scim_entry = server_txn
+            .scim_entry_id_get_ext(group_uuid, EntryClass::Group, query, idm_admin_ident)
+            .unwrap();
+
+        let ext_access_check = scim_entry.ext_access_check.unwrap();
+
+        trace!(?ext_access_check);
+
+        assert!(ext_access_check.delete);
+        assert!(ext_access_check.search.check(&Attribute::DirectMemberOf));
+        assert!(ext_access_check.search.check(&Attribute::MemberOf));
+        assert!(ext_access_check.search.check(&Attribute::Name));
+        assert!(ext_access_check.modify_present.check(&Attribute::Name));
+        assert!(ext_access_check.modify_remove.check(&Attribute::Name));
     }
 }
