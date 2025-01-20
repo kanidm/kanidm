@@ -92,12 +92,13 @@ pub struct AccessEffectivePermission {
 pub enum AccessResult {
     // Deny this operation unconditionally.
     Denied,
-    // Unbounded allow, pro -vided no denied exists.
+    // Unbounded allow, provided no deny state exists.
     Grant,
     // This module makes no decisions about this entry.
     Ignore,
     // Limit the allowed attr set to this - this doesn't
-    // allow anything, it constrains what might be allowed.
+    // allow anything, it constrains what might be allowed
+    // by a later module.
     Constrain(BTreeSet<Attribute>),
     // Allow these attributes within constraints.
     Allow(BTreeSet<Attribute>),
@@ -374,9 +375,6 @@ pub trait AccessControlsTransaction<'a> {
         // Build a reference set from the req_attrs. This is what we test against
         // to see if the attribute is something we currently want.
 
-        // Get the relevant acps for this receiver.
-        let search_related_acp = self.search_related_acp(&se.ident, se.attrs.as_ref());
-
         let do_effective_check = se.effective_access_check.then(|| {
             debug!("effective permission check requested during reduction phase");
 
@@ -393,6 +391,9 @@ pub trait AccessControlsTransaction<'a> {
                 sync_agmts,
             }
         });
+
+        // Get the relevant acps for this receiver.
+        let search_related_acp = self.search_related_acp(&se.ident, se.attrs.as_ref());
 
         // For each entry.
         let entries_is_empty = entries.is_empty();
