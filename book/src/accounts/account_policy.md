@@ -199,6 +199,12 @@ If both an LDAP and primary password are specified, Kanidm will only accept the 
 kanidm group account-policy allow-primary-cred-fallback <group name> <enabled>
 ```
 
+to disable it for a group you would run:
+
+```bash
+kanidm group account-policy allow-primary-cred-fallback <group name> false
+```
+
 ## Global Settings
 
 There are a small number of account policy settings that are set globally rather than on a per group
