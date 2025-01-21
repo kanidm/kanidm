@@ -5,7 +5,21 @@ name: "Linux Build and Test"
   push:
     branches:
       - master
+    paths:
+      - 'libs/**'
+      - 'platform/**'
+      - 'proto/**'
+      - 'server/**'
+      - 'tools/**'
+      - 'unix_integration/**'
   pull_request:
+    paths:
+      - 'libs/**'
+      - 'platform/**'
+      - 'proto/**'
+      - 'server/**'
+      - 'tools/**'
+      - 'unix_integration/**'
 
 env:
   SCCACHE_GHA_ENABLED: "true"
