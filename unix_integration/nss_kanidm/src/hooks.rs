@@ -3,6 +3,7 @@ use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use libnss::group::{Group, GroupHooks};
 use libnss::interop::Response;
 use libnss::passwd::{Passwd, PasswdHooks};
+use libnss::initgroups::{InitgroupsHooks};
 
 struct KanidmPasswd;
 libnss_passwd_hooks!(kanidm, KanidmPasswd);
@@ -59,5 +60,18 @@ impl GroupHooks for KanidmGroup {
         };
 
         core::get_group_entry_by_name(name, req_opt)
+    }
+}
+
+struct KanidmInitgroups;
+libnss_initgroups_hooks!(kanidm, KanidmInitgroups);
+
+impl InitgroupsHooks for KanidmInitgroups {
+    fn get_entries_by_user(user: String) -> Response<Vec<Group>> {
+        let req_opt = RequestOptions::Main {
+            config_path: DEFAULT_CONFIG_PATH,
+        };
+
+        core::get_group_entries_by_member(user, req_opt)
     }
 }
