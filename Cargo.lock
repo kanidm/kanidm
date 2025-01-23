@@ -1075,7 +1075,7 @@ dependencies = [
 
 [[package]]
 name = "daemon"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "clap",
  "clap_complete",
@@ -2937,7 +2937,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ipa-sync"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "chrono",
  "clap",
@@ -2961,7 +2961,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm-ldap-sync"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "chrono",
  "clap",
@@ -2986,7 +2986,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_build_profiles"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "base64 0.22.1",
  "gix",
@@ -2997,7 +2997,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "compact_jwt",
  "http 1.2.0",
@@ -3019,7 +3019,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_device_flow"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
@@ -3034,7 +3034,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_crypto"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "argon2",
  "base64 0.22.1",
@@ -3055,7 +3055,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_lib_file_permissions"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "kanidm_utils_users",
  "whoami",
@@ -3063,7 +3063,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "base32",
  "base64 0.22.1",
@@ -3088,7 +3088,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "anyhow",
  "clap",
@@ -3119,7 +3119,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_common"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "bytes",
  "csv",
@@ -3138,7 +3138,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "async-trait",
  "bytes",
@@ -3179,14 +3179,14 @@ dependencies = [
 
 [[package]]
 name = "kanidm_utils_users"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "libc",
 ]
 
 [[package]]
 name = "kanidmd_core"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "askama",
  "askama_axum",
@@ -3239,7 +3239,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "base64 0.22.1",
  "base64urlsafedata",
@@ -3292,7 +3292,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_lib_macros"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3301,7 +3301,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_testkit"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "assert_cmd",
  "compact_jwt",
@@ -3775,7 +3775,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "kanidm_unix_common",
  "lazy_static",
@@ -4133,7 +4133,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4179,7 +4179,7 @@ checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
 name = "pam_kanidm"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "kanidm_unix_common",
  "libc",
@@ -5059,7 +5059,7 @@ dependencies = [
 
 [[package]]
 name = "scim_proto"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "base64urlsafedata",
  "peg",
@@ -5347,7 +5347,7 @@ dependencies = [
 
 [[package]]
 name = "sketching"
-version = "1.4.5"
+version = "1.4.6"
 dependencies = [
  "gethostname",
  "num_enum",
