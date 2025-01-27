@@ -209,17 +209,19 @@ oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false 
 openssl-sys = "^0.9"
 openssl = "^0.10.69"
 
-opentelemetry = { version = "0.20.0" }
-opentelemetry_api = { version = "0.20.0", features = ["logs", "metrics"] }
-opentelemetry-otlp = { version = "0.13.0", default-features = false, features = [
+opentelemetry = { version = "0.27.0" }
+opentelemetry_api = { version = "0.27.0", features = ["logs", "metrics"] }
+opentelemetry-otlp = { version = "0.27.0", default-features = false, features = [
     "serde",
     "logs",
     "metrics",
     "http-proto",
     "grpc-tonic",
 ] }
-opentelemetry_sdk = "0.20.0"
-tracing-opentelemetry = "0.21.0"
+opentelemetry_sdk = { version = "0.27.0", features = ["rt-tokio"] }
+opentelemetry-semantic-conventions = "0.27.0"
+tracing-opentelemetry = "0.28.0"
+tracing-core = "0.1.33"
 
 paste = "^1.0.14"
 peg = "0.8"
@@ -297,4 +299,3 @@ x509-cert = "0.2.5"
 zxcvbn = "^2.2.2"
 
 nonempty = "0.8.1"
-
