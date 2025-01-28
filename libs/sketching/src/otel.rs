@@ -138,8 +138,6 @@ pub struct TracingPipelineGuard {}
 impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
         opentelemetry::global::shutdown_tracer_provider();
-        // TODO: clean this up
-        // opentelemetry::global::shutdown_logger_provider();
         eprintln!("Logging pipeline completed shutdown");
     }
 }
