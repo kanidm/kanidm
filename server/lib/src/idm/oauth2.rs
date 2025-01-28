@@ -2968,7 +2968,7 @@ fn host_is_local(host: &Host<&str>) -> bool {
 
 /// Ensure that the redirect URI is a loopback/localhost address
 fn check_is_loopback(redirect_uri: &Url) -> bool {
-    redirect_uri.host().map_or(false, |host| {
+    redirect_uri.host().is_some_and(|host| {
         // Check if the host is a loopback/localhost address.
         host_is_local(&host)
     })

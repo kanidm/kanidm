@@ -158,8 +158,8 @@ impl ValueSetT for ValueSetEcKeyPrivate {
 
     fn equal(&self, other: &super::ValueSet) -> bool {
         #[allow(clippy::expect_used)]
-        other.as_ec_key_private().map_or(false, |other_key| {
-            self.set.as_ref().map_or(false, |key| {
+        other.as_ec_key_private().is_some_and(|other_key| {
+            self.set.as_ref().is_some_and(|key| {
                 key.priv_key
                     .private_key_to_der()
                     .expect("Failed to retrieve key der")
