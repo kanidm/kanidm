@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use opentelemetry_otlp::{Protocol, WithExportConfig};
 
@@ -11,7 +11,7 @@ use opentelemetry_sdk::{
 use tracing::Subscriber;
 use tracing_core::Level;
 
-use tracing_subscriber::{prelude::*, EnvFilter, Registry};
+use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
 
 pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
@@ -54,15 +54,13 @@ pub fn start_logging_pipeline(
             // adding these filters because when you close out the process the OTLP comms layer is NOISY
             let forest_filter = forest_filter
                 .add_directive(
-                    "tonic=info"
-                        .parse()
-                        .expect("Failed to set tonic logging to info"),
+                    Directive::from_str("tonic=info").expect("Failed to set tonic logging to info"),
                 )
-                .add_directive("h2=info".parse().expect("Failed to set h2 logging to info"))
                 .add_directive(
-                    "hyper=info"
-                        .parse()
-                        .expect("Failed to set hyper logging to info"),
+                    Directive::from_str("h2=info").expect("Failed to set h2 logging to info"),
+                )
+                .add_directive(
+                    Directive::from_str("hyper=info").expect("Failed to set hyper logging to info"),
                 );
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
             let t_filter: EnvFilter = EnvFilter::builder()
@@ -93,6 +91,7 @@ pub fn start_logging_pipeline(
                     // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
                     KeyValue::new(SERVICE_NAME, service_name),
                     KeyValue::new(SERVICE_VERSION, version),
+                    // TODO: currently marked as an experimental flag, leaving it out for now
                     // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
                 ],
                 SCHEMA_URL,
