@@ -1,75 +1,209 @@
-# Build the main Kanidmd server
-ARG BASE_IMAGE=opensuse/tumbleweed:latest
-# ARG BASE_IMAGE=opensuse/leap:15.5
+ARG RUST_VERSION=1.84
 
-FROM ${BASE_IMAGE} AS repos
-ADD scripts/zypper_fixing.sh /zypper_fixing.sh
-RUN --mount=type=cache,id=zypp,target=/var/cache/zypp /zypper_fixing.sh
+FROM --platform=$BUILDPLATFORM docker.io/tonistiigi/xx AS xx
+FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-slim-bookworm AS base
+FROM --platform=$BUILDPLATFORM rust:${RUST_VERSION}-slim-bookworm AS toolchain
 
-# ======================
-FROM repos AS builder
-ARG KANIDM_FEATURES
-ARG KANIDM_BUILD_PROFILE="container_generic"
+# Prevent deletion of apt cache
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+
+# Match Rustc version as close as possible
+# rustc -vV
+ARG LLVM_VERSION=19
+ENV RUSTUP_TOOLCHAIN=${RUST_VERSION}
+
+# Install repo tools
+# Line one: compiler tools
+# Line two: curl, for downloading binaries
+# Line three: for xx-verify
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+apt-get update && apt-get install -y \
+    clang-${LLVM_VERSION} lld-${LLVM_VERSION} pkg-config make perl jq \
+    curl \
+    file \
+    libssl-dev
+# libssl is needed in the host architecture due to an issue with the headers
+
+# Create symlinks for LLVM tools
+RUN <<EOF
+    # clang
+    ln -s /usr/bin/clang-${LLVM_VERSION} /usr/bin/clang
+    ln -s "/usr/bin/clang++-${LLVM_VERSION}" "/usr/bin/clang++"
+    # lld
+    ln -s /usr/bin/ld64.lld-${LLVM_VERSION} /usr/bin/ld64.lld
+    ln -s /usr/bin/ld.lld-${LLVM_VERSION} /usr/bin/ld.lld
+    ln -s /usr/bin/lld-${LLVM_VERSION} /usr/bin/lld
+    ln -s /usr/bin/lld-link-${LLVM_VERSION} /usr/bin/lld-link
+    ln -s /usr/bin/wasm-ld-${LLVM_VERSION} /usr/bin/wasm-ld
+EOF
+
+# Developer tool versions
+# renovate: datasource=github-releases depName=cargo-bins/cargo-binstall
+ENV BINSTALL_VERSION=1.10.21
+# renovate: datasource=github-releases depName=psastras/sbom-rs
+ENV CARGO_SBOM_VERSION=0.9.1
+# renovate: datasource=crate depName=lddtree
+ENV LDDTREE_VERSION=0.3.7
+
+# Install unpackaged tools
+RUN <<EOF
+    curl --retry 5 -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash
+    cargo binstall --no-confirm cargo-sbom --version $CARGO_SBOM_VERSION
+    cargo binstall --no-confirm lddtree --version $LDDTREE_VERSION
+EOF
+
+# Set up xx (cross-compilation scripts)
+COPY --from=xx / /
+ARG TARGETPLATFORM
+
+# Install libraries linked by the binary
+# xx-* are xx-specific meta-packages
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+xx-apt-get install -y \
+    xx-c-essentials xx-cxx-essentials pkg-config \
+    libsqlite3-dev libssl-dev
+
+
+# Set up Rust toolchain
+WORKDIR /app
+COPY ./rust-toolchain.toml .
+RUN rustc --version \
+    && rustup target add $(xx-cargo --print-target-triple)
+
+# Build binary
+# We disable incremental compilation to save disk space, as it only produces a minimal speedup for this case.
+RUN echo "CARGO_INCREMENTAL=0" >> /etc/environment
+
+# Configure pkg-config
+RUN <<EOF
+    echo "PKG_CONFIG_LIBDIR=/usr/lib/$(xx-info)/pkgconfig" >> /etc/environment
+    echo "PKG_CONFIG=/usr/bin/$(xx-info)-pkg-config" >> /etc/environment
+    echo "PKG_CONFIG_ALLOW_CROSS=true" >> /etc/environment
+EOF
+
+# Configure cc to use clang version
+RUN <<EOF
+    echo "CC=clang" >> /etc/environment
+    echo "CXX=clang++" >> /etc/environment
+EOF
+
+# Cross-language LTO
+RUN <<EOF
+    echo "CFLAGS=-flto" >> /etc/environment
+    echo "CXXFLAGS=-flto" >> /etc/environment
+    # Linker is set to target-compatible clang by xx
+    echo "RUSTFLAGS='-Clinker-plugin-lto -Clink-arg=-fuse-ld=lld'" >> /etc/environment
+EOF
+
+# Apply CPU-specific optimizations if TARGET_CPU is provided
+ARG TARGET_CPU=
+RUN <<EOF
+  set -o allexport
+  . /etc/environment
+  if [ -n "${TARGET_CPU}" ]; then
+    echo "CFLAGS='${CFLAGS} -march=${TARGET_CPU}'" >> /etc/environment
+    echo "CXXFLAGS='${CXXFLAGS} -march=${TARGET_CPU}'" >> /etc/environment
+    echo "RUSTFLAGS='${RUSTFLAGS} -C target-cpu=${TARGET_CPU}'" >> /etc/environment
+  fi
+EOF
+
+# Prepare output directories
+RUN mkdir /out
+
+FROM toolchain AS builder
+
+ARG TARGETPLATFORM
+
+ARG KANIDM_FEATURES=""
+ARG KANIDM_BUILD_PROFILE=""
 ARG KANIDM_BUILD_OPTIONS=""
 
 # Set the build profile
 ENV KANIDM_BUILD_PROFILE=${KANIDM_BUILD_PROFILE:-container_generic}
-ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.mold"
 
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper install -y --no-recommends \
-        sccache \
-        cargo \
-        clang \
-        gawk \
-        make \
-        automake \
-        autoconf \
-        libopenssl-3-devel \
-        pam-devel \
-        sqlite3-devel \
-        systemd-devel \
-        rsync \
-        findutils \
-        which \
-        mold
+# Verify environment configuration
+RUN cat /etc/environment
+RUN xx-cargo --print-target-triple
 
-COPY . /usr/src/kanidm
+# Get source
+COPY . .
 
-# ======================
+# Build the binary
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    --mount=type=cache,target=/app/target \
+    bash <<EOF
+    set -o allexport
+    . /etc/environment
+    TARGET_DIR=(\$(cargo metadata --no-deps --format-version 1 | \
+            jq -r ".target_directory"))
+    mkdir /out/sbin
+    PACKAGE=daemon
+    xx-cargo build --locked --release \
+        -p \$PACKAGE ${KANIDM_BUILD_OPTIONS} \
+        --features="${KANIDM_FEATURES}";
+    BINARIES=(\$(cargo metadata --no-deps --format-version 1 | \
+        jq -r ".packages[] | select(.name == \"\$PACKAGE\") | .targets[] | select( .kind | map(. == \"bin\") | any ) | .name"))
+    for BINARY in "\${BINARIES[@]}"; do
+        echo \$BINARY
+        xx-verify \$TARGET_DIR/$(xx-cargo   --print-target-triple)/release/\$BINARY
+        cp \$TARGET_DIR/$(xx-cargo --print-target-triple)/release/\$BINARY /out/sbin/\$BINARY
+    done
+EOF
 
-WORKDIR /usr/src/kanidm/kanidmd/daemon
+# Generate Software Bill of Materials (SBOM)
+RUN --mount=type=cache,target=/usr/local/cargo/registry \
+    --mount=type=cache,target=/usr/local/cargo/git/db \
+    bash <<EOF
+    mkdir /out/sbom
+    typeset -A PACKAGES
+    for BINARY in /out/sbin/*; do
+        BINARY_BASE=\$(basename \${BINARY})
+        package=\$(cargo metadata --no-deps --format-version 1 | jq -r ".packages[] | select(.targets[] | select( .kind | map(. == \"bin\") | any ) | .name == \"\$BINARY_BASE\") | .name")
+        if [ -z "\$package" ]; then
+            continue
+        fi
+        PACKAGES[\$package]=1
+    done
+    for PACKAGE in \$(echo \${!PACKAGES[@]}); do
+        echo \$PACKAGE
+        cargo sbom --cargo-package \$PACKAGE > /out/sbom/\$PACKAGE.spdx.json
+    done
+EOF
 
-# Exports don't persist through RUN statements.
-RUN --mount=type=cache,id=cargo,target=/cargo \
-    --mount=type=cache,id=sccache,target=/sccache \
-    export CARGO_HOME=/cargo && \
-    export SCCACHE_DIR=/sccache && \
-    export RUSTC_WRAPPER=/usr/bin/sccache && \
-    export CC="/usr/bin/clang" && \
-    cargo build -p daemon ${KANIDM_BUILD_OPTIONS} \
-        --target-dir="/usr/src/kanidm/target/" \
-        --features="${KANIDM_FEATURES}" \
-        --release; \
-    sccache -s
+# Extract dynamically linked dependencies
+RUN <<EOF
+    mkdir /out/libs
+    mkdir /out/libs-root
+    for BINARY in /out/sbin/*; do
+        lddtree "$BINARY" | awk '{print $(NF-0) " " $1}' | sort -u -k 1,1 | awk '{print "install", "-D", $1, (($2 ~ /^\//) ? "/out/libs-root" $2 : "/out/libs/" $2)}' | xargs -I {} sh -c {}
+    done
+EOF
 
-# ======================
+FROM scratch
 
-FROM repos
-RUN \
-    --mount=type=cache,id=zypp,target=/var/cache/zypp \
-    zypper install -y \
-        timezone \
-        openssl-3 \
-        sqlite3 \
-        pam
+WORKDIR /
 
-COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
-COPY --from=builder /usr/src/kanidm/server/core/static /hpkg
-RUN chmod +x /sbin/kanidmd
+# Copy root certs for tls into image
+# You can also mount the certs from the host
+# --volume /etc/ssl/certs:/etc/ssl/certs:ro
+COPY --from=base /etc/ssl/certs /etc/ssl/certs
 
-WORKDIR /data
+# Copy our build
+COPY --from=builder --chmod=0755 /out/sbin/ /sbin/
+# Web assets
+COPY --from=builder /app/server/core/static /hpkg/
+# Copy SBOM
+COPY --from=builder /out/sbom/ /sbom/
+
+# Copy dynamic libraries to root
+COPY --from=builder /out/libs-root/ /
+COPY --from=builder /out/libs/ /usr/lib/
+
+# Inform linker where to find libraries
+ENV LD_LIBRARY_PATH=/usr/lib
 
 EXPOSE 8443 3636
 
