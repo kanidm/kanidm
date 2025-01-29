@@ -17,7 +17,7 @@ use kanidm_proto::v1::AuthIssueSession;
 
 use super::server::CredSoftLockMutex;
 
-impl<'a> IdmServerAuthTransaction<'a> {
+impl IdmServerAuthTransaction<'_> {
     pub async fn reauth_init(
         &mut self,
         ident: Identity,

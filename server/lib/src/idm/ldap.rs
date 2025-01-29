@@ -693,9 +693,9 @@ impl LdapServer {
         } // end match server op
     }
 
-    async fn bind_target_from_bind_dn<'a>(
+    async fn bind_target_from_bind_dn(
         &self,
-        idm_auth: &mut IdmServerAuthTransaction<'a>,
+        idm_auth: &mut IdmServerAuthTransaction<'_>,
         dn: &str,
         pw: &str,
     ) -> Result<LdapBindTarget, OperationError> {

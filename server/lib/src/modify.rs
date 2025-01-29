@@ -214,10 +214,7 @@ impl ModifyList<ModifyInvalid> {
             })
             .collect();
 
-        let valid_mods = match res {
-            Ok(v) => v,
-            Err(e) => return Err(e),
-        };
+        let valid_mods = res?;
 
         // Return new ModifyList!
         Ok(ModifyList {
