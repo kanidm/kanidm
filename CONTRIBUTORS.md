@@ -44,6 +44,7 @@
 - adamcstephens
 - Chris Olstrom (colstrom)
 - Christopher-Robin (cebbinghaus)
+- Fabian Kammel (datosh)
 
 ## Acknowledgements
 
