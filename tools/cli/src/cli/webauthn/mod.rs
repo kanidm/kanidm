@@ -13,6 +13,11 @@ mod mozilla;
 #[cfg(target_os = "freebsd")]
 use mozilla::get_authenticator_backend;
 
+#[cfg(target_os = "openbsd")]
+mod mozilla;
+#[cfg(target_os = "openbsd")]
+use mozilla::get_authenticator_backend;
+
 #[cfg(target_os = "windows")]
 mod win10;
 #[cfg(target_os = "windows")]
