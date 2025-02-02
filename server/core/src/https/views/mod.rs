@@ -17,7 +17,7 @@ use kanidmd_lib::{
 use crate::https::ServerState;
 
 mod apps;
-mod constants;
+pub(crate) mod constants;
 mod cookies;
 mod enrol;
 mod errors;

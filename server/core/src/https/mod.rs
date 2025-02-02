@@ -253,7 +253,7 @@ pub async fn create_https_server(
         .merge(v1::route_setup(state.clone()))
         .route("/robots.txt", get(generic::robots_txt))
         .route(
-            "/.well-known/change-password",
+            views::constants::Urls::WellKnownChangePassword.as_ref(),
             get(generic::redirect_to_update_credentials),
         );
 
