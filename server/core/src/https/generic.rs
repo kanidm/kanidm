@@ -1,6 +1,6 @@
 use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Redirect};
 use axum::{Extension, Json};
 use kanidmd_lib::status::StatusRequestEvent;
 
@@ -49,4 +49,16 @@ pub async fn robots_txt() -> impl IntoResponse {
 "#,
         ),
     )
+}
+
+#[utoipa::path(
+    get,
+    path = "/.well-known/change-password",
+    responses(
+        (status = 303, description = "See other"),
+    ),
+    tag = "ui",
+)]
+pub async fn redirect_to_update_credentials() -> impl IntoResponse {
+    Redirect::to("/ui/update_credentials")
 }

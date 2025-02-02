@@ -251,7 +251,11 @@ pub async fn create_https_server(
         .merge(oauth2::route_setup(state.clone()))
         .merge(v1_scim::route_setup())
         .merge(v1::route_setup(state.clone()))
-        .route("/robots.txt", get(generic::robots_txt));
+        .route("/robots.txt", get(generic::robots_txt))
+        .route(
+            "/.well-known/change-password",
+            get(generic::redirect_to_update_credentials),
+        );
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
