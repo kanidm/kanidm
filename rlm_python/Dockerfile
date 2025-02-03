@@ -63,7 +63,7 @@ RUN python3 -m pip install \
 
 COPY rlm_python/radius_entrypoint.py /radius_entrypoint.py
 
-
+RUN mkdir /data && chown radiusd /data
 RUN chmod a+r /etc/raddb/certs/ -R
 USER $RADIUS_USER
 
