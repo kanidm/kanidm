@@ -93,6 +93,10 @@ features = ["mozilla"]
 workspace = true
 features = ["mozilla"]
 
+[target."cfg(target_os = \"openbsd\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["mozilla"]
+
 ## Debian packaging
 [package.metadata.deb]
 name = "kanidm"
