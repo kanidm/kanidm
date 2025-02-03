@@ -116,13 +116,13 @@ configuration)
 The configuration file (which you should mount at `/data/radius.toml`, or specify its path with the environment variable `KANIDM_RLM_CONFIG`) has the following template:
 
 ```toml
-{{#rustdoc_include ../../../examples/radius_full.toml}}
+{{#rustdoc_include ../../../examples/radius.toml}}
 ```
 
 ## A fully configured example
 
 ```toml
-{{#rustdoc_include ../../../examples/radius.toml}}
+{{#rustdoc_include ../../../examples/radius_full.toml}}
 ```
 
 ## Moving to Production
