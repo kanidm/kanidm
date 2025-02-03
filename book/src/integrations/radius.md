@@ -103,82 +103,26 @@ kanidm service-account credential generate --name admin radius_service_account
 ## Deploying a RADIUS Container
 
 We provide a RADIUS container that has all the needed integrations. This container requires some
-cryptographic material, with the following files being in `/etc/raddb/certs`. (Modifiable in the
+cryptographic material, with the following files mounted in `/data`. (Modifiable in the
 configuration)
 
-| filename | description                                                   |
-| -------- | ------------------------------------------------------------- |
-| ca.pem   | The signing CA of the RADIUS certificate                      |
-| dh.pem   | The output of `openssl dhparam -in ca.pem -out ./dh.pem 2048` |
-| cert.pem | The certificate for the RADIUS server                         |
-| key.pem  | The signing key for the RADIUS certificate                    |
+| filename    | description                                                   |
+| --------    | ------------------------------------------------------------- |
+| ca.pem      | The signing CA of the RADIUS certificate                      |
+| cert.pem    | The certificate for the RADIUS server                         |
+| key.pem     | The signing key for the RADIUS certificate                    |
+| radius.toml | The configuration file                                        |
 
-The configuration file (`/data/kanidm`) has the following template:
+The configuration file (which you should mount at `/data/radius.toml`, or specify its path with the environment variable `KANIDM_RLM_CONFIG`) has the following template:
 
 ```toml
-uri = "https://example.com" # URL to the Kanidm server
-verify_hostnames = true     # verify the hostname of the Kanidm server
-
-verify_ca = false           # Strict CA verification
-ca = /data/ca.pem           # Path to the kanidm ca
-
-auth_token = "ABC..."       # Auth token for the service account
-                            # See: kanidm service-account api-token generate
-
-# Default vlans for groups that don't specify one.
-radius_default_vlan = 1
-
-# A list of Kanidm groups which must be a member
-# before they can authenticate via RADIUS.
-radius_required_groups = [
-    "radius_access_allowed@idm.example.com",
-]
-
-# A mapping between Kanidm groups and VLANS
-radius_groups = [
-    { spn = "radius_access_allowed@idm.example.com", vlan = 10 },
-]
-
-# A mapping of clients and their authentication tokens
-radius_clients = [
-    { name = "test", ipaddr = "127.0.0.1", secret  = "testing123" },
-    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
-]
-
-# radius_cert_path = "/etc/raddb/certs/cert.pem"
-# the signing key for radius TLS
-# radius_key_path = "/etc/raddb/certs/key.pem"
-# the diffie-hellman output
-# radius_dh_path = "/etc/raddb/certs/dh.pem"
-# the CA certificate
-# radius_ca_path = "/etc/raddb/certs/ca.pem"
+{{#rustdoc_include ../../../examples/radius_full.toml}}
 ```
 
 ## A fully configured example
 
 ```toml
-url = "https://example.com"
-
-# The auth token for the service account
-auth_token = "ABC..."
-
-# default vlan for groups that don't specify one.
-radius_default_vlan = 99
-
-# if the user is in one of these Kanidm groups,
-# then they're allowed to authenticate
-radius_required_groups = [
-    "radius_access_allowed@idm.example.com",
-]
-
-radius_groups = [
-    { spn = "radius_access_allowed@idm.example.com", vlan = 10 }
-]
-
-radius_clients = [
-    { name = "localhost", ipaddr = "127.0.0.1", secret = "testing123" },
-    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
-]
+{{#rustdoc_include ../../../examples/radius.toml}}
 ```
 
 ## Moving to Production
@@ -200,13 +144,16 @@ the problem. To increase the logging level you can re-run your environment with 
 ```bash
 docker rm radiusd
 docker run --name radiusd \
-    -e DEBUG=True \
+    --rm -e DEBUG=True \
     -p 1812:1812 \
-    -p 1812:1812/udp
+    -p 1812:1812/udp \
     --interactive --tty \
-    --volume /tmp/kanidm:/etc/raddb/certs \
+    --mount "type=bind,src=$(pwd)/examples/radius.toml,target=/data/kanidm" \
+    --mount "type=bind,src=/tmp/kanidm,target=/data" \
     kanidm/radius:latest
 ```
+
+In this example we're running it from the root of the repository and loading an example config, and using the certificates generated in dev-mode. You'll need to adjust your mounts to suit!
 
 Note: the RADIUS container _is_ configured to provide
 [Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID), so if

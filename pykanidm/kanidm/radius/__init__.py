@@ -16,12 +16,14 @@ from .. import KanidmClient
 from . import radiusd
 from .utils import check_vlan
 
+CONTAINER_CONFIG_FILE_PATH = "/data/radius.toml"
+
 # the list of places to try
 CONFIG_PATHS = [
-    os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),  # container goodness
-    "~/.config/kanidm",  # for a user
-    "/etc/kanidm/kanidm",  # system-wide
-    "../examples/kanidm",  # test mode
+    os.getenv("KANIDM_RLM_CONFIG", CONTAINER_CONFIG_FILE_PATH),  # container goodness
+    "~/.config/radius.toml",  # for a user
+    "/etc/kanidm/radius.toml",  # system-wide
+    "../examples/radius.toml",  # test mode
 ]
 
 
