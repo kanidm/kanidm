@@ -59,7 +59,11 @@ def setup_certs(
             sys.exit(1)
         if cert_ca != CERT_CA_DEST:
             print(f"Copying {cert_ca} to {CERT_CA_DEST}")
-            shutil.copyfile(cert_ca, CERT_CA_DEST)
+            try:
+                shutil.copyfile(cert_ca, CERT_CA_DEST)
+            except shutil.SameFileError:
+                pass
+
 
     # This dir can also contain crls!
     if kanidm_config_object.radius_ca_dir:
@@ -79,13 +83,18 @@ def setup_certs(
     if kanidm_config_object.radius_dh_path is not None:
         cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
         if not cert_dh.exists():
-            # print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
-            # sys.exit(1)
             print(f"Generating dh params in {cert_dh}")
             subprocess.check_call(["openssl", "dhparam", "-out", cert_dh, "2048"])
+            if not cert_dh.exists():
+                print(f"Failed to generate dh params in {cert_dh}, can't continue!")
+                sys.exit(1)
+
         if cert_dh != CERT_DH_DEST:
             print(f"Copying {cert_dh} to {CERT_DH_DEST}")
-            shutil.copyfile(cert_dh, CERT_DH_DEST)
+            try:
+                shutil.copyfile(cert_dh, CERT_DH_DEST)
+            except shutil.SameFileError:
+                pass
 
 
     server_key = Path(kanidm_config_object.radius_key_path).expanduser().resolve()
@@ -165,7 +174,7 @@ if __name__ == '__main__':
             )
         sys.exit(1)
 
-    kanidm_config = KanidmClientConfig.parse_obj(load_config(CONFIG_FILE_PATH))
+    kanidm_config = KanidmClientConfig.model_validate(load_config(CONFIG_FILE_PATH))
     setup_certs(kanidm_config)
     write_clients_conf(kanidm_config)
     print("Configuration set up, starting...")
