@@ -275,6 +275,14 @@ async fn handle_client(
                     error!("unable to load group, returning empty.");
                     ClientResponse::NssGroup(None)
                 }),
+            ClientRequest::NssGroupsByMember(account_id) => cachelayer
+                .get_nssgroups_member_name(account_id.as_str())
+                .await
+                .map(ClientResponse::NssGroups)
+                .unwrap_or_else(|_| {
+                    error!("unable to enum groups");
+                    ClientResponse::NssGroups(Vec::new())
+                }),
             ClientRequest::PamAuthenticateInit { account_id, info } => {
                 match &pam_auth_session_state {
                     Some(_auth_session) => {
