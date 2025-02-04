@@ -110,7 +110,7 @@ configuration)
 | --------    | ------------------------------------------------------------- |
 | ca.pem      | The signing CA of the RADIUS certificate                      |
 | cert.pem    | The certificate for the RADIUS server                         |
-| key.pem     | The signing key for the RADIUS certificate                    |
+| key.pem     | The private key for the RADIUS certificate                    |
 | radius.toml | The configuration file                                        |
 
 The configuration file (which you should mount at `/data/radius.toml`, or specify its path with the environment variable `KANIDM_RLM_CONFIG`) has the following template:
