@@ -4007,7 +4007,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: Some("123".to_string()),
+            state: None,
             pkce_request: Some(PkceRequest {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -4040,7 +4040,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state.as_deref(), Some("123"));
+        assert_eq!(permit_success.state.as_deref(), None);
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
