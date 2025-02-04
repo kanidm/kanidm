@@ -69,6 +69,11 @@ As the POSIX password is not equivalent in strength to the primary credentials o
 most cases is multi-factor authentication), the LDAP bind does not grant rights to elevated read
 permissions. All binds have the permissions of "anonymous" even if the anonymous account is locked.
 
+> As the POSIX password is not equivalent in strength to the primary credentials of Kanidm
+
+This is no longer necessarily true (thanks to the fallback). Would it be possible to  enable elevated read permissions
+specifically for the the account being logged into?
+
 The exception is service accounts which can use api-tokens during an LDAP bind for elevated read
 permissions.
 
@@ -145,7 +150,8 @@ with a dn of `dn=token` and provide the api token in the password.
 > [!NOTE]
 >
 > The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it was chosen
-> as the keyword to initiate api token binds.
+> as the keyword to initiate api token binds. Additionally it is not required, leaving the field empty
+> will fall back to the service-account if a "password" is provided
 
 ```bash
 ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"

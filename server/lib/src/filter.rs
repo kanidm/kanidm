@@ -1097,8 +1097,19 @@ impl FilterComp {
             }
             LdapFilter::Equality(a, v) => {
                 let a = ldap_attr_filter_map(a);
-                let v = qs.clone_partialvalue(&a, v)?;
-                FilterComp::Eq(a, v)
+                let pv = qs.clone_partialvalue(&a, v);
+                let Ok(pv) = pv else {
+                    // This is a massive hack to get around the fact that we can't to do a equality check on the spn
+                    // without providing a valid spn string `e.g spn=username`. I'd rather be solving this by creating a `FilterComp::Constant(bool)`
+                    // To allow us to embed an always false value given we need to return a filter comp.
+                    if a == Attribute::Spn {
+                        return Ok(FilterComp::Eq(a, PartialValue::Spn("invalid".into(), "spn".into())));
+                    }
+                    
+                    // Hate the unwrap but can't think of a better way :(
+                    return Err(pv.unwrap_err())
+                }; 
+                FilterComp::Eq(a, pv)
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
             LdapFilter::Substring(
