@@ -207,7 +207,7 @@ notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"
 oauth2_ext = { version = "^4.4.2", package = "oauth2", default-features = false }
 openssl-sys = "^0.9"
-openssl = "^0.10.69"
+openssl = "^0.10.70"
 
 opentelemetry = { version = "0.27.0" }
 opentelemetry_api = { version = "0.27.0", features = ["logs", "metrics"] }

@@ -45,6 +45,7 @@
 - Chris Olstrom (colstrom)
 - Christopher-Robin (cebbinghaus)
 - Fabian Kammel (datosh)
+- Andris Raugulis (arthepsy)
 
 ## Acknowledgements
 
