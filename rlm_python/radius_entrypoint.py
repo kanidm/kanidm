@@ -147,15 +147,15 @@ def run_radiusd() -> None:
 if __name__ == '__main__':
     signal.signal(signal.SIGCHLD, _sigchild_handler)
 
-    config_file = Path(kanidm.radius.CONTAINER_CONFIG_FILE_PATH).expanduser().resolve()
-    if not config_file.exists:
+    config_file = kanidm.radius.find_radius_config_path()
+    if config_file is None:
         print(
             "Failed to find configuration file ({config_file}), quitting!",
             file=sys.stderr,
             )
         sys.exit(1)
 
-    kanidm_config = KanidmClientConfig.model_validate(load_config(kanidm.radius.CONTAINER_CONFIG_FILE_PATH))
+    kanidm_config = KanidmClientConfig.model_validate(load_config(config_file))
     setup_certs(kanidm_config)
     write_clients_conf(kanidm_config)
     print("Configuration set up, starting...")
