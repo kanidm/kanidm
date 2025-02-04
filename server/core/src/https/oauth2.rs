@@ -774,7 +774,9 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
         .route(
             "/oauth2/openid/:client_id/userinfo",
-            get(oauth2_openid_userinfo_get).options(oauth2_preflight_options),
+            get(oauth2_openid_userinfo_get)
+            .post(oauth2_openid_userinfo_get)
+            .options(oauth2_preflight_options),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
