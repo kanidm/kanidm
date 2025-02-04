@@ -24,6 +24,7 @@ CONFIG_PATHS = [
     "~/.config/radius.toml",  # for a user
     "/etc/kanidm/radius.toml",  # system-wide
     "../examples/radius.toml",  # test mode
+    "/data/kanidm",  # fallback to old path
 ]
 
 
