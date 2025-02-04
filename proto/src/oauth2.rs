@@ -6,7 +6,9 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{formats, serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{
+    formats, serde_as, skip_serializing_none, NoneAsEmptyString, StringWithSeparator,
+};
 use url::Url;
 use uuid::Uuid;
 
@@ -49,7 +51,8 @@ pub struct AuthorisationRequest {
     /// [OAuth 2.0 Multiple Response Type Encoding Practices: Response Modes](https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes)
     pub response_mode: Option<ResponseMode>,
     pub client_id: String,
-    pub state: String,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub state: Option<String>,
     #[serde(flatten)]
     pub pkce_request: Option<PkceRequest>,
     pub redirect_uri: Url,
