@@ -42,7 +42,7 @@ mod webauthn;
 pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMode) {
     match response {
         ClientError::Http(status, error, opid) => {
-            let error_msg = match error {
+            let error_msg = match &error {
                 Some(msg) => format!(" {:?}", msg),
                 None => "".to_string(),
             };
@@ -68,6 +68,18 @@ pub(crate) fn handle_client_error(response: ClientError, _output_mode: OutputMod
             eprintln!("{:?}", response);
         }
     };
+}
+
+pub(crate) fn handle_group_account_policy_error(response: ClientError, _output_mode: OutputMode) {
+    use kanidm_proto::internal::OperationError::SchemaViolation;
+    use kanidm_proto::internal::SchemaError::AttributeNotValidForClass;
+
+    if let ClientError::Http(_status, Some(SchemaViolation(AttributeNotValidForClass(att))), opid) = response {
+        error!("OperationId: {:?}", opid);
+        error!("Cannot update account-policy attribute {att}. Is account-policy enabled on this group?");
+    } else {
+        handle_client_error(response, _output_mode);
+    }
 }
 
 impl SelfOpt {

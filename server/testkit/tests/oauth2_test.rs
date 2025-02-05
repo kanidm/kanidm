@@ -447,6 +447,24 @@ async fn test_oauth2_openid_basic_flow_impl(
 
     assert_eq!(userinfo, oidc);
 
+    let response = client
+        .post(rsclient.make_url("/oauth2/openid/test_integration/userinfo"))
+        .bearer_auth(atr.access_token.clone())
+        .send()
+        .await
+        .expect("Failed to send userinfo POST request.");
+
+    tracing::trace!("{:?}", response.headers());
+    assert!(
+        response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
+    );
+    let userinfo_post = response
+        .json::<OidcToken>()
+        .await
+        .expect("Unable to decode OidcToken from POST userinfo");
+
+    assert_eq!(userinfo_post, userinfo);
+
     // Step 6 - Show that our client can perform a client credentials grant
 
     let form_req: AccessTokenRequest = GrantTypeReq::ClientCredentials {

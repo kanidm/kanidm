@@ -171,7 +171,6 @@ class KanidmClientConfig(BaseModel):
 
     radius_cert_path: str = "/data/cert.pem"
     radius_key_path: str = "/data/key.pem"  # the signing key for radius TLS
-    radius_dh_path: str = "/data/dh.pem"  # the diffie-hellman output
     radius_ca_path: Optional[str] = None
     radius_ca_dir: Optional[str] = None
 
