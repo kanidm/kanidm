@@ -197,7 +197,10 @@ async fn handle_client(
     cachelayer: Arc<Resolver>,
     task_channel_tx: &Sender<AsyncTaskRequest>,
 ) -> Result<(), Box<dyn Error>> {
-    debug!("Accepted connection");
+    let conn_id = uuid::Uuid::new_v4();
+
+    let span = span!(Level::DEBUG, "accepted connection", uuid = %conn_id);
+    let _enter = span.enter();
 
     let Ok(ucred) = sock.peer_cred() else {
         return Err(Box::new(IoError::new(
@@ -206,6 +209,8 @@ async fn handle_client(
         )));
     };
 
+    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
+
     let mut reqs = Framed::new(sock, ClientCodec);
     let mut pam_auth_session_state = None;
 
@@ -213,9 +218,12 @@ async fn handle_client(
     // tell consumers to stop work.
     let (shutdown_tx, _shutdown_rx) = broadcast::channel(1);
 
-    trace!("Waiting for requests ...");
+    debug!("Waiting for requests ...");
+    // Drop the span here so that there are no parent spans during the request loop.
+    drop(_enter);
+
     while let Some(Ok(req)) = reqs.next().await {
-        let span = span!(Level::DEBUG, "client_request");
+        let span = span!(Level::INFO, "client request", uuid = %conn_id);
         let _enter = span.enter();
 
         let resp = match req {
@@ -405,7 +413,10 @@ async fn handle_client(
     }
 
     // Disconnect them
-    debug!("Disconnecting client ...");
+    let span = span!(Level::DEBUG, "disconnecting client", uuid = %conn_id);
+    let _enter = span.enter();
+    debug!(uid = ?ucred.uid(), gid = ?ucred.gid(), pid = ?ucred.pid());
+
     Ok(())
 }
 
@@ -595,6 +606,9 @@ async fn main() -> ExitCode {
             )
         )
         .on(async {
+            let span = span!(Level::DEBUG, "starting resolver");
+            let _enter = span.enter();
+
             if clap_args.get_flag("skip-root-check") {
                 warn!("Skipping root user check, if you're running this for testing, ensure you clean up temporary files.")
                 // TODO: this wording is not great m'kay.
@@ -1164,6 +1178,9 @@ async fn main() -> ExitCode {
             });
 
             info!("Server started ...");
+
+            // End the startup span, we can now proceed.
+            drop(_enter);
 
             // On linux, notify systemd.
             #[cfg(target_os = "linux")]

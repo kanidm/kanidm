@@ -228,6 +228,8 @@ impl Resolver {
             debug!("get_cached_usertoken {:?}", err);
         })?;
 
+        drop(dbtxn);
+
         match r {
             Some((ut, ex)) => {
                 // Are we expired?
@@ -275,6 +277,8 @@ impl Resolver {
         //  Attempt to search these in the db.
         let mut dbtxn = self.db.write().await;
         let r = dbtxn.get_group(grp_id).map_err(|_| ())?;
+
+        drop(dbtxn);
 
         match r {
             Some((ut, ex)) => {
