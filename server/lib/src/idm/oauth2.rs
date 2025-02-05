@@ -132,7 +132,7 @@ struct ConsentToken {
     // So we can ensure that we really match the same uat to prevent confusions.
     pub ident_id: IdentityId,
     // CSRF
-    pub state: String,
+    pub state: Option<String>,
     // The S256 code challenge.
     #[serde_as(
         as = "Option<serde_with::base64::Base64<serde_with::base64::UrlSafe, formats::Unpadded>>"
@@ -235,7 +235,7 @@ pub struct AuthorisePermitSuccess {
     // Where the client wants us to go back to.
     pub redirect_uri: Url,
     // The CSRF as a string
-    pub state: String,
+    pub state: Option<String>,
     // The exchange code as a String
     pub code: String,
     /// The format the response should be returned to the application in.
@@ -253,10 +253,15 @@ impl AuthorisePermitSuccess {
         redirect_uri.set_fragment(None);
 
         // We can't set query pairs on fragments, only query.
-        let encoded = url::form_urlencoded::Serializer::new(String::new())
-            .append_pair("state", &self.state)
-            .append_pair("code", &self.code)
-            .finish();
+        let mut uri_builder = url::form_urlencoded::Serializer::new(String::new());
+
+        uri_builder.append_pair("code", &self.code);
+
+        if let Some(state) = self.state.as_ref() {
+            uri_builder.append_pair("state", state);
+        };
+
+        let encoded = uri_builder.finish();
 
         match self.response_mode {
             ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
@@ -3034,7 +3039,7 @@ mod tests {
                 response_type: ResponseType::Code,
                 response_mode: None,
                 client_id: "test_resource_server".to_string(),
-                state: "123".to_string(),
+                state: Some("123".to_string()),
                 pkce_request: Some(PkceRequest {
                     code_challenge: $code_challenge.into(),
                     code_challenge_method: CodeChallengeMethod::S256,
@@ -3416,7 +3421,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
 
@@ -3478,7 +3483,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
 
@@ -3532,7 +3537,7 @@ mod tests {
             response_type: ResponseType::Token,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3554,7 +3559,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3576,7 +3581,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "NOT A REAL RESOURCE SERVER".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3598,7 +3603,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3620,7 +3625,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3642,7 +3647,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3666,7 +3671,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["invalid_scope".to_string(), "read".to_string()],
@@ -3688,7 +3693,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
@@ -3710,7 +3715,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
@@ -4002,7 +4007,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: None,
             pkce_request: Some(PkceRequest {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -4035,7 +4040,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), None);
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -4073,7 +4078,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -4098,7 +4103,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -5414,7 +5419,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
@@ -5626,7 +5631,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -5685,7 +5690,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -5828,7 +5833,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -5904,7 +5909,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -6869,7 +6874,7 @@ mod tests {
             response_type: ResponseType::Code,
             response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -6900,7 +6905,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
         let token_req = AccessTokenRequest {
