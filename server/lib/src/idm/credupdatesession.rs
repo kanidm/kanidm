@@ -2155,11 +2155,11 @@ impl IdmServerCredUpdateTransaction<'_> {
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
-        label: String,
-        reg: &RegisterPublicKeyCredential,
+        _label: String,
+        _reg: &RegisterPublicKeyCredential,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.try_lock().map_err(|_| {
+        let session = session_handle.try_lock().map_err(|_| {
             admin_error!("Session already locked, unable to proceed.");
             OperationError::InvalidState
         })?;
@@ -2171,7 +2171,9 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         match &session.mfaregstate {
-            MfaRegState::Passkey(_ccr, pk_reg) => {
+            MfaRegState::Passkey(_ccr, _pk_reg) => {
+                Err(OperationError::CU0003WebauthnUserNotVerified)
+                /*
                 let result = self
                     .webauthn
                     .finish_passkey_registration(reg, pk_reg)
@@ -2194,6 +2196,7 @@ impl IdmServerCredUpdateTransaction<'_> {
                 session.passkeys.insert(pk_id, (label, passkey));
 
                 Ok(session.deref().into())
+                */
             }
             invalid_state => {
                 warn!(?invalid_state);

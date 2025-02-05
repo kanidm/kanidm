@@ -380,11 +380,20 @@ pub(crate) async fn finish_passkey(
                 }
             };
 
-            let cu_status = state
+            let cu_result = state
                 .qe_r_ref
                 .handle_idmcredentialupdate(cu_session_token, cu_request, kopid.eventid)
-                .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
-                .await?;
+                .await;
+
+            let cu_status = match cu_result {
+                Ok(cu_status) => cu_status,
+                Err(OperationError::CU0003WebauthnUserNotVerified) => {
+                    todo!();
+                }
+                Err(op_err) => {
+                    Err(HtmxError::new(&kopid, op_err, domain_info.clone()))
+                }
+            };
 
             Ok(get_cu_partial_response(cu_status))
         }
