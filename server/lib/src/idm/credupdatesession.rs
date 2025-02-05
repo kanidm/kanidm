@@ -2195,7 +2195,10 @@ impl IdmServerCredUpdateTransaction<'_> {
 
                 Ok(session.deref().into())
             }
-            _ => Err(OperationError::InvalidRequestState),
+            invalid_state => {
+                warn!(?invalid_state);
+                Err(OperationError::InvalidRequestState)
+            }
         }
     }
 
