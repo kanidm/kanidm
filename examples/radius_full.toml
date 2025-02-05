@@ -1,0 +1,28 @@
+uri = "https://example.com" # URL to the Kanidm server
+verify_hostnames = true     # verify the hostname of the Kanidm server
+verify_ca = true            # Strict CA verification
+
+auth_token = "ABC..." # Auth token for the service account
+# See: kanidm service-account api-token generate
+
+# Default vlans for groups that don't specify one.
+radius_default_vlan = 1
+
+# A list of Kanidm groups which must be a member
+# before they can authenticate via RADIUS.
+radius_required_groups = ["radius_access_allowed@idm.example.com"]
+
+# A mapping between Kanidm groups and VLANS
+radius_groups = [{ spn = "radius_access_allowed@idm.example.com", vlan = 10 }]
+
+# A mapping of clients and their authentication tokens
+radius_clients = [
+    { name = "test", ipaddr = "127.0.0.1", secret = "testing123" },
+    { name = "docker", ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+
+# radius_cert_path = "/etc/raddb/certs/cert.pem"
+# the signing key for radius TLS
+# radius_key_path = "/etc/raddb/certs/key.pem"
+radius_ca_path = "/data/ca.pem" # Path to the kanidm ca
+# radius_ca_dir = "/data/ca"
