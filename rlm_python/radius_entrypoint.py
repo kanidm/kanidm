@@ -10,14 +10,13 @@ import sys
 from typing import Any
 
 # import toml
+import kanidm.radius
 from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
 
 DEBUG = True
 if os.environ.get('DEBUG', False):
     DEBUG = True
-
-CONFIG_FILE_PATH = "/data/kanidm"
 
 CERT_SERVER_DEST = "/etc/raddb/certs/server.pem"
 CERT_CA_DEST = "/etc/raddb/certs/ca.pem"
@@ -59,7 +58,11 @@ def setup_certs(
             sys.exit(1)
         if cert_ca != CERT_CA_DEST:
             print(f"Copying {cert_ca} to {CERT_CA_DEST}")
-            shutil.copyfile(cert_ca, CERT_CA_DEST)
+            try:
+                shutil.copyfile(cert_ca, CERT_CA_DEST)
+            except shutil.SameFileError:
+                pass
+
 
     # This dir can also contain crls!
     if kanidm_config_object.radius_ca_dir:
@@ -74,19 +77,6 @@ def setup_certs(
     # Setup the ca-dir correctly now. We do this before we add server.pem so that it's
     # not hashed as a ca.
     subprocess.check_call(["openssl", "rehash", CERT_CA_DIR])
-
-    # let's put some dhparams in place
-    if kanidm_config_object.radius_dh_path is not None:
-        cert_dh = Path(kanidm_config_object.radius_dh_path).expanduser().resolve()
-        if not cert_dh.exists():
-            # print(f"Failed to find radiusd dh file ({cert_dh}), quitting!", file=sys.stderr)
-            # sys.exit(1)
-            print(f"Generating dh params in {cert_dh}")
-            subprocess.check_call(["openssl", "dhparam", "-out", cert_dh, "2048"])
-        if cert_dh != CERT_DH_DEST:
-            print(f"Copying {cert_dh} to {CERT_DH_DEST}")
-            shutil.copyfile(cert_dh, CERT_DH_DEST)
-
 
     server_key = Path(kanidm_config_object.radius_key_path).expanduser().resolve()
     if not server_key.exists() or not server_key.is_file():
@@ -157,15 +147,15 @@ def run_radiusd() -> None:
 if __name__ == '__main__':
     signal.signal(signal.SIGCHLD, _sigchild_handler)
 
-    config_file = Path(CONFIG_FILE_PATH).expanduser().resolve()
-    if not config_file.exists:
+    config_file = kanidm.radius.find_radius_config_path()
+    if config_file is None:
         print(
             "Failed to find configuration file ({config_file}), quitting!",
             file=sys.stderr,
             )
         sys.exit(1)
 
-    kanidm_config = KanidmClientConfig.parse_obj(load_config(CONFIG_FILE_PATH))
+    kanidm_config = KanidmClientConfig.model_validate(load_config(config_file))
     setup_certs(kanidm_config)
     write_clients_conf(kanidm_config)
     print("Configuration set up, starting...")

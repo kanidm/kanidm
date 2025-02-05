@@ -46,6 +46,7 @@
 - Christopher-Robin (cebbinghaus)
 - Fabian Kammel (datosh)
 - Andris Raugulis (arthepsy)
+- Jason (argonaut0)
 
 ## Acknowledgements
 
