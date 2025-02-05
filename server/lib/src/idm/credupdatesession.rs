@@ -326,7 +326,9 @@ impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
             CredentialUpdateSessionStatusWarnings::WebauthnAttestationUnsatisfiable => {
                 CURegWarning::WebauthnAttestationUnsatisfiable
             }
-            CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired => CURegWarning::WebauthnUserVerificationRequired,
+            CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired => {
+                CURegWarning::WebauthnUserVerificationRequired
+            }
         }
     }
 }
@@ -2170,11 +2172,11 @@ impl IdmServerCredUpdateTransaction<'_> {
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
-        _label: String,
-        _reg: &RegisterPublicKeyCredential,
+        label: String,
+        reg: &RegisterPublicKeyCredential,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let session = session_handle.try_lock().map_err(|_| {
+        let mut session = session_handle.try_lock().map_err(|_| {
             admin_error!("Session already locked, unable to proceed.");
             OperationError::InvalidState
         })?;
@@ -2186,39 +2188,32 @@ impl IdmServerCredUpdateTransaction<'_> {
         };
 
         match &session.mfaregstate {
-            MfaRegState::Passkey(_ccr, _pk_reg) => {
+            MfaRegState::Passkey(_ccr, pk_reg) => {
+                let reg_result = self.webauthn.finish_passkey_registration(reg, pk_reg);
 
-                let mut cu_status: CredentialUpdateSessionStatus = session.deref().into();
-
-                cu_status.append_ephemeral_warning(CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired);
-
-                Ok(cu_status)
-
-
-                /*
-                let result = self
-                    .webauthn
-                    .finish_passkey_registration(reg, pk_reg)
-                    .map_err(|e| {
-                        error!(eclass=?e, emsg=%e, "Unable to complete passkey registration");
-                        match e {
-                            WebauthnError::UserNotVerified => {
-                                OperationError::CU0003WebauthnUserNotVerified
-                            }
-                            _ => OperationError::CU0002WebauthnRegistrationError,
-                        }
-                    });
-
-                // The reg is done. Clean up state before returning errors.
+                // Clean up state before returning results.
                 session.mfaregstate = MfaRegState::None;
 
-                let passkey = result?;
+                match reg_result {
+                    Ok(passkey) => {
+                        let pk_id = Uuid::new_v4();
+                        session.passkeys.insert(pk_id, (label, passkey));
 
-                let pk_id = Uuid::new_v4();
-                session.passkeys.insert(pk_id, (label, passkey));
-
-                Ok(session.deref().into())
-                */
+                        let cu_status: CredentialUpdateSessionStatus = session.deref().into();
+                        Ok(cu_status)
+                    }
+                    Err(WebauthnError::UserNotVerified) => {
+                        let mut cu_status: CredentialUpdateSessionStatus = session.deref().into();
+                        cu_status.append_ephemeral_warning(
+                            CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired,
+                        );
+                        Ok(cu_status)
+                    }
+                    Err(err) => {
+                        error!(eclass=?err, emsg=%err, "Unable to complete passkey registration");
+                        Err(OperationError::CU0002WebauthnRegistrationError)
+                    }
+                }
             }
             invalid_state => {
                 warn!(?invalid_state);

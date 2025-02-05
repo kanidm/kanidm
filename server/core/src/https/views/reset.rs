@@ -72,6 +72,7 @@ struct CredStatusView {
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
+    can_commit: bool,
     warnings: Vec<CURegWarning>,
     attested_passkeys_state: CUCredState,
     passkeys_state: CUCredState,
@@ -380,20 +381,11 @@ pub(crate) async fn finish_passkey(
                 }
             };
 
-            let cu_result = state
+            let cu_status = state
                 .qe_r_ref
                 .handle_idmcredentialupdate(cu_session_token, cu_request, kopid.eventid)
-                .await;
-
-            let cu_status = match cu_result {
-                Ok(cu_status) => cu_status,
-                Err(OperationError::CU0003WebauthnUserNotVerified) => {
-                    todo!();
-                }
-                Err(op_err) => {
-                    return Err(HtmxError::new(&kopid, op_err, domain_info.clone()))
-                }
-            };
+                .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+                .await?;
 
             Ok(get_cu_partial_response(cu_status))
         }
@@ -882,6 +874,7 @@ pub(crate) async fn view_reset_get(
 fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
     let CUStatus {
         ext_cred_portal,
+        can_commit,
         warnings,
         passkeys_state,
         attested_passkeys_state,
@@ -896,6 +889,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
 
     CredResetPartialView {
         ext_cred_portal,
+        can_commit,
         warnings,
         attested_passkeys_state,
         passkeys_state,
