@@ -160,6 +160,7 @@ pub enum CURegWarning {
     AttestedResidentKeyRequired,
     Unsatisfiable,
     WebauthnAttestationUnsatisfiable,
+    WebauthnUserVerificationRequired,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, ToSchema)]

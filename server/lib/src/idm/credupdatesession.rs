@@ -203,6 +203,7 @@ impl CredentialUpdateSession {
     // Vec of the issues with the current session so that UI's can highlight properly how to proceed.
     fn can_commit(&self) -> (bool, Vec<CredentialUpdateSessionStatusWarnings>) {
         let mut warnings = Vec::with_capacity(0);
+        let mut can_proceed = true;
 
         let cred_type_min = self.resolved_account_policy.credential_policy();
 
@@ -219,6 +220,7 @@ impl CredentialUpdateSession {
                     // parts.
                     .unwrap_or(false)
                 {
+                    can_proceed = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::MfaRequired);
                 }
             }
@@ -226,12 +228,14 @@ impl CredentialUpdateSession {
                 // NOTE: Technically this is unreachable, but we keep it for correctness.
                 // Primary can't be set at all.
                 if self.primary.is_some() {
+                    can_proceed = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::PasskeyRequired);
                 }
             }
             CredentialType::AttestedPasskey => {
                 // Also unreachable - during these sessions, there will be no values present here.
                 if !self.passkeys.is_empty() || self.primary.is_some() {
+                    can_proceed = false;
                     warnings.push(CredentialUpdateSessionStatusWarnings::AttestedPasskeyRequired);
                 }
             }
@@ -241,12 +245,14 @@ impl CredentialUpdateSession {
                     || !self.passkeys.is_empty()
                     || self.primary.is_some()
                 {
+                    can_proceed = false;
                     warnings
                         .push(CredentialUpdateSessionStatusWarnings::AttestedResidentKeyRequired);
                 }
             }
             CredentialType::Invalid => {
                 // special case, must always deny all changes.
+                can_proceed = false;
                 warnings.push(CredentialUpdateSessionStatusWarnings::Unsatisfiable)
             }
         }
@@ -258,7 +264,7 @@ impl CredentialUpdateSession {
             }
         }
 
-        (warnings.is_empty(), warnings)
+        (can_proceed, warnings)
     }
 }
 
@@ -296,6 +302,7 @@ pub enum CredentialUpdateSessionStatusWarnings {
     AttestedResidentKeyRequired,
     Unsatisfiable,
     WebauthnAttestationUnsatisfiable,
+    WebauthnUserVerificationRequired,
 }
 
 impl Display for CredentialUpdateSessionStatusWarnings {
@@ -319,6 +326,7 @@ impl From<CredentialUpdateSessionStatusWarnings> for CURegWarning {
             CredentialUpdateSessionStatusWarnings::WebauthnAttestationUnsatisfiable => {
                 CURegWarning::WebauthnAttestationUnsatisfiable
             }
+            CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired => CURegWarning::WebauthnUserVerificationRequired,
         }
     }
 }
@@ -350,6 +358,13 @@ pub struct CredentialUpdateSessionStatus {
 }
 
 impl CredentialUpdateSessionStatus {
+    /// Append a single warning to this session status, which will only be displayed to the
+    /// user once. This is different to other warnings that are derived from the state of the
+    /// session as a whole.
+    pub fn append_ephemeral_warning(&mut self, warning: CredentialUpdateSessionStatusWarnings) {
+        self.warnings.push(warning)
+    }
+
     pub fn can_commit(&self) -> bool {
         self.can_commit
     }
@@ -2172,7 +2187,14 @@ impl IdmServerCredUpdateTransaction<'_> {
 
         match &session.mfaregstate {
             MfaRegState::Passkey(_ccr, _pk_reg) => {
-                Err(OperationError::CU0003WebauthnUserNotVerified)
+
+                let mut cu_status: CredentialUpdateSessionStatus = session.deref().into();
+
+                cu_status.append_ephemeral_warning(CredentialUpdateSessionStatusWarnings::WebauthnUserVerificationRequired);
+
+                Ok(cu_status)
+
+
                 /*
                 let result = self
                     .webauthn

@@ -391,7 +391,7 @@ pub(crate) async fn finish_passkey(
                     todo!();
                 }
                 Err(op_err) => {
-                    Err(HtmxError::new(&kopid, op_err, domain_info.clone()))
+                    return Err(HtmxError::new(&kopid, op_err, domain_info.clone()))
                 }
             };
 
