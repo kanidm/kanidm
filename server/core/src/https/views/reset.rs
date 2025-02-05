@@ -205,6 +205,10 @@ impl Display for PasskeyClass {
     }
 }
 
+/// When the credential update session is ended through a commit or discard of the changes
+/// we need to redirect the user to a relevant location. This location depends on the sessions
+/// current authentication state. If they are authenticated, they are sent to their profile. If
+/// they are not authenticated, they are sent to the login screen.
 async fn end_session_response(
     state: ServerState,
     kopid: KOpId,
@@ -217,21 +221,18 @@ async fn end_session_response(
         .await
         .is_ok();
 
-    if is_logged_in {
-        Ok((
-            jar,
-            HxLocation::from(Uri::from_static(Urls::Profile.as_ref())),
-            "",
-        )
-            .into_response())
+    let redirect_location = if is_logged_in {
+        Urls::Profile.as_ref()
     } else {
-        Ok((
-            jar,
-            HxLocation::from(Uri::from_static(Urls::Login.as_ref())),
-            "",
-        )
-            .into_response())
-    }
+        Urls::Login.as_ref()
+    };
+
+    Ok((
+        jar,
+        HxLocation::from(Uri::from_static(redirect_location)),
+        "",
+    )
+        .into_response())
 }
 
 pub(crate) async fn commit(
