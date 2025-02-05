@@ -571,6 +571,10 @@ pub trait BackendTransaction {
                 filter_error!("Requested a top level or isolated AndNot, returning empty");
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
+            FilterResolved::Invalid(_) => {
+                // Partial is the only one that doesn't run the risk of being cancelled due to resource constraint
+                (IdList::Partial(IDLBitRange::new()), FilterPlan::Invalid)
+            }
         })
     }
 
