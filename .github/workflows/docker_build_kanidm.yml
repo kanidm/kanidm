@@ -35,9 +35,30 @@ jobs:
     needs:
       - set_tag_values
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+      - uses: Swatinem/rust-cache@v2
+        with:
+          prefix-key: v0-rust-linux/amd64-base
+        id: rust-cache
+      - name: Inject cache into Docker
+        uses: reproducible-containers/buildkit-cache-dance@v3.1.2
+        with:
+          cache-map: |
+            {
+              "/home/runner/.cargo/registry": "/usr/local/cargo/registry",
+              "/home/runner/.cargo/git/db": "/usr/local/cargo/git/db",
+              "./target": "/app/target"
+            }
+      - name: Get Git commit timestamps
+        run: echo "TIMESTAMP=$(git log -1 --pretty=%ct)" >> $GITHUB_ENV
       - name: Build kanidm
         uses: docker/build-push-action@v6
         with:
@@ -47,8 +68,16 @@ jobs:
           build-args: |
             "KANIDM_FEATURES="
           file: tools/Dockerfile
+          context: .
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          sbom: true
           # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
           outputs: type=oci,dest=/tmp/kanidm-docker.tar
+        env:
+          SOURCE_DATE_EPOCH: ${{ env.TIMESTAMP }}
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -60,8 +89,8 @@ jobs:
     # This step is split so that we don't apply "packages: write" permission
     # except when uploading the final Docker image to GHCR.
     runs-on: ubuntu-latest
-    if: ( github.ref_type == 'tag' || github.ref == 'refs/heads/master' ) && github.repository == 'kanidm/kanidm'
-    needs: kanidm_build
+    if: ( github.ref_type == 'tag' || github.ref == 'refs/heads/master' )
+    needs: [kanidm_build, set_tag_values]
     permissions:
       packages: write
 
@@ -78,4 +107,4 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             oras login -u "${{ github.actor }}" --password-stdin ghcr.io
           oras copy --from-oci-layout "/tmp/kanidm-docker.tar:devel" \
-            "ghcr.io/${{ github.repository_owner }}/kanidm:devel"
+            "ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:devel"
