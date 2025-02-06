@@ -1284,7 +1284,7 @@ fn display_warnings(warnings: &[CURegWarning]) {
             }
             CURegWarning::WebauthnUserVerificationRequired => {
                 println!(
-                    "The passkey you attempted to register did not provide user verification."
+                    "The passkey you attempted to register did not provide user verification, please ensure a PIN or equivalent is set."
                 );
             }
         }
