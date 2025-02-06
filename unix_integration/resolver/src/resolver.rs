@@ -31,6 +31,7 @@ use crate::idprovider::system::{
     Shadow, SystemAuthResult, SystemProvider, SystemProviderAuthInit, SystemProviderSession,
 };
 use crate::unix_config::{HomeAttr, UidAttr};
+use kanidm_unix_common::constants::DEFAULT_SHELL_SEARCH_PATHS;
 use kanidm_unix_common::unix_passwd::{EtcGroup, EtcShadow, EtcUser};
 use kanidm_unix_common::unix_proto::{
     HomeDirectoryInfo, NssGroup, NssUser, PamAuthRequest, PamAuthResponse, PamServiceInfo,
@@ -331,26 +332,65 @@ impl Resolver {
             })?;
 
         // Check if requested `shell` exists on the system, else use `default_shell`
-        let requested_shell_exists: bool = token
-            .shell
-            .as_ref()
-            .map(|shell| {
-                let exists = Path::new(shell).canonicalize()
-                    .map_err(|err|{
-                        debug!("Failed to canonicalize path, using base path. Tried: {} Error: {:?}", shell, err);
-                    }).unwrap_or(Path::new(shell).to_path_buf()).exists();
-                if !exists {
-                    warn!(
-                        "Configured shell for {} is not present on this system - {}. Check `/etc/shells` for valid shell options.", token.name,
-                        shell
-                    )
+        let maybe_shell = token.shell.as_ref().map(PathBuf::from);
+
+        let requested_shell_exists = if let Some(shell_path) = maybe_shell.as_ref() {
+            // Does the shell path as configured exist?
+            let mut exists = shell_path
+                .canonicalize()
+                .map_err(|err| {
+                    debug!(
+                        "Failed to canonicalize path, using base path. Tried: {} Error: {:?}",
+                        shell_path.to_string_lossy(),
+                        err
+                    );
+                })
+                .unwrap_or(Path::new(shell_path).to_path_buf())
+                .exists();
+
+            if !exists {
+                // Does the shell binary exist in a search path that is configured?
+                if let Some(shell_binary_name) = shell_path.file_name() {
+                    for search_path in DEFAULT_SHELL_SEARCH_PATHS {
+                        //
+                        let shell_path = Path::new(search_path).join(shell_binary_name);
+                        if shell_path.exists() {
+                            // Okay, the binary name exists but in an alternate path. This can
+                            // commonly occur with freebsd where the shell may be installed
+                            // in /usr/local/bin instead of /bin.
+                            //
+                            // This could also occur if the user configured the shell as "zsh"
+                            // rather than an absolute path.
+                            let Some(shell_path_utf8) = shell_path.to_str().map(String::from)
+                            else {
+                                warn!("Configured shell \"{}\" for {} was found but the complete path is not valid utf-8 and can not be used.",
+                                        shell_binary_name.to_string_lossy(), token.name);
+                                continue;
+                            };
+
+                            // Update the path
+                            token.shell = Some(shell_path_utf8);
+                            // We exist
+                            exists = true;
+                            // No need to loop any more
+                            break;
+                        }
+                    }
                 }
-                exists
-            })
-            .unwrap_or_else(|| {
-                info!("User has not specified a shell, using default");
-                false
-            });
+            }
+
+            if !exists {
+                warn!(
+                        "Configured shell \"{}\" for {} is not present on this system. Check `/etc/shells` for valid shell options.",
+                        shell_path.to_string_lossy(), token.name
+                    )
+            }
+
+            exists
+        } else {
+            info!("User has not specified a shell, using default");
+            false
+        };
 
         if !requested_shell_exists {
             token.shell = Some(self.default_shell.clone())
