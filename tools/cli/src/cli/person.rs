@@ -1282,6 +1282,11 @@ fn display_warnings(warnings: &[CURegWarning]) {
             CURegWarning::Unsatisfiable => {
                 println!("Account policy is unsatisfiable. Contact your administrator.");
             }
+            CURegWarning::WebauthnUserVerificationRequired => {
+                println!(
+                    "The passkey you attempted to register did not provide user verification, please ensure a PIN or equivalent is set."
+                );
+            }
         }
     }
 }

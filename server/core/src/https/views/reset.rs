@@ -73,6 +73,7 @@ struct CredStatusView {
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
+    can_commit: bool,
     warnings: Vec<CURegWarning>,
     attested_passkeys_state: CUCredState,
     passkeys_state: CUCredState,
@@ -899,6 +900,7 @@ pub(crate) async fn view_reset_get(
 fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
     let CUStatus {
         ext_cred_portal,
+        can_commit,
         warnings,
         passkeys_state,
         attested_passkeys_state,
@@ -913,6 +915,7 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
 
     CredResetPartialView {
         ext_cred_portal,
+        can_commit,
         warnings,
         attested_passkeys_state,
         passkeys_state,

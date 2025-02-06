@@ -74,7 +74,9 @@ pub(crate) fn handle_group_account_policy_error(response: ClientError, _output_m
     use kanidm_proto::internal::OperationError::SchemaViolation;
     use kanidm_proto::internal::SchemaError::AttributeNotValidForClass;
 
-    if let ClientError::Http(_status, Some(SchemaViolation(AttributeNotValidForClass(att))), opid) = response {
+    if let ClientError::Http(_status, Some(SchemaViolation(AttributeNotValidForClass(att))), opid) =
+        response
+    {
         error!("OperationId: {:?}", opid);
         error!("Cannot update account-policy attribute {att}. Is account-policy enabled on this group?");
     } else {
