@@ -200,6 +200,11 @@ pub(crate) async fn oauth2_id_scopemap_post(
     Json(scopes): Json<Vec<String>>,
 ) -> Result<Json<()>, WebError> {
     let filter = oauth2_id(&rs_name);
+
+    if scopes.is_empty() {
+        return Err(WebError::OperationError(OperationError::EmptyRequest));
+    }
+
     state
         .qe_w_ref
         .handle_oauth2_scopemap_update(client_auth_info, group, scopes, filter, kopid.eventid)
