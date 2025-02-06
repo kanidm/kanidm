@@ -208,10 +208,7 @@ impl Spn {
         // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
         // within the transaction, just in case!
         qs.internal_modify(
-            &filter!(f_or!([
-                f_eq(Attribute::Class, EntryClass::Group.into()),
-                f_eq(Attribute::Class, EntryClass::Account.into()),
-            ])),
+            &filter!(f_pres(Attribute::Spn)),
             &modlist!([m_purge(Attribute::Spn)]),
         )
     }
@@ -332,12 +329,40 @@ mod tests {
     async fn test_spn_regen_domain_rename(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
-        let ex1 = Value::new_spn_str("admin", "example.com");
-        let ex2 = Value::new_spn_str("admin", "new.example.com");
+        let ex1 = Value::new_spn_str("a_testperson1", "example.com");
+        let ex2 = Value::new_spn_str("a_testperson1", "new.example.com");
+
+        let t_uuid = Uuid::new_v4();
+        let g_uuid = Uuid::new_v4();
+
+        assert!(server_txn
+            .internal_create(vec![
+                entry_init!(
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Class, EntryClass::Account.to_value()),
+                    (Attribute::Class, EntryClass::Person.to_value()),
+                    (Attribute::Name, Value::new_iname("a_testperson1")),
+                    (Attribute::Uuid, Value::Uuid(t_uuid)),
+                    (Attribute::Description, Value::new_utf8s("testperson1")),
+                    (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+                ),
+                entry_init!(
+                    (Attribute::Class, EntryClass::Object.to_value()),
+                    (Attribute::Class, EntryClass::Group.to_value()),
+                    (Attribute::Name, Value::new_iname("testgroup")),
+                    (Attribute::Uuid, Value::Uuid(g_uuid)),
+                    (Attribute::Member, Value::Refer(t_uuid))
+                ),
+            ])
+            .is_ok());
+
+        assert!(server_txn.commit().is_ok());
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
         // get the current domain name
         // check the spn on admin is admin@<initial domain>
         let e_pre = server_txn
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(t_uuid)
             .expect("must not fail");
 
         let e_pre_spn = e_pre.get_ava_single(Attribute::Spn).expect("must not fail");
@@ -350,9 +375,12 @@ mod tests {
             .danger_domain_rename("new.example.com")
             .expect("should not fail!");
 
+        assert!(server_txn.commit().is_ok());
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
         // check the spn on admin is admin@<new domain>
         let e_post = server_txn
-            .internal_search_uuid(UUID_ADMIN)
+            .internal_search_uuid(t_uuid)
             .expect("must not fail");
 
         let e_post_spn = e_post
@@ -362,6 +390,13 @@ mod tests {
         debug!("{:?}", ex2);
         assert_eq!(e_post_spn, ex2);
 
-        server_txn.commit().expect("Must not fail");
+        // Assert that the uuid2spn index updated.
+        let testuser_spn = server_txn
+            .uuid_to_spn(t_uuid)
+            .expect("Must be able to retrieve the spn")
+            .expect("Value must not be none");
+        assert_eq!(testuser_spn, ex2);
+
+        assert!(server_txn.commit().is_ok());
     }
 }

@@ -24,6 +24,7 @@ use kanidm_proto::internal::{
     CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UserAuthToken,
     COOKIE_CU_SESSION_TOKEN,
 };
+use kanidmd_lib::prelude::ClientAuthInfo;
 
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
@@ -205,11 +206,41 @@ impl Display for PasskeyClass {
     }
 }
 
+/// When the credential update session is ended through a commit or discard of the changes
+/// we need to redirect the user to a relevant location. This location depends on the sessions
+/// current authentication state. If they are authenticated, they are sent to their profile. If
+/// they are not authenticated, they are sent to the login screen.
+async fn end_session_response(
+    state: ServerState,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let is_logged_in = state
+        .qe_r_ref
+        .handle_auth_valid(client_auth_info, kopid.eventid)
+        .await
+        .is_ok();
+
+    let redirect_location = if is_logged_in {
+        Urls::Profile.as_ref()
+    } else {
+        Urls::Login.as_ref()
+    };
+
+    Ok((
+        jar,
+        HxLocation::from(Uri::from_static(redirect_location)),
+        "",
+    )
+        .into_response())
+}
+
 pub(crate) async fn commit(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
@@ -224,14 +255,14 @@ pub(crate) async fn commit(
     // No longer need the cookie jar.
     let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
-    Ok((jar, HxLocation::from(Uri::from_static("/ui")), "").into_response())
+    end_session_response(state, kopid, client_auth_info, jar).await
 }
 
 pub(crate) async fn cancel_cred_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
@@ -246,12 +277,7 @@ pub(crate) async fn cancel_cred_update(
     // No longer need the cookie jar.
     let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
-    Ok((
-        jar,
-        HxLocation::from(Uri::from_static(Urls::Profile.as_ref())),
-        "",
-    )
-        .into_response())
+    end_session_response(state, kopid, client_auth_info, jar).await
 }
 
 pub(crate) async fn cancel_mfareg(
@@ -783,7 +809,7 @@ pub(crate) async fn view_reset_get(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
@@ -792,7 +818,7 @@ pub(crate) async fn view_reset_get(
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     let is_logged_in = state
         .qe_r_ref
-        .handle_auth_valid(_client_auth_info.clone(), kopid.eventid)
+        .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await
         .is_ok();
 

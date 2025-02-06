@@ -1311,13 +1311,14 @@ impl PartialEq for Value {
             | (Value::Iname(a), Value::Iname(b))
             | (Value::Cred(a, _), Value::Cred(b, _))
             | (Value::SshKey(a, _), Value::SshKey(b, _))
-            | (Value::Spn(a, _), Value::Spn(b, _))
             | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))
             | (Value::EmailAddress(a, _), Value::EmailAddress(b, _))
             | (Value::PhoneNumber(a, _), Value::PhoneNumber(b, _))
             | (Value::OauthScope(a), Value::OauthScope(b))
             | (Value::PublicBinary(a, _), Value::PublicBinary(b, _))
             | (Value::RestrictedString(a), Value::RestrictedString(b)) => a.eq(b),
+            // Spn - need to check both name and domain.
+            (Value::Spn(a, c), Value::Spn(b, d)) => a.eq(b) && c.eq(d),
             // Uuid, Refer
             (Value::Uuid(a), Value::Uuid(b)) | (Value::Refer(a), Value::Refer(b)) => a.eq(b),
             // Bool
