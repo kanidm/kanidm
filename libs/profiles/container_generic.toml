@@ -3,5 +3,6 @@
 server_admin_bind_path = "/data/kanidmd.sock"
 server_ui_pkg_path = "/hpkg"
 server_config_path = "/data/server.toml"
+client_config_path = "/data/config"
 resolver_config_path = "/data/unixd"
 resolver_unix_shell_path = "/bin/false"

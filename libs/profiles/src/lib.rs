@@ -59,6 +59,7 @@ struct ProfileConfig {
     server_admin_bind_path: String,
     server_config_path: String,
     server_ui_pkg_path: String,
+    client_config_path: String,
     resolver_config_path: String,
     resolver_unix_shell_path: String,
 }
@@ -138,6 +139,10 @@ pub fn apply_profile() {
     println!(
         "cargo:rustc-env=KANIDM_SERVER_CONFIG_PATH={}",
         profile_cfg.server_config_path
+    );
+    println!(
+        "cargo:rustc-env=KANIDM_CLIENT_CONFIG_PATH={}",
+        profile_cfg.client_config_path
     );
     println!(
         "cargo:rustc-env=KANIDM_RESOLVER_CONFIG_PATH={}",

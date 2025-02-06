@@ -3024,6 +3024,7 @@ dependencies = [
  "base64 0.22.1",
  "clap",
  "enum-iterator",
+ "kanidm_build_profiles",
  "num_enum",
  "scim_proto",
  "serde",
