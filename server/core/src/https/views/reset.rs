@@ -117,8 +117,8 @@ struct SetUnixCredPartial {
 }
 
 #[derive(Template)]
-#[template(path = "credential_update_add_publickey_partial.html")]
-struct AddPublicKeyPartial {
+#[template(path = "credential_update_add_ssh_publickey_partial.html")]
+struct AddSshPublicKeyPartial {
     title_error: Option<String>,
     key_error: Option<String>,
 }
@@ -371,11 +371,12 @@ pub(crate) async fn remove_unixcred(
     Ok(get_cu_partial_response(cu_status))
 }
 
-pub(crate) async fn remove_publickey(
+pub(crate) async fn remove_ssh_publickey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(publickey): Form<PublicKeyRemoveData>,
 ) -> axum::response::Result<Response> {
@@ -388,7 +389,7 @@ pub(crate) async fn remove_publickey(
             CURequest::SshPublicKeyRemove(publickey.name),
             kopid.eventid,
         )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -858,27 +859,23 @@ pub(crate) async fn view_set_unixcred(
         .into_response())
 }
 
-pub(crate) async fn view_add_publickey(
+pub(crate) async fn view_add_ssh_publickey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     opt_form: Option<Form<NewPublicKey>>,
 ) -> axum::response::Result<Response> {
     let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
-    let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
     let new_key = match opt_form {
         None => {
-            return Ok((
-                swapped_handler_trigger,
-                AddPublicKeyPartial {
-                    title_error: None,
-                    key_error: None,
-                },
-            )
+            return Ok((AddSshPublicKeyPartial {
+                title_error: None,
+                key_error: None,
+            },)
                 .into_response());
         }
         Some(Form(new_key)) => new_key,
@@ -887,13 +884,10 @@ pub(crate) async fn view_add_publickey(
     let (title_error, key_error, status) = {
         let publickey = match SshPublicKey::from_string(&new_key.key) {
             Err(_) => {
-                return Ok((
-                    swapped_handler_trigger,
-                    AddPublicKeyPartial {
-                        title_error: None,
-                        key_error: Some(String::from("Key cannot be parsed")),
-                    },
-                )
+                return Ok((AddSshPublicKeyPartial {
+                    title_error: None,
+                    key_error: Some("Key cannot be parsed".to_string()),
+                },)
                     .into_response());
             }
             Ok(publickey) => publickey,
@@ -914,15 +908,20 @@ pub(crate) async fn view_add_publickey(
             Err(e @ OperationError::DuplicateKey) => {
                 (None, Some(e.to_string()), StatusCode::UNPROCESSABLE_ENTITY)
             }
-            Err(operr) => return Err(ErrorResponse::from(HtmxError::new(&kopid, operr))),
+            Err(operr) => {
+                return Err(ErrorResponse::from(HtmxError::new(
+                    &kopid,
+                    operr,
+                    domain_info,
+                )))
+            }
         }
     };
 
     Ok((
         status,
-        swapped_handler_trigger,
-        HxPushUrl(Uri::from_static("/ui/reset/add_publickey")),
-        AddPublicKeyPartial {
+        HxPushUrl(Uri::from_static("/ui/reset/add_ssh_publickey")),
+        AddSshPublicKeyPartial {
             title_error,
             key_error,
         },
