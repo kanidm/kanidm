@@ -859,6 +859,11 @@ pub(crate) async fn view_set_unixcred(
         .into_response())
 }
 
+struct AddSshPublicKeyError {
+    key: Option<String>,
+    title: Option<String>,
+}
+
 pub(crate) async fn view_add_ssh_publickey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
@@ -881,7 +886,13 @@ pub(crate) async fn view_add_ssh_publickey(
         Some(Form(new_key)) => new_key,
     };
 
-    let (title_error, key_error, status) = {
+    let (
+        AddSshPublicKeyError {
+            key: key_error,
+            title: title_error,
+        },
+        status,
+    ) = {
         let publickey = match SshPublicKey::from_string(&new_key.key) {
             Err(_) => {
                 return Ok((AddSshPublicKeyPartial {
@@ -902,12 +913,20 @@ pub(crate) async fn view_add_ssh_publickey(
             .await;
         match res {
             Ok(cu_status) => return Ok(get_cu_partial_response(cu_status)),
-            Err(e @ (OperationError::InvalidLabel | OperationError::DuplicateLabel)) => {
-                (Some(e.to_string()), None, StatusCode::UNPROCESSABLE_ENTITY)
-            }
-            Err(e @ OperationError::DuplicateKey) => {
-                (None, Some(e.to_string()), StatusCode::UNPROCESSABLE_ENTITY)
-            }
+            Err(e @ (OperationError::InvalidLabel | OperationError::DuplicateLabel)) => (
+                AddSshPublicKeyError {
+                    title: Some(e.to_string()),
+                    key: None,
+                },
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
+            Err(e @ OperationError::DuplicateKey) => (
+                AddSshPublicKeyError {
+                    key: Some(e.to_string()),
+                    title: None,
+                },
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
             Err(operr) => {
                 return Err(ErrorResponse::from(HtmxError::new(
                     &kopid,
