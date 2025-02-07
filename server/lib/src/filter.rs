@@ -1117,16 +1117,12 @@ impl FilterComp {
             LdapFilter::Equality(a, v) => {
                 let a = ldap_attr_filter_map(a);
                 let pv = qs.clone_partialvalue(&a, v);
-                let Ok(pv) = pv else {
-                    // This is to prevent a badly formed spn from causing the query to fail
-                    if a == Attribute::Spn {
-                        return Ok(FilterComp::Invalid(a));
-                    }
-                    
-                    // Hate the unwrap but can't think of a better way :(
-                    return Err(pv.unwrap_err())
-                }; 
-                FilterComp::Eq(a, pv)
+
+                match pv {  
+                    Ok(pv) => FilterComp::Eq(a, pv),  
+                    Err(_) if a == Attribute::Spn => FilterComp::Invalid(a),  
+                    Err(err) => return Err(err), 
+                }
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
             LdapFilter::Substring(
@@ -1295,7 +1291,7 @@ impl FilterResolved {
                 FilterResolved::Eq(a, v, idx)
             }
             FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
-            FilterComp::Invalid(_) => panic!("Not possible to resolve Invalid in from_invalid!"),
+            FilterComp::Invalid(attr) => FilterResolved::Invalid(attr),
             FilterComp::Cnt(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 let idx = NonZeroU8::new(idx as u8);
@@ -1666,7 +1662,8 @@ impl FilterResolved {
             | FilterResolved::And(_, sf)
             | FilterResolved::Inclusion(_, sf)
             | FilterResolved::AndNot(_, sf) => *sf,
-            FilterResolved::Invalid(_) => Some(NonZeroU8::new(1).unwrap()),
+            // We hard code 1 because there is no slope for an invlid filter
+            FilterResolved::Invalid(_) => Some(NonZeroU8::new(1).expect("1 is always valid")),
         }
     }
 }
