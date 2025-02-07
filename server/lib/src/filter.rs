@@ -1522,7 +1522,7 @@ impl FilterResolved {
                 FilterResolved::resolve_no_idx((*f).clone(), ev)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
-            FilterComp::Invalid(_) => None,
+            FilterComp::Invalid(attr) => Some(FilterResolved::Invalid(attr)),
         }
     }
 
