@@ -89,7 +89,7 @@ pub mod prelude {
     };
     pub use crate::event::{CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, SearchEvent};
     pub use crate::filter::{
-        f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, Filter,
+        f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub, f_invalid, Filter,
         FilterInvalid, FilterValid, FC,
     };
     pub use crate::idm::server::{IdmServer, IdmServerAudit, IdmServerDelayed};
