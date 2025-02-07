@@ -389,7 +389,7 @@ pub(crate) async fn remove_ssh_publickey(
             CURequest::SshPublicKeyRemove(publickey.name),
             kopid.eventid,
         )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
