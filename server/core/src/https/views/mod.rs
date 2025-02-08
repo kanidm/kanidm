@@ -103,6 +103,10 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset/change_password", post(reset::view_new_pwd))
         .route("/reset/add_passkey", post(reset::view_new_passkey))
         .route("/reset/set_unixcred", post(reset::view_set_unixcred))
+        .route(
+            "/reset/add_ssh_publickey",
+            post(reset::view_add_ssh_publickey),
+        )
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))
@@ -110,6 +114,10 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .route(
+            "/api/remove_ssh_publickey",
+            post(reset::remove_ssh_publickey),
+        )
         .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
