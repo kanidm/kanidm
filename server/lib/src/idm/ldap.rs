@@ -1157,7 +1157,7 @@ mod tests {
         assert!(!r1.is_empty());
         assert_eq!(r1.len(), r2.len());
     }
-    
+
     #[idm_test]
     async fn test_ldap_spn_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
         let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
@@ -1207,11 +1207,15 @@ mod tests {
         let result = ldaps
             .do_search(idms, &sr, &anon_t, Source::Internal)
             .await
-            .map(|r| r.into_iter().filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_))).collect::<Vec<_>>())
+            .map(|r| {
+                r.into_iter()
+                    .filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_)))
+                    .collect::<Vec<_>>()
+            })
             .unwrap();
-        
+
         assert!(!result.is_empty());
-        
+
         let sr = SearchRequest {
             msgid: 1,
             base: format!("dc=example,dc=com"),
@@ -1226,7 +1230,11 @@ mod tests {
         let empty_result = ldaps
             .do_search(idms, &sr, &anon_t, Source::Internal)
             .await
-            .map(|r| r.into_iter().filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_))).collect::<Vec<_>>())
+            .map(|r| {
+                r.into_iter()
+                    .filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_)))
+                    .collect::<Vec<_>>()
+            })
             .unwrap();
 
         assert!(empty_result.is_empty());

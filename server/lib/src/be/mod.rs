@@ -2395,9 +2395,12 @@ mod tests {
 
             let single_result = be.create(&CID_ZERO, vec![e]);
             assert!(single_result.is_ok());
-            
+
             // Test Search with or condition including invalid attribute
-            let filt = filter_resolved!(f_or(vec![f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")), f_invalid(Attribute::UserId)]));
+            let filt = filter_resolved!(f_or(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
 
             let lims = Limits::unlimited();
 
@@ -2405,7 +2408,10 @@ mod tests {
             assert!(r.expect("Search failed!").len() == 1);
 
             // Test Search with or condition including invalid attribute
-            let filt = filter_resolved!(f_and(vec![f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")), f_invalid(Attribute::UserId)]));
+            let filt = filter_resolved!(f_and(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
 
             let lims = Limits::unlimited();
 

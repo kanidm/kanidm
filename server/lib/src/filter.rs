@@ -969,7 +969,7 @@ impl FilterComp {
             }
             FilterComp::Invalid(attr) => {
                 // FilterComp may be invalid but Invalid is still a valid value.
-                // we continue the evaluation so OR queries can still succeed 
+                // we continue the evaluation so OR queries can still succeed
                 Ok(FilterComp::Invalid(attr.clone()))
             }
         }
@@ -1119,10 +1119,10 @@ impl FilterComp {
                 let a = ldap_attr_filter_map(a);
                 let pv = qs.clone_partialvalue(&a, v);
 
-                match pv {  
-                    Ok(pv) => FilterComp::Eq(a, pv),  
-                    Err(_) if a == Attribute::Spn => FilterComp::Invalid(a),  
-                    Err(err) => return Err(err), 
+                match pv {
+                    Ok(pv) => FilterComp::Eq(a, pv),
+                    Err(_) if a == Attribute::Spn => FilterComp::Invalid(a),
+                    Err(err) => return Err(err),
                 }
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
@@ -1462,9 +1462,7 @@ impl FilterResolved {
                 FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
-            FilterComp::Invalid(attr) => {
-                Some(FilterResolved::Invalid(attr))
-            },
+            FilterComp::Invalid(attr) => Some(FilterResolved::Invalid(attr)),
         }
     }
 
