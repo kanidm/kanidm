@@ -11,6 +11,7 @@ use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
+use std::sync::LazyLock;
 use std::time::Duration;
 
 #[cfg(test)]
@@ -47,83 +48,80 @@ use kanidm_proto::scim_v1::ScimOauth2ClaimMapJoinChar;
 use kanidm_proto::v1::UatPurposeStatus;
 use std::hash::Hash;
 
-lazy_static! {
-    pub static ref SPN_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
-    };
+pub static SPN_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
+});
 
-    pub static ref DISALLOWED_NAMES: HashSet<&'static str> = {
-        // Most of these were removed in favour of the unixd daemon filtering out
-        // local users instead.
-        let mut m = HashSet::with_capacity(2);
-        m.insert("root");
-        m.insert("dn=token");
-        m
-    };
+pub static DISALLOWED_NAMES: LazyLock<HashSet<&'static str>> = LazyLock::new(|| {
+    // Most of these were removed in favour of the unixd daemon filtering out
+    // local users instead.
+    let mut m = HashSet::with_capacity(2);
+    m.insert("root");
+    m.insert("dn=token");
+    m
+});
 
-    /// Only lowercase+numbers, with limited chars.
-    pub static ref INAME_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-z][a-z0-9-_\\.]{0,63}$").expect("Invalid Iname regex found")
-    };
+/// Only lowercase+numbers, with limited chars.
+pub static INAME_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-z][a-z0-9-_\\.]{0,63}$").expect("Invalid Iname regex found")
+});
 
-    /// Only alpha-numeric with limited special chars and space
-    pub static ref LABEL_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-zA-Z0-9][ a-zA-Z0-9-_\\.@]{0,63}$").expect("Invalid Iname regex found")
-    };
+/// Only alpha-numeric with limited special chars and space
+pub static LABEL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-zA-Z0-9][ a-zA-Z0-9-_\\.@]{0,63}$").expect("Invalid Iname regex found")
+});
 
-    /// Only lowercase+numbers, with limited chars.
-    pub static ref HEXSTR_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
-    };
+/// Only lowercase+numbers, with limited chars.
+pub static HEXSTR_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[a-f0-9]+$").expect("Invalid hexstring regex found")
+});
 
-    pub static ref EXTRACT_VAL_DN: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
-        // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
-    };
+pub static EXTRACT_VAL_DN: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)").expect("extract val from dn regex")
+    // Regex::new("^(([^=,]+)=)?(?P<val>[^=,]+)(,.*)?$").expect("Invalid Iname regex found")
+});
 
-    pub static ref NSUNIQUEID_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
-    };
+pub static NSUNIQUEID_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
+});
 
-    /// Must not contain whitespace.
-    pub static ref OAUTHSCOPE_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
-    };
+/// Must not contain whitespace.
+pub static OAUTHSCOPE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
+});
 
-    pub static ref SINGLELINE_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
-    };
+pub static SINGLELINE_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new("[\n\r\t]").expect("Invalid singleline regex found")
+});
 
-    /// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
-    /// this regex validates for valid emails.
-    pub static ref VALIDATE_EMAIL_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
-    };
+/// Per https://html.spec.whatwg.org/multipage/input.html#valid-e-mail-address
+/// this regex validates for valid emails.
+pub static VALIDATE_EMAIL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new(r"^[a-zA-Z0-9.!#$%&'*+=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$").expect("Invalid singleline regex found")
+});
 
-    // Formerly checked with
-    /*
-    pub static ref ESCAPES_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
-            .expect("Invalid escapes regex found")
-    };
-    */
+// Formerly checked with
+/*
+pub static ref ESCAPES_RE: Regex = {
+    #[allow(clippy::expect_used)]
+    Regex::new(r"\x1b\[([\x30-\x3f]*[\x20-\x2f]*[\x40-\x7e])")
+        .expect("Invalid escapes regex found")
+};
+*/
 
-    pub static ref UNICODE_CONTROL_RE: Regex = {
-        #[allow(clippy::expect_used)]
-        Regex::new(r"[[:cntrl:]]")
-            .expect("Invalid unicode control regex found")
-    };
-}
+pub static UNICODE_CONTROL_RE: LazyLock<Regex> = LazyLock::new(|| {
+    #[allow(clippy::expect_used)]
+    Regex::new(r"[[:cntrl:]]").expect("Invalid unicode control regex found")
+});
 
 #[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
