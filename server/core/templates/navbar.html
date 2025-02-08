@@ -30,6 +30,12 @@
                     <a class="nav-link" href=((Urls::Profile))>
                         <span data-feather="file"></span>Profile</a>
                 </li>
+                (% if access_info.has_any_admin_access %)
+                <li class="mb-1">
+                    <a class="nav-link" href=((Urls::Admin))>
+                        <span data-feather="file"></span>Admin</a>
+                </li>
+                (% endif %)
             </ul>
             <ul class="navbar-nav ms-md-auto">
                 <li>

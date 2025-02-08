@@ -3,8 +3,9 @@ use super::ScimOauth2ClaimMapJoinChar;
 use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
+use log::debug;
 use scim_proto::ScimEntryHeader;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
@@ -28,7 +29,7 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
@@ -49,7 +50,7 @@ impl ScimAttributeEffectiveAccess {
     }
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
@@ -209,7 +210,7 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
@@ -255,6 +256,52 @@ pub enum ScimValueKanidm {
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
     KeyInternal(Vec<ScimKeyInternal>),
     UiHints(Vec<UiHint>),
+}
+
+impl ScimEntryKanidm {
+    pub fn attr_str(&self, attr: &Attribute) -> Option<&str> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_bool(&self, attr: &Attribute) -> Option<&bool> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::Bool(inner_bool)) => Some(inner_bool),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Bool type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
+        match self.attrs.get(&Attribute::Mail) {
+            Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_references(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::EntryReferences(refs)) => Some(refs),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
 }
 
 impl From<bool> for ScimValueKanidm {

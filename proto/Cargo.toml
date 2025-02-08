@@ -38,6 +38,7 @@ uuid = { workspace = true, features = ["serde"] }
 webauthn-rs-proto = { workspace = true }
 sshkey-attest = { workspace = true }
 sshkeys = { workspace = true }
+log = "0.4.25"
 
 [dev-dependencies]
 enum-iterator = { workspace = true }

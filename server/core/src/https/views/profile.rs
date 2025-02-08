@@ -1,5 +1,5 @@
 use crate::https::errors::WebError;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
+use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::ServerState;
 use askama::Template;
@@ -18,6 +18,7 @@ use super::navbar::NavbarCtx;
 #[template(path = "user_settings.html")]
 pub(crate) struct ProfileView {
     navbar_ctx: NavbarCtx,
+    access_info: AccessInfo,
     profile_partial: ProfilePartialView,
 }
 
@@ -48,6 +49,7 @@ pub(crate) async fn view_profile_get(
 
     Ok(ProfileView {
         navbar_ctx: NavbarCtx { domain_info },
+        access_info: AccessInfo::new(),
         profile_partial: ProfilePartialView {
             menu_active_item: ProfileMenuItems::UserProfile,
             can_rw,

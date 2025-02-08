@@ -1,6 +1,6 @@
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Redirect, Response};
-use axum_htmx::{HxReswap, HxRetarget, SwapOption};
+use axum_htmx::{HxEvent, HxResponseTrigger, HxReswap, HxRetarget, SwapOption};
 use kanidmd_lib::idm::server::DomainInfoRead;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -8,7 +8,7 @@ use uuid::Uuid;
 use kanidm_proto::internal::OperationError;
 
 use crate::https::middleware::KOpId;
-use crate::https::views::UnrecoverableErrorView;
+use crate::https::views::{ErrorToastPartial, UnrecoverableErrorView};
 // #[derive(Template)]
 // #[template(path = "recoverable_error_partial.html")]
 // struct ErrorPartialView {
@@ -41,7 +41,23 @@ impl IntoResponse for HtmxError {
                     | OperationError::SessionExpired
                     | OperationError::InvalidSessionState => Redirect::to("/ui").into_response(),
                     OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                        (StatusCode::FORBIDDEN, body).into_response()
+                        let trigger = HxResponseTrigger::after_swap([HxEvent::new(
+                            "permissionDenied".to_string(),
+                        )]);
+                        (
+                            trigger,
+                            HxRetarget("main".to_string()),
+                            HxReswap(SwapOption::BeforeEnd),
+                            (
+                                StatusCode::FORBIDDEN,
+                                ErrorToastPartial {
+                                    err_code: inner,
+                                    operation_id: kopid,
+                                },
+                            )
+                                .into_response(),
+                        )
+                            .into_response()
                     }
                     OperationError::NoMatchingEntries => {
                         (StatusCode::NOT_FOUND, body).into_response()

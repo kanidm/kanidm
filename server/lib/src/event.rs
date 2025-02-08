@@ -244,13 +244,15 @@ impl SearchEvent {
         ident: &Identity,
         filter: Filter<FilterValid>,
         filter_orig: Filter<FilterValid>,
+        attrs: Option<BTreeSet<Attribute>>,
+        effective_access_check: bool,
     ) -> Self {
         SearchEvent {
             ident: Identity::from_impersonate(ident),
             filter,
             filter_orig,
-            attrs: None,
-            effective_access_check: false,
+            attrs,
+            effective_access_check,
         }
     }
 

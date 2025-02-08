@@ -1,0 +1,28 @@
+(% macro string_attr(dispname, name, value, editable, attribute) %)
+(% if account.scim_effective_access.search.check(attribute|as_ref) %)
+<div class="row mt-3">
+    <label for="account(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    <div class="col-12 col-md-8 col-lg-6">
+        <input readonly class="form-control-plaintext py-0" id="account(( name ))" name="(( name ))" value="(( value ))">
+    </div>
+</div>
+(% endif %)
+(% endmacro %)
+
+<form hx-validate="true" hx-ext="bs-validation">
+    (% call string_attr("UUID", "uuid", account.uuid, false, Attribute::Uuid) %)
+    (% call string_attr("SPN", "spn", account.spn, false, Attribute::Spn) %)
+    (% call string_attr("Name", "name", account.name, true, Attribute::Name) %)
+
+    (% if let Some(displayname) = account.displayname %)
+        (% call string_attr("Displayname", "displayname", displayname, true, Attribute::DisplayName) %)
+    (% else %)
+        (% call string_attr("Displayname", "displayname", "none", true, Attribute::DisplayName) %)
+    (% endif %)
+
+    (% if let Some(description) = account.description %)
+        (% call string_attr("Description", "description", description, true, Attribute::Description) %)
+    (% else %)
+        (% call string_attr("Description", "description", "none", true, Attribute::Description) %)
+    (% endif %)
+</form>

@@ -16,7 +16,7 @@ use std::time::Duration;
 
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
-use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
+use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
 use crate::https::views::errors::HtmxError;
@@ -27,6 +27,7 @@ use crate::https::ServerState;
 #[template(path = "user_settings.html")]
 struct ProfileView {
     navbar_ctx: NavbarCtx,
+    access_info: AccessInfo,
     profile_partial: EnrolDeviceView,
 }
 
@@ -105,6 +106,7 @@ pub(crate) async fn view_enrol_get(
 
     Ok(ProfileView {
         navbar_ctx: NavbarCtx { domain_info },
+        access_info: AccessInfo::new(),
         profile_partial: EnrolDeviceView {
             menu_active_item: ProfileMenuItems::EnrolDevice,
             qr_code_svg,

@@ -30,6 +30,7 @@ pub(crate) enum Urls {
     Oauth2Resume,
     Login,
     Ui,
+    Admin,
     WellKnownChangePassword,
 }
 
@@ -44,6 +45,7 @@ impl AsRef<str> for Urls {
             Self::Oauth2Resume => "/ui/oauth2/resume",
             Self::Login => "/ui/login",
             Self::Ui => "/ui",
+            Self::Admin => "/ui/admin/accounts",
             Self::WellKnownChangePassword => "/.well-known/change-password",
         }
     }

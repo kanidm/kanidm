@@ -1,0 +1,64 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block groups_item_extra_classes %)active(% endblock %)
+
+(% block selected_admin_page %)
+Groups Management
+(% endblock %)
+
+
+(% block admin_page %)
+<h4><a href="/ui/admin/groups" hx-target="#main">🠨</a>Viewing group details</h4>
+
+(% include "admin_group_details_partial.html" %)
+
+<hr>
+
+(% if group.scim_effective_access.search.check(Attribute::Mail|as_ref) %)
+    <label class="mt-3 fw-bold">Emails</label>
+    <form hx-validate="true" hx-ext="bs-validation">
+    (% if group.mails.len() == 0 %)
+        <p>There are no email addresses associated with this group.</p>
+    (% else %)
+        <ol class="list-group col-12 col-md-8 col-lg-6">
+            (% for mail in group.mails %)
+                <li id="groupMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
+                    <div class="d-flex align-items-center">(( mail.value ))</div>
+                    <div class="buttons float-end">
+                    </div>
+                </li>
+            (% endfor %)
+        </ol>
+    (% endif %)
+    </form>
+(% endif %)
+
+(% if group.scim_effective_access.search.check(Attribute::AcpEnable|as_ref) %)
+    <label class="mt-3 fw-bold">Account Policy (ACP)</label>
+    <div>
+    (% if group.acp.enabled %)
+    <!-- TODO: implement ACP view for groups -->
+        Nothing here yet 🙈🙈
+    (% else %)
+        Currently disabled.
+    (% endif %)
+    </div>
+(% endif %)
+
+(% if group.scim_effective_access.search.check(Attribute::Member|as_ref) %)
+    <label class="mt-3 fw-bold">Members</label>
+    <form hx-validate="true" hx-ext="bs-validation">
+    (% if group.members.len() == 0 %)
+        <p>none</p>
+    (% else %)
+        <ul class="list-group col-12 col-md-8 col-lg-6">
+            (% let group_uuid = group.uuid.clone() %)
+            (% for member in group.members %)
+                (% include "admin_group_member_partial.html" %)
+            (% endfor %)
+        </ul>
+    (% endif %)
+    </form>
+(% endif %)
+
+(% endblock %)
