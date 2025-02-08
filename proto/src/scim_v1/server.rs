@@ -29,7 +29,7 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
@@ -50,7 +50,7 @@ impl ScimAttributeEffectiveAccess {
     }
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
@@ -269,6 +269,18 @@ impl ScimEntryKanidm {
             None => None,
         }
     }
+
+    pub fn attr_bool(&self, attr: &Attribute) -> Option<&bool> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::Bool(inner_bool)) => Some(inner_bool),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Bool type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
 
     pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
         match self.attrs.get(&Attribute::Mail) {

@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
@@ -47,9 +48,10 @@ pub(crate) async fn view_accounts_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
     let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Account.into())]));
+    let attrs = Some(BTreeSet::from([Attribute::Uuid, Attribute::DisplayName, Attribute::Name, Attribute::Spn, Attribute::Email, Attribute::MemberOf]));
     let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
-        .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid)
+        .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid, attrs, true)
         .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 

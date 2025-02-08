@@ -8,110 +8,57 @@ Groups Management
 
 
 (% block admin_page %)
-<h4><a href="/ui/admin/groups" hx-target="#main">🠨</a>(% if can_edit %)Editing(% else %)Viewing(% endif %) group details</h4>
-
-(% if can_edit %)
-    <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/view" type="button" class="btn btn-outline-secondary">View Group</button>
-(% endif %)
-(% if can_rw %)
-    (% if !can_edit %)
-        <button hx-target="#main" hx-get="/ui/admin/group/(( group.uuid ))/edit" type="button" class="btn btn-outline-secondary">Edit Group</button>
-    (% endif %)
-    <button hx-target="#main" hx-post="/ui/admin/group/(( group.uuid ))/delete" hx-confirm="Are you sure you want to delete group (( group.name )) ?" type="button" class="btn btn-danger">Delete Group</button>
-(% else %)
-    <a hx-boost="false" href="/ui/admin/groups/unlock">
-        <button type="button" class="btn btn-secondary">Unlock Edit 🔒</button>
-    </a>
-(% endif %)
+<h4><a href="/ui/admin/groups" hx-target="#main">🠨</a>Viewing group details</h4>
 
 (% include "admin_group_details_partial.html" %)
 
 <hr>
-<label class="mt-3 fw-bold">Emails</label>
-<form hx-validate="true" hx-ext="bs-validation">
-(% if group.mails.len() == 0 %)
-    <p>There are no email addresses associated with this group.</p>
-(% else %)
-    <ol class="list-group col-12 col-md-8 col-lg-6">
-        (% for mail in group.mails %)
-            <li id="groupMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
-                <div class="d-flex align-items-center">(( mail.value ))</div>
-                <div class="buttons float-end">
-                    (% if can_edit %)
-                    <button hx-target="#groupMail(( loop.index ))"
-                            hx-swap="delete"
-                            hx-delete="/ui/admin/group/(( group.uuid ))/mail/(( mail.value ))"
-                            hx-confirm="Are you sure you want to remove (( mail.value )) from (( group.name ))?"
-                            type="button" class="btn btn-danger">Remove</button>
-                    (% endif %)
-                </div>
-            </li>
-        (% endfor %)
-        (% if can_edit %)
-            <li class="list-group-item"  id="addEmailField">
-                <div class="input-group d-flex flex-row justify-content-between">
-                    <input type="email" name="mail" class="form-control" id="groupAddEmailInput" placeholder="Group's Email address" aria-label="Group's Email address" aria-describedby="groupAddEmailBtn">
-                    <button id="groupAddEmailBtn" class="btn btn-success text-nowrap"
-                            hx-post="/ui/admin/api/group/(( group.uuid ))/mail"
-                            hx-include="#groupAddEmailInput"
-                            hx-target="#addEmailField"
-                            hx-swap="beforebegin"
-                            type="button">
-                        Add Email
-                    </button>
-                </div>
-                <div class="invalid-feedback">
-                    Please enter a valid email address.
-                </div>
-            </li>
-        (% endif %)
-    </ol>
-(% endif %)
-</form>
 
-<label class="mt-3 fw-bold">Account Policy (ACP)</label>
-<div>
-(% if group.acp.enabled %)
-<!-- TODO: implement ACP view for groups -->
-    Nothing here yet 🙈🙈
-(% else %)
-    Currently disabled.
-    (% if can_edit %)
-        <button hx-post="/ui/api/group/(( group.uuid ))/enable_acp" hx-confirm="Kanidm does not currently support removing these policies, are you sure you want to continue?" class="btn btn-success d-block">Enable</button>
+(% if group.scim_effective_access.search.check(Attribute::Mail|as_ref) %)
+    <label class="mt-3 fw-bold">Emails</label>
+    <form hx-validate="true" hx-ext="bs-validation">
+    (% if group.mails.len() == 0 %)
+        <p>There are no email addresses associated with this group.</p>
+    (% else %)
+        <ol class="list-group col-12 col-md-8 col-lg-6">
+            (% for mail in group.mails %)
+                <li id="groupMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
+                    <div class="d-flex align-items-center">(( mail.value ))</div>
+                    <div class="buttons float-end">
+                    </div>
+                </li>
+            (% endfor %)
+        </ol>
     (% endif %)
+    </form>
 (% endif %)
-</div>
 
-<label class="mt-3 fw-bold">Members</label>
-<form hx-validate="true" hx-ext="bs-validation">
-(% if group.members.len() == 0 %)
-    <p>none</p>
-(% else %)
-    <ul class="list-group col-12 col-md-8 col-lg-6">
-        (% let group_uuid = group.uuid.clone() %)
-        (% for member in group.members %)
-            (% include "admin_group_member_partial.html" %)
-        (% endfor %)
-        (% if can_edit %)
-        <li class="list-group-item" id="addMemberField">
-            <div class="input-group d-flex flex-row justify-content-between">
-                <input type="text" class="form-control" id="groupAddMemberInput" placeholder="Member name/spn/uuid" name="member" aria-label="Member name/spn/uuid to add as group member" aria-describedby="groupAddMemberBtn">
-                <button id="groupAddMemberBtn" class="btn btn-success text-nowrap"
-                        hx-post="/ui/admin/api/group/(( group.uuid ))/member"
-                        hx-include="#groupAddMemberInput"
-                        hx-target="#addMemberField"
-                        hx-swap="beforebegin"
-                        type="button">
-                    Add Member
-                </button>
-            </div>
-            <div class="invalid-feedback">
-                Please enter a valid email address.
-            </div>
-        </li>
-        (% endif %)
-    </ul>
+(% if group.scim_effective_access.search.check(Attribute::AcpEnable|as_ref) %)
+    <label class="mt-3 fw-bold">Account Policy (ACP)</label>
+    <div>
+    (% if group.acp.enabled %)
+    <!-- TODO: implement ACP view for groups -->
+        Nothing here yet 🙈🙈
+    (% else %)
+        Currently disabled.
+    (% endif %)
+    </div>
 (% endif %)
-</form>
+
+(% if group.scim_effective_access.search.check(Attribute::Member|as_ref) %)
+    <label class="mt-3 fw-bold">Members</label>
+    <form hx-validate="true" hx-ext="bs-validation">
+    (% if group.members.len() == 0 %)
+        <p>none</p>
+    (% else %)
+        <ul class="list-group col-12 col-md-8 col-lg-6">
+            (% let group_uuid = group.uuid.clone() %)
+            (% for member in group.members %)
+                (% include "admin_group_member_partial.html" %)
+            (% endfor %)
+        </ul>
+    (% endif %)
+    </form>
+(% endif %)
 
 (% endblock %)

@@ -492,7 +492,7 @@ pub trait QueryServerTransaction<'a> {
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
-        let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
+        let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid, None, false);
         self.search(&se)
     }
 
@@ -502,8 +502,10 @@ pub trait QueryServerTransaction<'a> {
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
+        attrs: Option<BTreeSet<Attribute>>,
+        acp: bool,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-        let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
+        let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid, attrs, acp);
         self.search_ext(&se)
     }
 
@@ -529,6 +531,8 @@ pub trait QueryServerTransaction<'a> {
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
+        attrs: Option<BTreeSet<Attribute>>,
+        acp: bool,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
@@ -536,7 +540,7 @@ pub trait QueryServerTransaction<'a> {
         let f_intent_valid = filter_intent
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
-        self.impersonate_search_ext_valid(f_valid, f_intent_valid, event)
+        self.impersonate_search_ext_valid(f_valid, f_intent_valid, event, attrs, acp)
     }
 
     /// Get a single entry by its UUID. This is used heavily for internal
@@ -609,7 +613,7 @@ pub trait QueryServerTransaction<'a> {
         let filter_intent = filter_all!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
         let filter = filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(uuid)));
 
-        let mut vs = self.impersonate_search_ext(filter, filter_intent, event)?;
+        let mut vs = self.impersonate_search_ext(filter, filter_intent, event, None, false)?;
         match vs.pop() {
             Some(entry) if vs.is_empty() => Ok(entry),
             _ => {

@@ -32,7 +32,7 @@ impl IdmServerProxyReadTransaction<'_> {
         // _ext reduces the entries based on access.
         let oauth2_related = self
             .qs_read
-            .impersonate_search_ext(f_executed, f_intent, ident)?;
+            .impersonate_search_ext(f_executed, f_intent, ident, None, false)?;
         trace!(?oauth2_related);
 
         // Aggregate results to a Vec of AppLink

@@ -1,3 +1,4 @@
+use std::collections::BTreeSet;
 use super::{QueryServerReadV1, QueryServerWriteV1};
 use kanidm_proto::scim_v1::{
     server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
@@ -240,6 +241,8 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         filter_intent: Filter<FilterInvalid>,
         eventid: Uuid,
+        attrs: Option<BTreeSet<Attribute>>,
+        acp: bool
     ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
@@ -253,7 +256,7 @@ impl QueryServerReadV1 {
 
         idms_prox_read
             .qs_read
-            .impersonate_search_ext(filter_intent, filter, &ident)?
+            .impersonate_search_ext(filter_intent, filter, &ident, attrs, acp)?
             .into_iter()
             .map(|entry| entry.to_scim_kanidm(&mut idms_prox_read.qs_read))
             .collect()
