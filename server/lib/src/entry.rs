@@ -2912,6 +2912,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 false
             }
             FilterResolved::AndNot(f, _) => !self.entry_match_no_index_inner(f),
+            FilterResolved::Invalid(_) => false,
         }
     }
 

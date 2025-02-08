@@ -571,6 +571,10 @@ pub trait BackendTransaction {
                 filter_error!("Requested a top level or isolated AndNot, returning empty");
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
+            FilterResolved::Invalid(_) => {
+                // Indexed since it is always false and we don't want to influence filter testing
+                (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
+            }
         })
     }
 
@@ -2373,6 +2377,46 @@ mod tests {
             // Test class pres
 
             // Search with no results
+        });
+    }
+
+    #[test]
+    fn test_be_search_with_invalid() {
+        run_test!(|be: &mut BackendWriteTransaction| {
+            trace!("Simple Search");
+
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava(Attribute::UserId, Value::from("bagel"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e = e.into_sealed_new();
+
+            let single_result = be.create(&CID_ZERO, vec![e]);
+            assert!(single_result.is_ok());
+
+            // Test Search with or condition including invalid attribute
+            let filt = filter_resolved!(f_or(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
+
+            let lims = Limits::unlimited();
+
+            let r = be.search(&lims, &filt);
+            assert!(r.expect("Search failed!").len() == 1);
+
+            // Test Search with or condition including invalid attribute
+            let filt = filter_resolved!(f_and(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
+
+            let lims = Limits::unlimited();
+
+            let r = be.search(&lims, &filt);
+            assert!(r.expect("Search failed!").len() == 0);
         });
     }
 

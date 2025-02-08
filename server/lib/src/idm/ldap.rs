@@ -205,9 +205,9 @@ impl LdapServer {
             // Map the Some(a,v) to ...?
 
             let ext_filter = match (&sr.scope, req_dn) {
-                // OneLevel and Child searches are veerrrryyy similar for us because child
+                // OneLevel and Child searches are **very** similar for us because child
                 // is a "subtree search excluding base". Because we don't have a tree structure at
-                // all, this is the same as a onelevel (ald children of base excludeing base).
+                // all, this is the same as a one level (all children of base excluding base).
                 (LdapSearchScope::Children, Some(_r)) | (LdapSearchScope::OneLevel, Some(_r)) => {
                     return Ok(vec![sr.gen_success()])
                 }
@@ -239,7 +239,7 @@ impl LdapServer {
             let mut all_attrs = false;
             let mut all_op_attrs = false;
 
-            // TODO #67: limit the number of attributes here!
+            // TODO #3406: limit the number of attributes here!
             if sr.attrs.is_empty() {
                 // If [], then "all" attrs
                 all_attrs = true;
@@ -1156,6 +1156,88 @@ mod tests {
             .unwrap();
         assert!(!r1.is_empty());
         assert_eq!(r1.len(), r2.len());
+    }
+
+    #[idm_test]
+    async fn test_ldap_spn_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let usr_name = "panko";
+
+        // Setup person, group and application
+        {
+            let e1: Entry<EntryInit, EntryNew> = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname(usr_name)),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::DisplayName, Value::new_utf8s(usr_name))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
+
+        // Searching a malformed spn shouldn't cause the query to fail
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Or(vec![
+                LdapFilter::Equality(Attribute::Name.to_string(), usr_name.to_string()),
+                LdapFilter::Equality(Attribute::Spn.to_string(), usr_name.to_string()),
+            ]),
+            attrs: vec!["*".to_string()],
+        };
+
+        let result = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .map(|r| {
+                r.into_iter()
+                    .filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_)))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap();
+
+        assert!(!result.is_empty());
+
+        let sr = SearchRequest {
+            msgid: 1,
+            base: format!("dc=example,dc=com"),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::And(vec![
+                LdapFilter::Equality(Attribute::Name.to_string(), usr_name.to_string()),
+                LdapFilter::Equality(Attribute::Spn.to_string(), usr_name.to_string()),
+            ]),
+            attrs: vec!["*".to_string()],
+        };
+
+        let empty_result = ldaps
+            .do_search(idms, &sr, &anon_t, Source::Internal)
+            .await
+            .map(|r| {
+                r.into_iter()
+                    .filter(|r| matches!(r.op, LdapOp::SearchResultEntry(_)))
+                    .collect::<Vec<_>>()
+            })
+            .unwrap();
+
+        assert!(empty_result.is_empty());
     }
 
     #[idm_test]
