@@ -245,7 +245,7 @@ impl SearchEvent {
         filter: Filter<FilterValid>,
         filter_orig: Filter<FilterValid>,
         attrs: Option<BTreeSet<Attribute>>,
-        effective_access_check: bool
+        effective_access_check: bool,
     ) -> Self {
         SearchEvent {
             ident: Identity::from_impersonate(ident),

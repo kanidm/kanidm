@@ -1,5 +1,3 @@
-use std::collections::BTreeSet;
-use std::str::FromStr;
 use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
@@ -14,15 +12,17 @@ use axum::Extension;
 use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
+use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm};
+use kanidm_proto::scim_v1::{ScimEntryGetQuery, ScimMail};
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
-use serde::{Deserialize, Serialize};
-use uuid::Uuid;
-use kanidm_proto::internal::OperationError;
-use kanidm_proto::scim_v1::{ScimEntryGetQuery, ScimMail};
-use kanidmd_lib::idm::ClientAuthInfo;
 use kanidmd_lib::idm::server::DomainInfoRead;
+use kanidmd_lib::idm::ClientAuthInfo;
+use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
+use std::str::FromStr;
+use uuid::Uuid;
 
 #[derive(Template)]
 #[template(path = "admin/admin_overview.html")]
@@ -54,13 +54,13 @@ struct AccountInfo {
 struct AccountView {
     access_info: AccessInfo,
     partial: AccountViewPartial,
-    navbar_ctx: NavbarCtx
+    navbar_ctx: NavbarCtx,
 }
 
 #[derive(Template)]
 #[template(path = "admin/admin_account_view_partial.html")]
 struct AccountViewPartial {
-    account: AccountInfo
+    account: AccountInfo,
 }
 
 pub(crate) async fn view_account_view_get(
@@ -71,7 +71,8 @@ pub(crate) async fn view_account_view_get(
     Path(uuid): Path<Uuid>,
     DomainInfo(domain_info): DomainInfo,
 ) -> axum::response::Result<Response> {
-    let account = get_account_info(uuid, state, &kopid, client_auth_info, domain_info.clone()).await?;
+    let account =
+        get_account_info(uuid, state, &kopid, client_auth_info, domain_info.clone()).await?;
     let accounts_partial = AccountViewPartial { account };
 
     let path_string = format!("/ui/admin/account/{uuid}/view");
@@ -118,7 +119,6 @@ pub(crate) async fn view_accounts_get(
             .into_response()
     })
 }
-
 
 async fn get_account_info(
     uuid: Uuid,
@@ -192,7 +192,9 @@ async fn get_accounts_info(
 fn scimentry_into_accountinfo(scim_entry: ScimEntryKanidm) -> Option<AccountInfo> {
     let uuid = scim_entry.header.id;
     let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
-    let displayname = scim_entry.attr_str(&Attribute::DisplayName).map(|s| s.to_string());
+    let displayname = scim_entry
+        .attr_str(&Attribute::DisplayName)
+        .map(|s| s.to_string());
     let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
     let description = scim_entry
         .attr_str(&Attribute::Description)

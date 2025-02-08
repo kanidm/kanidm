@@ -281,7 +281,6 @@ impl ScimEntryKanidm {
         }
     }
 
-
     pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
         match self.attrs.get(&Attribute::Mail) {
             Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
