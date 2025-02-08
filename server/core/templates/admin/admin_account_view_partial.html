@@ -1,0 +1,36 @@
+(% extends "admin/admin_partial_base.html" %)
+
+(% block accounts_item_extra_classes %)active(% endblock %)
+
+(% block selected_admin_page %)
+Accounts Management
+(% endblock %)
+
+
+(% block admin_page %)
+<h4><a href="/ui/admin/accounts" hx-target="#main">🠨</a>Viewing Account details</h4>
+
+(% include "admin_account_details_partial.html" %)
+
+<hr>
+
+(% if account.scim_effective_access.search.check(Attribute::Mail|as_ref) %)
+<label class="mt-3 fw-bold">Emails</label>
+<form hx-validate="true" hx-ext="bs-validation">
+    (% if account.mails.len() == 0 %)
+    <p>There are no email addresses associated with this account.</p>
+    (% else %)
+    <ol class="list-group col-12 col-md-8 col-lg-6">
+        (% for mail in account.mails %)
+        <li id="accountMail(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
+            <div class="d-flex align-items-center">(( mail.value ))</div>
+            <div class="buttons float-end">
+            </div>
+        </li>
+        (% endfor %)
+    </ol>
+    (% endif %)
+</form>
+(% endif %)
+
+(% endblock %)
