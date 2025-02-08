@@ -572,7 +572,7 @@ pub trait BackendTransaction {
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
             FilterResolved::Invalid(_) => {
-                // Partial is the only one that doesn't run the risk of being cancelled due to resource constraint
+                // Indexed since it is always false and we don't want to influence filter testing
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
         })

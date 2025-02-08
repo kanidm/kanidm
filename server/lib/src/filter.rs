@@ -968,7 +968,8 @@ impl FilterComp {
                 Ok(FilterComp::SelfUuid)
             }
             FilterComp::Invalid(attr) => {
-                // This is a special case, we can't validate it.
+                // FilterComp may be invalid but Invalid is still a valid value.
+                // we continue the evaluation so OR queries can still succeed 
                 Ok(FilterComp::Invalid(attr.clone()))
             }
         }
