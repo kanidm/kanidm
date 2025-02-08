@@ -1662,7 +1662,7 @@ impl FilterResolved {
             | FilterResolved::Inclusion(_, sf)
             | FilterResolved::AndNot(_, sf) => *sf,
             // We hard code 1 because there is no slope for an invlid filter
-            FilterResolved::Invalid(_) => Some(NonZeroU8::new(1).expect("1 is always valid")),
+            FilterResolved::Invalid(_) => NonZeroU8::new(1),
         }
     }
 }
