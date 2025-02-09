@@ -119,3 +119,6 @@ assets = [
     ],
 ]
 maintainer-scripts = "debian/"
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete", "kanidm_build_profiles"]

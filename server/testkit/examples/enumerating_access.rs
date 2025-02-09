@@ -3,14 +3,13 @@
 //! - @yaleman
 //!
 
-use std::collections::{BTreeMap, BTreeSet};
-// use kanidm_client::KanidmClient;
 use kanidmd_lib::constants::entries::Attribute;
 use kanidmd_lib::constants::groups::{idm_builtin_admin_groups, idm_builtin_non_admin_groups};
 use kanidmd_lib::prelude::{builtin_accounts, EntryInitNew};
 use petgraph::graphmap::{AllEdges, GraphMap, NodeTrait};
 use petgraph::Directed;
 use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, BTreeSet};
 use uuid::Uuid;
 
 #[derive(Clone, Deserialize, Serialize)]

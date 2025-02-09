@@ -45,7 +45,6 @@ ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
-# opentelemetry_api = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
@@ -94,3 +93,10 @@ kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
+
+
+[package.metadata.cargo-machete]
+ignored = [
+    "opentelemetry",         # feature gated
+    "kanidm_build_profiles",
+]

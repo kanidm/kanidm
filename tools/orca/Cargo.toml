@@ -43,4 +43,4 @@ mimalloc = { workspace = true }
 kanidm_build_profiles = { workspace = true }
 
 [package.metadata.cargo-machete]
-ignored = ["prost"]
+ignored = ["kanidm_build_profiles"]

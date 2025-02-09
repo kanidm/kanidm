@@ -113,3 +113,9 @@ mimalloc = { workspace = true }
 hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }
 regex = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = [
+    "openssl-sys", # see note above
+    "whoami",      # used in windows
+]

@@ -53,7 +53,10 @@ kanidm_utils_users = { workspace = true }
 mimalloc = { workspace = true }
 
 [build-dependencies]
-serde = { workspace = true, features = ["derive"] }
 clap = { workspace = true, features = ["derive"] }
 clap_complete = { workspace = true }
 kanidm_build_profiles = { workspace = true }
+
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete", "kanidm_build_profiles"]
