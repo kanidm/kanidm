@@ -41,7 +41,7 @@ Before upgrading you should review
   - Add support for prefers-color-scheme using Bootstrap classes. Dark mode! (#3327)
   - Automatically trigger passkeys on login view (#3307)
 - Two new operating systems!
-  - OpenBSD support (#3381)
+  - Initial OpenBSD support (#3381)
   - FreeBSD client (#3333)
 - Many SCIM-related improvements
   - SCIM access control (#3359)
