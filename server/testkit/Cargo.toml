@@ -49,7 +49,6 @@ url = { workspace = true, features = ["serde"] }
 kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
-assert_cmd = "2.0.16"
 compact_jwt = { workspace = true }
 escargot = "0.5.13"
 # used for webdriver testing
@@ -59,11 +58,14 @@ oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",
 ] }
 openssl = { workspace = true }
-petgraph = { version = "0.7.1", features = ["serde", "serde-1"] }
+petgraph = { version = "0.7.1", features = ["serde"] }
 serde_json = { workspace = true }
 time = { workspace = true }
 tokio-openssl = { workspace = true }
 kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
-jsonschema = "0.28.3"
+jsonschema = "0.29.0"
+
+[package.metadata.cargo-machete]
+ignored = ["escargot", "futures", "kanidm_build_profiles"]

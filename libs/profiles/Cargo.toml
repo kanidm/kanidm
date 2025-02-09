@@ -28,3 +28,7 @@ toml = { workspace = true }
 [build-dependencies]
 base64 = { workspace = true }
 gix = { workspace = true, default-features = false }
+
+
+[package.metadata.cargo-machete]
+ignored = ["gix"]

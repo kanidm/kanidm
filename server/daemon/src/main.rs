@@ -20,7 +20,7 @@ static ALLOC: dhat::Alloc = dhat::Alloc;
 
 use std::fs::{metadata, File};
 // This works on both unix and windows.
-use fs4::FileExt;
+use fs4::fs_std::FileExt;
 use kanidm_proto::messages::ConsoleOutputMode;
 use sketching::otel::TracingPipelineGuard;
 use std::io::Read;

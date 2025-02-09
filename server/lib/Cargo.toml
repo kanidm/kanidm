@@ -79,7 +79,7 @@ webauthn-rs = { workspace = true, features = [
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true, features = ["time_0_3", "base64"] }
-hex.workspace = true
+hex = { workspace = true }
 lodepng = { workspace = true }
 image = { workspace = true, default-features = false, features = [
     "gif",
@@ -113,3 +113,9 @@ mimalloc = { workspace = true }
 hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }
 regex = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = [
+    "openssl-sys", # see note above
+    "whoami",      # used in windows
+]

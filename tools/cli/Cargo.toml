@@ -58,7 +58,7 @@ tokio = { workspace = true, features = ["rt", "macros", "fs", "signal"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
-lazy_static.workspace = true
+lazy_static = { workspace = true }
 regex = { workspace = true }
 
 [dev-dependencies]
@@ -119,3 +119,6 @@ assets = [
     ],
 ]
 maintainer-scripts = "debian/"
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete", "kanidm_build_profiles"]
