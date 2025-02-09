@@ -3024,6 +3024,7 @@ dependencies = [
  "base64 0.22.1",
  "clap",
  "enum-iterator",
+ "kanidm_build_profiles",
  "num_enum",
  "scim_proto",
  "serde",
@@ -3405,8 +3406,7 @@ dependencies = [
 [[package]]
 name = "libnss"
 version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c4bc0291fc787d67c56e9ed79b80780e53bfb9be173177f301ee666cec1021b"
+source = "git+https://github.com/Firstyear/libnss-rs.git?branch=20250207-freebsd#763da4beaadc1e475b89ed876de31a5e393f6d30"
 dependencies = [
  "lazy_static",
  "libc",

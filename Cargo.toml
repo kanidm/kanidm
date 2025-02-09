@@ -120,6 +120,8 @@ codegen-units = 256
 
 # kanidm-hsm-crypto = { path = "../hsm-crypto" }
 
+libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "20250207-freebsd" }
+
 [workspace.dependencies]
 kanidmd_core = { path = "./server/core", version = "=1.5.0-dev" }
 kanidmd_lib = { path = "./server/lib", version = "=1.5.0-dev" }
