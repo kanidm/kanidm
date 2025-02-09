@@ -37,11 +37,11 @@ reqwest = { workspace = true }
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-util = { workspace = true, features = ["codec"] }
 tracing = { workspace = true }
-serde_json.workspace = true
+serde_json = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-sd-notify.workspace = true
-prctl.workspace = true
+sd-notify = { workspace = true }
+prctl = { workspace = true }
 
 [target.'cfg(target_family = "windows")'.dependencies]
 whoami = { workspace = true }

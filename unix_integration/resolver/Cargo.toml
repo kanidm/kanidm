@@ -52,7 +52,7 @@ test = true
 doctest = false
 
 [dependencies]
-async-trait.workspace = true
+async-trait = { workspace = true }
 bytes = { workspace = true }
 clap = { workspace = true, features = ["derive", "env"] }
 dialoguer = { workspace = true }
@@ -89,8 +89,8 @@ uuid = { workspace = true }
 walkdir = { workspace = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
-sd-notify.workspace = true
-prctl.workspace = true
+sd-notify = { workspace = true }
+prctl = { workspace = true }
 
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 kanidm_utils_users = { workspace = true }
@@ -135,6 +135,6 @@ assets = [
 ]
 maintainer-scripts = "debian/"
 systemd-units = [
-	{ unit-name = "kanidm-unixd", enable = true}, 
+	{ unit-name = "kanidm-unixd", enable = true},
 	{ unit-name = "kanidm-unixd-tasks", enable = true},
 ]
