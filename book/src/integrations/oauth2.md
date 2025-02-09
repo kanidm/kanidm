@@ -70,6 +70,36 @@ anything special for Kanidm (or another provider).
 **Note:** some apps automatically append `/.well-known/openid-configuration` to
 the end of an OIDC Discovery URL, so you may need to omit that.
 
+
+<dl>
+
+<dt>
+
+[Webfinger](https://datatracker.ietf.org/doc/html/rfc7033)
+URL
+
+</dt>
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
+
+The webfinger url is implemented for each openid client, under its specific url, giving full control to the administrator regarding which to use.
+
+To make this webfinger useful it **MUST** be served at the very root under the host (e.g `example.com/.well-known/webfinger`). How that is accomplished is left up to the administrator as kani has no opinion.
+
+One example would be dedicating one client as the `"primary" or "default" and redirecting all requests to that. Alternatively source ip or other request metadata could be used to decide which client to forward the request to.
+
+### Caddy
+`Caddyfile`
+```caddy
+# assuming a kanidm service with domain "example.com"
+example.com {
+  redir /.well-known/webfinger https://idm.example.com/oauth2/openid/:client_id:{uri} 307
+}
+```
+**Note:** the `{uri}` is important as it preserves the original request past the redirect.
+
+
 </dd>
 
 <dt>
