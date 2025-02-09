@@ -29,7 +29,7 @@ Authlib = "^1.2.0"
 
 
 [tool.poetry.group.dev.dependencies]
-ruff = ">=0.5.1,<0.9.5"
+ruff = ">=0.5.1,<0.9.6"
 pytest = "^8.3.4"
 mypy = "^1.14.1"
 types-requests = "^2.32.0.20241016"
@@ -40,7 +40,7 @@ pylint-pydantic = "^0.3.5"
 coverage = "^7.6.10"
 mkdocs = "^1.6.1"
 mkdocs-material = "^9.6.1"
-mkdocstrings = "^0.27.0"
+mkdocstrings = ">=0.27,<0.29"
 mkdocstrings-python = "^1.13.0"
 pook = "^2.1.3"
 
