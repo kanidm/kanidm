@@ -513,7 +513,7 @@ pub async fn oauth2_token_post(
     }
 }
 
-// // For future openid integration
+// For future openid integration
 pub async fn oauth2_openid_discovery_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
@@ -529,6 +529,45 @@ pub async fn oauth2_openid_discovery_get(
             StatusCode::OK,
             [(ACCESS_CONTROL_ALLOW_ORIGIN, "*")],
             Json(dsc),
+        )
+            .into_response(),
+        Err(e) => {
+            error!(err = ?e, "Unable to access discovery info");
+            WebError::from(e).response_with_access_control_origin_header()
+        }
+    }
+}
+
+pub async fn oauth2_openid_webfinger_get(
+    State(state): State<ServerState>,
+    Path(client_id): Path<String>,
+    Query(resource): Query<String>,
+
+    // For the moment this is implemented ignoring the rel's
+    // Query(rel): Query<Vec<String>>,
+    Extension(kopid): Extension<KOpId>,
+) -> impl IntoResponse {
+    let cleaned_resource = match resource {
+        s if s.starts_with("acct:") => s[5..].to_string(),
+        s => s,
+    };
+
+    let res = state
+        .qe_r_ref
+        .handle_oauth2_webfinger_discovery(client_id, cleaned_resource, kopid.eventid)
+        .await;
+
+    match res {
+        Ok(dsc) => (
+            StatusCode::OK,
+            [
+                (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),
+                (CONTENT_TYPE, "application/jrd+json"),
+            ],
+            Json({
+                dsc.subject = resource;
+                dsc
+            }),
         )
             .into_response(),
         Err(e) => {
@@ -769,6 +808,10 @@ pub fn route_setup(state: ServerState) -> Router<ServerState> {
         .route(
             "/oauth2/openid/:client_id/.well-known/openid-configuration",
             get(oauth2_openid_discovery_get).options(oauth2_preflight_options),
+        )
+        .route(
+            "/oauth2/openid/:client_id/.well-known/webfinger",
+            get(oauth2_openid_webfinger_get).options(oauth2_preflight_options),
         )
         // // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
         // // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS

@@ -443,6 +443,21 @@ fn require_request_uri_parameter_supported_default() -> bool {
     false
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OidcWebfingerRel {
+    pub rel: String,
+    pub href: String,
+}
+
+/// The response to an Webfinger request. Only a subset of the body is defined here.
+/// <https://datatracker.ietf.org/doc/html/rfc7033>
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OidcWebfingerResponse {
+    pub subject: String,
+    pub links: Vec<OidcWebfingerRel>,
+}
+
 /// The response to an OpenID connect discovery request
 /// <https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata>
 #[skip_serializing_none]

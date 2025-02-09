@@ -9,6 +9,7 @@ use kanidm_proto::internal::{
     IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken,
     SearchRequest, SearchResponse, UserAuthToken,
 };
+use kanidm_proto::oauth2::OidcWebfingerResponse;
 use kanidm_proto::v1::{
     AuthIssueSession, AuthRequest, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
     WhoamiResponse,
@@ -1507,6 +1508,21 @@ impl QueryServerReadV1 {
     ) -> Result<OidcDiscoveryResponse, OperationError> {
         let idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_openid_discovery(&client_id)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_webfinger_discovery(
+        &self,
+        client_id: String,
+        resource_id: String,
+        eventid: Uuid,
+    ) -> Result<OidcWebfingerResponse, OperationError> {
+        let idms_prox_read = self.idms.proxy_read().await?;
+        idms_prox_read.oauth2_openid_webfinger_discovery(&client_id, &resource_id)
     }
 
     #[instrument(

@@ -32,7 +32,7 @@ pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
     OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
-    OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
+    OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
 
 use kanidm_proto::oauth2::{
@@ -2739,6 +2739,46 @@ impl IdmServerProxyReadTransaction<'_> {
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
             device_authorization_endpoint: o2rs.device_authorization_endpoint.clone(),
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn oauth2_openid_webfinger_discovery(
+        &self,
+        client_id: &str,
+        resource_id: &str,
+    ) -> Result<OidcWebfingerResponse, OperationError> {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let Some(spn) = PartialValue::new_spn_s(resource_id) else {
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Ensure that the account exists. If we consider account's spn privileged information
+        // We can shortcut this step and always return valid. This means it will seem like every user exits
+        // However it will fail at logon. I don't think leaking spn's is a problem however
+        if !self
+            .qs_read
+            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))
+        {
+            return Err(OperationError::NoMatchingEntries);
+        }
+
+        let issuer = o2rs.iss.clone();
+
+        Ok(OidcWebfingerResponse {
+            // we set the subject to the resource_id to ensure we always send something valid back
+            // but realistically this will be overwritten on at the API layer
+            subject: resource_id.to_string(),
+            links: vec![OidcWebfingerRel {
+                rel: "http://openid.net/specs/connect/1.0/issuer".into(),
+                href: issuer.into(),
+            }],
         })
     }
 
