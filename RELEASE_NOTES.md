@@ -14,7 +14,7 @@ report it to our [issue tracker].
 
 ## Release Notes
 
-### 2025-02-09 - Kandim 1.5.0
+### 2025-02-09 - Kanidm 1.5.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
 combined effort of our community and we appreciate their invaluable contributions, comments,
