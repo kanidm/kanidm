@@ -49,7 +49,6 @@ url = { workspace = true, features = ["serde"] }
 kanidm_build_profiles = { workspace = true }
 
 [dev-dependencies]
-assert_cmd = "2.0.16"
 compact_jwt = { workspace = true }
 escargot = "0.5.13"
 # used for webdriver testing
