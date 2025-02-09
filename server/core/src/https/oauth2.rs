@@ -538,18 +538,27 @@ pub async fn oauth2_openid_discovery_get(
     }
 }
 
+#[derive(Deserialize)]
+pub struct Oauth2OpenIdWebfingerQuery {
+    resource: String,
+}
+
 pub async fn oauth2_openid_webfinger_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
-    Query(resource): Query<String>,
+    Query(query): Query<Oauth2OpenIdWebfingerQuery>,
 
     // For the moment this is implemented ignoring the rel's
     // Query(rel): Query<Vec<String>>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let cleaned_resource = match &resource {
-        s if s.starts_with("acct:") => s[5..].to_string(),
-        s => s.clone(),
+
+    let Oauth2OpenIdWebfingerQuery { resource } = query;
+
+    let cleaned_resource = if resource.starts_with("acct:") {
+        resource[5..].to_string()
+    } else {
+        resource
     };
 
     let res = state
