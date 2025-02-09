@@ -39,7 +39,7 @@ cargo install  --force \
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
 - [ ] `cargo test`
-- [ ] `git commit -a -m "chore: Release Notes"`
+- [ ] `git commit -a -m 'chore: Release Notes'`
 - [ ] `git push origin "$(date +%Y%m%d)-pre-release"`
 - [ ] Merge PR
 
