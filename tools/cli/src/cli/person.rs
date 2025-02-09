@@ -162,7 +162,7 @@ impl PersonOpt {
                 }
                 PersonPosix::SetPassword(aopt) => {
                     let client = aopt.copt.to_client(OpType::Write).await;
-                    let password = match password_prompt("Enter new posix (sudo) password: ") {
+                    let password = match password_prompt("Enter new posix (sudo) password") {
                         Some(v) => v,
                         None => {
                             println!("Passwords do not match");
