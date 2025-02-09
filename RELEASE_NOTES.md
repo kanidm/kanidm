@@ -1,42 +1,93 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
-</p>
+# Kanidm Release Notes
 
-# Getting Started
+![Kanidm Logo](artwork/logo-small.png)
+
+## Getting Started
 
 To get started, see the [kanidm book]
 
-# Feedback
+## Feedback
 
 We value your feedback! First, please see our [code of conduct]. If you have questions please join
 our [gitter community channel] so that we can help. If you find a bug or issue, we'd love you to
 report it to our [issue tracker].
 
-# Release Notes
+## Release Notes
 
-## 2024-11-01 - Kanidm 1.4.0
+### 2025-02-09 - Kandim 1.5.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
 combined effort of our community and we appreciate their invaluable contributions, comments,
 questions, feedback and support.
 
 You should review our
-[support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) as this
+[support documentation] as this
 may have important effects on your distribution or upgrades in future.
 
 Before upgrading you should review
-[our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes)
+[our upgrade documentation]
 
-### 1.4.0 Important Changes
+#### 1.5.0 Important Changes
+
+- There has been a lot of tweaks to how cookies are handled in this release, if you're having issues with the login flow please clear all cookies as an initial troubleshooting step.
+
+#### 1.5.0 Release Highlights
+
+- Many updates to the UI!
+  - SSH Keys in Credentials Update (#3027)
+  - Improved error message when PassKey is missing PIN (mainly for Firefox) (#3403)
+  - Fix the password reset form and possible resolver issue (#3398)
+  - Fixed unrecoverable error page doesn't include logo or domain name (#3352)
+  - Add support for prefers-color-scheme using Bootstrap classes. Dark mode! (#3327)
+  - Automatically trigger passkeys on login view (#3307)
+- Two new operating systems!
+  - OpenBSD support (#3381)
+  - FreeBSD client (#3333)
+- Many SCIM-related improvements
+  - SCIM access control (#3359)
+  - SCIM put (#3151)
+- OAuth2 Things
+  - Allow OAuth2 with empty `state` parameter (#3396)
+  - Allow POST on oauth userinfo (#3395)
+  - Add OAuth2 `response_mode=fragment` (#3335)
+  - Add CORS headers to jwks and userinfo (#3283)
+- Allowing SPN query with non-SPN structured data in LDAP (#3400)
+- Correctly return that uuid2spn changed on domain rename (#3402)
+- RADIUS startup fixing (#3388)
+- Repaired systemd reload notifications (#3355)
+- Add `ssh_publickeys` as a claim for OAuth2 (#3346)
+- Allow modification of password minimum length (#3345)
+- PAM on Debian, enable use_first_pass by default (#3326)
+- Allow opt-in of easter eggs (#3308)
+- Allow reseting account policy values to defaults (#3306)
+- Ignore system users for UPG synthesiseation (#3297)
+- Allow group managers to modify entry-managed-by (#3272)
+
+And many more!
+
+### 2024-11-01 - Kanidm 1.4.0
+
+This is the latest stable release of the Kanidm Identity Management project. Every release is the
+combined effort of our community and we appreciate their invaluable contributions, comments,
+questions, feedback and support.
+
+You should review our
+[support documentation] as this
+may have important effects on your distribution or upgrades in future.
+
+Before upgrading you should review
+[our upgrade documentation]
+
+#### 1.4.0 Important Changes
 
 - The web user interface has been rewritten and now supports theming. You will notice that your
 domain displayname is included in a number of locations on upgrade, and that you can set
 your own domain and OAuth2 client icons.
 - OAuth2 strict redirect uri is now required. Ensure you have read
-[our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes).
+[our upgrade documentation].
 and taken the needed steps before upgrading.
 
-### 1.4.0 Release Highlights
+#### 1.4.0 Release Highlights
 
 - Improve handling of client timeouts when the server is under high load
 - Resolve a minor issue preventing some credential updates from saving
@@ -65,20 +116,20 @@ and taken the needed steps before upgrading.
 - Rewrite the entire web frontend to be simpler and faster, allowing more features to be added
   in the future. Greatly improves user experience as the pages are now very fast to load!
 
-## 2024-08-07 - Kanidm 1.3.0
+### 2024-08-07 - Kanidm 1.3.0
 
 This is the latest stable release of the Kanidm Identity Management project. Every release is the
 combined effort of our community and we appreciate their invaluable contributions, comments,
 questions, feedback and support.
 
 You should review our
-[support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md) as this
+[support documentation] as this
 may have important effects on your distribution or upgrades in future.
 
 Before upgrading you should review
-[our upgrade documentation](https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes)
+[our upgrade documentation]
 
-### 1.3.0 Important Changes
+#### 1.3.0 Important Changes
 
 - New GID number constraints are now enforced in this version. To upgrade from 1.2.0 all accounts
   and groups must adhere to these rules. See [our upgrade documentation]. about tools to help you
@@ -89,7 +140,7 @@ Before upgrading you should review
   by PassKeys which give a better user experience.
 - Kanidm now supports FreeBSD and Illumos in addition to Linux
 
-### 1.3.0 Release Highlights
+#### 1.3.0 Release Highlights
 
 - TOTP update user interface improvements
 - Improved error messages when a load balancer is failing
@@ -112,24 +163,24 @@ Before upgrading you should review
 - Strict redirect URI enforcement in OAuth2
 - Substring indexing for improved search performance
 
-## 2024-05-01 - Kanidm 1.2.0
+### 2024-05-01 - Kanidm 1.2.0
 
 This is the first stable release of the Kanidm Identity Management project. We want to thank every
 one in our community who has supported to the project to this point with their invaluable
 contributions, comments, questions, feedback and support.
 
 Importantly this release makes a number of changes to our project's support processes. You should
-review our [support documentation](https://github.com/kanidm/kanidm/blob/master/book/src/support.md)
+review our [support documentation]
 as this may have important effects on your distribution or upgrades in future.
 
-### 1.2.0 Important Changes
+#### 1.2.0 Important Changes
 
 - On upgrade all OAuth2 sessions and user sessions will be reset due to changes in cryptographic key
   handling. This does not affect api tokens.
 - There is a maximum limit of 48 interactive sessions for persons where older sessions are
   automatically removed.
 
-### 1.2.0 Release Highlights
+#### 1.2.0 Release Highlights
 
 - The book now contains a list of supported RFCs and standards
 - Add code challenge methods to OIDC discovery
@@ -154,7 +205,7 @@ as this may have important effects on your distribution or upgrades in future.
 - Migrate cryptographic key handling to an object model with future HSM support
 - Limit maximum active sessions on an account to 48
 
-## 2024-02-07 - Kanidm 1.1.0-rc.16
+### 2024-02-07 - Kanidm 1.1.0-rc.16
 
 This is the sixteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
 help get feedback and ideas from the community on how we can continue to make this project better.
@@ -163,7 +214,7 @@ This is the final release candidate before we publish a release version. We beli
 server interfaces are stable and reliable enough for people to depend on, and to develop external
 tools to interact with Kanidm.
 
-### 1.1.0-rc.16 Release Highlights
+#### 1.1.0-rc.16 Release Highlights
 
 - Replication for two node environments is now supported
 - Account policy supports password minimum length
@@ -182,7 +233,7 @@ tools to interact with Kanidm.
 - Support RFC6749 Client Credentials Grant
 - Support custom claim maps in OIDC
 
-## 2023-10-31 - Kanidm 1.1.0-beta14
+### 2023-10-31 - Kanidm 1.1.0-beta14
 
 This is the fourteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
 help get feedback and ideas from the community on how we can continue to make this project better.
@@ -191,7 +242,7 @@ At this point we believe we are on the final stretch to making something we cons
 ready". After this we will start to ship release candidates as our focus will now be changing to
 finish our production components and the stability of the API's for longer term support.
 
-### 1.1.0-beta14 Release Highlights
+#### 1.1.0-beta14 Release Highlights
 
 - Replication is in Beta! Please test carefully!
 - Web UI WASM has been split up, significantly improving the responsiveness.
@@ -205,7 +256,7 @@ finish our production components and the stability of the API's for longer term 
 - Removed a lot of uses of `unwrap` and `expect` to improve reliability.
 - Account policy framework is now in place.
 
-## 2023-05-01 - Kanidm 1.1.0-beta13
+### 2023-05-01 - Kanidm 1.1.0-beta13
 
 This is the thirteenth pre-release of the Kanidm Identity Management project. Pre-releases are to
 help get feedback and ideas from the community on how we can continue to make this project better.
@@ -214,7 +265,7 @@ At this point we believe we are on the final stretch to making something we cons
 ready". After this we will start to ship release candidates as our focus will now be changing to
 finish our production components and the stability of the API's for longer term support.
 
-### 1.1.0-beta13 Release Highlights
+#### 1.1.0-beta13 Release Highlights
 
 - Replication foundations
   - Full implementation of replication refresh
@@ -255,7 +306,7 @@ finish our production components and the stability of the API's for longer term 
 - Improve create-reset-token user experience
 - Improve self-healing for some reference issues
 
-## 2023-05-01 - Kanidm 1.1.0-alpha12
+### 2023-05-01 - Kanidm 1.1.0-alpha12
 
 This is the twelfth alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
@@ -266,7 +317,7 @@ done so yet is we haven't decided if we want to commit to the current API layout
 There are still things we want to change there. Otherwise the server is stable and reliable for
 production usage.
 
-### Release Highlights
+#### 1.1.0-alpha12 Release Highlights
 
 - Allow full server content replication in testing (yes we're finally working on replication!)
 - Improve OAuth2 to allow scoped members to see RS they can access for UI flows
@@ -286,7 +337,7 @@ production usage.
 - Add exclusive process lock to daemon
 - Allow dns/rdns in ldap search contexts
 
-## 2023-02-01 - Kanidm 1.1.0-alpha11
+### 2023-02-01 - Kanidm 1.1.0-alpha11
 
 This is the eleventh alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
@@ -296,7 +347,7 @@ The project is shaping up very nicely, and a beta will be coming soon! The main 
 done so yet is we haven't decided if we want to commit to the current API layout and freeze it yet.
 There are still things we want to change there. Otherwise the server is stable and reliable.
 
-### Release Highlights
+#### 1.1.0-alpha11 Release Highlights
 
 - Support /etc/skel home dir templates in kanidm-unixd
 - Improve warning messages for openssl when a cryptographic routine is not supported
@@ -317,7 +368,7 @@ There are still things we want to change there. Otherwise the server is stable a
 - Improve the access control module to evaluate access in a clearer way
 - Allow synced users to correct modify their local sessions
 
-## 2022-11-01 - Kanidm 1.1.0-alpha10
+### 2022-11-01 - Kanidm 1.1.0-alpha10
 
 This is the tenth alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
@@ -325,12 +376,12 @@ for a future supported release.
 
 The project is shaping up very nicely, and a beta will be coming soon!
 
-### Upgrade Note
+#### 1.1.0-alpha10 Upgrade Note
 
 This version will _require_ TLS on all servers, even if behind a load balancer or TLS terminating
 proxy. You should be ready for this change when you upgrade to the latest version.
 
-### Release Highlights
+#### 1.1.0-alpha10 Release Highlights
 
 - Management and tracking of authenticated sessions
 - Make upgrade migrations more robust when upgrading over multiple versions
@@ -352,7 +403,7 @@ proxy. You should be ready for this change when you upgrade to the latest versio
 - Cleanup of expired authentication sessions
 - Improved administration of password badlists
 
-## 2022-08-02 - Kanidm 1.1.0-alpha9
+### 2022-08-02 - Kanidm 1.1.0-alpha9
 
 This is the ninth alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
@@ -360,7 +411,7 @@ for a future supported release.
 
 The project is shaping up very nicely, and a beta will be coming soon!
 
-### Release Highlights
+#### 1.1.0-alpha9 Release Highlights
 
 - Inclusion of a Python3 API library
 - Improve orca usability
@@ -376,13 +427,13 @@ The project is shaping up very nicely, and a beta will be coming soon!
 - CTAP2+ support in Webauthn via CLI
 - Radius supports EAP TLS identities in addition to EAP PEAP
 
-## 2022-05-01 - Kanidm 1.1.0-alpha8
+### 2022-05-01 - Kanidm 1.1.0-alpha8
 
 This is the eighth alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
 better for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha8 Release Highlights
 
 - Foundations for cryptographic trusted device authentication
 - Foundations for new user onboarding and credential reset
@@ -398,13 +449,13 @@ better for a future supported release.
 - Highlight that the WebUI is in alpha to prevent confusion
 - Remove sync only client paths
 
-## 2022-01-01 - Kanidm 1.1.0-alpha7
+### 2022-01-01 - Kanidm 1.1.0-alpha7
 
 This is the seventh alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
 better for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha7 Release Highlights
 
 - OAuth2 scope to group mappings
 - Webauthn subdomain support
@@ -415,7 +466,7 @@ better for a future supported release.
 - Addition of email address attributes
 - Web UI improvements for OAuth2
 
-## 2021-10-01 - Kanidm 1.1.0-alpha6
+### 2021-10-01 - Kanidm 1.1.0-alpha6
 
 This is the sixth alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
@@ -424,7 +475,7 @@ for a future supported release.
 It's also a special release as Kanidm has just turned 3 years old! Thank you all for helping to
 bring the project this far! 🎉 🦀
 
-### Release Highlights
+#### 1.1.0-alpha6 Release Highlights
 
 - Support backup codes as MFA in case of lost TOTP/Webauthn
 - Dynamic menus on CLI for usernames when multiple sessions exist
@@ -444,13 +495,13 @@ bring the project this far! 🎉 🦀
 - Improvements to performance with high cache sizes
 - Session tokens persist over a session restart
 
-## 2021-07-07 - Kanidm 1.1.0-alpha5
+### 2021-07-07 - Kanidm 1.1.0-alpha5
 
 This is the fifth alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
 for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha5 Release Highlights
 
 - Fix a major defect in how backup/restore worked
 - Improve query performance by caching partial queries
@@ -465,13 +516,13 @@ for a future supported release.
 - Statistical analysis of indexes to improve query optimisation
 - Handle broken TOTP authenticator apps
 
-## 2021-04-01 - Kanidm 1.1.0-alpha4
+### 2021-04-01 - Kanidm 1.1.0-alpha4
 
 This is the fourth alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
 better for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha4 Release Highlights
 
 - Performance Improvements
 - TOTP CLI enrollment
@@ -485,13 +536,13 @@ better for a future supported release.
 - Badlist checked at login to determine account compromise
 - Minor Fixes for attribute display
 
-## 2021-01-01 - Kanidm 1.1.0-alpha3
+### 2021-01-01 - Kanidm 1.1.0-alpha3
 
 This is the third alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
 for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha3 Release Highlights
 
 - Account "valid from" and "expiry" times.
 - Rate limiting and softlocking of account credentials to prevent bruteforcing.
@@ -499,13 +550,13 @@ for a future supported release.
 - Rewrite of json authentication protocol components.
 - Unixd will cache "non-existent" items to improve nss/pam latency.
 
-## 2020-10-01 - Kanidm 1.1.0-alpha2
+### 2020-10-01 - Kanidm 1.1.0-alpha2
 
 This is the second alpha series release of the Kanidm Identity Management project. Alpha releases
 are to help get feedback and ideas from the community on how we can continue to make this project
 better for a future supported release.
 
-### Release Highlights
+#### 1.1.0-alpha2 Release Highlights
 
 - SIMD key lookups in container builds for datastructures
 - Server and Client hardening warnings for running users and file permissions
@@ -517,7 +568,7 @@ better for a future supported release.
 - Reduction in memory footprint during searches
 - Change authentication from cookies to auth-bearer tokens
 
-## 2020-07-01 - Kanidm 1.1.0-alpha1
+### 2020-07-01 - Kanidm 1.1.0-alpha1
 
 This is the first alpha series release of the Kanidm Identity Management project. Alpha releases are
 to help get feedback and ideas from the community on how we can continue to make this project better
@@ -536,7 +587,7 @@ people. I would especially like to thank:
 - Samuel Cabrero (scabrero)
 - Jim McDonough
 
-### Release Highlights
+#### 1.1.0-alpha1 Release Highlights
 
 - A working identity management server, including database
 - RADIUS authentication and docker images
@@ -552,3 +603,5 @@ people. I would especially like to thank:
 [gitter community channel]: https://gitter.im/kanidm/community
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
 [kanidm book]: https://kanidm.github.io/kanidm/stable/
+[our upgrade documentation]: https://github.com/kanidm/kanidm/blob/master/book/src/server_updates.md#general-update-notes
+[support documentation]: https://github.com/kanidm/kanidm/blob/master/book/src/support.md
