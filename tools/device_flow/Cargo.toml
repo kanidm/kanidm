@@ -19,7 +19,6 @@ doctest = false
 
 [dependencies]
 anyhow = { workspace = true }
-base64 = { workspace = true }
 kanidm_proto = { workspace = true }
 oauth2 = "5.0.0"
 reqwest = { workspace = true, default-features = false, features = [
@@ -28,4 +27,3 @@ reqwest = { workspace = true, default-features = false, features = [
 sketching = { workspace = true }
 tokio = { workspace = true, features = ["full"] }
 tracing = { workspace = true }
-url = { workspace = true }

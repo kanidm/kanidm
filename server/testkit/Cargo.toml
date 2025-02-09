@@ -66,3 +66,6 @@ kanidm_lib_crypto = { workspace = true }
 uuid = { workspace = true }
 webauthn-authenticator-rs = { workspace = true }
 jsonschema = "0.28.3"
+
+[package.metadata.cargo-machete]
+ignored = ["prost"]

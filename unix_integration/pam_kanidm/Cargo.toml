@@ -13,8 +13,8 @@ repository = { workspace = true }
 
 [lib]
 name = "pam_kanidm"
-crate-type = [ "cdylib" ]
-path =  "src/lib.rs"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
 
 [dependencies]
 kanidm_unix_common = { workspace = true }
@@ -37,17 +37,36 @@ section = "network"
 priority = "optional"
 maintainer-scripts = "debian/"
 assets = [
-	# Empty on purpose
+    # Empty on purpose
 ]
 
 [package.metadata.deb.variants.aarch64-unknown-linux-gnu]
 merge-assets.append = [
-    [ "target/release/libpam_kanidm.so", "usr/lib/aarch64-linux-gnu/security/pam_kanidm.so", "644"],
-    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+    [
+        "target/release/libpam_kanidm.so",
+        "usr/lib/aarch64-linux-gnu/security/pam_kanidm.so",
+        "644",
+    ],
+    [
+        "debian/kanidm.pam",
+        "usr/share/pam-configs/kanidm",
+        "644",
+    ],
 ]
 
 [package.metadata.deb.variants.x86_64-unknown-linux-gnu]
 merge-assets.append = [
-    [ "target/release/libpam_kanidm.so", "usr/lib/x86_64-linux-gnu/security/pam_kanidm.so", "644"],
-    [ "debian/kanidm.pam", "usr/share/pam-configs/kanidm", "644"],
+    [
+        "target/release/libpam_kanidm.so",
+        "usr/lib/x86_64-linux-gnu/security/pam_kanidm.so",
+        "644",
+    ],
+    [
+        "debian/kanidm.pam",
+        "usr/share/pam-configs/kanidm",
+        "644",
+    ],
 ]
+
+[package.metadata.cargo-machete]
+ignored = ["pkg-config"]

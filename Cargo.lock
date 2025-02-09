@@ -932,13 +932,13 @@ dependencies = [
 
 [[package]]
 name = "cron"
-version = "0.12.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f8c3e73077b4b4a6ab1ea5047c37c57aee77657bc8ecd6f29b0af082d0b0c07"
+checksum = "5877d3fbf742507b66bc2a1945106bd30dd8504019d596901ddd012a4dd01740"
 dependencies = [
  "chrono",
- "nom",
  "once_cell",
+ "winnow 0.6.26",
 ]
 
 [[package]]
@@ -1238,13 +1238,14 @@ dependencies = [
 
 [[package]]
 name = "dialoguer"
-version = "0.10.4"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "59c6f2989294b9a498d3ad5491a79c6deb604617378e1cdc4bfc1c1361fe2f87"
+checksum = "658bce805d770f407bc62102fca7c2c64ceef2fbcb2b8bd19d2765ce093980de"
 dependencies = [
  "console",
  "shell-words",
  "tempfile",
+ "thiserror 1.0.69",
  "zeroize",
 ]
 
@@ -1594,9 +1595,9 @@ dependencies = [
 
 [[package]]
 name = "fs4"
-version = "0.8.4"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7e180ac76c23b45e767bd7ae9579bc0bb458618c4bc71835926e098e61d15f8"
+checksum = "c29c30684418547d476f0b48e84f4821639119c483b1eccd566c8cd0cd05f521"
 dependencies = [
  "rustix",
  "windows-sys 0.52.0",
@@ -2951,14 +2952,12 @@ name = "kanidm_device_flow"
 version = "1.5.0-dev"
 dependencies = [
  "anyhow",
- "base64 0.22.1",
  "kanidm_proto",
  "oauth2 5.0.0",
  "reqwest 0.12.12",
  "sketching",
  "tokio",
  "tracing",
- "url",
 ]
 
 [[package]]
@@ -2987,7 +2986,6 @@ name = "kanidm_lib_file_permissions"
 version = "1.5.0-dev"
 dependencies = [
  "kanidm_utils_users",
- "whoami",
 ]
 
 [[package]]
@@ -3712,7 +3710,6 @@ dependencies = [
  "lazy_static",
  "libc",
  "libnss",
- "paste",
 ]
 
 [[package]]

@@ -138,3 +138,6 @@ systemd-units = [
 	{ unit-name = "kanidm-unixd", enable = true},
 	{ unit-name = "kanidm-unixd-tasks", enable = true},
 ]
+
+[package.metadata.cargo-machete]
+ignored = ["kanidm_build_profiles", "clap_complete"]
