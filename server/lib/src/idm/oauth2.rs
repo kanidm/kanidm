@@ -2743,7 +2743,7 @@ impl IdmServerProxyReadTransaction<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
-    pub fn oauth2_openid_webfinger_discovery(
+    pub fn oauth2_openid_webfinger(
         &mut self,
         client_id: &str,
         resource_id: &str,
@@ -5470,6 +5470,34 @@ mod tests {
         idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_webfinger(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let user = "testperson1@example.com";
+
+        let webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", user)
+            .expect("Failed to get webfinger");
+
+        assert_eq!(webfinger.subject, user);
+        assert_eq!(webfinger.links.len(), 1);
+
+        let link = &webfinger.links[0];
+        assert_eq!(link.rel, "http://openid.net/specs/connect/1.0/issuer");
+        assert_eq!(
+            link.href,
+            "https://idm.example.com/oauth2/openid/test_resource_server"
+        );
+
+        let failed_webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", "someone@another.domain");
+        assert!(failed_webfinger.is_err());
     }
 
     #[idm_test]

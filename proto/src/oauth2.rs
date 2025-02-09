@@ -450,7 +450,7 @@ pub struct OidcWebfingerRel {
 }
 
 /// The response to an Webfinger request. Only a subset of the body is defined here.
-/// <https://datatracker.ietf.org/doc/html/rfc7033>
+/// <https://datatracker.ietf.org/doc/html/rfc7033#section-4.4>
 #[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OidcWebfingerResponse {

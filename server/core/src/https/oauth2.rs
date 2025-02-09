@@ -552,13 +552,12 @@ pub async fn oauth2_openid_webfinger_get(
     // Query(rel): Query<Vec<String>>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-
     let Oauth2OpenIdWebfingerQuery { resource } = query;
 
     let cleaned_resource = if resource.starts_with("acct:") {
         resource[5..].to_string()
     } else {
-        resource
+        resource.clone()
     };
 
     let res = state
