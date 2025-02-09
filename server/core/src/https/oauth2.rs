@@ -547,9 +547,9 @@ pub async fn oauth2_openid_webfinger_get(
     // Query(rel): Query<Vec<String>>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
-    let cleaned_resource = match resource {
+    let cleaned_resource = match &resource {
         s if s.starts_with("acct:") => s[5..].to_string(),
-        s => s,
+        s => s.clone(),
     };
 
     let res = state
@@ -558,7 +558,7 @@ pub async fn oauth2_openid_webfinger_get(
         .await;
 
     match res {
-        Ok(dsc) => (
+        Ok(mut dsc) => (
             StatusCode::OK,
             [
                 (ACCESS_CONTROL_ALLOW_ORIGIN, "*"),

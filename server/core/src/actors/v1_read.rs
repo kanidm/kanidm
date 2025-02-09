@@ -1521,7 +1521,7 @@ impl QueryServerReadV1 {
         resource_id: String,
         eventid: Uuid,
     ) -> Result<OidcWebfingerResponse, OperationError> {
-        let idms_prox_read = self.idms.proxy_read().await?;
+        let mut idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_openid_webfinger_discovery(&client_id, &resource_id)
     }
 

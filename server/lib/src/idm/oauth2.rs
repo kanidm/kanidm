@@ -2744,7 +2744,7 @@ impl IdmServerProxyReadTransaction<'_> {
 
     #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_webfinger_discovery(
-        &self,
+        &mut self,
         client_id: &str,
         resource_id: &str,
     ) -> Result<OidcWebfingerResponse, OperationError> {
@@ -2759,12 +2759,10 @@ impl IdmServerProxyReadTransaction<'_> {
             return Err(OperationError::NoMatchingEntries);
         };
 
-        // Ensure that the account exists. If we consider account's spn privileged information
-        // We can shortcut this step and always return valid. This means it will seem like every user exits
-        // However it will fail at logon. I don't think leaking spn's is a problem however
+        // Ensure that the account exists.
         if !self
             .qs_read
-            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))
+            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))?
         {
             return Err(OperationError::NoMatchingEntries);
         }
