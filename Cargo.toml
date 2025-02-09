@@ -1,5 +1,5 @@
 [workspace.package]
-version = "1.5.0-dev"
+version = "1.5.0"
 authors = [
     "William Brown <william@blackhats.net.au>",
     "James Hodgkinson <james@terminaloutcomes.com>",
@@ -123,20 +123,20 @@ codegen-units = 256
 libnss = { git = "https://github.com/Firstyear/libnss-rs.git", branch = "20250207-freebsd" }
 
 [workspace.dependencies]
-kanidmd_core = { path = "./server/core", version = "=1.5.0-dev" }
-kanidmd_lib = { path = "./server/lib", version = "=1.5.0-dev" }
-kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.5.0-dev" }
-kanidmd_testkit = { path = "./server/testkit", version = "=1.5.0-dev" }
-kanidm_build_profiles = { path = "./libs/profiles", version = "=1.5.0-dev" }
-kanidm_client = { path = "./libs/client", version = "=1.5.0-dev" }
+kanidmd_core = { path = "./server/core", version = "=1.5.0" }
+kanidmd_lib = { path = "./server/lib", version = "=1.5.0" }
+kanidmd_lib_macros = { path = "./server/lib-macros", version = "=1.5.0" }
+kanidmd_testkit = { path = "./server/testkit", version = "=1.5.0" }
+kanidm_build_profiles = { path = "./libs/profiles", version = "=1.5.0" }
+kanidm_client = { path = "./libs/client", version = "=1.5.0" }
 kanidm-hsm-crypto = "^0.2.0"
-kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.5.0-dev" }
-kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.5.0-dev" }
-kanidm_proto = { path = "./proto", version = "=1.5.0-dev" }
-kanidm_unix_common = { path = "./unix_integration/common", version = "=1.5.0-dev" }
-kanidm_utils_users = { path = "./libs/users", version = "=1.5.0-dev" }
-scim_proto = { path = "./libs/scim_proto", version = "=1.5.0-dev" }
-sketching = { path = "./libs/sketching", version = "=1.5.0-dev" }
+kanidm_lib_crypto = { path = "./libs/crypto", version = "=1.5.0" }
+kanidm_lib_file_permissions = { path = "./libs/file_permissions", version = "=1.5.0" }
+kanidm_proto = { path = "./proto", version = "=1.5.0" }
+kanidm_unix_common = { path = "./unix_integration/common", version = "=1.5.0" }
+kanidm_utils_users = { path = "./libs/users", version = "=1.5.0" }
+scim_proto = { path = "./libs/scim_proto", version = "=1.5.0" }
+sketching = { path = "./libs/sketching", version = "=1.5.0" }
 
 anyhow = { version = "1.0.95" }
 argon2 = { version = "0.5.3", features = ["alloc"] }
