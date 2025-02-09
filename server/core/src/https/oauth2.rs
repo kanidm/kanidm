@@ -554,15 +554,11 @@ pub async fn oauth2_openid_webfinger_get(
 ) -> impl IntoResponse {
     let Oauth2OpenIdWebfingerQuery { resource } = query;
 
-    let cleaned_resource = if resource.starts_with("acct:") {
-        resource[5..].to_string()
-    } else {
-        resource.clone()
-    };
+    let cleaned_resource = resource.strip_prefix("acct:").unwrap_or(&resource);
 
     let res = state
         .qe_r_ref
-        .handle_oauth2_webfinger_discovery(client_id, cleaned_resource, kopid.eventid)
+        .handle_oauth2_webfinger_discovery(&client_id, cleaned_resource, kopid.eventid)
         .await;
 
     match res {

@@ -1517,12 +1517,12 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_webfinger_discovery(
         &self,
-        client_id: String,
-        resource_id: String,
+        client_id: &str,
+        resource_id: &str,
         eventid: Uuid,
     ) -> Result<OidcWebfingerResponse, OperationError> {
         let mut idms_prox_read = self.idms.proxy_read().await?;
-        idms_prox_read.oauth2_openid_webfinger(&client_id, &resource_id)
+        idms_prox_read.oauth2_openid_webfinger(client_id, resource_id)
     }
 
     #[instrument(
