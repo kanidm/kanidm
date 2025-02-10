@@ -547,9 +547,6 @@ pub async fn oauth2_openid_webfinger_get(
     State(state): State<ServerState>,
     Path(client_id): Path<String>,
     Query(query): Query<Oauth2OpenIdWebfingerQuery>,
-
-    // For the moment this is implemented ignoring the rel's
-    // Query(rel): Query<Vec<String>>,
     Extension(kopid): Extension<KOpId>,
 ) -> impl IntoResponse {
     let Oauth2OpenIdWebfingerQuery { resource } = query;
