@@ -7,7 +7,7 @@
 
 ## Proxmox OIDC limitation
 
-As of December 2024 OIDC implementation in proxmox supports only authentication.
+As of December 2024, the OIDC implementation in Proxmox supports only authentication.
 Authorization has to be done manually.
 Mapping user to specific groups won't work yet (steps 2,3,4).
 
