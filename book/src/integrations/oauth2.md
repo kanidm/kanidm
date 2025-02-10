@@ -72,22 +72,17 @@ the end of an OIDC Discovery URL, so you may need to omit that.
 
 
 <dl>
+<dt>[Webfinger](https://datatracker.ietf.org/doc/html/rfc7033) URL</dt>
 
-<dt>
-
-[Webfinger](https://datatracker.ietf.org/doc/html/rfc7033)
-URL
-
-</dt>
 <dd>
 
 `https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
 
-The webfinger url is implemented for each openid client, under its specific url, giving full control to the administrator regarding which to use.
+The webfinger URL is implemented for each OpenID client, under its specific endpoint, giving full control to the administrator regarding which to use.
 
-To make this webfinger useful it **MUST** be served at the very root under the host (e.g `example.com/.well-known/webfinger`). How that is accomplished is left up to the administrator as kani has no opinion.
+To make this compliant with the standard, it must be made available under the correct [well-known endpoint](https://datatracker.ietf.org/doc/html/rfc7033#section-10.1) (e.g `example.com/.well-known/webfinger`), typically via a reverse proxy or similar. Kanidm doesn't currently provide a mechanism for this URI rewrite.
 
-One example would be dedicating one client as the `"primary" or "default" and redirecting all requests to that. Alternatively source ip or other request metadata could be used to decide which client to forward the request to.
+One example would be dedicating one client as the "primary" or "default" and redirecting all requests to that. Alternatively, source IP or other request metadata could be used to decide which client to forward the request to.
 
 ### Caddy
 `Caddyfile`
