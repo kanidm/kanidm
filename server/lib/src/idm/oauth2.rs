@@ -32,7 +32,7 @@ pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
     OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
-    OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
+    OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
 
 use kanidm_proto::oauth2::{
@@ -2743,6 +2743,44 @@ impl IdmServerProxyReadTransaction<'_> {
     }
 
     #[instrument(level = "debug", skip_all)]
+    pub fn oauth2_openid_webfinger(
+        &mut self,
+        client_id: &str,
+        resource_id: &str,
+    ) -> Result<OidcWebfingerResponse, OperationError> {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let Some(spn) = PartialValue::new_spn_s(resource_id) else {
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Ensure that the account exists.
+        if !self
+            .qs_read
+            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))?
+        {
+            return Err(OperationError::NoMatchingEntries);
+        }
+
+        let issuer = o2rs.iss.clone();
+
+        Ok(OidcWebfingerResponse {
+            // we set the subject to the resource_id to ensure we always send something valid back
+            // but realistically this will be overwritten on at the API layer
+            subject: resource_id.to_string(),
+            links: vec![OidcWebfingerRel {
+                rel: "http://openid.net/specs/connect/1.0/issuer".into(),
+                href: issuer.into(),
+            }],
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
     pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
@@ -5432,6 +5470,34 @@ mod tests {
         idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_webfinger(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let user = "testperson1@example.com";
+
+        let webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", user)
+            .expect("Failed to get webfinger");
+
+        assert_eq!(webfinger.subject, user);
+        assert_eq!(webfinger.links.len(), 1);
+
+        let link = &webfinger.links[0];
+        assert_eq!(link.rel, "http://openid.net/specs/connect/1.0/issuer");
+        assert_eq!(
+            link.href,
+            "https://idm.example.com/oauth2/openid/test_resource_server"
+        );
+
+        let failed_webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", "someone@another.domain");
+        assert!(failed_webfinger.is_err());
     }
 
     #[idm_test]
