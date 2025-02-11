@@ -210,6 +210,8 @@ pub(crate) struct TotpInit {
 pub(crate) struct TotpCheck {
     wrong_code: bool,
     broken_app: bool,
+    bad_name: bool,
+    taken_name: Option<String>,
 }
 
 #[derive(Template)]
@@ -599,6 +601,25 @@ pub(crate) async fn add_totp(
     let cu_session_token = get_cu_session(&jar).await?;
 
     let check_totpcode = u32::from_str(&new_totp_form.check_totpcode).unwrap_or_default();
+    let swapped_handler_trigger =
+        HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
+
+    // If the user has not provided a name or added only spaces we exit early
+    if new_totp_form.name.trim().is_empty() {
+        return Ok((
+            swapped_handler_trigger,
+            AddTotpPartial {
+                totp_init: None,
+                totp_name: "".into(),
+                totp_value: new_totp_form.check_totpcode.clone(),
+                check: TotpCheck {
+                    bad_name: true,
+                    ..Default::default()
+                },
+            },
+        )
+            .into_response());
+    }
 
     let cu_status = if new_totp_form.ignore_broken_app {
         // Cope with SHA1 apps because the user has intended to do so, their totp code was already verified
@@ -624,6 +645,10 @@ pub(crate) async fn add_totp(
             wrong_code: true,
             ..Default::default()
         },
+        CURegState::TotpNameTryAgain(val) => TotpCheck {
+            taken_name: Some(val.clone()),
+            ..Default::default()
+        },
         CURegState::TotpInvalidSha1 => TotpCheck {
             broken_app: true,
             ..Default::default()
@@ -645,9 +670,6 @@ pub(crate) async fn add_totp(
     } else {
         new_totp_form.check_totpcode.clone()
     };
-
-    let swapped_handler_trigger =
-        HxResponseTrigger::after_swap([HxEvent::new("addTotpSwapped".to_string())]);
 
     Ok((
         swapped_handler_trigger,

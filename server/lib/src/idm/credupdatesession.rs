@@ -86,6 +86,7 @@ enum MfaRegState {
     None,
     TotpInit(Totp),
     TotpTryAgain(Totp),
+    TotpNameTryAgain(Totp, String),
     TotpInvalidSha1(Totp, Totp, String),
     Passkey(Box<CreationChallengeResponse>, PasskeyRegistration),
     #[allow(dead_code)]
@@ -98,6 +99,7 @@ impl fmt::Debug for MfaRegState {
             MfaRegState::None => "MfaRegState::None",
             MfaRegState::TotpInit(_) => "MfaRegState::TotpInit",
             MfaRegState::TotpTryAgain(_) => "MfaRegState::TotpTryAgain",
+            MfaRegState::TotpNameTryAgain(_, _) => "MfaRegState::TotpNameTryAgain",
             MfaRegState::TotpInvalidSha1(_, _, _) => "MfaRegState::TotpInvalidSha1",
             MfaRegState::Passkey(_, _) => "MfaRegState::Passkey",
             MfaRegState::AttestedPasskey(_, _) => "MfaRegState::AttestedPasskey",
@@ -273,6 +275,7 @@ pub enum MfaRegStateStatus {
     None,
     TotpCheck(TotpSecret),
     TotpTryAgain,
+    TotpNameTryAgain(String),
     TotpInvalidSha1,
     BackupCodes(HashSet<String>),
     Passkey(CreationChallengeResponse),
@@ -283,8 +286,9 @@ impl fmt::Debug for MfaRegStateStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let t = match self {
             MfaRegStateStatus::None => "MfaRegStateStatus::None",
-            MfaRegStateStatus::TotpCheck(_) => "MfaRegStateStatus::TotpCheck(_)",
+            MfaRegStateStatus::TotpCheck(_) => "MfaRegStateStatus::TotpCheck",
             MfaRegStateStatus::TotpTryAgain => "MfaRegStateStatus::TotpTryAgain",
+            MfaRegStateStatus::TotpNameTryAgain(_) => "MfaRegStateStatus::TotpNameTryAgain",
             MfaRegStateStatus::TotpInvalidSha1 => "MfaRegStateStatus::TotpInvalidSha1",
             MfaRegStateStatus::BackupCodes(_) => "MfaRegStateStatus::BackupCodes",
             MfaRegStateStatus::Passkey(_) => "MfaRegStateStatus::Passkey",
@@ -389,6 +393,7 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
                 MfaRegStateStatus::None => CURegState::None,
                 MfaRegStateStatus::TotpCheck(c) => CURegState::TotpCheck(c),
                 MfaRegStateStatus::TotpTryAgain => CURegState::TotpTryAgain,
+                MfaRegStateStatus::TotpNameTryAgain(label) => CURegState::TotpNameTryAgain(label),
                 MfaRegStateStatus::TotpInvalidSha1 => CURegState::TotpInvalidSha1,
                 MfaRegStateStatus::BackupCodes(s) => {
                     CURegState::BackupCodes(s.into_iter().collect())
@@ -469,6 +474,9 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                 MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
                     token.to_proto(session.account.name.as_str(), session.issuer.as_str()),
                 ),
+                MfaRegState::TotpNameTryAgain(_, name) => {
+                    MfaRegStateStatus::TotpNameTryAgain(name.clone())
+                }
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
                 MfaRegState::TotpInvalidSha1(_, _, _) => MfaRegStateStatus::TotpInvalidSha1,
                 MfaRegState::Passkey(r, _) => MfaRegStateStatus::Passkey(r.as_ref().clone()),
@@ -1899,7 +1907,20 @@ impl IdmServerCredUpdateTransaction<'_> {
         match &session.mfaregstate {
             MfaRegState::TotpInit(totp_token)
             | MfaRegState::TotpTryAgain(totp_token)
+            | MfaRegState::TotpNameTryAgain(totp_token, _)
             | MfaRegState::TotpInvalidSha1(totp_token, _, _) => {
+                if session
+                    .primary
+                    .as_ref()
+                    .map(|cred| cred.has_totp_by_name(label))
+                    .unwrap_or_default()
+                {
+                    // The user is trying to add a second TOTP under the same name. Lets save them from themselves
+                    session.mfaregstate =
+                        MfaRegState::TotpNameTryAgain(totp_token.clone(), label.into());
+                    return Ok(session.deref().into());
+                }
+
                 if totp_token.verify(totp_chal, ct) {
                     // It was valid. Update the credential.
                     let ncred = session
