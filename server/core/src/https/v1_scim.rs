@@ -7,8 +7,8 @@ use super::v1::{
 };
 use super::ServerState;
 use crate::https::extractors::VerifiedClientInformation;
-use axum::extract::{Path, Query, State};
-use axum::response::Html;
+use axum::extract::{rejection::JsonRejection, DefaultBodyLimit, Path, Query, State};
+use axum::response::{Html, IntoResponse, Response};
 use axum::routing::{get, post};
 use axum::{Extension, Json, Router};
 use kanidm_proto::scim_v1::{
@@ -16,6 +16,8 @@ use kanidm_proto::scim_v1::{
 };
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidmd_lib::prelude::*;
+
+const DEFAULT_SCIM_SYNC_BYTES: usize = 1024 * 1024 * 32;
 
 #[utoipa::path(
     get,
@@ -271,14 +273,25 @@ async fn scim_sync_post(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
-    Json(changes): Json<ScimSyncRequest>,
-) -> Result<Json<()>, WebError> {
-    state
-        .qe_w_ref
-        .handle_scim_sync_apply(client_auth_info, changes, kopid.eventid)
-        .await
-        .map(Json::from)
-        .map_err(WebError::from)
+    payload: Result<Json<ScimSyncRequest>, JsonRejection>,
+) -> Response {
+    match payload {
+        Ok(Json(changes)) => {
+            let res = state
+                .qe_w_ref
+                .handle_scim_sync_apply(client_auth_info, changes, kopid.eventid)
+                .await;
+
+            match res {
+                Ok(data) => Json::from(data).into_response(),
+                Err(err) => WebError::from(err).into_response(),
+            }
+        }
+        Err(rejection) => {
+            error!(?rejection, "Unable to process JSON");
+            rejection.into_response()
+        }
+    }
 }
 
 #[utoipa::path(
@@ -473,6 +486,11 @@ pub fn route_setup() -> Router<ServerState> {
         //
         //                            POST                   Send a sync update
         //
-        .route("/scim/v1/Sync", post(scim_sync_post).get(scim_sync_get))
+        .route(
+            "/scim/v1/Sync",
+            post(scim_sync_post)
+                .layer(DefaultBodyLimit::max(DEFAULT_SCIM_SYNC_BYTES))
+                .get(scim_sync_get),
+        )
         .route("/scim/v1/Sink", get(scim_sink_get)) // skip_route_check
 }

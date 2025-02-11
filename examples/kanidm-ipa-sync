@@ -17,8 +17,9 @@ sync_token = "eyJhb..."
 # server in the IPA topology rather than via a load balancer or dns srv records. This
 # is to prevent replication conflicts and issues due to how 389-ds content sync works.
 ipa_uri = "ldaps://specific-server.ipa.dev.kanidm.com"
-# Path to the IPA CA certificate in PEM format.
-ipa_ca = "/path/to/kanidm-ipa-ca.pem"
+# Path to the IPA CA certificate in PEM format. This can be found on an IPA server
+# in the file `/etc/ipa/ca.crt`
+ipa_ca = "/path/to/ipa-ca.pem"
 # The DN of an account with content sync rights. By default cn=Directory Manager has
 # this access.
 ipa_sync_dn = "cn=Directory Manager"

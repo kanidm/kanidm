@@ -162,7 +162,7 @@ impl PersonOpt {
                 }
                 PersonPosix::SetPassword(aopt) => {
                     let client = aopt.copt.to_client(OpType::Write).await;
-                    let password = match password_prompt("Enter new posix (sudo) password: ") {
+                    let password = match password_prompt("Enter new posix (sudo) password") {
                         Some(v) => v,
                         None => {
                             println!("Passwords do not match");
@@ -238,6 +238,7 @@ impl PersonOpt {
                             aopt.aopts.account_id.as_str(),
                             Some(ScimEntryGetQuery {
                                 attributes: Some(vec![Attribute::SshPublicKey]),
+                                ..Default::default()
                             }),
                         )
                         .await
@@ -1280,6 +1281,11 @@ fn display_warnings(warnings: &[CURegWarning]) {
             }
             CURegWarning::Unsatisfiable => {
                 println!("Account policy is unsatisfiable. Contact your administrator.");
+            }
+            CURegWarning::WebauthnUserVerificationRequired => {
+                println!(
+                    "The passkey you attempted to register did not provide user verification, please ensure a PIN or equivalent is set."
+                );
             }
         }
     }

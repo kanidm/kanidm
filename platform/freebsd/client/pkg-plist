@@ -1,0 +1,13 @@
+bin/kanidm
+bin/kanidm-unix
+bin/kanidm_ssh_authorizedkeys
+bin/kanidm_ssh_authorizedkeys_direct
+lib/nss_kanidm.so.1
+lib/libpam_kanidm.so
+libexec/kanidm_unixd
+libexec/kanidm_unixd_tasks
+@dir %%ETCDIR%%
+@dir /var/lib
+@dir(_kanidm_unixd,_kanidm_unixd,750) /var/cache/kanidm-unixd
+@dir(_kanidm_unixd,_kanidm_unixd,750) /var/lib/kanidm-unixd
+@dir(_kanidm_unixd,_kanidm_unixd,755) /var/run/kanidm-unixd

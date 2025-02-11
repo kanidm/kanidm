@@ -17,7 +17,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::Parser;
-use kanidm_unix_common::client::call_daemon;
+use kanidm_unix_common::client::DaemonClient;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
@@ -66,21 +66,37 @@ async fn main() -> ExitCode {
         );
         return ExitCode::FAILURE;
     }
+
+    let mut daemon_client =
+        match DaemonClient::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout).await {
+            Ok(dc) => dc,
+            Err(err) => {
+                error!(
+                    "Failed to connect to resolver at {}-> {:?}",
+                    cfg.sock_path.as_str(),
+                    err
+                );
+                return ExitCode::FAILURE;
+            }
+        };
+
     // safe because we've already thrown an error if it's not there
     let req = ClientRequest::SshKey(opt.account_id.unwrap_or("".to_string()));
 
-    match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
-        Ok(r) => match r {
-            ClientResponse::SshKeys(sk) => sk.iter().for_each(|k| {
+    match daemon_client.call(&req, None).await {
+        Ok(ClientResponse::SshKeys(sk)) => {
+            sk.iter().for_each(|k| {
                 println!("{}", k);
-            }),
-            _ => {
-                error!("Error calling kanidm_unixd: unexpected response -> {:?}", r);
-            }
-        },
+            });
+            ExitCode::SUCCESS
+        }
+        Ok(r) => {
+            error!("Error calling kanidm_unixd: unexpected response -> {:?}", r);
+            ExitCode::FAILURE
+        }
         Err(e) => {
             error!("Error calling kanidm_unixd -> {:?}", e);
+            ExitCode::FAILURE
         }
-    };
-    ExitCode::SUCCESS
+    }
 }

@@ -53,6 +53,7 @@ use tokio::{
 use tokio_openssl::SslStream;
 use tower::Service;
 use tower_http::{services::ServeDir, trace::TraceLayer};
+use url::Url;
 use uuid::Uuid;
 
 use std::io::ErrorKind;
@@ -62,16 +63,17 @@ use std::{net::SocketAddr, str::FromStr};
 
 #[derive(Clone)]
 pub struct ServerState {
-    pub status_ref: &'static StatusActor,
-    pub qe_w_ref: &'static QueryServerWriteV1,
-    pub qe_r_ref: &'static QueryServerReadV1,
+    pub(crate) status_ref: &'static StatusActor,
+    pub(crate) qe_w_ref: &'static QueryServerWriteV1,
+    pub(crate) qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub jws_signer: JwsHs256Signer,
+    pub(crate) jws_signer: JwsHs256Signer,
     pub(crate) trust_x_forward_for: bool,
-    pub csp_header: HeaderValue,
-    pub domain: String,
+    pub(crate) csp_header: HeaderValue,
+    pub(crate) origin: Url,
+    pub(crate) domain: String,
     // This is set to true by default, and is only false on integration tests.
-    pub secure_cookies: bool,
+    pub(crate) secure_cookies: bool,
 }
 
 impl ServerState {
@@ -129,7 +131,7 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
 
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
         // let's set up the list of js module hashes
-        let pkg_path = env!("KANIDM_HTMX_UI_PKG_PATH").to_owned();
+        let pkg_path = env!("KANIDM_SERVER_UI_PKG_PATH").to_owned();
 
         let filelist = [
             "external/bootstrap.bundle.min.js",
@@ -138,11 +140,13 @@ pub(crate) fn get_js_files(role: ServerRole) -> Result<Vec<JavaScriptFile>, ()> 
             "external/base64.js",
             "modules/cred_update.mjs",
             "pkhtml.js",
+            "style.js",
         ];
 
         for filepath in filelist {
             match generate_integrity_hash(format!("{}/{}", pkg_path, filepath,)) {
                 Ok(hash) => {
+                    debug!("Integrity hash for {}: {}", filepath, hash);
                     let js = JavaScriptFile { hash };
                     all_pages.push(js)
                 }
@@ -209,6 +213,12 @@ pub async fn create_https_server(
 
     let trust_x_forward_for = config.trust_x_forward_for;
 
+    let origin = Url::parse(&config.origin)
+        // Should be impossible!
+        .map_err(|err| {
+            error!(?err, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", config.origin);
+        })?;
+
     let state = ServerState {
         status_ref,
         qe_w_ref,
@@ -216,6 +226,7 @@ pub async fn create_https_server(
         jws_signer,
         trust_x_forward_for,
         csp_header,
+        origin,
         domain: config.domain.clone(),
         secure_cookies: config.integration_test_config.is_none(),
     };
@@ -240,16 +251,20 @@ pub async fn create_https_server(
         .merge(oauth2::route_setup(state.clone()))
         .merge(v1_scim::route_setup())
         .merge(v1::route_setup(state.clone()))
-        .route("/robots.txt", get(generic::robots_txt));
+        .route("/robots.txt", get(generic::robots_txt))
+        .route(
+            views::constants::Urls::WellKnownChangePassword.as_ref(),
+            get(generic::redirect_to_update_credentials),
+        );
 
     let app = match config.role {
         ServerRole::WriteReplicaNoUI => app,
         ServerRole::WriteReplica | ServerRole::ReadOnlyReplica => {
-            let pkg_path = PathBuf::from(env!("KANIDM_HTMX_UI_PKG_PATH"));
+            let pkg_path = PathBuf::from(env!("KANIDM_SERVER_UI_PKG_PATH"));
             if !pkg_path.exists() {
                 eprintln!(
                     "Couldn't find htmx UI package path: ({}), quitting.",
-                    env!("KANIDM_HTMX_UI_PKG_PATH")
+                    env!("KANIDM_SERVER_UI_PKG_PATH")
                 );
                 std::process::exit(1);
             }

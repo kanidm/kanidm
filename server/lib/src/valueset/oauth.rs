@@ -279,6 +279,7 @@ impl ValueSetT for ValueSetOauthScopeMap {
         match value {
             Value::OauthScopeMap(u, m) => {
                 match self.map.entry(u) {
+                    // We are going to assume that a vacant entry will not be set to empty.
                     BTreeEntry::Vacant(e) => {
                         e.insert(m);
                         Ok(true)
@@ -289,7 +290,12 @@ impl ValueSetT for ValueSetOauthScopeMap {
                     // associated map state. So by always replacing on a present, we are true to
                     // the intent of the api.
                     BTreeEntry::Occupied(mut e) => {
-                        e.insert(m);
+                        if m.is_empty() {
+                            e.remove();
+                        } else {
+                            e.insert(m);
+                        }
+
                         Ok(true)
                     }
                 }

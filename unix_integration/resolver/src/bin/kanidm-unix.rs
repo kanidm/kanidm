@@ -16,16 +16,54 @@ extern crate tracing;
 use std::process::ExitCode;
 
 use clap::Parser;
-use kanidm_unix_common::client::call_daemon;
+use kanidm_unix_common::client::DaemonClient;
 use kanidm_unix_common::constants::DEFAULT_CONFIG_PATH;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{
     ClientRequest, ClientResponse, PamAuthRequest, PamAuthResponse, PamServiceInfo,
 };
-// use std::io;
 use std::path::PathBuf;
 
 include!("../opt/tool.rs");
+
+macro_rules! setup_client {
+    () => {{
+        let Ok(cfg) =
+            KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
+        else {
+            error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
+            return ExitCode::FAILURE;
+        };
+
+        debug!("Connecting to resolver ...");
+
+        debug!(
+            "Using kanidm_unixd socket path: {:?}",
+            cfg.sock_path.as_str()
+        );
+
+        // see if the kanidm_unixd socket exists and quit if not
+        if !PathBuf::from(&cfg.sock_path).exists() {
+            error!(
+                "Failed to find unix socket at {}, quitting!",
+                cfg.sock_path.as_str()
+            );
+            return ExitCode::FAILURE;
+        }
+
+        match DaemonClient::new(cfg.sock_path.as_str(), cfg.unix_sock_timeout).await {
+            Ok(dc) => dc,
+            Err(err) => {
+                error!(
+                    "Failed to connect to resolver at {}-> {:?}",
+                    cfg.sock_path.as_str(),
+                    err
+                );
+                return ExitCode::FAILURE;
+            }
+        }
+    }};
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> ExitCode {
@@ -54,12 +92,7 @@ async fn main() -> ExitCode {
         } => {
             debug!("Starting PAM auth tester tool ...");
 
-            let Ok(cfg) =
-                KanidmUnixdConfig::new().read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-            else {
-                error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-                return ExitCode::FAILURE;
-            };
+            let mut daemon_client = setup_client!();
 
             info!("Sending request for user {}", &account_id);
 
@@ -72,7 +105,7 @@ async fn main() -> ExitCode {
                 },
             };
             loop {
-                match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
+                match daemon_client.call(&req, None).await {
                     Ok(r) => match r {
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Success) => {
                             println!("auth success!");
@@ -90,7 +123,7 @@ async fn main() -> ExitCode {
                         ClientResponse::PamAuthenticateStepResponse(PamAuthResponse::Password) => {
                             // Prompt for and get the password
                             let cred = match dialoguer::Password::new()
-                                .with_prompt("Enter Unix password: ")
+                                .with_prompt("Enter Unix password")
                                 .interact()
                             {
                                 Ok(p) => p,
@@ -133,7 +166,7 @@ async fn main() -> ExitCode {
 
             let sereq = ClientRequest::PamAccountAllowed(account_id);
 
-            match call_daemon(cfg.sock_path.as_str(), sereq, cfg.unix_sock_timeout).await {
+            match daemon_client.call(&sereq, None).await {
                 Ok(r) => match r {
                     ClientResponse::PamStatus(Some(true)) => {
                         println!("account success!");
@@ -158,15 +191,7 @@ async fn main() -> ExitCode {
         KanidmUnixOpt::CacheClear { debug: _, really } => {
             debug!("Starting cache clear tool ...");
 
-            let cfg = match KanidmUnixdConfig::new()
-                .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-            {
-                Ok(c) => c,
-                Err(_e) => {
-                    error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut daemon_client = setup_client!();
 
             if !really {
                 error!("Are you sure you want to proceed? If so use --really");
@@ -175,7 +200,7 @@ async fn main() -> ExitCode {
 
             let req = ClientRequest::ClearCache;
 
-            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
+            match daemon_client.call(&req, None).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -192,19 +217,11 @@ async fn main() -> ExitCode {
         KanidmUnixOpt::CacheInvalidate { debug: _ } => {
             debug!("Starting cache invalidate tool ...");
 
-            let cfg = match KanidmUnixdConfig::new()
-                .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-            {
-                Ok(c) => c,
-                Err(_e) => {
-                    error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-                    return ExitCode::FAILURE;
-                }
-            };
+            let mut daemon_client = setup_client!();
 
             let req = ClientRequest::InvalidateCache;
 
-            match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
+            match daemon_client.call(&req, None).await {
                 Ok(r) => match r {
                     ClientResponse::Ok => info!("success"),
                     _ => {
@@ -221,43 +238,26 @@ async fn main() -> ExitCode {
         KanidmUnixOpt::Status { debug: _ } => {
             trace!("Starting cache status tool ...");
 
-            let cfg = match KanidmUnixdConfig::new()
-                .read_options_from_optional_config(DEFAULT_CONFIG_PATH)
-            {
-                Ok(c) => c,
-                Err(_e) => {
-                    error!("Failed to parse {}", DEFAULT_CONFIG_PATH);
-                    return ExitCode::FAILURE;
-                }
-            };
-
+            let mut daemon_client = setup_client!();
             let req = ClientRequest::Status;
 
-            let spath = PathBuf::from(cfg.sock_path.as_str());
-            if !spath.exists() {
-                error!(
-                    "kanidm_unixd socket {} does not exist - is the service running?",
-                    cfg.sock_path
-                )
-            } else {
-                match call_daemon(cfg.sock_path.as_str(), req, cfg.unix_sock_timeout).await {
-                    Ok(r) => match r {
-                        ClientResponse::ProviderStatus(results) => {
-                            for provider in results {
-                                println!(
-                                    "{}: {}",
-                                    provider.name,
-                                    if provider.online { "online" } else { "offline" }
-                                );
-                            }
+            match daemon_client.call(&req, None).await {
+                Ok(r) => match r {
+                    ClientResponse::ProviderStatus(results) => {
+                        for provider in results {
+                            println!(
+                                "{}: {}",
+                                provider.name,
+                                if provider.online { "online" } else { "offline" }
+                            );
                         }
-                        _ => {
-                            error!("Error: unexpected response -> {:?}", r);
-                        }
-                    },
-                    Err(e) => {
-                        error!("Error -> {:?}", e);
                     }
+                    _ => {
+                        error!("Error: unexpected response -> {:?}", r);
+                    }
+                },
+                Err(e) => {
+                    error!("Error -> {:?}", e);
                 }
             }
             ExitCode::SUCCESS

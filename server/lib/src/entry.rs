@@ -41,12 +41,14 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::repl::entry::EntryChangeState;
 use crate::repl::proto::{ReplEntryV1, ReplIncrementalEntryV1};
+use crate::server::access::AccessEffectivePermission;
 use compact_jwt::JwsEs256Signer;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::ImageValue;
 use kanidm_proto::internal::{
     ConsistencyError, Filter as ProtoFilter, OperationError, SchemaError, UiHint,
 };
+use kanidm_proto::scim_v1::server::ScimEffectiveAccess;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use openssl::ec::EcKey;
@@ -160,6 +162,7 @@ pub struct EntrySealed {
 #[derive(Clone, Debug)]
 pub struct EntryReduced {
     uuid: Uuid,
+    effective_access: Option<Box<AccessEffectivePermission>>,
 }
 
 // One day this is going to be Map<Attribute, ValueSet> - @yaleman
@@ -1117,6 +1120,17 @@ impl Entry<EntryInvalid, EntryCommitted> {
 // Both invalid states can be reached from "entry -> invalidate"
 
 impl Entry<EntryInvalid, EntryNew> {
+    /// This function steps back from EntryInvalid to EntryInit.
+    /// This is a TEST ONLY method and will never be exposed in production.
+    #[cfg(test)]
+    pub fn into_init_new(self) -> Entry<EntryInit, EntryNew> {
+        Entry {
+            valid: EntryInit,
+            state: EntryNew,
+            attrs: self.attrs,
+        }
+    }
+
     /// ⚠️  This function bypasses the schema validation and can panic if uuid is not found.
     /// The entry it creates can never be committed safely or replicated.
     /// This is a TEST ONLY method and will never be exposed in production.
@@ -1771,6 +1785,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         Entry {
             valid: EntryReduced {
                 uuid: self.valid.uuid,
+                effective_access: None,
             },
             state: self.state,
             attrs: self.attrs,
@@ -1782,6 +1797,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub fn reduce_attributes(
         &self,
         allowed_attrs: &BTreeSet<Attribute>,
+        effective_access: Option<Box<AccessEffectivePermission>>,
     ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
         let f_attrs: Map<_, _> = self
@@ -1798,6 +1814,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let valid = EntryReduced {
             uuid: self.valid.uuid,
+            effective_access,
         };
         let state = self.state.clone();
 
@@ -2282,6 +2299,22 @@ impl Entry<EntryReduced, EntryCommitted> {
 
         let attrs = result?;
 
+        let ext_access_check = self.valid.effective_access.as_ref().map(|eff_acc| {
+            let ident = eff_acc.ident;
+            let delete = eff_acc.delete;
+            let search = (&eff_acc.search).into();
+            let modify_present = (&eff_acc.modify_pres).into();
+            let modify_remove = (&eff_acc.modify_rem).into();
+
+            ScimEffectiveAccess {
+                ident,
+                delete,
+                search,
+                modify_present,
+                modify_remove,
+            }
+        });
+
         let id = self.get_uuid();
 
         // Not sure how I want to handle this yet, I think we need some schema changes
@@ -2298,6 +2331,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                 // entry to store some extra metadata.
                 meta: None,
             },
+            ext_access_check,
             attrs,
         })
     }
@@ -2878,6 +2912,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 false
             }
             FilterResolved::AndNot(f, _) => !self.entry_match_no_index_inner(f),
+            FilterResolved::Invalid(_) => false,
         }
     }
 

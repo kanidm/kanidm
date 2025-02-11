@@ -29,11 +29,11 @@ impl Decoder for ClientCodec {
     }
 }
 
-impl Encoder<ClientRequest> for ClientCodec {
+impl Encoder<&ClientRequest> for ClientCodec {
     type Error = IoError;
 
-    fn encode(&mut self, msg: ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let data = serde_json::to_vec(&msg).map_err(|e| {
+    fn encode(&mut self, msg: &ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
+        let data = serde_json::to_vec(msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
             IoError::new(ErrorKind::Other, "JSON encode error")
         })?;
@@ -49,48 +49,63 @@ impl ClientCodec {
     }
 }
 
-async fn call_daemon_inner(
-    path: &str,
-    req: ClientRequest,
-) -> Result<ClientResponse, Box<dyn Error>> {
-    trace!(?path, ?req);
-    let stream = UnixStream::connect(path).await?;
-    trace!("connected");
-
-    let mut reqs = Framed::new(stream, ClientCodec::new());
-
-    reqs.send(req).await?;
-    reqs.flush().await?;
-    trace!("flushed, waiting ...");
-
-    match reqs.next().await {
-        Some(Ok(res)) => {
-            debug!("Response -> {:?}", res);
-            Ok(res)
-        }
-        _ => {
-            error!("Error making request to kanidm_unixd");
-            Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
-        }
-    }
+pub struct DaemonClient {
+    req_stream: Framed<UnixStream, ClientCodec>,
+    default_timeout: u64,
 }
 
-/// Makes a call to kanidm_unixd via a unix socket at `path`
-pub async fn call_daemon(
-    path: &str,
-    req: ClientRequest,
-    timeout: u64,
-) -> Result<ClientResponse, Box<dyn Error>> {
-    let sleep = time::sleep(Duration::from_secs(timeout));
-    tokio::pin!(sleep);
+impl DaemonClient {
+    pub async fn new(path: &str, default_timeout: u64) -> Result<Self, Box<dyn Error>> {
+        trace!(?path);
+        let stream = UnixStream::connect(path).await.inspect_err(|e| {
+            error!(
+                "Unix socket stream setup error while connecting to {} -> {:?}",
+                path, e
+            );
+        })?;
 
-    tokio::select! {
-        _ = &mut sleep => {
-            error!(?timeout, "Timed out making request to kanidm_unixd");
-            Err(Box::new(IoError::new(ErrorKind::Other, "timeout")))
+        let req_stream = Framed::new(stream, ClientCodec::new());
+
+        trace!("connected");
+
+        Ok(DaemonClient {
+            req_stream,
+            default_timeout,
+        })
+    }
+
+    async fn call_inner(&mut self, req: &ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
+        self.req_stream.send(req).await?;
+        self.req_stream.flush().await?;
+        trace!("flushed, waiting ...");
+        match self.req_stream.next().await {
+            Some(Ok(res)) => {
+                debug!("Response -> {:?}", res);
+                Ok(res)
+            }
+            _ => {
+                error!("Error making request to kanidm_unixd");
+                Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
+            }
         }
-        res = call_daemon_inner(path, req) => {
-            res
+    }
+
+    pub async fn call(
+        &mut self,
+        req: &ClientRequest,
+        timeout: Option<u64>,
+    ) -> Result<ClientResponse, Box<dyn Error>> {
+        let sleep = time::sleep(Duration::from_secs(timeout.unwrap_or(self.default_timeout)));
+        tokio::pin!(sleep);
+
+        tokio::select! {
+            _ = &mut sleep => {
+                error!(?timeout, "Timed out making request to kanidm_unixd");
+                Err(Box::new(IoError::new(ErrorKind::Other, "timeout")))
+            }
+            res = self.call_inner(req) => {
+                res
+            }
         }
     }
 }

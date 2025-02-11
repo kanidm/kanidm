@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 pub(crate) enum ProfileMenuItems {
     UserProfile,
     Credentials,
+    EnrolDevice,
     UnixPassword,
 }
 
@@ -20,15 +21,16 @@ impl std::fmt::Display for UiMessage {
     }
 }
 
-#[allow(dead_code)]
 pub(crate) enum Urls {
     Apps,
     CredReset,
+    EnrolDevice,
     Profile,
     UpdateCredentials,
     Oauth2Resume,
     Login,
     Ui,
+    WellKnownChangePassword,
 }
 
 impl AsRef<str> for Urls {
@@ -36,11 +38,13 @@ impl AsRef<str> for Urls {
         match self {
             Self::Apps => "/ui/apps",
             Self::CredReset => "/ui/reset",
+            Self::EnrolDevice => "/ui/enrol",
             Self::Profile => "/ui/profile",
             Self::UpdateCredentials => "/ui/update_credentials",
             Self::Oauth2Resume => "/ui/oauth2/resume",
             Self::Login => "/ui/login",
             Self::Ui => "/ui",
+            Self::WellKnownChangePassword => "/.well-known/change-password",
         }
     }
 }

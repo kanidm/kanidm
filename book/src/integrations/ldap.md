@@ -145,7 +145,8 @@ with a dn of `dn=token` and provide the api token in the password.
 > [!NOTE]
 >
 > The `dn=token` keyword is guaranteed to not be used by any other entry, which is why it was chosen
-> as the keyword to initiate api token binds.
+> as the keyword to initiate api token binds. Additionally it is not required, leaving the field empty
+> will fall back to the service-account if a "password" is provided
 
 ```bash
 ldapwhoami -H ldaps://URL -x -D "dn=token" -w "TOKEN"
@@ -234,6 +235,7 @@ ldapwhoami ... -x -D '22a65b6c-80c8-4e1a-9b76-3f3afdff8400'
 ldapwhoami ... -x -D 'spn=test1@idm.example.com,dc=idm,dc=example,dc=com'
 ldapwhoami ... -x -D 'name=test1,dc=idm,dc=example,dc=com'
 ```
+<sub>in fact, the key of the bind isn't used at all so `googoogaaga=test1` is entirely valid</sub> ;)
 
 ## Troubleshooting
 

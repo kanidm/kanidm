@@ -114,3 +114,7 @@ When a service like sudo, sshd, su, etc. wants to authenticate someone, it opens
 that service, then performs authentication according to the modules defined in the pam.d config. For
 example, if you run `ls -al /etc/pam.d /usr/etc/pam.d` in SUSE, you can see the services and their
 respective pam.d config.
+
+## Test coverage
+
+We're trying to regularly get coverage reports into [Coveralls](https://coveralls.io/github/kanidm/kanidm), you can run the local testing with `make coverage` once you've installed [cargo-tarpaulin](https://crates.io/crates/cargo-tarpaulin).

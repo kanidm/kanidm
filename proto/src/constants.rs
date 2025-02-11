@@ -30,7 +30,7 @@ pub const VALID_IMAGE_UPLOAD_CONTENT_TYPES: [&str; 5] = [
 pub const APPLICATION_JSON: &str = "application/json";
 
 /// The "system" path for Kanidm client config
-pub const DEFAULT_CLIENT_CONFIG_PATH: &str = "/etc/kanidm/config";
+pub const DEFAULT_CLIENT_CONFIG_PATH: &str = env!("KANIDM_CLIENT_CONFIG_PATH");
 /// The user-owned path for Kanidm client config
 pub const DEFAULT_CLIENT_CONFIG_PATH_HOME: &str = "~/.config/kanidm";
 
@@ -89,6 +89,7 @@ pub const ATTR_DESCRIPTION: &str = "description";
 pub const ATTR_DIRECTMEMBEROF: &str = "directmemberof";
 pub const ATTR_DISPLAYNAME: &str = "displayname";
 pub const ATTR_DN: &str = "dn";
+pub const ATTR_DOMAIN_ALLOW_EASTER_EGGS: &str = "domain_allow_easter_eggs";
 pub const ATTR_DOMAIN_DEVELOPMENT_TAINT: &str = "domain_development_taint";
 pub const ATTR_DOMAIN_DISPLAY_NAME: &str = "domain_display_name";
 pub const ATTR_DOMAIN_LDAP_BASEDN: &str = "domain_ldap_basedn";
@@ -218,6 +219,7 @@ pub const ATTR_ALLOW_PRIMARY_CRED_FALLBACK: &str = "allow_primary_cred_fallback"
 
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
+pub const OAUTH2_SCOPE_SSH_PUBLICKEYS: &str = "ssh_publickeys";
 pub const OAUTH2_SCOPE_OPENID: &str = "openid";
 pub const OAUTH2_SCOPE_READ: &str = "read";
 pub const OAUTH2_SCOPE_SUPPLEMENT: &str = "supplement";

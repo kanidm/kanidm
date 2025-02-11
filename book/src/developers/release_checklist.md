@@ -3,57 +3,58 @@
 ## Pre-Reqs
 
 ```bash
-cargo install cargo-audit
-cargo install cargo-outdated
-cargo install cargo-udeps
-cargo install cargo-machete
+cargo install  --force \
+      cargo-audit \
+      cargo-outdated \
+      cargo-udeps \
+      cargo-machete
 ```
 
 ## Pre Release Check List
 
 ### Start a release
 
-- [ ] git checkout -b YYYYMMDD-pre-release
+- [ ] `git checkout -b "$(date +%Y%m%d)-pre-release"`
 
 ### Cargo Tasks
 
 - [ ] Update MSRV if applicable
-- [ ] cargo update
+- [ ] `cargo update`
 - [ ] `RUSTC_BOOTSTRAP=1 cargo udeps`
-- [ ] `cargo machete`
-- [ ] cargo outdated -R
-- [ ] cargo audit
-- [ ] cargo test
+- [ ] `cargo machete --with-metadata`
+- [ ] `cargo outdated -R`
+- [ ] `cargo audit`
+- [ ] `cargo test`
 
 - [ ] setup a local instance and run orca (TBD)
 - [ ] store a copy an an example db (TBD)
 
 ### Code Changes
 
-- [ ] upgrade crypto policy values if required
+- [ ] upgrade crypto policy values if required (see `libs/crypto/src/lib.rs` -> `CryptoPolicy`)
 - [ ] check for breaking db entry changes.
 
 ### Administration
 
 - [ ] Update `RELEASE_NOTES.md`
 - [ ] Update `README.md`
-- [ ] cargo test
-- [ ] git commit -a -m "Release Notes"
-- [ ] git push origin YYYYMMDD-pre-release
+- [ ] `cargo test`
+- [ ] `git commit -a -m 'chore: Release Notes'`
+- [ ] `git push origin "$(date +%Y%m%d)-pre-release"`
 - [ ] Merge PR
 
 ### Git Management
 
-- [ ] git checkout master
-- [ ] git pull
+- [ ] `git checkout master`
+- [ ] `git pull`
 - [ ] git checkout -b 1.x.0 (Note no v to prevent ref conflict)
 - [ ] update version to set pre tag in ./Cargo.toml
-- [ ] git commit -m "Release 1.x.0-pre"
-- [ ] git tag v1.x.0-pre
+- [ ] `git commit -m "Release $(cargo metadata --format-version 1 | jq '.packages[] | select(.name=="kanidm_proto") | .version')-pre"`
+- [ ] `git tag v$(cargo metadata --format-version 1 | jq '.packages[] | select(.name=="kanidm_proto") | .version')-pre`
 
 - [ ] Final inspect of the branch
 
-- [ ] git push origin 1.x.0 --tags
+- [ ] `git push origin "$(cargo metadata --format-version 1 | jq '.packages[] | select(.name=="kanidm_proto") | .version')" --tags`
 
 - [ ] github -> Ensure release branch is protected
 
@@ -106,4 +107,3 @@ cargo install cargo-machete
 ### Distro
 
 - [ ] vendor and release to build.opensuse.org
-

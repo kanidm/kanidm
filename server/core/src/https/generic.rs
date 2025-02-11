@@ -1,10 +1,11 @@
 use axum::extract::State;
 use axum::http::header::CONTENT_TYPE;
-use axum::response::IntoResponse;
+use axum::response::{IntoResponse, Redirect};
 use axum::{Extension, Json};
 use kanidmd_lib::status::StatusRequestEvent;
 
 use super::middleware::KOpId;
+use super::views::constants::Urls;
 use super::ServerState;
 
 #[utoipa::path(
@@ -49,4 +50,16 @@ pub async fn robots_txt() -> impl IntoResponse {
 "#,
         ),
     )
+}
+
+#[utoipa::path(
+    get,
+    path = Urls::WellKnownChangePassword.as_ref(),
+    responses(
+        (status = 303, description = "See other"),
+    ),
+    tag = "ui",
+)]
+pub async fn redirect_to_update_credentials() -> impl IntoResponse {
+    Redirect::to(Urls::UpdateCredentials.as_ref())
 }

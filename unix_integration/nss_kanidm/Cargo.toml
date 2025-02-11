@@ -12,8 +12,8 @@ repository = { workspace = true }
 
 [lib]
 name = "nss_kanidm"
-crate-type = [ "cdylib" ]
-path =  "src/lib.rs"
+crate-type = ["cdylib"]
+path = "src/lib.rs"
 
 [dependencies]
 kanidm_unix_common = { workspace = true }
@@ -21,8 +21,10 @@ kanidm_unix_common = { workspace = true }
 [target.'cfg(not(target_family = "windows"))'.dependencies]
 libnss = { workspace = true }
 libc = { workspace = true }
-paste = { workspace = true }
 lazy_static = { workspace = true }
+
+[target."cfg(target_os = \"freebsd\")".build-dependencies]
+cc = "^1.2.10"
 
 ## Debian packaging
 # The base metadata does **not** work to build a functioning package!
@@ -34,15 +36,27 @@ depends = ""
 section = "network"
 priority = "optional"
 assets = [
-	# Empty on purpose
+    # Empty on purpose
 ]
 
 [package.metadata.deb.variants.aarch64-unknown-linux-gnu]
 merge-assets.append = [
-    [ "target/release/libnss_kanidm.so", "usr/lib/aarch64-linux-gnu/libnss_kanidm.so.2", "644"],
+    [
+        "target/release/libnss_kanidm.so",
+        "usr/lib/aarch64-linux-gnu/libnss_kanidm.so.2",
+        "644",
+    ],
 ]
 
 [package.metadata.deb.variants.x86_64-unknown-linux-gnu]
 merge-assets.append = [
-    [ "target/release/libnss_kanidm.so", "usr/lib/x86_64-linux-gnu/libnss_kanidm.so.2", "644"],
+    [
+        "target/release/libnss_kanidm.so",
+        "usr/lib/x86_64-linux-gnu/libnss_kanidm.so.2",
+        "644",
+    ],
 ]
+
+
+[package.metadata.cargo-machete]
+ignored = ["cc", "lazy_static"]

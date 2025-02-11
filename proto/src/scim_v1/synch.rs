@@ -119,7 +119,12 @@ pub struct ScimSyncPersonBuilder {
 }
 
 impl ScimSyncPerson {
-    pub fn builder(id: Uuid, name: String, displayname: String) -> ScimSyncPersonBuilder {
+    pub fn builder(
+        id: Uuid,
+        external_id: String,
+        name: String,
+        displayname: String,
+    ) -> ScimSyncPersonBuilder {
         ScimSyncPersonBuilder {
             inner: ScimSyncPerson {
                 entry: ScimEntryHeader {
@@ -128,7 +133,7 @@ impl ScimSyncPerson {
                         SCIM_SCHEMA_SYNC_PERSON.to_string(),
                     ],
                     id,
-                    external_id: None,
+                    external_id: Some(external_id),
                     meta: None,
                 },
                 name,
@@ -205,11 +210,6 @@ impl ScimSyncPersonBuilder {
         self
     }
 
-    pub fn set_external_id(mut self, external_id: Option<String>) -> Self {
-        self.inner.entry.external_id = external_id;
-        self
-    }
-
     pub fn build(self) -> ScimSyncPerson {
         self.inner
     }
@@ -220,6 +220,7 @@ pub struct ScimExternalMember {
     pub external_id: String,
 }
 
+#[skip_serializing_none]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
 pub struct ScimSyncGroup {
@@ -229,7 +230,8 @@ pub struct ScimSyncGroup {
     pub name: String,
     pub description: Option<String>,
     pub gidnumber: Option<u32>,
-    pub members: Vec<ScimExternalMember>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub member: Vec<ScimExternalMember>,
 }
 
 impl TryInto<ScimEntry> for ScimSyncGroup {
@@ -247,19 +249,19 @@ pub struct ScimSyncGroupBuilder {
 }
 
 impl ScimSyncGroup {
-    pub fn builder(name: String, id: Uuid) -> ScimSyncGroupBuilder {
+    pub fn builder(id: Uuid, external_id: String, name: String) -> ScimSyncGroupBuilder {
         ScimSyncGroupBuilder {
             inner: ScimSyncGroup {
                 entry: ScimEntryHeader {
                     schemas: vec![SCIM_SCHEMA_SYNC_GROUP.to_string()],
                     id,
-                    external_id: None,
+                    external_id: Some(external_id),
                     meta: None,
                 },
                 name,
                 description: None,
                 gidnumber: None,
-                members: Vec::with_capacity(0),
+                member: Vec::with_capacity(0),
             },
         }
     }
@@ -288,14 +290,9 @@ impl ScimSyncGroupBuilder {
     where
         I: Iterator<Item = String>,
     {
-        self.inner.members = member_iter
+        self.inner.member = member_iter
             .map(|external_id| ScimExternalMember { external_id })
             .collect();
-        self
-    }
-
-    pub fn set_external_id(mut self, external_id: Option<String>) -> Self {
-        self.inner.entry.external_id = external_id;
         self
     }
 

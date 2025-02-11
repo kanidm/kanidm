@@ -37,9 +37,13 @@ lazy_static! {
         Attribute::Image,
         // modification of account policy values for dyngroup.
         Attribute::AuthSessionExpiry,
-        Attribute::PrivilegeExpiry,
+        Attribute::AuthPasswordMinimumLength,
         Attribute::CredentialTypeMinimum,
+        Attribute::PrivilegeExpiry,
         Attribute::WebauthnAttestationCaList,
+        Attribute::LimitSearchMaxResults,
+        Attribute::LimitSearchMaxFilterTest,
+        Attribute::AllowPrimaryCredFallback,
         ];
 
         let mut m = HashSet::with_capacity(attrs.len());

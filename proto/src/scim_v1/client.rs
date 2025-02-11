@@ -1,4 +1,5 @@
 //! These are types that a client will send to the server.
+use super::ScimEntryGetQuery;
 use super::ScimOauth2ClaimMapJoinChar;
 use crate::attribute::Attribute;
 use serde::{Deserialize, Serialize};
@@ -89,10 +90,17 @@ pub struct ScimEntryPutKanidm {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct ScimStrings(#[serde_as(as = "OneOrMany<_, PreferMany>")] pub Vec<String>);
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct ScimEntryPutGeneric {
     // id is only used to target the entry in question
     pub id: Uuid,
+
+    #[serde(flatten)]
+    /// Non-standard extension - allow query options to be set in a put request. This
+    /// is because a put request also returns the entry state post put, so we want
+    /// to allow putters to adjust and control what is returned here.
+    pub query: ScimEntryGetQuery,
+
     // external_id can't be set by put
     // meta is skipped on put
     // Schemas are decoded as part of "attrs".
@@ -119,6 +127,10 @@ impl TryFrom<ScimEntryPutKanidm> for ScimEntryPutGeneric {
             })
             .collect::<Result<_, _>>()?;
 
-        Ok(ScimEntryPutGeneric { id, attrs })
+        Ok(ScimEntryPutGeneric {
+            id,
+            attrs,
+            query: Default::default(),
+        })
     }
 }

@@ -3,9 +3,7 @@ use crate::https::{
     middleware::KOpId,
     ServerState,
 };
-use kanidmd_lib::idm::oauth2::{
-    AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse, Oauth2Error,
-};
+use kanidmd_lib::idm::oauth2::{AuthorisationRequest, AuthoriseResponse, Oauth2Error};
 use kanidmd_lib::prelude::*;
 
 use kanidm_proto::internal::COOKIE_OAUTH2_REQ;
@@ -26,7 +24,6 @@ use axum_extra::extract::cookie::{CookieJar, SameSite};
 use axum_htmx::HX_REDIRECT;
 use serde::Deserialize;
 
-use super::constants::Urls;
 use super::login::{LoginDisplayCtx, Oauth2Ctx};
 use super::{cookies, UnrecoverableErrorView};
 
@@ -96,14 +93,7 @@ async fn oauth2_auth_req(
 ) -> Response {
     // No matter what, we always clear the stored oauth2 cookie to prevent
     // ui loops
-    let jar = if let Some(authreq_cookie) = jar.get(COOKIE_OAUTH2_REQ) {
-        let mut authreq_cookie = authreq_cookie.clone();
-        authreq_cookie.make_removal();
-        authreq_cookie.set_path(Urls::Ui.as_ref());
-        jar.add(authreq_cookie)
-    } else {
-        jar
-    };
+    let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &state);
 
     // If the auth_req was cross-signed, old, or just bad, error. But we have *cleared* it
     // from the cookie which means we won't see it again.
@@ -112,8 +102,9 @@ async fn oauth2_auth_req(
         return (
             jar,
             UnrecoverableErrorView {
-                err_code: OperationError::InvalidState,
+                err_code: OperationError::UI0003InvalidOauth2Resume,
                 operation_id: kopid.eventid,
+                domain_info,
             },
         )
             .into_response();
@@ -125,16 +116,8 @@ async fn oauth2_auth_req(
         .await;
 
     match res {
-        Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        })) => {
-            redirect_uri
-                .query_pairs_mut()
-                .clear()
-                .append_pair("state", &state)
-                .append_pair("code", &code);
+        Ok(AuthoriseResponse::Permitted(success)) => {
+            let redirect_uri = success.build_redirect_uri();
 
             (
                 jar,
@@ -156,14 +139,17 @@ async fn oauth2_auth_req(
             consent_token,
         }) => {
             // We can just render the form now, the consent token has everything we need.
-            ConsentRequestView {
-                client_name,
-                // scopes,
-                pii_scopes,
-                consent_token,
-                redirect: None,
-            }
-            .into_response()
+            (
+                jar,
+                ConsentRequestView {
+                    client_name,
+                    // scopes,
+                    pii_scopes,
+                    consent_token,
+                    redirect: None,
+                },
+            )
+                .into_response()
         }
 
         Ok(AuthoriseResponse::AuthenticationRequired {
@@ -172,16 +158,19 @@ async fn oauth2_auth_req(
         }) => {
             // Sign the auth req and hide it in our cookie - we'll come back for
             // you later.
-            let maybe_jar =
-                cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req, Urls::Ui.as_ref())
-                    .map(|mut cookie| {
-                        cookie.set_same_site(SameSite::Strict);
-                        jar.add(cookie)
-                    })
-                    .ok_or(OperationError::InvalidSessionState);
+            let maybe_jar = cookies::make_signed(&state, COOKIE_OAUTH2_REQ, &auth_req)
+                .map(|mut cookie| {
+                    cookie.set_same_site(SameSite::Strict);
+                    // Expire at the end of the session.
+                    cookie.set_expires(None);
+                    // Could experiment with this to a shorter value, but session should be enough.
+                    cookie.set_max_age(time::Duration::minutes(15));
+                    jar.clone().add(cookie)
+                })
+                .ok_or(OperationError::InvalidSessionState);
 
             match maybe_jar {
-                Ok(jar) => {
+                Ok(new_jar) => {
                     let display_ctx = LoginDisplayCtx {
                         domain_info,
                         oauth2: Some(Oauth2Ctx { client_name }),
@@ -189,21 +178,28 @@ async fn oauth2_auth_req(
                         error: None,
                     };
 
-                    super::login::view_oauth2_get(jar, display_ctx, login_hint)
+                    super::login::view_oauth2_get(new_jar, display_ctx, login_hint)
                 }
-                Err(err_code) => UnrecoverableErrorView {
-                    err_code,
-                    operation_id: kopid.eventid,
-                }
-                .into_response(),
+                Err(err_code) => (
+                    jar,
+                    UnrecoverableErrorView {
+                        err_code,
+                        operation_id: kopid.eventid,
+                        domain_info,
+                    },
+                )
+                    .into_response(),
             }
         }
         Err(Oauth2Error::AccessDenied) => {
             // If scopes are not available for this account.
-            AccessDeniedView {
-                operation_id: kopid.eventid,
-            }
-            .into_response()
+            (
+                jar,
+                AccessDeniedView {
+                    operation_id: kopid.eventid,
+                },
+            )
+                .into_response()
         }
         /*
         RFC - If the request fails due to a missing, invalid, or mismatching
@@ -222,11 +218,15 @@ async fn oauth2_auth_req(
                 &err_code.to_string()
             );
 
-            UnrecoverableErrorView {
-                err_code: OperationError::InvalidState,
-                operation_id: kopid.eventid,
-            }
-            .into_response()
+            (
+                jar,
+                UnrecoverableErrorView {
+                    err_code: OperationError::InvalidState,
+                    operation_id: kopid.eventid,
+                    domain_info,
+                },
+            )
+                .into_response()
         }
     }
 }
@@ -240,44 +240,37 @@ pub struct ConsentForm {
 }
 
 pub async fn view_consent_post(
-    State(state): State<ServerState>,
+    State(server_state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(consent_form): Form<ConsentForm>,
 ) -> Result<Response, UnrecoverableErrorView> {
-    let res = state
+    let res = server_state
         .qe_w_ref
         .handle_oauth2_authorise_permit(client_auth_info, consent_form.consent_token, kopid.eventid)
         .await;
 
     match res {
-        Ok(AuthorisePermitSuccess {
-            mut redirect_uri,
-            state,
-            code,
-        }) => {
-            let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ);
+        Ok(success) => {
+            let jar = cookies::destroy(jar, COOKIE_OAUTH2_REQ, &server_state);
 
             if let Some(redirect) = consent_form.redirect {
                 Ok((
                     jar,
                     [
-                        (HX_REDIRECT, redirect_uri.as_str().to_string()),
+                        (HX_REDIRECT, success.redirect_uri.as_str().to_string()),
                         (
                             ACCESS_CONTROL_ALLOW_ORIGIN.as_str(),
-                            redirect_uri.origin().ascii_serialization(),
+                            success.redirect_uri.origin().ascii_serialization(),
                         ),
                     ],
                     Redirect::to(&redirect),
                 )
                     .into_response())
             } else {
-                redirect_uri
-                    .query_pairs_mut()
-                    .clear()
-                    .append_pair("state", &state)
-                    .append_pair("code", &code);
+                let redirect_uri = success.build_redirect_uri();
                 Ok((
                     jar,
                     [
@@ -302,6 +295,7 @@ pub async fn view_consent_post(
             Err(UnrecoverableErrorView {
                 err_code: OperationError::InvalidState,
                 operation_id: kopid.eventid,
+                domain_info,
             })
         }
     }

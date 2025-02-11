@@ -1,0 +1,18 @@
+uri = "https://example.com"
+
+# The auth token for the service account
+auth_token = "ABC..."
+
+# default vlan for groups that don't specify one.
+radius_default_vlan = 99
+
+# if the user is in one of these Kanidm groups,
+# then they're allowed to authenticate
+radius_required_groups = ["radius_access_allowed@idm.example.com"]
+
+radius_groups = [{ spn = "radius_access_allowed@idm.example.com", vlan = 10 }]
+
+radius_clients = [
+    { name = "localhost", ipaddr = "127.0.0.1", secret = "testing123" },
+    { name = "docker", ipaddr = "172.17.0.0/16", secret = "testing123" },
+]

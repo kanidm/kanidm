@@ -70,6 +70,31 @@ anything special for Kanidm (or another provider).
 **Note:** some apps automatically append `/.well-known/openid-configuration` to
 the end of an OIDC Discovery URL, so you may need to omit that.
 
+
+<dl>
+<dt>[Webfinger](https://datatracker.ietf.org/doc/html/rfc7033) URL</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
+
+The webfinger URL is implemented for each OpenID client, under its specific endpoint, giving full control to the administrator regarding which to use.
+
+To make this compliant with the standard, it must be made available under the correct [well-known endpoint](https://datatracker.ietf.org/doc/html/rfc7033#section-10.1) (e.g `example.com/.well-known/webfinger`), typically via a reverse proxy or similar. Kanidm doesn't currently provide a mechanism for this URI rewrite.
+
+One example would be dedicating one client as the "primary" or "default" and redirecting all requests to that. Alternatively, source IP or other request metadata could be used to decide which client to forward the request to.
+
+### Caddy
+`Caddyfile`
+```caddy
+# assuming a kanidm service with domain "example.com"
+example.com {
+  redir /.well-known/webfinger https://idm.example.com/oauth2/openid/:client_id:{uri} 307
+}
+```
+**Note:** the `{uri}` is important as it preserves the original request past the redirect.
+
+
 </dd>
 
 <dt>
@@ -229,6 +254,10 @@ kanidm system oauth2 update-scope-map nextcloud nextcloud_users email profile op
 > * **address** - address
 > * **phone** - phone_number, phone_number_verified
 > * **groups** - groups
+>
+> In addition Kanidm supports some vendor specific scopes that can include additional claims.
+>
+> * **ssh_publickeys** - array of ssh_publickey of the user
 
 <!-- this is just to split the templates up -->
 

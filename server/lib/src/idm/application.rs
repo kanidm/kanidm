@@ -134,7 +134,7 @@ impl TryFrom<Vec<Arc<EntrySealedCommitted>>> for LdapApplications {
     }
 }
 
-impl<'a> IdmServerAuthTransaction<'a> {
+impl IdmServerAuthTransaction<'_> {
     pub async fn application_auth_ldap(
         &mut self,
         lae: &LdapApplicationAuthEvent,

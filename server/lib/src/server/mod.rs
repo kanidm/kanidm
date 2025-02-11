@@ -79,6 +79,7 @@ pub struct DomainInfo {
     pub(crate) d_patch_level: u32,
     pub(crate) d_devel_taint: bool,
     pub(crate) d_ldap_allow_unix_pw_bind: bool,
+    pub(crate) d_allow_easter_eggs: bool,
     // In future this should be image reference instead of the image itself.
     d_image: Option<ImageValue>,
 }
@@ -102,6 +103,25 @@ impl DomainInfo {
 
     pub fn has_custom_image(&self) -> bool {
         self.d_image.is_some()
+    }
+
+    pub fn allow_easter_eggs(&self) -> bool {
+        self.d_allow_easter_eggs
+    }
+
+    #[cfg(feature = "test")]
+    pub fn new_test() -> CowCell<Self> {
+        concread::cowcell::CowCell::new(Self {
+            d_uuid: Uuid::new_v4(),
+            d_name: "test domain".to_string(),
+            d_display: "Test Domain".to_string(),
+            d_vers: 1,
+            d_patch_level: 0,
+            d_devel_taint: false,
+            d_ldap_allow_unix_pw_bind: false,
+            d_allow_easter_eggs: false,
+            d_image: None,
+        })
     }
 }
 
@@ -264,7 +284,7 @@ pub trait QueryServerTransaction<'a> {
     fn search_ext(
         &mut self,
         se: &SearchEvent,
-    ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<EntryReducedCommitted>, OperationError> {
         /*
          * This just wraps search, but it's for the external interface
          * so as a result it also reduces the entry set's attributes at
@@ -1526,6 +1546,7 @@ impl QueryServerReadTransaction<'_> {
             filter: f_valid,
             filter_orig: f_intent_valid,
             attrs: r_attrs,
+            effective_access_check: query.ext_access_check,
         };
 
         let mut vs = self.search_ext(&se)?;
@@ -1657,6 +1678,7 @@ impl QueryServer {
             // Automatically derive our current taint mode based on the PRERELEASE setting.
             d_devel_taint: option_env!("KANIDM_PRE_RELEASE").is_some(),
             d_ldap_allow_unix_pw_bind: false,
+            d_allow_easter_eggs: false,
             d_image: None,
         }));
 
@@ -2284,6 +2306,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .get_ava_single_bool(Attribute::DomainDevelopmentTaint)
                 .unwrap_or_default();
 
+        let domain_allow_easter_eggs = domain_info
+            .get_ava_single_bool(Attribute::DomainAllowEasterEggs)
+            // This defaults to false for release versions, and true in development
+            .unwrap_or(option_env!("KANIDM_PRE_RELEASE").is_some());
+
         // We have to set the domain version here so that features which check for it
         // will now see it's been increased. This also prevents recursion during reloads
         // inside of a domain migration.
@@ -2293,6 +2320,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         mut_d_info.d_vers = domain_info_version;
         mut_d_info.d_patch_level = domain_info_patch_level;
         mut_d_info.d_devel_taint = domain_info_devel_taint;
+        mut_d_info.d_allow_easter_eggs = domain_allow_easter_eggs;
 
         // We must both be at the correct domain version *and* the correct patch level. If we are
         // not, then we only proceed to migrate *if* our server boot phase is correct.
@@ -2339,6 +2367,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         if previous_version <= DOMAIN_LEVEL_9 && domain_info_version >= DOMAIN_LEVEL_10 {
             self.migrate_domain_9_to_10()?;
+        }
+
+        if previous_version <= DOMAIN_LEVEL_10 && domain_info_version >= DOMAIN_LEVEL_11 {
+            self.migrate_domain_10_to_11()?;
         }
 
         // This is here to catch when we increase domain levels but didn't create the migration
@@ -2612,6 +2644,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 mod tests {
     use crate::prelude::*;
     use kanidm_proto::scim_v1::server::ScimReference;
+    use kanidm_proto::scim_v1::ScimEntryGetQuery;
 
     #[qs_test]
     async fn test_name_to_uuid(server: &QueryServer) {
@@ -3018,5 +3051,48 @@ mod tests {
                 panic!("expected EntryReferences, actual {:?}", members_scim);
             }
         }
+    }
+
+    #[qs_test]
+    async fn test_scim_effective_access_query(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let group_uuid = Uuid::new_v4();
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(group_uuid))
+        );
+
+        assert!(server_txn.internal_create(vec![e1]).is_ok());
+        assert!(server_txn.commit().is_ok());
+
+        // Now read that entry.
+
+        let mut server_txn = server.read().await.unwrap();
+
+        let idm_admin_entry = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
+        let idm_admin_ident = Identity::from_impersonate_entry_readwrite(idm_admin_entry);
+
+        let query = ScimEntryGetQuery {
+            ext_access_check: true,
+            ..Default::default()
+        };
+
+        let scim_entry = server_txn
+            .scim_entry_id_get_ext(group_uuid, EntryClass::Group, query, idm_admin_ident)
+            .unwrap();
+
+        let ext_access_check = scim_entry.ext_access_check.unwrap();
+
+        trace!(?ext_access_check);
+
+        assert!(ext_access_check.delete);
+        assert!(ext_access_check.search.check(&Attribute::DirectMemberOf));
+        assert!(ext_access_check.search.check(&Attribute::MemberOf));
+        assert!(ext_access_check.search.check(&Attribute::Name));
+        assert!(ext_access_check.modify_present.check(&Attribute::Name));
+        assert!(ext_access_check.modify_remove.check(&Attribute::Name));
     }
 }

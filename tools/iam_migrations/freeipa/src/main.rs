@@ -926,9 +926,8 @@ fn ipa_to_scim_entry(
         let account_valid_from = None;
 
         let login_shell = entry.remove_ava_single(Attribute::LoginShell.as_ref());
-        let external_id = Some(entry.dn);
 
-        let scim_sync_person = ScimSyncPerson::builder(id, user_name, display_name)
+        let scim_sync_person = ScimSyncPerson::builder(id, entry.dn, user_name, display_name)
             .set_gidnumber(gidnumber)
             .set_password_import(password_import)
             .set_unix_password_import(unix_password_import)
@@ -938,11 +937,10 @@ fn ipa_to_scim_entry(
             .set_ssh_publickey(ssh_publickey)
             .set_account_expire(account_expire)
             .set_account_valid_from(account_valid_from)
-            .set_external_id(external_id)
             .build();
 
         let scim_entry_generic: ScimEntry = scim_sync_person.try_into().map_err(|json_err| {
-            error!(?json_err, "Unable to convert group to scim_sync_group");
+            error!(?json_err, "Unable to convert person to scim_sync_person");
         })?;
 
         Ok(Some(scim_entry_generic))
@@ -983,13 +981,10 @@ fn ipa_to_scim_entry(
             .map(|set| set.into_iter().collect())
             .unwrap_or_default();
 
-        let external_id = Some(entry.dn);
-
-        let scim_sync_group = ScimSyncGroup::builder(name, id)
+        let scim_sync_group = ScimSyncGroup::builder(id, entry.dn, name)
             .set_description(description)
             .set_gidnumber(gidnumber)
             .set_members(members.into_iter())
-            .set_external_id(external_id)
             .build();
 
         let scim_entry_generic: ScimEntry = scim_sync_group.try_into().map_err(|json_err| {

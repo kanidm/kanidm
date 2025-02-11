@@ -9,13 +9,17 @@ use axum::{
 use axum_htmx::HxRequestGuardLayer;
 
 use constants::Urls;
-use kanidmd_lib::prelude::{OperationError, Uuid};
+use kanidmd_lib::{
+    idm::server::DomainInfoRead,
+    prelude::{OperationError, Uuid},
+};
 
 use crate::https::ServerState;
 
 mod apps;
-mod constants;
+pub(crate) mod constants;
 mod cookies;
+mod enrol;
 mod errors;
 mod login;
 mod navbar;
@@ -28,6 +32,8 @@ mod reset;
 struct UnrecoverableErrorView {
     err_code: OperationError,
     operation_id: Uuid,
+    // This is an option because it's not always present in an "unrecoverable" situation
+    domain_info: DomainInfoRead,
 }
 
 pub fn view_router() -> Router<ServerState> {
@@ -37,6 +43,7 @@ pub fn view_router() -> Router<ServerState> {
             get(|| async { Redirect::permanent(Urls::Login.as_ref()) }),
         )
         .route("/apps", get(apps::view_apps_get))
+        .route("/enrol", get(enrol::view_enrol_get))
         .route("/reset", get(reset::view_reset_get))
         .route("/update_credentials", get(reset::view_self_reset_get))
         .route("/profile", get(profile::view_profile_get))
@@ -96,6 +103,10 @@ pub fn view_router() -> Router<ServerState> {
         .route("/reset/change_password", post(reset::view_new_pwd))
         .route("/reset/add_passkey", post(reset::view_new_passkey))
         .route("/reset/set_unixcred", post(reset::view_set_unixcred))
+        .route(
+            "/reset/add_ssh_publickey",
+            post(reset::view_add_ssh_publickey),
+        )
         .route("/api/delete_alt_creds", post(reset::remove_alt_creds))
         .route("/api/delete_unixcred", post(reset::remove_unixcred))
         .route("/api/add_totp", post(reset::add_totp))
@@ -103,6 +114,10 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/remove_passkey", post(reset::remove_passkey))
         .route("/api/finish_passkey", post(reset::finish_passkey))
         .route("/api/cancel_mfareg", post(reset::cancel_mfareg))
+        .route(
+            "/api/remove_ssh_publickey",
+            post(reset::remove_ssh_publickey),
+        )
         .route("/api/cu_cancel", post(reset::cancel_cred_update))
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
@@ -126,5 +141,31 @@ where
         Some(s) => FromStr::from_str(s)
             .map_err(serde::de::Error::custom)
             .map(Some),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use askama_axum::IntoResponse;
+
+    use super::*;
+    #[tokio::test]
+    async fn test_unrecoverableerrorview() {
+        let domain_info = kanidmd_lib::server::DomainInfo::new_test();
+
+        let view = UnrecoverableErrorView {
+            err_code: OperationError::InvalidState,
+            operation_id: Uuid::new_v4(),
+            domain_info: domain_info.read(),
+        };
+
+        let error_html = view.render().expect("Failed to render");
+
+        assert!(error_html.contains(domain_info.read().display_name()));
+
+        let response = view.into_response();
+
+        // TODO: this really should be an error code :(
+        assert_eq!(response.status(), 200);
     }
 }

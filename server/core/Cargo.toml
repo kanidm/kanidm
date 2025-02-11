@@ -25,7 +25,7 @@ askama_axum = { workspace = true }
 axum = { workspace = true }
 axum-htmx = { workspace = true }
 axum-extra = { version = "0.9.6", features = ["cookie"] }
-axum-macros = "0.4.1"
+axum-macros = "0.4.2"
 axum-server = { version = "0.7.1", default-features = false }
 bytes = { workspace = true }
 chrono = { workspace = true }
@@ -45,19 +45,20 @@ ldap3_proto = { workspace = true }
 libc = { workspace = true }
 openssl = { workspace = true }
 opentelemetry = { workspace = true, features = ["logs"] }
-# opentelemetry_api = { workspace = true, features = ["logs"] }
 qrcode = { workspace = true, features = ["svg"] }
 regex = { workspace = true }
 serde = { workspace = true, features = ["derive"] }
 serde_json = { workspace = true }
 serde_with = { workspace = true }
 sketching = { workspace = true }
+sshkeys = { workspace = true }
+sshkey-attest = { workspace = true }
 time = { workspace = true, features = ["serde", "std", "local-offset"] }
 tokio = { workspace = true, features = ["net", "sync", "io-util", "macros"] }
 tokio-openssl = { workspace = true }
 tokio-util = { workspace = true, features = ["codec"] }
 toml = { workspace = true }
-tower = { version = "0.5.1", features = ["tokio-stream", "tracing"] }
+tower = { version = "0.5.2", features = ["tokio-stream", "tracing"] }
 tower-http = { version = "0.6.2", features = [
     "compression-gzip",
     "fs",
@@ -88,6 +89,14 @@ webauthn-rs = { workspace = true, features = [
 [dev-dependencies]
 walkdir = { workspace = true }
 tempfile = { workspace = true }
+kanidmd_lib = { workspace = true, features = ["test"] }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
+
+
+[package.metadata.cargo-machete]
+ignored = [
+    "opentelemetry",         # feature gated
+    "kanidm_build_profiles",
+]

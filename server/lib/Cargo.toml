@@ -22,6 +22,7 @@ default = []
 dhat-heap = ["dep:dhat"]
 dhat-ad-hoc = ["dep:dhat"]
 dev-oauth2-device-flow = [] # still-in-development oauth2 device flow support
+test = []                   # Enable this for cross-package test features.
 
 [dependencies]
 base64 = { workspace = true }
@@ -78,7 +79,7 @@ webauthn-rs = { workspace = true, features = [
 webauthn-rs-core = { workspace = true }
 zxcvbn = { workspace = true }
 serde_with = { workspace = true, features = ["time_0_3", "base64"] }
-hex.workspace = true
+hex = { workspace = true }
 lodepng = { workspace = true }
 image = { workspace = true, default-features = false, features = [
     "gif",
@@ -112,3 +113,9 @@ mimalloc = { workspace = true }
 hashbrown = { workspace = true }
 kanidm_build_profiles = { workspace = true }
 regex = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = [
+    "openssl-sys", # see note above
+    "whoami",      # used in windows
+]

@@ -27,7 +27,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.7
         with:
           version: "v0.4.2"
 
@@ -37,7 +37,8 @@ jobs:
           sudo apt-get install -y \
             libpam0g-dev \
             libudev-dev \
-            libssl-dev
+            libssl-dev \
+            libsystemd-dev
 
       - name: "Build the workspace"
         run: cargo build --workspace
@@ -74,7 +75,7 @@ jobs:
         with:
           toolchain: ${{ matrix.rust_version }}
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.7
         with:
           version: "v0.4.2"
 
@@ -84,7 +85,8 @@ jobs:
           sudo apt-get install -y \
             libpam0g-dev \
             libudev-dev \
-            libssl-dev
+            libssl-dev \
+            libsystemd-dev
 
       - name: "Build the workspace"
         run: cargo build --workspace
@@ -116,7 +118,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.7
         with:
           version: "v0.4.2"
 
@@ -127,6 +129,7 @@ jobs:
             libpam0g-dev \
             libudev-dev \
             libssl-dev \
+            libsystemd-dev \
             ripgrep
       - name: "Run the release build test script"
         env:
