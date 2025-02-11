@@ -2369,6 +2369,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_9_to_10()?;
         }
 
+        if previous_version <= DOMAIN_LEVEL_10 && domain_info_version >= DOMAIN_LEVEL_11 {
+            self.migrate_domain_10_to_11()?;
+        }
+
         // This is here to catch when we increase domain levels but didn't create the migration
         // hooks. If this fails it probably means you need to add another migration hook
         // in the above.
