@@ -141,3 +141,35 @@ impl KanidmUnixdConfig {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use super::*;
+
+    #[test]
+    fn test_load_example_configs() {
+        // Test the various included configs
+
+        let examples_dir = env!("CARGO_MANIFEST_DIR").to_string() + "/../../examples/";
+
+        for file in PathBuf::from(&examples_dir)
+            .canonicalize()
+            .expect(&format!("Can't find examples dir at {}", examples_dir))
+            .read_dir()
+            .expect("Can't read examples dir!")
+        {
+            let file = file.unwrap();
+            let filename = file.file_name().into_string().unwrap();
+            if filename.starts_with("unixd") {
+                print!("Checking that {} parses as a valid config...", filename);
+
+                KanidmUnixdConfig::new()
+                    .read_options_from_optional_config(file.path())
+                    .expect("Failed to parse");
+                println!("OK");
+            }
+        }
+    }
+}

@@ -9,6 +9,7 @@ use kanidm_proto::internal::{
     IdentifyUserRequest, IdentifyUserResponse, ImageValue, OperationError, RadiusAuthToken,
     SearchRequest, SearchResponse, UserAuthToken,
 };
+use kanidm_proto::oauth2::OidcWebfingerResponse;
 use kanidm_proto::v1::{
     AuthIssueSession, AuthRequest, Entry as ProtoEntry, UatStatus, UnixGroupToken, UnixUserToken,
     WhoamiResponse,
@@ -37,7 +38,7 @@ use kanidmd_lib::{
     idm::ldap::{LdapBoundToken, LdapResponseState},
     idm::oauth2::{
         AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AuthorisationRequest,
-        AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
+        AuthoriseReject, AuthoriseResponse, JwkKeySet, Oauth2Error, Oauth2Rfc8414MetadataResponse,
         OidcDiscoveryResponse, OidcToken,
     },
     idm::server::{DomainInfoRead, IdmServerTransaction},
@@ -1441,7 +1442,7 @@ impl QueryServerReadV1 {
         client_auth_info: ClientAuthInfo,
         consent_req: String,
         eventid: Uuid,
-    ) -> Result<Url, OperationError> {
+    ) -> Result<AuthoriseReject, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
         let ident = idms_prox_read
@@ -1507,6 +1508,21 @@ impl QueryServerReadV1 {
     ) -> Result<OidcDiscoveryResponse, OperationError> {
         let idms_prox_read = self.idms.proxy_read().await?;
         idms_prox_read.oauth2_openid_discovery(&client_id)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_webfinger_discovery(
+        &self,
+        client_id: &str,
+        resource_id: &str,
+        eventid: Uuid,
+    ) -> Result<OidcWebfingerResponse, OperationError> {
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        idms_prox_read.oauth2_openid_webfinger(client_id, resource_id)
     }
 
     #[instrument(

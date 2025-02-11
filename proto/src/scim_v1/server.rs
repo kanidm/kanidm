@@ -16,12 +16,52 @@ use uuid::Uuid;
 /// A strongly typed ScimEntry that is for transmission to clients. This uses
 /// Kanidm internal strong types for values allowing direct serialisation and
 /// transmission.
+#[serde_as]
+#[skip_serializing_none]
 #[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimEntryKanidm {
     #[serde(flatten)]
     pub header: ScimEntryHeader,
+
+    pub ext_access_check: Option<ScimEffectiveAccess>,
     #[serde(flatten)]
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub enum ScimAttributeEffectiveAccess {
+    /// All attributes on the entry have this permission granted
+    Grant,
+    /// All attributes on the entry have this permission denied
+    Denied,
+    /// The following attributes on the entry have this permission granted
+    Allow(BTreeSet<Attribute>),
+}
+
+impl ScimAttributeEffectiveAccess {
+    /// Check if the effective access allows or denies this attribute
+    pub fn check(&self, attr: &Attribute) -> bool {
+        match self {
+            Self::Grant => true,
+            Self::Denied => false,
+            Self::Allow(set) => set.contains(attr),
+        }
+    }
+}
+
+#[derive(Serialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ScimEffectiveAccess {
+    /// The identity that inherits the effective permission
+    pub ident: Uuid,
+    /// If the ident may delete the target entry
+    pub delete: bool,
+    /// The set of effective access over search events
+    pub search: ScimAttributeEffectiveAccess,
+    /// The set of effective access over modify present events
+    pub modify_present: ScimAttributeEffectiveAccess,
+    /// The set of effective access over modify remove events
+    pub modify_remove: ScimAttributeEffectiveAccess,
 }
 
 #[derive(Serialize, Debug, Clone, ToSchema)]

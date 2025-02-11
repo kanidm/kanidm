@@ -1,4 +1,4 @@
-""" utility functions """
+"""utility functions"""
 
 from pathlib import Path
 from typing import Any, Dict, Union

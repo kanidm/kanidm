@@ -38,8 +38,15 @@ class RawPerson(BaseModel):
             uuid=UUID(self.attrs["uuid"][0]),
         )
 
+
 PersonList = RootModel[List[RawPerson]]
 
 
 class IPerson(TypedDict):
     attrs: Dict[str, List[str]]
+
+
+class PersonCredentialResetToken(BaseModel):
+    token: str
+    expiry_time: int
+    model_config = ConfigDict(arbitrary_types_allowed=True)

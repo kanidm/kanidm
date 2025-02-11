@@ -33,7 +33,8 @@ You can find the name of your 389 Directory Server instance with:
 
 ```bash
 # Run on the FreeIPA server
-dsconf --list
+dsctl --list
+> slapd-DEV-KANIDM-COM
 ```
 
 Using this you can show the current status of the retro changelog plugin to see if you need to
@@ -83,6 +84,20 @@ kanidm-ipa-sync [-c /path/to/kanidm/config] -i /path/to/kanidm-ipa-sync -n
 kanidm-ipa-sync -i /etc/kanidm/ipa-sync -n
 ```
 
+As the sync tool is part of the tools container, you can run this with:
+
+```bash
+docker run --rm -i -t \
+  --user uid:gid \
+  -p 12345:12345 \
+  -v /etc/kanidm/config:/etc/kanidm/config:ro \
+  -v /path/to/kanidm.ca.pem:/path/to/kanidm.ca.pem:ro
+  -v /path/to/ipa-ca.pem:/etc/kanidm/ipa-ca.pem:ro \
+  -v /path/to/ipa-sync:/etc/kanidm/ipa-sync:ro \
+  kanidm/tools:latest \
+  kanidm-ipa-sync -i /etc/kanidm/ipa-sync -
+```
+
 ## Running the Sync Tool Automatically
 
 The sync tool can be run on a schedule if you configure the `schedule` parameter, and provide the
@@ -96,11 +111,14 @@ kanidm-ipa-sync -i /etc/kanidm/ipa-sync --schedule
 As the sync tool is part of the tools container, you can run this with:
 
 ```bash
-docker create --name kanidm-ipa-sync \
+docker run --name kanidm-ipa-sync \
   --user uid:gid \
   -p 12345:12345 \
   -v /etc/kanidm/config:/etc/kanidm/config:ro \
+  -v /path/to/kanidm.ca.pem:/path/to/kanidm.ca.pem:ro
+  -v /path/to/ipa-ca.pem:/etc/kanidm/ipa-ca.pem:ro \
   -v /path/to/ipa-sync:/etc/kanidm/ipa-sync:ro \
+  kanidm/tools:latest \
   kanidm-ipa-sync -i /etc/kanidm/ipa-sync --schedule
 ```
 

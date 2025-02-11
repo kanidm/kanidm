@@ -1,8 +1,6 @@
 # Kanidm - Simple and Secure Identity Management
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
-</p>
+![Kanidm Logo](artwork/logo-small.png)
 
 ## About
 

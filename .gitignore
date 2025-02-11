@@ -17,8 +17,11 @@ tools/orca/example_profiles/small/orca-edited.toml
 /docs/
 # webui things we don't need
 *.d.ts
-
 server/web_ui/*/pkg/*.js
+
+# coverage-related things
+*.profraw
+tarpaulin-report.html
 
 # kanidm simple packaging
 deployment-config/
@@ -35,9 +38,13 @@ pykanidm/site/
 # oauth2 integration test things
 scripts/oauth_proxy/client.secret
 scripts/oauth_proxy/envfile
+
 # local config things
 .envrc
 
 # IDEs
 .idea/
 .vscode/
+
+# javascript test things
+node_modules/

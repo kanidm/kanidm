@@ -254,7 +254,7 @@ async fn do_password(
             password.to_owned()
         }
         None => dialoguer::Password::new()
-            .with_prompt("Enter password: ")
+            .with_prompt("Enter password")
             .interact()
             .unwrap_or_else(|e| {
                 error!("Failed to create password prompt -- {:?}", e);

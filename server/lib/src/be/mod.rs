@@ -94,11 +94,22 @@ impl Limits {
     }
 }
 
+/// The result of a key value request containing the list of entry IDs that
+/// match the filter/query condition.
 #[derive(Debug, Clone)]
 pub enum IdList {
+    /// The value is not indexed, and must be assumed that all entries may match.
     AllIds,
-    PartialThreshold(IDLBitRange),
+    /// The index is "fuzzy" like a bloom filter (perhaps superset is a better description) -
+    /// it containes all elements that do match, but may have extra elements that don't.
+    /// This requires the caller to perform a filter test to assert that all
+    /// returned entries match all assertions within the filter.
     Partial(IDLBitRange),
+    /// The set was indexed and is below the filter test threshold. This is because it's
+    /// now faster to test with the filter than to continue to access indexes at this point.
+    /// Like a partial set, this is a super set of the entries that match the query.
+    PartialThreshold(IDLBitRange),
+    /// The value is indexed and accurately represents the set of entries that precisely match.
     Indexed(IDLBitRange),
 }
 
@@ -560,6 +571,10 @@ pub trait BackendTransaction {
                 filter_error!("Requested a top level or isolated AndNot, returning empty");
                 (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
             }
+            FilterResolved::Invalid(_) => {
+                // Indexed since it is always false and we don't want to influence filter testing
+                (IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid)
+            }
         })
     }
 
@@ -640,7 +655,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::search -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD))?;
 
-        debug!(search_filter_executed_plan = ?fplan);
+        debug!(search_filter_executed_plan = %fplan);
 
         match &idl {
             IdList::AllIds => {
@@ -736,7 +751,7 @@ pub trait BackendTransaction {
         let (idl, fplan) = trace_span!("be::exists -> filter2idl")
             .in_scope(|| self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD))?;
 
-        debug!(exist_filter_executed_plan = ?fplan);
+        debug!(exist_filter_executed_plan = %fplan);
 
         // Apply limits to the IdList.
         match &idl {
@@ -2362,6 +2377,46 @@ mod tests {
             // Test class pres
 
             // Search with no results
+        });
+    }
+
+    #[test]
+    fn test_be_search_with_invalid() {
+        run_test!(|be: &mut BackendWriteTransaction| {
+            trace!("Simple Search");
+
+            let mut e: Entry<EntryInit, EntryNew> = Entry::new();
+            e.add_ava(Attribute::UserId, Value::from("bagel"));
+            e.add_ava(
+                Attribute::Uuid,
+                Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"),
+            );
+            let e = e.into_sealed_new();
+
+            let single_result = be.create(&CID_ZERO, vec![e]);
+            assert!(single_result.is_ok());
+
+            // Test Search with or condition including invalid attribute
+            let filt = filter_resolved!(f_or(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
+
+            let lims = Limits::unlimited();
+
+            let r = be.search(&lims, &filt);
+            assert!(r.expect("Search failed!").len() == 1);
+
+            // Test Search with or condition including invalid attribute
+            let filt = filter_resolved!(f_and(vec![
+                f_eq(Attribute::UserId, PartialValue::new_utf8s("bagel")),
+                f_invalid(Attribute::UserId)
+            ]));
+
+            let lims = Limits::unlimited();
+
+            let r = be.search(&lims, &filt);
+            assert!(r.expect("Search failed!").len() == 0);
         });
     }
 

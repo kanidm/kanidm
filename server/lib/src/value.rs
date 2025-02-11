@@ -1311,13 +1311,14 @@ impl PartialEq for Value {
             | (Value::Iname(a), Value::Iname(b))
             | (Value::Cred(a, _), Value::Cred(b, _))
             | (Value::SshKey(a, _), Value::SshKey(b, _))
-            | (Value::Spn(a, _), Value::Spn(b, _))
             | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))
             | (Value::EmailAddress(a, _), Value::EmailAddress(b, _))
             | (Value::PhoneNumber(a, _), Value::PhoneNumber(b, _))
             | (Value::OauthScope(a), Value::OauthScope(b))
             | (Value::PublicBinary(a, _), Value::PublicBinary(b, _))
             | (Value::RestrictedString(a), Value::RestrictedString(b)) => a.eq(b),
+            // Spn - need to check both name and domain.
+            (Value::Spn(a, c), Value::Spn(b, d)) => a.eq(b) && c.eq(d),
             // Uuid, Refer
             (Value::Uuid(a), Value::Uuid(b)) | (Value::Refer(a), Value::Refer(b)) => a.eq(b),
             // Bool
@@ -2409,10 +2410,13 @@ mod tests {
         assert!(val1.validate());
         let val2 = Value::new_datetime_s("2020-09-25T01:22:02+00:00").expect("Must be valid");
         assert!(val2.validate());
+        // Spaces are now valid in rfc3339 for parsing.
+        let val3 = Value::new_datetime_s("2020-09-25 01:22:02+00:00").expect("Must be valid");
+        assert!(val3.validate());
+
         assert!(Value::new_datetime_s("2020-09-25T01:22:02").is_none());
         assert!(Value::new_datetime_s("2020-09-25").is_none());
         assert!(Value::new_datetime_s("2020-09-25T01:22:02+10").is_none());
-        assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
         let inv1 = Value::DateTime(

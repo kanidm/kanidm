@@ -1008,7 +1008,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
     }
 }
 
-impl<'a> IdmServerAuthTransaction<'a> {
+impl IdmServerAuthTransaction<'_> {
     #[cfg(test)]
     pub fn is_sessionid_present(&self, sessionid: Uuid) -> bool {
         let session_read = self.sessions.read();

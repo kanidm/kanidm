@@ -1,15 +1,25 @@
-use gethostname::gethostname;
-use opentelemetry::KeyValue;
+use std::{str::FromStr, time::Duration};
+
 use opentelemetry_otlp::{Protocol, WithExportConfig};
-use opentelemetry_sdk::trace::{self, Sampler};
-use opentelemetry_sdk::Resource;
-use std::time::Duration;
+
+use opentelemetry::{global, trace::TracerProvider as _, KeyValue};
+
+use opentelemetry_sdk::{
+    trace::{Sampler, TracerProvider},
+    Resource,
+};
 use tracing::Subscriber;
-use tracing_subscriber::Registry;
-use tracing_subscriber::{prelude::*, EnvFilter};
+use tracing_core::Level;
+
+use tracing_subscriber::{filter::Directive, prelude::*, EnvFilter, Registry};
 
 pub const MAX_EVENTS_PER_SPAN: u32 = 64 * 1024;
 pub const MAX_ATTRIBUTES_PER_SPAN: u32 = 128;
+
+use opentelemetry_semantic_conventions::{
+    attribute::{SERVICE_NAME, SERVICE_VERSION},
+    SCHEMA_URL,
+};
 
 // TODO: this is coming back later
 // #[allow(dead_code)]
@@ -44,28 +54,26 @@ pub fn start_logging_pipeline(
             // adding these filters because when you close out the process the OTLP comms layer is NOISY
             let forest_filter = forest_filter
                 .add_directive(
-                    "tonic=info"
-                        .parse()
-                        .expect("Failed to set tonic logging to info"),
+                    Directive::from_str("tonic=info").expect("Failed to set tonic logging to info"),
                 )
-                .add_directive("h2=info".parse().expect("Failed to set h2 logging to info"))
                 .add_directive(
-                    "hyper=info"
-                        .parse()
-                        .expect("Failed to set hyper logging to info"),
+                    Directive::from_str("h2=info").expect("Failed to set h2 logging to info"),
+                )
+                .add_directive(
+                    Directive::from_str("hyper=info").expect("Failed to set hyper logging to info"),
                 );
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
             let t_filter: EnvFilter = EnvFilter::builder()
                 .with_default_directive(log_filter.into())
                 .from_env_lossy();
 
-            let tracer = opentelemetry_otlp::new_pipeline().tracing().with_exporter(
-                opentelemetry_otlp::new_exporter()
-                    .tonic()
-                    .with_endpoint(endpoint)
-                    .with_timeout(Duration::from_secs(5))
-                    .with_protocol(Protocol::HttpBinary),
-            );
+            let otlp_exporter = opentelemetry_otlp::SpanExporter::builder()
+                .with_tonic()
+                .with_endpoint(endpoint)
+                .with_protocol(Protocol::HttpBinary)
+                .with_timeout(Duration::from_secs(5))
+                .build()
+                .map_err(|err| err.to_string())?;
 
             // this env var gets set at build time, if we can pull it, add it to the metadata
             let git_rev = match option_env!("KANIDM_PKG_COMMIT_REV") {
@@ -74,39 +82,47 @@ pub fn start_logging_pipeline(
             };
 
             let version = format!("{}{}", env!("CARGO_PKG_VERSION"), git_rev);
-            let hostname = gethostname();
-            let hostname = hostname.to_string_lossy();
-            let hostname = hostname.to_lowercase();
+            // let hostname = gethostname::gethostname();
+            // let hostname = hostname.to_string_lossy();
+            // let hostname = hostname.to_lowercase();
 
-            let tracer = tracer
-                .with_trace_config(
-                    trace::config()
-                        // we want *everything!*
-                        .with_sampler(Sampler::AlwaysOn)
-                        .with_max_events_per_span(MAX_EVENTS_PER_SPAN)
-                        .with_max_attributes_per_span(MAX_ATTRIBUTES_PER_SPAN)
-                        .with_resource(Resource::new(vec![
-                            KeyValue::new("service.name", service_name),
-                            KeyValue::new("service.version", version),
-                            KeyValue::new("host.name", hostname),
-                            // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
-                        ])),
+            let resource = Resource::from_schema_url(
+                [
+                    // TODO: it'd be really nice to be able to set the instance ID here, from the server UUID so we know *which* instance on this host is logging
+                    KeyValue::new(SERVICE_NAME, service_name),
+                    KeyValue::new(SERVICE_VERSION, version),
+                    // TODO: currently marked as an experimental flag, leaving it out for now
+                    // KeyValue::new(DEPLOYMENT_ENVIRONMENT_NAME, hostname),
+                ],
+                SCHEMA_URL,
+            );
+
+            let provider = TracerProvider::builder()
+                .with_batch_exporter(otlp_exporter, opentelemetry_sdk::runtime::Tokio)
+                // we want *everything!*
+                .with_sampler(Sampler::AlwaysOn)
+                .with_max_events_per_span(MAX_EVENTS_PER_SPAN)
+                .with_max_attributes_per_span(MAX_ATTRIBUTES_PER_SPAN)
+                .with_resource(resource)
+                .build();
+
+            global::set_tracer_provider(provider.clone());
+            provider.tracer("tracing-otel-subscriber");
+            use tracing_opentelemetry::OpenTelemetryLayer;
+
+            let registry = tracing_subscriber::registry()
+                .with(
+                    tracing_subscriber::filter::LevelFilter::from_level(Level::INFO)
+                        .with_filter(t_filter),
                 )
-                .install_batch(opentelemetry::runtime::Tokio)
-                .map_err(|err| {
-                    let err = format!("Failed to start OTLP pipeline: {:?}", err);
-                    eprintln!("{}", err);
-                    err
-                })?;
-            // Create a tracing layer with the configured tracer;
-            let telemetry = tracing_opentelemetry::layer()
-                .with_tracer(tracer)
-                .with_threads(true)
-                .with_filter(t_filter);
+                .with(tracing_subscriber::fmt::layer())
+                // .with(MetricsLayer::new(meter_provider.clone()))
+                .with(forest_layer)
+                .with(OpenTelemetryLayer::new(
+                    provider.tracer("tracing-otel-subscriber"),
+                ));
 
-            Ok(Box::new(
-                Registry::default().with(forest_layer).with(telemetry),
-            ))
+            Ok(Box::new(registry))
         }
         None => {
             let forest_layer = tracing_forest::ForestLayer::default().with_filter(forest_filter);
@@ -122,7 +138,6 @@ pub struct TracingPipelineGuard {}
 impl Drop for TracingPipelineGuard {
     fn drop(&mut self) {
         opentelemetry::global::shutdown_tracer_provider();
-        opentelemetry::global::shutdown_logger_provider();
         eprintln!("Logging pipeline completed shutdown");
     }
 }

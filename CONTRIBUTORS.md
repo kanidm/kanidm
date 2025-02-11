@@ -45,6 +45,9 @@
 - Chris Olstrom (colstrom)
 - Christopher-Robin (cebbinghaus)
 - Krzysztof Dajka (alteriks)
+- Fabian Kammel (datosh)
+- Andris Raugulis (arthepsy)
+- Jason (argonaut0)
 
 ## Acknowledgements
 

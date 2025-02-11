@@ -16,13 +16,13 @@
     (% if passkey %)
     <form id="cred-form" action="/ui/login/passkey" method="POST">
         <input hidden="hidden" name="cred" id="cred">
-        <button hx-disable type="button" autofocus class="btn btn-dark"
+        <button hx-disable type="button" autofocus class="btn btn-primary"
             id="start-passkey-button">Use Passkey</button>
     </form>
     (% else %)
     <form id="cred-form" action="/ui/login/seckey" method="POST">
         <input hidden="hidden" name="cred" id="cred">
-        <button hx-disable type="button" autofocus class="btn btn-dark"
+        <button hx-disable type="button" autofocus class="btn btn-primary"
              id="start-seckey-button">Use Security Key</button>
     </form>
     (% endif %)

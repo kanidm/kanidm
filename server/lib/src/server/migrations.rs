@@ -647,7 +647,9 @@ impl QueryServerWriteTransaction<'_> {
         // Now update schema
         let idm_schema_changes = [
             SCHEMA_ATTR_OAUTH2_DEVICE_FLOW_ENABLE_DL9.clone().into(),
+            SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS_DL9.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_DL9.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL9.clone().into(),
         ];
 
         idm_schema_changes
@@ -660,7 +662,11 @@ impl QueryServerWriteTransaction<'_> {
 
         self.reload()?;
 
-        let idm_data = [IDM_ACP_OAUTH2_MANAGE_DL9.clone().into()];
+        let idm_data = [
+            IDM_ACP_OAUTH2_MANAGE_DL9.clone().into(),
+            IDM_ACP_GROUP_MANAGE_DL9.clone().into(),
+            IDM_ACP_DOMAIN_ADMIN_DL9.clone().into(),
+        ];
 
         idm_data
             .into_iter()
@@ -754,7 +760,18 @@ impl QueryServerWriteTransaction<'_> {
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_9_to_10(&mut self) -> Result<(), OperationError> {
         if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_9 {
-            error!("Unable to raise domain level from 8 to 9.");
+            error!("Unable to raise domain level from 9 to 10.");
+            return Err(OperationError::MG0004DomainLevelInDevelopment);
+        }
+
+        Ok(())
+    }
+
+    /// Migration domain level 10 to 11 (1.7.0)
+    #[instrument(level = "info", skip_all)]
+    pub(crate) fn migrate_domain_10_to_11(&mut self) -> Result<(), OperationError> {
+        if !cfg!(test) && DOMAIN_TGT_LEVEL < DOMAIN_LEVEL_10 {
+            error!("Unable to raise domain level from 10 to 11.");
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
@@ -1483,4 +1500,7 @@ mod tests {
 
     #[qs_test(domain_level=DOMAIN_LEVEL_9)]
     async fn test_migrations_dl9_dl10(_server: &QueryServer) {}
+
+    #[qs_test(domain_level=DOMAIN_LEVEL_10)]
+    async fn test_migrations_dl10_dl11(_server: &QueryServer) {}
 }

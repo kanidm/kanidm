@@ -1,4 +1,5 @@
 """ type objects """
+
 # pylint: disable=too-few-public-methods
 # ^ disabling this because pydantic models don't have public methods
 
@@ -31,7 +32,7 @@ class ClientResponse(BaseModel, Generic[T]):
 
 
 class AuthInitResponse(BaseModel):
-    """Aelps parse the response from the Auth 'init' stage"""
+    """Helps parse the response from the Auth 'init' stage"""
 
     class _AuthInitState(BaseModel):
         """sub-class for the AuthInitResponse model"""
@@ -146,9 +147,7 @@ class RadiusClient(BaseModel):
             socket.gethostbyname(value)
             return value
         except socket.gaierror as error:
-            raise ValueError(
-                f"ipaddr value ({value}) wasn't an IP Address, Network or valid hostname: {error}"
-            )
+            raise ValueError(f"ipaddr value ({value}) wasn't an IP Address, Network or valid hostname: {error}")
 
 
 class KanidmClientConfig(BaseModel):
@@ -172,7 +171,6 @@ class KanidmClientConfig(BaseModel):
 
     radius_cert_path: str = "/data/cert.pem"
     radius_key_path: str = "/data/key.pem"  # the signing key for radius TLS
-    radius_dh_path: str = "/data/dh.pem"  # the diffie-hellman output
     radius_ca_path: Optional[str] = None
     radius_ca_dir: Optional[str] = None
 
@@ -196,9 +194,7 @@ class KanidmClientConfig(BaseModel):
             uri = urlparse(value)
             valid_schemes = ["http", "https"]
             if uri.scheme not in valid_schemes:
-                raise ValueError(
-                    f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}"
-                )
+                raise ValueError(f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}")
 
             # make sure the URI ends with a /
             if not value.endswith("/"):

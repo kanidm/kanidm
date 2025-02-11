@@ -20,10 +20,7 @@ fn parse_attributes(
     input: &syn::ItemFn,
 ) -> Result<(proc_macro2::TokenStream, Flags), syn::Error> {
     let args: Punctuated<ExprAssign, syn::token::Comma> =
-        match Punctuated::<ExprAssign, Token![,]>::parse_terminated.parse(args.clone()) {
-            Ok(it) => it,
-            Err(e) => return Err(e),
-        };
+        Punctuated::<ExprAssign, Token![,]>::parse_terminated.parse(args.clone())?;
 
     let args_are_allowed = args.pairs().all(|p| {
         ALLOWED_ATTRIBUTES.to_vec().contains(

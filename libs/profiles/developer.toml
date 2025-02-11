@@ -1,6 +1,8 @@
-htmx_ui_pkg_path = "../core/static"
 # Set to native for developer machines.
 cpu_flags = "native"
-admin_bind_path = "/tmp/kanidmd.sock"
-default_config_path = "../../examples/insecure_server.toml"
-default_unix_shell_path = "/bin/bash"
+server_admin_bind_path = "/tmp/kanidmd.sock"
+server_ui_pkg_path = "../core/static"
+server_config_path = "../../examples/insecure_server.toml"
+client_config_path = "/etc/kanidm/config"
+resolver_config_path = "/tmp/unixd"
+resolver_unix_shell_path = "/bin/bash"

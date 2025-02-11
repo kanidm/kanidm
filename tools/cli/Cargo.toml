@@ -58,7 +58,7 @@ tokio = { workspace = true, features = ["rt", "macros", "fs", "signal"] }
 url = { workspace = true, features = ["serde"] }
 uuid = { workspace = true }
 zxcvbn = { workspace = true }
-lazy_static.workspace = true
+lazy_static = { workspace = true }
 regex = { workspace = true }
 
 [dev-dependencies]
@@ -74,13 +74,28 @@ serde_json = { workspace = true }
 uuid = { workspace = true }
 url = { workspace = true }
 
+## See src/cli/webauthn/mod.rs for which features are
+## required for which target_os here
 [target."cfg(target_os = \"windows\")".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["win10"]
 
-[target."cfg(not(any(target_os = \"windows\")))".dependencies.webauthn-authenticator-rs]
+[target."cfg(target_os = \"linux\")".dependencies.webauthn-authenticator-rs]
 workspace = true
 features = ["u2fhid"]
+
+[target."cfg(target_os = \"macos\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["mozilla"]
+# features = ["u2fhid"]
+
+[target."cfg(target_os = \"freebsd\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["mozilla"]
+
+[target."cfg(target_os = \"openbsd\")".dependencies.webauthn-authenticator-rs]
+workspace = true
+features = ["mozilla"]
 
 ## Debian packaging
 [package.metadata.deb]
@@ -104,3 +119,6 @@ assets = [
     ],
 ]
 maintainer-scripts = "debian/"
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete", "kanidm_build_profiles"]

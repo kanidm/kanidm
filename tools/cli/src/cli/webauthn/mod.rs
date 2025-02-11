@@ -1,6 +1,21 @@
-#[cfg(not(any(target_os = "windows")))]
+#[cfg(target_os = "linux")]
+mod u2fhid;
+#[cfg(target_os = "linux")]
+use u2fhid::get_authenticator_backend;
+
+#[cfg(target_os = "macos")]
 mod mozilla;
-#[cfg(not(any(target_os = "windows")))]
+#[cfg(target_os = "macos")]
+use mozilla::get_authenticator_backend;
+
+#[cfg(target_os = "freebsd")]
+mod mozilla;
+#[cfg(target_os = "freebsd")]
+use mozilla::get_authenticator_backend;
+
+#[cfg(target_os = "openbsd")]
+mod mozilla;
+#[cfg(target_os = "openbsd")]
 use mozilla::get_authenticator_backend;
 
 #[cfg(target_os = "windows")]

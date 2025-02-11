@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_device_flow"
-description = "Kanidm Device Flow Client"
+description = "Kanidm Device Flow Example Client"
 documentation = "https://kanidm.github.io/kanidm/stable/"
 version = { workspace = true }
 authors = { workspace = true }
@@ -18,15 +18,12 @@ doctest = false
 [features]
 
 [dependencies]
-kanidm_proto = { workspace = true }
 anyhow = { workspace = true }
-oauth2 = "4.4.2"
-reqwest = { version = "0.12.9", default-features = false, features = [
+kanidm_proto = { workspace = true }
+oauth2 = "5.0.0"
+reqwest = { workspace = true, default-features = false, features = [
     "rustls-tls",
 ] }
-
-tokio = { workspace = true, features = ["full"] }
-url = { workspace = true }
-tracing = { workspace = true }
 sketching = { workspace = true }
-base64.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing = { workspace = true }

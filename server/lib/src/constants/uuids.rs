@@ -321,6 +321,8 @@ pub const UUID_SCHEMA_ATTR_APPLICATION_PASSWORD: Uuid =
 pub const UUID_SCHEMA_ATTR_CREATED_AT_CID: Uuid = uuid!("00000000-0000-0000-0000-ffff00000184");
 pub const UUID_SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000185");
+pub const UUID_SCHEMA_ATTR_DOMAIN_ALLOW_EASTER_EGGS: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000186");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

@@ -1,4 +1,5 @@
-""" kanidm RADIUS module """
+"""kanidm RADIUS module"""
+
 import asyncio
 from aiohttp.client_exceptions import ClientConnectorError
 from functools import reduce
@@ -16,13 +17,24 @@ from .. import KanidmClient
 from . import radiusd
 from .utils import check_vlan
 
+CONTAINER_CONFIG_FILE_PATH = "/data/radius.toml"
+
 # the list of places to try
 CONFIG_PATHS = [
-    os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),  # container goodness
-    "~/.config/kanidm",  # for a user
-    "/etc/kanidm/kanidm",  # system-wide
-    "../examples/kanidm",  # test mode
+    os.getenv("KANIDM_RLM_CONFIG", CONTAINER_CONFIG_FILE_PATH),  # container goodness
+    "~/.config/radius.toml",  # for a user
+    "/etc/kanidm/radius.toml",  # system-wide
+    "../examples/radius.toml",  # test mode
+    "/data/kanidm",  # fallback to old path
 ]
+
+
+def find_radius_config_path() -> Optional[Path]:
+    for config_file_path in CONFIG_PATHS:
+        config_path = Path(config_file_path).expanduser().resolve()
+        if config_path.exists():
+            return config_path
+    return None
 
 
 def instantiate(_: Any) -> Any:
@@ -33,16 +45,9 @@ def instantiate(_: Any) -> Any:
     )
     logging.info("Starting up!")
 
-    config_path = None
-    for config_file_path in CONFIG_PATHS:
-        config_path = Path(config_file_path).expanduser().resolve()
-        if config_path.exists():
-            break
-
-    if (config_path is None) or (not config_path.exists()):
-        logging.error(
-            "Failed to find configuration file, checked (%s), quitting!", CONFIG_PATHS
-        )
+    config_path = find_radius_config_path()
+    if config_path is None:
+        logging.error("Failed to find configuration file, checked (%s), quitting!", CONFIG_PATHS)
         sys.exit(1)
 
     kanidm_client = KanidmClient(config_file=config_path)
@@ -107,9 +112,7 @@ def authorize(
     tok = None
     try:
         loop = asyncio.get_event_loop()
-        tok = RadiusTokenResponse.model_validate(
-            loop.run_until_complete(_get_radius_token(username=user_id))
-        )
+        tok = RadiusTokenResponse.model_validate(loop.run_until_complete(_get_radius_token(username=user_id)))
         logging.debug("radius information token: %s", tok)
     except NoMatchingEntries as error_message:
         logging.info(
@@ -125,9 +128,7 @@ def authorize(
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)
         return radiusd.RLM_MODULE_FAIL
     if tok is None:
-        logging.info(
-            "kanidm RLM_MODULE_REJECT - unable to retrieve radius information token"
-        )
+        logging.info("kanidm RLM_MODULE_REJECT - unable to retrieve radius information token")
         return radiusd.RLM_MODULE_REJECT
 
     # Get values out of the token

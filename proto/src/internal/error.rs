@@ -142,6 +142,13 @@ pub enum OperationError {
     DatabaseLockAcquisitionTimeout,
 
     // Specific internal errors.
+    AU0001InvalidState,
+    AU0002JwsSerialisation,
+    AU0003JwsSignature,
+    AU0004UserAuthTokenInvalid,
+    AU0005DelayedProcessFailure,
+    AU0006CredentialMayNotReauthenticate,
+    AU0007UserAuthTokenInvalid,
 
     // Kanidm Generic Errors
     KG001TaskTimeout,
@@ -152,6 +159,15 @@ pub enum OperationError {
     CU0001WebauthnAttestationNotTrusted,
     CU0002WebauthnRegistrationError,
     CU0003WebauthnUserNotVerified,
+
+    // The session is inconsistent and can't be committed, but the errors
+    // can be resolved.
+    CU0004SessionInconsistent,
+    // Another session used this intent token, and so it can't be committed.
+    CU0005IntentTokenConflict,
+    // The intent token was invalidated before we could commit.
+    CU0006IntentTokenInvalidated,
+
     // ValueSet errors
     VS0001IncomingReplSshPublicKey,
     VS0002CertificatePublicKeyDigest,
@@ -259,6 +275,7 @@ pub enum OperationError {
     // Web UI
     UI0001ChallengeSerialisation,
     UI0002InvalidState,
+    UI0003InvalidOauth2Resume,
 
     // Unixd Things
     KU001InitWhileSessionActive,
@@ -295,7 +312,7 @@ impl Display for OperationError {
 
 impl OperationError {
     /// Return the message associated with the error if there is one.
-    fn message(&self) -> Option<String> {
+    pub fn message(&self) -> Option<String> {
         match self {
             Self::SessionExpired => None,
             Self::EmptyRequest => None,
@@ -361,9 +378,23 @@ impl OperationError {
             Self::TransactionAlreadyCommitted => None,
             Self::ValueDenyName => None,
             Self::DatabaseLockAcquisitionTimeout => Some("Unable to acquire a database lock - the current server may be too busy. Try again later.".into()),
+
+    Self::AU0001InvalidState => Some("Invalid authentication session state for request".into()),
+    Self::AU0002JwsSerialisation => Some("JWS serialisation failed".into()),
+    Self::AU0003JwsSignature => Some("JWS signature failed".into()),
+    Self::AU0004UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+    Self::AU0005DelayedProcessFailure => Some("Delaying processing failure, unable to proceed".into()),
+    Self::AU0006CredentialMayNotReauthenticate => Some("Credential may not reauthenticate".into()),
+    Self::AU0007UserAuthTokenInvalid => Some("User auth token was unable to be generated".into()),
+
             Self::CU0001WebauthnAttestationNotTrusted => None,
             Self::CU0002WebauthnRegistrationError => None,
             Self::CU0003WebauthnUserNotVerified => Some("User Verification bit not set while registering credential, you may need to configure a PIN on this device.".into()),
+
+            Self::CU0004SessionInconsistent => Some("The session is unable to be committed due to unresolved warnings.".into()),
+            Self::CU0005IntentTokenConflict => Some("The intent token used to create this session has been reused in another browser/tab and may not proceed.".into()),
+            Self::CU0006IntentTokenInvalidated => Some("The intent token has been invalidated/revoked before the commit could be accepted. Has it been used in another browser or tab?".into()),
+
             Self::DB0001MismatchedRestoreVersion => None,
             Self::DB0002MismatchedRestoreVersion => None,
             Self::DB0003FilterResolveCacheBuild => None,
@@ -443,25 +474,26 @@ impl OperationError {
             Self::SC0009IndexTypeSyntaxInvalid => Some("A SCIM IndexType contained invalid syntax".into()),
             Self::SC0010DateTimeSyntaxInvalid => Some("A SCIM DateTime contained invalid syntax".into()),
 
-    Self::SC0011AddressSyntaxInvalid => Some("A SCIM Address contained invalid syntax".into()),
-    Self::SC0012CertificateSyntaxInvalid => Some("A SCIM Certificate contained invalid binary data".into()),
-    Self::SC0013CertificateInvalidDer => Some("A SCIM Certificate did not contain valid DER".into()),
-    Self::SC0014CertificateInvalidDigest => Some("A SCIM Certificate was unable to be digested".into()),
-    Self::SC0015CredentialTypeSyntaxInvalid => Some("A SCIM CredentialType contained invalid syntax".into()),
-    Self::SC0016InameSyntaxInvalid => Some("A SCIM Iname string contained invalid syntax".into()),
-    Self::SC0017Iutf8SyntaxInvalid => Some("A SCIM Iutf8 string contained invalid syntax".into()),
-    Self::SC0018NsUniqueIdSyntaxInvalid => Some("A SCIM NsUniqueID contained invalid syntax".into()),
-    Self::SC0019Oauth2ScopeSyntaxInvalid => Some("A SCIM Oauth2 Scope contained invalid syntax".into()),
-    Self::SC0020Oauth2ScopeMapSyntaxInvalid => Some("A SCIM Oauth2 Scope Map contained invalid syntax".into()),
-    Self::SC0021Oauth2ScopeMapMissingGroupIdentifier => Some("A SCIM Oauth2 Scope Map was missing a group name or uuid".into()),
-    Self::SC0022Oauth2ClaimMapSyntaxInvalid => Some("A SCIM Oauth2 Claim Map contained invalid syntax".into()),
-    Self::SC0023Oauth2ClaimMapMissingGroupIdentifier => Some("A SCIM Claim Map was missing a group name or uuid".into()),
-    Self::SC0024SshPublicKeySyntaxInvalid => Some("A SCIM Ssh Public Key contained invalid syntax".into()),
-    Self::SC0025UiHintSyntaxInvalid => Some("A SCIM UiHint contained invalid syntax".into()),
-    Self::SC0026Utf8SyntaxInvalid => Some("A SCIM Utf8 String Scope Map contained invalid syntax".into()),
+            Self::SC0011AddressSyntaxInvalid => Some("A SCIM Address contained invalid syntax".into()),
+            Self::SC0012CertificateSyntaxInvalid => Some("A SCIM Certificate contained invalid binary data".into()),
+            Self::SC0013CertificateInvalidDer => Some("A SCIM Certificate did not contain valid DER".into()),
+            Self::SC0014CertificateInvalidDigest => Some("A SCIM Certificate was unable to be digested".into()),
+            Self::SC0015CredentialTypeSyntaxInvalid => Some("A SCIM CredentialType contained invalid syntax".into()),
+            Self::SC0016InameSyntaxInvalid => Some("A SCIM Iname string contained invalid syntax".into()),
+            Self::SC0017Iutf8SyntaxInvalid => Some("A SCIM Iutf8 string contained invalid syntax".into()),
+            Self::SC0018NsUniqueIdSyntaxInvalid => Some("A SCIM NsUniqueID contained invalid syntax".into()),
+            Self::SC0019Oauth2ScopeSyntaxInvalid => Some("A SCIM Oauth2 Scope contained invalid syntax".into()),
+            Self::SC0020Oauth2ScopeMapSyntaxInvalid => Some("A SCIM Oauth2 Scope Map contained invalid syntax".into()),
+            Self::SC0021Oauth2ScopeMapMissingGroupIdentifier => Some("A SCIM Oauth2 Scope Map was missing a group name or uuid".into()),
+            Self::SC0022Oauth2ClaimMapSyntaxInvalid => Some("A SCIM Oauth2 Claim Map contained invalid syntax".into()),
+            Self::SC0023Oauth2ClaimMapMissingGroupIdentifier => Some("A SCIM Claim Map was missing a group name or uuid".into()),
+            Self::SC0024SshPublicKeySyntaxInvalid => Some("A SCIM Ssh Public Key contained invalid syntax".into()),
+            Self::SC0025UiHintSyntaxInvalid => Some("A SCIM UiHint contained invalid syntax".into()),
+            Self::SC0026Utf8SyntaxInvalid => Some("A SCIM Utf8 String Scope Map contained invalid syntax".into()),
 
             Self::UI0001ChallengeSerialisation => Some("The WebAuthn challenge was unable to be serialised.".into()),
             Self::UI0002InvalidState => Some("The credential update process returned an invalid state transition.".into()),
+            Self::UI0003InvalidOauth2Resume => Some("The server attemped to resume OAuth2, but no OAuth2 session is in progress.".into()),
             Self::VL0001ValueSshPublicKeyString => None,
             Self::VS0001IncomingReplSshPublicKey => None,
             Self::VS0002CertificatePublicKeyDigest |

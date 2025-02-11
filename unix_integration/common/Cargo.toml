@@ -37,3 +37,6 @@ tracing = { workspace = true }
 
 [build-dependencies]
 kanidm_build_profiles = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["kanidm_build_profiles"]

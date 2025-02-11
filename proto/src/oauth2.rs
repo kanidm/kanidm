@@ -6,7 +6,9 @@ use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::formats::SpaceSeparator;
-use serde_with::{formats, serde_as, skip_serializing_none, StringWithSeparator};
+use serde_with::{
+    formats, serde_as, skip_serializing_none, NoneAsEmptyString, StringWithSeparator,
+};
 use url::Url;
 use uuid::Uuid;
 
@@ -38,9 +40,19 @@ pub struct PkceRequest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorisationRequest {
     // Must be "code". (or token, see 4.2.1)
-    pub response_type: String,
+    pub response_type: ResponseType,
+    /// Response mode.
+    ///
+    /// Optional; defaults to `query` for `response_type=code` (Auth Code), and
+    /// `fragment` for `response_type=token` (Implicit Grant, which we probably
+    /// won't support).
+    ///
+    /// Reference:
+    /// [OAuth 2.0 Multiple Response Type Encoding Practices: Response Modes](https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes)
+    pub response_mode: Option<ResponseMode>,
     pub client_id: String,
-    pub state: String,
+    #[serde_as(as = "NoneAsEmptyString")]
+    pub state: Option<String>,
     #[serde(flatten)]
     pub pkce_request: Option<PkceRequest>,
     pub redirect_uri: Url,
@@ -55,6 +67,39 @@ pub struct AuthorisationRequest {
     pub max_age: Option<i64>,
     #[serde(flatten)]
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
+}
+
+impl AuthorisationRequest {
+    /// Get the `response_mode` appropriate for this request, taking into
+    /// account defaults from the `response_type` parameter.
+    ///
+    /// Returns `None` if the selection is invalid.
+    ///
+    /// Reference:
+    /// [OAuth 2.0 Multiple Response Type Encoding Practices: Response Modes](https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes)
+    pub const fn get_response_mode(&self) -> Option<ResponseMode> {
+        match (self.response_mode, self.response_type) {
+            // https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#id_token
+            // The default Response Mode for this Response Type is the fragment
+            // encoding and the query encoding MUST NOT be used.
+            (None, ResponseType::IdToken) => Some(ResponseMode::Fragment),
+            (Some(ResponseMode::Query), ResponseType::IdToken) => None,
+
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2
+            (None, ResponseType::Code) => Some(ResponseMode::Query),
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.2
+            (None, ResponseType::Token) => Some(ResponseMode::Fragment),
+
+            // https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#Security
+            // In no case should a set of Authorization Response parameters
+            // whose default Response Mode is the fragment encoding be encoded
+            // using the query encoding.
+            (Some(ResponseMode::Query), ResponseType::Token) => None,
+
+            // Allow others.
+            (Some(m), _) => Some(m),
+        }
+    }
 }
 
 /// An OIDC client redirects to the authorisation server with Authorisation Request
@@ -290,15 +335,20 @@ impl AccessTokenIntrospectResponse {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseType {
+    // Auth Code flow
+    // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.1
     Code,
+    // Implicit Grant flow
+    // https://datatracker.ietf.org/doc/html/rfc6749#section-4.2.1
     Token,
+    // https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#id_token
     IdToken,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Serialize, Deserialize, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseMode {
     Query,
@@ -391,6 +441,21 @@ fn request_uri_parameter_supported_default() -> bool {
 
 fn require_request_uri_parameter_supported_default() -> bool {
     false
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OidcWebfingerRel {
+    pub rel: String,
+    pub href: String,
+}
+
+/// The response to an Webfinger request. Only a subset of the body is defined here.
+/// <https://datatracker.ietf.org/doc/html/rfc7033#section-4.4>
+#[skip_serializing_none]
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OidcWebfingerResponse {
+    pub subject: String,
+    pub links: Vec<OidcWebfingerRel>,
 }
 
 /// The response to an OpenID connect discovery request

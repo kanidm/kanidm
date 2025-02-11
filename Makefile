@@ -178,9 +178,8 @@ codespell:
 	--skip='*.svg' \
 	--skip='*.br' \
 	--skip='./rlm_python/mods-available/eap' \
-	--skip='./server/lib/src/constants/system_config.rs'
-	--skip='./pykanidm/site' \
-	--skip='./server/lib/src/constants/*.json'
+	--skip='./server/lib/src/constants/system_config.rs' \
+	--skip='./pykanidm/site'
 
 .PHONY: test/pykanidm/pytest
 test/pykanidm/pytest: ## python library testing
@@ -314,26 +313,44 @@ cert/clean:
 	rm -f /tmp/kanidm/ca.txt*
 	rm -f /tmp/kanidm/ca.{cnf,srl,srl.old}
 
-.PHONY: rust/coverage
-coverage/test: ## Run coverage tests
-coverage/test:
-	LLVM_PROFILE_FILE="$(PWD)/target/profile/coverage-%p-%m.profraw" RUSTFLAGS="-C instrument-coverage" cargo test $(TESTS)
-
-.PHONY: coverage/grcov
-coverage/grcov: ## Run grcov
-coverage/grcov:
-	rm -rf ./target/coverage/html
-	grcov . --binary-path ./target/debug/deps/ \
-		-s . \
-		-t html \
-		--branch \
-		--ignore-not-existing \
-		--ignore '../*' \
-		--ignore "/*" \
-		--ignore "target/*" \
-		-o target/coverage/html
 
 .PHONY: coverage
-coverage: ## Run all the coverage tests
-coverage: coverage/test coverage/grcov
-	echo "Coverage report is in ./target/coverage/html/index.html"
+coverage: ## Run the coverage tests using cargo-tarpaulin
+	cargo tarpaulin --out Html
+	@echo "Coverage file at file://$(PWD)/tarpaulin-report.html"
+
+
+.PHONY: coveralls
+coveralls: ## Run cargo tarpaulin and upload to coveralls
+coveralls:
+	cargo tarpaulin --coveralls $(COVERALLS_REPO_TOKEN)
+	@echo "Coveralls repo information is at https://coveralls.io/github/kanidm/kanidm"
+
+
+.PHONY: eslint
+eslint: ## Run eslint on the UI javascript things
+eslint: eslint/setup
+	@echo "################################"
+	@echo "   Running eslint..."
+	@echo "################################"
+	cd server/core && find ./static -name '*js' -not -path '*/external/*' -exec eslint "{}" \;
+	@echo "################################"
+	@echo "Done!"
+
+.PHONY: eslint/setup
+eslint/setup: ## Install eslint for the UI javascript things
+	cd server/core && npm ci
+
+.PHONY: prettier
+prettier: ## Run prettier on the UI javascript things
+prettier: eslint/setup
+	@echo "   Running prettier..."
+	cd server/core && npm run prettier
+	@echo "Done!"
+
+.PHONY: prettier/fix
+prettier/fix: ## Run prettier on the UI javascript things and write back changes
+prettier/fix: eslint/setup
+	@echo "   Running prettier..."
+	cd server/core && npm run prettier:fix
+	@echo "Done!"

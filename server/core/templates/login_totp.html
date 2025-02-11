@@ -1,15 +1,28 @@
 (% extends "login_base.html" %)
 
 (% block logincontainer %)
-<label for="totp" class="form-label">TOTP</label>
+<label for="totp" class="form-label">Two-factor authentication code</label>
 (% match errors %)
 	(% when LoginTotpError::Syntax %)
-		<span class="error">Invalid Value</span>
-		<span class="error">TOTP must only consist of numbers</span>
+	<div class="alert alert-danger" role="alert">
+		<p>Invalid Value</p>
+		<p>Code must only consist of numbers, please try again.</p>
+	</div>
 	(% when LoginTotpError::None %)
 (% endmatch %)
 <form id="login" action="/ui/login/totp" method="post">
 	<div class="input-group mb-3">
+		<!-- BEGIN: allows a password manager to autocomplete these fields in the BG. -->
+		<input
+			class="d-none"
+			id="password"
+			name="password"
+			type="password"
+			autocomplete="current-password"
+			value=""
+		/>
+		<!-- END -->
+
 		<input
 			autofocus=true
 			class="autofocus form-control"
@@ -25,7 +38,7 @@
 	<div class="input-group mb-3 justify-content-md-center">
 		<button
 			type="submit"
-			class="btn btn-dark"
+			class="btn btn-primary"
 		>Submit</button>
 	</div>
 </form>

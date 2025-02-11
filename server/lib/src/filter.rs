@@ -83,6 +83,10 @@ pub fn f_self() -> FC {
     FC::SelfUuid
 }
 
+pub fn f_invalid(a: Attribute) -> FC {
+    FC::Invalid(a)
+}
+
 pub fn f_id(uuid: &str) -> FC {
     let uf = Uuid::parse_str(uuid)
         .ok()
@@ -117,6 +121,7 @@ pub enum FC {
     Inclusion(Vec<FC>),
     AndNot(Box<FC>),
     SelfUuid,
+    Invalid(Attribute),
     // Not(Box<FC>),
 }
 
@@ -135,6 +140,7 @@ enum FilterComp {
     Inclusion(Vec<FilterComp>),
     AndNot(Box<FilterComp>),
     SelfUuid,
+    Invalid(Attribute),
     // Does this mean we can add a true not to the type now?
     // Not(Box<FilterComp>),
 }
@@ -196,12 +202,15 @@ impl fmt::Debug for FilterComp {
             FilterComp::SelfUuid => {
                 write!(f, "uuid eq self")
             }
+            FilterComp::Invalid(attr) => {
+                write!(f, "invalid ( {:?} )", attr)
+            }
         }
     }
 }
 
 /// This is the fully resolved internal representation. Note the lack of Not and selfUUID
-/// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
+/// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...) respectively.
 /// Importantly, we make this accessible to Entry so that it can then match on filters
 /// internally.
 ///
@@ -221,6 +230,7 @@ pub enum FilterResolved {
     LessThan(Attribute, PartialValue, Option<NonZeroU8>),
     Or(Vec<FilterResolved>, Option<NonZeroU8>),
     And(Vec<FilterResolved>, Option<NonZeroU8>),
+    Invalid(Attribute),
     // All terms must have 1 or more items, or the inclusion is false!
     Inclusion(Vec<FilterResolved>, Option<NonZeroU8>),
     AndNot(Box<FilterResolved>, Option<NonZeroU8>),
@@ -310,6 +320,9 @@ impl fmt::Debug for FilterResolved {
             FilterResolved::AndNot(inner, idx) => {
                 write!(f, "not (s{} {:?})", idx.unwrap_or(NonZeroU8::MAX), inner)
             }
+            FilterResolved::Invalid(attr) => {
+                write!(f, "{} inv", attr)
+            }
         }
     }
 }
@@ -356,6 +369,54 @@ pub enum FilterPlan {
     AndNot(Box<FilterPlan>),
     InclusionInvalid(Vec<FilterPlan>),
     InclusionIndexed(Vec<FilterPlan>),
+}
+
+// This difference in this is that we want to show unindexed elements more prominently
+// in the execution.
+
+fn fmt_filterplan_set(f: &mut fmt::Formatter<'_>, name: &str, plan: &[FilterPlan]) -> fmt::Result {
+    write!(f, "{name}(")?;
+    for item in plan {
+        write!(f, "{}, ", item)?;
+    }
+    write!(f, ")")
+}
+
+impl fmt::Display for FilterPlan {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Invalid => write!(f, "Invalid"),
+            Self::EqIndexed(attr, _) => write!(f, "EqIndexed({attr})"),
+            Self::EqCorrupt(attr) => write!(f, "EqCorrupt({attr})"),
+            Self::EqUnindexed(attr) => write!(f, "EqUnindexed({attr})"),
+
+            Self::SubIndexed(attr, _) => write!(f, "SubIndexed({attr})"),
+            Self::SubCorrupt(attr) => write!(f, "SubCorrupt({attr})"),
+            Self::SubUnindexed(attr) => write!(f, "SubUnindexed({attr})"),
+
+            Self::PresIndexed(attr) => write!(f, "PresIndexed({attr})"),
+            Self::PresCorrupt(attr) => write!(f, "PresCorrupt({attr})"),
+            Self::PresUnindexed(attr) => write!(f, "PresUnindexed({attr})"),
+
+            Self::LessThanUnindexed(attr) => write!(f, "LessThanUnindexed({attr})"),
+
+            Self::OrUnindexed(plan) => fmt_filterplan_set(f, "OrUnindexed", plan),
+            Self::OrIndexed(plan) => write!(f, "OrIndexed(len={})", plan.len()),
+            Self::OrPartial(plan) => fmt_filterplan_set(f, "OrPartial", plan),
+            Self::OrPartialThreshold(plan) => fmt_filterplan_set(f, "OrPartialThreshold", plan),
+
+            Self::AndEmptyCand(plan) => write!(f, "AndEmptyCand(len={})", plan.len()),
+            Self::AndUnindexed(plan) => fmt_filterplan_set(f, "AndUnindexed", plan),
+            Self::AndIndexed(plan) => write!(f, "AndIndexed(len={})", plan.len()),
+            Self::AndPartial(plan) => fmt_filterplan_set(f, "AndPartial", plan),
+            Self::AndPartialThreshold(plan) => fmt_filterplan_set(f, "AndPartialThreshold", plan),
+
+            Self::AndNot(plan) => write!(f, "AndNot({plan})"),
+
+            Self::InclusionInvalid(plan) => fmt_filterplan_set(f, "InclusionInvalid", plan),
+            Self::InclusionIndexed(plan) => write!(f, "InclusionIndexed(len={})", plan.len()),
+        }
+    }
 }
 
 /// A `Filter` is a logical set of assertions about the state of an [`Entry`] and
@@ -729,6 +790,7 @@ impl FilterComp {
             FC::Inclusion(v) => FilterComp::Inclusion(v.into_iter().map(FilterComp::new).collect()),
             FC::AndNot(b) => FilterComp::AndNot(Box::new(FilterComp::new(*b))),
             FC::SelfUuid => FilterComp::SelfUuid,
+            FC::Invalid(a) => FilterComp::Invalid(a),
         }
     }
 
@@ -756,7 +818,8 @@ impl FilterComp {
             | FilterComp::Stw(attr, _)
             | FilterComp::Enw(attr, _)
             | FilterComp::Pres(attr)
-            | FilterComp::LessThan(attr, _) => {
+            | FilterComp::LessThan(attr, _)
+            | FilterComp::Invalid(attr) => {
                 r_set.insert(attr.clone());
             }
             FilterComp::Or(vs) => vs.iter().for_each(|f| f.get_attr_set(r_set)),
@@ -904,6 +967,11 @@ impl FilterComp {
                 // Pretty hard to mess this one up ;)
                 Ok(FilterComp::SelfUuid)
             }
+            FilterComp::Invalid(attr) => {
+                // FilterComp may be invalid but Invalid is still a valid value.
+                // we continue the evaluation so OR queries can still succeed
+                Ok(FilterComp::Invalid(attr.clone()))
+            }
         }
     }
 
@@ -1049,8 +1117,13 @@ impl FilterComp {
             }
             LdapFilter::Equality(a, v) => {
                 let a = ldap_attr_filter_map(a);
-                let v = qs.clone_partialvalue(&a, v)?;
-                FilterComp::Eq(a, v)
+                let pv = qs.clone_partialvalue(&a, v);
+
+                match pv {
+                    Ok(pv) => FilterComp::Eq(a, pv),
+                    Err(_) if a == Attribute::Spn => FilterComp::Invalid(a),
+                    Err(err) => return Err(err),
+                }
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
             LdapFilter::Substring(
@@ -1219,6 +1292,7 @@ impl FilterResolved {
                 FilterResolved::Eq(a, v, idx)
             }
             FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
+            FilterComp::Invalid(attr) => FilterResolved::Invalid(attr),
             FilterComp::Cnt(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 let idx = NonZeroU8::new(idx as u8);
@@ -1292,6 +1366,7 @@ impl FilterResolved {
             | FilterComp::Stw(..)
             | FilterComp::Enw(..)
             | FilterComp::Pres(_)
+            | FilterComp::Invalid(_)
             | FilterComp::LessThan(..) => true,
         }
     }
@@ -1387,6 +1462,7 @@ impl FilterResolved {
                 FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
+            FilterComp::Invalid(attr) => Some(FilterResolved::Invalid(attr)),
         }
     }
 
@@ -1445,6 +1521,7 @@ impl FilterResolved {
                 FilterResolved::resolve_no_idx((*f).clone(), ev)
                     .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
+            FilterComp::Invalid(attr) => Some(FilterResolved::Invalid(attr)),
         }
     }
 
@@ -1584,6 +1661,8 @@ impl FilterResolved {
             | FilterResolved::And(_, sf)
             | FilterResolved::Inclusion(_, sf)
             | FilterResolved::AndNot(_, sf) => *sf,
+            // We hard code 1 because there is no slope for an invlid filter
+            FilterResolved::Invalid(_) => NonZeroU8::new(1),
         }
     }
 }

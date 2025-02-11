@@ -32,7 +32,7 @@ pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse, GrantTypeReq,
     OAuth2RFC9068Token, OAuth2RFC9068TokenExtensions, Oauth2Rfc8414MetadataResponse,
-    OidcDiscoveryResponse, PkceAlg, TokenRevokeRequest,
+    OidcDiscoveryResponse, OidcWebfingerRel, OidcWebfingerResponse, PkceAlg, TokenRevokeRequest,
 };
 
 use kanidm_proto::oauth2::{
@@ -132,18 +132,20 @@ struct ConsentToken {
     // So we can ensure that we really match the same uat to prevent confusions.
     pub ident_id: IdentityId,
     // CSRF
-    pub state: String,
+    pub state: Option<String>,
     // The S256 code challenge.
     #[serde_as(
         as = "Option<serde_with::base64::Base64<serde_with::base64::UrlSafe, formats::Unpadded>>"
     )]
     pub code_challenge: Option<Vec<u8>>,
-    // Where the RS wants us to go back to.
+    // Where the client wants us to go back to.
     pub redirect_uri: Url,
     // The scopes being granted
     pub scopes: BTreeSet<String>,
     // We stash some details here for oidc.
     pub nonce: Option<String>,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
 }
 
 #[serde_as]
@@ -230,12 +232,77 @@ pub enum AuthoriseResponse {
 
 #[derive(Debug)]
 pub struct AuthorisePermitSuccess {
-    // Where the RS wants us to go back to.
+    // Where the client wants us to go back to.
     pub redirect_uri: Url,
     // The CSRF as a string
-    pub state: String,
+    pub state: Option<String>,
     // The exchange code as a String
     pub code: String,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
+}
+
+impl AuthorisePermitSuccess {
+    /// Builds a redirect URI to go back to the application when permission was
+    /// granted.
+    pub fn build_redirect_uri(&self) -> Url {
+        let mut redirect_uri = self.redirect_uri.clone();
+
+        // Always clear query and fragment, regardless of the response mode
+        redirect_uri.set_query(None);
+        redirect_uri.set_fragment(None);
+
+        // We can't set query pairs on fragments, only query.
+        let mut uri_builder = url::form_urlencoded::Serializer::new(String::new());
+
+        uri_builder.append_pair("code", &self.code);
+
+        if let Some(state) = self.state.as_ref() {
+            uri_builder.append_pair("state", state);
+        };
+
+        let encoded = uri_builder.finish();
+
+        match self.response_mode {
+            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
+            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+        }
+
+        redirect_uri
+    }
+}
+
+#[derive(Debug)]
+pub struct AuthoriseReject {
+    // Where the client wants us to go back to.
+    pub redirect_uri: Url,
+    /// The format the response should be returned to the application in.
+    pub response_mode: ResponseMode,
+}
+
+impl AuthoriseReject {
+    /// Builds a redirect URI to go back to the application when permission was
+    /// rejected.
+    pub fn build_redirect_uri(&self) -> Url {
+        let mut redirect_uri = self.redirect_uri.clone();
+
+        // Always clear query and fragment, regardless of the response mode
+        redirect_uri.set_query(None);
+        redirect_uri.set_fragment(None);
+
+        // We can't set query pairs on fragments, only query.
+        let encoded = url::form_urlencoded::Serializer::new(String::new())
+            .append_pair("error", "access_denied")
+            .append_pair("error_description", "authorisation rejected")
+            .finish();
+
+        match self.response_mode {
+            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
+            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+        }
+
+        redirect_uri
+    }
 }
 
 #[derive(Clone)]
@@ -1188,6 +1255,7 @@ impl IdmServerProxyWriteTransaction<'_> {
             redirect_uri: consent_req.redirect_uri,
             state: consent_req.state,
             code,
+            response_mode: consent_req.response_mode,
         })
     }
 
@@ -1793,10 +1861,18 @@ impl IdmServerProxyReadTransaction<'_> {
         // * is within it's valid time window.
         trace!(?auth_req);
 
-        if auth_req.response_type != "code" {
-            admin_warn!("Invalid OAuth2 response_type (should be 'code')");
+        if auth_req.response_type != ResponseType::Code {
+            admin_warn!("Unsupported OAuth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
+        let Some(response_mode) = auth_req.get_response_mode() else {
+            admin_warn!(
+                "Invalid response_mode {:?} for response_type {:?}",
+                auth_req.response_mode,
+                auth_req.response_type
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        };
 
         /*
          * 4.1.2.1.  Error Response
@@ -2046,6 +2122,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 state: auth_req.state.clone(),
                 code,
+                response_mode,
             }))
         } else {
             //  Check that the scopes are the same as a previous consent (if any)
@@ -2070,6 +2147,10 @@ impl IdmServerProxyReadTransaction<'_> {
                 }
             };
 
+            if granted_scopes.contains(OAUTH2_SCOPE_SSH_PUBLICKEYS) {
+                pii_scopes.insert(OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string());
+            }
+
             // Subsequent we then return an encrypted session handle which allows
             // the user to indicate their consent to this authorisation.
             //
@@ -2084,6 +2165,7 @@ impl IdmServerProxyReadTransaction<'_> {
                 redirect_uri: auth_req.redirect_uri.clone(),
                 scopes: granted_scopes.iter().cloned().collect(),
                 nonce: auth_req.nonce.clone(),
+                response_mode,
             };
 
             let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
@@ -2112,7 +2194,7 @@ impl IdmServerProxyReadTransaction<'_> {
         ident: &Identity,
         consent_token: &str,
         ct: Duration,
-    ) -> Result<Url, OperationError> {
+    ) -> Result<AuthoriseReject, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
             .oauth2rs
@@ -2154,7 +2236,10 @@ impl IdmServerProxyReadTransaction<'_> {
             })?;
 
         // All good, now confirm the rejection to the client application.
-        Ok(consent_req.redirect_uri)
+        Ok(AuthoriseReject {
+            redirect_uri: consent_req.redirect_uri,
+            response_mode: consent_req.response_mode,
+        })
     }
 
     #[instrument(level = "debug", skip_all)]
@@ -2492,7 +2577,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let jwks_uri = Some(o2rs.jwks_uri.clone());
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
-        let response_modes_supported = vec![ResponseMode::Query];
+        let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
         let grant_types_supported = vec![GrantType::AuthorisationCode];
 
         let token_endpoint_auth_methods_supported = vec![
@@ -2563,7 +2648,7 @@ impl IdmServerProxyReadTransaction<'_> {
         let jwks_uri = o2rs.jwks_uri.clone();
         let scopes_supported = Some(o2rs.scopes_supported.iter().cloned().collect());
         let response_types_supported = vec![ResponseType::Code];
-        let response_modes_supported = vec![ResponseMode::Query];
+        let response_modes_supported = vec![ResponseMode::Query, ResponseMode::Fragment];
 
         // TODO: add device code if the rs supports it per <https://www.rfc-editor.org/rfc/rfc8628#section-4>
         // `urn:ietf:params:oauth:grant-type:device_code`
@@ -2654,6 +2739,44 @@ impl IdmServerProxyReadTransaction<'_> {
             introspection_endpoint_auth_methods_supported,
             introspection_endpoint_auth_signing_alg_values_supported: None,
             device_authorization_endpoint: o2rs.device_authorization_endpoint.clone(),
+        })
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn oauth2_openid_webfinger(
+        &mut self,
+        client_id: &str,
+        resource_id: &str,
+    ) -> Result<OidcWebfingerResponse, OperationError> {
+        let o2rs = self.oauth2rs.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid OAuth2 client_id (have you configured the OAuth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let Some(spn) = PartialValue::new_spn_s(resource_id) else {
+            return Err(OperationError::NoMatchingEntries);
+        };
+
+        // Ensure that the account exists.
+        if !self
+            .qs_read
+            .internal_exists(Filter::new(f_eq(Attribute::Spn, spn)))?
+        {
+            return Err(OperationError::NoMatchingEntries);
+        }
+
+        let issuer = o2rs.iss.clone();
+
+        Ok(OidcWebfingerResponse {
+            // we set the subject to the resource_id to ensure we always send something valid back
+            // but realistically this will be overwritten on at the API layer
+            subject: resource_id.to_string(),
+            links: vec![OidcWebfingerRel {
+                rel: "http://openid.net/specs/connect/1.0/issuer".into(),
+                href: issuer.into(),
+            }],
         })
     }
 
@@ -2778,9 +2901,23 @@ fn extra_claims_for_account(
         extra_claims.insert(claim_name.to_string(), claim_value.to_json_value());
     }
 
-    if scopes.contains("groups") {
+    // Now perform our custom claim's from scopes. We do these second so that
+    // a user can't stomp our claim names.
+
+    if scopes.contains(OAUTH2_SCOPE_SSH_PUBLICKEYS) {
         extra_claims.insert(
-            "groups".to_string(),
+            OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string(),
+            account
+                .sshkeys()
+                .values()
+                .map(|pub_key| serde_json::Value::String(pub_key.to_string()))
+                .collect(),
+        );
+    }
+
+    if scopes.contains(OAUTH2_SCOPE_GROUPS) {
+        extra_claims.insert(
+            OAUTH2_SCOPE_GROUPS.to_string(),
             account
                 .groups
                 .iter()
@@ -2874,7 +3011,7 @@ fn host_is_local(host: &Host<&str>) -> bool {
 
 /// Ensure that the redirect URI is a loopback/localhost address
 fn check_is_loopback(redirect_uri: &Url) -> bool {
-    redirect_uri.host().map_or(false, |host| {
+    redirect_uri.host().is_some_and(|host| {
         // Check if the host is a loopback/localhost address.
         host_is_local(&host)
     })
@@ -2894,7 +3031,7 @@ mod tests {
         JwaAlg, Jwk, JwsCompact, JwsEs256Verifier, JwsVerifier, OidcSubject, OidcUnverified,
     };
     use kanidm_proto::constants::*;
-    use kanidm_proto::internal::UserAuthToken;
+    use kanidm_proto::internal::{SshPublicKey, UserAuthToken};
     use kanidm_proto::oauth2::*;
     use openssl::sha;
 
@@ -2903,6 +3040,7 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
     use crate::value::{AuthType, OauthClaimMapJoin, SessionState};
+    use crate::valueset::{ValueSetOauthScopeMap, ValueSetSshKey};
 
     use crate::credential::Credential;
     use kanidm_lib_crypto::CryptoPolicy;
@@ -2936,9 +3074,10 @@ mod tests {
             let scope: BTreeSet<String> = $scope.split(" ").map(|s| s.to_string()).collect();
 
             let auth_req = AuthorisationRequest {
-                response_type: "code".to_string(),
+                response_type: ResponseType::Code,
+                response_mode: None,
                 client_id: "test_resource_server".to_string(),
-                state: "123".to_string(),
+                state: Some("123".to_string()),
                 pkce_request: Some(PkceRequest {
                     code_challenge: $code_challenge.into(),
                     code_challenge_method: CodeChallengeMethod::S256,
@@ -3049,6 +3188,7 @@ mod tests {
                 Value::new_bool(prefer_short_username)
             )
         );
+
         let ce = CreateEvent::new_internal(vec![entry_rs, entry_group, E_TESTPERSON_1.clone()]);
         assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
@@ -3319,7 +3459,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
 
@@ -3381,7 +3521,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
 
@@ -3431,9 +3571,11 @@ mod tests {
 
         //  * response type != code.
         let auth_req = AuthorisationRequest {
-            response_type: "NOTCODE".to_string(),
+            // We're unlikely to support Implicit Grant
+            response_type: ResponseType::Token,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3452,9 +3594,10 @@ mod tests {
 
         // * No pkce in pkce enforced mode.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3473,9 +3616,10 @@ mod tests {
 
         //  * invalid rs name
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "NOT A REAL RESOURCE SERVER".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3494,9 +3638,10 @@ mod tests {
 
         //  * mismatched origin in the redirect.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3515,9 +3660,10 @@ mod tests {
 
         // * invalid uri in the redirect
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/wrong_place").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3536,9 +3682,10 @@ mod tests {
 
         // Not Authenticated
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -3559,9 +3706,10 @@ mod tests {
 
         // Requested scope is not available
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["invalid_scope".to_string(), "read".to_string()],
@@ -3580,9 +3728,10 @@ mod tests {
 
         // Not a member of the group.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: pkce_request.clone(),
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
@@ -3601,9 +3750,10 @@ mod tests {
 
         // Deny Anonymous auth methods
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset!["openid".to_string(), "read".to_string()],
@@ -3892,9 +4042,10 @@ mod tests {
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: None,
             pkce_request: Some(PkceRequest {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -3927,7 +4078,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), None);
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -3962,9 +4113,10 @@ mod tests {
             .expect("Unable to process uat");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -3989,7 +4141,7 @@ mod tests {
 
         // == Manually submit the consent token to the permit for the permit_success
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
@@ -4428,7 +4580,7 @@ mod tests {
             .check_oauth2_authorise_reject(&ident, &consent_token, ct)
             .expect("Failed to perform OAuth2 reject");
 
-        assert_eq!(reject_success, redirect_uri);
+        assert_eq!(reject_success.redirect_uri, redirect_uri);
 
         // Too much time past to reject
         let past_ct = Duration::from_secs(TEST_CURRENT_TIME + 301);
@@ -4523,7 +4675,7 @@ mod tests {
         assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
         assert_eq!(
             discovery.response_modes_supported,
-            vec![ResponseMode::Query]
+            vec![ResponseMode::Query, ResponseMode::Fragment]
         );
         assert_eq!(
             discovery.grant_types_supported,
@@ -4683,7 +4835,7 @@ mod tests {
         assert_eq!(discovery.response_types_supported, vec![ResponseType::Code]);
         assert_eq!(
             discovery.response_modes_supported,
-            vec![ResponseMode::Query]
+            vec![ResponseMode::Query, ResponseMode::Fragment]
         );
         assert_eq!(
             discovery.grant_types_supported,
@@ -5148,6 +5300,137 @@ mod tests {
         assert_eq!(oidc.claims.get("groups"), userinfo.claims.get("groups"));
     }
 
+    #[idm_test]
+    async fn test_idm_oauth2_openid_ssh_publickey_claim(
+        idms: &IdmServer,
+        _idms_delayed: &mut IdmServerDelayed,
+    ) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (secret, _uat, ident, client_uuid) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+
+        // Extra setup for our test - add the correct claim and give an ssh publickey
+        // to our testperson
+        const ECDSA_SSH_PUBLIC_KEY: &str = "ecdsa-sha2-nistp521 AAAAE2VjZHNhLXNoYTItbmlzdHA1MjEAAAAIbmlzdHA1MjEAAACFBAGyIY7o3BtOzRiJ9vvjj96bRImwmyy5GvFSIUPlK00HitiAWGhiO1jGZKmK7220Oe4rqU3uAwA00a0758UODs+0OQHLMDRtl81lzPrVSdrYEDldxH9+a86dBZhdm0e15+ODDts2LHUknsJCRRldO4o9R9VrohlF7cbyBlnhJQrR4S+Oag== william@amethyst";
+        let ssh_pubkey = SshPublicKey::from_string(ECDSA_SSH_PUBLIC_KEY).unwrap();
+
+        let scope_set = BTreeSet::from([OAUTH2_SCOPE_SSH_PUBLICKEYS.to_string()]);
+
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        idms_prox_write
+            .qs_write
+            .internal_batch_modify(
+                [
+                    (
+                        UUID_TESTPERSON_1,
+                        ModifyList::new_set(
+                            Attribute::SshPublicKey,
+                            ValueSetSshKey::new("label".to_string(), ssh_pubkey),
+                        ),
+                    ),
+                    (
+                        client_uuid,
+                        ModifyList::new_set(
+                            Attribute::OAuth2RsSupScopeMap,
+                            ValueSetOauthScopeMap::new(UUID_IDM_ALL_ACCOUNTS, scope_set),
+                        ),
+                    ),
+                ]
+                .into_iter(),
+            )
+            .expect("Failed to modify test entries");
+
+        assert!(idms_prox_write.commit().is_ok());
+
+        let client_authz = ClientAuthInfo::encode_basic("test_resource_server", secret.as_str());
+
+        let idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+        let consent_request = good_authorisation_request!(
+            idms_prox_read,
+            &ident,
+            ct,
+            code_challenge,
+            "openid groups".to_string()
+        );
+
+        let AuthoriseResponse::ConsentRequested { consent_token, .. } = consent_request else {
+            unreachable!();
+        };
+
+        // == Manually submit the consent token to the permit for the permit_success
+        drop(idms_prox_read);
+        let mut idms_prox_write = idms.proxy_write(ct).await.unwrap();
+
+        let permit_success = idms_prox_write
+            .check_oauth2_authorise_permit(&ident, &consent_token, ct)
+            .expect("Failed to perform OAuth2 permit");
+
+        // == Submit the token exchange code.
+        let token_req: AccessTokenRequest = GrantTypeReq::AuthorizationCode {
+            code: permit_success.code,
+            redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+            // From the first step.
+            code_verifier,
+        }
+        .into();
+
+        let token_response = idms_prox_write
+            .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            .expect("Failed to perform OAuth2 token exchange");
+
+        let id_token = token_response.id_token.expect("No id_token in response!");
+        let access_token =
+            JwsCompact::from_str(&token_response.access_token).expect("Invalid Access Token");
+
+        assert!(idms_prox_write.commit().is_ok());
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let mut jwkset = idms_prox_read
+            .oauth2_openid_publickey("test_resource_server")
+            .expect("Failed to get public key");
+        let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+        let jws_validator =
+            JwsEs256Verifier::try_from(&public_jwk).expect("failed to build validator");
+
+        let oidc_unverified =
+            OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+        let iat = ct.as_secs() as i64;
+
+        let oidc = jws_validator
+            .verify(&oidc_unverified)
+            .unwrap()
+            .verify_exp(iat)
+            .expect("Failed to verify oidc");
+
+        // does our id_token contain the expected groups?
+        assert!(oidc.claims.contains_key(OAUTH2_SCOPE_SSH_PUBLICKEYS));
+
+        assert!(oidc
+            .claims
+            .get(OAUTH2_SCOPE_SSH_PUBLICKEYS)
+            .expect("unable to find key")
+            .as_array()
+            .unwrap()
+            .contains(&serde_json::json!(ECDSA_SSH_PUBLIC_KEY)));
+
+        // Do the id_token details line up to the userinfo?
+        let userinfo = idms_prox_read
+            .oauth2_openid_userinfo("test_resource_server", access_token, ct)
+            .expect("failed to get userinfo");
+
+        // does the userinfo endpoint provide the same groups?
+        assert_eq!(
+            oidc.claims.get(OAUTH2_SCOPE_SSH_PUBLICKEYS),
+            userinfo.claims.get(OAUTH2_SCOPE_SSH_PUBLICKEYS)
+        );
+    }
+
     //  Check insecure pkce behaviour.
     #[idm_test]
     async fn test_idm_oauth2_insecure_pkce(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
@@ -5171,9 +5454,10 @@ mod tests {
 
         // Check we allow none.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
@@ -5186,6 +5470,34 @@ mod tests {
         idms_prox_read
             .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
             .expect("Oauth2 authorisation failed");
+    }
+
+    #[idm_test]
+    async fn test_idm_oauth2_webfinger(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {
+        let ct = Duration::from_secs(TEST_CURRENT_TIME);
+        let (_secret, _uat, _ident, _) =
+            setup_oauth2_resource_server_basic(idms, ct, true, false, true).await;
+        let mut idms_prox_read = idms.proxy_read().await.unwrap();
+
+        let user = "testperson1@example.com";
+
+        let webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", user)
+            .expect("Failed to get webfinger");
+
+        assert_eq!(webfinger.subject, user);
+        assert_eq!(webfinger.links.len(), 1);
+
+        let link = &webfinger.links[0];
+        assert_eq!(link.rel, "http://openid.net/specs/connect/1.0/issuer");
+        assert_eq!(
+            link.href,
+            "https://idm.example.com/oauth2/openid/test_resource_server"
+        );
+
+        let failed_webfinger = idms_prox_read
+            .oauth2_openid_webfinger("test_resource_server", "someone@another.domain");
+        assert!(failed_webfinger.is_err());
     }
 
     #[idm_test]
@@ -5382,9 +5694,10 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -5440,9 +5753,10 @@ mod tests {
         let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -5582,9 +5896,10 @@ mod tests {
 
         // First, the user does not request pkce in their exchange.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: None,
             redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
             scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
@@ -5657,9 +5972,10 @@ mod tests {
 
         // First, NOTE the lack of https on the redir uri.
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -6621,9 +6937,10 @@ mod tests {
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
         let auth_req = AuthorisationRequest {
-            response_type: "code".to_string(),
+            response_type: ResponseType::Code,
+            response_mode: None,
             client_id: "test_resource_server".to_string(),
-            state: "123".to_string(),
+            state: Some("123".to_string()),
             pkce_request: Some(PkceRequest {
                 code_challenge,
                 code_challenge_method: CodeChallengeMethod::S256,
@@ -6654,7 +6971,7 @@ mod tests {
             .expect("Failed to perform OAuth2 permit");
 
         // Check we are reflecting the CSRF properly.
-        assert_eq!(permit_success.state, "123");
+        assert_eq!(permit_success.state.as_deref(), Some("123"));
 
         // == Submit the token exchange code.
         let token_req = AccessTokenRequest {

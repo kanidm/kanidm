@@ -3,7 +3,7 @@ use axum::extract::{Query, State};
 use axum::http::{StatusCode, Uri};
 use axum::response::{ErrorResponse, IntoResponse, Redirect, Response};
 use axum::{Extension, Form};
-use axum_extra::extract::cookie::{Cookie, SameSite};
+use axum_extra::extract::cookie::SameSite;
 use axum_extra::extract::CookieJar;
 use axum_htmx::{
     HxEvent, HxLocation, HxPushUrl, HxRequest, HxReselect, HxResponseTrigger, HxReswap, HxRetarget,
@@ -14,22 +14,28 @@ use qrcode::render::svg;
 use qrcode::QrCode;
 use serde::{Deserialize, Serialize};
 use serde_with::skip_serializing_none;
+use std::collections::BTreeMap;
 use std::fmt;
 use std::fmt::{Display, Formatter};
 use std::str::FromStr;
 use uuid::Uuid;
+
+pub use sshkey_attest::proto::PublicKey as SshPublicKey;
+pub use sshkeys::KeyType;
 
 use kanidm_proto::internal::{
     CUCredState, CUExtPortal, CURegState, CURegWarning, CURequest, CUSessionToken, CUStatus,
     CredentialDetail, OperationError, PasskeyDetail, PasswordFeedback, TotpAlgo, UserAuthToken,
     COOKIE_CU_SESSION_TOKEN,
 };
+use kanidmd_lib::prelude::ClientAuthInfo;
 
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
 use crate::https::extractors::{DomainInfo, DomainInfoRead, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::constants::ProfileMenuItems;
+use crate::https::views::cookies;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::login::{LoginDisplayCtx, Reauth, ReauthPurpose};
 use crate::https::ServerState;
@@ -67,10 +73,17 @@ struct CredStatusView {
     credentials_update_partial: CredResetPartialView,
 }
 
+struct SshKey {
+    key_type: KeyType,
+    key: String,
+    comment: Option<String>,
+}
+
 #[derive(Template)]
 #[template(path = "credentials_update_partial.html")]
 struct CredResetPartialView {
     ext_cred_portal: CUExtPortal,
+    can_commit: bool,
     warnings: Vec<CURegWarning>,
     attested_passkeys_state: CUCredState,
     passkeys_state: CUCredState,
@@ -80,6 +93,8 @@ struct CredResetPartialView {
     primary: Option<CredentialDetail>,
     unixcred_state: CUCredState,
     unixcred: Option<CredentialDetail>,
+    sshkeys_state: CUCredState,
+    sshkeys: BTreeMap<String, SshKey>,
 }
 
 #[skip_serializing_none]
@@ -101,6 +116,13 @@ struct SetUnixCredPartial {
     check_res: PwdCheckResult,
 }
 
+#[derive(Template)]
+#[template(path = "credential_update_add_ssh_publickey_partial.html")]
+struct AddSshPublicKeyPartial {
+    title_error: Option<String>,
+    key_error: Option<String>,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 enum PwdCheckResult {
     Success,
@@ -115,6 +137,17 @@ enum PwdCheckResult {
 pub(crate) struct NewPassword {
     new_password: String,
     new_password_check: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct NewPublicKey {
+    title: String,
+    key: String,
+}
+
+#[derive(Deserialize, Debug)]
+pub(crate) struct PublicKeyRemoveData {
+    name: String,
 }
 
 #[derive(Deserialize, Debug)]
@@ -203,44 +236,78 @@ impl Display for PasskeyClass {
     }
 }
 
+/// When the credential update session is ended through a commit or discard of the changes
+/// we need to redirect the user to a relevant location. This location depends on the sessions
+/// current authentication state. If they are authenticated, they are sent to their profile. If
+/// they are not authenticated, they are sent to the login screen.
+async fn end_session_response(
+    state: ServerState,
+    kopid: KOpId,
+    client_auth_info: ClientAuthInfo,
+    jar: CookieJar,
+) -> axum::response::Result<Response> {
+    let is_logged_in = state
+        .qe_r_ref
+        .handle_auth_valid(client_auth_info, kopid.eventid)
+        .await
+        .is_ok();
+
+    let redirect_location = if is_logged_in {
+        Urls::Profile.as_ref()
+    } else {
+        Urls::Login.as_ref()
+    };
+
+    Ok((
+        jar,
+        HxLocation::from(Uri::from_static(redirect_location)),
+        "",
+    )
+        .into_response())
+}
+
 pub(crate) async fn commit(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     state
         .qe_w_ref
         .handle_idmcredentialupdatecommit(cu_session_token, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info))
         .await?;
 
-    Ok((HxLocation::from(Uri::from_static("/ui")), "").into_response())
+    // No longer need the cookie jar.
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
+
+    end_session_response(state, kopid, client_auth_info, jar).await
 }
 
 pub(crate) async fn cancel_cred_update(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     state
         .qe_w_ref
         .handle_idmcredentialupdatecancel(cu_session_token, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info))
         .await?;
 
-    Ok((
-        HxLocation::from(Uri::from_static(Urls::Profile.as_ref())),
-        "",
-    )
-        .into_response())
+    // No longer need the cookie jar.
+    let jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
+
+    end_session_response(state, kopid, client_auth_info, jar).await
 }
 
 pub(crate) async fn cancel_mfareg(
@@ -248,14 +315,15 @@ pub(crate) async fn cancel_mfareg(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
         .handle_idmcredentialupdate(cu_session_token, CURequest::CancelMFAReg, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -266,14 +334,15 @@ pub(crate) async fn remove_alt_creds(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
         .handle_idmcredentialupdate(cu_session_token, CURequest::PrimaryRemove, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -284,9 +353,10 @@ pub(crate) async fn remove_unixcred(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -295,7 +365,31 @@ pub(crate) async fn remove_unixcred(
             CURequest::UnixPasswordRemove,
             kopid.eventid,
         )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
+        .await?;
+
+    Ok(get_cu_partial_response(cu_status))
+}
+
+pub(crate) async fn remove_ssh_publickey(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    Form(publickey): Form<PublicKeyRemoveData>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+
+    let cu_status = state
+        .qe_r_ref
+        .handle_idmcredentialupdate(
+            cu_session_token,
+            CURequest::SshPublicKeyRemove(publickey.name),
+            kopid.eventid,
+        )
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -306,10 +400,11 @@ pub(crate) async fn remove_totp(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(totp): Form<TOTPRemoveData>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -318,7 +413,7 @@ pub(crate) async fn remove_totp(
             CURequest::TotpRemove(totp.name),
             kopid.eventid,
         )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -329,10 +424,11 @@ pub(crate) async fn remove_passkey(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(passkey): Form<PasskeyRemoveData>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
 
     let cu_status = state
         .qe_r_ref
@@ -341,7 +437,7 @@ pub(crate) async fn remove_passkey(
             CURequest::PasskeyRemove(passkey.uuid),
             kopid.eventid,
         )
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     Ok(get_cu_partial_response(cu_status))
@@ -350,12 +446,11 @@ pub(crate) async fn remove_passkey(
 pub(crate) async fn finish_passkey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(passkey_create): Form<PasskeyCreateForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
 
     match serde_json::from_str(passkey_create.creation_data.as_str()) {
         Ok(creation_data) => {
@@ -369,7 +464,7 @@ pub(crate) async fn finish_passkey(
             let cu_status = state
                 .qe_r_ref
                 .handle_idmcredentialupdate(cu_session_token, cu_request, kopid.eventid)
-                .map_err(|op_err| HtmxError::new(&kopid, op_err))
+                .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
                 .await?;
 
             Ok(get_cu_partial_response(cu_status))
@@ -378,7 +473,7 @@ pub(crate) async fn finish_passkey(
             error!("Bad request for passkey creation: {e}");
             Ok((
                 StatusCode::UNPROCESSABLE_ENTITY,
-                HtmxError::new(&kopid, OperationError::Backend).into_response(),
+                HtmxError::new(&kopid, OperationError::Backend, domain_info).into_response(),
             )
                 .into_response())
         }
@@ -390,10 +485,11 @@ pub(crate) async fn view_new_passkey(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     Form(init_form): Form<PasskeyInitForm>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
     let cu_req = match init_form.class {
         PasskeyClass::Any => CURequest::PasskeyInit,
         PasskeyClass::Attested => CURequest::AttestedPasskeyInit,
@@ -402,7 +498,7 @@ pub(crate) async fn view_new_passkey(
     let cu_status: CUStatus = state
         .qe_r_ref
         .handle_idmcredentialupdate(cu_session_token, cu_req, kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     let response = match cu_status.mfaregstate {
@@ -417,6 +513,7 @@ pub(crate) async fn view_new_passkey(
                 UnrecoverableErrorView {
                     err_code: OperationError::UI0001ChallengeSerialisation,
                     operation_id: kopid.eventid,
+                    domain_info,
                 }
                 .into_response()
             }
@@ -424,6 +521,7 @@ pub(crate) async fn view_new_passkey(
         _ => UnrecoverableErrorView {
             err_code: OperationError::UI0002InvalidState,
             operation_id: kopid.eventid,
+            domain_info,
         }
         .into_response(),
     };
@@ -441,11 +539,10 @@ pub(crate) async fn view_new_passkey(
 pub(crate) async fn view_new_totp(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
-    HxRequest(_hx_request): HxRequest,
-    VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
     let push_url = HxPushUrl(Uri::from_static("/ui/reset/add_totp"));
 
     let cu_status = state
@@ -454,7 +551,7 @@ pub(crate) async fn view_new_totp(
         .await
         // TODO: better handling for invalid mfaregstate state, can be invalid if certain mfa flows were interrupted
         // TODO: We should maybe automatically cancel the other MFA reg
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let partial = if let CURegState::TotpCheck(secret) = cu_status.mfaregstate {
         let uri = secret.to_uri();
@@ -483,6 +580,7 @@ pub(crate) async fn view_new_totp(
         return Err(ErrorResponse::from(HtmxError::new(
             &kopid,
             OperationError::CannotStartMFADuringOngoingMFASession,
+            domain_info,
         )));
     };
 
@@ -494,10 +592,11 @@ pub(crate) async fn add_totp(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     new_totp_form: Form<NewTotp>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token = get_cu_session(jar).await?;
+    let cu_session_token = get_cu_session(&jar).await?;
 
     let check_totpcode = u32::from_str(&new_totp_form.check_totpcode).unwrap_or_default();
 
@@ -517,7 +616,7 @@ pub(crate) async fn add_totp(
         )
     }
     .await
-    .map_err(|op_err| HtmxError::new(&kopid, op_err))?;
+    .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))?;
 
     let check = match &cu_status.mfaregstate {
         CURegState::None => return Ok(get_cu_partial_response(cu_status)),
@@ -536,6 +635,7 @@ pub(crate) async fn add_totp(
             return Err(ErrorResponse::from(HtmxError::new(
                 &kopid,
                 OperationError::InvalidState,
+                domain_info,
             )))
         }
     };
@@ -566,10 +666,11 @@ pub(crate) async fn view_new_pwd(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     opt_form: Option<Form<NewPassword>>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
@@ -601,7 +702,13 @@ pub(crate) async fn view_new_pwd(
             Err(OperationError::PasswordQuality(password_feedback)) => {
                 (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
             }
-            Err(operr) => return Err(ErrorResponse::from(HtmxError::new(&kopid, operr))),
+            Err(operr) => {
+                return Err(ErrorResponse::from(HtmxError::new(
+                    &kopid,
+                    operr,
+                    domain_info,
+                )))
+            }
         }
     } else {
         (vec![], StatusCode::UNPROCESSABLE_ENTITY)
@@ -633,7 +740,7 @@ pub(crate) async fn view_self_reset_get(
     let uat: UserAuthToken = state
         .qe_r_ref
         .handle_whoami_uat(client_auth_info.clone(), kopid.eventid)
-        .map_err(|op_err| HtmxError::new(&kopid, op_err))
+        .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
         .await?;
 
     let time = time::OffsetDateTime::now_utc() + time::Duration::new(60, 0);
@@ -643,7 +750,7 @@ pub(crate) async fn view_self_reset_get(
         let (cu_session_token, cu_status) = state
             .qe_w_ref
             .handle_idmcredentialupdate(client_auth_info, uat.uuid.to_string(), kopid.eventid)
-            .map_err(|op_err| HtmxError::new(&kopid, op_err))
+            .map_err(|op_err| HtmxError::new(&kopid, op_err, domain_info.clone()))
             .await?;
 
         let cu_resp = get_cu_response(domain_info, cu_status, true);
@@ -679,10 +786,9 @@ fn add_cu_cookie(
     state: &ServerState,
     cu_session_token: CUSessionToken,
 ) -> CookieJar {
-    let mut token_cookie = Cookie::new(COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
-    token_cookie.set_secure(state.secure_cookies);
+    let mut token_cookie =
+        cookies::make_unsigned(state, COOKIE_CU_SESSION_TOKEN, cu_session_token.token);
     token_cookie.set_same_site(SameSite::Strict);
-    token_cookie.set_http_only(true);
     jar.add(token_cookie)
 }
 
@@ -691,10 +797,11 @@ pub(crate) async fn view_set_unixcred(
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
     jar: CookieJar,
     opt_form: Option<Form<NewPassword>>,
 ) -> axum::response::Result<Response> {
-    let cu_session_token: CUSessionToken = get_cu_session(jar).await?;
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
     let swapped_handler_trigger =
         HxResponseTrigger::after_swap([HxEvent::new("addPasswordSwapped".to_string())]);
 
@@ -726,7 +833,13 @@ pub(crate) async fn view_set_unixcred(
             Err(OperationError::PasswordQuality(password_feedback)) => {
                 (password_feedback, StatusCode::UNPROCESSABLE_ENTITY)
             }
-            Err(operr) => return Err(ErrorResponse::from(HtmxError::new(&kopid, operr))),
+            Err(operr) => {
+                return Err(ErrorResponse::from(HtmxError::new(
+                    &kopid,
+                    operr,
+                    domain_info,
+                )))
+            }
         }
     } else {
         (vec![], StatusCode::UNPROCESSABLE_ENTITY)
@@ -746,11 +859,100 @@ pub(crate) async fn view_set_unixcred(
         .into_response())
 }
 
-pub(crate) async fn view_reset_get(
+struct AddSshPublicKeyError {
+    key: Option<String>,
+    title: Option<String>,
+}
+
+pub(crate) async fn view_add_ssh_publickey(
     State(state): State<ServerState>,
     Extension(kopid): Extension<KOpId>,
     HxRequest(_hx_request): HxRequest,
     VerifiedClientInformation(_client_auth_info): VerifiedClientInformation,
+    DomainInfo(domain_info): DomainInfo,
+    jar: CookieJar,
+    opt_form: Option<Form<NewPublicKey>>,
+) -> axum::response::Result<Response> {
+    let cu_session_token: CUSessionToken = get_cu_session(&jar).await?;
+
+    let new_key = match opt_form {
+        None => {
+            return Ok((AddSshPublicKeyPartial {
+                title_error: None,
+                key_error: None,
+            },)
+                .into_response());
+        }
+        Some(Form(new_key)) => new_key,
+    };
+
+    let (
+        AddSshPublicKeyError {
+            key: key_error,
+            title: title_error,
+        },
+        status,
+    ) = {
+        let publickey = match SshPublicKey::from_string(&new_key.key) {
+            Err(_) => {
+                return Ok((AddSshPublicKeyPartial {
+                    title_error: None,
+                    key_error: Some("Key cannot be parsed".to_string()),
+                },)
+                    .into_response());
+            }
+            Ok(publickey) => publickey,
+        };
+        let res = state
+            .qe_r_ref
+            .handle_idmcredentialupdate(
+                cu_session_token,
+                CURequest::SshPublicKey(new_key.title, publickey),
+                kopid.eventid,
+            )
+            .await;
+        match res {
+            Ok(cu_status) => return Ok(get_cu_partial_response(cu_status)),
+            Err(e @ (OperationError::InvalidLabel | OperationError::DuplicateLabel)) => (
+                AddSshPublicKeyError {
+                    title: Some(e.to_string()),
+                    key: None,
+                },
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
+            Err(e @ OperationError::DuplicateKey) => (
+                AddSshPublicKeyError {
+                    key: Some(e.to_string()),
+                    title: None,
+                },
+                StatusCode::UNPROCESSABLE_ENTITY,
+            ),
+            Err(operr) => {
+                return Err(ErrorResponse::from(HtmxError::new(
+                    &kopid,
+                    operr,
+                    domain_info,
+                )))
+            }
+        }
+    };
+
+    Ok((
+        status,
+        HxPushUrl(Uri::from_static("/ui/reset/add_ssh_publickey")),
+        AddSshPublicKeyPartial {
+            title_error,
+            key_error,
+        },
+    )
+        .into_response())
+}
+
+pub(crate) async fn view_reset_get(
+    State(state): State<ServerState>,
+    Extension(kopid): Extension<KOpId>,
+    HxRequest(_hx_request): HxRequest,
+    VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
     DomainInfo(domain_info): DomainInfo,
     Query(params): Query<ResetTokenParam>,
     mut jar: CookieJar,
@@ -759,7 +961,7 @@ pub(crate) async fn view_reset_get(
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     let is_logged_in = state
         .qe_r_ref
-        .handle_auth_valid(_client_auth_info.clone(), kopid.eventid)
+        .handle_auth_valid(client_auth_info.clone(), kopid.eventid)
         .await
         .is_ok();
 
@@ -781,7 +983,7 @@ pub(crate) async fn view_reset_get(
                 | OperationError::InvalidState,
             ) => {
                 // If our previous credential update session expired we want to see the reset form again.
-                jar = jar.remove(Cookie::from(COOKIE_CU_SESSION_TOKEN));
+                jar = cookies::destroy(jar, COOKIE_CU_SESSION_TOKEN, &state);
 
                 if let Some(token) = params.token {
                     let token_uri_string = format!("{}?token={}", Urls::CredReset, token);
@@ -789,7 +991,9 @@ pub(crate) async fn view_reset_get(
                 }
                 return Ok((jar, Redirect::to(Urls::CredReset.as_ref())).into_response());
             }
-            Err(op_err) => return Ok(HtmxError::new(&kopid, op_err).into_response()),
+            Err(op_err) => {
+                return Ok(HtmxError::new(&kopid, op_err, domain_info.clone()).into_response())
+            }
         };
 
         // CU Session cookie is okay
@@ -820,7 +1024,7 @@ pub(crate) async fn view_reset_get(
                     .into_response())
             }
             Err(op_err) => Err(ErrorResponse::from(
-                HtmxError::new(&kopid, op_err).into_response(),
+                HtmxError::new(&kopid, op_err, domain_info).into_response(),
             )),
         }
     } else {
@@ -839,6 +1043,7 @@ pub(crate) async fn view_reset_get(
 fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
     let CUStatus {
         ext_cred_portal,
+        can_commit,
         warnings,
         passkeys_state,
         attested_passkeys_state,
@@ -848,11 +1053,28 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys,
         ..
     } = cu_status;
 
+    let sshkeyss: BTreeMap<String, SshKey> = sshkeys
+        .iter()
+        .map(|(k, v)| {
+            (
+                k.clone(),
+                SshKey {
+                    key_type: v.clone().key_type,
+                    key: v.fingerprint().hash,
+                    comment: v.comment.clone(),
+                },
+            )
+        })
+        .collect();
+
     CredResetPartialView {
         ext_cred_portal,
+        can_commit,
         warnings,
         attested_passkeys_state,
         passkeys_state,
@@ -862,6 +1084,8 @@ fn get_cu_partial(cu_status: CUStatus) -> CredResetPartialView {
         primary,
         unixcred_state,
         unixcred,
+        sshkeys_state,
+        sshkeys: sshkeyss,
     }
 }
 
@@ -917,7 +1141,7 @@ fn get_cu_response(
     }
 }
 
-async fn get_cu_session(jar: CookieJar) -> Result<CUSessionToken, Response> {
+async fn get_cu_session(jar: &CookieJar) -> Result<CUSessionToken, Response> {
     let cookie = jar.get(COOKIE_CU_SESSION_TOKEN);
     if let Some(cookie) = cookie {
         let cu_session_token = cookie.value();

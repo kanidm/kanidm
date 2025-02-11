@@ -42,3 +42,6 @@ clap_complete = { workspace = true }
 
 [dev-dependencies]
 sketching = { workspace = true }
+
+[package.metadata.cargo-machete]
+ignored = ["clap_complete"]

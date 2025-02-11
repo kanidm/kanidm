@@ -19,7 +19,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.7
         with:
           version: "v0.4.2"
       - name: Install dependencies
@@ -27,11 +27,13 @@ jobs:
           sudo apt-get update && \
           sudo apt-get install -y \
             libpam0g-dev \
-            libudev-dev \
+            libselinux1-dev \
             libssl-dev \
+            libsystemd-dev \
+            libtss2-dev \
+            libudev-dev \
             pkg-config \
-            tpm-udev \
-            libtss2-dev
+            tpm-udev
       - name: "Run clippy"
         run: cargo clippy --lib --bins --examples --all-features
   fmt:
@@ -39,7 +41,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Setup sccache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.7
         with:
           version: "v0.4.2"
       - name: "Run cargo fmt"
