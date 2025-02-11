@@ -831,6 +831,13 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
 
     let label: String = Input::new()
         .with_prompt("TOTP Label")
+        .validate_with(|input: &String| -> Result<(), &str> {
+            if input.trim().is_empty() {
+                Err("Label cannot be empty")
+            } else {
+                Ok(())
+            }
+        })
         .interact_text()
         .expect("Failed to interact with interactive session");
 
@@ -917,6 +924,13 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
             }) => {
                 // Wrong code! Try again.
                 eprintln!("Incorrect TOTP code entered. Please try again.");
+                continue;
+            }
+            Ok(CUStatus {
+                mfaregstate: CURegState::TotpNameTryAgain(label),
+                ..
+            }) => {
+                eprintln!("{label} is either invalid or already taken. Please try again.");
                 continue;
             }
             Ok(CUStatus {
