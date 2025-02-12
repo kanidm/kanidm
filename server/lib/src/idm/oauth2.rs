@@ -248,24 +248,32 @@ impl AuthorisePermitSuccess {
     pub fn build_redirect_uri(&self) -> Url {
         let mut redirect_uri = self.redirect_uri.clone();
 
-        // Always clear query and fragment, regardless of the response mode
-        redirect_uri.set_query(None);
+        // Always clear the fragment per RFC
         redirect_uri.set_fragment(None);
 
-        // We can't set query pairs on fragments, only query.
-        let mut uri_builder = url::form_urlencoded::Serializer::new(String::new());
-
-        uri_builder.append_pair("code", &self.code);
-
-        if let Some(state) = self.state.as_ref() {
-            uri_builder.append_pair("state", state);
-        };
-
-        let encoded = uri_builder.finish();
-
         match self.response_mode {
-            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
-            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+            ResponseMode::Query => {
+                redirect_uri
+                    .query_pairs_mut()
+                    .append_pair("code", &self.code);
+
+                if let Some(state) = self.state.as_ref() {
+                    redirect_uri.query_pairs_mut().append_pair("state", state);
+                };
+            }
+            ResponseMode::Fragment => {
+                redirect_uri.set_query(None);
+
+                // We can't set query pairs on fragments, only query.
+                let mut uri_builder = url::form_urlencoded::Serializer::new(String::new());
+                uri_builder.append_pair("code", &self.code);
+                if let Some(state) = self.state.as_ref() {
+                    uri_builder.append_pair("state", state);
+                };
+                let encoded = uri_builder.finish();
+
+                redirect_uri.set_fragment(Some(&encoded))
+            }
         }
 
         redirect_uri
@@ -3020,7 +3028,7 @@ fn check_is_loopback(redirect_uri: &Url) -> bool {
 #[cfg(test)]
 mod tests {
     use base64::{engine::general_purpose, Engine as _};
-    use std::collections::BTreeSet;
+    use std::collections::{BTreeMap, BTreeSet};
     use std::convert::TryFrom;
     use std::str::FromStr;
     use std::time::Duration;
@@ -3144,7 +3152,7 @@ mod tests {
             ),
             (
                 Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://portal.example.com").unwrap()
+                Value::new_url_s("https://portal.example.com/?custom=foo").unwrap()
             ),
             (
                 Attribute::OAuth2RsOrigin,
@@ -3680,6 +3688,70 @@ mod tests {
                 == Oauth2Error::InvalidOrigin
         );
 
+        // * invalid uri (doesn't match query params)
+        let auth_req = AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: Some("123".to_string()),
+            pkce_request: pkce_request.clone(),
+            redirect_uri: Url::parse("https://portal.example.com/?custom=foo&too=many").unwrap(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            nonce: None,
+            oidc_ext: Default::default(),
+            max_age: None,
+            unknown_keys: Default::default(),
+        };
+
+        assert!(
+            idms_prox_read
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .unwrap_err()
+                == Oauth2Error::InvalidOrigin
+        );
+
+        let auth_req = AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: Some("123".to_string()),
+            pkce_request: pkce_request.clone(),
+            redirect_uri: Url::parse("https://portal.example.com").unwrap(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            nonce: None,
+            oidc_ext: Default::default(),
+            max_age: None,
+            unknown_keys: Default::default(),
+        };
+
+        assert!(
+            idms_prox_read
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .unwrap_err()
+                == Oauth2Error::InvalidOrigin
+        );
+
+        let auth_req = AuthorisationRequest {
+            response_type: ResponseType::Code,
+            response_mode: None,
+            client_id: "test_resource_server".to_string(),
+            state: Some("123".to_string()),
+            pkce_request: pkce_request.clone(),
+            redirect_uri: Url::parse("https://portal.example.com/?wrong=queryparam").unwrap(),
+            scope: btreeset![OAUTH2_SCOPE_OPENID.to_string()],
+            nonce: None,
+            oidc_ext: Default::default(),
+            max_age: None,
+            unknown_keys: Default::default(),
+        };
+
+        assert!(
+            idms_prox_read
+                .check_oauth2_authorisation(Some(&ident), &auth_req, ct)
+                .unwrap_err()
+                == Oauth2Error::InvalidOrigin
+        );
+
         // Not Authenticated
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
@@ -4041,6 +4113,8 @@ mod tests {
         // == Setup the authorisation request
         let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
+        let redirect_uri = Url::parse("https://portal.example.com/?custom=foo").unwrap();
+
         let auth_req = AuthorisationRequest {
             response_type: ResponseType::Code,
             response_mode: None,
@@ -4050,7 +4124,7 @@ mod tests {
                 code_challenge: code_challenge.clone(),
                 code_challenge_method: CodeChallengeMethod::S256,
             }),
-            redirect_uri: Url::parse("https://portal.example.com").unwrap(),
+            redirect_uri: redirect_uri.clone(),
             scope: btreeset![OAUTH2_SCOPE_GROUPS.to_string()],
             nonce: Some("abcdef".to_string()),
             oidc_ext: Default::default(),
@@ -4080,12 +4154,22 @@ mod tests {
         // Check we are reflecting the CSRF properly.
         assert_eq!(permit_success.state.as_deref(), None);
 
+        // Assert we followed the redirect uri including the query elements
+        // we have in the url.
+        let permit_redirect_uri = permit_success.build_redirect_uri();
+
+        assert_eq!(permit_redirect_uri.origin(), redirect_uri.origin());
+        assert_eq!(permit_redirect_uri.path(), redirect_uri.path());
+        let query = BTreeMap::from_iter(permit_redirect_uri.query_pairs().into_owned());
+        // Assert the query pair wasn't changed
+        assert_eq!(query.get("custom").map(|s| s.as_str()), Some("foo"));
+
         // == Submit the token exchange code.
         // ⚠️  This is where we submit a different origin!
         let token_req = AccessTokenRequest {
             grant_type: GrantTypeReq::AuthorizationCode {
                 code: permit_success.code,
-                redirect_uri: Url::parse("https://portal.example.com").unwrap(),
+                redirect_uri,
                 // From the first step.
                 code_verifier: code_verifier.clone(),
             },
