@@ -505,6 +505,15 @@ impl Credential {
         })
     }
 
+    //TODO: Add validation for securitykey label
+    #[allow(dead_code)]
+    pub(crate) fn has_securitykey_by_name(&self, label: &str) -> bool {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, _, wan, _) => wan.contains_key(label),
+            _ => false,
+        }
+    }
+
     #[allow(clippy::ptr_arg)]
     /// After a successful authentication with Webauthn, we need to advance the credentials
     /// counter value to prevent certain classes of replay attacks.
@@ -699,6 +708,13 @@ impl Credential {
             type_,
             // Rotate the credential id on any change to invalidate sessions.
             uuid: Uuid::new_v4(),
+        }
+    }
+
+    pub(crate) fn has_totp_by_name(&self, label: &str) -> bool {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, totp, _, _) => totp.contains_key(label),
+            _ => false,
         }
     }
 

@@ -1396,6 +1396,14 @@ pub async fn credential_update_update(
             return Err(WebError::InternalServerError(errmsg));
         }
     };
+
+    if matches!(scr, CURequest::TotpVerify(_, ref label) if label.trim().is_empty()) {
+        // I'd really rather have a 400 here. Do I add a WebError::HttpError(u16, String)?
+        return Err(WebError::InternalServerError(
+            "Label must not be empty".into(),
+        ));
+    }
+
     let session_token = match serde_json::from_value(cubody[1].clone()) {
         Ok(val) => val,
         Err(err) => {
@@ -1406,6 +1414,7 @@ pub async fn credential_update_update(
     };
     debug!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
+
     state
         .qe_r_ref
         .handle_idmcredentialupdate(session_token, scr, kopid.eventid)
