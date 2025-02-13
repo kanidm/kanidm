@@ -1914,6 +1914,8 @@ impl IdmServerCredUpdateTransaction<'_> {
                     .as_ref()
                     .map(|cred| cred.has_totp_by_name(label))
                     .unwrap_or_default()
+                    || label.trim().is_empty()
+                    || !Value::validate_str_escapes(label)
                 {
                     // The user is trying to add a second TOTP under the same name. Lets save them from themselves
                     session.mfaregstate =
@@ -3392,7 +3394,27 @@ mod tests {
         assert!(matches!(
             c_status.mfaregstate,
             MfaRegStateStatus::TotpTryAgain
-        ));
+        ), "{:?}", c_status.mfaregstate);
+
+        // Check that the user actually put something into the label
+        let c_status = cutxn
+            .credential_primary_check_totp(&cust, ct, chal, "")
+            .expect("Failed to update the primary cred totp");
+
+        assert!(matches!(
+            c_status.mfaregstate,
+            MfaRegStateStatus::TotpNameTryAgain(ref val) if val == ""
+        ), "{:?}", c_status.mfaregstate);
+
+        // Okay, Now they are trying to be smart...
+        let c_status = cutxn
+            .credential_primary_check_totp(&cust, ct, chal, "           ")
+            .expect("Failed to update the primary cred totp");
+
+        assert!(matches!(
+            c_status.mfaregstate,
+            MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "           "
+        ), "{:?}", c_status.mfaregstate);
 
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal, "totp")
@@ -3403,6 +3425,36 @@ mod tests {
             Some(CredentialDetailType::PasswordMfa(totp, _, 0)) => !totp.is_empty(),
             _ => false,
         });
+
+        {
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
+                .expect("Failed to update the primary cred password");
+
+            // Check the status has the token.
+            let totp_token: Totp = match c_status.mfaregstate {
+                MfaRegStateStatus::TotpCheck(secret) => Some(secret.try_into().unwrap()),
+                _ => None,
+            }
+            .expect("Unable to retrieve totp token, invalid state.");
+
+            trace!(?totp_token);
+            let chal = totp_token
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to perform totp step");
+
+            // They tried to add a second totp under the same name
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal, "totp")
+                .expect("Failed to update the primary cred totp");
+
+            assert!(matches!(
+                c_status.mfaregstate,
+                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "totp"
+            ), "{:?}", c_status.mfaregstate);
+
+            assert!(cutxn.credential_update_cancel_mfareg(&cust, ct).is_ok())
+        }
 
         // Should be okay now!
 
