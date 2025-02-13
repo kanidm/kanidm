@@ -2420,8 +2420,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
         debug!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
 
-        // We have to check for DL0 since that's the initialisation level.
-        if previous_version < DOMAIN_MIN_REMIGRATION_LEVEL && previous_version != DOMAIN_LEVEL_0 {
+        // We have to check for DL0 since that's the initialisation level. If we are at DL0 then
+        // the server was just brought up and there are no other actions to take since we are
+        // now at TGT level.
+        if previous_version == DOMAIN_LEVEL_0 {
+            debug!(
+                "Server was just brought up, skipping migrations as we are already at target level"
+            );
+            return Ok(());
+        }
+
+        if previous_version < DOMAIN_MIN_REMIGRATION_LEVEL {
             error!("UNABLE TO PROCEED. You are attempting a Skip update which is NOT SUPPORTED. You must upgrade one-version of Kanidm at a time.");
             error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
             error!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
@@ -2434,7 +2443,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.migrate_domain_8_to_9()?;
         }
 
-        if previous_patch_level < PATCH_LEVEL_2 && domain_info_patch_level >= PATCH_LEVEL_2 {
+        if previous_patch_level < PATCH_LEVEL_2
+            && domain_info_patch_level >= PATCH_LEVEL_2
+            && domain_info_version == DOMAIN_LEVEL_9
+        {
             self.migrate_domain_patch_level_2()?;
         }
 
@@ -2573,7 +2585,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn set_phase(&mut self, phase: ServerPhase) {
-        *self.phase = phase
+        // Phase changes are one way
+        if phase > *self.phase {
+            *self.phase = phase
+        }
     }
 
     pub(crate) fn get_phase(&mut self) -> ServerPhase {
