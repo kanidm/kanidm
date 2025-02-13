@@ -62,10 +62,7 @@ pub const GID_UNUSED_D_MAX: u32 = 0x7fff_ffff;
 
 pub struct GidNumber {}
 
-fn apply_gidnumber<T: Clone>(
-    e: &mut Entry<EntryInvalid, T>,
-    domain_version: DomainVersion,
-) -> Result<(), OperationError> {
+fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
     if (e.attribute_equality(Attribute::Class, &EntryClass::PosixGroup.into())
         || e.attribute_equality(Attribute::Class, &EntryClass::PosixAccount.into()))
         && !e.attribute_pres(Attribute::GidNumber)
@@ -89,48 +86,33 @@ fn apply_gidnumber<T: Clone>(
         e.set_ava(&Attribute::GidNumber, once(gid_v));
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32(Attribute::GidNumber) {
-        if domain_version <= DOMAIN_LEVEL_6 {
-            if gid < GID_REGULAR_USER_MIN {
-                error!(
-                    "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
-                    gid,
-                    GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
-                    GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
-                    GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
-                );
-                Err(OperationError::PL0001GidOverlapsSystemRange)
-            } else {
-                Ok(())
-            }
+        // If they provided us with a gid number, ensure it's in a safe range.
+        if (GID_REGULAR_USER_MIN..=GID_REGULAR_USER_MAX).contains(&gid)
+            || (GID_UNUSED_A_MIN..=GID_UNUSED_A_MAX).contains(&gid)
+            || (GID_UNUSED_B_MIN..= GID_UNUSED_B_MAX).contains(&gid)
+            || (GID_UNUSED_C_MIN..=GID_UNUSED_C_MAX).contains(&gid)
+            // We won't ever generate an id in the nspawn range, but we do secretly allow
+            // it to be set for compatibility with services like freeipa or openldap. TBH
+            // most people don't even use systemd nspawn anyway ...
+            //
+            // I made this design choice to avoid a tunable that may confuse people to
+            // its purpose. This way things "just work" for imports and existing systems
+            // but we do the right thing in the future.
+            || (GID_NSPAWN_MIN..=GID_NSPAWN_MAX).contains(&gid)
+            || (GID_UNUSED_D_MIN..=GID_UNUSED_D_MAX).contains(&gid)
+        {
+            Ok(())
         } else {
-            // If they provided us with a gid number, ensure it's in a safe range.
-            if (GID_REGULAR_USER_MIN..=GID_REGULAR_USER_MAX).contains(&gid)
-                || (GID_UNUSED_A_MIN..=GID_UNUSED_A_MAX).contains(&gid)
-                || (GID_UNUSED_B_MIN..= GID_UNUSED_B_MAX).contains(&gid)
-                || (GID_UNUSED_C_MIN..=GID_UNUSED_C_MAX).contains(&gid)
-                // We won't ever generate an id in the nspawn range, but we do secretly allow
-                // it to be set for compatibility with services like freeipa or openldap. TBH
-                // most people don't even use systemd nspawn anyway ...
-                //
-                // I made this design choice to avoid a tunable that may confuse people to
-                // its purpose. This way things "just work" for imports and existing systems
-                // but we do the right thing in the future.
-                || (GID_NSPAWN_MIN..=GID_NSPAWN_MAX).contains(&gid)
-                || (GID_UNUSED_D_MIN..=GID_UNUSED_D_MAX).contains(&gid)
-            {
-                Ok(())
-            } else {
-                // Note that here we don't advertise that we allow the nspawn range to be set, even
-                // though we do allow it.
-                error!(
-                    "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
-                    gid,
-                    GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
-                    GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
-                    GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
-                );
-                Err(OperationError::PL0001GidOverlapsSystemRange)
-            }
+            // Note that here we don't advertise that we allow the nspawn range to be set, even
+            // though we do allow it.
+            error!(
+                "Requested GID ({}) overlaps a system range. Allowed ranges are {} to {}, {} to {} and {} to {}",
+                gid,
+                GID_REGULAR_USER_MIN, GID_REGULAR_USER_MAX,
+                GID_UNUSED_C_MIN, GID_UNUSED_C_MAX,
+                GID_UNUSED_D_MIN, GID_UNUSED_D_MAX
+            );
+            Err(OperationError::PL0001GidOverlapsSystemRange)
         }
     } else {
         Ok(())
@@ -144,37 +126,31 @@ impl Plugin for GidNumber {
 
     #[instrument(level = "debug", name = "gidnumber_pre_create_transform", skip_all)]
     fn pre_create_transform(
-        qs: &mut QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        let dv = qs.get_domain_version();
-        cand.iter_mut()
-            .try_for_each(|cand| apply_gidnumber(cand, dv))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_modify", skip_all)]
     fn pre_modify(
-        qs: &mut QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        let dv = qs.get_domain_version();
-        cand.iter_mut()
-            .try_for_each(|cand| apply_gidnumber(cand, dv))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 
     #[instrument(level = "debug", name = "gidnumber_pre_batch_modify", skip_all)]
     fn pre_batch_modify(
-        qs: &mut QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         _pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        let dv = qs.get_domain_version();
-        cand.iter_mut()
-            .try_for_each(|cand| apply_gidnumber(cand, dv))
+        cand.iter_mut().try_for_each(apply_gidnumber)
     }
 }
 
@@ -186,9 +162,7 @@ mod tests {
     };
     use crate::prelude::*;
 
-    use kanidm_proto::internal::DomainUpgradeCheckStatus as ProtoDomainUpgradeCheckStatus;
-
-    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
+    #[qs_test]
     async fn test_gidnumber_generate(server: &QueryServer) {
         let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
 
@@ -415,87 +389,6 @@ mod tests {
                     m_pres(Attribute::GidNumber, &Value::Uint32(id))
                 ]);
                 let op_result = server_txn.internal_modify_uuid(user_f_uuid, &modlist);
-
-                trace!(?id);
-                assert_eq!(op_result, Err(OperationError::PL0001GidOverlapsSystemRange));
-            }
-        }
-
-        assert!(server_txn.commit().is_ok());
-    }
-
-    #[qs_test(domain_level=DOMAIN_LEVEL_6)]
-    async fn test_gidnumber_domain_level_6(server: &QueryServer) {
-        let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
-
-        // This will be INVALID in DL 7 but it's allowed for DL6
-        let user_a_uuid = uuid!("d90fb0cb-6785-4f36-94cb-e364d9c13255");
-        {
-            let op_result = server_txn.internal_create(vec![entry_init!(
-                (Attribute::Class, EntryClass::Account.to_value()),
-                (Attribute::Class, EntryClass::PosixAccount.to_value()),
-                (Attribute::Name, Value::new_iname("testperson_2")),
-                (Attribute::Uuid, Value::Uuid(user_a_uuid)),
-                // NOTE HERE: We do GID_UNUSED_A_MIN minus 1 which isn't accepted
-                // on DL7
-                (Attribute::GidNumber, Value::Uint32(GID_UNUSED_A_MIN - 1)),
-                (Attribute::Description, Value::new_utf8s("testperson")),
-                (Attribute::DisplayName, Value::new_utf8s("testperson"))
-            )]);
-
-            assert!(op_result.is_ok());
-
-            let user_a = server_txn
-                .internal_search_uuid(user_a_uuid)
-                .expect("Unable to access user");
-
-            let user_a_uid = user_a
-                .get_ava_single_uint32(Attribute::GidNumber)
-                .expect("gidnumber not present on account");
-
-            assert_eq!(user_a_uid, GID_UNUSED_A_MIN - 1);
-        }
-
-        assert!(server_txn.commit().is_ok());
-
-        // Now, do the DL6 upgrade check - will FAIL because the above user has an invalid ID.
-        let mut server_txn = server.read().await.unwrap();
-
-        let check_item = server_txn
-            .domain_upgrade_check_6_to_7_gidnumber()
-            .expect("Failed to perform migration check.");
-
-        assert_eq!(
-            check_item.status,
-            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber
-        );
-
-        drop(server_txn);
-
-        let mut server_txn = server.write(duration_from_epoch_now()).await.expect("txn");
-
-        // Test rejection of important gid values.
-        let user_b_uuid = uuid!("33afc396-2434-47e5-b143-05176148b50e");
-        // Test that an entry when modified to have posix attributes, if a gidnumber
-        // is provided then it is respected.
-        {
-            let op_result = server_txn.internal_create(vec![entry_init!(
-                (Attribute::Class, EntryClass::Account.to_value()),
-                (Attribute::Class, EntryClass::Person.to_value()),
-                (Attribute::Name, Value::new_iname("testperson_6")),
-                (Attribute::Uuid, Value::Uuid(user_b_uuid)),
-                (Attribute::Description, Value::new_utf8s("testperson")),
-                (Attribute::DisplayName, Value::new_utf8s("testperson"))
-            )]);
-
-            assert!(op_result.is_ok());
-
-            for id in [0, 500, GID_REGULAR_USER_MIN - 1] {
-                let modlist = modlist!([
-                    m_pres(Attribute::Class, &EntryClass::PosixAccount.to_value()),
-                    m_pres(Attribute::GidNumber, &Value::Uint32(id))
-                ]);
-                let op_result = server_txn.internal_modify_uuid(user_b_uuid, &modlist);
 
                 trace!(?id);
                 assert_eq!(op_result, Err(OperationError::PL0001GidOverlapsSystemRange));

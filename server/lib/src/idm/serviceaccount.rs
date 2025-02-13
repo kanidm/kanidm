@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::time::Duration;
 
-use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
+use compact_jwt::{Jws, JwsCompact};
 use kanidm_proto::internal::ApiToken as ProtoApiToken;
 use time::OffsetDateTime;
 
@@ -23,15 +23,6 @@ macro_rules! try_from_entry {
             ));
         }
 
-        let jws_key = $value
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .cloned()
-            .map(|jws_key| {
-                jws_key
-                    .set_sign_option_embed_jwk(true)
-                    .set_sign_option_legacy_kid(true)
-            });
-
         let api_tokens = $value
             .get_ava_as_apitoken_map(Attribute::ApiTokenSession)
             .cloned()
@@ -48,7 +39,6 @@ macro_rules! try_from_entry {
             valid_from,
             expire,
             api_tokens,
-            jws_key,
         })
     }};
 }
@@ -60,8 +50,6 @@ pub struct ServiceAccount {
     pub expire: Option<OffsetDateTime>,
 
     pub api_tokens: BTreeMap<Uuid, ApiToken>,
-
-    pub jws_key: Option<JwsEs256Signer>,
 }
 
 impl ServiceAccount {
@@ -253,25 +241,9 @@ impl IdmServerProxyWriteTransaction<'_> {
                 err
             })?;
 
-        if self.qs_write.get_domain_version() < DOMAIN_LEVEL_6 {
-            service_account
-                .jws_key
-                .as_ref()
-                .ok_or_else(|| {
-                    admin_error!("Unable to sign sync token, no sync keys available");
-                    OperationError::CryptographyError
-                })
-                .and_then(|jws_key| {
-                    jws_key.sign(&token).map_err(|err| {
-                        admin_error!(?err, "Unable to sign sync token");
-                        OperationError::CryptographyError
-                    })
-                })
-        } else {
-            self.qs_write
-                .get_domain_key_object_handle()?
-                .jws_es256_sign(&token, ct)
-        }
+        self.qs_write
+            .get_domain_key_object_handle()?
+            .jws_es256_sign(&token, ct)
     }
 
     pub fn service_account_destroy_api_token(

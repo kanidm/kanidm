@@ -45,7 +45,7 @@ impl Plugin for JwsKeygen {
 
 impl JwsKeygen {
     fn modify_inner<T: Clone>(
-        qs: &mut QueryServerWriteTransaction,
+        _qs: &mut QueryServerWriteTransaction,
         cand: &mut [Entry<EntryInvalid, T>],
     ) -> Result<(), OperationError> {
         cand.iter_mut().try_for_each(|e| {
@@ -86,20 +86,6 @@ impl JwsKeygen {
                 let v = Value::new_privatebinary(&der);
                 e.add_ava(Attribute::Rs256PrivateKeyDer, v);
             }
-        }
-
-        if qs.get_domain_version() < DOMAIN_LEVEL_6 &&
-            (e.attribute_equality(Attribute::Class, &EntryClass::ServiceAccount.into()) ||
-            e.attribute_equality(Attribute::Class, &EntryClass::SyncAccount.into())) &&
-            !e.attribute_pres(Attribute::JwsEs256PrivateKey) {
-                security_info!("regenerating jws es256 private key");
-                let jwssigner = JwsEs256Signer::generate_es256()
-                    .map_err(|e| {
-                        admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
-                        OperationError::CryptographyError
-                    })?;
-                let v = Value::JwsKeyEs256(jwssigner);
-                e.add_ava(Attribute::JwsEs256PrivateKey, v);
         }
 
         Ok(())
