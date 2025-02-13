@@ -2394,7 +2394,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         let display_name = domain_entry
             .get_ava_single_utf8(Attribute::DomainDisplayName)
             .map(str::to_string)
-            .ok_or(OperationError::InvalidEntryState)?;
+            .unwrap_or_else(|| format!("Kanidm {}", domain_name));
 
         let domain_ldap_allow_unix_pw_bind = domain_entry
             .get_ava_single_bool(Attribute::LdapAllowUnixPwBind)

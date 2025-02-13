@@ -85,7 +85,7 @@ pub const DOMAIN_LEVEL_11: DomainVersion = 11;
 
 // The minimum level that we can re-migrate from.
 // This should be DOMAIN_TGT_LEVEL minus 2
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL - 2;
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_7;
 // The minimum supported domain functional level (for replication)
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level

@@ -764,6 +764,21 @@ impl QueryServerWriteTransaction<'_> {
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
+        // =========== Apply changes ==============
+
+        // Now update schema
+        let idm_schema_changes = [SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into()];
+
+        idm_schema_changes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_9_to_10 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
         Ok(())
     }
 

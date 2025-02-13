@@ -109,8 +109,15 @@ impl Domain {
                     debug!("plugin_domain: NOT Applying domain version transform");
                 };
 
-                // create the domain_display_name if it's missing
-                if !e.attribute_pres(Attribute::DomainDisplayName) {
+                // create the domain_display_name if it's missing. This was the behaviour in versions
+                // prior to DL10. Rather than checking the domain version itself, the issue is we
+                // have to check the min remigration level. This is because during a server setup
+                // we start from the MIN remigration level and work up, and the domain version == 0.
+                //
+                // So effectively we only skip setting this value after we know that we are at DL12
+                // since we could never go back to anything lower than 10 at that point.
+                if DOMAIN_MIN_REMIGRATION_LEVEL < DOMAIN_LEVEL_10
+                    && !e.attribute_pres(Attribute::DomainDisplayName) {
                     let domain_display_name = Value::new_utf8(format!("Kanidm {}", qs.get_domain_name()));
                     security_info!("plugin_domain: setting default domain_display_name to {:?}", domain_display_name);
 
