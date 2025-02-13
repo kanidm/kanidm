@@ -2,7 +2,8 @@ use compact_jwt::{traits::JwsVerifiable, JwsCompact, JwsEs256Verifier, JwsVerifi
 use kanidm_client::KanidmClient;
 use kanidm_proto::internal::ScimSyncToken;
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
-use kanidmd_lib::prelude::{Attribute, BUILTIN_GROUP_IDM_ADMINS_V1};
+use kanidmd_lib::constants::NAME_IDM_ADMINS;
+use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use reqwest::header::HeaderValue;
 use std::str::FromStr;
@@ -170,7 +171,7 @@ async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
 
     // All admin to create persons.
     rsclient
-        .idm_group_add_members(BUILTIN_GROUP_IDM_ADMINS_V1.name, &["admin"])
+        .idm_group_add_members(NAME_IDM_ADMINS, &["admin"])
         .await
         .unwrap();
 

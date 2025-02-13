@@ -8,6 +8,31 @@ use crate::value::Value;
 // This is separated because the password badlist section may become very long
 
 lazy_static! {
+    pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::SystemInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
+        (
+            Attribute::Description,
+            Value::new_utf8s("System (local) info and metadata object.")
+        ),
+        (Attribute::Version, Value::Uint32(20))
+    );
+    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
+        (Attribute::Class, EntryClass::Object.to_value()),
+        (Attribute::Class, EntryClass::DomainInfo.to_value()),
+        (Attribute::Class, EntryClass::System.to_value()),
+        (Attribute::Class, EntryClass::KeyObject.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
+        (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
+        (Attribute::Name, Value::new_iname("domain_local")),
+        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
+        (
+            Attribute::Description,
+            Value::new_utf8s("This local domain's info and metadata object.")
+        )
+    );
     pub static ref E_SYSTEM_CONFIG_V1: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
         (Attribute::Class, EntryClass::SystemConfig.to_value()),
