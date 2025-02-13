@@ -264,7 +264,7 @@ impl AuthorisePermitSuccess {
             ResponseMode::Fragment => {
                 redirect_uri.set_query(None);
 
-                // We can't set query pairs on fragments, only query.
+                // Per [the RFC](https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2), we can't set query pairs on fragment-containing redirects, only query ones.
                 let mut uri_builder = url::form_urlencoded::Serializer::new(String::new());
                 uri_builder.append_pair("code", &self.code);
                 if let Some(state) = self.state.as_ref() {
