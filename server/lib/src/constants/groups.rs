@@ -290,15 +290,6 @@ lazy_static! {
     };
 
     /// Self-write of mail
-    pub static ref IDM_PEOPLE_SELF_WRITE_MAIL_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_self_write_mail",
-        description: "Builtin IDM Group for people accounts to update their own mail.",
-        uuid: UUID_IDM_PEOPLE_SELF_MAIL_WRITE,
-        members: Vec::with_capacity(0),
-        ..Default::default()
-    };
-
-    /// Self-write of mail
     pub static ref IDM_PEOPLE_SELF_MAIL_WRITE_DL7: BuiltinGroup = BuiltinGroup {
         name: "idm_people_self_mail_write",
         description: "Builtin IDM Group for people accounts to update their own mail.",
@@ -465,10 +456,12 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &IDM_ALL_ACCOUNTS,
         &BUILTIN_IDM_RADIUS_SERVERS_V1,
         &BUILTIN_IDM_MAIL_SERVERS_DL8,
-        &IDM_PEOPLE_SELF_WRITE_MAIL_V1,
+        &BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7,
+        &IDM_PEOPLE_SELF_MAIL_WRITE_DL7,
+        &BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7,
         // Write deps on read, so write must be added first.
         // All members must exist before we write HP
-        &IDM_HIGH_PRIVILEGE_V1,
+        &IDM_HIGH_PRIVILEGE_DL7,
         // other things
         &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
         &IDM_ACCOUNT_MAIL_READ,
