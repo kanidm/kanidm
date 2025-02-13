@@ -364,36 +364,7 @@ lazy_static! {
     };
 
     /// This must be the last group to init to include the UUID of the other high priv groups.
-    pub static ref IDM_HIGH_PRIVILEGE_V1: BuiltinGroup = BuiltinGroup {
-        name: "idm_high_privilege",
-        uuid: UUID_IDM_HIGH_PRIVILEGE,
-        entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
-        description: "Builtin IDM provided groups with high levels of access that should be audited and limited in modification.",
-        members: vec![
-            UUID_SYSTEM_ADMINS,
-            UUID_IDM_ADMINS,
-            UUID_DOMAIN_ADMINS,
-            UUID_IDM_SERVICE_DESK,
-            UUID_IDM_RECYCLE_BIN_ADMINS,
-            UUID_IDM_SCHEMA_ADMINS,
-            UUID_IDM_ACCESS_CONTROL_ADMINS,
-            UUID_IDM_OAUTH2_ADMINS,
-            UUID_IDM_RADIUS_ADMINS,
-            UUID_IDM_ACCOUNT_POLICY_ADMINS,
-            UUID_IDM_RADIUS_SERVERS,
-            UUID_IDM_GROUP_ADMINS,
-            UUID_IDM_UNIX_ADMINS,
-            UUID_IDM_PEOPLE_PII_READ,
-            UUID_IDM_PEOPLE_ADMINS,
-            UUID_IDM_PEOPLE_ON_BOARDING,
-            UUID_IDM_SERVICE_ACCOUNT_ADMINS,
-            UUID_IDM_HIGH_PRIVILEGE,
-        ],
-        ..Default::default()
-    };
-
-    /// This must be the last group to init to include the UUID of the other high priv groups.
-    pub static ref IDM_HIGH_PRIVILEGE_DL7: BuiltinGroup = BuiltinGroup {
+    pub static ref IDM_HIGH_PRIVILEGE_DL8: BuiltinGroup = BuiltinGroup {
         name: "idm_high_privilege",
         uuid: UUID_IDM_HIGH_PRIVILEGE,
         entry_managed_by: Some(UUID_IDM_ACCESS_CONTROL_ADMINS),
@@ -417,12 +388,14 @@ lazy_static! {
             UUID_IDM_PEOPLE_ON_BOARDING,
             UUID_IDM_SERVICE_ACCOUNT_ADMINS,
             UUID_IDM_CLIENT_CERTIFICATE_ADMINS,
+            UUID_IDM_APPLICATION_ADMINS,
+            UUID_IDM_MAIL_ADMINS,
             UUID_IDM_HIGH_PRIVILEGE,
         ],
         ..Default::default()
     };
 
-    pub static ref BUILTIN_GROUP_APPLICATION_ADMINS: BuiltinGroup = BuiltinGroup {
+    pub static ref BUILTIN_GROUP_APPLICATION_ADMINS_DL8: BuiltinGroup = BuiltinGroup {
         name: "idm_application_admins",
         uuid: UUID_IDM_APPLICATION_ADMINS,
         description: "Builtin Application Administration Group.",
@@ -449,7 +422,6 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_PEOPLE_PII_READ,
         &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
         &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
-        &BUILTIN_GROUP_APPLICATION_ADMINS,
         &BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8,
         &IDM_GROUP_ADMINS_V1,
         &IDM_ALL_PERSONS,
@@ -459,9 +431,10 @@ pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
         &BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7,
         &IDM_PEOPLE_SELF_MAIL_WRITE_DL7,
         &BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7,
+        &BUILTIN_GROUP_APPLICATION_ADMINS_DL8,
         // Write deps on read, so write must be added first.
         // All members must exist before we write HP
-        &IDM_HIGH_PRIVILEGE_DL7,
+        &IDM_HIGH_PRIVILEGE_DL8,
         // other things
         &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
         &IDM_ACCOUNT_MAIL_READ,

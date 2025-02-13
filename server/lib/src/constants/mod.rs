@@ -54,10 +54,6 @@ pub type DomainVersion = u32;
 /// previously.
 pub const DOMAIN_LEVEL_0: DomainVersion = 0;
 
-/// Domain Level introduced with 1.2.0.
-/// Deprecated as of 1.4.0
-pub const DOMAIN_LEVEL_6: DomainVersion = 6;
-
 /// Domain Level introduced with 1.3.0.
 /// Deprecated as of 1.5.0
 pub const DOMAIN_LEVEL_7: DomainVersion = 7;
@@ -81,7 +77,7 @@ pub const DOMAIN_LEVEL_11: DomainVersion = 11;
 
 // The minimum level that we can re-migrate from.
 // This should be DOMAIN_TGT_LEVEL minus 2
-pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_6;
+pub const DOMAIN_MIN_REMIGRATION_LEVEL: DomainVersion = DOMAIN_LEVEL_8;
 // The minimum supported domain functional level (for replication)
 pub const DOMAIN_MIN_LEVEL: DomainVersion = DOMAIN_TGT_LEVEL;
 // The previous releases domain functional level

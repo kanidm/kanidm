@@ -1238,13 +1238,6 @@ pub trait QueryServerTransaction<'a> {
     }
 
     fn get_domain_key_object_handle(&self) -> Result<Arc<KeyObject>, OperationError> {
-        #[cfg(test)]
-        if self.get_domain_version() < DOMAIN_LEVEL_6 {
-            // We must be in tests, and this is a DL5 to 6 test. For this we'll just make
-            // an ephemeral provider.
-            return Ok(crate::server::keys::KeyObjectInternal::new_test());
-        };
-
         self.get_key_providers()
             .get_key_object_handle(UUID_DOMAIN_INFO)
             .ok_or(OperationError::KP0031KeyObjectNotFound)
@@ -2335,17 +2328,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
         debug!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
 
         // We have to check for DL0 since that's the initialisation level.
-        if previous_version <= DOMAIN_MIN_REMIGRATION_LEVEL && previous_version != DOMAIN_LEVEL_0 {
+        if previous_version < DOMAIN_MIN_REMIGRATION_LEVEL && previous_version != DOMAIN_LEVEL_0 {
             error!("UNABLE TO PROCEED. You are attempting a Skip update which is NOT SUPPORTED. You must upgrade one-version of Kanidm at a time.");
             error!("For more see: https://kanidm.github.io/kanidm/stable/support.html#upgrade-policy and https://kanidm.github.io/kanidm/stable/server_updates.html");
             error!(domain_previous_version = ?previous_version, domain_target_version = ?domain_info_version);
             error!(domain_previous_patch_level = ?previous_patch_level, domain_target_patch_level = ?domain_info_patch_level);
             return Err(OperationError::MG0008SkipUpgradeAttempted);
-        }
-
-        if previous_version <= DOMAIN_LEVEL_7 && domain_info_version >= DOMAIN_LEVEL_8 {
-            // 1.3 -> 1.4
-            self.migrate_domain_7_to_8()?;
         }
 
         if previous_version <= DOMAIN_LEVEL_8 && domain_info_version >= DOMAIN_LEVEL_9 {

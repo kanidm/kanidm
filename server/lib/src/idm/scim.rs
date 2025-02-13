@@ -5,7 +5,7 @@ use base64::{
     Engine as _,
 };
 
-use compact_jwt::{Jws, JwsCompact, JwsEs256Signer, JwsSigner};
+use compact_jwt::{Jws, JwsCompact};
 use kanidm_proto::internal::{ApiTokenPurpose, ScimSyncToken};
 use kanidm_proto::scim_v1::*;
 use std::collections::{BTreeMap, BTreeSet};
@@ -25,7 +25,6 @@ pub(crate) struct SyncAccount {
     pub name: String,
     pub uuid: Uuid,
     pub sync_tokens: BTreeMap<Uuid, ApiToken>,
-    pub jws_key: Option<JwsEs256Signer>,
 }
 
 macro_rules! try_from_entry {
@@ -40,15 +39,6 @@ macro_rules! try_from_entry {
             .map(|s| s.to_string())
             .ok_or(OperationError::MissingAttribute(Attribute::Name))?;
 
-        let jws_key = $value
-            .get_ava_single_jws_key_es256(Attribute::JwsEs256PrivateKey)
-            .cloned()
-            .map(|jws_key| {
-                jws_key
-                    .set_sign_option_embed_jwk(true)
-                    .set_sign_option_legacy_kid(true)
-            });
-
         let sync_tokens = $value
             .get_ava_as_apitoken_map(Attribute::SyncTokenSession)
             .cloned()
@@ -60,7 +50,6 @@ macro_rules! try_from_entry {
             name,
             uuid,
             sync_tokens,
-            jws_key,
         })
     }};
 }
@@ -123,16 +112,6 @@ impl IdmServerProxyWriteTransaction<'_> {
         gte: &GenerateScimSyncTokenEvent,
         ct: Duration,
     ) -> Result<JwsCompact, OperationError> {
-        // Get the target signing key.
-        let sync_account = self
-            .qs_write
-            .internal_search_uuid(gte.target)
-            .and_then(|entry| SyncAccount::try_from_entry_rw(&entry))
-            .map_err(|e| {
-                admin_error!(?e, "Failed to search service account");
-                e
-            })?;
-
         let session_id = Uuid::new_v4();
         let issued_at = time::OffsetDateTime::UNIX_EPOCH + ct;
 
@@ -185,25 +164,9 @@ impl IdmServerProxyWriteTransaction<'_> {
             })?;
 
         // The modify succeeded and was allowed, now sign the token for return.
-        if self.qs_write.get_domain_version() < DOMAIN_LEVEL_6 {
-            sync_account
-                .jws_key
-                .as_ref()
-                .ok_or_else(|| {
-                    admin_error!("Unable to sign sync token, no sync keys available");
-                    OperationError::CryptographyError
-                })
-                .and_then(|jws_key| {
-                    jws_key.sign(&token).map_err(|err| {
-                        admin_error!(?err, "Unable to sign sync token");
-                        OperationError::CryptographyError
-                    })
-                })
-        } else {
-            self.qs_write
-                .get_domain_key_object_handle()?
-                .jws_es256_sign(&token, ct)
-        }
+        self.qs_write
+            .get_domain_key_object_handle()?
+            .jws_es256_sign(&token, ct)
         // Done!
     }
 
