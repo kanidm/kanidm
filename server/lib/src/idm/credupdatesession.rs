@@ -3391,30 +3391,39 @@ mod tests {
             .credential_primary_check_totp(&cust, ct, chal + 1, "totp")
             .expect("Failed to update the primary cred totp");
 
-        assert!(matches!(
-            c_status.mfaregstate,
-            MfaRegStateStatus::TotpTryAgain
-        ), "{:?}", c_status.mfaregstate);
+        assert!(
+            matches!(c_status.mfaregstate, MfaRegStateStatus::TotpTryAgain),
+            "{:?}",
+            c_status.mfaregstate
+        );
 
         // Check that the user actually put something into the label
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal, "")
             .expect("Failed to update the primary cred totp");
 
-        assert!(matches!(
-            c_status.mfaregstate,
-            MfaRegStateStatus::TotpNameTryAgain(ref val) if val == ""
-        ), "{:?}", c_status.mfaregstate);
+        assert!(
+            matches!(
+                c_status.mfaregstate,
+                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == ""
+            ),
+            "{:?}",
+            c_status.mfaregstate
+        );
 
         // Okay, Now they are trying to be smart...
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal, "           ")
             .expect("Failed to update the primary cred totp");
 
-        assert!(matches!(
-            c_status.mfaregstate,
-            MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "           "
-        ), "{:?}", c_status.mfaregstate);
+        assert!(
+            matches!(
+                c_status.mfaregstate,
+                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "           "
+            ),
+            "{:?}",
+            c_status.mfaregstate
+        );
 
         let c_status = cutxn
             .credential_primary_check_totp(&cust, ct, chal, "totp")
@@ -3448,10 +3457,14 @@ mod tests {
                 .credential_primary_check_totp(&cust, ct, chal, "totp")
                 .expect("Failed to update the primary cred totp");
 
-            assert!(matches!(
-                c_status.mfaregstate,
-                MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "totp"
-            ), "{:?}", c_status.mfaregstate);
+            assert!(
+                matches!(
+                    c_status.mfaregstate,
+                    MfaRegStateStatus::TotpNameTryAgain(ref val) if val == "totp"
+                ),
+                "{:?}",
+                c_status.mfaregstate
+            );
 
             assert!(cutxn.credential_update_cancel_mfareg(&cust, ct).is_ok())
         }
