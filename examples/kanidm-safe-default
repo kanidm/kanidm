@@ -1,5 +1,5 @@
 # Kanidm minimal Service Configuration - /etc/kanidm/config
-# For a full example and documentation, see /usr/share/kanidm/kanidm
+# For a full example and documentation, see /usr/share/kanidm/config
 # or `example/kanidm` in the source repository.
 
 # Replace this with your kanidmd URI and uncomment the line
