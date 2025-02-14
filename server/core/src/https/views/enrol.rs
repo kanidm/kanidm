@@ -105,6 +105,7 @@ pub(crate) async fn view_enrol_get(
 
     Ok(ProfileView {
         navbar_ctx: NavbarCtx { domain_info },
+
         profile_partial: EnrolDeviceView {
             menu_active_item: ProfileMenuItems::EnrolDevice,
             qr_code_svg,

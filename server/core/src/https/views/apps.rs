@@ -45,14 +45,14 @@ pub(crate) async fn view_apps_get(
         .await
         .map_err(|old| HtmxError::new(&kopid, old, domain_info.clone()))?;
 
+    let apps_partial = AppsPartialView { apps: app_links };
+
     Ok({
-        (
-            HxPushUrl(Uri::from_static(Urls::Apps.as_ref())),
-            AppsView {
-                navbar_ctx: NavbarCtx { domain_info },
-                apps_partial: AppsPartialView { apps: app_links },
-            },
-        )
-            .into_response()
+        let apps_view = AppsView {
+            navbar_ctx: NavbarCtx { domain_info },
+
+            apps_partial,
+        };
+        (HxPushUrl(Uri::from_static(Urls::Apps.as_ref())), apps_view).into_response()
     })
 }
