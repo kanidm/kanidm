@@ -35,9 +35,15 @@ jobs:
     needs:
       - set_tag_values
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
       - name: Build kanidm
         uses: docker/build-push-action@v6
         with:
@@ -47,6 +53,9 @@ jobs:
           build-args: |
             "KANIDM_FEATURES="
           file: tools/Dockerfile
+          context: .
+          labels: ${{ steps.meta.outputs.labels }}
+          annotations: ${{ steps.meta.outputs.annotations }}
           # Must use OCI exporter for multi-arch: https://github.com/docker/buildx/pull/1813
           outputs: type=oci,dest=/tmp/kanidm-docker.tar
       - name: Upload artifact
@@ -60,8 +69,8 @@ jobs:
     # This step is split so that we don't apply "packages: write" permission
     # except when uploading the final Docker image to GHCR.
     runs-on: ubuntu-latest
-    if: ( github.ref_type == 'tag' || github.ref == 'refs/heads/master' ) && github.repository == 'kanidm/kanidm'
-    needs: kanidm_build
+    if: ( github.ref_type == 'tag' || github.ref == 'refs/heads/master' )
+    needs: [kanidm_build, set_tag_values]
     permissions:
       packages: write
 
@@ -78,4 +87,4 @@ jobs:
           echo "${{ secrets.GITHUB_TOKEN }}" | \
             oras login -u "${{ github.actor }}" --password-stdin ghcr.io
           oras copy --from-oci-layout "/tmp/kanidm-docker.tar:devel" \
-            "ghcr.io/${{ github.repository_owner }}/kanidm:devel"
+            "ghcr.io/${{ needs.set_tag_values.outputs.owner_lc }}/kanidm:devel"
