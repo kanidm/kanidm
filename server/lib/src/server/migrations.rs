@@ -158,7 +158,7 @@ impl QueryServer {
 
         // If we are new enough to support patches, and we are lower than the target patch level
         // then a reload will be applied after we raise the patch level.
-        if domain_target_level >= DOMAIN_LEVEL_7 && domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
+        if domain_patch_level < DOMAIN_TGT_PATCH_LEVEL {
             write_txn
                 .internal_modify_uuid(
                     UUID_DOMAIN_INFO,
@@ -294,346 +294,6 @@ impl QueryServerWriteTransaction<'_> {
         }
     }
 
-    /// Migration domain level 6 to 7
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_6_to_7(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_MAX_LEVEL < DOMAIN_LEVEL_7 {
-            error!("Unable to raise domain level from 6 to 7.");
-            return Err(OperationError::MG0004DomainLevelInDevelopment);
-        }
-
-        // ============== Apply constraints ===============
-
-        // Due to changes in gidnumber allocation, in the *extremely* unlikely
-        // case that a user's ID was generated outside the valid range, we re-request
-        // the creation of their gid number to proceed.
-        let filter = filter!(f_and!([
-            f_or!([
-                f_eq(Attribute::Class, EntryClass::PosixAccount.into()),
-                f_eq(Attribute::Class, EntryClass::PosixGroup.into())
-            ]),
-            // This logic gets a bit messy but it would be:
-            // If ! (
-            //    (GID_REGULAR_USER_MIN < value < GID_REGULAR_USER_MAX) ||
-            //    (GID_UNUSED_A_MIN < value < GID_UNUSED_A_MAX) ||
-            //    (GID_UNUSED_B_MIN < value < GID_UNUSED_B_MAX) ||
-            //    (GID_UNUSED_C_MIN < value < GID_UNUSED_D_MAX)
-            // )
-            f_andnot(f_or!([
-                f_and!([
-                    // The gid value must be less than GID_REGULAR_USER_MAX
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MAX)
-                    ),
-                    // This bit of mental gymnastics is "greater than".
-                    // The gid value must not be less than USER_MIN
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MIN)
-                    ))
-                ]),
-                f_and!([
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MAX)
-                    ),
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MIN)
-                    ))
-                ]),
-                f_and!([
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MAX)
-                    ),
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MIN)
-                    ))
-                ]),
-                // If both of these conditions are true we get:
-                // C_MIN < value < D_MAX, which the outer and-not inverts.
-                f_and!([
-                    // The gid value must be less than GID_UNUSED_D_MAX
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_D_MAX)
-                    ),
-                    // This bit of mental gymnastics is "greater than".
-                    // The gid value must not be less than C_MIN
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_C_MIN)
-                    ))
-                ]),
-            ]))
-        ]));
-
-        let results = self.internal_search(filter).map_err(|err| {
-            error!(?err, "migrate_domain_6_to_7 -> Error");
-            err
-        })?;
-
-        if !results.is_empty() {
-            error!("Unable to proceed. Not all entries meet gid/uid constraints.");
-            for entry in results {
-                error!(gid_invalid = ?entry.get_display_id());
-            }
-            return Err(OperationError::MG0005GidConstraintsNotMet);
-        }
-
-        // =========== Apply changes ==============
-
-        // For each oauth2 client, if it is missing a landing page then we clone the origin
-        // into landing. This is because previously we implied the landing to be origin if
-        // unset, but now landing is the primary url and implies an origin.
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
-            f_pres(Attribute::OAuth2RsOrigin),
-            f_andnot(f_pres(Attribute::OAuth2RsOriginLanding)),
-        ]));
-
-        let pre_candidates = self.internal_search(filter).map_err(|err| {
-            error!(?err, "migrate_domain_6_to_7 internal search failure");
-            err
-        })?;
-
-        let modset: Vec<_> = pre_candidates
-            .into_iter()
-            .filter_map(|ent| {
-                ent.get_ava_single_url(Attribute::OAuth2RsOrigin)
-                    .map(|origin_url| {
-                        // Copy the origin url to the landing.
-                        let modlist = vec![Modify::Present(
-                            Attribute::OAuth2RsOriginLanding,
-                            Value::Url(origin_url.clone()),
-                        )];
-
-                        (ent.get_uuid(), ModifyList::new_list(modlist))
-                    })
-            })
-            .collect();
-
-        // If there is nothing, we don't need to do anything.
-        if !modset.is_empty() {
-            self.internal_batch_modify(modset.into_iter())?;
-        }
-
-        // Do this before schema change since domain info has cookie key
-        // as may at this point.
-        //
-        // Domain info should have the attribute private cookie key removed.
-        let modlist = ModifyList::new_list(vec![
-            Modify::Purged(Attribute::PrivateCookieKey),
-            Modify::Purged(Attribute::Es256PrivateKeyDer),
-            Modify::Purged(Attribute::FernetPrivateKeyStr),
-        ]);
-
-        self.internal_modify_uuid(UUID_DOMAIN_INFO, &modlist)?;
-
-        let filter = filter!(f_or!([
-            f_eq(Attribute::Class, EntryClass::ServiceAccount.into()),
-            f_eq(Attribute::Class, EntryClass::SyncAccount.into())
-        ]));
-
-        let modlist = ModifyList::new_list(vec![Modify::Purged(Attribute::JwsEs256PrivateKey)]);
-
-        self.internal_modify(&filter, &modlist)?;
-
-        // Now update schema
-        let idm_schema_classes = [
-            SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
-            SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
-            SCHEMA_ATTR_REFERS_DL7.clone().into(),
-            SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
-            SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
-            SCHEMA_ATTR_MAIL_DL7.clone().into(),
-            SCHEMA_ATTR_LEGALNAME_DL7.clone().into(),
-            SCHEMA_ATTR_DISPLAYNAME_DL7.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
-            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
-            SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_DL7.clone().into(),
-        ];
-
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
-                err
-            })?;
-
-        self.reload()?;
-
-        // Update access controls
-        let idm_data = [
-            BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7
-                .clone()
-                .try_into()?,
-            IDM_PEOPLE_SELF_MAIL_WRITE_DL7.clone().try_into()?,
-            BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7
-                .clone()
-                .try_into()?,
-            IDM_HIGH_PRIVILEGE_DL7.clone().try_into()?,
-        ];
-
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| {
-                self.internal_migrate_or_create_ignore_attrs(entry, &[Attribute::Member])
-            })
-            .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
-                err
-            })?;
-
-        let idm_data = [
-            IDM_ACP_SELF_WRITE_DL7.clone().into(),
-            IDM_ACP_SELF_NAME_WRITE_DL7.clone().into(),
-            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone().into(),
-            IDM_ACP_OAUTH2_MANAGE_DL7.clone().into(),
-        ];
-
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
-                err
-            })?;
-
-        Ok(())
-    }
-
-    /// Patch Application - This triggers a one-shot fixup task for issue #2756
-    /// to correct the content of dyngroups after the dyngroups are now loaded.
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_patch_level_1(&mut self) -> Result<(), OperationError> {
-        admin_warn!("applying domain patch 1.");
-
-        debug_assert!(*self.phase >= ServerPhase::SchemaReady);
-
-        let filter = filter!(f_eq(Attribute::Class, EntryClass::DynGroup.into()));
-        let modlist = modlist!([m_pres(Attribute::Class, &EntryClass::DynGroup.into())]);
-
-        self.internal_modify(&filter, &modlist).map(|()| {
-            info!("forced dyngroups to re-calculate memberships");
-        })
-    }
-
-    /// Migration domain level 7 to 8
-    #[instrument(level = "info", skip_all)]
-    pub(crate) fn migrate_domain_7_to_8(&mut self) -> Result<(), OperationError> {
-        if !cfg!(test) && DOMAIN_MAX_LEVEL < DOMAIN_LEVEL_8 {
-            error!("Unable to raise domain level from 7 to 8.");
-            return Err(OperationError::MG0004DomainLevelInDevelopment);
-        }
-
-        // ============== Apply constraints ===============
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::Account.into()),
-            f_pres(Attribute::PrimaryCredential),
-        ]));
-
-        let results = self.internal_search(filter)?;
-
-        let affected_entries = results
-            .into_iter()
-            .filter_map(|entry| {
-                if entry
-                    .get_ava_single_credential(Attribute::PrimaryCredential)
-                    .map(|cred| cred.has_securitykey())
-                    .unwrap_or_default()
-                {
-                    Some(entry.get_display_id())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>();
-
-        if !affected_entries.is_empty() {
-            error!("Unable to proceed. Some accounts still use legacy security keys, which need to be removed.");
-            for sk_present in affected_entries {
-                error!(%sk_present);
-            }
-            return Err(OperationError::MG0006SKConstraintsNotMet);
-        }
-
-        // Check oauth2 strict uri
-        let filter = filter!(f_and!([
-            f_eq(Attribute::Class, EntryClass::OAuth2ResourceServer.into()),
-            f_andnot(f_pres(Attribute::OAuth2StrictRedirectUri)),
-        ]));
-
-        let results = self.internal_search(filter)?;
-
-        let affected_entries = results
-            .into_iter()
-            .map(|entry| entry.get_display_id())
-            .collect::<Vec<_>>();
-
-        if !affected_entries.is_empty() {
-            error!("Unable to proceed. Not all oauth2 clients have strict redirect verification enabled.");
-            for missing_oauth2_strict_redirect_uri in affected_entries {
-                error!(%missing_oauth2_strict_redirect_uri);
-            }
-            return Err(OperationError::MG0007Oauth2StrictConstraintsNotMet);
-        }
-
-        // =========== Apply changes ==============
-
-        let idm_schema_classes = [
-            SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
-            SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
-            SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
-            SCHEMA_CLASS_PERSON_DL8.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
-            SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
-            SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
-        ];
-
-        idm_schema_classes
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_6_to_7 -> Error");
-                err
-            })?;
-
-        self.reload()?;
-
-        // Update access controls.
-        let idm_data = [
-            BUILTIN_GROUP_APPLICATION_ADMINS.clone().try_into()?,
-            IDM_ACP_SELF_READ_DL8.clone().into(),
-            IDM_ACP_SELF_WRITE_DL8.clone().into(),
-            IDM_ACP_APPLICATION_MANAGE_DL8.clone().into(),
-            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone().into(),
-            // Add the new types for mail server
-            BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8.clone().try_into()?,
-            BUILTIN_IDM_MAIL_SERVERS_DL8.clone().try_into()?,
-            IDM_ACP_MAIL_SERVERS_DL8.clone().into(),
-            IDM_ACP_DOMAIN_ADMIN_DL8.clone().into(),
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone().into(),
-        ];
-
-        idm_data
-            .into_iter()
-            .try_for_each(|entry| self.internal_migrate_or_create(entry))
-            .map_err(|err| {
-                error!(?err, "migrate_domain_7_to_8 -> Error");
-                err
-            })?;
-
-        Ok(())
-    }
-
     /// Migration domain level 8 to 9 (1.5.0)
     #[instrument(level = "info", skip_all)]
     pub(crate) fn migrate_domain_8_to_9(&mut self) -> Result<(), OperationError> {
@@ -764,6 +424,21 @@ impl QueryServerWriteTransaction<'_> {
             return Err(OperationError::MG0004DomainLevelInDevelopment);
         }
 
+        // =========== Apply changes ==============
+
+        // Now update schema
+        let idm_schema_changes = [SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into()];
+
+        idm_schema_changes
+            .into_iter()
+            .try_for_each(|entry| self.internal_migrate_or_create(entry))
+            .map_err(|err| {
+                error!(?err, "migrate_domain_9_to_10 -> Error");
+                err
+            })?;
+
+        self.reload()?;
+
         Ok(())
     }
 
@@ -828,7 +503,7 @@ impl QueryServerWriteTransaction<'_> {
         //
         // DO NOT MODIFY THIS DEFINITION
         let idm_schema: Vec<EntryInitNew> = vec![
-            SCHEMA_ATTR_MAIL.clone().into(),
+            // SCHEMA_ATTR_MAIL.clone().into(),
             SCHEMA_ATTR_ACCOUNT_EXPIRE.clone().into(),
             SCHEMA_ATTR_ACCOUNT_VALID_FROM.clone().into(),
             SCHEMA_ATTR_API_TOKEN_SESSION.clone().into(),
@@ -838,7 +513,7 @@ impl QueryServerWriteTransaction<'_> {
             SCHEMA_ATTR_BADLIST_PASSWORD.clone().into(),
             SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN.clone().into(),
             SCHEMA_ATTR_ATTESTED_PASSKEYS.clone().into(),
-            SCHEMA_ATTR_DISPLAYNAME.clone().into(),
+            // SCHEMA_ATTR_DISPLAYNAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
             SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
@@ -853,7 +528,7 @@ impl QueryServerWriteTransaction<'_> {
             SCHEMA_ATTR_GIDNUMBER.clone().into(),
             SCHEMA_ATTR_GRANT_UI_HINT.clone().into(),
             SCHEMA_ATTR_JWS_ES256_PRIVATE_KEY.clone().into(),
-            SCHEMA_ATTR_LEGALNAME.clone().into(),
+            // SCHEMA_ATTR_LEGALNAME.clone().into(),
             SCHEMA_ATTR_LOGINSHELL.clone().into(),
             SCHEMA_ATTR_NAME_HISTORY.clone().into(),
             SCHEMA_ATTR_NSUNIQUEID.clone().into(),
@@ -867,7 +542,7 @@ impl QueryServerWriteTransaction<'_> {
             SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_NAME.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_ORIGIN_LANDING.clone().into(),
-            SCHEMA_ATTR_OAUTH2_RS_ORIGIN.clone().into(),
+            // SCHEMA_ATTR_OAUTH2_RS_ORIGIN.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_SUP_SCOPE_MAP.clone().into(),
             SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY.clone().into(),
@@ -902,6 +577,17 @@ impl QueryServerWriteTransaction<'_> {
             // DL7
             SCHEMA_ATTR_PATCH_LEVEL_DL7.clone().into(),
             SCHEMA_ATTR_DOMAIN_DEVELOPMENT_TAINT_DL7.clone().into(),
+            SCHEMA_ATTR_REFERS_DL7.clone().into(),
+            SCHEMA_ATTR_CERTIFICATE_DL7.clone().into(),
+            SCHEMA_ATTR_OAUTH2_RS_ORIGIN_DL7.clone().into(),
+            SCHEMA_ATTR_OAUTH2_STRICT_REDIRECT_URI_DL7.clone().into(),
+            SCHEMA_ATTR_MAIL_DL7.clone().into(),
+            SCHEMA_ATTR_LEGALNAME_DL7.clone().into(),
+            SCHEMA_ATTR_DISPLAYNAME_DL7.clone().into(),
+            // DL8
+            SCHEMA_ATTR_LINKED_GROUP_DL8.clone().into(),
+            SCHEMA_ATTR_APPLICATION_PASSWORD_DL8.clone().into(),
+            SCHEMA_ATTR_ALLOW_PRIMARY_CRED_FALLBACK_DL8.clone().into(),
         ];
 
         let r = idm_schema
@@ -928,14 +614,14 @@ impl QueryServerWriteTransaction<'_> {
             // DL4
             SCHEMA_CLASS_OAUTH2_RS_PUBLIC_DL4.clone().into(),
             // DL5
-            SCHEMA_CLASS_PERSON_DL5.clone().into(),
+            // SCHEMA_CLASS_PERSON_DL5.clone().into(),
             SCHEMA_CLASS_ACCOUNT_DL5.clone().into(),
-            SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
+            // SCHEMA_CLASS_OAUTH2_RS_DL5.clone().into(),
             SCHEMA_CLASS_OAUTH2_RS_BASIC_DL5.clone().into(),
             // DL6
-            SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
-            SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
-            SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
+            // SCHEMA_CLASS_ACCOUNT_POLICY_DL6.clone().into(),
+            // SCHEMA_CLASS_SERVICE_ACCOUNT_DL6.clone().into(),
+            // SCHEMA_CLASS_SYNC_ACCOUNT_DL6.clone().into(),
             SCHEMA_CLASS_GROUP_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_DL6.clone().into(),
             SCHEMA_CLASS_KEY_PROVIDER_INTERNAL_DL6.clone().into(),
@@ -943,7 +629,18 @@ impl QueryServerWriteTransaction<'_> {
             SCHEMA_CLASS_KEY_OBJECT_JWT_ES256_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_JWE_A128GCM_DL6.clone().into(),
             SCHEMA_CLASS_KEY_OBJECT_INTERNAL_DL6.clone().into(),
-            SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
+            // SCHEMA_CLASS_DOMAIN_INFO_DL6.clone().into(),
+            // DL7
+            // SCHEMA_CLASS_DOMAIN_INFO_DL7.clone().into(),
+            SCHEMA_CLASS_SERVICE_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_SYNC_ACCOUNT_DL7.clone().into(),
+            SCHEMA_CLASS_CLIENT_CERTIFICATE_DL7.clone().into(),
+            SCHEMA_CLASS_OAUTH2_RS_DL7.clone().into(),
+            // DL8
+            SCHEMA_CLASS_ACCOUNT_POLICY_DL8.clone().into(),
+            SCHEMA_CLASS_APPLICATION_DL8.clone().into(),
+            SCHEMA_CLASS_PERSON_DL8.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL8.clone().into(),
         ];
 
         let r: Result<(), _> = idm_schema_classes_dl1
@@ -1034,10 +731,10 @@ impl QueryServerWriteTransaction<'_> {
             IDM_ACP_RADIUS_SERVERS_V1.clone(),
             IDM_ACP_RADIUS_SECRET_MANAGE_V1.clone(),
             IDM_ACP_PEOPLE_SELF_WRITE_MAIL_V1.clone(),
-            IDM_ACP_SELF_READ_V1.clone(),
-            IDM_ACP_SELF_WRITE_V1.clone(),
+            // IDM_ACP_SELF_READ_V1.clone(),
+            // IDM_ACP_SELF_WRITE_V1.clone(),
             IDM_ACP_ACCOUNT_SELF_WRITE_V1.clone(),
-            IDM_ACP_SELF_NAME_WRITE_V1.clone(),
+            // IDM_ACP_SELF_NAME_WRITE_V1.clone(),
             IDM_ACP_ALL_ACCOUNTS_POSIX_READ_V1.clone(),
             IDM_ACP_SYSTEM_CONFIG_ACCOUNT_POLICY_MANAGE_V1.clone(),
             IDM_ACP_GROUP_UNIX_MANAGE_V1.clone(),
@@ -1059,13 +756,26 @@ impl QueryServerWriteTransaction<'_> {
             IDM_ACP_SERVICE_ACCOUNT_MANAGE_V1.clone(),
             // DL4
             // DL5
-            IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
+            // IDM_ACP_OAUTH2_MANAGE_DL5.clone(),
             // DL6
-            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
+            // IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL6.clone(),
             IDM_ACP_PEOPLE_CREATE_DL6.clone(),
             IDM_ACP_GROUP_MANAGE_DL6.clone(),
             IDM_ACP_ACCOUNT_MAIL_READ_DL6.clone(),
-            IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
+            // IDM_ACP_DOMAIN_ADMIN_DL6.clone(),
+            // DL7
+            // IDM_ACP_SELF_WRITE_DL7.clone(),
+            IDM_ACP_SELF_NAME_WRITE_DL7.clone(),
+            IDM_ACP_HP_CLIENT_CERTIFICATE_MANAGER_DL7.clone(),
+            IDM_ACP_OAUTH2_MANAGE_DL7.clone(),
+            // DL8
+            IDM_ACP_SELF_READ_DL8.clone(),
+            IDM_ACP_SELF_WRITE_DL8.clone(),
+            IDM_ACP_APPLICATION_MANAGE_DL8.clone(),
+            IDM_ACP_APPLICATION_ENTRY_MANAGER_DL8.clone(),
+            IDM_ACP_MAIL_SERVERS_DL8.clone(),
+            IDM_ACP_DOMAIN_ADMIN_DL8.clone(),
+            IDM_ACP_GROUP_ACCOUNT_POLICY_MANAGE_DL8.clone(),
         ];
 
         let res: Result<(), _> = idm_entries
@@ -1094,19 +804,6 @@ impl QueryServerReadTransaction<'_> {
         let upgrade_level = DOMAIN_TGT_NEXT_LEVEL;
 
         let mut report_items = Vec::with_capacity(1);
-
-        if current_level <= DOMAIN_LEVEL_6 && upgrade_level >= DOMAIN_LEVEL_7 {
-            let item = self
-                .domain_upgrade_check_6_to_7_gidnumber()
-                .map_err(|err| {
-                    error!(
-                        ?err,
-                        "Failed to perform domain upgrade check 6 to 7 - gidnumber"
-                    );
-                    err
-                })?;
-            report_items.push(item);
-        }
 
         if current_level <= DOMAIN_LEVEL_7 && upgrade_level >= DOMAIN_LEVEL_8 {
             let item = self
@@ -1138,94 +835,6 @@ impl QueryServerReadTransaction<'_> {
             current_level,
             upgrade_level,
             report_items,
-        })
-    }
-
-    pub(crate) fn domain_upgrade_check_6_to_7_gidnumber(
-        &mut self,
-    ) -> Result<ProtoDomainUpgradeCheckItem, OperationError> {
-        let filter = filter!(f_and!([
-            f_or!([
-                f_eq(Attribute::Class, EntryClass::PosixAccount.into()),
-                f_eq(Attribute::Class, EntryClass::PosixGroup.into())
-            ]),
-            // This logic gets a bit messy but it would be:
-            // If ! (
-            //    (GID_REGULAR_USER_MIN < value < GID_REGULAR_USER_MAX) ||
-            //    (GID_UNUSED_A_MIN < value < GID_UNUSED_A_MAX) ||
-            //    (GID_UNUSED_B_MIN < value < GID_UNUSED_B_MAX) ||
-            //    (GID_UNUSED_C_MIN < value < GID_UNUSED_D_MAX)
-            // )
-            f_andnot(f_or!([
-                f_and!([
-                    // The gid value must be less than GID_REGULAR_USER_MAX
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MAX)
-                    ),
-                    // This bit of mental gymnastics is "greater than".
-                    // The gid value must not be less than USER_MIN
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_REGULAR_USER_MIN)
-                    ))
-                ]),
-                f_and!([
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MAX)
-                    ),
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_A_MIN)
-                    ))
-                ]),
-                f_and!([
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MAX)
-                    ),
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_B_MIN)
-                    ))
-                ]),
-                // If both of these conditions are true we get:
-                // C_MIN < value < D_MAX, which the outer and-not inverts.
-                f_and!([
-                    // The gid value must be less than GID_UNUSED_D_MAX
-                    f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_D_MAX)
-                    ),
-                    // This bit of mental gymnastics is "greater than".
-                    // The gid value must not be less than C_MIN
-                    f_andnot(f_lt(
-                        Attribute::GidNumber,
-                        PartialValue::Uint32(crate::plugins::gidnumber::GID_UNUSED_C_MIN)
-                    ))
-                ]),
-            ]))
-        ]));
-
-        let results = self.internal_search(filter)?;
-
-        let affected_entries = results
-            .into_iter()
-            .map(|entry| entry.get_display_id())
-            .collect::<Vec<_>>();
-
-        let status = if affected_entries.is_empty() {
-            ProtoDomainUpgradeCheckStatus::Pass6To7Gidnumber
-        } else {
-            ProtoDomainUpgradeCheckStatus::Fail6To7Gidnumber
-        };
-
-        Ok(ProtoDomainUpgradeCheckItem {
-            status,
-            from_level: DOMAIN_LEVEL_6,
-            to_level: DOMAIN_LEVEL_7,
-            affected_entries,
         })
     }
 
@@ -1300,7 +909,7 @@ impl QueryServerReadTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
+    // use super::{ProtoDomainUpgradeCheckItem, ProtoDomainUpgradeCheckStatus};
     use crate::prelude::*;
 
     #[qs_test]
@@ -1329,9 +938,8 @@ mod tests {
         }
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_6)]
-    async fn test_migrations_dl6_dl7(server: &QueryServer) {
-        // Assert our instance was setup to version 6
+    #[qs_test(domain_level=DOMAIN_LEVEL_8)]
+    async fn test_migrations_dl8_dl9(server: &QueryServer) {
         let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
         let db_domain_version = write_txn
@@ -1340,167 +948,95 @@ mod tests {
             .get_ava_single_uint32(Attribute::Version)
             .expect("Attribute Version not present");
 
-        assert_eq!(db_domain_version, DOMAIN_LEVEL_6);
-
-        // Create an oauth2 client that doesn't have a landing url set.
-        let oauth2_client_uuid = Uuid::new_v4();
-
-        let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Uuid, Value::Uuid(oauth2_client_uuid)),
-            (
-                Attribute::Class,
-                EntryClass::OAuth2ResourceServer.to_value()
-            ),
-            (
-                Attribute::Class,
-                EntryClass::OAuth2ResourceServerPublic.to_value()
-            ),
-            (Attribute::Name, Value::new_iname("test_resource_server")),
-            (
-                Attribute::DisplayName,
-                Value::new_utf8s("test_resource_server")
-            ),
-            (
-                Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com").unwrap()
-            )
-        );
-
-        write_txn
-            .internal_create(vec![ea])
-            .expect("Unable to create oauth2 client");
-
-        // Set the version to 7.
-        write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_7)
-            .expect("Unable to set domain level to version 7");
-
-        // post migration verification.
-        let domain_entry = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("Unable to access domain entry");
-
-        assert!(!domain_entry.attribute_pres(Attribute::PrivateCookieKey));
-
-        let oauth2_entry = write_txn
-            .internal_search_uuid(oauth2_client_uuid)
-            .expect("Unable to access oauth2 client entry");
-
-        let origin = oauth2_entry
-            .get_ava_single_url(Attribute::OAuth2RsOrigin)
-            .expect("Unable to access oauth2 client origin");
-
-        // The origin should have been cloned to the landing.
-        let landing = oauth2_entry
-            .get_ava_single_url(Attribute::OAuth2RsOriginLanding)
-            .expect("Unable to access oauth2 client landing");
-
-        assert_eq!(origin, landing);
-
-        write_txn.commit().expect("Unable to commit");
-    }
-
-    #[qs_test(domain_level=DOMAIN_LEVEL_7)]
-    async fn test_migrations_dl7_dl8(server: &QueryServer) {
-        // Assert our instance was setup to version 7
-        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
-
-        let db_domain_version = write_txn
-            .internal_search_uuid(UUID_DOMAIN_INFO)
-            .expect("unable to access domain entry")
-            .get_ava_single_uint32(Attribute::Version)
-            .expect("Attribute Version not present");
-
-        assert_eq!(db_domain_version, DOMAIN_LEVEL_7);
-
-        // Create an oauth2 client that doesn't have a landing url set.
-        let oauth2_client_uuid = Uuid::new_v4();
-
-        let ea: Entry<EntryInit, EntryNew> = entry_init!(
-            (Attribute::Class, EntryClass::Object.to_value()),
-            (Attribute::Class, EntryClass::Account.to_value()),
-            (Attribute::Uuid, Value::Uuid(oauth2_client_uuid)),
-            (
-                Attribute::Class,
-                EntryClass::OAuth2ResourceServer.to_value()
-            ),
-            (
-                Attribute::Class,
-                EntryClass::OAuth2ResourceServerPublic.to_value()
-            ),
-            (Attribute::Name, Value::new_iname("test_resource_server")),
-            (
-                Attribute::DisplayName,
-                Value::new_utf8s("test_resource_server")
-            ),
-            (
-                Attribute::OAuth2RsOriginLanding,
-                Value::new_url_s("https://demo.example.com/oauth2").unwrap()
-            ),
-            (
-                Attribute::OAuth2RsOrigin,
-                Value::new_url_s("https://demo.example.com").unwrap()
-            )
-        );
-
-        write_txn
-            .internal_create(vec![ea])
-            .expect("Unable to create oauth2 client");
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_8);
 
         write_txn.commit().expect("Unable to commit");
 
-        // pre migration verification.
+        // == pre migration verification. ==
         // check we currently would fail a migration.
 
-        let mut read_txn = server.read().await.unwrap();
-
-        match read_txn.domain_upgrade_check_7_to_8_oauth2_strict_redirect_uri() {
-            Ok(ProtoDomainUpgradeCheckItem {
-                status: ProtoDomainUpgradeCheckStatus::Fail7To8Oauth2StrictRedirectUri,
-                ..
-            }) => {
-                trace!("Failed as expected, very good.");
-            }
-            other => {
-                error!(?other);
-                unreachable!();
-            }
-        };
-
-        drop(read_txn);
-
-        // Okay, fix the problem.
+        // let mut read_txn = server.read().await.unwrap();
+        // drop(read_txn);
 
         let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
 
-        write_txn
-            .internal_modify_uuid(
-                oauth2_client_uuid,
-                &ModifyList::new_purge_and_set(
-                    Attribute::OAuth2StrictRedirectUri,
-                    Value::Bool(true),
-                ),
-            )
-            .expect("Unable to enforce strict mode.");
+        // Fix any issues
 
-        // Set the version to 8.
+        // == Increase the version ==
         write_txn
-            .internal_apply_domain_migration(DOMAIN_LEVEL_8)
-            .expect("Unable to set domain level to version 8");
+            .internal_apply_domain_migration(DOMAIN_LEVEL_9)
+            .expect("Unable to set domain level to version 9");
 
         // post migration verification.
 
         write_txn.commit().expect("Unable to commit");
     }
 
-    #[qs_test(domain_level=DOMAIN_LEVEL_8)]
-    async fn test_migrations_dl8_dl9(_server: &QueryServer) {}
-
     #[qs_test(domain_level=DOMAIN_LEVEL_9)]
-    async fn test_migrations_dl9_dl10(_server: &QueryServer) {}
+    async fn test_migrations_dl9_dl10(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_9);
+
+        write_txn.commit().expect("Unable to commit");
+
+        // == pre migration verification. ==
+        // check we currently would fail a migration.
+
+        // let mut read_txn = server.read().await.unwrap();
+        // drop(read_txn);
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Fix any issues
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_LEVEL_10)
+            .expect("Unable to set domain level to version 10");
+
+        // post migration verification.
+
+        write_txn.commit().expect("Unable to commit");
+    }
 
     #[qs_test(domain_level=DOMAIN_LEVEL_10)]
-    async fn test_migrations_dl10_dl11(_server: &QueryServer) {}
+    async fn test_migrations_dl10_dl11(server: &QueryServer) {
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let db_domain_version = write_txn
+            .internal_search_uuid(UUID_DOMAIN_INFO)
+            .expect("unable to access domain entry")
+            .get_ava_single_uint32(Attribute::Version)
+            .expect("Attribute Version not present");
+
+        assert_eq!(db_domain_version, DOMAIN_LEVEL_10);
+
+        write_txn.commit().expect("Unable to commit");
+
+        // == pre migration verification. ==
+        // check we currently would fail a migration.
+
+        // let mut read_txn = server.read().await.unwrap();
+        // drop(read_txn);
+
+        let mut write_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Fix any issues
+
+        // == Increase the version ==
+        write_txn
+            .internal_apply_domain_migration(DOMAIN_LEVEL_11)
+            .expect("Unable to set domain level to version 11");
+
+        // post migration verification.
+
+        write_txn.commit().expect("Unable to commit");
+    }
 }

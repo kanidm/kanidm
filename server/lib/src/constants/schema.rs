@@ -1209,6 +1209,30 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL9: SchemaClass = SchemaClass {
     ..Default::default()
 };
 
+pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL10: SchemaClass = SchemaClass {
+    uuid: UUID_SCHEMA_CLASS_DOMAIN_INFO,
+    name: EntryClass::DomainInfo.into(),
+    description: "Local domain information and configuration".to_string(),
+
+    systemmay: vec![
+        Attribute::DomainSsid,
+        Attribute::DomainLdapBasedn,
+        Attribute::LdapAllowUnixPwBind,
+        Attribute::Image,
+        Attribute::PatchLevel,
+        Attribute::DomainDevelopmentTaint,
+        Attribute::DomainAllowEasterEggs,
+        Attribute::DomainDisplayName,
+    ],
+    systemmust: vec![
+        Attribute::Name,
+        Attribute::DomainUuid,
+        Attribute::DomainName,
+        Attribute::Version,
+    ],
+    ..Default::default()
+};
+
 pub static ref SCHEMA_CLASS_POSIXGROUP: SchemaClass = SchemaClass {
     uuid: UUID_SCHEMA_CLASS_POSIXGROUP,
     name: EntryClass::PosixGroup.into(),
