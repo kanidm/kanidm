@@ -937,7 +937,7 @@ pub async fn create_server_core(
         }
     }
 
-    let ldap = match LdapServer::new(&idms).await {
+    let ldap = match LdapServer::new(&idms, config.ldap_maximum_queryable_attrs).await {
         Ok(l) => l,
         Err(e) => {
             error!("Unable to start LdapServer -> {:?}", e);
