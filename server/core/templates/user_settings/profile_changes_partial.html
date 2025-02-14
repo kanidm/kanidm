@@ -1,0 +1,89 @@
+(% extends "user_settings_partial_base.html" %)
+
+(% block selected_setting_group %)
+Profile Difference
+(% endblock %)
+
+(% block settings_vertical_point %)lg(% endblock %)
+
+(% block settings_window %)
+
+<form>
+    <input type="hidden" name="account_name" value="(( new_attrs.account_name ))"/>
+    <input type="hidden" name="display_name" value="(( new_attrs.display_name ))"/>
+    <input type="hidden" name="legal_name" value="(( new_attrs.legal_name ))"/>
+    (% for email in new_attrs.emails %)
+        <input type="hidden" name="emails[]" value="(( email ))"/>
+    (% endfor %)
+
+    <table class="table table-bordered table-responsive">
+        <thead>
+            <tr>
+                <th scope="col">Attribute</th>
+                <th scope="col">Old value</th>
+                <th scope="col">New value</th>
+            </tr>
+        </thead>
+    (% if attrs.account_name != new_attrs.account_name %)
+        <tr>
+            <th scope="row">User name</th>
+            <td class="text-break">(( attrs.account_name ))</td>
+            <td class="text-break">(( new_attrs.account_name ))</td>
+        </tr>
+    (% endif %)
+
+    (% if attrs.display_name != new_attrs.display_name %)
+        <tr>
+            <th scope="row">Display name</th>
+            <td class="text-break">(( attrs.display_name ))</td>
+            <td class="text-break">(( new_attrs.display_name ))</td>
+        </tr>
+    (% endif %)
+
+    (% if attrs.legal_name != new_attrs.legal_name %)
+        <tr>
+            <th scope="row">Legal name</th>
+            <td class="text-break">(( attrs.legal_name ))</td>
+            <td class="text-break">(( new_attrs.legal_name ))</td>
+        </tr>
+    (% endif %)
+
+    (% if attrs.emails != new_attrs.emails %)
+
+        <!-- TODO: List new items with +, same items with . -->
+        <tr>
+            <th scope="row">Emails</th>
+            <td class="text-break">
+                <ul>
+                (% for email in attrs.emails %)
+                    <li>(( email ))</li>
+                (% endfor %)
+                </ul>
+            </td>
+            <td class="text-break">
+                <ul>
+                (% for email in new_attrs.emails %)
+                    <li>(( email ))</li>
+                (% endfor %)
+                </ul>
+            </td>
+        </tr>
+    (% endif %)
+    </table>
+    <!-- Edit button -->
+    <div class="pt-4" hx-target="#user_settings_container" hx-swap="outerHTML">
+        (% if can_rw %)
+        <button class="btn btn-danger" type="button" hx-get="/ui/profile" hx-target="#user_settings_container" hx-swap="outerHTML">Discard Changes</button>
+        <button class="btn btn-primary" type="button" hx-post="/ui/api/user_settings/confirm_profile" hx-target="#user_settings_container" hx-swap="outerHTML">Confirm Changes</button>
+        (% else %)
+        <a href="/ui/profile/unlock" hx-boost="false">
+            <!-- TODO: at the moment, session expiring here means progress is lost. Do we just show an error screen ? We can't pass the update state through the reauth session, and we don't have profile update sessions like cred update. -->
+            <button class="btn btn-primary" type="button">Unlock Confirm 🔓</button>
+        </a>
+        (% endif %)
+    </div>
+
+</form>
+
+(% endblock %)
+
