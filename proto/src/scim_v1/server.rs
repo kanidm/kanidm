@@ -9,6 +9,7 @@ use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use tracing::debug;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -261,9 +262,8 @@ impl ScimEntryKanidm {
     pub fn attr_str(&self, attr: &Attribute) -> Option<&str> {
         match self.attrs.get(attr) {
             Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
-            Some(_sv) => {
-                // TODO: decide if these log statements should begone or if we add a logging dependency to proto
-                // debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
                 None
             }
             None => None,
@@ -273,8 +273,8 @@ impl ScimEntryKanidm {
     pub fn attr_bool(&self, attr: &Attribute) -> Option<&bool> {
         match self.attrs.get(attr) {
             Some(ScimValueKanidm::Bool(inner_bool)) => Some(inner_bool),
-            Some(_sv) => {
-                // debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Bool type, actual: {:?}", attr, sv);
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Bool type, actual: {:?}", attr, sv);
                 None
             }
             None => None,
@@ -284,8 +284,8 @@ impl ScimEntryKanidm {
     pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
         match self.attrs.get(&Attribute::Mail) {
             Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
-            Some(_sv) => {
-                // debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
                 None
             }
             None => None,
@@ -295,8 +295,8 @@ impl ScimEntryKanidm {
     pub fn attr_references(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
         match self.attrs.get(attr) {
             Some(ScimValueKanidm::EntryReferences(refs)) => Some(refs),
-            Some(_sv) => {
-                // debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
                 None
             }
             None => None,
