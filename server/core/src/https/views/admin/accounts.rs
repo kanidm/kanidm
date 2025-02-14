@@ -1,4 +1,4 @@
-use crate::https::extractors::{AccessInfo, DomainInfo, VerifiedClientInformation};
+use crate::https::extractors::{DomainInfo, VerifiedClientInformation};
 use crate::https::middleware::KOpId;
 use crate::https::views::errors::HtmxError;
 use crate::https::views::navbar::NavbarCtx;
@@ -25,9 +25,8 @@ use std::str::FromStr;
 use uuid::Uuid;
 
 #[derive(Template)]
-#[template(path = "admin/admin_overview.html")]
-struct AccountsView {
-    access_info: AccessInfo,
+#[template(path = "admin/admin_panel_template.html")]
+pub(crate) struct AccountsView {
     navbar_ctx: NavbarCtx,
     partial: AccountsPartialView,
 }
@@ -50,9 +49,8 @@ struct AccountInfo {
 }
 
 #[derive(Template)]
-#[template(path = "admin/admin_overview.html")]
+#[template(path = "admin/admin_panel_template.html")]
 struct AccountView {
-    access_info: AccessInfo,
     partial: AccountViewPartial,
     navbar_ctx: NavbarCtx,
 }
@@ -85,7 +83,6 @@ pub(crate) async fn view_account_view_get(
         (
             push_url,
             AccountView {
-                access_info: AccessInfo::new(),
                 partial: accounts_partial,
                 navbar_ctx: NavbarCtx { domain_info },
             },
@@ -111,7 +108,6 @@ pub(crate) async fn view_accounts_get(
         (
             push_url,
             AccountsView {
-                access_info: AccessInfo::new(),
                 navbar_ctx: NavbarCtx { domain_info },
                 partial: accounts_partial,
             },

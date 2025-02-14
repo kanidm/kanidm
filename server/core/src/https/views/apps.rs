@@ -11,7 +11,6 @@ use kanidm_proto::internal::AppLink;
 
 use super::constants::Urls;
 use super::navbar::NavbarCtx;
-use crate::https::extractors::AccessInfo;
 use crate::https::views::errors::HtmxError;
 use crate::https::{
     extractors::DomainInfo, extractors::VerifiedClientInformation, middleware::KOpId, ServerState,
@@ -21,7 +20,6 @@ use crate::https::{
 #[template(path = "apps.html")]
 struct AppsView {
     navbar_ctx: NavbarCtx,
-    access_info: AccessInfo,
     apps_partial: AppsPartialView,
 }
 
@@ -52,7 +50,7 @@ pub(crate) async fn view_apps_get(
     Ok({
         let apps_view = AppsView {
             navbar_ctx: NavbarCtx { domain_info },
-            access_info: AccessInfo::new(),
+
             apps_partial,
         };
         (HxPushUrl(Uri::from_static(Urls::Apps.as_ref())), apps_view).into_response()
