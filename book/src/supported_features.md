@@ -22,6 +22,7 @@ This is a list of supported features and standards within Kanidm.
   - [RFC4519 LDAP Schema](https://www.rfc-editor.org/rfc/rfc4519)
   - FreeIPA User Schema
 - [RFC7644 SCIM Bulk Data Import](https://www.rfc-editor.org/rfc/rfc7644)
+  - NOTE: SCIM is only supported for synchronisation from another IDP at this time.
 
 # Database
 

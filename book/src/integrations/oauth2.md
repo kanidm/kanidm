@@ -215,7 +215,7 @@ Token signing public key
 
 ### Create the Kanidm Configuration
 
-By default, members of the `system_admins` or `idm_hp_oauth2_manage_priv` groups are able to create
+By default, members of the `idm_admins` or `idm_oauth2_admins` groups are able to create
 or manage OAuth2 client integrations.
 
 You can create a new client by specifying its client name, application display name and the landing
