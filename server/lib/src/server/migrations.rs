@@ -427,7 +427,10 @@ impl QueryServerWriteTransaction<'_> {
         // =========== Apply changes ==============
 
         // Now update schema
-        let idm_schema_changes = [SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into()];
+        let idm_schema_changes = [
+            SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
+            SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
+        ];
 
         idm_schema_changes
             .into_iter()

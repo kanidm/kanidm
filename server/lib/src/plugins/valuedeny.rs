@@ -10,7 +10,7 @@ impl Plugin for ValueDeny {
         "plugin_value_deny"
     }
 
-    #[instrument(level = "debug", name = "base_pre_create_transform", skip_all)]
+    #[instrument(level = "debug", name = "denied_names_pre_create_transform", skip_all)]
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
         qs: &mut QueryServerWriteTransaction,
@@ -19,9 +19,25 @@ impl Plugin for ValueDeny {
     ) -> Result<(), OperationError> {
         let denied_names = qs.denied_names();
 
+        if denied_names.is_empty() {
+            // Nothing to check.
+            return Ok(());
+        }
+
         let mut pass = true;
 
         for entry in cand {
+            // If the entry doesn't have a uuid, it's invalid anyway and will fail schema.
+            if let Some(e_uuid) = entry.get_uuid() {
+                // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
+                // assert that the break glass and system accounts are NOT subject to
+                // this process.
+                if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
+                    // These entries are exempt
+                    continue;
+                }
+            }
+
             if let Some(name) = entry.get_ava_single_iname(Attribute::Name) {
                 if denied_names.contains(name) {
                     pass = false;
@@ -37,27 +53,24 @@ impl Plugin for ValueDeny {
         }
     }
 
-    #[instrument(level = "debug", name = "base_pre_modify", skip_all)]
     fn pre_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<EntrySealedCommitted>],
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::modify(qs, cand)
+        Self::modify(qs, pre_cand, cand)
     }
 
-    #[instrument(level = "debug", name = "base_pre_modify", skip_all)]
     fn pre_batch_modify(
         qs: &mut QueryServerWriteTransaction,
-        _pre_cand: &[Arc<EntrySealedCommitted>],
+        pre_cand: &[Arc<EntrySealedCommitted>],
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &BatchModifyEvent,
     ) -> Result<(), OperationError> {
-        Self::modify(qs, cand)
+        Self::modify(qs, pre_cand, cand)
     }
 
-    #[instrument(level = "debug", name = "base::verify", skip_all)]
     fn verify(qs: &mut QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let denied_names = qs.denied_names().clone();
 
@@ -68,7 +81,15 @@ impl Plugin for ValueDeny {
             match qs.internal_search(filt) {
                 Ok(entries) => {
                     for entry in entries {
-                        results.push(Err(ConsistencyError::DeniedName(entry.get_uuid())));
+                        let e_uuid = entry.get_uuid();
+                        // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
+                        // assert that the break glass accounts are NOT subject to this process.
+                        if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
+                            // These entries are exempt
+                            continue;
+                        }
+
+                        results.push(Err(ConsistencyError::DeniedName(e_uuid)));
                     }
                 }
                 Err(err) => {
@@ -83,17 +104,37 @@ impl Plugin for ValueDeny {
 }
 
 impl ValueDeny {
+    #[instrument(level = "debug", name = "denied_names_modify", skip_all)]
     fn modify(
         qs: &mut QueryServerWriteTransaction,
-        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        pre_cand: &[Arc<EntrySealedCommitted>],
+        cand: &mut [EntryInvalidCommitted],
     ) -> Result<(), OperationError> {
         let denied_names = qs.denied_names();
 
+        if denied_names.is_empty() {
+            // Nothing to check.
+            return Ok(());
+        }
+
         let mut pass = true;
 
-        for entry in cand {
-            if let Some(name) = entry.get_ava_single_iname(Attribute::Name) {
-                if denied_names.contains(name) {
+        for (pre_entry, post_entry) in pre_cand.iter().zip(cand.iter()) {
+            // If the entry doesn't have a uuid, it's invalid anyway and will fail schema.
+            let e_uuid = pre_entry.get_uuid();
+            // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
+            // assert that the break glass accounts are NOT subject to this process.
+            if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
+                // These entries are exempt
+                continue;
+            }
+
+            let pre_name = pre_entry.get_ava_single_iname(Attribute::Name);
+            let post_name = post_entry.get_ava_single_iname(Attribute::Name);
+
+            if let Some(name) = post_name {
+                // Only if the name is changing, and is denied.
+                if pre_name != post_name && denied_names.contains(name) {
                     pass = false;
                     error!(?name, "name denied by system configuration");
                 }
@@ -117,10 +158,10 @@ mod tests {
 
         let me_inv_m = ModifyEvent::new_internal_invalid(
             filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
-            ModifyList::new_list(vec![Modify::Present(
-                Attribute::DeniedName,
-                Value::new_iname("tobias"),
-            )]),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::DeniedName, Value::new_iname("tobias")),
+                Modify::Present(Attribute::DeniedName, Value::new_iname("ellie")),
+            ]),
         );
         assert!(server_txn.modify(&me_inv_m).is_ok());
 
@@ -148,30 +189,103 @@ mod tests {
 
     #[qs_test]
     async fn test_valuedeny_modify(server: &QueryServer) {
-        setup_name_deny(server).await;
-
+        // Create an entry that has a name which will become denied to test how it
+        // interacts.
         let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
-        let t_uuid = Uuid::new_v4();
+        let e_uuid = Uuid::new_v4();
         assert!(server_txn
             .internal_create(vec![entry_init!(
                 (Attribute::Class, EntryClass::Object.to_value()),
                 (Attribute::Class, EntryClass::Account.to_value()),
                 (Attribute::Class, EntryClass::Person.to_value()),
-                (Attribute::Name, Value::new_iname("newname")),
-                (Attribute::Uuid, Value::Uuid(t_uuid)),
-                (Attribute::Description, Value::new_utf8s("Tobias")),
-                (Attribute::DisplayName, Value::new_utf8s("Tobias"))
+                (Attribute::Name, Value::new_iname("ellie")),
+                (Attribute::Uuid, Value::Uuid(e_uuid)),
+                (Attribute::Description, Value::new_utf8s("Ellie Meow")),
+                (Attribute::DisplayName, Value::new_utf8s("Ellie Meow"))
             ),])
             .is_ok());
 
-        // Now mod it
+        assert!(server_txn.commit().is_ok());
 
+        setup_name_deny(server).await;
+
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        // Attempt to mod ellie.
+
+        // Can mod a different attribute
         assert!(server_txn
             .internal_modify_uuid(
-                t_uuid,
+                e_uuid,
+                &ModifyList::new_purge_and_set(Attribute::DisplayName, Value::new_utf8s("tobias"))
+            )
+            .is_ok());
+
+        // Can't mod to another invalid name.
+        assert!(server_txn
+            .internal_modify_uuid(
+                e_uuid,
                 &ModifyList::new_purge_and_set(Attribute::Name, Value::new_iname("tobias"))
             )
             .is_err());
+
+        // Can mod to a valid name.
+        assert!(server_txn
+            .internal_modify_uuid(
+                e_uuid,
+                &ModifyList::new_purge_and_set(
+                    Attribute::Name,
+                    Value::new_iname("miss_meowington")
+                )
+            )
+            .is_ok());
+
+        // Now mod from the valid name to an invalid one.
+        assert!(server_txn
+            .internal_modify_uuid(
+                e_uuid,
+                &ModifyList::new_purge_and_set(Attribute::Name, Value::new_iname("tobias"))
+            )
+            .is_err());
+
+        assert!(server_txn.commit().is_ok());
+    }
+
+    #[qs_test]
+    async fn test_valuedeny_jpwarren_special(server: &QueryServer) {
+        // Assert that our break glass accounts are exempt from this processing.
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let me_inv_m = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PVUUID_SYSTEM_CONFIG.clone())),
+            ModifyList::new_list(vec![
+                Modify::Present(Attribute::DeniedName, Value::new_iname("admin")),
+                Modify::Present(Attribute::DeniedName, Value::new_iname("idm_admin")),
+            ]),
+        );
+        assert!(server_txn.modify(&me_inv_m).is_ok());
+        assert!(server_txn.commit().is_ok());
+
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        assert!(server_txn
+            .internal_modify_uuid(
+                UUID_IDM_ADMIN,
+                &ModifyList::new_purge_and_set(
+                    Attribute::DisplayName,
+                    Value::new_utf8s("Idm Admin")
+                )
+            )
+            .is_ok());
+
+        assert!(server_txn
+            .internal_modify_uuid(
+                UUID_ADMIN,
+                &ModifyList::new_purge_and_set(Attribute::DisplayName, Value::new_utf8s("Admin"))
+            )
+            .is_ok());
+
+        assert!(server_txn.commit().is_ok());
     }
 
     #[qs_test]
