@@ -222,6 +222,7 @@ pub enum OperationError {
     MG0006SKConstraintsNotMet,
     MG0007Oauth2StrictConstraintsNotMet,
     MG0008SkipUpgradeAttempted,
+    MG0009InvalidTargetLevelForBootstrap,
     //
     KP0001KeyProviderNotLoaded,
     KP0002KeyProviderInvalidClass,
@@ -462,6 +463,7 @@ impl OperationError {
             Self::MG0006SKConstraintsNotMet => Some("Migration Constraints Not Met - Security Keys should not be present.".into()),
             Self::MG0007Oauth2StrictConstraintsNotMet => Some("Migration Constraints Not Met - All OAuth2 clients must have strict-redirect-uri mode enabled.".into()),
             Self::MG0008SkipUpgradeAttempted => Some("Skip Upgrade Attempted.".into()),
+            Self::MG0009InvalidTargetLevelForBootstrap => Some("The request target domain level was not valid for bootstrapping a new server instance".into()),
             Self::PL0001GidOverlapsSystemRange => None,
             Self::SC0001IncomingSshPublicKey => None,
             Self::SC0002ReferenceSyntaxInvalid => Some("A SCIM Reference Set contained invalid syntax and can not be processed.".into()),

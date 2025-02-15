@@ -1159,6 +1159,7 @@ mod tests {
         },
         Access, AccessClass, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
+    use crate::migration_data::BUILTIN_ACCOUNT_ANONYMOUS;
     use crate::prelude::*;
     use crate::valueset::ValueSetIname;
 
@@ -2511,6 +2512,7 @@ mod tests {
 
     #[test]
     fn test_access_enforce_scope_delete() {
+        sketching::test_init();
         let ev1 = E_TESTPERSON_1.clone().into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 
@@ -3052,7 +3054,7 @@ mod tests {
         test_acp_search_reduce!(&se_a, vec![], r_set.clone(), ex_a_reduced);
 
         // Check that anonymous is denied even though it's a member of the group.
-        let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
+        let anon: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
         let mut anon = anon.into_invalid_new();
         anon.set_ava_set(&Attribute::MemberOf, ValueSetRefer::new(UUID_TEST_GROUP_1));
 
@@ -3352,7 +3354,7 @@ mod tests {
 
     #[test]
     fn test_access_delete_protect_system_ranges() {
-        let ev1: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
+        let ev1: EntryInitNew = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
         let ev1 = ev1.into_sealed_committed();
         let r_set = vec![Arc::new(ev1)];
 

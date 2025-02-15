@@ -4,7 +4,9 @@
 //!
 
 use kanidmd_lib::constants::entries::Attribute;
-use kanidmd_lib::constants::groups::{idm_builtin_admin_groups, idm_builtin_non_admin_groups};
+use kanidmd_lib::migration_data::current::{
+    phase_5_builtin_admin_entries, phase_6_builtin_non_admin_entries
+};
 use kanidmd_lib::prelude::{builtin_accounts, EntryInitNew};
 use petgraph::graphmap::{AllEdges, GraphMap, NodeTrait};
 use petgraph::Directed;
@@ -106,8 +108,8 @@ async fn enumerate_default_groups(/*_client: KanidmClient*/) {
         graph.add_node(account.uuid);
     });
 
-    let mut groups = idm_builtin_admin_groups();
-    groups.extend(idm_builtin_non_admin_groups());
+    let mut groups = phase_5_builtin_admin_entries();
+    groups.extend(phase_6_builtin_non_admin_entries());
 
     groups.into_iter().for_each(|group| {
         uuidmap.insert(group.uuid, group.clone().try_into().unwrap());

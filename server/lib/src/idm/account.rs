@@ -1041,17 +1041,9 @@ impl IdmServerProxyReadTransaction<'_> {
 
 #[cfg(test)]
 mod tests {
-    use crate::idm::account::Account;
     use crate::idm::accountpolicy::ResolvedAccountPolicy;
     use crate::prelude::*;
     use kanidm_proto::internal::UiHint;
-
-    #[test]
-    fn test_idm_account_from_anonymous() {
-        let account: Account = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
-        debug!("{:?}", account);
-        // I think that's it? we may want to check anonymous mech ...
-    }
 
     #[idm_test]
     async fn test_idm_account_ui_hints(idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed) {

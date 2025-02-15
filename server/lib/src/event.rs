@@ -639,23 +639,6 @@ impl ModifyEvent {
     /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
     /// This is a TEST ONLY method and will never be exposed in production.
     #[cfg(test)]
-    pub fn new_impersonate_entry_ser(
-        e: BuiltinAccount,
-        filter: Filter<FilterInvalid>,
-        modlist: ModifyList<ModifyInvalid>,
-    ) -> Self {
-        let ei: EntryInitNew = e.into();
-        ModifyEvent {
-            ident: Identity::from_impersonate_entry_readwrite(Arc::new(ei.into_sealed_committed())),
-            filter: filter.clone().into_valid(),
-            filter_orig: filter.into_valid(),
-            modlist: modlist.into_valid(),
-        }
-    }
-
-    /// ⚠️  - Bypass the schema state machine and force the filter to be considered valid.
-    /// This is a TEST ONLY method and will never be exposed in production.
-    #[cfg(test)]
     pub fn new_impersonate_identity(
         ident: Identity,
         filter: Filter<FilterInvalid>,

@@ -12,10 +12,9 @@ use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationResponse, GrantTypeReq,
 };
 
+use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
 use kanidmd_lib::prelude::uri::{OAUTH2_AUTHORISE_DEVICE, OAUTH2_TOKEN_ENDPOINT};
-use kanidmd_lib::prelude::{
-    Attribute, IDM_ALL_ACCOUNTS, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID, OAUTH2_SCOPE_READ,
-};
+use kanidmd_lib::prelude::{Attribute, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID, OAUTH2_SCOPE_READ};
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, IDM_ADMIN_TEST_PASSWORD,
     IDM_ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL, NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME,
@@ -159,7 +158,7 @@ async fn oauth2_device_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
@@ -168,7 +167,7 @@ async fn oauth2_device_flow(rsclient: KanidmClient) {
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![ADMIN_TEST_USER],
         )
         .await
@@ -179,7 +178,7 @@ async fn oauth2_device_flow(rsclient: KanidmClient) {
         .idm_oauth2_rs_update_claim_map(
             TEST_INTEGRATION_RS_ID,
             "test_claim",
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             &["claim_a".to_string(), "claim_b".to_string()],
         )
         .await

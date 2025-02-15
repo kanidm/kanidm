@@ -106,7 +106,9 @@ lazy_static! {
         members: vec![],
         ..Default::default()
     };
+}
 
+lazy_static! {
     // These are the "finer" roles. They encapsulate different concepts in the system.
     // The next section is the "system style" roles. These adjust the operation of
     // kanidm and relate to it's internals and how it functions.
@@ -403,47 +405,4 @@ lazy_static! {
         members: vec![UUID_IDM_ADMINS],
         ..Default::default()
     };
-}
-
-/// Make a list of all the non-admin BuiltinGroup's that are created by default, doing it in a standard-ish way so we can use it around the platform
-pub fn idm_builtin_non_admin_groups() -> Vec<&'static BuiltinGroup> {
-    // Create any system default schema entries.
-    vec![
-        &BUILTIN_GROUP_DOMAIN_ADMINS,
-        &BUILTIN_GROUP_SCHEMA_ADMINS,
-        &BUILTIN_GROUP_ACCESS_CONTROL_ADMINS,
-        &BUILTIN_GROUP_UNIX_ADMINS,
-        &BUILTIN_GROUP_RECYCLE_BIN_ADMINS,
-        &BUILTIN_GROUP_SERVICE_DESK,
-        &BUILTIN_GROUP_OAUTH2_ADMINS,
-        &BUILTIN_GROUP_RADIUS_SERVICE_ADMINS,
-        &BUILTIN_GROUP_ACCOUNT_POLICY_ADMINS,
-        &BUILTIN_GROUP_PEOPLE_ADMINS,
-        &BUILTIN_GROUP_PEOPLE_PII_READ,
-        &BUILTIN_GROUP_PEOPLE_ON_BOARDING,
-        &BUILTIN_GROUP_SERVICE_ACCOUNT_ADMINS,
-        &BUILTIN_GROUP_MAIL_SERVICE_ADMINS_DL8,
-        &IDM_GROUP_ADMINS_V1,
-        &IDM_ALL_PERSONS,
-        &IDM_ALL_ACCOUNTS,
-        &BUILTIN_IDM_RADIUS_SERVERS_V1,
-        &BUILTIN_IDM_MAIL_SERVERS_DL8,
-        &BUILTIN_GROUP_PEOPLE_SELF_NAME_WRITE_DL7,
-        &IDM_PEOPLE_SELF_MAIL_WRITE_DL7,
-        &BUILTIN_GROUP_CLIENT_CERTIFICATE_ADMINS_DL7,
-        &BUILTIN_GROUP_APPLICATION_ADMINS_DL8,
-        // Write deps on read, so write must be added first.
-        // All members must exist before we write HP
-        &IDM_HIGH_PRIVILEGE_DL8,
-        // other things
-        &IDM_UI_ENABLE_EXPERIMENTAL_FEATURES,
-        &IDM_ACCOUNT_MAIL_READ,
-    ]
-}
-
-pub fn idm_builtin_admin_groups() -> Vec<&'static BuiltinGroup> {
-    vec![
-        &BUILTIN_GROUP_SYSTEM_ADMINS_V1,
-        &BUILTIN_GROUP_IDM_ADMINS_V1,
-    ]
 }

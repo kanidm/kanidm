@@ -1,7 +1,4 @@
-//! Core Constants
-//!
-//! Schema uuids start at `00000000-0000-0000-0000-ffff00000000`
-//!
+//! Schema Entries
 use crate::constants::entries::{Attribute, EntryClass};
 use crate::constants::uuids::*;
 use crate::schema::{SchemaAttribute, SchemaClass};
@@ -205,6 +202,16 @@ pub static ref SCHEMA_ATTR_DENIED_NAME: SchemaAttribute = SchemaAttribute {
     description: "Iname values that are not allowed to be used in 'name'.".to_string(),
 
     syntax: SyntaxType::Utf8StringIname,
+    ..Default::default()
+};
+
+pub static ref SCHEMA_ATTR_DENIED_NAME_DL10: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_DENIED_NAME,
+    name: Attribute::DeniedName,
+    description: "Iname values that are not allowed to be used in 'name'.".to_string(),
+
+    syntax: SyntaxType::Utf8StringIname,
+    multivalue: true,
     ..Default::default()
 };
 
