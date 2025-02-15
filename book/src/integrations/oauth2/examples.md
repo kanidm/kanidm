@@ -556,6 +556,65 @@ php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
 You can login directly by appending `?direct=1` to your login page. You can re-enable other backends
 by setting the value to `1`
 
+## OAuth2 Proxy
+
+OAuth2 Proxy is a reverse proxy that provides authentication with OpenID Connect identity providers.
+It is typically used to secure web applications without native OpenID Connect support.
+
+Prepare the environment.
+Due to a [lack of public client support](https://github.com/oauth2-proxy/oauth2-proxy/issues/1714) we have to set it up as a basic client. 
+
+```bash
+kanidm system oauth2 create webapp 'webapp.example.com' 'https://webapp.example.com'
+kanidm system add-redirect-url webapp 'https://webapp.example.com/oauth2/callback'
+kanidm system oauth2 update-scope-map webapp email openid
+kanidm system oauth2 get webapp
+kanidm system oauth2 show-basic-secret webapp
+<SECRET>
+```
+
+Create a user group.
+
+```bash
+kanidm group create 'webapp_admin'
+```
+
+Setup the claim-map to add `webapp_group` to the userinfo claim.
+
+```bash
+kanidm system oauth2 update-claim-map-join 'webapp' 'webapp_group' array
+kanidm system oauth2 update-claim-map 'webapp' 'webapp_group' 'webapp_admin' 'webapp_admin'
+```
+
+Authorize users for the application.
+Additionally OAuth2 Proxy requires all users have an email, reference this issue for more details:
+
+- <https://github.com/oauth2-proxy/oauth2-proxy/issues/2667>
+
+```bash
+kanidm person update '<user>' --legalname 'Personal Name' --mail 'user@example.com'
+kanidm group add-members 'webapp_admin' '<user>'
+```
+
+And add the following to your OAuth2 Proxy config.
+
+```toml
+provider = "oidc"
+scope = "openid email"
+# change to match your kanidm domain and client id
+oidc_issuer_url = "https://idm.example.com/oauth2/openid/webapp"
+# client ID from `kanidm system oauth2 create`
+client_id = "webapp"
+# redirect URL from `kanidm system add-redirect-url webapp`
+redirect_url = "https://webapp.example.com/oauth2/callback"
+# claim name from `kanidm system oauth2 update-claim-map-join`
+oidc_groups_claim = "webapp_group"
+# user group from `kanidm group create`
+allowed_groups = ["webapp_admin"]
+# secret from `kanidm system oauth2 show-basic-secret webapp`
+client_secret = "<SECRET>"
+```
+
 ## Outline
 
 > These instructions were tested with self-hosted Outline 0.80.2.
