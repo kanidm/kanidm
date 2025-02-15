@@ -30,8 +30,9 @@ impl Plugin for ValueDeny {
             // If the entry doesn't have a uuid, it's invalid anyway and will fail schema.
             if let Some(e_uuid) = entry.get_uuid() {
                 // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
-                // assert that the break glass accounts are NOT subject to this process.
-                if e_uuid == UUID_ADMIN || e_uuid == UUID_IDM_ADMIN {
+                // assert that the break glass and system accounts are NOT subject to
+                // this process.
+                if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
                     // These entries are exempt
                     continue;
                 }
@@ -76,17 +77,19 @@ impl Plugin for ValueDeny {
         let mut results = Vec::with_capacity(0);
 
         for denied_name in denied_names {
-            let filt = filter!(f_and(vec![
-                f_eq(Attribute::Name, PartialValue::new_iname(&denied_name)),
-                f_andnot(f_or(vec![
-                    f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_ADMIN)),
-                    f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_IDM_ADMIN)),
-                ])),
-            ]));
+            let filt = filter!(f_eq(Attribute::Name, PartialValue::new_iname(&denied_name)));
             match qs.internal_search(filt) {
                 Ok(entries) => {
                     for entry in entries {
-                        results.push(Err(ConsistencyError::DeniedName(entry.get_uuid())));
+                        let e_uuid = entry.get_uuid();
+                        // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
+                        // assert that the break glass accounts are NOT subject to this process.
+                        if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
+                            // These entries are exempt
+                            continue;
+                        }
+
+                        results.push(Err(ConsistencyError::DeniedName(e_uuid)));
                     }
                 }
                 Err(err) => {
@@ -121,7 +124,7 @@ impl ValueDeny {
             let e_uuid = pre_entry.get_uuid();
             // SAFETY - Thanks to JpWarren blowing his nipper clean off, we need to
             // assert that the break glass accounts are NOT subject to this process.
-            if e_uuid == UUID_ADMIN || e_uuid == UUID_IDM_ADMIN {
+            if e_uuid < DYNAMIC_RANGE_MINIMUM_UUID {
                 // These entries are exempt
                 continue;
             }
