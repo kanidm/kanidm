@@ -14,7 +14,8 @@ impl DomainOpt {
             | DomainOpt::SetLdapAllowUnixPasswordBind { copt, .. }
             | DomainOpt::SetAllowEasterEggs { copt, .. }
             | DomainOpt::RevokeKey { copt, .. }
-            | DomainOpt::Show(copt) => copt.debug,
+            | DomainOpt::Show(copt)
+            | DomainOpt::SetLdapMaxQueryableAttrs { copt, .. } => copt.debug,
         }
     }
 
@@ -32,6 +33,23 @@ impl DomainOpt {
                 {
                     Ok(_) => println!("Success"),
                     Err(e) => handle_client_error(e, opt.copt.output_mode),
+                }
+            }
+            DomainOpt::SetLdapMaxQueryableAttrs {
+                copt,
+                new_max_queryable_attrs,
+            } => {
+                eprintln!(
+                    "Attempting to set the maximum number of queryable LDAP attributes to: {:?}",
+                    new_max_queryable_attrs
+                );
+                let client = copt.to_client(OpType::Write).await;
+                match client
+                    .idm_domain_set_ldap_max_queryable_attrs(*new_max_queryable_attrs)
+                    .await
+                {
+                    Ok(_) => println!("Success"),
+                    Err(e) => handle_client_error(e, copt.output_mode),
                 }
             }
             DomainOpt::SetLdapBasedn { copt, new_basedn } => {

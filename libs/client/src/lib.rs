@@ -30,8 +30,8 @@ use compact_jwt::Jwk;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
-    ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_NAME, CLIENT_TOKEN_CACHE, KOPID,
-    KSESSIONID, KVERSION,
+    ATTR_KEY_ACTION_REVOKE, ATTR_LDAP_ALLOW_UNIX_PW_BIND, ATTR_LDAP_MAX_QUERYABLE_ATTRS, ATTR_NAME,
+    CLIENT_TOKEN_CACHE, KOPID, KSESSIONID, KVERSION,
 };
 use kanidm_proto::internal::*;
 use kanidm_proto::v1::*;
@@ -2071,6 +2071,18 @@ impl KanidmClient {
         self.perform_put_request(
             &format!("/v1/domain/_attr/{}", ATTR_DOMAIN_LDAP_BASEDN),
             vec![new_basedn],
+        )
+        .await
+    }
+
+    /// Sets the maximum number of LDAP attributes that can be queryed in a single operation
+    pub async fn idm_domain_set_ldap_max_queryable_attrs(
+        &self,
+        max_queryable_attrs: usize,
+    ) -> Result<(), ClientError> {
+        self.perform_put_request(
+            &format!("/v1/domain/_attr/{}", ATTR_LDAP_MAX_QUERYABLE_ATTRS),
+            vec![max_queryable_attrs.to_string()],
         )
         .await
     }

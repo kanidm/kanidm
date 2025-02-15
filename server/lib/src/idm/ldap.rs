@@ -60,7 +60,7 @@ pub struct LdapServer {
     basedn: String,
     dnre: Regex,
     binddnre: Regex,
-    maximum_queryable_attrs: usize,
+    max_queryable_attrs: usize,
 }
 
 #[derive(Debug)]
@@ -71,10 +71,7 @@ enum LdapBindTarget {
 }
 
 impl LdapServer {
-    pub async fn new(
-        idms: &IdmServer,
-        maximum_queryable_attrs: usize,
-    ) -> Result<Self, OperationError> {
+    pub async fn new(idms: &IdmServer) -> Result<Self, OperationError> {
         // let ct = duration_from_epoch_now();
         let mut idms_prox_read = idms.proxy_read().await?;
         // This is the rootdse path.
@@ -82,6 +79,12 @@ impl LdapServer {
         let domain_entry = idms_prox_read
             .qs_read
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
+
+        // Get the maximum number of queryable attributes from the domain entry
+        let max_queryable_attrs = domain_entry
+            .get_ava_single_uint32(Attribute::LdapMaxQueryableAttrs)
+            .map(|u| u as usize)
+            .unwrap_or(DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES);
 
         let basedn = domain_entry
             .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
@@ -158,7 +161,7 @@ impl LdapServer {
             basedn,
             dnre,
             binddnre,
-            maximum_queryable_attrs,
+            max_queryable_attrs,
         })
     }
 
@@ -244,10 +247,11 @@ impl LdapServer {
             let mut all_attrs = false;
             let mut all_op_attrs = false;
 
+            let attrs_len = sr.attrs.len();
             if sr.attrs.is_empty() {
                 // If [], then "all" attrs
                 all_attrs = true;
-            } else if sr.attrs.len() < self.maximum_queryable_attrs {
+            } else if attrs_len < self.max_queryable_attrs {
                 sr.attrs.iter().for_each(|a| {
                     if a == "*" {
                         all_attrs = true;
@@ -272,6 +276,10 @@ impl LdapServer {
                     }
                 })
             } else {
+                admin_error!(
+                    "Too many LDAP attributes requested. Maximum allowed is {}, while your search query had {}",
+                    self.max_queryable_attrs, attrs_len
+                );
                 return Err(OperationError::ResourceLimit);
                 // TODO: Should we return ResourceLimit or InvalidRequestState here?
             }
@@ -866,9 +874,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_simple_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
         // make the admin a valid posix account
@@ -1063,9 +1069,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_application_dnre(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let testdn = format!("app=app1,{0}", ldaps.basedn);
         let captures = ldaps.dnre.captures(testdn.as_str()).unwrap();
@@ -1088,9 +1092,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_application_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let grp_uuid = Uuid::new_v4();
@@ -1173,9 +1175,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_spn_search(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let usr_name = "panko";
@@ -1257,9 +1257,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_application_bind(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let grp_uuid = Uuid::new_v4();
@@ -1415,9 +1413,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let usr_name = "testuser1";
@@ -1621,9 +1617,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let usr_name = "testuser1";
@@ -1760,9 +1754,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let ssh_ed25519 = "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAeGW1P6Pc2rPq0XqbRaDKBcXZUPRklo0L1EyR30CwoP william@amethyst";
 
@@ -1925,9 +1917,7 @@ mod tests {
         _idms_delayed: &IdmServerDelayed,
     ) {
         // Setup the ldap server
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         // Prebuild the search req we'll be using this test.
         let sr = SearchRequest {
@@ -2167,9 +2157,7 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
@@ -2238,9 +2226,7 @@ mod tests {
     // Test behaviour of the 1.1 attribute.
     #[idm_test]
     async fn test_ldap_one_dot_one_attribute(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
@@ -2329,9 +2315,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_rootdse_basedn_change(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert_eq!(
@@ -2387,9 +2371,7 @@ mod tests {
         assert!(idms_prox_write.commit().is_ok());
 
         // Now re-test
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
         assert_eq!(
@@ -2430,9 +2412,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_sssd_compat(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let acct_uuid = uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
 
@@ -2540,9 +2520,7 @@ mod tests {
 
     #[idm_test]
     async fn test_ldap_compare_request(idms: &IdmServer, _idms_delayed: &IdmServerDelayed) {
-        let ldaps = LdapServer::new(idms, 1000)
-            .await
-            .expect("failed to start ldap");
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         // Setup a user we want to check.
         {
@@ -2674,9 +2652,21 @@ mod tests {
         idms: &IdmServer,
         _idms_delayed: &IdmServerDelayed,
     ) {
-        let ldaps = LdapServer::new(idms, 2)
-            .await
-            .expect("failed to start ldap");
+        // Set the max queryable attrs to 2
+
+        let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+        let set_ldap_maximum_queryable_attrs = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::LdapMaxQueryableAttrs, Value::Uint32(2)),
+        );
+        assert!(server_txn
+            .qs_write
+            .modify(&set_ldap_maximum_queryable_attrs)
+            .and_then(|_| server_txn.commit())
+            .is_ok());
+
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
 
         let usr_uuid = Uuid::new_v4();
         let grp_uuid = Uuid::new_v4();
@@ -2756,6 +2746,6 @@ mod tests {
             .await;
 
         assert_eq!(invalid_res, Err(OperationError::ResourceLimit));
-        assert_ne!(valid_res, Err(OperationError::ResourceLimit));
+        assert!(valid_res.is_ok());
     }
 }

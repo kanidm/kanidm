@@ -232,6 +232,19 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
+async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
+    login_put_admin_idm_admins(&rsclient).await;
+    assert!(rsclient
+        .idm_domain_set_ldap_max_queryable_attrs(20)
+        .await
+        .is_ok());
+    assert!(rsclient
+        .idm_domain_set_ldap_max_queryable_attrs(10) //TODO: Help, Rust's type safety is so good I can't come up with a way to pass an invalid value
+        .await
+        .is_ok()); // Ideally this should be "is_err"
+}
+
+#[kanidmd_testkit::test]
 /// Checks that a built-in group idm_all_persons has the "builtin" class as expected.
 async fn test_all_persons_has_builtin_class(rsclient: KanidmClient) {
     login_put_admin_idm_admins(&rsclient).await;

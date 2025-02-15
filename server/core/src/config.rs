@@ -14,7 +14,6 @@ use kanidm_proto::constants::DEFAULT_SERVER_ADDRESS;
 use kanidm_proto::internal::FsType;
 use kanidm_proto::messages::ConsoleOutputMode;
 
-use kanidmd_lib::prelude::DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES;
 use serde::Deserialize;
 use sketching::LogLevel;
 use url::Url;
@@ -117,9 +116,6 @@ pub struct ServerConfig {
     ///
     /// If unset, the LDAP server will be disabled.
     pub ldapbindaddress: Option<String>,
-    /// The maximum number of LDAP attributes that can be queried in one operation.
-    /// Defaults to [kanidm_proto::constants::DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES]
-    pub ldap_maximum_queryable_attributes: Option<usize>,
     /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica, defaults to [ServerRole::WriteReplica]
     #[serde(default)]
     pub role: ServerRole,
@@ -480,7 +476,6 @@ pub struct IntegrationReplConfig {
 pub struct Configuration {
     pub address: String,
     pub ldapaddress: Option<String>,
-    pub ldap_maximum_queryable_attrs: usize,
     pub adminbindpath: String,
     pub threads: usize,
     // db type later
@@ -575,7 +570,6 @@ impl Configuration {
         Configuration {
             address: DEFAULT_SERVER_ADDRESS.to_string(),
             ldapaddress: None,
-            ldap_maximum_queryable_attrs: DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES,
             adminbindpath: env!("KANIDM_SERVER_ADMIN_BIND_PATH").to_string(),
             threads: std::thread::available_parallelism()
                 .map(|t| t.get())
@@ -653,9 +647,6 @@ impl Configuration {
         self.update_ldapbind(&sconfig.ldapbindaddress);
         self.update_online_backup(&sconfig.online_backup);
         self.update_log_level(&sconfig.log_level);
-        if let Some(ldap_maximum_queryable_attrs) = sconfig.ldap_maximum_queryable_attributes {
-            self.update_ldap_maximum_queryable_attrs(ldap_maximum_queryable_attrs);
-        }
     }
 
     pub fn update_trust_x_forward_for(&mut self, t: Option<bool>) {
@@ -741,10 +732,5 @@ impl Configuration {
     // which is configured with available parallelism.
     pub fn update_threads_count(&mut self, threads: usize) {
         self.threads = std::cmp::min(self.threads, threads);
-    }
-
-    // Updates the maximum number of LDAP attributes that can be queried in a single operation
-    pub fn update_ldap_maximum_queryable_attrs(&mut self, maximum_queryable_attrs: usize) {
-        self.ldap_maximum_queryable_attrs = maximum_queryable_attrs;
     }
 }

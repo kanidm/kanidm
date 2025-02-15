@@ -104,6 +104,7 @@ pub const ATTR_DYNGROUP_FILTER: &str = "dyngroup_filter";
 pub const ATTR_DYNGROUP: &str = "dyngroup";
 pub const ATTR_DYNMEMBER: &str = "dynmember";
 pub const ATTR_LDAP_EMAIL_ADDRESS: &str = "emailaddress";
+pub const ATTR_LDAP_MAX_QUERYABLE_ATTRS: &str = "ldap_max_queryable_attrs";
 pub const ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const ATTR_EMAIL: &str = "email";

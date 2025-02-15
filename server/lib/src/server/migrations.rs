@@ -519,6 +519,7 @@ impl QueryServerWriteTransaction<'_> {
             // SCHEMA_ATTR_DISPLAYNAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_DISPLAY_NAME.clone().into(),
             SCHEMA_ATTR_DOMAIN_LDAP_BASEDN.clone().into(),
+            SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
             SCHEMA_ATTR_DOMAIN_NAME.clone().into(),
             SCHEMA_ATTR_LDAP_ALLOW_UNIX_PW_BIND.clone().into(),
             SCHEMA_ATTR_DOMAIN_SSID.clone().into(),
