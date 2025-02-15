@@ -32,7 +32,7 @@ const ACCOUNT_ATTRIBUTES: [Attribute; 9] = [
     Attribute::Mail,
     Attribute::Class,
     Attribute::EntryManagedBy,
-    Attribute::DirectMemberOf
+    Attribute::DirectMemberOf,
 ];
 
 #[derive(Template)]
@@ -175,12 +175,11 @@ async fn get_accounts_info(
     Ok(accounts)
 }
 
-fn scimentry_into_accountinfo(scim_entry: ScimEntryKanidm) -> Option<(ScimPerson, ScimEffectiveAccess)> {
+fn scimentry_into_accountinfo(
+    scim_entry: ScimEntryKanidm,
+) -> Option<(ScimPerson, ScimEffectiveAccess)> {
     let scim_effective_access = scim_entry.ext_access_check.clone()?; // TODO: This should be an error msg.
     let account = ScimPerson::try_from(scim_entry).ok()?;
 
-    Some((
-        account,
-        scim_effective_access
-    ))
+    Some((account, scim_effective_access))
 }

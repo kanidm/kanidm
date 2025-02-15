@@ -3,6 +3,7 @@ use super::ScimOauth2ClaimMapJoinChar;
 use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
+use crate::v1::AccountType;
 use scim_proto::ScimEntryHeader;
 use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
@@ -13,7 +14,6 @@ use tracing::debug;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
-use crate::v1::AccountType;
 
 /// A strongly typed ScimEntry that is for transmission to clients. This uses
 /// Kanidm internal strong types for values allowing direct serialisation and
@@ -270,7 +270,7 @@ pub struct ScimPerson {
     pub description: Option<String>,
     pub mails: Vec<ScimMail>,
     pub managed_by: Option<ScimReference>,
-    pub groups: Vec<ScimReference>
+    pub groups: Vec<ScimReference>,
 }
 
 impl TryFrom<ScimEntryKanidm> for ScimPerson {
@@ -288,9 +288,14 @@ impl TryFrom<ScimEntryKanidm> for ScimPerson {
             .attr_str(&Attribute::Description)
             .map(|t| t.to_string());
         let mails = scim_entry.attr_mails().cloned().unwrap_or_default();
-        let groups = scim_entry.attr_references(&Attribute::DirectMemberOf).cloned().unwrap_or(vec![]);
+        let groups = scim_entry
+            .attr_references(&Attribute::DirectMemberOf)
+            .cloned()
+            .unwrap_or(vec![]);
 
-        let managed_by = scim_entry.attr_reference(&Attribute::EntryManagedBy).cloned();
+        let managed_by = scim_entry
+            .attr_reference(&Attribute::EntryManagedBy)
+            .cloned();
 
         Ok(ScimPerson {
             uuid,
@@ -317,7 +322,7 @@ impl ScimEntryKanidm {
                 } else {
                     None
                 }
-            },
+            }
             Some(sv) => {
                 debug!("SCIM entry had the Attribute::Class attribute but it was not a ScimValueKanidm::ArrayString type, actual: {:?}", sv);
                 None
@@ -325,7 +330,7 @@ impl ScimEntryKanidm {
             None => {
                 debug!("SCIM entry with no classes ??");
                 None
-            },
+            }
         }
     }
 
