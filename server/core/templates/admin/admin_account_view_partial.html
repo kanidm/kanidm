@@ -2,19 +2,19 @@
 
 (% block accounts_item_extra_classes %)active(% endblock %)
 
-(% block selected_admin_page %)
-Accounts Management
-(% endblock %)
-
-
 (% block admin_page %)
-<h4><a href="/ui/admin/accounts" hx-target="#main">🠨</a>Viewing Account details</h4>
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="/ui/admin/accounts" hx-target="#main">Accounts Management</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Viewing</li>
+    </ol>
+</nav>
 
 (% include "admin_account_details_partial.html" %)
 
 <hr>
 
-(% if account.scim_effective_access.search.check(Attribute::Mail|as_ref) %)
+(% if scim_effective_access.search.check(Attribute::Mail|as_ref) %)
 <label class="mt-3 fw-bold">Emails</label>
 <form hx-validate="true" hx-ext="bs-validation">
     (% if account.mails.len() == 0 %)
@@ -32,5 +32,26 @@ Accounts Management
     (% endif %)
 </form>
 (% endif %)
+
+(% if scim_effective_access.search.check(Attribute::DirectMemberOf|as_ref) %)
+<label class="mt-3 fw-bold">DirectMemberOf</label>
+<form hx-validate="true" hx-ext="bs-validation">
+    (% if account.groups.len() == 0 %)
+    <p>There are no groups this account is a direct member of.</p>
+    (% else %)
+    <ol class="list-group col-12 col-md-8 col-lg-6">
+        (% for group in account.groups %)
+        <li id="accountGroup(( loop.index ))" class="list-group-item d-flex flex-row justify-content-between">
+            <div class="d-flex align-items-center">(( group.value ))</div>
+            <div class="buttons float-end">
+            </div>
+        </li>
+        (% endfor %)
+    </ol>
+    (% endif %)
+</form>
+(% endif %)
+
+
 
 (% endblock %)

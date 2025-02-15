@@ -13,16 +13,27 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::OperationError;
-use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm};
-use kanidm_proto::scim_v1::{ScimEntryGetQuery, ScimMail};
+use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimPerson};
+use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
 use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use kanidmd_lib::idm::server::DomainInfoRead;
 use kanidmd_lib::idm::ClientAuthInfo;
-use serde::{Deserialize, Serialize};
 use std::collections::BTreeSet;
 use std::str::FromStr;
 use uuid::Uuid;
+
+const ACCOUNT_ATTRIBUTES: [Attribute; 9] = [
+    Attribute::Uuid,
+    Attribute::Description,
+    Attribute::Name,
+    Attribute::DisplayName,
+    Attribute::Spn,
+    Attribute::Mail,
+    Attribute::Class,
+    Attribute::EntryManagedBy,
+    Attribute::DirectMemberOf
+];
 
 #[derive(Template)]
 #[template(path = "admin/admin_panel_template.html")]
@@ -34,18 +45,7 @@ pub(crate) struct AccountsView {
 #[derive(Template)]
 #[template(path = "admin/admin_accounts_partial.html")]
 struct AccountsPartialView {
-    accounts: Vec<AccountInfo>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-struct AccountInfo {
-    uuid: Uuid,
-    name: String,
-    displayname: Option<String>,
-    spn: String,
-    description: Option<String>,
-    mails: Vec<ScimMail>,
-    scim_effective_access: ScimEffectiveAccess,
+    accounts: Vec<(ScimPerson, ScimEffectiveAccess)>,
 }
 
 #[derive(Template)]
@@ -58,7 +58,8 @@ struct AccountView {
 #[derive(Template)]
 #[template(path = "admin/admin_account_view_partial.html")]
 struct AccountViewPartial {
-    account: AccountInfo,
+    account: ScimPerson,
+    scim_effective_access: ScimEffectiveAccess,
 }
 
 pub(crate) async fn view_account_view_get(
@@ -69,9 +70,12 @@ pub(crate) async fn view_account_view_get(
     Path(uuid): Path<Uuid>,
     DomainInfo(domain_info): DomainInfo,
 ) -> axum::response::Result<Response> {
-    let account =
+    let (account, scim_effective_access) =
         get_account_info(uuid, state, &kopid, client_auth_info, domain_info.clone()).await?;
-    let accounts_partial = AccountViewPartial { account };
+    let accounts_partial = AccountViewPartial {
+        account,
+        scim_effective_access,
+    };
 
     let path_string = format!("/ui/admin/account/{uuid}/view");
     let uri = Uri::from_str(path_string.as_str())
@@ -122,7 +126,7 @@ async fn get_account_info(
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
     domain_info: DomainInfoRead,
-) -> Result<AccountInfo, ErrorResponse> {
+) -> Result<(ScimPerson, ScimEffectiveAccess), ErrorResponse> {
     let scim_entry: ScimEntryKanidm = state
         .qe_r_ref
         .scim_entry_id_get(
@@ -131,14 +135,7 @@ async fn get_account_info(
             uuid.to_string(),
             EntryClass::Account,
             ScimEntryGetQuery {
-                attributes: Some(vec![
-                    Attribute::Uuid,
-                    Attribute::Description,
-                    Attribute::Name,
-                    Attribute::DisplayName,
-                    Attribute::Spn,
-                    Attribute::Mail,
-                ]),
+                attributes: Some(Vec::from(ACCOUNT_ATTRIBUTES)),
                 ext_access_check: true,
             },
         )
@@ -157,16 +154,9 @@ async fn get_accounts_info(
     kopid: &KOpId,
     client_auth_info: ClientAuthInfo,
     domain_info: DomainInfoRead,
-) -> Result<Vec<AccountInfo>, ErrorResponse> {
+) -> Result<Vec<(ScimPerson, ScimEffectiveAccess)>, ErrorResponse> {
     let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Account.into())]));
-    let attrs = Some(BTreeSet::from([
-        Attribute::Uuid,
-        Attribute::Description,
-        Attribute::Name,
-        Attribute::DisplayName,
-        Attribute::Spn,
-        Attribute::Mail,
-    ]));
+    let attrs = Some(BTreeSet::from(ACCOUNT_ATTRIBUTES));
     let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
         .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid, attrs, true)
@@ -180,33 +170,17 @@ async fn get_accounts_info(
         .filter_map(scimentry_into_accountinfo)
         .collect();
 
-    accounts.sort_by_key(|gi| gi.uuid);
+    accounts.sort_by_key(|(sp, _)| sp.uuid);
     accounts.reverse();
     Ok(accounts)
 }
 
-fn scimentry_into_accountinfo(scim_entry: ScimEntryKanidm) -> Option<AccountInfo> {
-    let uuid = scim_entry.header.id;
-    let name = scim_entry.attr_str(&Attribute::Name)?.to_string();
-    let displayname = scim_entry
-        .attr_str(&Attribute::DisplayName)
-        .map(|s| s.to_string());
-    let spn = scim_entry.attr_str(&Attribute::Spn)?.to_string();
-    let description = scim_entry
-        .attr_str(&Attribute::Description)
-        .map(|t| t.to_string());
-    let mails = scim_entry.attr_mails().cloned().unwrap_or_default();
+fn scimentry_into_accountinfo(scim_entry: ScimEntryKanidm) -> Option<(ScimPerson, ScimEffectiveAccess)> {
+    let scim_effective_access = scim_entry.ext_access_check.clone()?; // TODO: This should be an error msg.
+    let account = ScimPerson::try_from(scim_entry).ok()?;
 
-    let option = scim_entry.ext_access_check;
-    let scim_effective_access = option?; // TODO: This should be an error msg.
-
-    Some(AccountInfo {
-        scim_effective_access,
-        uuid,
-        name,
-        displayname,
-        spn,
-        description,
-        mails,
-    })
+    Some((
+        account,
+        scim_effective_access
+    ))
 }
