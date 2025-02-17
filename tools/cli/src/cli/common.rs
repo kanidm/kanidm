@@ -91,6 +91,16 @@ impl CommonOpt {
             false => client_builder,
         };
 
+        let client_builder = match self.accept_invalid_certs {
+            true => {
+                warn!(
+                    "TLS Certificate Verification disabled!!! This can lead to credential and account compromise!!!"
+                );
+                client_builder.danger_accept_invalid_certs(true)
+            }
+            false => client_builder,
+        };
+
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
             std::process::exit(1);
