@@ -453,6 +453,13 @@ impl KanidmClientBuilder {
         }
     }
 
+    pub fn set_token_cache_path(self, token_cache_path: Option<String>) -> Self {
+        KanidmClientBuilder {
+            token_cache_path,
+            ..self
+        }
+    }
+
     #[allow(clippy::result_unit_err)]
     pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ClientError> {
         //Okay we have a ca to add. Let's read it in and setup.

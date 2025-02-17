@@ -101,6 +101,8 @@ impl CommonOpt {
             false => client_builder,
         };
 
+        let client_builder = client_builder.set_token_cache_path(self.token_cache_path.clone());
+
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
             std::process::exit(1);
