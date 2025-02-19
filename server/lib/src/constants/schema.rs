@@ -1144,7 +1144,6 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL6: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
-        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::PrivateCookieKey,
         Attribute::FernetPrivateKeyStr,
@@ -1170,7 +1169,6 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL7: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
-        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::PatchLevel,
         Attribute::DomainDevelopmentTaint,
@@ -1193,7 +1191,6 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL8: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
-        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::Image,
         Attribute::PatchLevel,
@@ -1217,7 +1214,6 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL9: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
-        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::Image,
         Attribute::PatchLevel,

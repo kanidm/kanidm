@@ -239,7 +239,7 @@ async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
         .await
         .is_ok());
     assert!(rsclient
-        .idm_domain_set_ldap_max_queryable_attrs(10) //TODO: Help, Rust's type safety is so good I can't come up with a way to pass an invalid value
+        .idm_domain_set_ldap_max_queryable_attrs(10)
         .await
         .is_ok()); // Ideally this should be "is_err"
 }

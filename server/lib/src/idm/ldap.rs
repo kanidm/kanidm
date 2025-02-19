@@ -281,7 +281,6 @@ impl LdapServer {
                     self.max_queryable_attrs, attrs_len
                 );
                 return Err(OperationError::ResourceLimit);
-                // TODO: Should we return ResourceLimit or InvalidRequestState here?
             }
 
             // We need to retain this to know what the client requested.
