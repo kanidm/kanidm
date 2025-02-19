@@ -72,7 +72,20 @@ the end of an OIDC Discovery URL, so you may need to omit that.
 
 <dt>
 
-[WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) URL
+[RFC 8414 OAuth 2.0 Authorisation Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414)
+URL **(recommended)**
+
+</dt>
+
+<dd>
+
+`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+
+</dd>
+
+<dt>
+
+[WebFinger URL **(discouraged)**](#webfinger)
 
 </dt>
 
@@ -80,23 +93,8 @@ the end of an OIDC Discovery URL, so you may need to omit that.
 
 `https://idm.example.com/oauth2/openid/:client_id:/.well-known/webfinger`
 
-The WebFinger URL is implemented for each OpenID client, under its specific endpoint, giving full control to the administrator regarding which to use.
-
-To make this compliant with the standard, it must be made available under the correct [well-known endpoint](https://datatracker.ietf.org/doc/html/rfc7033#section-10.1) (e.g `example.com/.well-known/webfinger`), typically via a reverse proxy or similar. Kanidm doesn't currently provide a mechanism for this URI rewrite.
-
-One example would be dedicating one client as the "primary" or "default" and redirecting all requests to that. Alternatively, source IP or other request metadata could be used to decide which client to forward the request to.
-
-</dd>
-
-<dt>
-
-[RFC 8414 OAuth 2.0 Authorisation Server Metadata](https://datatracker.ietf.org/doc/html/rfc8414) URL
-
-</dt>
-
-<dd>
-
-`https://idm.example.com/oauth2/openid/:client_id:/.well-known/oauth-authorization-server`
+See [the WebFinger section](#webfinger) for more details, as there a number of
+caveats for WebFinger clients.
 
 </dd>
 
@@ -457,3 +455,61 @@ kanidm system oauth2 reset-secrets
 ```
 
 Each client has unique signing keys and access secrets, so this is limited to each service.
+
+## WebFinger
+
+[WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) provides a mechanism
+for discovering information about people or other entities. It can be used by an
+identity provider to supply OpenID Connect discovery information.
+
+Kanidm provides
+[an Identity Provider Discovery for OIDC URL](https://datatracker.ietf.org/doc/html/rfc7033#section-3.1)
+response to all incoming WebFinger requests, using a user's SPN as their account
+ID. This does not match on email addresses as they are not guaranteed to be
+unique.
+
+However, WebFinger has a number of flaws which make it difficult to use with
+Kanidm:
+
+* WebFinger assumes that the identity provider will give the same `iss`
+  (Issuer) for every OAuth 2.0/OIDC client, and there is no standard way for a
+  WebFinger client to report its client ID.
+
+  Kanidm uses a *different* `iss` (Issuer) value for each client.
+
+* WebFinger requires that this be served at the *root* of the domain of a user's
+  SPN (ie: information about the user with SPN `user@idm.example.com` is at
+  `https://idm.example.com/.well-known/webfinger`).
+
+  Kanidm *does not* provide a WebFinger endpoint at its root URL, because it has
+  no way to know *which* OAuth 2.0/OIDC client a WebFinger request is associated
+  with, so could report an incorrect `iss` (Issuer).
+
+  You will need a load balancer in front of Kanidm's HTTPS server to redirect
+  requests to the appropriate `/oauth2/openid/:client_id:/.well-known/webfinger`
+  URL. If the client does not follow redirects, you may need to rewrite the
+  request in the load balancer instead.
+
+  If you have *multiple* WebFinger clients, it will need to map some other
+  property of the request (such as a source IP address or `User-Agent` header)
+  to a client ID, and redirect to the appropriate WebFinger URL for that client.
+
+* Kanidm responds to *all* WebFinger queries with
+  [an Identity Provider Discovery for OIDC URL](https://datatracker.ietf.org/doc/html/rfc7033#section-3.1),
+  **regardless** of what
+  [`rel` parameter](https://datatracker.ietf.org/doc/html/rfc7033#section-4.4.4.1)
+  was specified.
+
+  This is to work around
+  [a broken client](https://tailscale.com/kb/1240/sso-custom-oidc) which doesn't
+  send a `rel` parameter, but expects an Identity Provider Discovery issuer URL
+  in response.
+
+  If you want to use WebFinger in any *other* context on Kanidm's hostname,
+  you'll need a load balancer in front of Kanidm which matches on some property
+  of the request.
+
+Because of the flaws of the WebFinger specification and the deployment
+difficulties they introduce, we recommend that applications use OpenID Connect
+Discovery or OAuth 2.0 Authorisation Server Metadata for client configuration
+instead of WebFinger.
