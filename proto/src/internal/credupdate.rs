@@ -130,6 +130,7 @@ pub enum CURegState {
     None,
     TotpCheck(TotpSecret),
     TotpTryAgain,
+    TotpNameTryAgain(String),
     TotpInvalidSha1,
     BackupCodes(Vec<String>),
     Passkey(CreationChallengeResponse),

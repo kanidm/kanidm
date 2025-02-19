@@ -1396,6 +1396,7 @@ pub async fn credential_update_update(
             return Err(WebError::InternalServerError(errmsg));
         }
     };
+
     let session_token = match serde_json::from_value(cubody[1].clone()) {
         Ok(val) => val,
         Err(err) => {
@@ -1406,6 +1407,7 @@ pub async fn credential_update_update(
     };
     debug!("session_token: {:?}", session_token);
     debug!("scr: {:?}", scr);
+
     state
         .qe_r_ref
         .handle_idmcredentialupdate(session_token, scr, kopid.eventid)
