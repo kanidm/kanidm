@@ -19,7 +19,7 @@ pub use self::auth::*;
 pub use self::unix::*;
 
 /// The type of Account in use.
-#[derive(Clone, Copy, Debug, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, ToSchema)]
 pub enum AccountType {
     Person,
     ServiceAccount,

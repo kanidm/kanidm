@@ -3,12 +3,14 @@ use super::ScimOauth2ClaimMapJoinChar;
 use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
+use crate::v1::AccountType;
 use scim_proto::ScimEntryHeader;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
 use time::OffsetDateTime;
+use tracing::debug;
 use url::Url;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -28,7 +30,7 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
@@ -49,7 +51,7 @@ impl ScimAttributeEffectiveAccess {
     }
 }
 
-#[derive(Serialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
@@ -209,7 +211,7 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
@@ -255,6 +257,137 @@ pub enum ScimValueKanidm {
     OAuth2ClaimMap(Vec<ScimOAuth2ClaimMap>),
     KeyInternal(Vec<ScimKeyInternal>),
     UiHints(Vec<UiHint>),
+}
+
+#[serde_as]
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct ScimPerson {
+    pub uuid: Uuid,
+    pub account_type: AccountType,
+    pub name: String,
+    pub displayname: Option<String>,
+    pub spn: String,
+    pub description: Option<String>,
+    pub mails: Vec<ScimMail>,
+    pub managed_by: Option<ScimReference>,
+    pub groups: Vec<ScimReference>,
+}
+
+impl TryFrom<ScimEntryKanidm> for ScimPerson {
+    type Error = ();
+
+    fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
+        let uuid = scim_entry.header.id;
+        scim_entry.account_type();
+        let name = scim_entry.attr_str(&Attribute::Name).ok_or(())?.to_string();
+        let displayname = scim_entry
+            .attr_str(&Attribute::DisplayName)
+            .map(|s| s.to_string());
+        let spn = scim_entry.attr_str(&Attribute::Spn).ok_or(())?.to_string();
+        let description = scim_entry
+            .attr_str(&Attribute::Description)
+            .map(|t| t.to_string());
+        let mails = scim_entry.attr_mails().cloned().unwrap_or_default();
+        let groups = scim_entry
+            .attr_references(&Attribute::DirectMemberOf)
+            .cloned()
+            .unwrap_or(vec![]);
+
+        let managed_by = scim_entry
+            .attr_reference(&Attribute::EntryManagedBy)
+            .cloned();
+
+        Ok(ScimPerson {
+            uuid,
+            account_type: AccountType::Person,
+            name,
+            displayname,
+            spn,
+            description,
+            mails,
+            managed_by,
+            groups,
+        })
+    }
+}
+
+impl ScimEntryKanidm {
+    pub fn account_type(&self) -> Option<AccountType> {
+        match self.attrs.get(&Attribute::Class) {
+            Some(ScimValueKanidm::ArrayString(classes)) => {
+                if classes.contains(&format!("{}", AccountType::Person)) {
+                    Some(AccountType::Person)
+                } else if classes.contains(&format!("{}", AccountType::ServiceAccount)) {
+                    Some(AccountType::ServiceAccount)
+                } else {
+                    None
+                }
+            }
+            Some(sv) => {
+                debug!("SCIM entry had the Attribute::Class attribute but it was not a ScimValueKanidm::ArrayString type, actual: {:?}", sv);
+                None
+            }
+            None => {
+                debug!("SCIM entry with no classes ??");
+                None
+            }
+        }
+    }
+
+    pub fn attr_str(&self, attr: &Attribute) -> Option<&str> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::String(inner_string)) => Some(inner_string.as_str()),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::String type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_bool(&self, attr: &Attribute) -> Option<&bool> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::Bool(inner_bool)) => Some(inner_bool),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Bool type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_mails(&self) -> Option<&Vec<ScimMail>> {
+        match self.attrs.get(&Attribute::Mail) {
+            Some(ScimValueKanidm::Mail(inner_string)) => Some(inner_string),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::Mail type, actual: {:?}", Attribute::Mail, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_reference(&self, attr: &Attribute) -> Option<&ScimReference> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::EntryReference(refer)) => Some(refer),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::ScimReference type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
+
+    pub fn attr_references(&self, attr: &Attribute) -> Option<&Vec<ScimReference>> {
+        match self.attrs.get(attr) {
+            Some(ScimValueKanidm::EntryReferences(refs)) => Some(refs),
+            Some(sv) => {
+                debug!("SCIM entry had the {} attribute but it was not a ScimValueKanidm::EntryReferences type, actual: {:?}", attr, sv);
+                None
+            }
+            None => None,
+        }
+    }
 }
 
 impl From<bool> for ScimValueKanidm {

@@ -8,6 +8,7 @@ use axum::{
 
 use axum_htmx::HxRequestGuardLayer;
 
+use crate::https::views::admin::admin_router;
 use constants::Urls;
 use kanidmd_lib::{
     idm::server::DomainInfoRead,
@@ -16,6 +17,7 @@ use kanidmd_lib::{
 
 use crate::https::ServerState;
 
+mod admin;
 mod apps;
 pub(crate) mod constants;
 mod cookies;
@@ -34,6 +36,13 @@ struct UnrecoverableErrorView {
     operation_id: Uuid,
     // This is an option because it's not always present in an "unrecoverable" situation
     domain_info: DomainInfoRead,
+}
+
+#[derive(Template)]
+#[template(path = "admin/error_toast.html")]
+struct ErrorToastPartial {
+    err_code: OperationError,
+    operation_id: Uuid,
 }
 
 pub fn view_router() -> Router<ServerState> {
@@ -122,7 +131,11 @@ pub fn view_router() -> Router<ServerState> {
         .route("/api/cu_commit", post(reset::commit))
         .layer(HxRequestGuardLayer::new("/ui"));
 
-    Router::new().merge(unguarded_router).merge(guarded_router)
+    let admin_router = admin_router();
+    Router::new()
+        .merge(unguarded_router)
+        .merge(guarded_router)
+        .nest("/admin", admin_router)
 }
 
 /// Serde deserialization decorator to map empty Strings to None,
