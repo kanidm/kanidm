@@ -27,6 +27,19 @@ async fn test_idm_domain_set_ldap_basedn(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
+async fn test_idm_domain_set_ldap_max_queryable_attrs(rsclient: KanidmClient) {
+    rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .await
+        .expect("Failed to login as admin");
+
+    rsclient
+        .idm_domain_set_ldap_max_queryable_attrs(30)
+        .await
+        .expect("Failed to set idm_domain_set_ldap_max_queryable_attrs");
+}
+
+#[kanidmd_testkit::test]
 async fn test_idm_domain_set_display_name(rsclient: KanidmClient) {
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)

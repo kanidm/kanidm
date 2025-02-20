@@ -205,7 +205,6 @@ pub enum GroupAccountPolicyOpt {
         copt: CommonOpt,
     },
 
-
     /// Set the maximum time for privilege session expiry in seconds.
     #[clap(name = "privilege-expiry")]
     PrivilegedSessionExpiry {
@@ -214,7 +213,6 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-
 
     /// The WebAuthn attestation CA list that should be enforced
     /// on members of this group. Prevents use of passkeys that are
@@ -301,7 +299,6 @@ pub enum GroupAccountPolicyOpt {
         #[clap(flatten)]
         copt: CommonOpt,
     },
-
 }
 
 #[derive(Debug, Subcommand)]
@@ -1320,6 +1317,14 @@ pub enum DomainOpt {
     #[clap[name = "set-displayname"]]
     /// Set the domain display name
     SetDisplayname(OptSetDomainDisplayname),
+    /// Sets the maximum number of LDAP attributes that can be queried in one operation.
+    #[clap[name = "set-ldap-queryable-attrs"]]
+    SetLdapMaxQueryableAttrs {
+        #[clap(flatten)]
+        copt: CommonOpt,
+        #[clap(name = "maximum-queryable-attrs")]
+        new_max_queryable_attrs: usize,
+    },
     #[clap[name = "set-ldap-basedn"]]
     /// Change the basedn of this server. Takes effect after a server restart.
     /// Examples are `o=organisation` or `dc=domain,dc=name`. Must be a valid ldap

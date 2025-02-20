@@ -94,6 +94,7 @@ pub enum Attribute {
     LdapEmailAddress,
     /// An LDAP Compatible sshkeys virtual attribute
     LdapKeys,
+    LdapMaxQueryableAttrs,
     LegalName,
     LimitSearchMaxResults,
     LimitSearchMaxFilterTest,
@@ -322,6 +323,7 @@ impl Attribute {
             Attribute::LdapAllowUnixPwBind => ATTR_LDAP_ALLOW_UNIX_PW_BIND,
             Attribute::LdapEmailAddress => ATTR_LDAP_EMAIL_ADDRESS,
             Attribute::LdapKeys => ATTR_LDAP_KEYS,
+            Attribute::LdapMaxQueryableAttrs => ATTR_LDAP_MAX_QUERYABLE_ATTRS,
             Attribute::LdapSshPublicKey => ATTR_LDAP_SSHPUBLICKEY,
             Attribute::LegalName => ATTR_LEGALNAME,
             Attribute::LimitSearchMaxResults => ATTR_LIMIT_SEARCH_MAX_RESULTS,
@@ -505,6 +507,7 @@ impl Attribute {
             ATTR_LDAP_ALLOW_UNIX_PW_BIND => Attribute::LdapAllowUnixPwBind,
             ATTR_LDAP_EMAIL_ADDRESS => Attribute::LdapEmailAddress,
             ATTR_LDAP_KEYS => Attribute::LdapKeys,
+            ATTR_LDAP_MAX_QUERYABLE_ATTRS => Attribute::LdapMaxQueryableAttrs,
             ATTR_SSH_PUBLICKEY => Attribute::SshPublicKey,
             ATTR_LEGALNAME => Attribute::LegalName,
             ATTR_LINKEDGROUP => Attribute::LinkedGroup,

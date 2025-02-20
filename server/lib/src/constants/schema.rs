@@ -167,6 +167,17 @@ pub static ref SCHEMA_ATTR_DOMAIN_LDAP_BASEDN: SchemaAttribute = SchemaAttribute
     ..Default::default()
 };
 
+pub static ref SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: SchemaAttribute = SchemaAttribute {
+    uuid: UUID_SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES,
+    name: Attribute::LdapMaxQueryableAttrs,
+    description: "The maximum number of LDAP attributes that can be queried in one operation".to_string(),
+
+    multivalue: false,
+    sync_allowed: true,
+    syntax: SyntaxType::Uint32,
+    ..Default::default()
+};
+
 pub static ref SCHEMA_ATTR_DOMAIN_DISPLAY_NAME: SchemaAttribute = SchemaAttribute {
     uuid: UUID_SCHEMA_ATTR_DOMAIN_DISPLAY_NAME,
     name: Attribute::DomainDisplayName,
@@ -1227,6 +1238,7 @@ pub static ref SCHEMA_CLASS_DOMAIN_INFO_DL10: SchemaClass = SchemaClass {
     systemmay: vec![
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
+        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::Image,
         Attribute::PatchLevel,

@@ -116,7 +116,6 @@ pub struct ServerConfig {
     ///
     /// If unset, the LDAP server will be disabled.
     pub ldapbindaddress: Option<String>,
-
     /// The role of this server, one of write_replica, write_replica_no_ui, read_only_replica, defaults to [ServerRole::WriteReplica]
     #[serde(default)]
     pub role: ServerRole,

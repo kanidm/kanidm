@@ -25,6 +25,7 @@ lazy_static! {
         // modification of some domain info types for local configuratiomn.
         Attribute::DomainSsid,
         Attribute::DomainLdapBasedn,
+        Attribute::LdapMaxQueryableAttrs,
         Attribute::LdapAllowUnixPwBind,
         Attribute::FernetPrivateKeyStr,
         Attribute::Es256PrivateKeyDer,
