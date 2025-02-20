@@ -458,20 +458,19 @@ Each client has unique signing keys and access secrets, so this is limited to ea
 
 ## WebFinger
 
-[WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) provides a mechanism
-for discovering information about entities at a well-known URL
-(`https://{hostname}/.well-known/webfinger`).
+[WebFinger][webfinger] provides a mechanism for discovering information about
+entities at a well-known URL (`https://{hostname}/.well-known/webfinger`).
 
 It can be used by a WebFinger client to
-[discover the OIDC issuer URL](https://datatracker.ietf.org/doc/html/rfc7033#section-3.1)
-of an identity provider from the hostname alone, and seems to be intended to
-support dynamic client registration flows for large public identity providers.
+[discover the OIDC issuer URL][webfinger-oidc] of an identity provider from the
+hostname alone, and seems to be intended to support dynamic client registration
+flows for large public identity providers.
 
 Kanidm v1.5.1 and later can respond to WebFinger requests, using a user's SPN as
-[an `acct` URI][rfc7565] (eg: `acct:user@idm.example.com`).
-[As per RFC 7565][rfc7565s4], there is no guarantee that account IDs are valid
-for any particular application protocol (such as email), unless an administrator
-explicitly provides it.
+part of [an `acct` URI][rfc7565] (eg: `acct:user@idm.example.com`). While SPNs
+and `acct` URIs look like email addresses, [as per RFC 7565][rfc7565s4], there
+is no guarantee that it is valid for any particular application protocol, unless
+an administrator explicitly provides for it.
 
 When setting up an application to authenticate with Kanidm, WebFinger **does not
 add any security** over configuring an OpenID Discovery URL directly. In an OIDC
@@ -515,22 +514,28 @@ difficult to use with Kanidm:
   to a client ID, and redirect to the appropriate WebFinger URL for that client.
 
 * Kanidm responds to *all* WebFinger queries with
-  [an Identity Provider Discovery for OIDC URL](https://datatracker.ietf.org/doc/html/rfc7033#section-3.1),
-  **ignoring** any supplied
-  [`rel` parameter](https://datatracker.ietf.org/doc/html/rfc7033#section-4.3).
+  [an Identity Provider Discovery for OIDC URL][webfinger-oidc], **ignoring**
+  any supplied [`rel` parameter][webfinger-rel].
 
   If you want to use WebFinger in any *other* context on Kanidm's hostname,
   you'll need a load balancer in front of Kanidm which matches on some property
   of the request.
 
-  WebFinger clients *may* omit the `rel=` parameter, so if another service has
-  relations for an `acct:` entity and a client *does not* supply the `rel=`
-  parameter, your load balancer will need to merge JSON responses from Kanidm
-  and the other service(s).
+  WebFinger clients *may* omit the `rel=` parameter, so if you host another
+  service with relations for a Kanidm [`acct:` entity][rfc7565s4] and a client
+  *does not* supply the `rel=` parameter, your load balancer will need to merge
+  JSON responses from Kanidm and the other service(s).
 
 Because of these issues, we recommend that applications support *directly*
 configuring OIDC using a Discovery URL or OAuth 2.0 Authorisation Server
 Metadata URL instead of WebFinger.
 
+If a WebFinger client only checks WebFinger once during setup, you may wish to
+temporarily serve an appropriate static WebFinger document for that client
+instead.
+
 [rfc7565]: https://datatracker.ietf.org/doc/html/rfc7565
 [rfc7565s4]: https://datatracker.ietf.org/doc/html/rfc7565#section-4
+[webfinger]: https://datatracker.ietf.org/doc/html/rfc7033
+[webfinger-oidc]: https://datatracker.ietf.org/doc/html/rfc7033#section-3.1
+[webfinger-rel]: https://datatracker.ietf.org/doc/html/rfc7033#section-4.3
