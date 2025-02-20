@@ -458,10 +458,6 @@ Each client has unique signing keys and access secrets, so this is limited to ea
 
 ## WebFinger
 
-> [!NOTE]
->
-> WebFinger support requires Kanidm v1.5.1 or later.
-
 [WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) provides a mechanism
 for discovering information about entities at a well-known URL
 (`http://example.com/.well-known/webfinger`).
@@ -475,10 +471,10 @@ Kanidm v1.5.1 and later can respond to WebFinger requests, using a user's SPN as
 the account (eg: `user@idm.example.com`). This *does not* match on email
 addresses, because they are not required by Kanidm nor guaranteed to be unique.
 
-When setting up an (enterprise) application to authenticate with Kanidm,
-WebFinger **does not add any security** over configuring an OpenID Discovery
-URL directly. In an OIDC context, the specification makes a number of flawed
-assumptions which make it difficult to use with Kanidm:
+When setting up an application to authenticate with Kanidm, WebFinger **does not
+add any security** over configuring an OpenID Discovery URL directly. In an OIDC
+context, the specification makes a number of flawed assumptions which make it
+difficult to use with Kanidm:
 
 * WebFinger assumes that the identity provider will give the same `iss`
   (issuer) and OpenID Discovery document, including all URLs and signing keys,
@@ -530,6 +526,6 @@ assumptions which make it difficult to use with Kanidm:
   parameter, your load balancer will need to merge JSON responses from Kanidm
   and the other service(s).
 
-Because of these issues, we recommend that (enterprise) applications support
-*directly* configuring OIDC using a Discovery URL or OAuth 2.0 Authorisation
-Server Metadata URL instead of WebFinger.
+Because of these issues, we recommend that applications support *directly*
+configuring OIDC using a Discovery URL or OAuth 2.0 Authorisation Server
+Metadata URL instead of WebFinger.
