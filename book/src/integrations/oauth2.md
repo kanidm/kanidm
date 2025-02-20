@@ -460,7 +460,7 @@ Each client has unique signing keys and access secrets, so this is limited to ea
 
 [WebFinger](https://datatracker.ietf.org/doc/html/rfc7033) provides a mechanism
 for discovering information about entities at a well-known URL
-(`http://example.com/.well-known/webfinger`).
+(`https://{hostname}/.well-known/webfinger`).
 
 It can be used by a WebFinger client to
 [discover the OIDC issuer URL](https://datatracker.ietf.org/doc/html/rfc7033#section-3.1)
@@ -482,11 +482,11 @@ difficult to use with Kanidm:
 
   Kanidm uses *different* `iss` (issuer), signing keys, and some client-specific
   endpoint URLs, which ensures that tokens can only be used with their intended
-  service. *Changing this behaviour would reduce Kanidm's security.*
+  service.
 
 * WebFinger endpoints must be served at the *root* of the domain of a user's
   SPN (ie: information about the user with SPN `user@idm.example.com` is at
-  `https://idm.example.com/.well-known/webfinger?resource=acct%3Auser%40idm.example.com&rel=...`).
+  `https://idm.example.com/.well-known/webfinger?resource=acct%3Auser%40idm.example.com`).
 
   Unlike OIDC Discovery, WebFinger clients do not report their OAuth 2.0/OIDC
   client ID in the request, so there is no way to tell them apart.
