@@ -662,9 +662,13 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        // Test 389ds formats
+        // Test 389ds/openldap formats. Shout outs openldap which sometimes makes these
+        // lowercase.
 
-        if let Some(ds_ssha1) = value.strip_prefix("{SHA}") {
+        if let Some(ds_ssha1) = value
+            .strip_prefix("{SHA}")
+            .or_else(|| value.strip_prefix("{sha}"))
+        {
             let h = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
             if h.len() != DS_SHA1_HASH_LEN {
                 return Err(());
@@ -674,7 +678,10 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        if let Some(ds_ssha1) = value.strip_prefix("{SSHA}") {
+        if let Some(ds_ssha1) = value
+            .strip_prefix("{SSHA}")
+            .or_else(|| value.strip_prefix("{ssha}"))
+        {
             let sh = general_purpose::STANDARD.decode(ds_ssha1).map_err(|_| ())?;
             let (h, s) = sh.split_at(DS_SHA1_HASH_LEN);
             if s.len() != DS_SHA_SALT_LEN {
@@ -685,7 +692,10 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        if let Some(ds_ssha256) = value.strip_prefix("{SHA256}") {
+        if let Some(ds_ssha256) = value
+            .strip_prefix("{SHA256}")
+            .or_else(|| value.strip_prefix("{sha256}"))
+        {
             let h = general_purpose::STANDARD
                 .decode(ds_ssha256)
                 .map_err(|_| ())?;
@@ -697,7 +707,10 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        if let Some(ds_ssha256) = value.strip_prefix("{SSHA256}") {
+        if let Some(ds_ssha256) = value
+            .strip_prefix("{SSHA256}")
+            .or_else(|| value.strip_prefix("{ssha256}"))
+        {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha256)
                 .map_err(|_| ())?;
@@ -710,7 +723,10 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        if let Some(ds_ssha512) = value.strip_prefix("{SHA512}") {
+        if let Some(ds_ssha512) = value
+            .strip_prefix("{SHA512}")
+            .or_else(|| value.strip_prefix("{sha512}"))
+        {
             let h = general_purpose::STANDARD
                 .decode(ds_ssha512)
                 .map_err(|_| ())?;
@@ -722,7 +738,10 @@ impl TryFrom<&str> for Password {
             });
         }
 
-        if let Some(ds_ssha512) = value.strip_prefix("{SSHA512}") {
+        if let Some(ds_ssha512) = value
+            .strip_prefix("{SSHA512}")
+            .or_else(|| value.strip_prefix("{ssha512}"))
+        {
             let sh = general_purpose::STANDARD
                 .decode(ds_ssha512)
                 .map_err(|_| ())?;
@@ -1441,8 +1460,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_sha1() {
         let im_pw = "{SHA}W6ph5Mm5Pz8GgiULbPgzG37mj9g=";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{sha}W6ph5Mm5Pz8GgiULbPgzG37mj9g=";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
@@ -1451,8 +1474,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_ssha1() {
         let im_pw = "{SSHA}EyzbBiP4u4zxOrLpKTORI/RX3HC6TCTJtnVOCQ==";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{ssha}EyzbBiP4u4zxOrLpKTORI/RX3HC6TCTJtnVOCQ==";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
@@ -1461,8 +1488,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_sha256() {
         let im_pw = "{SHA256}XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{sha256}XohImNooBHFR0OVvjcYpJ3NgPQ1qq73WKhHvch0VQtg=";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
@@ -1471,8 +1502,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_ssha256() {
         let im_pw = "{SSHA256}luYWfFJOZgxySTsJXHgIaCYww4yMpu6yest69j/wO5n5OycuHFV/GQ==";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{ssha256}luYWfFJOZgxySTsJXHgIaCYww4yMpu6yest69j/wO5n5OycuHFV/GQ==";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
@@ -1481,8 +1516,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_sha512() {
         let im_pw = "{SHA512}sQnzu7wkTrgkQZF+0G1hi5AI3Qmzvv0bXgc5THBqi7mAsdd4Xll27ASbRt9fEyavWi6m0QP9B8lThf+rDKy8hg==";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{sha512}sQnzu7wkTrgkQZF+0G1hi5AI3Qmzvv0bXgc5THBqi7mAsdd4Xll27ASbRt9fEyavWi6m0QP9B8lThf+rDKy8hg==";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
@@ -1491,8 +1530,12 @@ mod tests {
     #[test]
     fn test_password_from_ds_ssha512() {
         let im_pw = "{SSHA512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
+        let _r = Password::try_from(im_pw).expect("Failed to parse");
+
+        let im_pw = "{ssha512}JwrSUHkI7FTAfHRVR6KoFlSN0E3dmaQWARjZ+/UsShYlENOqDtFVU77HJLLrY2MuSp0jve52+pwtdVl2QUAHukQ0XUf5LDtM";
         let password = "password";
         let r = Password::try_from(im_pw).expect("Failed to parse");
+
         // Known weak, require upgrade.
         assert!(r.requires_upgrade());
         assert!(r.verify(password).unwrap_or(false));
