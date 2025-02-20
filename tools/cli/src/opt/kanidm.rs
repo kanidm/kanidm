@@ -87,6 +87,13 @@ pub struct CommonOpt {
         default_value_t = false
     )]
     skip_hostname_verification: bool,
+    /// Don't verify CA
+    #[clap(
+        long = "accept-invalid-certs",
+        env = "KANIDM_ACCEPT_INVALID_CERTS",
+        default_value_t = false
+    )]
+    accept_invalid_certs: bool,
     /// Path to a file to cache tokens in, defaults to ~/.cache/kanidm_tokens
     #[clap(short, long, env = "KANIDM_TOKEN_CACHE_PATH", hide = true, default_value = None,
     value_parser = clap::builder::NonEmptyStringValueParser::new())]
