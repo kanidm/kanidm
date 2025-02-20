@@ -702,6 +702,13 @@ impl Credential {
         }
     }
 
+    pub(crate) fn has_totp_by_name(&self, label: &str) -> bool {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, totp, _, _) => totp.contains_key(label),
+            _ => false,
+        }
+    }
+
     pub(crate) fn new_from_generatedpassword(pw: Password) -> Self {
         Credential {
             type_: CredentialType::GeneratedPassword(pw),
