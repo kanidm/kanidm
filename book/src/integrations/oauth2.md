@@ -468,8 +468,10 @@ of an identity provider from the hostname alone, and seems to be intended to
 support dynamic client registration flows for large public identity providers.
 
 Kanidm v1.5.1 and later can respond to WebFinger requests, using a user's SPN as
-the account (eg: `user@idm.example.com`). This *does not* match on email
-addresses, because they are not required by Kanidm nor guaranteed to be unique.
+[an `acct` URI][rfc7565] (eg: `acct:user@idm.example.com`).
+[As per RFC 7565][rfc7565s4], there is no guarantee that account IDs are valid
+for any particular application protocol (such as email), unless an administrator
+explicitly provides it.
 
 When setting up an application to authenticate with Kanidm, WebFinger **does not
 add any security** over configuring an OpenID Discovery URL directly. In an OIDC
@@ -529,3 +531,6 @@ difficult to use with Kanidm:
 Because of these issues, we recommend that applications support *directly*
 configuring OIDC using a Discovery URL or OAuth 2.0 Authorisation Server
 Metadata URL instead of WebFinger.
+
+[rfc7565]: https://datatracker.ietf.org/doc/html/rfc7565
+[rfc7565s4]: https://datatracker.ietf.org/doc/html/rfc7565#section-4
