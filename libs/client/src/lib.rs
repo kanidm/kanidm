@@ -94,7 +94,7 @@ pub struct KanidmClientConfigInstance {
     pub verify_hostnames: Option<bool>,
     /// Whether to verify the Certificate Authority details of the server's TLS certificate, defaults to `true`.
     ///
-    /// Environment variable is slightly inverted - `KANIDM_SKIP_HOSTNAME_VERIFICATION`.
+    /// Environment variable is slightly inverted - `KANIDM_ACCEPT_INVALID_CERTS`.
     pub verify_ca: Option<bool>,
     /// Optionally you can specify the path of a CA certificate to use for verifying the server, if you're not using one trusted by your system certificate store.
     ///
@@ -449,6 +449,13 @@ impl KanidmClientBuilder {
     pub fn no_proxy(self) -> Self {
         KanidmClientBuilder {
             use_system_proxies: false,
+            ..self
+        }
+    }
+
+    pub fn set_token_cache_path(self, token_cache_path: Option<String>) -> Self {
+        KanidmClientBuilder {
+            token_cache_path,
             ..self
         }
     }
