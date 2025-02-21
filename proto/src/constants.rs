@@ -39,6 +39,8 @@ pub const DEFAULT_SERVER_ADDRESS: &str = "127.0.0.1:8443";
 pub const DEFAULT_SERVER_LOCALHOST: &str = "localhost:8443";
 /// The default LDAP bind address for the Kanidm client
 pub const DEFAULT_LDAP_LOCALHOST: &str = "localhost:636";
+/// The default amount of attributes that can be queried in LDAP
+pub const DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES: usize = 16;
 /// Default replication configuration
 pub const DEFAULT_REPLICATION_ADDRESS: &str = "127.0.0.1:8444";
 pub const DEFAULT_REPLICATION_ORIGIN: &str = "repl://localhost:8444";
@@ -102,6 +104,7 @@ pub const ATTR_DYNGROUP_FILTER: &str = "dyngroup_filter";
 pub const ATTR_DYNGROUP: &str = "dyngroup";
 pub const ATTR_DYNMEMBER: &str = "dynmember";
 pub const ATTR_LDAP_EMAIL_ADDRESS: &str = "emailaddress";
+pub const ATTR_LDAP_MAX_QUERYABLE_ATTRS: &str = "ldap_max_queryable_attrs";
 pub const ATTR_EMAIL_ALTERNATIVE: &str = "emailalternative";
 pub const ATTR_EMAIL_PRIMARY: &str = "emailprimary";
 pub const ATTR_EMAIL: &str = "email";

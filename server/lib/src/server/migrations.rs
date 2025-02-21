@@ -430,6 +430,7 @@ impl QueryServerWriteTransaction<'_> {
         let idm_schema_changes = [
             SCHEMA_ATTR_DENIED_NAME_DL10.clone().into(),
             SCHEMA_CLASS_DOMAIN_INFO_DL10.clone().into(),
+            SCHEMA_ATTR_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES.clone().into(),
         ];
 
         idm_schema_changes

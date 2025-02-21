@@ -60,6 +60,7 @@ pub struct LdapServer {
     basedn: String,
     dnre: Regex,
     binddnre: Regex,
+    max_queryable_attrs: usize,
 }
 
 #[derive(Debug)]
@@ -78,6 +79,12 @@ impl LdapServer {
         let domain_entry = idms_prox_read
             .qs_read
             .internal_search_uuid(UUID_DOMAIN_INFO)?;
+
+        // Get the maximum number of queryable attributes from the domain entry
+        let max_queryable_attrs = domain_entry
+            .get_ava_single_uint32(Attribute::LdapMaxQueryableAttrs)
+            .map(|u| u as usize)
+            .unwrap_or(DEFAULT_LDAP_MAXIMUM_QUERYABLE_ATTRIBUTES);
 
         let basedn = domain_entry
             .get_ava_single_iutf8(Attribute::DomainLdapBasedn)
@@ -154,6 +161,7 @@ impl LdapServer {
             basedn,
             dnre,
             binddnre,
+            max_queryable_attrs,
         })
     }
 
@@ -239,11 +247,11 @@ impl LdapServer {
             let mut all_attrs = false;
             let mut all_op_attrs = false;
 
-            // TODO #3406: limit the number of attributes here!
+            let attrs_len = sr.attrs.len();
             if sr.attrs.is_empty() {
                 // If [], then "all" attrs
                 all_attrs = true;
-            } else {
+            } else if attrs_len < self.max_queryable_attrs {
                 sr.attrs.iter().for_each(|a| {
                     if a == "*" {
                         all_attrs = true;
@@ -267,6 +275,12 @@ impl LdapServer {
                         }
                     }
                 })
+            } else {
+                admin_error!(
+                    "Too many LDAP attributes requested. Maximum allowed is {}, while your search query had {}",
+                    self.max_queryable_attrs, attrs_len
+                );
+                return Err(OperationError::ResourceLimit);
             }
 
             // We need to retain this to know what the client requested.
@@ -2630,5 +2644,107 @@ mod tests {
                 .unwrap_err(),
             &OperationError::InvalidAttributeName("invalid".to_string()),
         );
+    }
+
+    #[idm_test]
+    async fn test_ldap_maximum_queryable_attributes(
+        idms: &IdmServer,
+        _idms_delayed: &IdmServerDelayed,
+    ) {
+        // Set the max queryable attrs to 2
+
+        let mut server_txn = idms.proxy_write(duration_from_epoch_now()).await.unwrap();
+
+        let set_ldap_maximum_queryable_attrs = ModifyEvent::new_internal_invalid(
+            filter!(f_eq(Attribute::Uuid, PartialValue::Uuid(UUID_DOMAIN_INFO))),
+            ModifyList::new_purge_and_set(Attribute::LdapMaxQueryableAttrs, Value::Uint32(2)),
+        );
+        assert!(server_txn
+            .qs_write
+            .modify(&set_ldap_maximum_queryable_attrs)
+            .and_then(|_| server_txn.commit())
+            .is_ok());
+
+        let ldaps = LdapServer::new(idms).await.expect("failed to start ldap");
+
+        let usr_uuid = Uuid::new_v4();
+        let grp_uuid = Uuid::new_v4();
+        let app_uuid = Uuid::new_v4();
+        let app_name = "testapp1";
+
+        // Setup person, group and application
+        {
+            let e1 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Account.to_value()),
+                (Attribute::Class, EntryClass::Person.to_value()),
+                (Attribute::Name, Value::new_iname("testperson1")),
+                (Attribute::Uuid, Value::Uuid(usr_uuid)),
+                (Attribute::Description, Value::new_utf8s("testperson1")),
+                (Attribute::DisplayName, Value::new_utf8s("testperson1"))
+            );
+
+            let e2 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::Group.to_value()),
+                (Attribute::Name, Value::new_iname("testgroup1")),
+                (Attribute::Uuid, Value::Uuid(grp_uuid))
+            );
+
+            let e3 = entry_init!(
+                (Attribute::Class, EntryClass::Object.to_value()),
+                (Attribute::Class, EntryClass::ServiceAccount.to_value()),
+                (Attribute::Class, EntryClass::Application.to_value()),
+                (Attribute::Name, Value::new_iname(app_name)),
+                (Attribute::Uuid, Value::Uuid(app_uuid)),
+                (Attribute::LinkedGroup, Value::Refer(grp_uuid))
+            );
+
+            let ct = duration_from_epoch_now();
+            let mut server_txn = idms.proxy_write(ct).await.unwrap();
+            assert!(server_txn
+                .qs_write
+                .internal_create(vec![e1, e2, e3])
+                .and_then(|_| server_txn.commit())
+                .is_ok());
+        }
+
+        // Setup the anonymous login
+        let anon_t = ldaps.do_bind(idms, "", "").await.unwrap().unwrap();
+        assert_eq!(
+            anon_t.effective_session,
+            LdapSession::UnixBind(UUID_ANONYMOUS)
+        );
+
+        let invalid_search = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec![
+                "objectClass".to_string(),
+                "cn".to_string(),
+                "givenName".to_string(),
+            ],
+        };
+
+        let valid_search = SearchRequest {
+            msgid: 1,
+            base: "dc=example,dc=com".to_string(),
+            scope: LdapSearchScope::Subtree,
+            filter: LdapFilter::Present(Attribute::ObjectClass.to_string()),
+            attrs: vec!["objectClass: person".to_string()],
+        };
+
+        let invalid_res: Result<Vec<LdapMsg>, OperationError> = ldaps
+            .do_search(idms, &invalid_search, &anon_t, Source::Internal)
+            .await;
+
+        let valid_res: Result<Vec<LdapMsg>, OperationError> = ldaps
+            .do_search(idms, &valid_search, &anon_t, Source::Internal)
+            .await;
+
+        assert_eq!(invalid_res, Err(OperationError::ResourceLimit));
+        assert!(valid_res.is_ok());
     }
 }
