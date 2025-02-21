@@ -162,7 +162,7 @@ Token endpoint
 
 <dt>
 
-OpenID Connect issuer URI
+OpenID Connect Issuer URL
 
 </dt>
 
@@ -462,7 +462,7 @@ Each client has unique signing keys and access secrets, so this is limited to ea
 entities at a well-known URL (`https://{hostname}/.well-known/webfinger`).
 
 It can be used by a WebFinger client to
-[discover the OIDC issuer URL][webfinger-oidc] of an identity provider from the
+[discover the OIDC Issuer URL][webfinger-oidc] of an identity provider from the
 hostname alone, and seems to be intended to support dynamic client registration
 flows for large public identity providers.
 
@@ -473,17 +473,16 @@ is no guarantee that it is valid for any particular application protocol, unless
 an administrator explicitly provides for it.
 
 When setting up an application to authenticate with Kanidm, WebFinger **does not
-add any security** over configuring an OpenID Discovery URL directly. In an OIDC
+add any security** over configuring an OIDC Discovery URL directly. In an OIDC
 context, the specification makes a number of flawed assumptions which make it
 difficult to use with Kanidm:
 
-* WebFinger assumes that the identity provider will give the same `iss`
-  (issuer) and OpenID Discovery document, including all URLs and signing keys,
+* WebFinger assumes that an identity provider will use the same Issuer URL and
+  OIDC Discovery document (which contains endpoint URLs and token signing keys)
   for *all* OAuth 2.0/OIDC clients.
 
-  Kanidm uses *different* `iss` (issuer), signing keys, and some client-specific
-  endpoint URLs, which ensures that tokens can only be used with their intended
-  service.
+  Kanidm uses *client-specific* Issuer URLs, endpoint URLs and token signing
+  keys. This ensures that tokens can only be used with their intended service.
 
 * WebFinger endpoints must be served at the *root* of the domain of a user's
   SPN (ie: information about the user with SPN `user@idm.example.com` is at
@@ -493,8 +492,8 @@ difficult to use with Kanidm:
   client ID in the request, so there is no way to tell them apart.
 
   As a result, Kanidm *does not* provide a WebFinger endpoint at its root URL,
-  because it could report an incorrect `iss` (issuer) and lead the client to an
-  incorrect OIDC discovery document.
+  because it could report an incorrect Issuer URL and lead the client to an
+  incorrect OIDC Discovery document.
 
   You will need a load balancer in front of Kanidm's HTTPS server to send a HTTP
   307 redirect to the appropriate
@@ -515,7 +514,7 @@ difficult to use with Kanidm:
 
 * Kanidm responds to *all* WebFinger queries with
   [an Identity Provider Discovery for OIDC URL][webfinger-oidc], **ignoring**
-  any supplied [`rel` parameter][webfinger-rel].
+  [`rel` parameter(s)][webfinger-rel].
 
   If you want to use WebFinger in any *other* context on Kanidm's hostname,
   you'll need a load balancer in front of Kanidm which matches on some property
