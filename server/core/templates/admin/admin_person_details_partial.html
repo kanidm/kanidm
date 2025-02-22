@@ -13,12 +13,7 @@
     (% call string_attr("UUID", "uuid", person.uuid, false, Attribute::Uuid) %)
     (% call string_attr("SPN", "spn", person.spn, false, Attribute::Spn) %)
     (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
-
-    (% if let Some(displayname) = person.displayname %)
-        (% call string_attr("Displayname", "displayname", displayname, true, Attribute::DisplayName) %)
-    (% else %)
-        (% call string_attr("Displayname", "displayname", "none", true, Attribute::DisplayName) %)
-    (% endif %)
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
 
     (% if let Some(description) = person.description %)
         (% call string_attr("Description", "description", description, true, Attribute::Description) %)

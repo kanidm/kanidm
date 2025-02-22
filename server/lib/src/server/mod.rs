@@ -35,6 +35,7 @@ use concread::arcache::{ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use kanidm_proto::internal::{DomainInfo as ProtoDomainInfo, ImageValue, UiHint};
+use kanidm_proto::scim_v1::client::ScimFilter;
 use kanidm_proto::scim_v1::server::ScimOAuth2ClaimMap;
 use kanidm_proto::scim_v1::server::ScimOAuth2ScopeMap;
 use kanidm_proto::scim_v1::server::ScimReference;
@@ -938,6 +939,64 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    fn resolve_scim_json_get(
+        &mut self,
+        attr: &Attribute,
+        value: &JsonValue,
+    ) -> Result<PartialValue, OperationError> {
+        let schema = self.get_schema();
+        // Lookup the attr
+        let Some(schema_a) = schema.get_attributes().get(attr) else {
+            // No attribute of this name exists - fail fast, there is no point to
+            // proceed, as nothing can be satisfied.
+            return Err(OperationError::InvalidAttributeName(attr.to_string()));
+        };
+
+        match schema_a.syntax {
+            SyntaxType::Utf8String => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::Utf8(value.to_string()))
+            }
+            SyntaxType::Utf8StringInsensitive => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::new_iutf8(value))
+            }
+            SyntaxType::Utf8StringIname => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+                Ok(PartialValue::new_iname(value))
+            }
+            SyntaxType::Uuid => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+
+                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
+                Ok(PartialValue::Uuid(un))
+            }
+            SyntaxType::ReferenceUuid
+            | SyntaxType::OauthScopeMap
+            | SyntaxType::Session
+            | SyntaxType::ApiToken
+            | SyntaxType::Oauth2Session
+            | SyntaxType::ApplicationPassword => {
+                let JsonValue::String(value) = value else {
+                    return Err(OperationError::InvalidAttribute(attr.to_string()));
+                };
+
+                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
+                Ok(PartialValue::Refer(un))
+            }
+
+            _ => return Err(OperationError::InvalidAttribute(attr.to_string())),
+        }
+    }
+
     fn resolve_scim_json_put(
         &mut self,
         attr: &Attribute,
@@ -1558,6 +1617,40 @@ impl QueryServerReadTransaction<'_> {
                 }
             }
         }
+    }
+
+    #[instrument(level = "debug", skip_all)]
+    pub fn scim_search_ext(
+        &mut self,
+        ident: Identity,
+        filter: ScimFilter,
+        query: ScimEntryGetQuery,
+    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+        let filter_intent = Filter::from_scim_ro(&ident, &filter, self)?;
+
+        let f_intent_valid = filter_intent
+            .validate(self.get_schema())
+            .map_err(OperationError::SchemaViolation)?;
+
+        let f_valid = f_intent_valid.clone().into_ignore_hidden();
+
+        let r_attrs = query
+            .attributes
+            .map(|attr_set| attr_set.into_iter().collect());
+
+        let se = SearchEvent {
+            ident,
+            filter: f_valid,
+            filter_orig: f_intent_valid,
+            attrs: r_attrs,
+            effective_access_check: query.ext_access_check,
+        };
+
+        let vs = self.search_ext(&se)?;
+
+        vs.into_iter()
+            .map(|entry| entry.to_scim_kanidm(self))
+            .collect()
     }
 }
 
@@ -2629,7 +2722,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
+    use kanidm_proto::scim_v1::client::ScimFilter;
     use kanidm_proto::scim_v1::server::ScimReference;
+    use kanidm_proto::scim_v1::JsonValue;
     use kanidm_proto::scim_v1::ScimEntryGetQuery;
 
     #[qs_test]
@@ -3080,5 +3175,45 @@ mod tests {
         assert!(ext_access_check.search.check(&Attribute::Name));
         assert!(ext_access_check.modify_present.check(&Attribute::Name));
         assert!(ext_access_check.modify_remove.check(&Attribute::Name));
+    }
+
+    #[qs_test]
+    async fn test_scim_basic_search_ext_query(server: &QueryServer) {
+        let mut server_txn = server.write(duration_from_epoch_now()).await.unwrap();
+
+        let group_uuid = Uuid::new_v4();
+        let e1 = entry_init!(
+            (Attribute::Class, EntryClass::Object.to_value()),
+            (Attribute::Class, EntryClass::Group.to_value()),
+            (Attribute::Name, Value::new_iname("testgroup")),
+            (Attribute::Uuid, Value::Uuid(group_uuid))
+        );
+
+        assert!(server_txn.internal_create(vec![e1]).is_ok());
+        assert!(server_txn.commit().is_ok());
+
+        // Now read that entry.
+        let mut server_txn = server.read().await.unwrap();
+
+        let idm_admin_entry = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
+        let idm_admin_ident = Identity::from_impersonate_entry_readwrite(idm_admin_entry);
+
+        let filter = ScimFilter::And(
+            Box::new(ScimFilter::Equal(
+                Attribute::Class.into(),
+                EntryClass::Group.into(),
+            )),
+            Box::new(ScimFilter::Equal(
+                Attribute::Uuid.into(),
+                JsonValue::String(group_uuid.to_string()),
+            )),
+        );
+
+        let base: Vec<ScimEntryKanidm> = server_txn
+            .scim_search_ext(idm_admin_ident, filter, ScimEntryGetQuery::default())
+            .unwrap();
+
+        assert_eq!(base.len(), 1);
+        assert_eq!(base[0].header.id, group_uuid);
     }
 }

@@ -13,13 +13,12 @@ use axum_htmx::{HxPushUrl, HxRequest};
 use futures_util::TryFutureExt;
 use kanidm_proto::attribute::Attribute;
 use kanidm_proto::internal::OperationError;
+use kanidm_proto::scim_v1::client::ScimFilter;
 use kanidm_proto::scim_v1::server::{ScimEffectiveAccess, ScimEntryKanidm, ScimPerson};
 use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::EntryClass;
-use kanidmd_lib::filter::{f_and, f_eq, Filter, FC};
 use kanidmd_lib::idm::server::DomainInfoRead;
 use kanidmd_lib::idm::ClientAuthInfo;
-use std::collections::BTreeSet;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -155,11 +154,19 @@ async fn get_persons_info(
     client_auth_info: ClientAuthInfo,
     domain_info: DomainInfoRead,
 ) -> Result<Vec<(ScimPerson, ScimEffectiveAccess)>, ErrorResponse> {
-    let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Person.into())]));
-    let attrs = Some(BTreeSet::from(PERSON_ATTRIBUTES));
+    let filter = ScimFilter::Equal(Attribute::Class.into(), EntryClass::Person.into());
+
     let base: Vec<ScimEntryKanidm> = state
         .qe_r_ref
-        .scim_entry_search(client_auth_info.clone(), filter, kopid.eventid, attrs, true)
+        .scim_entry_search(
+            client_auth_info.clone(),
+            kopid.eventid,
+            filter,
+            ScimEntryGetQuery {
+                attributes: Some(Vec::from(PERSON_ATTRIBUTES)),
+                ext_access_check: true,
+            },
+        )
         .map_err(|op_err| HtmxError::new(kopid, op_err, domain_info.clone()))
         .await?;
 
@@ -172,6 +179,7 @@ async fn get_persons_info(
 
     persons.sort_by_key(|(sp, _)| sp.uuid);
     persons.reverse();
+
     Ok(persons)
 }
 

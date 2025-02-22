@@ -1,13 +1,12 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
 use kanidm_proto::scim_v1::{
-    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimFilter, server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
 };
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
 };
 use kanidmd_lib::idm::server::IdmServerTransaction;
 use kanidmd_lib::prelude::*;
-use std::collections::BTreeSet;
 
 impl QueryServerWriteV1 {
     #[instrument(
@@ -239,10 +238,9 @@ impl QueryServerReadV1 {
     pub async fn scim_entry_search(
         &self,
         client_auth_info: ClientAuthInfo,
-        filter_intent: Filter<FilterInvalid>,
         eventid: Uuid,
-        attrs: Option<BTreeSet<Attribute>>,
-        acp: bool,
+        filter: ScimFilter,
+        query: ScimEntryGetQuery,
     ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read().await?;
@@ -252,13 +250,6 @@ impl QueryServerReadV1 {
                 error!(?err, "Invalid identity");
             })?;
 
-        let filter = filter_all!(f_and!([f_eq(Attribute::Class, EntryClass::Account.into())]));
-
-        idms_prox_read
-            .qs_read
-            .impersonate_search_ext(filter_intent, filter, &ident, attrs, acp)?
-            .into_iter()
-            .map(|entry| entry.to_scim_kanidm(&mut idms_prox_read.qs_read))
-            .collect()
+        idms_prox_read.qs_read.scim_search_ext(ident, filter, query)
     }
 }

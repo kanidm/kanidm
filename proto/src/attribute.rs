@@ -631,6 +631,71 @@ impl From<Attribute> for String {
     }
 }
 
+/// Sub attributes are a component of SCIM, allowing tagged sub properties of a complex
+/// attribute to be accessed.
+#[derive(Serialize, Deserialize, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
+#[serde(rename_all = "lowercase", try_from = "&str", into = "AttrString")]
+pub enum SubAttribute {
+    /// Denotes a primary value.
+    Primary,
+
+    #[cfg(not(test))]
+    Custom(AttrString),
+}
+
+impl From<SubAttribute> for AttrString {
+    fn from(val: SubAttribute) -> Self {
+        AttrString::from(val.as_str())
+    }
+}
+
+impl From<&str> for SubAttribute {
+    fn from(value: &str) -> Self {
+        Self::inner_from_str(value)
+    }
+}
+
+impl FromStr for SubAttribute {
+    type Err = Infallible;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Ok(Self::inner_from_str(value))
+    }
+}
+
+impl SubAttribute {
+    pub fn as_str(&self) -> &str {
+        match self {
+            SubAttribute::Primary => SUB_ATTR_PRIMARY,
+            #[cfg(not(test))]
+            SubAttribute::Custom(s) => s,
+        }
+    }
+
+    // We allow this because the standard lib from_str is fallible, and we want an infallible version.
+    #[allow(clippy::should_implement_trait)]
+    fn inner_from_str(value: &str) -> Self {
+        // Could this be something like heapless to save allocations? Also gives a way
+        // to limit length of str?
+        match value.to_lowercase().as_str() {
+            SUB_ATTR_PRIMARY => SubAttribute::Primary,
+
+            #[cfg(not(test))]
+            _ => SubAttribute::Custom(AttrString::from(value)),
+
+            // Allowed only in tests
+            #[allow(clippy::unreachable)]
+            #[cfg(test)]
+            _ => {
+                unreachable!(
+                    "Check that you've implemented the SubAttribute conversion for {:?}",
+                    value
+                );
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::Attribute;
