@@ -190,7 +190,7 @@ image = { version = "0.24.9", default-features = false, features = [
     "jpeg",
     "webp",
 ] }
-itertools = "0.13.0"
+itertools = "0.14.0"
 enum-iterator = "2.1.0"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
@@ -202,7 +202,7 @@ libc = "^0.2.168"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
-lru = "^0.12.5"
+lru = "^0.13.0"
 mathru = "^0.13.0"
 mimalloc = "0.1.43"
 notify-debouncer-full = { version = "0.1" }
