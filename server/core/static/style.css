@@ -21,6 +21,15 @@ body {
 }
 
 /*
+* Bootstrap 5.3 fix for input-group validation
+* :has checks that a child can be selected with the selector
+* + selects the next sibling.
+*/
+.was-validated .input-group:has(.form-control:invalid) + .invalid-feedback {
+  display: block !important;
+}
+
+/*
  * Sidebar
  */
 

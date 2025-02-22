@@ -48,6 +48,7 @@ pub(crate) async fn view_profile_get(
 
     Ok(ProfileView {
         navbar_ctx: NavbarCtx { domain_info },
+
         profile_partial: ProfilePartialView {
             menu_active_item: ProfileMenuItems::UserProfile,
             can_rw,

@@ -23,6 +23,7 @@ use hashbrown::HashMap;
 use hashbrown::HashSet;
 use kanidm_proto::constants::ATTR_UUID;
 use kanidm_proto::internal::{Filter as ProtoFilter, OperationError, SchemaError};
+use kanidm_proto::scim_v1::client::{AttrPath as ScimAttrPath, ScimFilter};
 use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 use serde::Deserialize;
 use uuid::Uuid;
@@ -764,6 +765,21 @@ impl Filter<FilterInvalid> {
             },
         })
     }
+
+    #[instrument(name = "filter::from_scim_ro", level = "trace", skip_all)]
+    pub fn from_scim_ro(
+        ev: &Identity,
+        f: &ScimFilter,
+        qs: &mut QueryServerReadTransaction,
+    ) -> Result<Self, OperationError> {
+        let depth = DEFAULT_LIMIT_FILTER_DEPTH_MAX as usize;
+        let mut elems = ev.limits().filter_max_elements;
+        Ok(Filter {
+            state: FilterInvalid {
+                inner: FilterComp::from_scim_ro(f, qs, depth, &mut elems)?,
+            },
+        })
+    }
 }
 
 impl FromStr for Filter<FilterInvalid> {
@@ -1087,32 +1103,21 @@ impl FilterComp {
         elems: &mut usize,
     ) -> Result<Self, OperationError> {
         let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
+        *elems = (*elems)
+            .checked_sub(1)
+            .ok_or(OperationError::ResourceLimit)?;
         Ok(match f {
-            LdapFilter::And(l) => {
-                *elems = (*elems)
-                    .checked_sub(l.len())
-                    .ok_or(OperationError::ResourceLimit)?;
-                FilterComp::And(
-                    l.iter()
-                        .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
-                        .collect::<Result<Vec<_>, _>>()?,
-                )
-            }
-            LdapFilter::Or(l) => {
-                *elems = (*elems)
-                    .checked_sub(l.len())
-                    .ok_or(OperationError::ResourceLimit)?;
-
-                FilterComp::Or(
-                    l.iter()
-                        .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
-                        .collect::<Result<Vec<_>, _>>()?,
-                )
-            }
+            LdapFilter::And(l) => FilterComp::And(
+                l.iter()
+                    .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
+            LdapFilter::Or(l) => FilterComp::Or(
+                l.iter()
+                    .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
+                    .collect::<Result<Vec<_>, _>>()?,
+            ),
             LdapFilter::Not(l) => {
-                *elems = (*elems)
-                    .checked_sub(1)
-                    .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::AndNot(Box::new(Self::from_ldap_ro(l, qs, ndepth, elems)?))
             }
             LdapFilter::Equality(a, v) => {
@@ -1168,6 +1173,103 @@ impl FilterComp {
             }
             LdapFilter::Extensible(_) => {
                 admin_error!("Unsupported filter operation - extensible");
+                return Err(OperationError::FilterGeneration);
+            }
+        })
+    }
+
+    fn from_scim_ro(
+        f: &ScimFilter,
+        qs: &mut QueryServerReadTransaction,
+        depth: usize,
+        elems: &mut usize,
+    ) -> Result<Self, OperationError> {
+        let ndepth = depth.checked_sub(1).ok_or(OperationError::ResourceLimit)?;
+        *elems = (*elems)
+            .checked_sub(1)
+            .ok_or(OperationError::ResourceLimit)?;
+        Ok(match f {
+            ScimFilter::Present(ScimAttrPath { a, s: None }) => FilterComp::Pres(a.clone()),
+            ScimFilter::Equal(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::Eq(a.clone(), pv)
+            }
+
+            ScimFilter::Contains(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::Cnt(a.clone(), pv)
+            }
+            ScimFilter::StartsWith(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::Stw(a.clone(), pv)
+            }
+            ScimFilter::EndsWith(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::Enw(a.clone(), pv)
+            }
+            ScimFilter::Greater(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                // Greater is equivalent to "not equal or less than".
+                FilterComp::And(vec![
+                    FilterComp::Pres(a.clone()),
+                    FilterComp::AndNot(Box::new(FilterComp::Or(vec![
+                        FilterComp::LessThan(a.clone(), pv.clone()),
+                        FilterComp::Eq(a.clone(), pv),
+                    ]))),
+                ])
+            }
+            ScimFilter::Less(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::LessThan(a.clone(), pv)
+            }
+            ScimFilter::GreaterOrEqual(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                // Greater or equal is equivalent to "not less than".
+                FilterComp::And(vec![
+                    FilterComp::Pres(a.clone()),
+                    FilterComp::AndNot(Box::new(FilterComp::LessThan(a.clone(), pv.clone()))),
+                ])
+            }
+            ScimFilter::LessOrEqual(ScimAttrPath { a, s: None }, json_value) => {
+                let pv = qs.resolve_scim_json_get(a, json_value)?;
+                FilterComp::Or(vec![
+                    FilterComp::LessThan(a.clone(), pv.clone()),
+                    FilterComp::Eq(a.clone(), pv),
+                ])
+            }
+            ScimFilter::Not(f) => {
+                let f = Self::from_scim_ro(f, qs, ndepth, elems)?;
+                FilterComp::AndNot(Box::new(f))
+            }
+            ScimFilter::Or(left, right) => {
+                let left = Self::from_scim_ro(left, qs, ndepth, elems)?;
+                let right = Self::from_scim_ro(right, qs, ndepth, elems)?;
+                FilterComp::Or(vec![left, right])
+            }
+            ScimFilter::And(left, right) => {
+                let left = Self::from_scim_ro(left, qs, ndepth, elems)?;
+                let right = Self::from_scim_ro(right, qs, ndepth, elems)?;
+                FilterComp::And(vec![left, right])
+            }
+            ScimFilter::NotEqual(ScimAttrPath { s: None, .. }, _) => {
+                error!("Unsupported filter operation - not-equal");
+                return Err(OperationError::FilterGeneration);
+            }
+            ScimFilter::Present(ScimAttrPath { s: Some(_), .. })
+            | ScimFilter::Equal(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::NotEqual(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::Contains(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::StartsWith(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::EndsWith(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::Greater(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::Less(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::GreaterOrEqual(ScimAttrPath { s: Some(_), .. }, _)
+            | ScimFilter::LessOrEqual(ScimAttrPath { s: Some(_), .. }, _) => {
+                error!("Unsupported filter operation - sub-attribute");
+                return Err(OperationError::FilterGeneration);
+            }
+            ScimFilter::Complex(..) => {
+                error!("Unsupported filter operation - complex");
                 return Err(OperationError::FilterGeneration);
             }
         })
