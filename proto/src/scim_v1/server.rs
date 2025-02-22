@@ -4,7 +4,7 @@ use super::ScimSshPublicKey;
 use crate::attribute::Attribute;
 use crate::internal::UiHint;
 use scim_proto::ScimEntryHeader;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_with::{base64, formats, hex::Hex, serde_as, skip_serializing_none};
 use std::collections::{BTreeMap, BTreeSet};
 use time::format_description::well_known::Rfc3339;
@@ -28,7 +28,7 @@ pub struct ScimEntryKanidm {
     pub attrs: BTreeMap<Attribute, ScimValueKanidm>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Debug, Clone, ToSchema)]
 pub enum ScimAttributeEffectiveAccess {
     /// All attributes on the entry have this permission granted
     Grant,
@@ -49,7 +49,7 @@ impl ScimAttributeEffectiveAccess {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Debug, Clone, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimEffectiveAccess {
     /// The identity that inherits the effective permission
@@ -209,7 +209,7 @@ pub struct ScimOAuth2ClaimMap {
     pub values: BTreeSet<String>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, ToSchema)]
+#[derive(Serialize, Debug, Clone, PartialEq, Eq, ToSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ScimReference {
     pub uuid: Uuid,
@@ -258,7 +258,7 @@ pub enum ScimValueKanidm {
 }
 
 #[serde_as]
-#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+#[derive(Serialize, Debug, Clone, ToSchema)]
 pub struct ScimPerson {
     pub uuid: Uuid,
     pub name: String,

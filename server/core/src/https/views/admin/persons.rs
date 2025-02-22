@@ -102,7 +102,7 @@ pub(crate) async fn view_persons_get(
     VerifiedClientInformation(client_auth_info): VerifiedClientInformation,
 ) -> axum::response::Result<Response> {
     let persons = get_persons_info(state, &kopid, client_auth_info, domain_info.clone()).await?;
-    let persons_partial = PersonsPartialView { persons: persons };
+    let persons_partial = PersonsPartialView { persons };
 
     let push_url = HxPushUrl(Uri::from_static("/ui/admin/persons"));
     Ok(if is_htmx {

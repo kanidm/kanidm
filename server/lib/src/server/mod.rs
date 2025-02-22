@@ -993,7 +993,7 @@ pub trait QueryServerTransaction<'a> {
                 Ok(PartialValue::Refer(un))
             }
 
-            _ => return Err(OperationError::InvalidAttribute(attr.to_string())),
+            _ => Err(OperationError::InvalidAttribute(attr.to_string())),
         }
     }
 
