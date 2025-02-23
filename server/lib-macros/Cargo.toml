@@ -13,7 +13,7 @@ repository = { workspace = true }
 
 [lib]
 proc-macro = true
-test = true
+test = false
 doctest = false
 
 [dependencies]

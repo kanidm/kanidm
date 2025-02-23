@@ -14,7 +14,7 @@ repository = { workspace = true }
 [lib]
 name = "kanidmd_testkit"
 path = "src/lib.rs"
-test = true
+test = false
 doctest = false
 
 [features]

@@ -12,8 +12,8 @@ repository = { workspace = true }
 
 
 [lib]
-test = false
 doctest = false
+test = false
 
 [features]
 
