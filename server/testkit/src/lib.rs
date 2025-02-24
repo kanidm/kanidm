@@ -92,6 +92,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     #[allow(clippy::panic)]
     let rsclient = match KanidmClientBuilder::new()
         .address(addr.clone())
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
     {

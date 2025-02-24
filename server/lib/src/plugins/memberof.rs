@@ -624,7 +624,7 @@ impl Plugin for MemberOf {
                     // Can they both be reference sets?
                     match edmos.as_refer_set() {
                         Some(a) => {
-                            let diff: Vec<_> = a.symmetric_difference(&b).collect();
+                            let diff: Vec<_> = a.symmetric_difference(b).collect();
                             if !diff.is_empty() {
                                 error!(
                                     "MemberOfInvalid: Entry {}, DMO has inconsistencies",
