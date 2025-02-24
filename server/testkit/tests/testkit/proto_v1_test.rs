@@ -942,9 +942,8 @@ async fn test_server_rest_oauth2_basic_lifecycle(rsclient: KanidmClient) {
     assert!(res.is_ok());
 
     //test getting the image
-    let client = reqwest::Client::new();
-
-    let response = client
+    let response = rsclient
+        .client()
         .get(rsclient.make_url("/ui/images/oauth2/test_integration"))
         .bearer_auth(rsclient.get_token().await.unwrap());
 
@@ -1780,7 +1779,8 @@ async fn start_password_session(
     password: &str,
     privileged: bool,
 ) -> Result<UserAuthToken, ()> {
-    let client = reqwest::Client::new();
+    let fresh_rsclient = rsclient.new_session().unwrap();
+    let client = fresh_rsclient.client();
 
     let authreq = AuthRequest {
         step: AuthStep::Init2 {

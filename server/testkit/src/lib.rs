@@ -397,7 +397,7 @@ macro_rules! assert_no_cache {
         // Check we have correct nocache headers.
         let cache_header: &str = $response
             .headers()
-            .get(http::header::CACHE_CONTROL)
+            .get(kanidm_client::http::header::CACHE_CONTROL)
             .expect("missing cache-control header")
             .to_str()
             .expect("invalid cache-control header");

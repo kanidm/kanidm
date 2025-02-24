@@ -27,6 +27,7 @@ use std::time::Duration;
 
 use compact_jwt::Jwk;
 
+pub use http;
 use kanidm_proto::constants::uri::V1_AUTH_VALID;
 use kanidm_proto::constants::{
     ATTR_DOMAIN_DISPLAY_NAME, ATTR_DOMAIN_LDAP_BASEDN, ATTR_DOMAIN_SSID, ATTR_ENTRY_MANAGED_BY,
@@ -585,6 +586,11 @@ fn find_reqwest_error_source<E: std::error::Error + 'static>(
 }
 
 impl KanidmClient {
+    /// Access the underlying reqwest client that has been configured for this Kanidm server
+    pub fn client(&self) -> &reqwest::Client {
+        &self.client
+    }
+
     pub fn get_origin(&self) -> &Url {
         &self.origin
     }

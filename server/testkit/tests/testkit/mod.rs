@@ -11,7 +11,6 @@ mod oauth2_test;
 mod person;
 mod proto_v1_test;
 mod scim_test;
-mod self_resources;
 mod service_account;
 mod system;
 mod unix;

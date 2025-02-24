@@ -4,10 +4,7 @@ use kanidm_client::KanidmClient;
 #[kanidmd_testkit::test]
 async fn test_v1_service_account_id_attr_attr_delete(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
 
     // let post_body = serde_json::json!({"filter": "self"}).to_string();
 
