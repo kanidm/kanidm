@@ -571,41 +571,53 @@ impl Plugin for MemberOf {
             Err(e) => return vec![e],
         };
 
+        // First we have to build a direct membership map. This saves us
+        // needing to run queries since we already have every entry on hand
+        // from the all_cand search.
+        let mut direct_membership_map: BTreeMap<Uuid, BTreeSet<Uuid>> = Default::default();
+
+        let pv_class: PartialValue = EntryClass::Group.into();
+
+        for entry in all_cand.iter() {
+            if !entry.attribute_equality(Attribute::Class, &pv_class) {
+                // Not a group, move on.
+                continue;
+            }
+
+            let group_uuid = entry.get_uuid();
+
+            let member_iter = entry
+                .get_ava_refer(Attribute::Member)
+                .into_iter()
+                .flat_map(|set| set.iter())
+                .chain(
+                    entry
+                        .get_ava_refer(Attribute::DynMember)
+                        .into_iter()
+                        .flat_map(|set| set.iter()),
+                );
+
+            for member_uuid in member_iter {
+                let member_groups = direct_membership_map.entry(*member_uuid).or_default();
+                member_groups.insert(group_uuid);
+            }
+        }
+
         // for each entry in the DB (live).
         for e in all_cand {
             let uuid = e.get_uuid();
-            let filt_in = filter!(f_and!([
-                f_eq(Attribute::Class, EntryClass::Group.into()),
-                f_or!([
-                    f_eq(Attribute::Member, PartialValue::Refer(uuid)),
-                    f_eq(Attribute::DynMember, PartialValue::Refer(uuid))
-                ])
-            ]));
 
-            // what groups is this entry a direct member of?
-            let direct_memberof = match qs
-                .internal_search(filt_in)
-                .map_err(|_| ConsistencyError::QueryServerSearchFailure)
-            {
-                Ok(d_mo) => d_mo,
-                Err(e) => return vec![Err(e)],
-            };
-
-            // for all direct -> add uuid to map
-            let d_groups_set: BTreeSet<Uuid> =
-                direct_memberof.iter().map(|e| e.get_uuid()).collect();
-
-            let d_groups_set = if d_groups_set.is_empty() {
-                None
-            } else {
-                Some(d_groups_set)
-            };
+            let d_groups_set: Option<&BTreeSet<Uuid>> = direct_membership_map.get(&uuid);
 
             trace!(
                 "DMO search groups {:?} -> {:?}",
                 e.get_display_id(),
                 d_groups_set
             );
+
+            // Remember, we only need to check direct memberships, because when memberof
+            // it applies it clones dmo -> mo, so validation of all dmo sets implies mo is
+            // valid (and a subset) of dmo.
 
             match (e.get_ava_set(Attribute::DirectMemberOf), d_groups_set) {
                 (Some(edmos), Some(b)) => {
@@ -636,7 +648,7 @@ impl Plugin for MemberOf {
                 }
                 (entry_direct_member_of, expected_direct_groups) => {
                     error!(
-                        "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
+                        "MemberOfInvalid directmemberof set and DMO search set differ in presence: {}",
                         e.get_display_id()
                     );
                     // trace!(?e);
@@ -645,19 +657,6 @@ impl Plugin for MemberOf {
                     r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                 }
             }
-
-            // Could check all dmos in mos?
-
-            /* To check nested! */
-            // add all direct to a stack
-            // for all in stack
-            // check their direct memberships
-            // if not in map
-            // add to map
-            // push to stack
-
-            // check mo == map set
-            // if not, consistency error!
         }
 
         r
