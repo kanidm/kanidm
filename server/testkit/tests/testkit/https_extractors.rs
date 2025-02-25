@@ -11,7 +11,7 @@ const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 // *test where we don't trust the x-forwarded-for header
 
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
-async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
+async fn dont_trust_xff_send_header(rsclient: &KanidmClient) {
     let client = rsclient.client();
 
     let res = client
@@ -32,7 +32,7 @@ async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
-async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
+async fn dont_trust_xff_dont_send_header(rsclient: &KanidmClient) {
     let client = rsclient.client();
 
     let res = client
@@ -58,7 +58,7 @@ async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
 // *test where we trust the x-forwarded-for header
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_send_invalid_header_single_value(rsclient: KanidmClient) {
+async fn trust_xff_send_invalid_header_single_value(rsclient: &KanidmClient) {
     let client = rsclient.client();
 
     let res = client
@@ -78,7 +78,7 @@ async fn trust_xff_send_invalid_header_single_value(rsclient: KanidmClient) {
 // with a valid leftmost address and an invalid address later in the list. Right now it wouldn't work.
 //
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_send_invalid_header_multiple_values(rsclient: KanidmClient) {
+async fn trust_xff_send_invalid_header_multiple_values(rsclient: &KanidmClient) {
     let client = rsclient.client();
 
     let res = client
@@ -95,7 +95,7 @@ async fn trust_xff_send_invalid_header_multiple_values(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient) {
+async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: &KanidmClient) {
     let ip_addr = "2001:db8:85a3:8d3:1319:8a2e:370:7348";
 
     let client = rsclient.client();
@@ -115,7 +115,7 @@ async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient)
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient) {
+async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: &KanidmClient) {
     let ip_addr = "203.0.113.195";
 
     let client = rsclient.client();
@@ -135,7 +135,7 @@ async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient)
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
+async fn trust_xff_send_valid_header_multiple_address(rsclient: &KanidmClient) {
     let first_ip_addr = "203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348";
 
     let client = rsclient.client();
@@ -176,7 +176,7 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
-async fn trust_xff_dont_send_header(rsclient: KanidmClient) {
+async fn trust_xff_dont_send_header(rsclient: &KanidmClient) {
     let client = rsclient.client();
 
     let res = client

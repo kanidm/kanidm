@@ -40,7 +40,7 @@ use kanidmd_testkit::{
 ///   If `true`, use the `code` passed in the callback URI's fragment, and
 ///   require the query parameter to be empty.
 async fn test_oauth2_openid_basic_flow_impl(
-    rsclient: KanidmClient,
+    rsclient: &KanidmClient,
     response_mode: Option<&str>,
     response_in_fragment: bool,
 ) {
@@ -535,7 +535,7 @@ async fn test_oauth2_openid_basic_flow_impl(
 ///
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: KanidmClient) {
+async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: &KanidmClient) {
     test_oauth2_openid_basic_flow_impl(rsclient, None, false).await;
 }
 
@@ -544,7 +544,7 @@ async fn test_oauth2_openid_basic_flow_mode_unset(rsclient: KanidmClient) {
 ///
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_basic_flow_mode_query(rsclient: KanidmClient) {
+async fn test_oauth2_openid_basic_flow_mode_query(rsclient: &KanidmClient) {
     test_oauth2_openid_basic_flow_impl(rsclient, Some("query"), false).await;
 }
 
@@ -553,7 +553,7 @@ async fn test_oauth2_openid_basic_flow_mode_query(rsclient: KanidmClient) {
 ///
 /// The response should be returned in the URI's fragment.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_basic_flow_mode_fragment(rsclient: KanidmClient) {
+async fn test_oauth2_openid_basic_flow_mode_fragment(rsclient: &KanidmClient) {
     test_oauth2_openid_basic_flow_impl(rsclient, Some("fragment"), true).await;
 }
 
@@ -570,7 +570,7 @@ async fn test_oauth2_openid_basic_flow_mode_fragment(rsclient: KanidmClient) {
 ///   If `true`, use the `code` passed in the callback URI's fragment, and
 ///   require the query parameter to be empty.
 async fn test_oauth2_openid_public_flow_impl(
-    rsclient: KanidmClient,
+    rsclient: &KanidmClient,
     response_mode: Option<&str>,
     response_in_fragment: bool,
 ) {
@@ -901,7 +901,7 @@ async fn test_oauth2_openid_public_flow_impl(
 ///
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_public_flow_mode_unset(rsclient: KanidmClient) {
+async fn test_oauth2_openid_public_flow_mode_unset(rsclient: &KanidmClient) {
     test_oauth2_openid_public_flow_impl(rsclient, None, false).await;
 }
 
@@ -910,7 +910,7 @@ async fn test_oauth2_openid_public_flow_mode_unset(rsclient: KanidmClient) {
 ///
 /// The response should be returned as a query parameter.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_public_flow_mode_query(rsclient: KanidmClient) {
+async fn test_oauth2_openid_public_flow_mode_query(rsclient: &KanidmClient) {
     test_oauth2_openid_public_flow_impl(rsclient, Some("query"), false).await;
 }
 
@@ -919,12 +919,12 @@ async fn test_oauth2_openid_public_flow_mode_query(rsclient: KanidmClient) {
 ///
 /// The response should be returned in the URI's fragment.
 #[kanidmd_testkit::test]
-async fn test_oauth2_openid_public_flow_mode_fragment(rsclient: KanidmClient) {
+async fn test_oauth2_openid_public_flow_mode_fragment(rsclient: &KanidmClient) {
     test_oauth2_openid_public_flow_impl(rsclient, Some("fragment"), true).await;
 }
 
 #[kanidmd_testkit::test]
-async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
+async fn test_oauth2_token_post_bad_bodies(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -960,7 +960,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
+async fn test_oauth2_token_revoke_post(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;

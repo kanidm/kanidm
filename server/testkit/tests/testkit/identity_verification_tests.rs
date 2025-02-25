@@ -15,7 +15,7 @@ static USER_B_NAME: &str = "valid_user_b";
 // These tests check that invalid requests return the expected error
 
 #[kanidmd_testkit::test]
-async fn test_not_authenticated(rsclient: KanidmClient) {
+async fn test_not_authenticated(rsclient: &KanidmClient) {
     // basically here we try a bit of all the possible combinations while unauthenticated to check it's not working
     setup_server(&rsclient).await;
     create_user(&rsclient, USER_A_NAME).await;
@@ -46,7 +46,7 @@ async fn test_not_authenticated(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_non_existing_user_id(rsclient: KanidmClient) {
+async fn test_non_existing_user_id(rsclient: &KanidmClient) {
     setup_server(&rsclient).await;
     create_user(&rsclient, USER_A_NAME).await;
     create_user(&rsclient, USER_B_NAME).await;
@@ -86,7 +86,7 @@ async fn test_non_existing_user_id(rsclient: KanidmClient) {
 // error cases have already been tested in the previous section!
 // Each tests is named like `test_{api input}_response_{expected api output}_or_{expected api output}`
 #[kanidmd_testkit::test]
-async fn test_start_response_identity_verification_available(rsclient: KanidmClient) {
+async fn test_start_response_identity_verification_available(rsclient: &KanidmClient) {
     setup_server(&rsclient).await;
     create_user(&rsclient, USER_A_NAME).await;
     login_with_user(&rsclient, USER_A_NAME).await;
@@ -105,7 +105,7 @@ async fn test_start_response_identity_verification_available(rsclient: KanidmCli
 // this function tests both possible POSITIVE outcomes if we start from
 // `Start`, that is WaitForCode or ProvideCode
 #[kanidmd_testkit::test]
-async fn test_start_response_wait_for_code_or_provide_code(rsclient: KanidmClient) {
+async fn test_start_response_wait_for_code_or_provide_code(rsclient: &KanidmClient) {
     setup_server(&rsclient).await;
     let user_a_uuid = create_user(&rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(&rsclient, USER_B_NAME).await;
@@ -129,7 +129,7 @@ async fn test_start_response_wait_for_code_or_provide_code(rsclient: KanidmClien
 }
 
 #[kanidmd_testkit::test]
-async fn test_provide_code_response_code_failure_or_provide_code(rsclient: KanidmClient) {
+async fn test_provide_code_response_code_failure_or_provide_code(rsclient: &KanidmClient) {
     setup_server(&rsclient).await;
     let user_a_uuid = create_user(&rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(&rsclient, USER_B_NAME).await;
@@ -157,7 +157,7 @@ async fn test_provide_code_response_code_failure_or_provide_code(rsclient: Kanid
 
 // here we actually test the full idm flow by duplicating the server
 #[kanidmd_testkit::test]
-async fn test_full_identification_flow(rsclient: KanidmClient) {
+async fn test_full_identification_flow(rsclient: &KanidmClient) {
     setup_server(&rsclient).await;
     let user_a_uuid = create_user(&rsclient, USER_A_NAME).await;
     let user_b_uuid = create_user(&rsclient, USER_B_NAME).await;
@@ -175,12 +175,12 @@ async fn test_full_identification_flow(rsclient: KanidmClient) {
             (
                 valid_user_a_client,
                 USER_A_NAME,
-                valid_user_b_client,
+                &valid_user_b_client,
                 USER_B_NAME,
             )
         } else {
             (
-                valid_user_b_client,
+                &valid_user_b_client,
                 USER_B_NAME,
                 valid_user_a_client,
                 USER_A_NAME,
