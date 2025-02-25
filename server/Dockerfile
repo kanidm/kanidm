@@ -54,7 +54,7 @@ RUN --mount=type=cache,id=cargo,target=/cargo \
         --release; \
     sccache -s
 
-# Find and copy dynalcially linked libraries using ldd
+# Find and copy dynamically linked libraries using ldd
 # caveat: this actually partially runs the binary, so it doesn't work for cross-compilation
 RUN <<EOF
     mkdir -p /out/libs
