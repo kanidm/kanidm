@@ -11,26 +11,24 @@
 #![deny(clippy::unreachable)]
 
 use argon2::{Algorithm, Argon2, Params, PasswordHash, Version};
+use base64::engine::general_purpose;
 use base64::engine::GeneralPurpose;
 use base64::{alphabet, Engine};
-use tracing::{debug, error, trace, warn};
-
-use base64::engine::general_purpose;
 use base64urlsafedata::Base64UrlSafeData;
-use rand::Rng;
-use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::time::{Duration, Instant};
-
+use kanidm_hsm_crypto::{HmacKey, Tpm};
 use kanidm_proto::internal::OperationError;
 use openssl::error::ErrorStack as OpenSSLErrorStack;
 use openssl::hash::{self, MessageDigest};
 use openssl::nid::Nid;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::{Sha1, Sha256, Sha512};
+use rand::Rng;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use std::time::{Duration, Instant};
+use tracing::{debug, error, trace, warn};
 
-use kanidm_hsm_crypto::{HmacKey, Tpm};
-
+mod crypt_md5;
 pub mod mtls;
 pub mod prelude;
 pub mod serialise;
@@ -84,6 +82,7 @@ pub enum CryptoError {
     Argon2,
     Argon2Version,
     Argon2Parameters,
+    Crypt,
 }
 
 impl From<OpenSSLErrorStack> for CryptoError {
@@ -137,65 +136,15 @@ pub enum DbPasswordV1 {
     SHA512(Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
     NT_MD4(Vec<u8>),
-}
-
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
-pub enum ReplPasswordV1 {
-    TPM_ARGON2ID {
-        m_cost: u32,
-        t_cost: u32,
-        p_cost: u32,
-        version: u32,
-        salt: Base64UrlSafeData,
-        key: Base64UrlSafeData,
+    CRYPT_MD5 {
+        s: Base64UrlSafeData,
+        h: Base64UrlSafeData,
     },
-    ARGON2ID {
-        m_cost: u32,
-        t_cost: u32,
-        p_cost: u32,
-        version: u32,
-        salt: Base64UrlSafeData,
-        key: Base64UrlSafeData,
+    CRYPT_SHA256 {
+        h: String,
     },
-    PBKDF2 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    PBKDF2_SHA1 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    PBKDF2_SHA512 {
-        cost: usize,
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    SHA1 {
-        hash: Base64UrlSafeData,
-    },
-    SSHA1 {
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    SHA256 {
-        hash: Base64UrlSafeData,
-    },
-    SSHA256 {
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    SHA512 {
-        hash: Base64UrlSafeData,
-    },
-    SSHA512 {
-        salt: Base64UrlSafeData,
-        hash: Base64UrlSafeData,
-    },
-    NT_MD4 {
-        hash: Base64UrlSafeData,
+    CRYPT_SHA512 {
+        h: String,
     },
 }
 
@@ -214,6 +163,9 @@ impl fmt::Debug for DbPasswordV1 {
             DbPasswordV1::SHA512(_) => write!(f, "SHA512"),
             DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
             DbPasswordV1::NT_MD4(_) => write!(f, "NT_MD4"),
+            DbPasswordV1::CRYPT_MD5 { .. } => write!(f, "CRYPT_MD5"),
+            DbPasswordV1::CRYPT_SHA256 { .. } => write!(f, "CRYPT_SHA256"),
+            DbPasswordV1::CRYPT_SHA512 { .. } => write!(f, "CRYPT_SHA512"),
         }
     }
 }
@@ -436,6 +388,16 @@ enum Kdf {
     SSHA512(Vec<u8>, Vec<u8>),
     //     hash
     NT_MD4(Vec<u8>),
+    CRYPT_MD5 {
+        s: Vec<u8>,
+        h: Vec<u8>,
+    },
+    CRYPT_SHA256 {
+        h: String,
+    },
+    CRYPT_SHA512 {
+        h: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -498,78 +460,17 @@ impl TryFrom<DbPasswordV1> for Password {
             DbPasswordV1::NT_MD4(h) => Ok(Password {
                 material: Kdf::NT_MD4(h),
             }),
-        }
-    }
-}
-
-impl TryFrom<&ReplPasswordV1> for Password {
-    type Error = ();
-
-    fn try_from(value: &ReplPasswordV1) -> Result<Self, Self::Error> {
-        match value {
-            ReplPasswordV1::TPM_ARGON2ID {
-                m_cost,
-                t_cost,
-                p_cost,
-                version,
-                salt,
-                key,
-            } => Ok(Password {
-                material: Kdf::TPM_ARGON2ID {
-                    m_cost: *m_cost,
-                    t_cost: *t_cost,
-                    p_cost: *p_cost,
-                    version: *version,
-                    salt: salt.to_vec(),
-                    key: key.to_vec(),
+            DbPasswordV1::CRYPT_MD5 { s, h } => Ok(Password {
+                material: Kdf::CRYPT_MD5 {
+                    s: s.into(),
+                    h: h.into(),
                 },
             }),
-            ReplPasswordV1::ARGON2ID {
-                m_cost,
-                t_cost,
-                p_cost,
-                version,
-                salt,
-                key,
-            } => Ok(Password {
-                material: Kdf::ARGON2ID {
-                    m_cost: *m_cost,
-                    t_cost: *t_cost,
-                    p_cost: *p_cost,
-                    version: *version,
-                    salt: salt.to_vec(),
-                    key: key.to_vec(),
-                },
+            DbPasswordV1::CRYPT_SHA256 { h } => Ok(Password {
+                material: Kdf::CRYPT_SHA256 { h },
             }),
-            ReplPasswordV1::PBKDF2 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2(*cost, salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::PBKDF2_SHA1 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA1(*cost, salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::PBKDF2_SHA512 { cost, salt, hash } => Ok(Password {
-                material: Kdf::PBKDF2_SHA512(*cost, salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::SHA1 { hash } => Ok(Password {
-                material: Kdf::SHA1(hash.to_vec()),
-            }),
-            ReplPasswordV1::SSHA1 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA1(salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::SHA256 { hash } => Ok(Password {
-                material: Kdf::SHA256(hash.to_vec()),
-            }),
-            ReplPasswordV1::SSHA256 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA256(salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::SHA512 { hash } => Ok(Password {
-                material: Kdf::SHA512(hash.to_vec()),
-            }),
-            ReplPasswordV1::SSHA512 { salt, hash } => Ok(Password {
-                material: Kdf::SSHA512(salt.to_vec(), hash.to_vec()),
-            }),
-            ReplPasswordV1::NT_MD4 { hash } => Ok(Password {
-                material: Kdf::NT_MD4(hash.to_vec()),
+            DbPasswordV1::CRYPT_SHA512 { h } => Ok(Password {
+                material: Kdf::CRYPT_SHA256 { h },
             }),
         }
     }
@@ -664,6 +565,40 @@ impl TryFrom<&str> for Password {
 
         // Test 389ds/openldap formats. Shout outs openldap which sometimes makes these
         // lowercase.
+
+        if let Some(crypt) = value
+            .strip_prefix("{crypt}")
+            .or_else(|| value.strip_prefix("{CRYPT}"))
+        {
+            if let Some(crypt_md5_phc) = crypt.strip_prefix("$1$") {
+                let (salt, hash) = crypt_md5_phc.split_once('$').ok_or(())?;
+
+                // These are a hash64 format, so leave them as bytes, don't try
+                // to decode.
+                let s = salt.as_bytes().to_vec();
+                let h = hash.as_bytes().to_vec();
+
+                return Ok(Password {
+                    material: Kdf::CRYPT_MD5 { s, h },
+                });
+            }
+
+            if crypt.starts_with("$5$") {
+                return Ok(Password {
+                    material: Kdf::CRYPT_SHA256 {
+                        h: crypt.to_string(),
+                    },
+                });
+            }
+
+            if crypt.starts_with("$6$") {
+                return Ok(Password {
+                    material: Kdf::CRYPT_SHA512 {
+                        h: crypt.to_string(),
+                    },
+                });
+            }
+        } // End crypt
 
         if let Some(ds_ssha1) = value
             .strip_prefix("{SHA}")
@@ -1242,6 +1177,20 @@ impl Password {
                     })
                     .map(|chal_key| chal_key.as_ref() == key)
             }
+            (Kdf::CRYPT_MD5 { s, h }, _) => {
+                let chal_key = crypt_md5::do_md5_crypt(cleartext.as_bytes(), s);
+                Ok(chal_key == *h)
+            }
+            (Kdf::CRYPT_SHA256 { h }, _) => {
+                let is_valid = sha_crypt::sha256_check(cleartext, h.as_str()).is_ok();
+
+                Ok(is_valid)
+            }
+            (Kdf::CRYPT_SHA512 { h }, _) => {
+                let is_valid = sha_crypt::sha512_check(cleartext, h.as_str()).is_ok();
+
+                Ok(is_valid)
+            }
         }
     }
 
@@ -1293,80 +1242,12 @@ impl Password {
             Kdf::SHA512(hash) => DbPasswordV1::SHA512(hash.clone()),
             Kdf::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
             Kdf::NT_MD4(hash) => DbPasswordV1::NT_MD4(hash.clone()),
-        }
-    }
-
-    pub fn to_repl_v1(&self) -> ReplPasswordV1 {
-        match &self.material {
-            Kdf::TPM_ARGON2ID {
-                m_cost,
-                t_cost,
-                p_cost,
-                version,
-                salt,
-                key,
-            } => ReplPasswordV1::TPM_ARGON2ID {
-                m_cost: *m_cost,
-                t_cost: *t_cost,
-                p_cost: *p_cost,
-                version: *version,
-                salt: salt.clone().into(),
-                key: key.clone().into(),
+            Kdf::CRYPT_MD5 { s, h } => DbPasswordV1::CRYPT_MD5 {
+                s: s.clone().into(),
+                h: h.clone().into(),
             },
-            Kdf::ARGON2ID {
-                m_cost,
-                t_cost,
-                p_cost,
-                version,
-                salt,
-                key,
-            } => ReplPasswordV1::ARGON2ID {
-                m_cost: *m_cost,
-                t_cost: *t_cost,
-                p_cost: *p_cost,
-                version: *version,
-                salt: salt.clone().into(),
-                key: key.clone().into(),
-            },
-            Kdf::PBKDF2(cost, salt, hash) => ReplPasswordV1::PBKDF2 {
-                cost: *cost,
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::PBKDF2_SHA1(cost, salt, hash) => ReplPasswordV1::PBKDF2_SHA1 {
-                cost: *cost,
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::PBKDF2_SHA512(cost, salt, hash) => ReplPasswordV1::PBKDF2_SHA512 {
-                cost: *cost,
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::SHA1(hash) => ReplPasswordV1::SHA1 {
-                hash: hash.clone().into(),
-            },
-            Kdf::SSHA1(salt, hash) => ReplPasswordV1::SSHA1 {
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::SHA256(hash) => ReplPasswordV1::SHA256 {
-                hash: hash.clone().into(),
-            },
-            Kdf::SSHA256(salt, hash) => ReplPasswordV1::SSHA256 {
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::SHA512(hash) => ReplPasswordV1::SHA512 {
-                hash: hash.clone().into(),
-            },
-            Kdf::SSHA512(salt, hash) => ReplPasswordV1::SSHA512 {
-                salt: salt.clone().into(),
-                hash: hash.clone().into(),
-            },
-            Kdf::NT_MD4(hash) => ReplPasswordV1::NT_MD4 {
-                hash: hash.clone().into(),
-            },
+            Kdf::CRYPT_SHA256 { h } => DbPasswordV1::CRYPT_SHA256 { h: h.clone() },
+            Kdf::CRYPT_SHA512 { h } => DbPasswordV1::CRYPT_SHA512 { h: h.clone() },
         }
     }
 
@@ -1402,7 +1283,10 @@ impl Password {
             | Kdf::SSHA256(_, _)
             | Kdf::SHA512(_)
             | Kdf::SSHA512(_, _)
-            | Kdf::NT_MD4(_) => true,
+            | Kdf::NT_MD4(_)
+            | Kdf::CRYPT_MD5 { .. }
+            | Kdf::CRYPT_SHA256 { .. }
+            | Kdf::CRYPT_SHA512 { .. } => true,
         }
     }
 }
@@ -1658,6 +1542,39 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_password_from_crypt_md5() {
+        sketching::test_init();
+        let im_pw = "{crypt}$1$zaRIAsoe$7887GzjDTrst0XbDPpF5m.";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_crypt_sha256() {
+        sketching::test_init();
+        let im_pw = "{crypt}$5$3UzV7Sut8EHCUxlN$41V.jtMQmFAOucqI4ImFV43r.bRLjPlN.hyfoCdmGE2";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
+    }
+
+    #[test]
+    fn test_password_from_crypt_sha512() {
+        sketching::test_init();
+        let im_pw = "{crypt}$6$aXn8azL8DXUyuMvj$9aJJC/KEUwygIpf2MTqjQa.f0MEXNg2cGFc62Fet8XpuDVDedM05CweAlxW6GWxnmHqp14CRf6zU7OQoE/bCu0";
+        let password = "password";
+        let r = Password::try_from(im_pw).expect("Failed to parse");
+
+        assert!(r.requires_upgrade());
+        assert!(r.verify(password).unwrap_or(false));
     }
 
     #[test]

@@ -2978,10 +2978,12 @@ dependencies = [
  "hex",
  "kanidm-hsm-crypto",
  "kanidm_proto",
+ "md-5",
  "openssl",
  "openssl-sys",
  "rand",
  "serde",
+ "sha-crypt",
  "sha2",
  "sketching",
  "tracing",
@@ -3526,6 +3528,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a42bf938e4c9a6ad581cf528d5606eb50c5458ac759ca23719291e2f6499bec"
 dependencies = [
  "rand",
+]
+
+[[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest",
 ]
 
 [[package]]

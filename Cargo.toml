@@ -204,6 +204,7 @@ libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
 lru = "^0.12.5"
 mathru = "^0.13.0"
+md-5 = "0.10.6"
 mimalloc = "0.1.43"
 notify-debouncer-full = { version = "0.1" }
 num_enum = "^0.5.11"

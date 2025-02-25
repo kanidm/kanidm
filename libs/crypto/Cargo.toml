@@ -33,6 +33,9 @@ tracing = { workspace = true }
 uuid = { workspace = true }
 x509-cert = { workspace = true, features = ["pem"] }
 
+md-5 = { workspace = true }
+sha-crypt = { workspace = true }
+
 [dev-dependencies]
 sketching = { workspace = true }
 
