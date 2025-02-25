@@ -10,3 +10,4 @@ kanidmd/sampledata
 Makefile
 target
 test.db
+Dockerfile
