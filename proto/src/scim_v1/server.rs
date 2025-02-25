@@ -257,6 +257,98 @@ pub enum ScimValueKanidm {
     UiHints(Vec<UiHint>),
 }
 
+#[serde_as]
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct ScimPerson {
+    pub uuid: Uuid,
+    pub name: String,
+    pub displayname: String,
+    pub spn: String,
+    pub description: Option<String>,
+    pub mails: Vec<ScimMail>,
+    pub managed_by: Option<ScimReference>,
+    pub groups: Vec<ScimReference>,
+}
+
+impl TryFrom<ScimEntryKanidm> for ScimPerson {
+    type Error = ();
+
+    fn try_from(scim_entry: ScimEntryKanidm) -> Result<Self, Self::Error> {
+        let uuid = scim_entry.header.id;
+        let name = scim_entry
+            .attrs
+            .get(&Attribute::Name)
+            .and_then(|v| match v {
+                ScimValueKanidm::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .ok_or(())?;
+
+        let displayname = scim_entry
+            .attrs
+            .get(&Attribute::DisplayName)
+            .and_then(|v| match v {
+                ScimValueKanidm::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .ok_or(())?;
+
+        let spn = scim_entry
+            .attrs
+            .get(&Attribute::Spn)
+            .and_then(|v| match v {
+                ScimValueKanidm::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .ok_or(())?;
+
+        let description = scim_entry
+            .attrs
+            .get(&Attribute::Description)
+            .and_then(|v| match v {
+                ScimValueKanidm::String(s) => Some(s.clone()),
+                _ => None,
+            });
+
+        let mails = scim_entry
+            .attrs
+            .get(&Attribute::Mail)
+            .and_then(|v| match v {
+                ScimValueKanidm::Mail(m) => Some(m.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+
+        let groups = scim_entry
+            .attrs
+            .get(&Attribute::DirectMemberOf)
+            .and_then(|v| match v {
+                ScimValueKanidm::EntryReferences(v) => Some(v.clone()),
+                _ => None,
+            })
+            .unwrap_or_default();
+
+        let managed_by = scim_entry
+            .attrs
+            .get(&Attribute::EntryManagedBy)
+            .and_then(|v| match v {
+                ScimValueKanidm::EntryReference(v) => Some(v.clone()),
+                _ => None,
+            });
+
+        Ok(ScimPerson {
+            uuid,
+            name,
+            displayname,
+            spn,
+            description,
+            mails,
+            managed_by,
+            groups,
+        })
+    }
+}
+
 impl From<bool> for ScimValueKanidm {
     fn from(b: bool) -> Self {
         Self::Bool(b)

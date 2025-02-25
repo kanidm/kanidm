@@ -1,6 +1,6 @@
 use super::{QueryServerReadV1, QueryServerWriteV1};
 use kanidm_proto::scim_v1::{
-    server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
+    client::ScimFilter, server::ScimEntryKanidm, ScimEntryGetQuery, ScimSyncRequest, ScimSyncState,
 };
 use kanidmd_lib::idm::scim::{
     GenerateScimSyncTokenEvent, ScimSyncFinaliseEvent, ScimSyncTerminateEvent, ScimSyncUpdateEvent,
@@ -228,5 +228,28 @@ impl QueryServerReadV1 {
         idms_prox_read
             .qs_read
             .scim_entry_id_get_ext(target_uuid, class, query, ident)
+    }
+
+    #[instrument(
+        level = "info",
+        skip_all,
+        fields(uuid = ?eventid)
+    )]
+    pub async fn scim_entry_search(
+        &self,
+        client_auth_info: ClientAuthInfo,
+        eventid: Uuid,
+        filter: ScimFilter,
+        query: ScimEntryGetQuery,
+    ) -> Result<Vec<ScimEntryKanidm>, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read().await?;
+        let ident = idms_prox_read
+            .validate_client_auth_info_to_ident(client_auth_info, ct)
+            .inspect_err(|err| {
+                error!(?err, "Invalid identity");
+            })?;
+
+        idms_prox_read.qs_read.scim_search_ext(ident, filter, query)
     }
 }

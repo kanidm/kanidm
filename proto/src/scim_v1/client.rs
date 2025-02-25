@@ -1,7 +1,7 @@
 //! These are types that a client will send to the server.
 use super::ScimEntryGetQuery;
 use super::ScimOauth2ClaimMapJoinChar;
-use crate::attribute::Attribute;
+use crate::attribute::{Attribute, SubAttribute};
 use serde::{Deserialize, Serialize};
 use serde_json::Value as JsonValue;
 use serde_with::formats::PreferMany;
@@ -133,4 +133,60 @@ impl TryFrom<ScimEntryPutKanidm> for ScimEntryPutGeneric {
             query: Default::default(),
         })
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub struct AttrPath {
+    pub a: Attribute,
+    pub s: Option<SubAttribute>,
+}
+
+impl From<Attribute> for AttrPath {
+    fn from(a: Attribute) -> Self {
+        Self { a, s: None }
+    }
+}
+
+impl From<(Attribute, SubAttribute)> for AttrPath {
+    fn from((a, s): (Attribute, SubAttribute)) -> Self {
+        Self { a, s: Some(s) }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum ScimFilter {
+    Or(Box<ScimFilter>, Box<ScimFilter>),
+    And(Box<ScimFilter>, Box<ScimFilter>),
+    Not(Box<ScimFilter>),
+
+    Present(AttrPath),
+    Equal(AttrPath, JsonValue),
+    NotEqual(AttrPath, JsonValue),
+    Contains(AttrPath, JsonValue),
+    StartsWith(AttrPath, JsonValue),
+    EndsWith(AttrPath, JsonValue),
+    Greater(AttrPath, JsonValue),
+    Less(AttrPath, JsonValue),
+    GreaterOrEqual(AttrPath, JsonValue),
+    LessOrEqual(AttrPath, JsonValue),
+
+    Complex(Attribute, Box<ScimComplexFilter>),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+pub enum ScimComplexFilter {
+    Or(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
+    And(Box<ScimComplexFilter>, Box<ScimComplexFilter>),
+    Not(Box<ScimComplexFilter>),
+
+    Present(SubAttribute),
+    Equal(SubAttribute, JsonValue),
+    NotEqual(SubAttribute, JsonValue),
+    Contains(SubAttribute, JsonValue),
+    StartsWith(SubAttribute, JsonValue),
+    EndsWith(SubAttribute, JsonValue),
+    Greater(SubAttribute, JsonValue),
+    Less(SubAttribute, JsonValue),
+    GreaterOrEqual(SubAttribute, JsonValue),
+    LessOrEqual(SubAttribute, JsonValue),
 }

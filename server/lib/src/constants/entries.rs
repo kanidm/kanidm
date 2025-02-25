@@ -11,6 +11,7 @@ use crate::valueset::{ValueSet, ValueSetIutf8};
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
 use kanidm_proto::internal::OperationError;
+use kanidm_proto::scim_v1::JsonValue;
 use kanidm_proto::v1::AccountType;
 
 use uuid::Uuid;
@@ -126,6 +127,12 @@ impl From<EntryClass> for &'static str {
             EntryClass::TestClass => TEST_ENTRYCLASS_TEST_CLASS,
             EntryClass::User => ENTRYCLASS_USER,
         }
+    }
+}
+
+impl From<EntryClass> for JsonValue {
+    fn from(value: EntryClass) -> Self {
+        Self::String(value.as_ref().to_string())
     }
 }
 

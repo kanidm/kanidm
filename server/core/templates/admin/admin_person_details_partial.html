@@ -1,0 +1,29 @@
+(% macro string_attr(dispname, name, value, editable, attribute) %)
+(% if scim_effective_access.search.check(attribute|as_ref) %)
+<div class="row mt-3">
+    <label for="person(( name ))" class="col-12 col-md-3 col-lg-2 col-form-label fw-bold py-0">(( dispname ))</label>
+    <div class="col-12 col-md-8 col-lg-6">
+        <input readonly class="form-control-plaintext py-0" id="person(( name ))" name="(( name ))" value="(( value ))">
+    </div>
+</div>
+(% endif %)
+(% endmacro %)
+
+<form hx-validate="true" hx-ext="bs-validation">
+    (% call string_attr("UUID", "uuid", person.uuid, false, Attribute::Uuid) %)
+    (% call string_attr("SPN", "spn", person.spn, false, Attribute::Spn) %)
+    (% call string_attr("Name", "name", person.name, true, Attribute::Name) %)
+    (% call string_attr("Displayname", "displayname", person.displayname, true, Attribute::DisplayName) %)
+
+    (% if let Some(description) = person.description %)
+        (% call string_attr("Description", "description", description, true, Attribute::Description) %)
+    (% else %)
+        (% call string_attr("Description", "description", "none", true, Attribute::Description) %)
+    (% endif %)
+
+    (% if let Some(entry_managed_by) = person.managed_by %)
+        (% call string_attr("Managed By", "managed_by", entry_managed_by.value, true, Attribute::EntryManagedBy) %)
+    (% else %)
+        (% call string_attr("Managed By", "managed_by", "none", true, Attribute::EntryManagedBy) %)
+    (% endif %)
+</form>

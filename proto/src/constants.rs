@@ -220,6 +220,8 @@ pub const ATTR_VERSION: &str = "version";
 pub const ATTR_WEBAUTHN_ATTESTATION_CA_LIST: &str = "webauthn_attestation_ca_list";
 pub const ATTR_ALLOW_PRIMARY_CRED_FALLBACK: &str = "allow_primary_cred_fallback";
 
+pub const SUB_ATTR_PRIMARY: &str = "primary";
+
 pub const OAUTH2_SCOPE_EMAIL: &str = ATTR_EMAIL;
 pub const OAUTH2_SCOPE_GROUPS: &str = "groups";
 pub const OAUTH2_SCOPE_SSH_PUBLICKEYS: &str = "ssh_publickeys";
