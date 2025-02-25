@@ -1080,20 +1080,15 @@ pub async fn create_server_core(
         Some(la) => {
             let opt_ldap_ssl_acceptor = maybe_tls_acceptor.clone();
 
-            if !config_test {
-                // ⚠️  only start the sockets and listeners in non-config-test modes.
-                let h = ldaps::create_ldap_server(
-                    la.as_str(),
-                    opt_ldap_ssl_acceptor,
-                    server_read_ref,
-                    broadcast_tx.subscribe(),
-                    ldap_tls_acceptor_reload_rx,
-                )
-                .await?;
-                Some(h)
-            } else {
-                None
-            }
+            let h = ldaps::create_ldap_server(
+                la.as_str(),
+                opt_ldap_ssl_acceptor,
+                server_read_ref,
+                broadcast_tx.subscribe(),
+                ldap_tls_acceptor_reload_rx,
+            )
+            .await?;
+            Some(h)
         }
         None => {
             debug!("LDAP not requested, skipping");

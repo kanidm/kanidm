@@ -9,7 +9,7 @@ use std::str::FromStr;
 use url::Url;
 
 #[kanidmd_testkit::test]
-async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
+async fn test_sync_account_lifecycle(rsclient: &KanidmClient) {
     let a_res = rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
         .await;
@@ -104,7 +104,7 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
 }
 
 #[kanidmd_testkit::test]
-async fn test_scim_sync_entry_get(rsclient: KanidmClient) {
+async fn test_scim_sync_entry_get(rsclient: &KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;

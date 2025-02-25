@@ -205,7 +205,7 @@ pub(crate) trait IdlSqliteTransaction {
         let mut stmt = self
             .get_conn()?
             .prepare(&format!(
-                "SELECT rowid from {}.sqlite_master where name = :tname LIMIT 1",
+                "SELECT rowid from {}.sqlite_master where type=\"table\" AND name = :tname LIMIT 1",
                 self.get_db_name()
             ))
             .map_err(sqlite_error)?;

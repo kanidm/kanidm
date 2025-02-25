@@ -6,6 +6,7 @@ mod https_extractors;
 mod https_middleware;
 mod identity_verification_tests;
 mod integration;
+mod ldap_basic;
 mod mtls_test;
 mod oauth2_test;
 mod person;

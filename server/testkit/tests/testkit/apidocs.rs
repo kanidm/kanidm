@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use tracing::info;
 
 #[kanidmd_testkit::test]
-async fn check_that_the_swagger_api_loads(rsclient: kanidm_client::KanidmClient) {
+async fn check_that_the_swagger_api_loads(rsclient: &kanidm_client::KanidmClient) {
     #[derive(Serialize, Deserialize, Debug)]
     struct OpenAPIResponse {
         pub openapi: String,
