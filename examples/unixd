@@ -3,6 +3,9 @@
 # The configuration file version.
 version = '2'
 
+# ⚠️  Ensure that you have the [kanidm] or other provider sections below
+# configured else accounts from remote sources will not be available.
+
 # Kanidm unix will bind all cached credentials to a local Hardware Security
 # Module (HSM) to prevent exfiltration and attacks against these. In addition,
 # any internal private keys will also be stored in this HSM.
@@ -136,6 +139,7 @@ version = '2'
 # allow_local_account_override = ["admin"]
 
 
+# ========================================
 # This section enables the Kanidm provider
 [kanidm]
 
