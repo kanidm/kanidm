@@ -41,7 +41,7 @@ jobs:
             libsystemd-dev
 
       - name: "Build the workspace"
-        run: cargo build --workspace
+        run: cargo build --locked --workspace
       - name: "Check disk space and size of target, then clean it"
         run: |
           df -h
@@ -89,7 +89,7 @@ jobs:
             libsystemd-dev
 
       - name: "Build the workspace"
-        run: cargo build --workspace
+        run: cargo build --locked --workspace
       - name: "Check disk space and size of target, then clean it"
         run: |
           df -h
