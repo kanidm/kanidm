@@ -20,7 +20,7 @@ echo $RUSTC_WRAPPER && \
 echo $RUSTFLAGS && \
 echo $CC && \
 cargo build \
-    --offline \
+    --frozen \
     --features=concread/simd_support,libsqlite3-sys/bundled \
     --release; \
 if [ "${SCCACHE_REDIS}" != "" ]; \
