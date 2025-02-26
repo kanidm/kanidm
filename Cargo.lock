@@ -3075,47 +3075,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_unix_int"
-version = "1.6.0-dev"
-dependencies = [
- "async-trait",
- "bytes",
- "clap",
- "clap_complete",
- "dialoguer",
- "futures",
- "hashbrown 0.14.5",
- "kanidm-hsm-crypto",
- "kanidm_build_profiles",
- "kanidm_client",
- "kanidm_lib_crypto",
- "kanidm_lib_file_permissions",
- "kanidm_proto",
- "kanidm_unix_common",
- "kanidm_utils_users",
- "kanidmd_core",
- "kanidmd_testkit",
- "libc",
- "lru 0.12.5",
- "mimalloc",
- "notify-debouncer-full",
- "prctl",
- "rusqlite",
- "sd-notify",
- "selinux",
- "serde",
- "serde_json",
- "sketching",
- "time",
- "tokio",
- "tokio-util",
- "toml",
- "tracing",
- "uuid",
- "walkdir",
-]
-
-[[package]]
 name = "kanidm_utils_users"
 version = "1.6.0-dev"
 dependencies = [
@@ -3731,7 +3690,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nss_kanidm"
+name = "nss_sparkle"
 version = "1.6.0-dev"
 dependencies = [
  "cc",
@@ -4128,7 +4087,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b15813163c1d831bf4a13c3610c05c0d03b39feb07f7e09fa234dac9b15aaf39"
 
 [[package]]
-name = "pam_kanidm"
+name = "pam_sparkle"
 version = "1.6.0-dev"
 dependencies = [
  "kanidm_unix_common",
@@ -5289,6 +5248,47 @@ checksum = "c970269d99b64e60ec3bd6ad27270092a5394c4e309314b18ae3fe575695fbe8"
 dependencies = [
  "libc",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "sparkle_unix_int"
+version = "1.6.0-dev"
+dependencies = [
+ "async-trait",
+ "bytes",
+ "clap",
+ "clap_complete",
+ "dialoguer",
+ "futures",
+ "hashbrown 0.14.5",
+ "kanidm-hsm-crypto",
+ "kanidm_build_profiles",
+ "kanidm_client",
+ "kanidm_lib_crypto",
+ "kanidm_lib_file_permissions",
+ "kanidm_proto",
+ "kanidm_unix_common",
+ "kanidm_utils_users",
+ "kanidmd_core",
+ "kanidmd_testkit",
+ "libc",
+ "lru 0.12.5",
+ "mimalloc",
+ "notify-debouncer-full",
+ "prctl",
+ "rusqlite",
+ "sd-notify",
+ "selinux",
+ "serde",
+ "serde_json",
+ "sketching",
+ "time",
+ "tokio",
+ "tokio-util",
+ "toml",
+ "tracing",
+ "uuid",
+ "walkdir",
 ]
 
 [[package]]
