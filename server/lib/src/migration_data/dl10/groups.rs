@@ -173,7 +173,7 @@ lazy_static! {
 
     /// Builtin IDM Group for granting elevated people (personal data) read permissions.
     pub static ref BUILTIN_GROUP_PEOPLE_PII_READ: BuiltinGroup = BuiltinGroup {
-        name: "idm_people_pii_read",
+        name: NAME_IDM_PEOPLE_PII_READ,
         description: "Builtin IDM Group for granting elevated people (personal data) read permissions.",
         uuid: UUID_IDM_PEOPLE_PII_READ,
         entry_managed_by: Some(UUID_IDM_ADMINS),
