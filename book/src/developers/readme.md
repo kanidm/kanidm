@@ -100,20 +100,15 @@ You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 ### SUSE / OpenSUSE
 
+> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
+
 You will need to install rustup and our build dependencies with:
 
 ```bash
-zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel pam-devel systemd-devel tpm2-0-tss-devel
+zypper in rustup git libudev-devel sqlite3-devel libopenssl-3-devel libselinux-devel \
+    pam-devel systemd-devel tpm2-0-tss-devel clang lld make sccache
 ```
-
 You can then use rustup to complete the setup of the toolchain.
-
-In some cases you may need to build other vendored components, or use an alternate linker. In these
-cases we advise you to also install.
-
-```bash
-zypper in clang lld make sccache
-```
 
 You should also adjust your environment with:
 
@@ -123,25 +118,16 @@ export CC="sccache /usr/bin/clang"
 export CXX="sccache /usr/bin/clang++"
 ```
 
-And add the following to a cargo config of your choice (such as ~/.cargo/config), adjusting for cpu
-arch
-
-```toml
-[target.aarch64-unknown-linux-gnu]
-linker = "clang"
-rustflags = [
-    "-C", "link-arg=-fuse-ld=lld",
-]
-```
-
 ### Fedora
+
+> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 You will also need some system libraries to build this:
 
 ```text
-systemd-devel sqlite-devel openssl-devel pam-devel
+systemd-devel sqlite-devel openssl-devel pam-devel clang lld
 ```
 
 Building the Web UI requires additional packages:
@@ -152,12 +138,14 @@ perl-FindBin perl-File-Compare
 
 ### Ubuntu
 
+> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
+
 You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 You will also need some system libraries to build this, which can be installed by running:
 
 ```bash
-sudo apt-get install libudev-dev libssl-dev libsystemd-dev pkg-config libpam0g-dev
+sudo apt-get install libudev-dev libssl-dev libsystemd-dev pkg-config libpam0g-dev clang lld
 ```
 
 Tested with Ubuntu 20.04 and 22.04.
