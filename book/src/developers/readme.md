@@ -100,7 +100,7 @@ You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
 ### SUSE / OpenSUSE
 
-> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
+> NOTE: clang and lld are required to build Kanidm due to performance issues with GCC/ld
 
 You will need to install rustup and our build dependencies with:
 
@@ -120,7 +120,7 @@ export CXX="sccache /usr/bin/clang++"
 
 ### Fedora
 
-> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
+> NOTE: clang and lld are required to build Kanidm due to performance issues with GCC/ld
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
@@ -138,7 +138,7 @@ perl-FindBin perl-File-Compare
 
 ### Ubuntu
 
-> NOTE: clang and lld are required to build kanidm due to performance issues with gcc/ld
+> NOTE: clang and lld are required to build Kanidm due to performance issues with GCC/ld
 
 You need [rustup](https://rustup.rs/) to install a Rust toolchain.
 
