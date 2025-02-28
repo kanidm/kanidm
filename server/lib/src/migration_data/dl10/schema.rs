@@ -1,7 +1,4 @@
-//! Core Constants
-//!
-//! Schema uuids start at `00000000-0000-0000-0000-ffff00000000`
-//!
+//! Schema Entries
 use crate::constants::entries::{Attribute, EntryClass};
 use crate::constants::uuids::*;
 use crate::schema::{SchemaAttribute, SchemaClass};

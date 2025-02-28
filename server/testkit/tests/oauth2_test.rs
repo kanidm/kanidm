@@ -12,7 +12,8 @@ use kanidm_proto::oauth2::{
     AccessTokenResponse, AccessTokenType, AuthorisationResponse, GrantTypeReq,
     OidcDiscoveryResponse,
 };
-use kanidmd_lib::prelude::{Attribute, IDM_ALL_ACCOUNTS};
+use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
+use kanidmd_lib::prelude::Attribute;
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
 use reqwest::StatusCode;
@@ -98,7 +99,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     rsclient
         .idm_oauth2_rs_update_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
@@ -107,7 +108,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![ADMIN_TEST_USER],
         )
         .await
@@ -627,7 +628,7 @@ async fn test_oauth2_openid_public_flow_impl(
     rsclient
         .idm_oauth2_rs_update_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
@@ -636,7 +637,7 @@ async fn test_oauth2_openid_public_flow_impl(
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![ADMIN_TEST_USER],
         )
         .await
@@ -647,7 +648,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .idm_oauth2_rs_update_claim_map(
             TEST_INTEGRATION_RS_ID,
             "test_claim",
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             &["claim_a".to_string(), "claim_b".to_string()],
         )
         .await

@@ -1,20 +1,12 @@
 //! Constant Entries for the IDM
 use std::fmt::Display;
 
-use crate::constants::groups::idm_builtin_admin_groups;
-use crate::constants::uuids::*;
-use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
-use crate::idm::account::Account;
 use crate::value::PartialValue;
 use crate::value::Value;
 use crate::valueset::{ValueSet, ValueSetIutf8};
 pub use kanidm_proto::attribute::Attribute;
 use kanidm_proto::constants::*;
-use kanidm_proto::internal::OperationError;
 use kanidm_proto::scim_v1::JsonValue;
-use kanidm_proto::v1::AccountType;
-
-use uuid::Uuid;
 
 //TODO: This would do well in the proto lib
 // together with all the other definitions.
@@ -202,158 +194,9 @@ impl EntryClass {
     }
 }
 
-lazy_static! {
-    /// Builtin System Admin account.
-    pub static ref BUILTIN_ACCOUNT_IDM_ADMIN: BuiltinAccount = BuiltinAccount {
-        account_type: AccountType::ServiceAccount,
-        entry_managed_by: None,
-        name: "idm_admin",
-        uuid: UUID_IDM_ADMIN,
-        description: "Builtin IDM Admin account.",
-        displayname: "IDM Administrator",
-    };
-
-    pub static ref E_SYSTEM_INFO_V1: EntryInitNew = entry_init!(
-        (Attribute::Class, EntryClass::Object.to_value()),
-        (Attribute::Class, EntryClass::SystemInfo.to_value()),
-        (Attribute::Class, EntryClass::System.to_value()),
-        (Attribute::Uuid, Value::Uuid(UUID_SYSTEM_INFO)),
-        (
-            Attribute::Description,
-            Value::new_utf8s("System (local) info and metadata object.")
-        ),
-        (Attribute::Version, Value::Uint32(20))
-    );
-
-    pub static ref E_DOMAIN_INFO_DL6: EntryInitNew = entry_init!(
-        (Attribute::Class, EntryClass::Object.to_value()),
-        (Attribute::Class, EntryClass::DomainInfo.to_value()),
-        (Attribute::Class, EntryClass::System.to_value()),
-        (Attribute::Class, EntryClass::KeyObject.to_value()),
-        (Attribute::Class, EntryClass::KeyObjectJwtEs256.to_value()),
-        (Attribute::Class, EntryClass::KeyObjectJweA128GCM.to_value()),
-        (Attribute::Name, Value::new_iname("domain_local")),
-        (Attribute::Uuid, Value::Uuid(UUID_DOMAIN_INFO)),
-        (
-            Attribute::Description,
-            Value::new_utf8s("This local domain's info and metadata object.")
-        )
-    );
-}
-
-#[derive(Debug, Clone)]
-/// Built in accounts such as anonymous, idm_admin and admin
-pub struct BuiltinAccount {
-    pub account_type: kanidm_proto::v1::AccountType,
-    pub entry_managed_by: Option<uuid::Uuid>,
-    pub name: &'static str,
-    pub uuid: Uuid,
-    pub description: &'static str,
-    pub displayname: &'static str,
-}
-
-impl Default for BuiltinAccount {
-    fn default() -> Self {
-        BuiltinAccount {
-            account_type: AccountType::ServiceAccount,
-            entry_managed_by: None,
-            name: "",
-            uuid: Uuid::new_v4(),
-            description: "<set description>",
-            displayname: "<set displayname>",
-        }
-    }
-}
-
-impl From<BuiltinAccount> for Account {
-    fn from(value: BuiltinAccount) -> Self {
-        #[allow(clippy::panic)]
-        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
-            panic!("Builtin ACP has invalid UUID! {:?}", value);
-        }
-        Account {
-            name: value.name.to_string(),
-            uuid: value.uuid,
-            displayname: value.displayname.to_string(),
-            spn: format!("{}@example.com", value.name),
-            mail_primary: None,
-            mail: Vec::with_capacity(0),
-            ..Default::default()
-        }
-    }
-}
-
-impl From<BuiltinAccount> for EntryInitNew {
-    fn from(value: BuiltinAccount) -> Self {
-        let mut entry = EntryInitNew::new();
-        entry.add_ava(Attribute::Name, Value::new_iname(value.name));
-        #[allow(clippy::panic)]
-        if value.uuid >= DYNAMIC_RANGE_MINIMUM_UUID {
-            panic!("Builtin ACP has invalid UUID! {:?}", value);
-        }
-        entry.add_ava(Attribute::Uuid, Value::Uuid(value.uuid));
-        entry.add_ava(Attribute::Description, Value::new_utf8s(value.description));
-        entry.add_ava(Attribute::DisplayName, Value::new_utf8s(value.displayname));
-
-        if let Some(entry_manager) = value.entry_managed_by {
-            entry.add_ava(Attribute::EntryManagedBy, Value::Refer(entry_manager));
-        }
-
-        entry.set_ava(
-            Attribute::Class,
-            vec![
-                EntryClass::Account.to_value(),
-                EntryClass::MemberOf.to_value(),
-                EntryClass::Object.to_value(),
-            ],
-        );
-        match value.account_type {
-            AccountType::Person => entry.add_ava(Attribute::Class, EntryClass::Person.to_value()),
-            AccountType::ServiceAccount => {
-                entry.add_ava(Attribute::Class, EntryClass::ServiceAccount.to_value())
-            }
-        }
-        entry
-    }
-}
-
-lazy_static! {
-    /// Builtin System Admin account.
-    pub static ref BUILTIN_ACCOUNT_ADMIN: BuiltinAccount = BuiltinAccount {
-        account_type: AccountType::ServiceAccount,
-        entry_managed_by: None,
-        name: "admin",
-        uuid: UUID_ADMIN,
-        description: "Builtin System Admin account.",
-        displayname: "System Administrator",
-    };
-}
-
-lazy_static! {
-    pub static ref BUILTIN_ACCOUNT_ANONYMOUS_DL6: BuiltinAccount = BuiltinAccount {
-        account_type: AccountType::ServiceAccount,
-        entry_managed_by: Some(UUID_IDM_ADMINS),
-        name: "anonymous",
-        uuid: UUID_ANONYMOUS,
-        description: "Anonymous access account.",
-        displayname: "Anonymous",
-    };
-}
-
-pub fn builtin_accounts() -> Vec<&'static BuiltinAccount> {
-    vec![
-        &BUILTIN_ACCOUNT_ADMIN,
-        &BUILTIN_ACCOUNT_IDM_ADMIN,
-        &BUILTIN_ACCOUNT_ANONYMOUS_DL6,
-    ]
-}
-
 // ============ TEST DATA ============
 #[cfg(test)]
-pub const UUID_TESTPERSON_1: Uuid = ::uuid::uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930");
-
-#[cfg(test)]
-pub const UUID_TESTPERSON_2: Uuid = ::uuid::uuid!("538faac7-4d29-473b-a59d-23023ac19955");
+use crate::entry::{Entry, EntryInit, EntryInitNew, EntryNew};
 
 #[cfg(test)]
 lazy_static! {
@@ -363,7 +206,10 @@ lazy_static! {
         (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson1")),
         (Attribute::DisplayName, Value::new_utf8s("Test Person 1")),
-        (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_1))
+        (
+            Attribute::Uuid,
+            Value::Uuid(super::uuids::UUID_TESTPERSON_1)
+        )
     );
     pub static ref E_TESTPERSON_2: EntryInitNew = entry_init!(
         (Attribute::Class, EntryClass::Object.to_value()),
@@ -371,28 +217,9 @@ lazy_static! {
         (Attribute::Class, EntryClass::Person.to_value()),
         (Attribute::Name, Value::new_iname("testperson2")),
         (Attribute::DisplayName, Value::new_utf8s("Test Person 2")),
-        (Attribute::Uuid, Value::Uuid(UUID_TESTPERSON_2))
+        (
+            Attribute::Uuid,
+            Value::Uuid(super::uuids::UUID_TESTPERSON_2)
+        )
     );
-}
-
-// ⚠️  DOMAIN LEVEL 1 ENTRIES ⚠️
-// Future entries need to be added via migrations.
-//
-// DO NOT MODIFY THIS DEFINITION
-
-/// Build a list of internal admin entries
-pub fn idm_builtin_admin_entries() -> Result<Vec<EntryInitNew>, OperationError> {
-    let mut res: Vec<EntryInitNew> = vec![
-        BUILTIN_ACCOUNT_ADMIN.clone().into(),
-        BUILTIN_ACCOUNT_IDM_ADMIN.clone().into(),
-    ];
-    for group in idm_builtin_admin_groups() {
-        let g: EntryInitNew = group.clone().try_into()?;
-        res.push(g);
-    }
-
-    // We need to push anonymous *after* groups due to entry-managed-by
-    res.push(BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into());
-
-    Ok(res)
 }
