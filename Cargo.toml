@@ -157,12 +157,12 @@ axum-htmx = { version = "0.5.0", features = ["serde", "guards"] }
 base32 = "^0.5.1"
 base64 = "^0.22.1"
 base64urlsafedata = "0.5.1"
-bitflags = "^2.8.0"
+bitflags = "^2.9.0"
 bytes = "^1.9.0"
-clap = { version = "^4.5.27", features = ["derive", "env"] }
-clap_complete = "^4.5.42"
+clap = { version = "^4.5.31", features = ["derive", "env"] }
+clap_complete = "^4.5.46"
 # Forced by saffron/cron
-chrono = "^0.4.39"
+chrono = "^0.4.40"
 compact_jwt = { version = "^0.4.2", default-features = false }
 concread = "^0.5.3"
 cron = "0.15.0"
@@ -190,7 +190,7 @@ image = { version = "0.24.9", default-features = false, features = [
     "jpeg",
     "webp",
 ] }
-itertools = "0.13.0"
+itertools = "0.14.0"
 enum-iterator = "2.1.0"
 kanidmd_web_ui_shared = { path = "./server/web_ui/shared" }
 # REMOVE this
@@ -198,11 +198,11 @@ lazy_static = "^1.5.0"
 ldap3_client = "^0.5.2"
 ldap3_proto = { version = "^0.5.2", features = ["serde"] }
 
-libc = "^0.2.168"
+libc = "^0.2.170"
 libnss = "^0.8.0"
 libsqlite3-sys = "^0.25.2"
 lodepng = "3.11.0"
-lru = "^0.12.5"
+lru = "^0.13.0"
 mathru = "^0.13.0"
 md-5 = "0.10.6"
 mimalloc = "0.1.43"
@@ -283,7 +283,7 @@ url = "^2.5.2"
 urlencoding = "2.1.3"
 utoipa = { version = "4.2.0", features = ["url", "uuid"] }
 utoipa-swagger-ui = "6.0.0"
-uuid = "^1.12.1"
+uuid = "^1.15.1"
 
 webauthn-authenticator-rs = { version = "0.5.1", features = [
     "softpasskey",
