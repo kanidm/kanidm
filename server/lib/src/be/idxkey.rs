@@ -155,3 +155,9 @@ impl Ord for (dyn IdlCacheKeyToRef + '_) {
         self.keyref().cmp(&other.keyref())
     }
 }
+
+#[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
+pub struct IdxNameKey {
+    pub a: Attribute,
+    pub i: IndexType,
+}

@@ -205,12 +205,15 @@ pub(crate) trait IdlSqliteTransaction {
         let mut stmt = self
             .get_conn()?
             .prepare(&format!(
-                "SELECT COUNT(name) from {}.sqlite_master where name = :tname",
+                "SELECT rowid from {}.sqlite_master where name = :tname LIMIT 1",
                 self.get_db_name()
             ))
             .map_err(sqlite_error)?;
+
         let i: Option<i64> = stmt
             .query_row(&[(":tname", tname)], |row| row.get(0))
+            // If the row doesn't exist, we don't mind.
+            .optional()
             .map_err(sqlite_error)?;
 
         match i {

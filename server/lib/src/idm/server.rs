@@ -143,8 +143,9 @@ impl IdmServer {
     pub async fn new(
         qs: QueryServer,
         origin: &str,
+        is_integration_test: bool,
     ) -> Result<(IdmServer, IdmServerDelayed, IdmServerAudit), OperationError> {
-        let crypto_policy = if cfg!(test) {
+        let crypto_policy = if cfg!(test) || is_integration_test {
             CryptoPolicy::danger_test_minimum()
         } else {
             // This is calculated back from:

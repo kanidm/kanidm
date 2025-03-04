@@ -18,7 +18,8 @@ use crate::be::idl_sqlite::{
     IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::idxkey::{
-    IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef, IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope,
+    IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef, IdxKey, IdxKeyRef, IdxKeyToRef, IdxNameKey,
+    IdxSlope,
 };
 use crate::be::keystorage::{KeyHandle, KeyHandleId};
 use crate::be::{BackendConfig, IdList, IdRawEntry};
@@ -34,6 +35,10 @@ const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
 const DEFAULT_CACHE_RMISS: usize = 0;
 const DEFAULT_CACHE_WMISS: usize = 0;
+
+const DEFAULT_IDX_CACHE_RMISS: usize = 8;
+const DEFAULT_IDX_CACHE_WMISS: usize = 16;
+const DEFAULT_IDX_EXISTS_TARGET: usize = 256;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum NameCacheKey {
@@ -55,6 +60,9 @@ pub struct IdlArcSqlite {
     entry_cache: ARCache<u64, Arc<EntrySealedCommitted>>,
     idl_cache: ARCache<IdlCacheKey, Box<IDLBitRange>>,
     name_cache: ARCache<NameCacheKey, NameCacheValue>,
+
+    idx_exists_cache: ARCache<IdxNameKey, bool>,
+
     op_ts_max: CowCell<Option<Duration>>,
     allids: CowCell<IDLBitRange>,
     maxid: CowCell<u64>,
@@ -66,6 +74,8 @@ pub struct IdlArcSqliteReadTransaction<'a> {
     entry_cache: ARCacheReadTxn<'a, u64, Arc<EntrySealedCommitted>, ()>,
     idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>, ()>,
     name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue, ()>,
+
+    idx_exists_cache: ARCacheReadTxn<'a, IdxNameKey, bool, ()>,
     allids: CowCellReadTxn<IDLBitRange>,
 }
 
@@ -74,6 +84,9 @@ pub struct IdlArcSqliteWriteTransaction<'a> {
     entry_cache: ARCacheWriteTxn<'a, u64, Arc<EntrySealedCommitted>, ()>,
     idl_cache: ARCacheWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>, ()>,
     name_cache: ARCacheWriteTxn<'a, NameCacheKey, NameCacheValue, ()>,
+
+    idx_exists_cache: ARCacheWriteTxn<'a, IdxNameKey, bool, ()>,
+
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
     allids: CowCellWriteTxn<'a, IDLBitRange>,
     maxid: CowCellWriteTxn<'a, u64>,
@@ -178,8 +191,8 @@ macro_rules! get_idl {
         // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
         // are allocated to reduce some allocs? Probably over thinking it at
         // this point.
-        //
-        // First attempt to get from this cache.
+
+        // Now attempt to get from this cache.
         let cache_key = IdlCacheKeyRef {
             a: $attr,
             i: $itype,
@@ -195,16 +208,47 @@ macro_rules! get_idl {
             );
             return Ok(Some(data.as_ref().clone()));
         }
+
+        // If it was a miss, does the  actually exist in the DB?
+        let idx_key = IdxNameKey {
+            a: $attr.clone(),
+            i: $itype,
+        };
+        let idx_r = $self.idx_exists_cache.get(&idx_key);
+        if idx_r == Some(&false) {
+            // The idx does not exist - bail early.
+            return Ok(None)
+        }
+
+        // The table either exists and we don't have data on it yet,
+        // or it does not exist and we need to hear back from the lower level
+
         // If miss, get from db *and* insert to the cache.
         let db_r = $self.db.get_idl($attr, $itype, $idx_key)?;
+
         if let Some(ref idl) = db_r {
+            if idx_r == None {
+                // It exists, so track that data, because we weren't
+                // previously tracking it.
+                $self.idx_exists_cache.insert(idx_key, true)
+            }
+
             let ncache_key = IdlCacheKey {
                 a: $attr.clone(),
                 i: $itype.clone(),
                 k: $idx_key.into(),
             };
             $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
-        }
+        } else {
+            // The DB was unable to return this idx because table backing the
+            // idx does not exist. We should cache this to prevent repeat hits
+            // on sqlite until the db does exist, at which point the cache is
+            // cleared anyway.
+            //
+            // NOTE: If the db idx misses it returns Some(empty_set), so this
+            // only caches missing index tables.
+            $self.idx_exists_cache.insert(idx_key, false)
+        };
         Ok(db_r)
     }};
 }
@@ -593,6 +637,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
          */
         self.entry_cache.clear();
         self.idl_cache.clear();
+        self.idx_exists_cache.clear();
         self.name_cache.clear();
         Ok(())
     }
@@ -604,6 +649,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
             mut entry_cache,
             mut idl_cache,
             mut name_cache,
+            idx_exists_cache,
             op_ts_max,
             allids,
             maxid,
@@ -677,6 +723,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
         // Can no longer fail from this point.
         op_ts_max.commit();
         name_cache.commit();
+        idx_exists_cache.commit();
         idl_cache.commit();
         allids.commit();
         maxid.commit();
@@ -708,6 +755,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
         *self.maxid = mid;
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn write_identries<'b, I>(&'b mut self, mut entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
@@ -757,6 +805,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
         })
     }
 
+    #[instrument(level = "trace", skip_all)]
     pub fn write_idl(
         &mut self,
         attr: &Attribute,
@@ -1127,9 +1176,17 @@ impl IdlArcSqliteWriteTransaction<'_> {
         Ok(())
     }
 
-    pub fn create_idx(&self, attr: &Attribute, itype: IndexType) -> Result<(), OperationError> {
-        // We don't need to affect this, so pass it down.
-        self.db.create_idx(attr, itype)
+    pub fn create_idx(&mut self, attr: &Attribute, itype: IndexType) -> Result<(), OperationError> {
+        self.db.create_idx(attr, itype)?;
+
+        // Cache that this exists since we just made it.
+        let idx_key = IdxNameKey {
+            a: attr.clone(),
+            i: itype,
+        };
+        self.idx_exists_cache.insert(idx_key, true);
+
+        Ok(())
     }
 
     /// ⚠️  - This function will destroy all indexes in the database.
@@ -1141,6 +1198,7 @@ impl IdlArcSqliteWriteTransaction<'_> {
         debug!("CLEARING CACHE");
         self.db.danger_purge_idxs().map(|()| {
             self.idl_cache.clear();
+            self.idx_exists_cache.clear();
             self.name_cache.clear();
         })
     }
@@ -1266,6 +1324,21 @@ impl IdlArcSqlite {
                 OperationError::InvalidState
             })?;
 
+        let idx_exists_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                DEFAULT_IDX_EXISTS_TARGET,
+                cfg.pool_size as usize,
+                DEFAULT_IDX_CACHE_RMISS,
+                DEFAULT_IDX_CACHE_WMISS,
+                true,
+            )
+            .set_reader_quiesce(true)
+            .build()
+            .ok_or_else(|| {
+                admin_error!("Failed to construct idx_exists_cache");
+                OperationError::InvalidState
+            })?;
+
         let allids = CowCell::new(IDLBitRange::new());
 
         let maxid = CowCell::new(0);
@@ -1279,6 +1352,7 @@ impl IdlArcSqlite {
             entry_cache,
             idl_cache,
             name_cache,
+            idx_exists_cache,
             op_ts_max,
             allids,
             maxid,
@@ -1298,6 +1372,7 @@ impl IdlArcSqlite {
         let db_read = self.db.read()?;
         let idl_cache_read = self.idl_cache.read();
         let name_cache_read = self.name_cache.read();
+        let idx_exists_cache_read = self.idx_exists_cache.read();
         let allids_read = self.allids.read();
 
         Ok(IdlArcSqliteReadTransaction {
@@ -1305,6 +1380,7 @@ impl IdlArcSqlite {
             entry_cache: entry_cache_read,
             idl_cache: idl_cache_read,
             name_cache: name_cache_read,
+            idx_exists_cache: idx_exists_cache_read,
             allids: allids_read,
         })
     }
@@ -1315,6 +1391,7 @@ impl IdlArcSqlite {
         let db_write = self.db.write()?;
         let idl_cache_write = self.idl_cache.write();
         let name_cache_write = self.name_cache.write();
+        let idx_exists_cache_write = self.idx_exists_cache.write();
         let op_ts_max_write = self.op_ts_max.write();
         let allids_write = self.allids.write();
         let maxid_write = self.maxid.write();
@@ -1325,6 +1402,7 @@ impl IdlArcSqlite {
             entry_cache: entry_cache_write,
             idl_cache: idl_cache_write,
             name_cache: name_cache_write,
+            idx_exists_cache: idx_exists_cache_write,
             op_ts_max: op_ts_max_write,
             allids: allids_write,
             maxid: maxid_write,

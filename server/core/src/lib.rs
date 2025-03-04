@@ -115,9 +115,9 @@ async fn setup_qs_idms(
         .await?;
 
     // We generate a SINGLE idms only!
-
+    let is_integration_test = config.integration_test_config.is_some();
     let (idms, idms_delayed, idms_audit) =
-        IdmServer::new(query_server.clone(), &config.origin).await?;
+        IdmServer::new(query_server.clone(), &config.origin, is_integration_test).await?;
 
     Ok((query_server, idms, idms_delayed, idms_audit))
 }

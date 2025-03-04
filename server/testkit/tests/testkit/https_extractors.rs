@@ -12,10 +12,8 @@ const DEFAULT_IP_ADDRESS: IpAddr = IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1));
 
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
 async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
@@ -35,10 +33,8 @@ async fn dont_trust_xff_send_header(rsclient: KanidmClient) {
 
 #[kanidmd_testkit::test(trust_x_forward_for = false)]
 async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
@@ -63,10 +59,8 @@ async fn dont_trust_xff_dont_send_header(rsclient: KanidmClient) {
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
 async fn trust_xff_send_invalid_header_single_value(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
@@ -85,10 +79,8 @@ async fn trust_xff_send_invalid_header_single_value(rsclient: KanidmClient) {
 //
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
 async fn trust_xff_send_invalid_header_multiple_values(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(
@@ -106,10 +98,8 @@ async fn trust_xff_send_invalid_header_multiple_values(rsclient: KanidmClient) {
 async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient) {
     let ip_addr = "2001:db8:85a3:8d3:1319:8a2e:370:7348";
 
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(X_FORWARDED_FOR, ip_addr)
@@ -128,10 +118,8 @@ async fn trust_xff_send_valid_header_single_ipv4_address(rsclient: KanidmClient)
 async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient) {
     let ip_addr = "203.0.113.195";
 
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(X_FORWARDED_FOR, ip_addr)
@@ -150,10 +138,8 @@ async fn trust_xff_send_valid_header_single_ipv6_address(rsclient: KanidmClient)
 async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
     let first_ip_addr = "203.0.113.195, 2001:db8:85a3:8d3:1319:8a2e:370:7348";
 
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(X_FORWARDED_FOR, first_ip_addr)
@@ -172,10 +158,6 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
 
     let second_ip_addr = "2001:db8:85a3:8d3:1319:8a2e:370:7348, 198.51.100.178, 203.0.113.195";
 
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .header(X_FORWARDED_FOR, second_ip_addr)
@@ -195,10 +177,8 @@ async fn trust_xff_send_valid_header_multiple_address(rsclient: KanidmClient) {
 
 #[kanidmd_testkit::test(trust_x_forward_for = true)]
 async fn trust_xff_dont_send_header(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+    let client = rsclient.client();
+
     let res = client
         .get(rsclient.make_url("/v1/debug/ipinfo"))
         .send()

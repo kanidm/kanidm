@@ -16,7 +16,7 @@ repository = { workspace = true }
 [[bin]]
 name = "kanidmd"
 path = "src/main.rs"
-test = true
+test = false
 doctest = false
 
 [features]

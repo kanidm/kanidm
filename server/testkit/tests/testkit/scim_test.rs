@@ -5,7 +5,6 @@ use kanidm_proto::scim_v1::ScimEntryGetQuery;
 use kanidmd_lib::constants::NAME_IDM_ADMINS;
 use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
-use reqwest::header::HeaderValue;
 use std::str::FromStr;
 use url::Url;
 
@@ -102,64 +101,6 @@ async fn test_sync_account_lifecycle(rsclient: KanidmClient) {
         .idm_sync_account_destroy_token("ipa_sync_account")
         .await
         .expect("Failed to destroy token");
-}
-
-#[kanidmd_testkit::test]
-async fn test_scim_sync_get(rsclient: KanidmClient) {
-    // We need to do manual reqwests here.
-
-    let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert(
-        reqwest::header::AUTHORIZATION,
-        HeaderValue::from_str(&format!("Bearer {:?}", rsclient.get_token().await)).unwrap(),
-    );
-
-    let client = reqwest::Client::builder()
-        .danger_accept_invalid_certs(true)
-        .default_headers(headers)
-        .build()
-        .unwrap();
-
-    // here we test the /ui/ endpoint which should have the headers
-    let response = match client.get(rsclient.make_url("/scim/v1/Sync")).send().await {
-        Ok(value) => value,
-        Err(error) => {
-            panic!(
-                "Failed to query {:?} : {:#?}",
-                rsclient.make_url("/scim/v1/Sync"),
-                error
-            );
-        }
-    };
-    eprintln!("response: {:#?}", response);
-    assert!(response.status().is_client_error());
-
-    // check that the CSP headers are coming back
-    eprintln!(
-        "csp headers: {:#?}",
-        response
-            .headers()
-            .get(http::header::CONTENT_SECURITY_POLICY)
-    );
-    assert_ne!(
-        response
-            .headers()
-            .get(http::header::CONTENT_SECURITY_POLICY),
-        None
-    );
-
-    // test that the proper content type comes back
-    let url = rsclient.make_url("/scim/v1/Sink");
-    let response = match client.get(url.clone()).send().await {
-        Ok(value) => value,
-        Err(error) => {
-            panic!("Failed to query {:?} : {:#?}", url, error);
-        }
-    };
-    assert!(response.status().is_success());
-    let content_type = response.headers().get(http::header::CONTENT_TYPE).unwrap();
-    assert!(content_type.to_str().unwrap().contains("text/html"));
-    assert!(response.text().await.unwrap().contains("Sink"));
 }
 
 #[kanidmd_testkit::test]

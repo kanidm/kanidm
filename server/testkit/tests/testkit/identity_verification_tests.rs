@@ -1,11 +1,9 @@
 use core::result::Result::Err;
-use kanidm_client::KanidmClient;
+use kanidm_client::{KanidmClient, StatusCode};
 use kanidm_proto::internal::OperationError;
 use kanidm_proto::internal::{IdentifyUserRequest, IdentifyUserResponse};
-
 use kanidmd_lib::prelude::Attribute;
 use kanidmd_testkit::ADMIN_TEST_PASSWORD;
-use reqwest::StatusCode;
 
 static UNIVERSAL_PW: &str = "eicieY7ahchaoCh0eeTa";
 
@@ -26,14 +24,14 @@ async fn test_not_authenticated(rsclient: KanidmClient) {
         .idm_person_identify_user(USER_A_NAME, IdentifyUserRequest::Start)
         .await;
     assert!(
-        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(reqwest::StatusCode::UNAUTHORIZED, ..)))
+        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::UNAUTHORIZED, ..)))
     );
 
     let res = rsclient
         .idm_person_identify_user(USER_A_NAME, IdentifyUserRequest::DisplayCode)
         .await;
     assert!(
-        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(reqwest::StatusCode::UNAUTHORIZED, ..)))
+        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::UNAUTHORIZED, ..)))
     );
     let res = rsclient
         .idm_person_identify_user(
@@ -43,7 +41,7 @@ async fn test_not_authenticated(rsclient: KanidmClient) {
         .await;
 
     assert!(
-        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(reqwest::StatusCode::UNAUTHORIZED, ..)))
+        matches!(res, Err(err) if matches!(err, kanidm_client::ClientError::Http(StatusCode::UNAUTHORIZED, ..)))
     );
 }
 

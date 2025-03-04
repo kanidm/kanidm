@@ -1,4 +1,4 @@
-use kanidm_client::{ClientError, KanidmClient};
+use kanidm_client::{ClientError, KanidmClient, StatusCode};
 use kanidm_proto::constants::ATTR_MAIL;
 use kanidmd_testkit::{create_user, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER};
 use serde_json::Value;
@@ -48,6 +48,6 @@ async fn test_v1_person_id_ssh_pubkeys_post(rsclient: KanidmClient) {
     eprintln!("response: {:#?}", response);
     assert!(matches!(
         response,
-        ClientError::Http(reqwest::StatusCode::BAD_REQUEST, _, _)
+        ClientError::Http(StatusCode::BAD_REQUEST, _, _)
     ));
 }

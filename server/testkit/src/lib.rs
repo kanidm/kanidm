@@ -92,6 +92,7 @@ pub async fn setup_async_test(mut config: Configuration) -> (KanidmClient, CoreH
     #[allow(clippy::panic)]
     let rsclient = match KanidmClientBuilder::new()
         .address(addr.clone())
+        .enable_native_ca_roots(false)
         .no_proxy()
         .build()
     {
@@ -396,7 +397,7 @@ macro_rules! assert_no_cache {
         // Check we have correct nocache headers.
         let cache_header: &str = $response
             .headers()
-            .get(http::header::CACHE_CONTROL)
+            .get(kanidm_client::http::header::CACHE_CONTROL)
             .expect("missing cache-control header")
             .to_str()
             .expect("invalid cache-control header");

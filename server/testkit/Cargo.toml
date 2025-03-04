@@ -14,7 +14,7 @@ repository = { workspace = true }
 [lib]
 name = "kanidmd_testkit"
 path = "src/lib.rs"
-test = true
+test = false
 doctest = false
 
 [features]
@@ -25,7 +25,6 @@ webdriver = []
 dev-oauth2-device-flow = []
 
 [dependencies]
-http = { workspace = true }
 kanidm_client = { workspace = true }
 kanidm_proto = { workspace = true }
 kanidmd_core = { workspace = true }
@@ -57,7 +56,6 @@ futures = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",
 ] }
-openssl = { workspace = true }
 petgraph = { version = "0.7.1", features = ["serde"] }
 serde_json = { workspace = true }
 time = { workspace = true }

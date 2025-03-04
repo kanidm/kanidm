@@ -89,7 +89,7 @@ pub async fn setup_idm_test(
 ) -> (IdmServer, IdmServerDelayed, IdmServerAudit) {
     let qs = setup_test(config).await;
 
-    IdmServer::new(qs, "https://idm.example.com")
+    IdmServer::new(qs, "https://idm.example.com", true)
         .await
         .expect("Failed to setup idms")
 }
