@@ -148,7 +148,7 @@ Features or APIs may be removed with 1 release versions notice. Deprecations wil
 ### Python module
 
 The Python module will typically trail changes in functionality of the core Rust code, and has been
-developed only for our own needs - please feel free to add functionality or improvements, or
+developed as we have needed it - please feel free to add functionality or improvements, or
 [ask for them in a Github issue](http://github.com/kanidm/kanidm/issues/new/choose)!
 
 All code changes will include full type-casting wherever possible.
