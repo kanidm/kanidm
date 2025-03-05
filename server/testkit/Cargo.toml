@@ -53,6 +53,7 @@ escargot = "0.5.13"
 # used for webdriver testing
 fantoccini = { version = "0.21.4" }
 futures = { workspace = true }
+ldap3_client = { workspace = true }
 oauth2_ext = { workspace = true, default-features = false, features = [
     "reqwest",
 ] }
