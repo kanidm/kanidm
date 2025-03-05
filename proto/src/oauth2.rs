@@ -7,7 +7,8 @@ use serde::{Deserialize, Serialize};
 use serde_with::base64::{Base64, UrlSafe};
 use serde_with::formats::SpaceSeparator;
 use serde_with::{
-    formats, serde_as, skip_serializing_none, NoneAsEmptyString, StringWithSeparator,
+    formats, rust::deserialize_ignore_any, serde_as, skip_serializing_none, NoneAsEmptyString,
+    StringWithSeparator,
 };
 use url::Url;
 use uuid::Uuid;
@@ -353,6 +354,9 @@ pub enum ResponseType {
 pub enum ResponseMode {
     Query,
     Fragment,
+    FormPost,
+    #[serde(other, deserialize_with = "deserialize_ignore_any")]
+    Invalid,
 }
 
 fn response_modes_supported_default() -> Vec<ResponseMode> {
