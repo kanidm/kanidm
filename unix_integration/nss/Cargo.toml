@@ -1,6 +1,6 @@
 [package]
-name = "nss_kanidm"
-description = "Kanidm NSS module"
+name = "nss_sparkle"
+description = "Sparkling Identity Provider - NSS module"
 
 version = { workspace = true }
 authors = { workspace = true }
@@ -11,7 +11,7 @@ homepage = { workspace = true }
 repository = { workspace = true }
 
 [lib]
-name = "nss_kanidm"
+name = "nss_sparkle"
 crate-type = ["cdylib"]
 path = "src/lib.rs"
 
@@ -31,6 +31,8 @@ cc = "^1.2.10"
 # A target specific variant must be used to get the right multiarch path.
 [package.metadata.deb]
 name = "libnss-kanidm"
+# name = "libnss-sparkle"
+# replaces = "libnss-kanidm"
 maintainer = "James Hodgkinson <james@terminaloutcomes.com>"
 depends = ""
 section = "network"
@@ -42,7 +44,12 @@ assets = [
 [package.metadata.deb.variants.aarch64-unknown-linux-gnu]
 merge-assets.append = [
     [
-        "target/release/libnss_kanidm.so",
+        "target/release/libnss_sparkle.so",
+        "usr/lib/aarch64-linux-gnu/libnss_sparkle.so.2",
+        "644",
+    ],
+    [
+        "target/release/libnss_sparkle.so",
         "usr/lib/aarch64-linux-gnu/libnss_kanidm.so.2",
         "644",
     ],
@@ -50,6 +57,11 @@ merge-assets.append = [
 
 [package.metadata.deb.variants.x86_64-unknown-linux-gnu]
 merge-assets.append = [
+    [
+        "target/release/libnss_sparkle.so",
+        "usr/lib/x86_64-linux-gnu/libnss_sparkle.so.2",
+        "644",
+    ],
     [
         "target/release/libnss_kanidm.so",
         "usr/lib/x86_64-linux-gnu/libnss_kanidm.so.2",
