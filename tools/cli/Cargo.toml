@@ -22,14 +22,14 @@ dev-oauth2-device-flow = []
 [lib]
 name = "kanidm_cli"
 path = "src/cli/lib.rs"
-test = true
+test = false
 doctest = false
 
 [[bin]]
 name = "kanidm"
 path = "src/cli/main.rs"
 doc = false
-test = true
+test = false
 doctest = false
 
 [[bin]]

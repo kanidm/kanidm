@@ -12,14 +12,14 @@ use kanidm_proto::oauth2::{
     AccessTokenResponse, AccessTokenType, AuthorisationResponse, GrantTypeReq,
     OidcDiscoveryResponse,
 };
-use kanidmd_lib::prelude::{Attribute, IDM_ALL_ACCOUNTS};
+use kanidmd_lib::constants::NAME_IDM_ALL_ACCOUNTS;
+use kanidmd_lib::prelude::Attribute;
 use oauth2_ext::PkceCodeChallenge;
 use reqwest::header::{HeaderValue, CONTENT_TYPE};
-use reqwest::StatusCode;
 use uri::{OAUTH2_TOKEN_ENDPOINT, OAUTH2_TOKEN_INTROSPECT_ENDPOINT, OAUTH2_TOKEN_REVOKE_ENDPOINT};
 use url::{form_urlencoded::parse as query_parse, Url};
 
-use kanidm_client::KanidmClient;
+use kanidm_client::{http::header, KanidmClient, StatusCode};
 use kanidmd_testkit::{
     assert_no_cache, ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, NOT_ADMIN_TEST_EMAIL,
     NOT_ADMIN_TEST_PASSWORD, NOT_ADMIN_TEST_USERNAME, TEST_INTEGRATION_RS_DISPLAY,
@@ -98,7 +98,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     rsclient
         .idm_oauth2_rs_update_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
@@ -107,7 +107,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![ADMIN_TEST_USER],
         )
         .await
@@ -136,6 +136,7 @@ async fn test_oauth2_openid_basic_flow_impl(
     // from here, we can now begin what would be a "interaction" to the oauth server.
     // Create a new reqwest client - we'll be using this manually.
     let client = reqwest::Client::builder()
+        .tls_built_in_native_certs(false)
         .redirect(reqwest::redirect::Policy::none())
         .no_proxy()
         .build()
@@ -151,11 +152,11 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send discovery preflight request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
 
     let cors_header: &str = response
         .headers()
-        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");
@@ -167,12 +168,12 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
 
     // Assert CORS on the GET too.
     let cors_header: &str = response
         .headers()
-        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");
@@ -220,7 +221,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
     let mut jwk_set: JwkKeySet = response
@@ -263,7 +264,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
     let consent_req: AuthorisationResponse = response
@@ -297,7 +298,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .expect("Failed to send request.");
 
     // This should yield a 302 redirect with some query params.
-    assert_eq!(response.status(), reqwest::StatusCode::FOUND);
+    assert_eq!(response.status(), StatusCode::FOUND);
     assert_no_cache!(response);
 
     // And we should have a URL in the location header.
@@ -342,11 +343,11 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send code exchange request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
 
     let cors_header: &str = response
         .headers()
-        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");
@@ -378,7 +379,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send token introspect request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     tracing::trace!("{:?}", response.headers());
     assert!(
         response.headers().get(CONTENT_TYPE) == Some(&HeaderValue::from_static(APPLICATION_JSON))
@@ -484,7 +485,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send client credentials request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
 
     let atr = response
         .json::<AccessTokenResponse>()
@@ -505,7 +506,7 @@ async fn test_oauth2_openid_basic_flow_impl(
         .await
         .expect("Failed to send token introspect request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
 
     let tir = response
         .json::<AccessTokenIntrospectResponse>()
@@ -627,7 +628,7 @@ async fn test_oauth2_openid_public_flow_impl(
     rsclient
         .idm_oauth2_rs_update_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![OAUTH2_SCOPE_READ, OAUTH2_SCOPE_EMAIL, OAUTH2_SCOPE_OPENID],
         )
         .await
@@ -636,7 +637,7 @@ async fn test_oauth2_openid_public_flow_impl(
     rsclient
         .idm_oauth2_rs_update_sup_scope_map(
             TEST_INTEGRATION_RS_ID,
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             vec![ADMIN_TEST_USER],
         )
         .await
@@ -647,7 +648,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .idm_oauth2_rs_update_claim_map(
             TEST_INTEGRATION_RS_ID,
             "test_claim",
-            IDM_ALL_ACCOUNTS.name,
+            NAME_IDM_ALL_ACCOUNTS,
             &["claim_a".to_string(), "claim_b".to_string()],
         )
         .await
@@ -680,6 +681,7 @@ async fn test_oauth2_openid_public_flow_impl(
     // Create a new reqwest client - we'll be using this manually.
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
+        .tls_built_in_native_certs(false)
         .no_proxy()
         .build()
         .expect("Failed to create client.");
@@ -691,7 +693,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .await
         .expect("Failed to send request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
     let mut jwk_set: JwkKeySet = response
@@ -732,7 +734,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .await
         .expect("Failed to send request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
     let consent_req: AuthorisationResponse = response
@@ -764,7 +766,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .expect("Failed to send request.");
 
     // This should yield a 302 redirect with some query params.
-    assert_eq!(response.status(), reqwest::StatusCode::FOUND);
+    assert_eq!(response.status(), StatusCode::FOUND);
     assert_no_cache!(response);
 
     // And we should have a URL in the location header.
@@ -812,7 +814,7 @@ async fn test_oauth2_openid_public_flow_impl(
         .await
         .expect("Failed to send code exchange request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     assert_no_cache!(response);
 
     // The body is a json AccessTokenResponse
@@ -857,10 +859,10 @@ async fn test_oauth2_openid_public_flow_impl(
         .await
         .expect("Failed to send userinfo preflight request.");
 
-    assert_eq!(response.status(), reqwest::StatusCode::OK);
+    assert_eq!(response.status(), StatusCode::OK);
     let cors_header: &str = response
         .headers()
-        .get(http::header::ACCESS_CONTROL_ALLOW_ORIGIN)
+        .get(header::ACCESS_CONTROL_ALLOW_ORIGIN)
         .expect("missing access-control-allow-origin header")
         .to_str()
         .expect("invalid access-control-allow-origin header");
@@ -930,6 +932,7 @@ async fn test_oauth2_token_post_bad_bodies(rsclient: KanidmClient) {
 
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
+        .tls_built_in_native_certs(false)
         .no_proxy()
         .build()
         .expect("Failed to create client.");
@@ -965,6 +968,7 @@ async fn test_oauth2_token_revoke_post(rsclient: KanidmClient) {
 
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::none())
+        .tls_built_in_native_certs(false)
         .no_proxy()
         .build()
         .expect("Failed to create client.");

@@ -2,15 +2,14 @@ use kanidm_client::KanidmClient;
 
 /// This literally tests that the thing exists and responds in a way we expect, probably worth testing it better...
 #[kanidmd_testkit::test]
-async fn test_v1_system_post_attr(rsclient: KanidmClient) {
-    let client = reqwest::ClientBuilder::new()
-        .danger_accept_invalid_certs(true)
-        .build()
-        .unwrap();
+async fn test_v1_service_account_id_attr_attr_delete(rsclient: KanidmClient) {
+    // We need to do manual reqwests here.
+    let client = rsclient.client();
+
+    // let post_body = serde_json::json!({"filter": "self"}).to_string();
 
     let response = match client
-        .post(rsclient.make_url("/v1/system/_attr/domain_name"))
-        .json(&serde_json::json!({"filter": "self"}))
+        .delete(rsclient.make_url("/v1/service_account/admin/_attr/email"))
         .send()
         .await
     {
@@ -18,13 +17,13 @@ async fn test_v1_system_post_attr(rsclient: KanidmClient) {
         Err(error) => {
             panic!(
                 "Failed to query {:?} : {:#?}",
-                rsclient.make_url("v1/system/_attr/domain_name"),
+                rsclient.make_url("/v1/service_account/admin/_attr/email"),
                 error
             );
         }
     };
     eprintln!("response: {:#?}", response);
-    assert_eq!(response.status(), 422);
+    assert_eq!(response.status(), 401);
 
     let body = response.text().await.unwrap();
     eprintln!("{}", body);

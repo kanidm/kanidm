@@ -615,9 +615,11 @@ mod tests {
             Err(OperationError::EmptyRequest)
         );
 
+        let idm_admin = server_txn.internal_search_uuid(UUID_IDM_ADMIN).unwrap();
+
         // Mod changes no objects
-        let me_nochg = ModifyEvent::new_impersonate_entry_ser(
-            BUILTIN_ACCOUNT_IDM_ADMIN.clone(),
+        let me_nochg = ModifyEvent::new_impersonate_entry(
+            idm_admin,
             filter!(f_eq(
                 Attribute::Name,
                 PartialValue::new_iname("flarbalgarble")

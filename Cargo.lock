@@ -3247,7 +3247,6 @@ dependencies = [
  "escargot",
  "fantoccini",
  "futures",
- "http 1.2.0",
  "jsonschema",
  "kanidm_build_profiles",
  "kanidm_client",

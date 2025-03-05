@@ -1989,7 +1989,7 @@ mod tests {
             let me = ModifyEvent::new_internal_invalid(
                 filter!(f_eq(
                     Attribute::Name,
-                    PartialValue::new_iname(BUILTIN_GROUP_PEOPLE_PII_READ.name)
+                    PartialValue::new_iname("idm_people_pii_read")
                 )),
                 ModifyList::new_list(vec![Modify::Present(
                     Attribute::Member,

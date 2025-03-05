@@ -11,7 +11,7 @@ WAIT_TIMER=5
 
 
 echo "Building release binaries..."
-cargo build --release --bin kanidm --bin kanidmd
+cargo build --locked --release --bin kanidm --bin kanidmd
 
 if [ -d '.git' ]; then
     echo "You're in the root dir, let's move you!"

@@ -1,11 +1,16 @@
-use kanidm_client::KanidmClient;
+use kanidm_client::{http::header, KanidmClient};
 
 #[kanidmd_testkit::test]
 async fn test_https_manifest(rsclient: KanidmClient) {
     // We need to do manual reqwests here.
+    let client = rsclient.client();
 
     // here we test the /ui/ endpoint which should have the headers
-    let response = match reqwest::get(rsclient.make_url("/manifest.webmanifest")).await {
+    let response = match client
+        .get(rsclient.make_url("/manifest.webmanifest"))
+        .send()
+        .await
+    {
         Ok(value) => value,
         Err(error) => {
             panic!(
@@ -20,8 +25,6 @@ async fn test_https_manifest(rsclient: KanidmClient) {
 
     eprintln!(
         "csp headers: {:#?}",
-        response
-            .headers()
-            .get(http::header::CONTENT_SECURITY_POLICY)
+        response.headers().get(header::CONTENT_SECURITY_POLICY)
     );
 }

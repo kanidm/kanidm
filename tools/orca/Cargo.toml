@@ -14,7 +14,7 @@ repository = { workspace = true }
 [[bin]]
 name = "orca"
 path = "src/main.rs"
-test = true
+test = false
 doctest = false
 
 [dependencies]

@@ -1716,6 +1716,7 @@ mod tests {
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
+    use crate::migration_data::{BUILTIN_ACCOUNT_ANONYMOUS, BUILTIN_ACCOUNT_TEST_PERSON};
     use crate::prelude::*;
     use crate::server::keys::KeyObjectInternal;
     use crate::utils::readable_password_from_random;
@@ -1742,7 +1743,7 @@ mod tests {
 
         let webauthn = create_webauthn();
 
-        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS_DL6.clone().into();
+        let anon_account: Account = BUILTIN_ACCOUNT_ANONYMOUS.clone().into();
 
         let asd = AuthSessionData {
             account: anon_account,
@@ -1819,7 +1820,7 @@ mod tests {
     fn start_session_simple_password_mech(privileged: bool) -> UserAuthToken {
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "test_password").unwrap();
@@ -1920,7 +1921,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
         // manually load in a cred
         let p = CryptoPolicy::minimum();
         let cred = Credential::new_password_only(&p, "list@no3IBTyqHu$bad").unwrap();
@@ -2087,7 +2088,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -2264,7 +2265,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -2440,7 +2441,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_passkey(account.name.as_str());
 
@@ -2594,7 +2595,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
         let pw_good = "test_password";
@@ -2787,7 +2788,7 @@ mod tests {
         let (audit_tx, mut audit_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         let (webauthn, mut wa, wan_cred) = setup_webauthn_securitykey(account.name.as_str());
 
@@ -3053,7 +3054,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
@@ -3262,7 +3263,7 @@ mod tests {
         sketching::test_init();
         let webauthn = create_webauthn();
         // create the ent
-        let mut account: Account = BUILTIN_ACCOUNT_ADMIN.clone().into();
+        let mut account: Account = BUILTIN_ACCOUNT_TEST_PERSON.clone().into();
 
         // Setup a fake time stamp for consistency.
         let ts = Duration::from_secs(12345);
