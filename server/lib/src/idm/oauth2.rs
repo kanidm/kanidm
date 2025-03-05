@@ -122,6 +122,11 @@ impl std::fmt::Display for Oauth2Error {
 }
 
 // == internal state formats that we encrypt and send.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+enum SupportedResponseMode {
+    Query,
+    Fragment,
+}
 
 #[serde_as]
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -145,7 +150,7 @@ struct ConsentToken {
     // We stash some details here for oidc.
     pub nonce: Option<String>,
     /// The format the response should be returned to the application in.
-    pub response_mode: ResponseMode,
+    pub response_mode: SupportedResponseMode,
 }
 
 #[serde_as]
@@ -239,7 +244,7 @@ pub struct AuthorisePermitSuccess {
     // The exchange code as a String
     pub code: String,
     /// The format the response should be returned to the application in.
-    pub response_mode: ResponseMode,
+    response_mode: SupportedResponseMode,
 }
 
 impl AuthorisePermitSuccess {
@@ -252,7 +257,7 @@ impl AuthorisePermitSuccess {
         redirect_uri.set_fragment(None);
 
         match self.response_mode {
-            ResponseMode::Query => {
+            SupportedResponseMode::Query => {
                 redirect_uri
                     .query_pairs_mut()
                     .append_pair("code", &self.code);
@@ -261,7 +266,7 @@ impl AuthorisePermitSuccess {
                     redirect_uri.query_pairs_mut().append_pair("state", state);
                 };
             }
-            ResponseMode::Fragment => {
+            SupportedResponseMode::Fragment => {
                 redirect_uri.set_query(None);
 
                 // Per [the RFC](https://www.rfc-editor.org/rfc/rfc6749#section-3.1.2), we can't set query pairs on fragment-containing redirects, only query ones.
@@ -285,7 +290,7 @@ pub struct AuthoriseReject {
     // Where the client wants us to go back to.
     pub redirect_uri: Url,
     /// The format the response should be returned to the application in.
-    pub response_mode: ResponseMode,
+    response_mode: SupportedResponseMode,
 }
 
 impl AuthoriseReject {
@@ -305,8 +310,8 @@ impl AuthoriseReject {
             .finish();
 
         match self.response_mode {
-            ResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
-            ResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
+            SupportedResponseMode::Query => redirect_uri.set_query(Some(&encoded)),
+            SupportedResponseMode::Fragment => redirect_uri.set_fragment(Some(&encoded)),
         }
 
         redirect_uri
@@ -1873,13 +1878,29 @@ impl IdmServerProxyReadTransaction<'_> {
             admin_warn!("Unsupported OAuth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
+
         let Some(response_mode) = auth_req.get_response_mode() else {
-            admin_warn!(
+            warn!(
                 "Invalid response_mode {:?} for response_type {:?}",
-                auth_req.response_mode,
-                auth_req.response_type
+                auth_req.response_mode, auth_req.response_type
             );
             return Err(Oauth2Error::InvalidRequest);
+        };
+
+        let response_mode = match response_mode {
+            ResponseMode::Query => SupportedResponseMode::Query,
+            ResponseMode::Fragment => SupportedResponseMode::Fragment,
+            ResponseMode::FormPost => {
+                warn!(
+                    "Invalid response mode form_post requested - many clients request this incorrectly but proceed with response_mode=query. Remapping to query."
+                );
+                warn!("This behaviour WILL BE REMOVED in a future release.");
+                SupportedResponseMode::Query
+            }
+            ResponseMode::Invalid => {
+                warn!("Invalid response mode requested, unable to proceed");
+                return Err(Oauth2Error::InvalidRequest);
+            }
         };
 
         /*
